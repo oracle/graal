@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.reflect.proxy.hosted;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
 
@@ -37,9 +38,9 @@ import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.proxy.DynamicProxySupport;
@@ -47,6 +48,7 @@ import com.oracle.svm.reflect.proxy.DynamicProxySupport;
 @AutomaticFeature
 public final class DynamicProxyFeature implements Feature {
     private int loadedConfigurations;
+    private Field proxyCacheField;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -60,13 +62,15 @@ public final class DynamicProxyFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         DynamicProxySupport dynamicProxySupport = new DynamicProxySupport(imageClassLoader.getClassLoader());
         ImageSingletons.add(DynamicProxyRegistry.class, dynamicProxySupport);
-        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("resource configuration", imageClassLoader);
         ProxyRegistry proxyRegistry = new ProxyRegistry(typeResolver, dynamicProxySupport, imageClassLoader);
         ImageSingletons.add(ProxyRegistry.class, proxyRegistry);
         ProxyConfigurationParser parser = new ProxyConfigurationParser(proxyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "dynamic proxy",
                         ConfigurationFiles.Options.DynamicProxyConfigurationFiles, ConfigurationFiles.Options.DynamicProxyConfigurationResources,
                         ConfigurationFile.DYNAMIC_PROXY.getFileName());
+
+        proxyCacheField = access.findField(DynamicProxySupport.class, "proxyCache");
     }
 
     private static ProxyRegistry proxyRegistry() {
@@ -79,8 +83,10 @@ public final class DynamicProxyFeature implements Feature {
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        proxyRegistry().flushConditionalConfiguration(access);
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanField(ImageSingletons.lookup(DynamicProxyRegistry.class), proxyCacheField);
+        proxyRegistry().flushConditionalConfiguration(a);
     }
 
     @Override

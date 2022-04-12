@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -232,7 +232,8 @@ public abstract class AbstractTruffleString {
     }
 
     final boolean isCompatibleTo(int enc, int maxCompatibleCodeRange) {
-        return this.encoding() == enc || !DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && ((TruffleString) this).codeRange() < maxCompatibleCodeRange;
+        // GR-31985: workaround: the binary OR avoids unnecessary loop unswitching on this check
+        return (this.encoding() == enc) | ((!DEBUG_STRICT_ENCODING_CHECKS && this instanceof TruffleString && ((TruffleString) this).codeRange() < maxCompatibleCodeRange));
     }
 
     /**

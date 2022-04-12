@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,6 +94,7 @@ public final class Isolates {
             private String auxiliaryImagePath;
             private UnsignedWord auxiliaryImageReservedSpaceSize;
             private final List<String> arguments;
+            private ProtectionDomain protectionDomain = ProtectionDomain.NO_DOMAIN;
 
             /**
              * Creates a new builder with default values.
@@ -139,7 +140,7 @@ public final class Isolates {
             /**
              * Appends an isolate argument. The syntax for arguments is the same as the one that is
              * used on the command-line when starting Native Image (e.g., {@code
-             * -XX:+UseReferenceHandlerThread}). If the same argument is added multiple times, the
+             * -XX:+AutomaticReferenceHandling}). If the same argument is added multiple times, the
              * last specified value will be used.
              *
              * @since 22.1
@@ -150,13 +151,23 @@ public final class Isolates {
             }
 
             /**
+             * Sets the {@link ProtectionDomain} for an isolate.
+             *
+             * @since 22.1
+             */
+            public Builder setProtectionDomain(ProtectionDomain domain) {
+                this.protectionDomain = domain;
+                return this;
+            }
+
+            /**
              * Produces the final {@link CreateIsolateParameters} with the values set previously by
              * the builder methods.
              *
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, arguments);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, arguments, protectionDomain);
             }
         }
 
@@ -175,12 +186,15 @@ public final class Isolates {
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
         private final List<String> arguments;
+        private final ProtectionDomain protectionDomain;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments,
+                        ProtectionDomain protectionDomain) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
             this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
             this.arguments = arguments;
+            this.protectionDomain = protectionDomain;
         }
 
         /**
@@ -220,6 +234,41 @@ public final class Isolates {
         public List<String> getArguments() {
             return Collections.unmodifiableList(arguments);
         }
+
+        /**
+         * Returns the memory protection domain to be used for an isolate.
+         *
+         * @since 22.1
+         */
+        public ProtectionDomain getProtectionDomain() {
+            return protectionDomain;
+        }
+    }
+
+    /**
+     * Identifies a protection domain for an isolate. A protection domain may be used by a
+     * {@code MemoryProtectionKeyProvider} in connection with underlying MMU hardware such as Memory
+     * Protection Keys.
+     *
+     * @since 22.1
+     *
+     */
+    public interface ProtectionDomain {
+        /**
+         * Do not use a protection domain.
+         *
+         * @since 22.1
+         */
+        ProtectionDomain NO_DOMAIN = new ProtectionDomain() {
+        };
+
+        /**
+         * Creates a new protection domain if passed to the {@link Builder}.
+         *
+         * @since 22.1
+         */
+        ProtectionDomain NEW_DOMAIN = new ProtectionDomain() {
+        };
     }
 
     /**

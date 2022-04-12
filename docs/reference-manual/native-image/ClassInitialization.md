@@ -57,9 +57,8 @@ This restriction is there to avoid the explosion of search space for the safety 
 * If it is substituted by Native Image. Running initializers of substituted methods would yield different results in the hosting VM than in the produced image.
 As a result, the safety analysis would consider some methods safe but their execution would lead to illegal states.
 
-A test that shows examples of classes that are proven safe can be found [here](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/TestClassInitializationMustBeSafe.java).
+A test that shows examples of classes that are proven safe can be found [here](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/clinit/TestClassInitializationMustBeSafeEarly.java).
 The list of all classes that are proven safe is displayed in a file when `-H:+PrintClassInitialization` is set on the command line.
-
 
 ## Explicitly Specifying Class Initialization
 

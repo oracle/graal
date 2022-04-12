@@ -86,7 +86,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -116,8 +116,6 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{THROW_CACHED_STACK_OVERFLOW_ERROR, THROW_NEW_STACK_OVERFLOW_ERROR};
 
-    private static final StackOverflowError CACHED_STACK_OVERFLOW_ERROR = new StackOverflowError(ImplicitExceptions.NO_STACK_MSG);
-
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
     @Override
     public void initialize(IsolateThread thread) {
@@ -140,23 +138,54 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         yellowZoneStateTL.set(thread, STATE_YELLOW_ENABLED);
     }
 
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isWithinBounds(UnsignedWord address) {
+        return stackBoundaryTL.get().belowOrEqual(address) && VMThreads.StackBase.get().aboveOrEqual(address);
+    }
+
+    @Override
+    public int getState() {
+        return yellowZoneStateTL.get();
+    }
+
+    @Override
+    @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
+    public void setState(int newState) {
+        int oldState = yellowZoneStateTL.get();
+        yellowZoneStateTL.set(newState);
+
+        if (newState > oldState) {
+            onYellowZoneMadeAvailable(oldState, newState);
+        } else if (newState < oldState) {
+            onYellowZoneProtected(oldState, newState);
+        }
+    }
+
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void makeYellowZoneAvailable() {
-        /*
-         * Even though "yellow zones" and "recurring callbacks" are orthogonal features, running a
-         * recurring callback in the yellow zone is dangerous because a stack overflow in the
-         * recurring callback would then lead to a fatal error.
-         */
-        ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks are considered user code and must not run in yellow zone");
+        // Performance-sensitive: intentionally not calling setState(yellowZoneStateTL.get() + 1)
+        int oldState = yellowZoneStateTL.get();
+        int newState = oldState + 1;
+        yellowZoneStateTL.set(newState);
+        onYellowZoneMadeAvailable(oldState, newState);
+    }
 
-        int state = yellowZoneStateTL.get();
-        VMError.guarantee(state >= STATE_YELLOW_ENABLED, "StackOverflowSupport.disableYellowZone: Illegal state");
+    @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
+    private static void onYellowZoneMadeAvailable(int oldState, int newState) {
+        VMError.guarantee(newState > oldState && newState > STATE_YELLOW_ENABLED, "StackOverflowCheckImpl.onYellowZoneMadeAvailable: Illegal state");
 
-        if (state == STATE_YELLOW_ENABLED) {
+        if (oldState == STATE_YELLOW_ENABLED) {
+            /*
+             * Even though "yellow zones" and "recurring callbacks" are orthogonal features, running
+             * a recurring callback in the yellow zone is dangerous because a stack overflow in the
+             * recurring callback would then lead to a fatal error.
+             */
+            ThreadingSupportImpl.pauseRecurringCallback("Recurring callbacks are considered user code and must not run in yellow zone");
+
             stackBoundaryTL.set(stackBoundaryTL.get().subtract(Options.StackYellowZoneSize.getValue()));
         }
-        yellowZoneStateTL.set(state + 1);
 
         /*
          * Check that after enabling the yellow zone there is actually stack space available again.
@@ -180,14 +209,20 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void protectYellowZone() {
-        ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
-
-        int state = yellowZoneStateTL.get();
-        VMError.guarantee(state > STATE_YELLOW_ENABLED, "StackOverflowSupport.enableYellowZone: Illegal state");
-
-        int newState = state - 1;
+        // Performance-sensitive: intentionally not calling setState(yellowZoneStateTL.get() - 1)
+        int oldState = yellowZoneStateTL.get();
+        int newState = oldState - 1;
         yellowZoneStateTL.set(newState);
+        onYellowZoneProtected(oldState, newState);
+    }
+
+    @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
+    private static void onYellowZoneProtected(int oldState, int newState) {
+        VMError.guarantee(newState < oldState && newState >= STATE_YELLOW_ENABLED, "StackOverflowCheckImpl.onYellowZoneProtected: Illegal state");
+
         if (newState == STATE_YELLOW_ENABLED) {
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
+
             stackBoundaryTL.set(stackBoundaryTL.get().add(Options.StackYellowZoneSize.getValue()));
         }
     }
@@ -228,7 +263,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
     @Override
     public void updateStackOverflowBoundary() {
-        long threadSize = JavaThreads.getRequestedThreadSize(Thread.currentThread());
+        long threadSize = PlatformThreads.getRequestedStackSize(Thread.currentThread());
 
         if (threadSize != 0) {
             updateStackOverflowBoundary(threadSize);
@@ -245,7 +280,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         VMError.guarantee(StackOverflowCheckImpl.yellowZoneStateTL.get() != StackOverflowCheckImpl.STATE_UNINITIALIZED,
                         "Stack boundary for the current thread not yet initialized. Only uninterruptible code with no stack overflow checks can run at this point.");
 
-        throw CACHED_STACK_OVERFLOW_ERROR;
+        throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
     }
 
     /**
@@ -262,7 +297,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
         StackOverflowError error;
         if (state > StackOverflowCheckImpl.STATE_YELLOW_ENABLED || Heap.getHeap().isAllocationDisallowed()) {
-            error = CACHED_STACK_OVERFLOW_ERROR;
+            error = ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
         } else {
             try {
                 StackOverflowCheck.singleton().makeYellowZoneAvailable();

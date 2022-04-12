@@ -25,12 +25,16 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
@@ -70,8 +74,210 @@ public final class Target_java_lang_System {
         return VM.JVM_IHashCode(self);
     }
 
+    @ReportPolymorphism
     @Substitution
-    public static void arraycopy(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
+    abstract static class Arraycopy extends SubstitutionNode {
+        abstract void execute(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler);
+
+        static boolean isNull(StaticObject obj) {
+            return StaticObject.isNull(obj);
+        }
+
+        static boolean nullOrNotArray(StaticObject src, StaticObject dest) {
+            return StaticObject.isNull(src) || StaticObject.isNull(dest) || !src.isArray() || !dest.isArray();
+        }
+
+        static boolean foreignArgument(StaticObject src, StaticObject dest) {
+            return src.isForeignObject() || dest.isForeignObject();
+        }
+
+        static boolean isPrimitiveArray(StaticObject maybeArray) {
+            return ((ArrayKlass) maybeArray.getKlass()).getComponentType().isPrimitive();
+        }
+
+        static boolean hasDifferentPrimitiveArrayInput(StaticObject src, StaticObject dest) {
+            return src.getKlass() != dest.getKlass() && (isPrimitiveArray(src) || isPrimitiveArray(dest));
+        }
+
+        static boolean areCompatiblePrimitiveArrays(StaticObject src, StaticObject dest, ArrayKlass arrayKlass) {
+            return src.getKlass() == arrayKlass && dest.getKlass() == src.getKlass();
+        }
+
+        static Klass getComponentType(StaticObject array) {
+            assert array.isArray();
+            return ((ArrayKlass) array.getKlass()).getComponentType();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "nullOrNotArray(src, dest)")
+        void doEarlyError(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            if (StaticObject.isNull(src) || StaticObject.isNull(dest)) {
+                throw meta.throwNullPointerException();
+            }
+            if (!src.isArray() || !dest.isArray()) {
+                throw meta.throwException(meta.java_lang_ArrayStoreException);
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("expected null or non-array input");
+        }
+
+        @Specialization(guards = "foreignArgument(src, dest)")
+        void doForeign(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            handleForeignArray(src.isForeignObject() ? src.rawForeignObject() : src, srcPos,
+                            dest.isForeignObject() ? dest.rawForeignObject() : dest, destPos, length,
+                            ((ArrayKlass) dest.getKlass()).getComponentType(), meta, profiler);
+        }
+
+        /*
+         * Here and in other primitive array cases: it is enough to check that arrays are not
+         * foreign, null check and isArray check is automatic because klass is compared to []byte
+         * (!= null and isArray)
+         */
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._byte_array) || areCompatiblePrimitiveArrays(src, dest, meta._boolean_array)", "!foreignArgument(src, dest)"})
+        void doByteArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<byte[]> unwrap(), srcPos, dest.<byte[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._int_array)", "!foreignArgument(src, dest)"})
+        void doIntArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<int[]> unwrap(), srcPos, dest.<int[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._double_array)", "!foreignArgument(src, dest)"})
+        void doDoubleArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<double[]> unwrap(), srcPos, dest.<double[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._long_array)", "!foreignArgument(src, dest)"})
+        void doLongArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<long[]> unwrap(), srcPos, dest.<long[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._char_array)", "!foreignArgument(src, dest)"})
+        void doCharArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<char[]> unwrap(), srcPos, dest.<char[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._short_array)", "!foreignArgument(src, dest)"})
+        void doShortArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<short[]> unwrap(), srcPos, dest.<short[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"areCompatiblePrimitiveArrays(src, dest, meta._float_array)", "!foreignArgument(src, dest)"})
+        void doFloatArray(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta,
+                        @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<float[]> unwrap(), srcPos, dest.<float[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isNull(src)", "!isNull(dest)", "!foreignArgument(src, dest)", "hasDifferentPrimitiveArrayInput(src, dest)"})
+        void doPrimitiveArrayMismatch(@JavaType(Object.class) StaticObject src, int srcPos,
+                        @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            throw throwArrayStoreEx(meta, profiler);
+        }
+
+        @Specialization(guards = {"src == dest", "!isPrimitiveArray(src)", "!src.isForeignObject()"})
+        void doSameArray(@JavaType(Object.class) StaticObject src, int srcPos,
+                        @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<StaticObject[]> unwrap(), srcPos, dest.<StaticObject[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"length == 0", "!nullOrNotArray(src, dest)", "!isPrimitiveArray(src)", "!isPrimitiveArray(dest)", "!foreignArgument(src, dest)"})
+        void doZeroLen(@JavaType(Object.class) StaticObject src, int srcPos,
+                        @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            boundsCheck(meta, src.length(), srcPos, dest.length(), destPos, length, profiler);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!nullOrNotArray(src, dest)", "!foreignArgument(src, dest)", "destComponentType.isAssignableFrom(srcComponentType)", "!isPrimitiveArray(src)",
+                        "!isPrimitiveArray(dest)"})
+        void doCompatibleReferenceArrays(@JavaType(Object.class) StaticObject src, int srcPos,
+                        @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta, @Inject SubstitutionProfiler profiler,
+                        @Bind("getComponentType(src)") Klass srcComponentType,
+                        @Bind("getComponentType(dest)") Klass destComponentType) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            try {
+                System.arraycopy(src.<StaticObject[]> unwrap(), srcPos, dest.<StaticObject[]> unwrap(), destPos, length);
+            } catch (ArrayIndexOutOfBoundsException e) {
+                throw throwOutOfBoundsEx(meta, profiler);
+            }
+        }
+
+        @Specialization(guards = {"!nullOrNotArray(src, dest)", "!foreignArgument(src, dest)", "!isPrimitiveArray(src)", "!isPrimitiveArray(dest)",
+                        "!getComponentType(dest).isAssignableFrom(getComponentType(src))"})
+        void doIncompatibleReferenceArrays(@JavaType(Object.class) StaticObject src, int srcPos,
+                        @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
+            SYSTEM_ARRAYCOPY_COUNT.inc();
+            boundsCheck(meta, src.length(), srcPos, dest.length(), destPos, length, profiler);
+            Klass destType = ((ArrayKlass) dest.getKlass()).getComponentType();
+            StaticObject[] s = src.unwrap();
+            StaticObject[] d = dest.unwrap();
+            for (int i = 0; i < length; i++) {
+                StaticObject cpy = s[i + srcPos];
+                if (!StaticObject.isNull(cpy) && !destType.isAssignableFrom(cpy.getKlass())) {
+                    throw throwArrayStoreEx(meta, profiler);
+                }
+                d[destPos + i] = cpy;
+            }
+        }
+    }
+
+    // Maintained only to be called by JVM_ArrayCopy.
+    public static void arraycopy(@JavaType(Object.class) StaticObject src, int srcPos,
+                    @JavaType(Object.class) StaticObject dest, int destPos, int length,
                     @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
         SYSTEM_ARRAYCOPY_COUNT.inc();
         try {
@@ -200,17 +406,22 @@ public final class Target_java_lang_System {
 
     public static EspressoException throwNullPointerEx(Meta meta, SubstitutionProfiler profiler) {
         profiler.profile(NULLPOINTER_PROFILE);
-        throw meta.throwNullPointerException();
+        throw throwException(meta, meta.java_lang_NullPointerException);
     }
 
     private static EspressoException throwOutOfBoundsEx(Meta meta, SubstitutionProfiler profiler) {
         profiler.profile(INDEXOUTOFBOUNDS_PROFILE);
-        throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        throw throwException(meta, meta.java_lang_ArrayIndexOutOfBoundsException);
     }
 
     private static EspressoException throwArrayStoreEx(Meta meta, SubstitutionProfiler profiler) {
         profiler.profile(ARRAYSTORE_PROFILE);
-        throw meta.throwException(meta.java_lang_ArrayStoreException);
+        throw throwException(meta, meta.java_lang_ArrayStoreException);
+    }
+
+    @TruffleBoundary
+    private static EspressoException throwException(Meta meta, ObjectKlass exceptionKlass) {
+        throw meta.throwException(exceptionKlass);
     }
 
     @TruffleBoundary
@@ -232,7 +443,7 @@ public final class Target_java_lang_System {
                 library.writeArrayElement(dest, destPos + i, cpy);
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         } catch (InvalidArrayIndexException e) {
             throw throwArrayStoreEx(meta, profiler);

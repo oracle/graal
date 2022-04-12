@@ -481,9 +481,11 @@ public final class RegexOptions {
                     switch (src.charAt(iVal + 6)) {
                         case 'B':
                             flavor = PythonFlavor.BYTES_INSTANCE;
+                            encoding = Encodings.LATIN_1;
                             return expectValue(iVal, FLAVOR_PYTHON_BYTES, FLAVOR_OPTIONS);
                         case 'S':
                             flavor = PythonFlavor.STR_INSTANCE;
+                            encoding = Encodings.UTF_16;
                             return expectValue(iVal, FLAVOR_PYTHON_STR, FLAVOR_OPTIONS);
                         default:
                             throw optionsSyntaxErrorUnexpectedValue(iVal, FLAVOR_OPTIONS);
@@ -633,6 +635,12 @@ public final class RegexOptions {
 
         public Builder flavor(@SuppressWarnings("hiding") RegexFlavor flavor) {
             this.flavor = flavor;
+            if (flavor == PythonFlavor.BYTES_INSTANCE) {
+                this.encoding = Encodings.LATIN_1;
+            }
+            if (flavor == PythonFlavor.STR_INSTANCE) {
+                this.encoding = Encodings.UTF_16;
+            }
             return this;
         }
 

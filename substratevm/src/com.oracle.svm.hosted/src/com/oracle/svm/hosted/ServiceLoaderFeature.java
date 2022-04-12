@@ -116,7 +116,7 @@ public class ServiceLoaderFeature implements Feature {
      * Services that should not be processed here, for example because they are handled by
      * specialized features.
      */
-    private final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
+    protected final Set<String> servicesToSkip = new HashSet<>(Arrays.asList(
                     // image builder internal ServiceLoader interfaces
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
@@ -136,7 +136,7 @@ public class ServiceLoaderFeature implements Feature {
     // before because implementation classes were instantiated using runtime reflection instead of
     // ServiceLoader (and thus weren't reachable in analysis).
 
-    private final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
+    protected final Set<String> serviceProvidersToSkip = new HashSet<>(Arrays.asList(
                     "com.sun.jndi.rmi.registry.RegistryContextFactory"      // GR-26547
     ));
 
@@ -362,7 +362,7 @@ public class ServiceLoaderFeature implements Feature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
         }
-        Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
+        Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)), false);
 
         /* Ensure that the static analysis runs again for the new implementation classes. */
         access.requireAnalysisIteration();

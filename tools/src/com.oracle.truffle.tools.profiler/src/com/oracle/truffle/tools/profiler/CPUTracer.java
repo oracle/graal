@@ -308,7 +308,7 @@ public final class CPUTracer implements Closeable {
     }
 
     static ProfilerToolFactory<CPUTracer> createFactory() {
-        return new ProfilerToolFactory<CPUTracer>() {
+        return new ProfilerToolFactory<>() {
             @Override
             public CPUTracer create(Env env) {
                 return new CPUTracer(env);

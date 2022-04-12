@@ -244,6 +244,9 @@ public class GroupBoundaries implements JsonConvertible {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
         }
+        if (hasIndexClears()) {
+            resultFactory.clearIndices(clearIndices);
+        }
         if (trackLastGroup && hasLastGroup()) {
             resultFactory.setLastGroup(getLastGroup());
         }

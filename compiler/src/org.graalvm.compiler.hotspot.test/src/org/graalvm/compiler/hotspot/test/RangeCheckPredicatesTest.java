@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -45,7 +45,6 @@ import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -107,10 +106,10 @@ public class RangeCheckPredicatesTest extends GraalCompilerTest {
         int extraLoopLimitCheck;
         if (!loopLimitCheck) {
             // Running with UseJVMCICompiler off causes hotspot to account for trap twice
-            extraBoundsCheck = (useJVMCICompiler || JavaVersionUtil.JAVA_SPEC <= 8) ? 1 : 2;
+            extraBoundsCheck = useJVMCICompiler ? 1 : 2;
             extraLoopLimitCheck = 0;
         } else {
-            extraBoundsCheck = (useJVMCICompiler || JavaVersionUtil.JAVA_SPEC <= 8) ? 0 : 1;
+            extraBoundsCheck = useJVMCICompiler ? 0 : 1;
             extraLoopLimitCheck = 1;
         }
         Object[] args = new Object[testParameters.length + 1];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2476,7 +2476,7 @@ final class InstrumentationHandler {
 
         @Override
         public Iterator<E> iterator() {
-            return new Iterator<E>() {
+            return new Iterator<>() {
                 private final E[] snapshot = getArray();
                 private int cursor = 0;
 
@@ -2665,7 +2665,7 @@ final class InstrumentationHandler {
          */
         @Override
         public Iterator<R> iterator() {
-            return new Iterator<R>() {
+            return new Iterator<>() {
 
                 /*
                  * We need to capture the values field in the iterator to have a consistent view on

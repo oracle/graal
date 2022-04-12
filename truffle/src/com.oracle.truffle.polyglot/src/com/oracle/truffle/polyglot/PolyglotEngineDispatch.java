@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,14 +50,6 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
-import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.Tag;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -68,13 +60,20 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
-
-import com.oracle.truffle.api.Truffle;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
+
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 
 final class PolyglotEngineDispatch extends AbstractEngineDispatch {
 
@@ -222,9 +221,8 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         SourceSectionFilter.Builder filterBuilder = SourceSectionFilter.newBuilder().tagIs(tags.toArray(new Class<?>[0]));
         filterBuilder.includeInternal(false);
 
-        AbstractManagementDispatch managementDispatch = polyglot.getManagementDispatch();
-        PolyglotManagementDispatch.ListenerImpl config = new PolyglotManagementDispatch.ListenerImpl(managementDispatch, engine, onEnter, onReturn, collectInputValues, collectReturnValues,
-                        collectExceptions);
+        PolyglotExecutionListenerDispatch.ListenerImpl config = new PolyglotExecutionListenerDispatch.ListenerImpl(polyglot.getExecutionEventDispatch(), engine,
+                        onEnter, onReturn, collectInputValues, collectReturnValues, collectExceptions);
 
         filterBuilder.sourceIs(new SourceSectionFilter.SourcePredicate() {
             public boolean test(com.oracle.truffle.api.source.Source s) {
@@ -275,14 +273,14 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
             if (mayNeedInputValues || mayNeedReturnValue || mayNeedExceptions) {
                 binding = instrumenter.attachExecutionEventFactory(filter, mayNeedInputValues ? filter : null, new ExecutionEventNodeFactory() {
                     public ExecutionEventNode create(EventContext context) {
-                        return new PolyglotManagementDispatch.ProfilingNode(config, context);
+                        return new PolyglotExecutionListenerDispatch.ProfilingNode(config, context);
                     }
                 });
             } else {
                 // fast path no collection of additional profiles
                 binding = instrumenter.attachExecutionEventFactory(filter, null, new ExecutionEventNodeFactory() {
                     public ExecutionEventNode create(EventContext context) {
-                        return new PolyglotManagementDispatch.DefaultNode(config, context);
+                        return new PolyglotExecutionListenerDispatch.DefaultNode(config, context);
                     }
                 });
             }
@@ -290,7 +288,12 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
             throw PolyglotImpl.guestToHostException(engine, t);
         }
         config.binding = binding;
-        return polyglot.getManagement().newExecutionListener(managementDispatch, config);
+        return polyglot.getManagement().newExecutionListener(polyglot.getExecutionListenerDispatch(), config);
+    }
+
+    @Override
+    public void shutdown(Object engine) {
+        ((PolyglotEngineImpl) engine).onVMShutdown();
     }
 
 }

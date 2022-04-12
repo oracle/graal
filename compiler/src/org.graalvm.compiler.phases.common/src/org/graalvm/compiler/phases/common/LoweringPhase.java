@@ -338,7 +338,6 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
         private final CoreProviders context;
         private final LoweringMode mode;
-        private ScheduleResult schedule;
         private final SchedulePhase schedulePhase;
 
         private Round(CoreProviders context, LoweringMode mode, OptionValues options) {
@@ -379,31 +378,33 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
         @Override
         public void run(StructuredGraph graph) {
             schedulePhase.apply(graph, context, false);
-            schedule = graph.getLastSchedule();
+            ScheduleResult schedule = graph.getLastSchedule();
             schedule.getCFG().computePostdominators();
             Block startBlock = schedule.getCFG().getStartBlock();
-            ProcessFrame rootFrame = new ProcessFrame(startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null);
+            ProcessFrame rootFrame = new ProcessFrame(startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null, schedule);
             LoweringPhase.processBlock(rootFrame);
         }
 
         private class ProcessFrame extends Frame<ProcessFrame> {
             private final NodeBitMap activeGuards;
             private AnchoringNode anchor;
+            private final ScheduleResult schedule;
 
-            ProcessFrame(Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent) {
+            ProcessFrame(Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent, ScheduleResult schedule) {
                 super(block, parent);
                 this.activeGuards = activeGuards;
                 this.anchor = anchor;
+                this.schedule = schedule;
             }
 
             @Override
             public void preprocess() {
-                this.anchor = Round.this.process(block, activeGuards, anchor);
+                this.anchor = Round.this.process(block, activeGuards, anchor, schedule);
             }
 
             @Override
             public ProcessFrame enter(Block b) {
-                return new ProcessFrame(b, activeGuards, b.getBeginNode(), this);
+                return new ProcessFrame(b, activeGuards, b.getBeginNode(), this, schedule);
             }
 
             @Override
@@ -414,7 +415,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
                     // proxies.
                     newAnchor = b.getBeginNode();
                 }
-                return new ProcessFrame(b, activeGuards, newAnchor, this);
+                return new ProcessFrame(b, activeGuards, newAnchor, this, schedule);
             }
 
             @Override
@@ -427,13 +428,12 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
                     }
                 }
             }
-
         }
 
         @SuppressWarnings("try")
-        private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor) {
+        private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
 
-            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), this.schedule.getNodeToBlockMap());
+            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
 
             // Lower the instructions of this block.
             List<Node> nodes = schedule.nodesFor(b);
@@ -455,7 +455,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
                 if (node instanceof Lowerable) {
                     Collection<Node> unscheduledUsages = null;
-                    assert (unscheduledUsages = getUnscheduledUsages(node)) != null;
+                    assert (unscheduledUsages = getUnscheduledUsages(node, schedule)) != null;
                     Mark preLoweringMark = node.graph().getMark();
                     try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
                         ((Lowerable) node).lower(loweringTool);
@@ -501,7 +501,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
          *
          * @param node a {@link Lowerable} node
          */
-        private Collection<Node> getUnscheduledUsages(Node node) {
+        private Collection<Node> getUnscheduledUsages(Node node, ScheduleResult schedule) {
             List<Node> unscheduledUsages = new ArrayList<>();
             if (node instanceof FloatingNode) {
                 for (Node usage : node.usages()) {

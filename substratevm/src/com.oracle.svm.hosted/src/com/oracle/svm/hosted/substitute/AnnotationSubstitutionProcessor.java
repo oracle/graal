@@ -47,12 +47,14 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -84,12 +86,15 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
-    /*
-     * The number of array dimensions we create for substitute and alias types. Since every type
-     * introduced into the system brings some overhead, we only create up to a reasonable array
-     * dimension.
+    /**
+     * The number of array dimensions we create for @{@link Substitute} types, i.e., the maximum
+     * array dimension allowed by the JVM spec. For @{@link Alias} types the array substitution
+     * mappings are created on demand.
+     * 
+     * @see <a href= "https://docs.oracle.com/javase/specs/jvms/se17/html/jvms-4.html#jvms-4.9">
+     *      Constraints on Java Virtual Machine Code</a>
      */
-    private static final int ARRAY_DIMENSIONS = 8;
+    private static final int SUBSTITUTE_ARRAY_DIMENSIONS = 255;
 
     protected final ImageClassLoader imageClassLoader;
     protected final MetaAccessProvider metaAccess;
@@ -107,7 +112,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         this.classInitializationSupport = classInitializationSupport;
 
         deleteAnnotations = new HashMap<>();
-        typeSubstitutions = new HashMap<>();
+        typeSubstitutions = new ConcurrentHashMap<>();
         methodSubstitutions = new ConcurrentHashMap<>();
         polymorphicMethodSubstitutions = new HashMap<>();
         fieldSubstitutions = new HashMap<>();
@@ -119,11 +124,46 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         if (deleteAnnotation != null) {
             throw new DeletedElementException(deleteErrorMessage(type, deleteAnnotation, true));
         }
-        ResolvedJavaType substitution = typeSubstitutions.get(type);
+        ResolvedJavaType substitution = findTypeSubstitution(type);
         if (substitution != null) {
             return substitution;
         }
         return type;
+    }
+
+    private ResolvedJavaType findTypeSubstitution(ResolvedJavaType type) {
+        ResolvedJavaType substitution = typeSubstitutions.get(type);
+        if (substitution != null) {
+            return substitution;
+        }
+        if (type.isArray()) {
+            ResolvedJavaType elementalType = type.getElementalType();
+            ResolvedJavaType elementalTypeSubstitution = typeSubstitutions.get(elementalType);
+            if (elementalTypeSubstitution != null) {
+                /*
+                 * The elementalType must be an alias type and an alias for an array type of the
+                 * requested dimension has not yet been created. The registered substitution is the
+                 * original type that the alias is pointing to.
+                 */
+                int dimension = SubstrateUtil.arrayTypeDimension(type);
+
+                /*
+                 * Eagerly register all array types of dimensions up to the required type dimension.
+                 * These would be created anyway when iterating through the component types in the
+                 * AnalysisType constructor.
+                 */
+                ResolvedJavaType annotated = elementalType;
+                ResolvedJavaType original = elementalTypeSubstitution;
+                for (int i = 0; i < dimension; i++) {
+                    annotated = annotated.getArrayClass();
+                    original = original.getArrayClass();
+                    typeSubstitutions.putIfAbsent(annotated, original);
+                }
+
+                return original;
+            }
+        }
+        return null;
     }
 
     @Override
@@ -151,8 +191,19 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return field;
     }
 
+    public boolean isDeleted(Field field) {
+        return isDeleted(metaAccess.lookupJavaField(field));
+    }
+
     public boolean isDeleted(ResolvedJavaField field) {
-        return deleteAnnotations.get(field) != null;
+        if (deleteAnnotations.get(field) != null) {
+            return true;
+        }
+        ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
+        if (substitutionField != null) {
+            return GuardedAnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
+        }
+        return false;
     }
 
     public boolean isDeleted(Class<?> clazz) {
@@ -169,7 +220,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * When a type is substituted there is a mapping from the original type to the substitution
          * type (and another mapping from the annotated type to the substitution type).
          */
-        return Optional.ofNullable(typeSubstitutions.get(type));
+        return Optional.ofNullable(findTypeSubstitution(type));
     }
 
     public boolean isAliased(ResolvedJavaType type) {
@@ -177,8 +228,14 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
          * When a type is aliased there is a mapping from the alias type to the original type. There
          * is no mapping from the original type to the annotated type since that would be wrong, the
          * original type is not substituted by the annotated type.
+         * 
+         * If the type is an array type then it's alias is constructed on demand, but there should
+         * be a mapping from the aliased component type to the original component type.
          */
-        return typeSubstitutions.containsValue(type);
+        if (type instanceof SubstitutionType || type instanceof InjectedFieldsType) {
+            return false;
+        }
+        return typeSubstitutions.containsValue(type) || typeSubstitutions.containsValue(type.getElementalType());
     }
 
     @Override
@@ -249,6 +306,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                         targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
+                        assert !GuardedAnnotationAccess.isAnnotationPresent(targetField, Delete.class);
                         targetField.registerAsUnsafeAccessed();
                         break;
                 }
@@ -325,16 +383,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                             "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
         }
 
-        ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);
         ResolvedJavaType annotated = metaAccess.lookupJavaType(annotatedClass);
+        ResolvedJavaType original = metaAccess.lookupJavaType(originalClass);
 
-        for (int i = 0; i < ARRAY_DIMENSIONS; i++) {
-            guarantee(!typeSubstitutions.containsKey(annotated), "Already registered: %s", annotated);
-            typeSubstitutions.put(annotated, original);
+        guarantee(!typeSubstitutions.containsKey(annotated), "Already registered: %s", annotated);
+        typeSubstitutions.put(annotated, original);
 
-            original = original.getArrayClass();
-            annotated = annotated.getArrayClass();
-        }
+        /* The aliases for array types are registered on demand. */
 
         for (Method annotatedMethod : annotatedClass.getDeclaredMethods()) {
             handleMethodInAliasClass(annotatedMethod, originalClass);
@@ -592,7 +647,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         SubstitutionType substitution = new SubstitutionType(original, annotated, true);
         register(typeSubstitutions, annotated, original, substitution);
 
-        for (int i = 1; i < ARRAY_DIMENSIONS; i++) {
+        for (int i = 1; i <= SUBSTITUTE_ARRAY_DIMENSIONS; i++) {
             original = original.getArrayClass();
             annotated = annotated.getArrayClass();
             SubstitutionType arrayTypeSubstitution = new SubstitutionType(original, annotated, true);

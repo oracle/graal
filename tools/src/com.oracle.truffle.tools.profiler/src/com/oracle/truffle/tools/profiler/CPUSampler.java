@@ -74,7 +74,7 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 public final class CPUSampler implements Closeable {
 
     static final SourceSectionFilter DEFAULT_FILTER = SourceSectionFilter.newBuilder().tagIs(RootTag.class).build();
-    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<Payload, Payload>() {
+    private static final Function<Payload, Payload> COPY_PAYLOAD = new Function<>() {
         @Override
         public Payload apply(Payload sourcePayload) {
             Payload destinationPayload = new Payload();
@@ -88,7 +88,7 @@ public final class CPUSampler implements Closeable {
     };
 
     static ProfilerToolFactory<CPUSampler> createFactory() {
-        return new ProfilerToolFactory<CPUSampler>() {
+        return new ProfilerToolFactory<>() {
             @Override
             public CPUSampler create(Env env) {
                 return new CPUSampler(env);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -102,7 +103,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
-    private final PolyglotManagementDispatch executionListenerDispatch = new PolyglotManagementDispatch(this);
+    private final PolyglotExecutionListenerDispatch executionListenerDispatch = new PolyglotExecutionListenerDispatch(this);
+    private final PolyglotExecutionEventDispatch executionEventDispatch = new PolyglotExecutionEventDispatch(this);
     final PolyglotEngineDispatch engineDispatch = new PolyglotEngineDispatch(this);
     final PolyglotContextDispatch contextDispatch = new PolyglotContextDispatch(this);
     private final PolyglotExceptionDispatch exceptionDispatch = new PolyglotExceptionDispatch(this);
@@ -193,8 +195,15 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     /**
      * Internal method do not use.
      */
-    AbstractManagementDispatch getManagementDispatch() {
+    AbstractExecutionListenerDispatch getExecutionListenerDispatch() {
         return executionListenerDispatch;
+    }
+
+    /**
+     * Internal method do not use.
+     */
+    AbstractExecutionEventDispatch getExecutionEventDispatch() {
+        return executionEventDispatch;
     }
 
     /**
@@ -363,7 +372,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public void resetPreInitializedEngine() {
         preInitializedEngineRef.set(null);
-        PolyglotEngineImpl.resetPreInitializedEngine();
     }
 
     /**
@@ -382,7 +390,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                          * Truffle API client since the Truffle API module descriptor only exports
                          * these packages to modules known at build time (such as the Graal module).
                          */
-                        EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                        ModuleUtils.exportTo(loader, null);
                     }
                     return c;
                 } catch (ClassNotFoundException e) {
@@ -390,11 +398,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         return null;
-    }
-
-    @Override
-    public Collection<? extends Object> findActiveEngines() {
-        return PolyglotEngineImpl.findActiveEngines();
     }
 
     @Override
@@ -454,6 +457,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public FileSystem newDefaultFileSystem() {
         return FileSystems.newDefaultFileSystem();
+    }
+
+    @Override
+    public ProcessHandler newDefaultProcessHandler() {
+        return ProcessHandlers.newDefaultProcessHandler();
+    }
+
+    @Override
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return ProcessHandlers.isDefault(processHandler);
+    }
+
+    @Override
+    public ThreadScope createThreadScope() {
+        return null;
     }
 
     @Override

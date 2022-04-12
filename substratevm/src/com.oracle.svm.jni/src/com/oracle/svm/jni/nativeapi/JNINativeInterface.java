@@ -1465,4 +1465,9 @@ public interface JNINativeInterface extends PointerBase {
 
     @CField
     void setGetObjectRefType(CFunctionPointer p);
+
+    // Module features
+
+    @CField
+    void setGetModule(CFunctionPointer p);
 }

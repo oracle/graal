@@ -89,6 +89,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
@@ -308,7 +309,8 @@ public class UniverseBuilder {
                 unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
                                 "Method annotated with @" + CFunction.class.getSimpleName() + " must be declared native");
             }
-        } else if (aMethod.isNative() && !aMethod.isIntrinsicMethod() && aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
+        } else if (aMethod.isNative() && !aMethod.isIntrinsicMethod() && !(aMethod.getWrapped() instanceof CustomSubstitutionMethod) &&
+                        aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod, AnnotationSubstitutionProcessor.deleteErrorMessage(aMethod, DeletedMethod.NATIVE_MESSAGE, true));
         }
     }
@@ -996,6 +998,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
     }
 }

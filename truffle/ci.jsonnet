@@ -46,7 +46,7 @@
     name: 'gate-truffle-sigtest-' + self.jdk_version,
     run: [
       ["mx", "build"],
-      ["mx", "sigtest", "--check", (if self.jdk_version == 8 then "all" else "bin")],
+      ["mx", "sigtest", "--check", (if self.jdk_version == 11 then "all" else "bin")],
     ],
   },
 
@@ -112,13 +112,12 @@
   builds: std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest,
-        linux_amd64  + jdk + simple_tool_maven_project_gate,
+        linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite,
       ] for jdk in [common.oraclejdk11, common.oraclejdk17]
     ]) + [
-    linux_amd64 + common.oraclejdk8  + truffle_gate + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk11 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    linux_amd64 + common.oraclejdk11 + truffle_gate + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     linux_amd64 + common.oraclejdk11 + truffle_common + {
@@ -161,7 +160,7 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + linux_amd64 + common.oraclejdk11 + bench_common + {
+    bench_hw.x52 + common.oraclejdk11 + bench_common + {
       name: "bench-truffle-jmh",
       notify_groups:: ["truffle_bench"],
       run: [

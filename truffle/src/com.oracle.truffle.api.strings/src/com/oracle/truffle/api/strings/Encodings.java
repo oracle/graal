@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -127,6 +127,14 @@ final class Encodings {
             return ret;
         }
         utf8Encode(codepoint, n, ret, 0);
+        return ret;
+    }
+
+    static byte[] utf8EncodeNonAscii(int codepoint, int encodedSize) {
+        assert encodedSize == utf8EncodedSize(codepoint);
+        assert encodedSize > 1;
+        byte[] ret = new byte[encodedSize];
+        utf8Encode(codepoint, encodedSize, ret, 0);
         return ret;
     }
 

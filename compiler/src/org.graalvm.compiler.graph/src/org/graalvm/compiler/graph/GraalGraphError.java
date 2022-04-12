@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 /**
  * This error is the graph/node aware extension of {@link GraalError}.
  */
+@SuppressWarnings("serial")
 public class GraalGraphError extends GraalError {
 
     private static final long serialVersionUID = -989290015525497919L;

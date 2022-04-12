@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
 
+import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -80,13 +81,13 @@ import org.graalvm.compiler.nodes.type.NarrowOopStamp;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -128,6 +129,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -266,7 +268,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             Object entryPointData = ((HostedMethod) method).getWrapped().getEntryPointData();
             if (entryPointData instanceof CEntryPointData) {
                 CEntryPointData cEntryPointData = (CEntryPointData) entryPointData;
-                if (cEntryPointData.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
+                if (cEntryPointData.getPublishAs() != CEntryPoint.Publish.NotPublished) {
                     String entryPointSymbolName = cEntryPointData.getSymbolName();
                     assert !entryPointSymbolName.isEmpty();
                     builder.addAlias(entryPointSymbolName);
@@ -797,7 +799,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Variable load(Value value) {
+    public AllocatableValue addressAsAllocatableInteger(Value value) {
         LLVMValueRef load = builder.buildPtrToInt(getVal(value));
         return new LLVMVariable(load);
     }
@@ -1337,7 +1339,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         }
 
         @Override
-        public Value emitNegate(Value input) {
+        public Value emitNegate(Value input, boolean setFlags) {
             LLVMValueRef neg = builder.buildNeg(getVal(input));
             return new LLVMVariable(neg);
         }
@@ -1568,8 +1570,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         @Override
         public Value emitMathAbs(Value input) {
-            LLVMValueRef abs = builder.buildAbs(getVal(input));
-            return new LLVMVariable(abs);
+            LLVMValueRef value = getVal(input);
+            LLVMTypeRef type = LLVM.LLVMTypeOf(value);
+
+            switch (LLVM.LLVMGetTypeKind(type)) {
+                case LLVM.LLVMIntegerTypeKind:
+                    return new LLVMVariable(builder.buildAbs(value));
+                case LLVM.LLVMFloatTypeKind:
+                case LLVM.LLVMDoubleTypeKind:
+                    return new LLVMVariable(builder.buildFabs(value));
+                default:
+                    throw shouldNotReachHere("Unsupported abs type " + type);
+            }
         }
 
         @Override
@@ -1744,17 +1756,38 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         @Override
         public Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
-            emitMembar(memoryOrder.preReadFences);
+            assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE;
             Variable var = emitLoad(kind, address, state);
-            emitMembar(memoryOrder.postReadFences);
+            if (memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE) {
+                /*
+                 * Ensure subsequent memory operations cannot execute before this load. Additional
+                 * volatile ordering requirements are enforced at stores.
+                 */
+                emitMembar(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE);
+            }
             return var;
         }
 
         @Override
         public void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
-            emitMembar(memoryOrder.preWriteFences);
-            emitStore(kind, address, input, state);
-            emitMembar(memoryOrder.postWriteFences);
+            switch (memoryOrder) {
+                case OPAQUE:
+                    emitStore(kind, address, input, state);
+                    break;
+                case RELEASE:
+                    emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
+                    emitStore(kind, address, input, state);
+                    break;
+                case VOLATILE:
+                    emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
+                    emitStore(kind, address, input, state);
+                    // Guarantee subsequent volatile loads cannot be executed before this
+                    // instruction
+                    emitMembar(MemoryBarriers.STORE_LOAD);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
     }
 

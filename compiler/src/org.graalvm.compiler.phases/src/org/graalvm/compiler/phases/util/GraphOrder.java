@@ -163,7 +163,7 @@ public final class GraphOrder {
             final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
             final ScheduleResult schedule = graph.getLastSchedule();
 
-            BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {
+            BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<>() {
 
                 @Override
                 protected List<NodeBitMap> processLoop(Loop<Block> loop, NodeBitMap initialState) {
@@ -189,7 +189,7 @@ public final class GraphOrder {
 
                             if (pendingStateAfter != null && node instanceof FixedNode) {
 
-                                pendingStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+                                pendingStateAfter.applyToNonVirtual(new NodePositionClosure<>() {
 
                                     @Override
                                     public void apply(Node from, Position p) {
@@ -233,7 +233,7 @@ public final class GraphOrder {
                                 for (Node input : node.inputs()) {
                                     if (input != stateAfter) {
                                         if (input instanceof FrameState) {
-                                            ((FrameState) input).applyToNonVirtual(new NodePositionClosure<Node>() {
+                                            ((FrameState) input).applyToNonVirtual(new NodePositionClosure<>() {
 
                                                 @Override
                                                 public void apply(Node from, Position p) {
@@ -264,7 +264,7 @@ public final class GraphOrder {
                         }
                     }
                     if (pendingStateAfter != null) {
-                        pendingStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+                        pendingStateAfter.applyToNonVirtual(new NodePositionClosure<>() {
                             @Override
                             public void apply(Node from, Position p) {
                                 Node usage = from;

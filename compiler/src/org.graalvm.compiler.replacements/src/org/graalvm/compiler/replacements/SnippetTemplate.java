@@ -1037,7 +1037,7 @@ public class SnippetTemplate {
                     }
                 }
             }
-            try (InliningLog.UpdateScope updateScope = snippetCopy.getInliningLog().openDefaultUpdateScope()) {
+            try (InliningLog.UpdateScope updateScope = InliningLog.openDefaultUpdateScope(snippetCopy.getInliningLog())) {
                 UnmodifiableEconomicMap<Node, Node> duplicates = snippetCopy.addDuplicates(snippetGraph.getNodes(), snippetGraph, snippetGraph.getNodeCount(), nodeReplacements);
                 if (updateScope != null) {
                     snippetCopy.getInliningLog().replaceLog(duplicates, snippetGraph.getInliningLog());
@@ -1634,6 +1634,10 @@ public class SnippetTemplate {
         return replacements;
     }
 
+    public boolean hasSideEffects() {
+        return !sideEffectNodes.isEmpty();
+    }
+
     /**
      * Converts a Java boxed value to a {@link JavaConstant} of the right kind. This adjusts for the
      * limitation that a {@link Local}'s kind is a {@linkplain JavaKind#getStackKind() stack kind}
@@ -1920,6 +1924,13 @@ public class SnippetTemplate {
         }
     }
 
+    public Node getReturnValue(UnmodifiableEconomicMap<Node, Node> duplicates) {
+        if (returnNode.result() != null) {
+            return duplicates.get(returnNode.result());
+        }
+        return null;
+    }
+
     /**
      * Replaces a given fixed node with this specialized snippet.
      *
@@ -2160,15 +2171,15 @@ public class SnippetTemplate {
 
     private EconomicMap<Node, Node> inlineSnippet(Node replacee, DebugContext debug, StructuredGraph replaceeGraph, EconomicMap<Node, Node> replacements) {
         Mark mark = replaceeGraph.getMark();
-        try (InliningLog.UpdateScope scope = replaceeGraph.getInliningLog().openUpdateScope((oldNode, newNode) -> {
-            InliningLog log = replaceeGraph.getInliningLog();
+        InliningLog log = replaceeGraph.getInliningLog();
+        try (InliningLog.UpdateScope scope = log == null ? null : log.openUpdateScope((oldNode, newNode) -> {
             if (oldNode == null) {
                 log.trackNewCallsite(newNode);
             }
         })) {
             EconomicMap<Node, Node> duplicates = replaceeGraph.addDuplicates(nodes, snippet, snippet.getNodeCount(), replacements);
             if (scope != null) {
-                replaceeGraph.getInliningLog().addLog(duplicates, snippet.getInliningLog());
+                log.addLog(duplicates, snippet.getInliningLog());
             }
             NodeSourcePosition position = replacee.getNodeSourcePosition();
             InliningUtil.updateSourcePosition(replaceeGraph, duplicates, mark, position, true);
@@ -2359,7 +2370,7 @@ public class SnippetTemplate {
              * We dont have a state split as a replacee, thus we take the prev state as the state
              * after for the node in the snippet.
              */
-            stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
+            stateAfter = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
         }
         final ExceptionObjectNode exceptionObject;
         if (replacee instanceof WithExceptionNode) {
@@ -2401,7 +2412,7 @@ public class SnippetTemplate {
                     }
                     break;
                 case BEFORE_BCI:
-                    FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
+                    FrameState stateBeforeSnippet = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
                     ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(stateBeforeSnippet.duplicate());
                     break;
                 case INVALID:
@@ -2432,8 +2443,18 @@ public class SnippetTemplate {
             if (!(nodeRequiringState instanceof AbstractMergeNode || nodeRequiringState instanceof LoopExitNode)) {
                 // merges and loop exit cannot have "this node" on stack
                 if (valueInReplacement instanceof ValuePhiNode) {
-                    Node sideEffectDup = duplicates.get(nodeRequiringState);
-                    valueInReplacement = (ValueNode) sideEffectDup;
+                    ValuePhiNode valuePhi = (ValuePhiNode) valueInReplacement;
+                    FixedNode next = (FixedNode) nodeRequiringState;
+                    while (next instanceof FixedWithNextNode) {
+                        next = ((FixedWithNextNode) next).next();
+                    }
+                    if (next instanceof EndNode) {
+                        EndNode duplicateEnd = (EndNode) duplicates.get(next);
+                        int endIndex = valuePhi.merge().forwardEndIndex(duplicateEnd);
+                        if (endIndex != -1) {
+                            valueInReplacement = valuePhi.valueAt(endIndex);
+                        }
+                    }
                 }
             }
             propagateValInState(newState, replacee, valueInReplacement);
@@ -2442,7 +2463,7 @@ public class SnippetTemplate {
     }
 
     private static void propagateValInState(FrameState newState, Node replacee, Node replacement) {
-        newState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        newState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 if (p.get(from) == replacee) {
@@ -2465,7 +2486,7 @@ public class SnippetTemplate {
         assert exceptionState.rethrowException();
         assert exceptionState.stackSize() == 1;
         FrameState newExceptionState = exceptionState.duplicate();
-        newExceptionState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        newExceptionState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 if (p.get(from) == exceptionObject) {
@@ -2560,55 +2581,6 @@ public class SnippetTemplate {
                 }
             }
         }
-    }
-
-    public static FrameState findLastFrameState(FixedNode start) {
-        FrameState state = findLastFrameState(start, false);
-        if (state == null) {
-            // keep in branch to avoid eager evaluation of findLastFrameState(start, true)
-            throw GraalError.shouldNotReachHere("Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true));
-        }
-        return state;
-    }
-
-    public static FrameState findLastFrameState(FixedNode start, boolean log) {
-        assert start != null;
-        FixedNode lastFixedNode = null;
-        FixedNode currentStart = start;
-        while (true) {
-            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
-                if (fixed instanceof StateSplit) {
-                    StateSplit stateSplit = (StateSplit) fixed;
-                    assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
-                    if (stateSplit.stateAfter() != null) {
-                        return stateSplit.stateAfter();
-                    }
-                }
-                lastFixedNode = fixed;
-            }
-            if (lastFixedNode instanceof LoopBeginNode) {
-                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
-                continue;
-            }
-            if (log) {
-                NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
-                DebugContext debug = start.getDebug();
-                debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node %s\n with source position -> %s", lastFixedNode,
-                                p == null ? "null" : p.toString());
-                if (lastFixedNode instanceof MergeNode) {
-                    MergeNode merge = (MergeNode) lastFixedNode;
-                    debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node is a merge with predecessors:");
-                    for (EndNode end : merge.forwardEnds()) {
-                        for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
-                            NodeSourcePosition sp = fixed.getNodeSourcePosition();
-                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s:source position%s", fixed, sp != null ? sp.toString() : "null");
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        return null;
     }
 
     @Override

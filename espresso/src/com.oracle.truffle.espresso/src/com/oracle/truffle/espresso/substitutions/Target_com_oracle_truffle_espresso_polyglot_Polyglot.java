@@ -32,6 +32,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -306,8 +307,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast to void");
         }
-        CompilerDirectives.transferToInterpreter();
-        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: ", targetKlass);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: " + targetKlass);
     }
 
     // endregion Polyglot#cast
@@ -331,8 +332,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
     }
 
-    // TODO(peterssen): Fix deprecation, GR-26729
-    @SuppressWarnings("deprecation")
     @Substitution
     public static @JavaType(Object.class) StaticObject eval(@JavaType(String.class) StaticObject language, @JavaType(String.class) StaticObject code, @Inject Meta meta) {
         String languageId = meta.toHostString(language);
@@ -350,7 +349,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         try {
             evalResult = callTarget.call();
         } catch (Exception e) {
-            if (e instanceof com.oracle.truffle.api.TruffleException) {
+            if (e instanceof AbstractTruffleException) {
                 throw rethrowExceptionAsEspresso(meta.java_lang_RuntimeException, "Exception during evaluation: ", e);
             } else {
                 throw e;

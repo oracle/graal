@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -62,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Inlining before the static analysis improves the precision of the analysis especially when
  * constants are propagated. So the goal is to inline callees that are folded to constants.
- * 
+ *
  * Sometimes, constant folding of callees requires quite deep inlining, when constants are
  * propagated through chains of wrapper methods. So we want to be able to look deep for potential
  * inlining. On the other hand, only very small methods can be inlined before analysis in order to
@@ -176,8 +175,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         return aMethod.ensureGraphParsed(bb).getEncodedGraph();
     }
@@ -256,8 +254,10 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             if (callerScope.policyScope != null) {
                 policy.abortCalleeScope(callerScope.policyScope, inlineScope.policyScope);
             }
-            killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
-            assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
+            if (invokeData.invokePredecessor.next() != null) {
+                killControlFlowNodes(inlineScope, invokeData.invokePredecessor.next());
+                assert invokeData.invokePredecessor.next() == null : "Successor must have been a fixed node created in the aborted scope, which is deleted now";
+            }
             invokeData.invokePredecessor.setNext(invokeData.invoke.asFixedNode());
 
             if (inlineScope.exceptionPlaceholderNode != null) {
@@ -295,7 +295,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
     /**
      * Kill fixed nodes of structured control flow. Not as generic, but faster, than
      * {@link GraphUtil#killCFG}.
-     * 
+     *
      * We cannot kill unused floating nodes at this point, because we are still in the middle of
      * decoding caller graphs, so floating nodes of the caller that have no usage yet can get used
      * when decoding of the caller continues. Unused floating nodes are cleaned up by the next run

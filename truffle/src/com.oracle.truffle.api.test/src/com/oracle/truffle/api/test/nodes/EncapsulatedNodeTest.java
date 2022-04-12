@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,8 @@ public class EncapsulatedNodeTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 try {
-                    return boundary(callLocation, () -> getStackTrace.call(frame.getArguments()));
+                    Object[] arguments = frame.getArguments();
+                    return boundary(callLocation, () -> getStackTrace.call(arguments));
                 } catch (GetStackTraceException e) {
                     return TruffleStackTrace.getStackTrace(e);
                 }
@@ -111,7 +112,8 @@ public class EncapsulatedNodeTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 try {
-                    return boundary(callLocation, () -> IndirectCallNode.getUncached().call(getStackTrace, frame.getArguments()));
+                    Object[] arguments = frame.getArguments();
+                    return boundary(callLocation, () -> IndirectCallNode.getUncached().call(getStackTrace, arguments));
                 } catch (GetStackTraceException e) {
                     return TruffleStackTrace.getStackTrace(e);
                 }

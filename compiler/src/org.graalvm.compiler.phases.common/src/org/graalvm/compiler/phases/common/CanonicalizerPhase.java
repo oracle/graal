@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -224,7 +224,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        new Instance(context).run(graph);
+        new Instance(graph, context).run(graph);
     }
 
     /**
@@ -236,7 +236,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(context, newNodesMark).apply(graph, dumpGraph);
+        new Instance(graph, context, newNodesMark).apply(graph, dumpGraph);
     }
 
     /**
@@ -248,7 +248,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
-        new Instance(context, workingSet).apply(graph, dumpGraph);
+        new Instance(graph, context, workingSet).apply(graph, dumpGraph);
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
@@ -256,7 +256,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(context, workingSet, newNodesMark).apply(graph, dumpGraph);
+        new Instance(graph, context, workingSet, newNodesMark).apply(graph, dumpGraph);
     }
 
     public NodeView getNodeView() {
@@ -265,42 +265,30 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     private final class Instance extends Phase {
 
-        private final Mark newNodesMark;
+        private final StructuredGraph initialGraph;
         private final CoreProviders context;
         private final Iterable<? extends Node> initWorkingSet;
 
-        private NodeWorkList workList;
-        private Tool tool;
-        private DebugContext debug;
+        private final NodeWorkList workList;
+        private final Tool tool;
+        private final DebugContext debug;
 
-        private Instance(CoreProviders context) {
-            this(context, null, null);
+        private Instance(StructuredGraph graph, CoreProviders context) {
+            this(graph, context, null, null);
         }
 
-        private Instance(CoreProviders context, Iterable<? extends Node> workingSet) {
-            this(context, workingSet, null);
+        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
+            this(graph, context, workingSet, null);
         }
 
-        private Instance(CoreProviders context, Mark newNodesMark) {
-            this(context, null, newNodesMark);
+        private Instance(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
+            this(graph, context, null, newNodesMark);
         }
 
-        private Instance(CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-            this.newNodesMark = newNodesMark;
+        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
+            this.initialGraph = graph;
             this.context = context;
             this.initWorkingSet = workingSet;
-        }
-
-        @Override
-        public boolean checkContract() {
-            return false;
-        }
-
-        @Override
-        protected void run(StructuredGraph graph) {
-            if (graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
-                GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
-            }
             this.debug = graph.getDebug();
             boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
             if (initWorkingSet == null) {
@@ -315,7 +303,22 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
             // FIXME figure out appropriate phase
             tool = new Tool(graph.getAssumptions(), graph.getOptions(), graph.isAfterStage(StageFlag.MID_TIER_LOWERING));
+        }
+
+        @Override
+        public boolean checkContract() {
+            return false;
+        }
+
+        @Override
+        protected void run(StructuredGraph graph) {
+            GraalError.guarantee(graph == this.initialGraph, "Canonicalizer instances contain graph-specific state, they must be applied to the graph used during construction.");
+            if (graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
+                GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
+            }
+
             processWorkSet(graph);
+
             if (features.contains(FINAL_CANONICALIZATION)) {
                 graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
             }
@@ -458,9 +461,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: customSimplification simplifying %s", node);
                         COUNTER_CUSTOM_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
 
-                        int modCount = node.graph().getModificationCount();
+                        int modCount = node.graph().getEdgeModificationCount();
                         customSimplification.simplify(node, tool);
-                        if (node.isDeleted() || modCount != node.graph().getModificationCount()) {
+                        if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                             debug.log("Canonicalizer: customSimplification simplified %s", node);
                             return true;
                         }
@@ -469,9 +472,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: simplifying %s", node);
                         COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
 
-                        int modCount = node.graph().getModificationCount();
+                        int modCount = node.graph().getEdgeModificationCount();
                         ((Simplifiable) node).simplify(tool);
-                        if (node.isDeleted() || modCount != node.graph().getModificationCount()) {
+                        if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                             debug.log("Canonicalizer: simplified %s", node);
                             return true;
                         }
@@ -702,6 +705,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public Stamp stamp(ValueNode node) {
                 return nodeView.stamp(node);
+            }
+
+            @Override
+            public boolean divisionOverflowIsJVMSCompliant() {
+                return context.getLowerer().divisionOverflowIsJVMSCompliant();
             }
         }
     }

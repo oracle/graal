@@ -180,8 +180,15 @@ public final class WasmContext {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
         }
+        // Reread code sections if module is instantiated multiple times
+        if (!module.hasCodeEntries()) {
+            final BinaryParser reader = new BinaryParser(module, this);
+            reader.readCodeEntries();
+        }
         final WasmInstantiator translator = new WasmInstantiator(language);
         final WasmInstance instance = translator.createInstance(this, module);
+        // Remove code entries from module to reduce memory footprint at runtime
+        module.removeCodeEntries();
         this.register(instance);
         return instance;
     }

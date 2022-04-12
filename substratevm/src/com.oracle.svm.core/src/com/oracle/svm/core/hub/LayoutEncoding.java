@@ -24,10 +24,11 @@
  */
 package com.oracle.svm.core.hub;
 
-import com.oracle.svm.core.annotate.AlwaysInline;
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -36,12 +37,14 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -111,7 +114,7 @@ public class LayoutEncoding {
         guaranteeEncoding(type, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
         int encoding = size;
         guaranteeEncoding(type, isInstance(encoding), "Instance type encoding must denote an instance");
-        guaranteeEncoding(type, !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
+        guaranteeEncoding(type, !Continuation.isSupported() || !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
         guaranteeEncoding(type, !isArray(encoding), "Instance type encoding must not denote an array");
         guaranteeEncoding(type, !isObjectArray(encoding), "Instance type encoding must not denote an object array");
         guaranteeEncoding(type, !isPrimitiveArray(encoding), "Instance type encoding must not denote a primitive array");
@@ -147,12 +150,19 @@ public class LayoutEncoding {
         return encoding == ABSTRACT_VALUE;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int encoding) {
         return encoding > LAST_SPECIAL_VALUE;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getInstanceSize(int encoding) {
+        boolean isStoredContinuation = Continuation.isSupported() && isStoredContinuation(encoding);
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(!isStoredContinuation, "size cannot be determined from encoding");
+        } else {
+            assert !isStoredContinuation : "size cannot be determined from encoding";
+        }
         return WordFactory.unsigned(encoding);
     }
 
@@ -220,7 +230,7 @@ public class LayoutEncoding {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
-        } else if (isStoredContinuation(encoding)) {
+        } else if (Continuation.isSupported() && isStoredContinuation(encoding)) {
             return WordFactory.unsigned(StoredContinuationImpl.readSize((StoredContinuation) obj));
         } else {
             return getInstanceSize(encoding);

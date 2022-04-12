@@ -100,7 +100,7 @@ public interface SortedListOfRanges extends CharacterSet {
         if (isEmpty()) {
             return 1;
         }
-        return (getMin() == encoding.getMinValue() ? 0 : 1) + size() - (getMax() == encoding.getMaxValue() ? 1 : 0);
+        return (getMin() <= encoding.getMinValue() ? 0 : 1) + size() - (getMax() >= encoding.getMaxValue() ? 1 : 0);
     }
 
     /**

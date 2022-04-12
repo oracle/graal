@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -374,7 +374,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      * @see LoopNode LoopNode on how to use loop nodes.
      * @deprecated without replacement
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
                     com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
         if ((readFrameSlots == null) != (writtenFrameSlots == null)) {
@@ -389,7 +389,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      *             com.oracle.truffle.api.frame.FrameSlot[]) instead.
      */
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.2")
     public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, int invalidationBackoff, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
                     com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
         return createOSRLoop(repeating, osrThreshold, readFrameSlots, writtenFrameSlots);
@@ -447,33 +447,31 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         protected final Class<? extends VirtualFrame> clazz;
 
-        /**
-         * Not adopted by the OSRRootNode; belongs to another RootNode. OptimizedCallTarget treats
-         * OSRRootNodes specially, skipping adoption of child nodes.
-         */
-        @Child protected OptimizedOSRLoopNode loopNode;
-
         AbstractLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
-            super(null, frameDescriptor);
-            this.loopNode = loop;
+            super(null, frameDescriptor, loop);
             this.clazz = clazz;
         }
 
         @Override
         public SourceSection getSourceSection() {
-            return loopNode.getSourceSection();
+            return getLoopNode().getSourceSection();
+        }
+
+        OptimizedOSRLoopNode getLoopNode() {
+            return (OptimizedOSRLoopNode) loopNode;
         }
 
         @Override
         protected Object executeOSR(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
-            RepeatingNode loopBody = loopNode.repeatingNode;
+            OptimizedOSRLoopNode loop = getLoopNode();
+            RepeatingNode loopBody = loop.repeatingNode;
             Object status;
             while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(parentFrame))) {
                 if (CompilerDirectives.inInterpreter()) {
                     return loopBody.initialLoopStatus();
                 }
-                TruffleSafepoint.poll(this);
+                TruffleSafepoint.poll(loop);
             }
             return status;
         }
@@ -485,7 +483,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         @Override
         public final String toString() {
-            return loopNode.getRepeatingNode().toString() + "<OSR>";
+            return getLoopNode().getRepeatingNode().toString() + "<OSR>";
         }
     }
 
@@ -551,13 +549,14 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);
             try {
-                RepeatingNode loopBody = loopNode.repeatingNode;
+                OptimizedOSRLoopNode loop = getLoopNode();
+                RepeatingNode loopBody = loop.repeatingNode;
                 Object status;
                 while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(loopFrame))) {
                     if (CompilerDirectives.inInterpreter()) {
                         return loopBody.initialLoopStatus();
                     }
-                    TruffleSafepoint.poll(this);
+                    TruffleSafepoint.poll(loop);
                 }
                 return status;
             } finally {

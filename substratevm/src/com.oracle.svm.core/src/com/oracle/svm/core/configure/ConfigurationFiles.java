@@ -98,6 +98,9 @@ public final class ConfigurationFiles {
     public static List<Path> findConfigurationFiles(String fileName) {
         List<Path> files = new ArrayList<>();
         for (String directory : OptionUtils.flatten(",", Options.ConfigurationFileDirectories.getValue())) {
+            if (Files.exists(Paths.get(directory, ConfigurationFile.LOCK_FILE_NAME))) {
+                throw foundLockFile("Configuration file directory '" + directory + "'");
+            }
             Path path = Paths.get(directory, fileName);
             if (Files.exists(path)) {
                 files.add(path);
@@ -117,6 +120,15 @@ public final class ConfigurationFiles {
              */
             final String separator = "/"; // always for resources (not platform-dependent)
             String relativeRoot = Stream.of(root.split(separator)).filter(part -> !part.isEmpty() && !part.equals(".")).collect(Collectors.joining(separator));
+            try {
+                String lockPath = relativeRoot.isEmpty() ? ConfigurationFile.LOCK_FILE_NAME
+                                : (relativeRoot + '/' + ConfigurationFile.LOCK_FILE_NAME);
+                Enumeration<URL> resource = classLoader.getResources(lockPath);
+                if (resource != null && resource.hasMoreElements()) {
+                    throw foundLockFile("Configuration resource root '" + root + "'");
+                }
+            } catch (IOException ignored) {
+            }
             String relativePath = relativeRoot.isEmpty() ? fileName : (relativeRoot + '/' + fileName);
             try {
                 for (Enumeration<URL> e = classLoader.getResources(relativePath); e.hasMoreElements();) {
@@ -127,5 +139,12 @@ public final class ConfigurationFiles {
             }
         }
         return resources;
+    }
+
+    private static UserError.UserException foundLockFile(String container) {
+        throw UserError.abort("%s contains file '%s', which means an agent is currently writing to it." +
+                        "The agent must finish execution before its generated configuration can be used to build a native image." +
+                        "Unless the lock file is a leftover from an earlier process that terminated abruptly, it is unsafe to delete it.",
+                        container, ConfigurationFile.LOCK_FILE_NAME);
     }
 }

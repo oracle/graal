@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -37,38 +41,34 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.debug.LLVMDebuggerValue;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMDebuggerScopeEntries extends LLVMDebuggerValue {
 
-    static final LLVMDebuggerScopeEntries EMPTY_SCOPE = new LLVMDebuggerScopeEntries();
+    static final LLVMDebuggerScopeEntries EMPTY_SCOPE = new LLVMDebuggerScopeEntries("EMPTY_SCOPE");
 
     private LLVMDebuggerScopeEntries parentScope;
     private final ArrayList<String> flattenedScopeEntries;
     private final Map<String, Object> flattenedScopeMap;
 
     private final Map<String, Object> entries;
-    private String scopeName;
+    private final String scopeName;
     private boolean isScopeFlattened;
 
     LLVMDebuggerScopeEntries() {
+        this("LLVM");
+    }
+
+    LLVMDebuggerScopeEntries(String scopeName) {
         this.entries = new HashMap<>();
         this.flattenedScopeEntries = new ArrayList<>();
         this.flattenedScopeMap = new HashMap<>();
         isScopeFlattened = false;
+        this.scopeName = scopeName;
     }
 
     @TruffleBoundary
     void add(String name, Object value) {
         entries.put(name, value);
-    }
-
-    void setScopeName(String scopeName) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.scopeName = scopeName;
     }
 
     @TruffleBoundary

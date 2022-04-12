@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -38,9 +36,9 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
     /** The field that this flow stores into or loads from. */
     protected final AnalysisField field;
 
-    protected AccessFieldTypeFlow(ValueNode node, AnalysisField field) {
+    protected AccessFieldTypeFlow(BytecodePosition accessLocation, AnalysisField field) {
         /* The declared type of a field access node is the field declared type. */
-        super(node.getNodeSourcePosition(), field.getType());
+        super(accessLocation, field.getType());
         this.field = field;
     }
 
@@ -51,13 +49,6 @@ public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
 
     public AnalysisField field() {
         return field;
-    }
-
-    @Override
-    public final boolean addState(PointsToAnalysis bb, TypeState add) {
-        /* Only a clone should be updated */
-        assert this.isClone();
-        return super.addState(bb, add);
     }
 
     /**

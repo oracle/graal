@@ -25,10 +25,51 @@
 package com.oracle.graal.pointsto.util;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class AtomicUtils {
 
+    /**
+     * Atomically sets the value to {@code true} if the current value {@code == false}.
+     * 
+     * @return {@code true} if successful.
+     */
     public static boolean atomicMark(AtomicBoolean flag) {
         return flag.compareAndSet(false, true);
     }
+
+    /**
+     * Atomically sets the value to {@code true} if the current value {@code == false}. If
+     * successful, execute the task.
+     *
+     * @return {@code true} if successful.
+     */
+    public static boolean atomicMarkAndRun(AtomicBoolean flag, Runnable task) {
+        boolean firstAttempt = flag.compareAndSet(false, true);
+        if (firstAttempt) {
+            task.run();
+        }
+        return firstAttempt;
+    }
+
+    /**
+     * Utility to lazily produce and initialize an object stored in an {@link AtomicReference}. The
+     * {@code supplier} may be invoked multiple times, but the {@code initializer} is guaranteed to
+     * only be invoked for the winning value. Note that other threads can see the state of the
+     * object returned by the {@code supplier} before the {@code initializer} has finished or even
+     * started to be executed.
+     */
+    public static <T> T produceAndSetValue(AtomicReference<T> reference, Supplier<T> supplier, Consumer<T> initializer) {
+        if (reference.get() == null) {
+            T value = supplier.get();
+            if (reference.compareAndSet(null, value)) {
+                /* Only the winning object is initialized. */
+                initializer.accept(value);
+            }
+        }
+        return reference.get();
+    }
+
 }

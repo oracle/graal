@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,44 +26,15 @@ package org.graalvm.compiler.core.test;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.invoke.MethodHandles;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
-import java.security.ProtectionDomain;
+import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.objectweb.asm.Opcodes;
-
-import sun.misc.Unsafe;
 
 public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest implements Opcodes {
 
     protected Class<?> getClass(String className) throws ClassNotFoundException {
-        return new CachedLoader(CustomizedBytecodePatternTest.class.getClassLoader(), className).findClass(className);
-    }
-
-    /**
-     * @param className
-     * @param lookUp lookup object with boot class load capability (required for jdk 9 and above)
-     * @return loaded class
-     * @throws ClassNotFoundException
-     */
-    protected Class<?> getClassBL(String className, MethodHandles.Lookup lookUp) throws ClassNotFoundException {
-        byte[] gen = generateClass(className.replace('.', '/'));
-        Method defineClass = null;
-        Class<?> loadedClass = null;
-        try {
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                defineClass = Unsafe.class.getDeclaredMethod("defineClass", String.class, byte[].class, int.class, int.class, ClassLoader.class, ProtectionDomain.class);
-                loadedClass = (Class<?>) defineClass.invoke(UNSAFE, className, gen, 0, gen.length, null, null);
-            } else {
-                defineClass = MethodHandles.lookup().getClass().getDeclaredMethod("defineClass", byte[].class);
-                loadedClass = (Class<?>) defineClass.invoke(lookUp, gen);
-            }
-        } catch (Exception e) {
-            throw new ClassNotFoundException(className, e);
-        }
-        return loadedClass;
+        return new CachedLoader(CustomizedBytecodePatternTest.class.getClassLoader(), className, this::generateClass).findClass(className);
     }
 
     private static final File GENERATED_CLASS_FILE_OUTPUT_DIRECTORY;
@@ -85,21 +56,23 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
         return file;
     }
 
-    private class CachedLoader extends ClassLoader {
+    public static class CachedLoader extends ClassLoader {
 
         final String className;
         Class<?> loaded;
+        final Function<String, byte[]> classfileSupplier;
 
-        CachedLoader(ClassLoader parent, String className) {
+        public CachedLoader(ClassLoader parent, String className, Function<String, byte[]> classfileSupplier) {
             super(parent);
             this.className = className;
+            this.classfileSupplier = classfileSupplier;
         }
 
         @Override
-        protected Class<?> findClass(String name) throws ClassNotFoundException {
+        public Class<?> findClass(String name) throws ClassNotFoundException {
             if (name.equals(className)) {
                 if (loaded == null) {
-                    byte[] classfileBytes = generateClass(name.replace('.', '/'));
+                    byte[] classfileBytes = classfileSupplier.apply(name.replace('.', '/'));
                     if (GENERATED_CLASS_FILE_OUTPUT_DIRECTORY != null) {
                         try {
                             File classfile = new File(GENERATED_CLASS_FILE_OUTPUT_DIRECTORY, name.replace('.', File.separatorChar) + ".class");
@@ -121,5 +94,4 @@ public abstract class CustomizedBytecodePatternTest extends GraalCompilerTest im
     }
 
     protected abstract byte[] generateClass(String internalClassName);
-
 }

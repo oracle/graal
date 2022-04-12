@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -377,7 +377,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return localEnv;
     }
 
-    @SuppressWarnings("deprecation")
     boolean finalizeContext(boolean cancelOrExitOperation, boolean notifyInstruments) {
         ReentrantLock lock = lazy.operationLock;
         lock.lock();
@@ -398,7 +397,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                          */
                         assert context.state.isClosing();
                         assert context.state.isInvalidOrClosed();
-                        if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
+                        if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
                             context.engine.getEngineLogger().log(Level.FINE,
                                             "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting.",
                                             t);
@@ -420,7 +419,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     boolean exitContext(TruffleLanguage.ExitMode exitMode, int exitCode) {
         ReentrantLock lock = lazy.operationLock;
         lock.lock();
@@ -434,8 +432,8 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     LANGUAGE.exitContext(env, exitMode, exitCode);
                 } catch (Throwable t) {
                     if (exitMode == TruffleLanguage.ExitMode.HARD) {
-                        if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotContextImpl.ExitException) {
-                            if (t instanceof com.oracle.truffle.api.TruffleException && !context.state.isCancelling()) {
+                        if (t instanceof AbstractTruffleException || t instanceof PolyglotContextImpl.ExitException) {
+                            if (t instanceof AbstractTruffleException && !context.state.isCancelling()) {
                                 context.engine.getEngineLogger().log(Level.WARNING, "TruffleException thrown during exit notification! Languages are supposed to handle this kind of exceptions.", t);
                             } else {
                                 context.engine.getEngineLogger().log(Level.FINE, "Exception thrown during exit notification!", t);
@@ -455,7 +453,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     boolean dispose() {
         assert Thread.holdsLock(context);
         Env localEnv = this.env;
@@ -494,7 +491,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
                 LANGUAGE.dispose(localEnv);
             } catch (Throwable t) {
-                if (t instanceof com.oracle.truffle.api.TruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
+                if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
                     throw new IllegalStateException("Guest language code was run during language disposal!", t);
                 }
                 throw t;
@@ -741,7 +738,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         // Always check context first, as it might be invalidated.
         context.checkClosed();
         if (context.disposing) {
-            throw PolyglotEngineException.illegalState("The Context is already closed.");
+            throw PolyglotEngineException.closedException("The Context is already closed.");
         }
         if (!context.config.isAccessPermitted(accessingLanguage, language)) {
             throw PolyglotEngineException.illegalArgument(String.format("Access to language '%s' is not permitted. ", language.getId()));
@@ -897,17 +894,19 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
         @Override
         public void uncaughtException(Thread t, Throwable e) {
-            Env currentEnv = env;
-            if (currentEnv != null && !(e instanceof ThreadDeath)) {
-                try {
-                    e.printStackTrace(new PrintStream(currentEnv.err()));
-                } catch (Throwable exc) {
-                    // Still show the original error if printing on Env.err() fails for some
-                    // reason
+            if (!(e instanceof ThreadDeath)) {
+                Env currentEnv = env;
+                if (currentEnv != null) {
+                    try {
+                        e.printStackTrace(new PrintStream(currentEnv.err()));
+                    } catch (Throwable exc) {
+                        // Still show the original error if printing on Env.err() fails for some
+                        // reason
+                        e.printStackTrace();
+                    }
+                } else {
                     e.printStackTrace();
                 }
-            } else {
-                e.printStackTrace();
             }
         }
     }

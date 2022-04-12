@@ -228,6 +228,7 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
         java_lang_NegativeArraySizeException = knownKlass(Type.java_lang_NegativeArraySizeException);
         java_lang_IllegalArgumentException = knownKlass(Type.java_lang_IllegalArgumentException);
+        java_lang_IllegalStateException = knownKlass(Type.java_lang_IllegalStateException);
         java_lang_NullPointerException = knownKlass(Type.java_lang_NullPointerException);
         java_lang_ClassNotFoundException = knownKlass(Type.java_lang_ClassNotFoundException);
         java_lang_NoClassDefFoundError = knownKlass(Type.java_lang_NoClassDefFoundError);
@@ -1069,6 +1070,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_NegativeArraySizeException;
     public final ObjectKlass java_lang_IllegalArgumentException;
     public final ObjectKlass java_lang_IllegalMonitorStateException;
+    public final ObjectKlass java_lang_IllegalStateException;
     public final ObjectKlass java_lang_NullPointerException;
     public final ObjectKlass java_lang_ClassNotFoundException;
     public final ObjectKlass java_lang_NoClassDefFoundError;
@@ -1553,6 +1555,7 @@ public final class Meta implements ContextAccess {
         if (arg instanceof Double) {
             return meta.boxDouble((double) arg);
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 
@@ -1733,7 +1736,7 @@ public final class Meta implements ContextAccess {
         assert !Types.isPrimitive(type);
         ObjectKlass k = loadKlassOrNull(type, classLoader);
         if (k == null) {
-            throw EspressoError.shouldNotReachHere("Failed loading known class: ", type, ", discovered java version: ", getJavaVersion());
+            throw EspressoError.shouldNotReachHere("Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
         }
         return k;
     }
@@ -2127,7 +2130,7 @@ public final class Meta implements ContextAccess {
             return (StaticObject) getMeta().java_lang_Long_valueOf.invokeDirect(null, (long) hostPrimitive);
         }
 
-        throw EspressoError.shouldNotReachHere("Not a boxed type ", hostPrimitive);
+        throw EspressoError.shouldNotReachHere("Not a boxed type " + hostPrimitive);
     }
 
     // endregion Guest boxing

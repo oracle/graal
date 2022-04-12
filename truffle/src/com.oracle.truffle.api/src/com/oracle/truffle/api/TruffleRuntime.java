@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ public interface TruffleRuntime {
      * @since 0.8 or earlier
      * @deprecated Use {@link RootNode#getCallTarget()}.
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     RootCallTarget createCallTarget(RootNode rootNode);
 
     /**
@@ -160,8 +160,14 @@ public interface TruffleRuntime {
      *
      * @return the newly created compiler options object
      * @since 0.8 or earlier
+     * @deprecated in 22.1 compiler options had no effect for several releases now. Deprecated for
+     *             removal.
      */
-    CompilerOptions createCompilerOptions();
+    @SuppressWarnings("deprecation")
+    @Deprecated(since = "22.1")
+    default com.oracle.truffle.api.CompilerOptions createCompilerOptions() {
+        return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
+    }
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
@@ -170,6 +176,10 @@ public interface TruffleRuntime {
      * Iteration continues as long as {@link FrameInstanceVisitor#visitFrame}, which is invoked for
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
      * frame iteration should stop.
+     * <p>
+     * Instances of {@link FrameInstance} must note escape the invocation of
+     * {@link FrameInstanceVisitor#visitFrame(FrameInstance)}. This rule is currently not enforced,
+     * but will be in future versions of Truffle.
      *
      * <p>
      * Note that this method can cause deoptimization if
@@ -188,23 +198,70 @@ public interface TruffleRuntime {
      *         should stop), or null if the whole stack was iterated.
      * @since 0.8 or earlier
      */
-    <T> T iterateFrames(FrameInstanceVisitor<T> visitor);
+    default <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
+        return iterateFrames(visitor, 0);
+    }
 
     /**
-     * Accesses the caller frame. This is a convenience method that returns the first frame that is
-     * passed to the visitor of {@link #iterateFrames}.
+     * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
+     * {@link CallTarget}s. Iteration starts at the current frame and skips a number of frames
+     * provided as argument.
      *
-     * @since 0.8 or earlier
+     * Iteration continues as long as {@link FrameInstanceVisitor#visitFrame}, which is invoked for
+     * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
+     * frame iteration should stop.
+     * <p>
+     * Instances of {@link FrameInstance} must note escape the invocation of
+     * {@link FrameInstanceVisitor#visitFrame(FrameInstance)}. This rule is currently not enforced,
+     * but will be in future versions of Truffle.
+     *
+     * <p>
+     * Note that this method can cause deoptimization if
+     * {@link FrameInstance#getFrame(FrameInstance.FrameAccess)} is called with
+     * {@link FrameAccess#READ_WRITE} or {@link FrameAccess#MATERIALIZE} on the fast path.
+     * Instructions and flags for debugging such deoptimizations can be found in <a href=
+     * "https://github.com/oracle/graal/blob/master/truffle/docs/Optimizing.md#debugging-deoptimizations">/truffle/docs/Optimizing.md#debugging-deoptimizations</a>
+     *
+     * <p>
+     * To get possible asynchronous stack frames, use
+     * {@link TruffleStackTrace#getAsynchronousStackTrace(CallTarget, Frame)} and provide call
+     * target and frame from the last {@link FrameInstance}.
+     *
+     * @param visitor the visitor that is called for every matching frame.
+     * @param skipFrames number of frames to skip before invoking the visitor
+     * @return the last result returned by the visitor (which is non-null to indicate that iteration
+     *         should stop), or null if the whole stack was iterated.
+     * @since 21.1
      */
-    FrameInstance getCallerFrame();
+    default <T> T iterateFrames(FrameInstanceVisitor<T> visitor, @SuppressWarnings("unused") int skipFrames) {
+        throw new AbstractMethodError();
+    }
 
     /**
-     * Accesses the current frame, i.e., the frame of the closest {@link CallTarget}. It is
-     * important to note that this {@link FrameInstance} supports only slow path access.
-     *
      * @since 0.8 or earlier
+     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor, int)} instead. This was
+     *             deprecated because a {@link FrameInstance} must never be used after
+     *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
+     *             sure this restriction is honored when migrating this API as this may lead to
+     *             difficult to debug problems and sometimes even VM crashes.
      */
-    FrameInstance getCurrentFrame();
+    @Deprecated(since = "22.1")
+    default FrameInstance getCallerFrame() {
+        return iterateFrames((f) -> f, 1);
+    }
+
+    /**
+     * @since 0.8 or earlier
+     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor)} instead. This was deprecated
+     *             because a {@link FrameInstance} must never be used after
+     *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
+     *             sure this restriction is honored when migrating this API as this may lead to
+     *             difficult to debug problems and sometimes even VM crashes.
+     */
+    @Deprecated(since = "22.1")
+    default FrameInstance getCurrentFrame() {
+        return iterateFrames((f) -> f, 0);
+    }
 
     /**
      * Requests a capability from the runtime.

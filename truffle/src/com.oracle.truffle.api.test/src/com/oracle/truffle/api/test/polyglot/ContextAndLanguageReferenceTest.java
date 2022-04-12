@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
@@ -85,6 +86,14 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         needsLanguageEnv = true;
     }
 
+    @Registration
+    static class InvalidContextReferenceLanguage extends AbstractExecutableTestLanguage {
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+            return null;
+        }
+    }
+
     @SuppressWarnings({"unchecked"})
     @Test
     public void testContextReference() {
@@ -101,7 +110,7 @@ public class ContextAndLanguageReferenceTest extends AbstractPolyglotTest {
         }).getEnv());
         assertSame(languageEnv, ref.get(new TestRootNode(language)).getEnv());
 
-        ContextReference<ContextAPITestLanguage.LanguageContext> invalidRef = ContextReference.create(ContextAPITestLanguage.class);
+        ContextReference<AbstractExecutableTestLanguage.ExecutableContext> invalidRef = ContextReference.create(InvalidContextReferenceLanguage.class);
         assertNull(invalidRef.get(null));
 
         assertSame(ref, ContextReference.create(ProxyLanguage.class));

@@ -24,9 +24,17 @@
  */
 package org.graalvm.compiler.lir.phases;
 
+import org.graalvm.compiler.lir.alloc.SaveCalleeSaveRegisters;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
 
 public class EconomyPreAllocationOptimizationStage extends LIRPhaseSuite<PreAllocationOptimizationContext> {
     public EconomyPreAllocationOptimizationStage() {
+        /*
+         * Although HotSpot does not use callee saved registers on any configuration, this phase is
+         * not optional. SVM for example uses a different calling convention that requires it. If
+         * used on a configuration without callee saved registers, this phase will simply do
+         * nothing.
+         */
+        appendPhase(new SaveCalleeSaveRegisters());
     }
 }

@@ -24,25 +24,18 @@
  */
 package com.oracle.svm.core.hub;
 
+import java.lang.ref.SoftReference;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.security.ProtectionDomain;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.hub.DynamicHub.ReflectionData;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder;
-import com.oracle.svm.core.reflect.MethodMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.util.VMError;
+
+import sun.reflect.annotation.AnnotationType;
+import sun.reflect.generics.repository.ClassRepository;
 
 /**
  * The mutable parts of a {@link DynamicHub} instance.
@@ -59,7 +52,12 @@ public final class DynamicHubCompanion {
      */
     private Object classLoader;
     private ProtectionDomain protectionDomain;
-    private ReflectionData completeReflectionData;
+    private ClassRepository genericInfo;
+    private SoftReference<Target_java_lang_Class_ReflectionData<?>> reflectionData;
+    private AnnotationType annotationType;
+    private Target_java_lang_Class_AnnotationData annotationData;
+    private Constructor<?> cachedConstructor;
+    private Class<?> newInstanceCallerCache;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
@@ -100,83 +98,38 @@ public final class DynamicHubCompanion {
         protectionDomain = domain;
     }
 
-    ReflectionData getCompleteReflectionData(DynamicHub hub) {
-        if (completeReflectionData == null) {
-            List<Method> newDeclaredMethods = new ArrayList<>(Arrays.asList(hub.rd.declaredMethods));
-            List<Method> newPublicMethods = new ArrayList<>(Arrays.asList(hub.rd.publicMethods));
-            List<Constructor<?>> newDeclaredConstructors = new ArrayList<>(Arrays.asList(hub.rd.declaredConstructors));
-            List<Constructor<?>> newPublicConstructors = new ArrayList<>(Arrays.asList(hub.rd.publicConstructors));
-            List<Method> newDeclaredPublicMethods = new ArrayList<>(Arrays.asList(hub.rd.declaredPublicMethods));
-
-            Pair<Executable[], MethodDescriptor[]> queriedAndHidingMethods = ImageSingletons.lookup(MethodMetadataDecoder.class).getQueriedAndHidingMethods(hub);
-            Executable[] queriedMethods = queriedAndHidingMethods.getLeft();
-            MethodDescriptor[] hidingMethods = queriedAndHidingMethods.getRight();
-            newMethods: for (Executable method : queriedMethods) {
-                if (method instanceof Constructor<?>) {
-                    Constructor<?> c = (Constructor<?>) method;
-                    for (Constructor<?> c2 : hub.rd.declaredConstructors) {
-                        if (Arrays.equals(c.getParameterTypes(), c2.getParameterTypes())) {
-                            continue newMethods;
-                        }
-                    }
-                    newDeclaredConstructors.add(c);
-                    if (Modifier.isPublic(c.getModifiers())) {
-                        newPublicConstructors.add(c);
-                    }
-                } else {
-                    Method m = (Method) method;
-                    for (Method m2 : hub.rd.declaredMethods) {
-                        if (m.getName().equals(m2.getName()) && Arrays.equals(m.getParameterTypes(), m2.getParameterTypes())) {
-                            continue newMethods;
-                        }
-                    }
-                    newDeclaredMethods.add(m);
-                    if (Modifier.isPublic(m.getModifiers())) {
-                        newPublicMethods.add(m);
-                        newDeclaredPublicMethods.add(m);
-                    }
-                }
-            }
-
-            /* Recursively add public superclass methods to the public methods list */
-            DynamicHub superHub = hub.getSuperHub();
-            if (superHub != null) {
-                addInheritedPublicMethods(newPublicMethods, superHub.privateGetPublicMethods(), hidingMethods, true);
-            }
-            for (DynamicHub interfaceHub : hub.getInterfaces()) {
-                addInheritedPublicMethods(newPublicMethods, interfaceHub.privateGetPublicMethods(), hidingMethods, hub.isInterface());
-            }
-
-            completeReflectionData = new ReflectionData(hub.rd.declaredFields, hub.rd.publicFields, hub.rd.publicUnhiddenFields, newDeclaredMethods.toArray(new Method[0]),
-                            newPublicMethods.toArray(new Method[0]),
-                            newDeclaredConstructors.toArray(new Constructor<?>[0]), newPublicConstructors.toArray(new Constructor<?>[0]), hub.rd.nullaryConstructor, hub.rd.declaredPublicFields,
-                            newDeclaredPublicMethods.toArray(new Method[0]), hub.rd.declaredClasses, hub.rd.permittedSubclasses, hub.rd.publicClasses, hub.rd.enclosingMethodOrConstructor,
-                            hub.rd.recordComponents);
+    public ClassRepository getGenericInfo(DynamicHub hub) {
+        if (genericInfo == null) {
+            genericInfo = hub.computeGenericInfo();
         }
-        return completeReflectionData;
+        return (genericInfo != ClassRepository.NONE) ? genericInfo : null;
     }
 
-    private static void addInheritedPublicMethods(List<Method> newPublicMethods, Method[] parentMethods, MethodDescriptor[] hidingMethods, boolean includeStaticMethods) {
-        parentMethods: for (Method m : parentMethods) {
-            if (!includeStaticMethods && Modifier.isStatic(m.getModifiers())) {
-                continue;
-            }
-            for (Method m2 : newPublicMethods) {
-                if (m.getName().equals(m2.getName()) && Arrays.equals(m.getParameterTypes(), m2.getParameterTypes())) {
-                    if (m.getDeclaringClass() != m2.getDeclaringClass() && m2.getDeclaringClass().isAssignableFrom(m.getDeclaringClass())) {
-                        /* Need to store the more specific method */
-                        newPublicMethods.remove(m2);
-                        newPublicMethods.add(m);
-                    }
-                    continue parentMethods;
-                }
-            }
-            for (MethodDescriptor hidingMethod : hidingMethods) {
-                if (m.getName().equals(hidingMethod.getName()) && Arrays.equals(m.getParameterTypes(), hidingMethod.getParameterTypes())) {
-                    continue parentMethods;
-                }
-            }
-            newPublicMethods.add(m);
-        }
+    SoftReference<Target_java_lang_Class_ReflectionData<?>> getReflectionData() {
+        return reflectionData;
+    }
+
+    AnnotationType getAnnotationType() {
+        return annotationType;
+    }
+
+    Target_java_lang_Class_AnnotationData getAnnotationData() {
+        return annotationData;
+    }
+
+    Constructor<?> getCachedConstructor() {
+        return cachedConstructor;
+    }
+
+    void setCachedConstructor(Constructor<?> constructor) {
+        cachedConstructor = constructor;
+    }
+
+    Class<?> getNewInstanceCallerCache() {
+        return newInstanceCallerCache;
+    }
+
+    void setNewInstanceCallerCache(Class<?> constructor) {
+        newInstanceCallerCache = constructor;
     }
 }

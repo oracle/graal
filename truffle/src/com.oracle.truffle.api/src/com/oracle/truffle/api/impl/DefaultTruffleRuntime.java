@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import java.util.ServiceLoader;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -80,7 +79,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     private final ThreadLocal<DefaultFrameInstance> stackTraces = new ThreadLocal<>();
     private final DefaultTVMCI tvmci = new DefaultTVMCI();
 
-    private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<Closeable, CallTarget>() {
+    private final TVMCI.Test<Closeable, CallTarget> testTvmci = new TVMCI.Test<>() {
 
         @Override
         protected Closeable createTestContext(String testName) {
@@ -150,11 +149,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     @Override
-    public CompilerOptions createCompilerOptions() {
-        return new DefaultCompilerOptions();
-    }
-
-    @Override
     public Assumption createAssumption() {
         return createAssumption(null);
     }
@@ -166,31 +160,27 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
+        return iterateFrames(visitor, 0);
+    }
+
+    public <T> T iterateFrames(FrameInstanceVisitor<T> visitor, int skipFrames) {
+        if (skipFrames < 0) {
+            throw new IllegalArgumentException("The skipFrames parameter must be >= 0.");
+        }
         T result = null;
         DefaultFrameInstance frameInstance = getThreadLocalStackTrace();
+        int skipCounter = skipFrames;
         while (frameInstance != null) {
-            result = visitor.visitFrame(frameInstance);
-            if (result != null) {
-                return result;
+            if (skipCounter <= 0) {
+                result = visitor.visitFrame(frameInstance);
+                if (result != null) {
+                    return result;
+                }
             }
             frameInstance = frameInstance.callerFrame;
+            skipCounter--;
         }
         return result;
-    }
-
-    @Override
-    public FrameInstance getCallerFrame() {
-        DefaultFrameInstance currentFrame = getThreadLocalStackTrace();
-        if (currentFrame != null) {
-            return currentFrame.callerFrame;
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public FrameInstance getCurrentFrame() {
-        return getThreadLocalStackTrace();
     }
 
     private DefaultFrameInstance getThreadLocalStackTrace() {
@@ -269,7 +259,10 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
         @SuppressWarnings("unchecked")
         static <S> Iterable<S> load(Class<S> service) {
-            TruffleJDKServices.addUses(service);
+            Module truffleModule = DefaultTruffleRuntime.class.getModule();
+            if (!truffleModule.canUse(service)) {
+                truffleModule.addUses(service);
+            }
             if (LOAD_METHOD != null) {
                 try {
                     return (Iterable<S>) LOAD_METHOD.invoke(null, service);

@@ -700,7 +700,7 @@ public class PECoffObjectFile extends ObjectFile {
 
     @Override
     public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
-        CVDebugInfo cvDebugInfo = new CVDebugInfo(getByteOrder());
+        CVDebugInfo cvDebugInfo = new CVDebugInfo(getMachine(), getByteOrder());
 
         // we need an implementation for each section
         CVSymbolSectionImpl cvSymbolSectionImpl = cvDebugInfo.getCVSymbolSection();

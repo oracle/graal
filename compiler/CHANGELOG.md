@@ -2,6 +2,17 @@
 
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
+## Version 22.2.0
+* (GR-16452) Compute the code emission basic block order after backend control flow optimizations.
+* (GR-35033): Enable floating and global value numbering of division nodes early on in the compilation pipeline if
+  it is known they will not trap.
+  
+## Version 22.1.0
+* (GR-36751): Removed the `DuplicateIrreducibleLoops` option. To disable irreducible loop handling, set
+  `-Dgraal.MaxDuplicationFactor` to a value less than or equal to 1. For AOT compilations, the effort
+  spent to handle irreducible loops is boosted to let Native Image support more programs with irreducible loops.
+
+
 ## Version 22.0.0
 * (GR-22707) (GR-30838): New, inner loops first, reverse post order and loop frequency calculations for the compiler.
 

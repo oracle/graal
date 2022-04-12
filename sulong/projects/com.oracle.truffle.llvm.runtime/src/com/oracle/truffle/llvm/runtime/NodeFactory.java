@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -188,6 +188,8 @@ public interface NodeFactory {
     LLVMMemoryOpNode createProtectGlobalsBlock();
 
     LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly);
+
+    LLVMMemoryOpNode getFreeGlobalsBlockUncached(boolean readOnly);
 
     LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
 

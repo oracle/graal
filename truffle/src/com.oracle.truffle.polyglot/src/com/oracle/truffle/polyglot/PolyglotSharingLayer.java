@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -191,11 +191,6 @@ final class PolyglotSharingLayer {
                 // as the sharing layer is not published.
                 s.contextPolicy = ContextPolicy.EXCLUSIVE;
             }
-
-            if (!isSingleContext()) {
-                this.hostLanguage.singleLanguageContext.invalidate();
-            }
-
         } else {
             // layer was used before and is sharable
             previousLanguageOptions = s.previousLanguageOptions;
@@ -242,6 +237,7 @@ final class PolyglotSharingLayer {
             s.singleContextValue.update(context);
         } else {
             s.singleContextValue.invalidate();
+            hostLanguage.singleLanguageContext.invalidate();
         }
 
         s.claimedCount++;

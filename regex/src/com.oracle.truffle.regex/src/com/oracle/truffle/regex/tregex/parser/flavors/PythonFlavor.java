@@ -40,7 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.RegexValidator;
 
 /**
  * An implementation of the Python regex flavor. Technically, this class provides an implementation
@@ -81,8 +85,12 @@ public final class PythonFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexFlavorProcessor forRegex(RegexSource source) {
-        return new PythonFlavorProcessor(source, mode);
+    public RegexValidator createValidator(RegexSource source) {
+        return PythonRegexParser.createValidator(source, mode);
     }
 
+    @Override
+    public RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
+        return PythonRegexParser.createParser(language, source, compilationBuffer, mode);
+    }
 }

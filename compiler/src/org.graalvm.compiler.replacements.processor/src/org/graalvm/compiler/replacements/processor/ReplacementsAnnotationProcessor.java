@@ -79,8 +79,6 @@ public class ReplacementsAnnotationProcessor extends AbstractProcessor {
     public List<AnnotationHandler> getHandlers() {
         if (handlers == null) {
             handlers = new ArrayList<>();
-            handlers.add(new ClassSubstitutionHandler(this));
-            handlers.add(new MethodSubstitutionHandler(this));
             handlers.add(new NodeIntrinsicHandler(this));
             handlers.add(new FoldHandler(this));
         }

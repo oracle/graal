@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.helper;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -75,10 +76,11 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck == k;
     }
 
-    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, limit = "LIMIT")
+    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, assumptions = {"redefineAssumption"}, limit = "LIMIT")
     protected boolean typeCheckCached(Klass typeToCheck, Klass k,
                     @Cached("typeToCheck") Klass cachedTTC,
                     @Cached("k") Klass cachedKlass,
+                    @Cached("k.getRedefineAssumption()") Assumption redefineAssumption,
                     @Cached("doTypeCheck(typeToCheck, k)") boolean result) {
         return result;
     }

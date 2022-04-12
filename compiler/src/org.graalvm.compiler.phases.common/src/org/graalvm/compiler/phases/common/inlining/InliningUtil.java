@@ -26,7 +26,6 @@ package org.graalvm.compiler.phases.common.inlining;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
 
 import java.util.ArrayDeque;
@@ -40,7 +39,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -107,6 +105,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
+import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -291,7 +290,7 @@ public class InliningUtil extends ValueMergeUtil {
 
     public static void replaceInvokeCallTarget(Invoke invoke, StructuredGraph graph, InvokeKind invokeKind, ResolvedJavaMethod targetMethod) {
         MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(new ValueNode[0]), oldCallTarget.returnStamp(),
+        MethodCallTargetNode newCallTarget = graph.add(new MethodCallTargetNode(invokeKind, targetMethod, oldCallTarget.arguments().toArray(ValueNode.EMPTY_ARRAY), oldCallTarget.returnStamp(),
                         oldCallTarget.getTypeProfile()));
         invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
     }
@@ -434,11 +433,10 @@ public class InliningUtil extends ValueMergeUtil {
         Mark mark = graph.getMark();
         // Instead, attach the inlining log of the child graph to the current inlining log.
         EconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = graph.getInliningLog().openDefaultUpdateScope()) {
+        InliningLog inliningLog = graph.getInliningLog();
+        try (InliningLog.UpdateScope scope = InliningLog.openDefaultUpdateScope(inliningLog)) {
             duplicates = graph.addDuplicates(nodes, inlineGraph, inlineGraph.getNodeCount(), localReplacement);
-            if (scope != null || graph.getDebug().hasCompilationListener()) {
-                graph.getInliningLog().addDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
-            }
+            graph.notifyInliningDecision(invoke, true, phase, duplicates, inlineGraph.getInliningLog(), reason);
         }
 
         FrameState stateAfter = invoke.stateAfter();
@@ -878,16 +876,9 @@ public class InliningUtil extends ValueMergeUtil {
                 // Normal inlining expects all outermost inlinee frame states to
                 // denote the inlinee method
             } else if (method.equals(invoke.callTarget().targetMethod())) {
-                // This occurs when an intrinsic calls back to the original
-                // method to handle a slow path. During parsing of such a
-                // partial intrinsic, these calls are given frame states
-                // that exclude the outer frame state denoting a position
-                // in the intrinsic code.
-                assert IS_IN_NATIVE_IMAGE || inlinedMethod.getAnnotation(
-                                MethodSubstitution.class) != null : "expected an intrinsic when inlinee frame state matches method of call target but does not match the method of the inlinee graph: " +
-                                                frameState;
+                GraalError.shouldNotReachHere("method subsitutions are gone");
             } else if (method.getName().equals(inlinedMethod.getName())) {
-                // This can happen for method substitutions.
+                GraalError.shouldNotReachHere("method subsitutions are gone");
             } else {
                 throw new AssertionError(String.format("inlinedMethod=%s frameState.method=%s frameState=%s invoke.method=%s", inlinedMethod, method, frameState,
                                 invoke.callTarget().targetMethod()));
@@ -896,7 +887,7 @@ public class InliningUtil extends ValueMergeUtil {
         return true;
     }
 
-    private static final ValueNode[] NO_ARGS = {};
+    private static final ValueNode[] NO_ARGS = ValueNode.EMPTY_ARRAY;
 
     private static boolean isStateAfterException(FrameState frameState) {
         return frameState.bci == BytecodeFrame.AFTER_EXCEPTION_BCI || (frameState.bci == BytecodeFrame.UNWIND_BCI && !frameState.getMethod().isSynchronized());
@@ -1040,8 +1031,9 @@ public class InliningUtil extends ValueMergeUtil {
         assert typeProfile.getNotRecordedProbability() == 0.0D;
         FrameState frameState = invoke.stateAfter();
         assert frameState != null;
+        ProfilingInfo profilingInfo = invoke.asNode().graph().getProfilingInfo(frameState.getCode().getMethod());
         return FALLBACK_DEOPT_SPECULATION.createSpeculationReason(frameState.getMethod(), invoke.bci(),
-                        frameState.getCode().getProfilingInfo().getExceptionSeen(invoke.bci()),
+                        profilingInfo == null ? TriState.FALSE : profilingInfo.getExceptionSeen(invoke.bci()),
                         new ReceiverTypeSpeculationContext(typeProfile));
     }
 

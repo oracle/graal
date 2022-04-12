@@ -234,7 +234,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                         "java.util.List<Integer>",
                         export(context, new ValueSupplier<>(new ArrayList<>(Arrays.asList(1, 2)))),
                         TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.array(TypeDescriptor.NUMBER))).build());
-        Function<Object, Object> func = new Function<Object, Object>() {
+        Function<Object, Object> func = new Function<>() {
             @Override
             public Object apply(Object t) {
                 return t;
@@ -346,7 +346,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
     }
 
     private static final class ProxyExecutableImpl implements ProxyExecutable {
-        private static final Consumer<? super Value> EMPTY = new Consumer<Value>() {
+        private static final Consumer<? super Value> EMPTY = new Consumer<>() {
             @Override
             public void accept(Value t) {
             }
@@ -394,7 +394,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
 
         private static Consumer<? super Value> createVerifier(final Primitive primitive) {
             if (TypeDescriptor.NUMBER == primitive.type) {
-                return new Consumer<Value>() {
+                return new Consumer<>() {
                     @Override
                     public void accept(Value value) {
                         if (!value.isNumber()) {
@@ -418,14 +418,14 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
                     }
                 };
             } else if (TypeDescriptor.BOOLEAN == primitive.type) {
-                return new Consumer<Value>() {
+                return new Consumer<>() {
                     @Override
                     public void accept(Value value) {
                         value.asBoolean();
                     }
                 };
             } else if (TypeDescriptor.STRING == primitive.type) {
-                return new Consumer<Value>() {
+                return new Consumer<>() {
                     @Override
                     public void accept(Value value) {
                         value.asString();

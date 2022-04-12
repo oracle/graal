@@ -149,8 +149,8 @@ def test():
     # range of major.minor versions
     # for now we use an env setting
     print("Found gdb version %s.%s"%(major, minor))
-    # can_print_data = major > 10 or (major == 10 and minor > 1)
-    can_print_data = False
+    # printing does not always work on gdb 10.x or earlier
+    can_print_data = major > 10
     if os.environ.get('GDB_CAN_PRINT', '') == 'True':
         can_print_data = True
 
@@ -347,13 +347,13 @@ def test():
             r"%sjava\.lang\.Object \* clone\(void\);"%(spaces_pattern),
             r"%spublic:"%(spaces_pattern),
             r"%sboolean equals\(java\.lang\.Object \*\);"%(spaces_pattern),
+            r"%sjava\.lang\.Class \* getClass\(void\);"%(spaces_pattern),
             r"%sint hashCode\(void\);"%(spaces_pattern),
             r"%svoid notify\(void\);"%(spaces_pattern),
             r"%svoid notifyAll\(void\);"%(spaces_pattern),
             r"%sjava\.lang\.String \* toString\(void\);"%(spaces_pattern),
             r"%svoid wait\(void\);"%(spaces_pattern),
             r"%svoid wait\(long\);"%(spaces_pattern),
-            r"%svoid wait\(long, int\);"%(spaces_pattern),
             r"}"]
     
     checker = Checker('ptype Object', rexp)

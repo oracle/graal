@@ -91,11 +91,13 @@ public class WindowsRegisterDumper implements RegisterDumper {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(Context context) {
         return WordFactory.pointer(((CONTEXT) context).Rsp());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(Context context) {
         return WordFactory.pointer(((CONTEXT) context).Rip());
     }

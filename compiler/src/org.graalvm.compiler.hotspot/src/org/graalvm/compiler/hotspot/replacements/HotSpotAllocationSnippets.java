@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,18 +144,16 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     protected Object allocateInstance(KlassPointer hub,
-                    Word prototypeMarkWord,
                     @ConstantParameter long size,
                     @ConstantParameter FillContent fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(hub.asWord(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
     @Snippet
     public Object allocateArray(KlassPointer hub,
-                    Word prototypeMarkWord,
                     int length,
                     @ConstantParameter int arrayBaseOffset,
                     @ConstantParameter int log2ElementSize,
@@ -166,7 +164,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean supportsBulkZeroing,
                     @ConstantParameter boolean supportsOptimizedFilling,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateArrayImpl(hub.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+        Object result = allocateArrayImpl(hub.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
                         supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -190,13 +188,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                  * allocated using the fastpath.
                  */
                 if (probability(FAST_PATH_PROBABILITY, (layoutHelper & 1) == 0)) {
-                    Word prototypeMarkWord = nonNullHub.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
                     /*
                      * FIXME(je,ds): we should actually pass typeContext instead of "" but late
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
                     UnsignedWord size = WordFactory.unsigned(layoutHelper);
-                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, size, fillContents, emitMemoryBarrier, false, profilingData);
+                    return allocateInstanceImpl(nonNullHub.asWord(), size, fillContents, emitMemoryBarrier, false, profilingData);
                 }
             } else {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -220,7 +217,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     public Object allocateArrayDynamic(Class<?> elementType,
-                    Word prototypeMarkWord,
                     Class<?> voidClass,
                     int length,
                     @ConstantParameter FillContent fillContents,
@@ -270,7 +266,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
         int arrayBaseOffset = (layoutHelper >> layoutHelperHeaderSizeShift(INJECTED_VMCONFIG)) & layoutHelperHeaderSizeMask(INJECTED_VMCONFIG);
         int log2ElementSize = (layoutHelper >> layoutHelperLog2ElementSizeShift(INJECTED_VMCONFIG)) & layoutHelperLog2ElementSizeMask(INJECTED_VMCONFIG);
-        Object result = allocateArrayImpl(nonNullKlass.asWord(), prototypeMarkWord, length, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
+        Object result = allocateArrayImpl(nonNullKlass.asWord(), length, arrayBaseOffset, log2ElementSize, fillContents, arrayBaseOffset, emitMemoryBarrier, false,
                         supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
@@ -421,13 +417,14 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     }
 
     @Override
-    public final void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray) {
+    public final void initializeObjectHeader(Word memory, Word hub, boolean isArray) {
         KlassPointer klassPtr = KlassPointer.fromWord(hub);
-        Word markWord = prototypeMarkWord;
+        Word markWord;
         if (!isArray && HotSpotReplacementsUtil.useBiasedLocking(INJECTED_VMCONFIG)) {
             markWord = klassPtr.readWord(prototypeMarkWordOffset(INJECTED_VMCONFIG), PROTOTYPE_MARK_WORD_LOCATION);
+        } else {
+            markWord = WordFactory.signed(HotSpotReplacementsUtil.defaultPrototypeMarkWord(INJECTED_VMCONFIG));
         }
-
         HotSpotReplacementsUtil.initializeObjectHeader(memory, markWord, klassPtr);
     }
 
@@ -603,7 +600,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             OptionValues localOptions = graph.getOptions();
             Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
-            args.add("prototypeMarkWord", type.prototypeMarkWord());
             args.addConst("size", size);
             args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
@@ -629,8 +625,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             OptionValues localOptions = graph.getOptions();
             Arguments args = new Arguments(allocateArray, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
-            assert arrayType.prototypeMarkWord() == lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord() : "all array types are assumed to have the same prototypeMarkWord";
-            args.add("prototypeMarkWord", arrayType.prototypeMarkWord());
             ValueNode length = node.length();
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.addConst("arrayBaseOffset", arrayBaseOffset);
@@ -696,7 +690,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
             Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("elementType", node.getElementType());
-            args.add("prototypeMarkWord", lookupArrayClass(tool, JavaKind.Object).prototypeMarkWord());
             args.add("voidClass", voidClass);
             args.add("length", length.isAlive() ? length : graph.addOrUniqueWithInputs(length));
             args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));

@@ -72,10 +72,9 @@ public class InnerLiteral {
         return literal;
     }
 
-    public Object getLiteralContent(Object input) {
-        boolean isTruffleString = input instanceof TruffleString;
-        CompilerAsserts.partialEvaluationConstant(isTruffleString);
-        return isTruffleString ? literalTString : literal.content();
+    public Object getLiteralContent(boolean tString) {
+        CompilerAsserts.partialEvaluationConstant(tString);
+        return tString ? literalTString : literal.content();
     }
 
     /**
@@ -85,10 +84,9 @@ public class InnerLiteral {
         return mask;
     }
 
-    public Object getMaskContent(Object input) {
-        boolean isTruffleString = input instanceof TruffleString;
-        CompilerAsserts.partialEvaluationConstant(isTruffleString);
-        return mask == null ? null : isTruffleString ? maskTString : mask.content();
+    public Object getMaskContent(boolean tString) {
+        CompilerAsserts.partialEvaluationConstant(tString);
+        return mask == null ? null : tString ? maskTString : mask.content();
     }
 
     /**

@@ -318,7 +318,7 @@ public final class ComponentInfo {
     }
 
     private static Comparator<ComponentInfo> editionComparator(String myEdition) {
-        return new Comparator<ComponentInfo>() {
+        return new Comparator<>() {
             @Override
             public int compare(ComponentInfo o1, ComponentInfo o2) {
                 if (o1 == null) {
@@ -353,7 +353,7 @@ public final class ComponentInfo {
         };
     }
 
-    private static final Comparator<ComponentInfo> COMPARATOR_VERSIONS = new Comparator<ComponentInfo>() {
+    private static final Comparator<ComponentInfo> COMPARATOR_VERSIONS = new Comparator<>() {
         @Override
         public int compare(ComponentInfo o1, ComponentInfo o2) {
             if (o1 == null) {

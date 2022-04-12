@@ -57,11 +57,12 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * This class is used to store a trace of the execution of a
- * {@link TRegexExecutorNode#execute(TRegexExecutorLocals, TruffleString.CodeRange)}. A trace
- * contains the arguments received by
- * {@link TRegexExecutorNode#execute(TRegexExecutorLocals, TruffleString.CodeRange)}, and the ID of
- * the DFA transition taken for all characters of the input string that have been traversed. After
- * execution, the recorded trace can be dumped to disk as JSON with {@link #finishRecording()}.
+ * {@link TRegexExecutorNode#execute(TRegexExecutorLocals, TruffleString.CodeRange, boolean)}. A
+ * trace contains the arguments received by
+ * {@link TRegexExecutorNode#execute(TRegexExecutorLocals, TruffleString.CodeRange, boolean)}, and
+ * the ID of the DFA transition taken for all characters of the input string that have been
+ * traversed. After execution, the recorded trace can be dumped to disk as JSON with
+ * {@link #finishRecording()}.
  */
 public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 

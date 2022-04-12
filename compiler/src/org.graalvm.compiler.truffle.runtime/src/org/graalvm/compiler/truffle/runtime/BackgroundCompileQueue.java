@@ -282,7 +282,8 @@ public class BackgroundCompileQueue {
                 @Override
                 public void run() {
                     setContextClassLoader(getClass().getClassLoader());
-                    try (AutoCloseable scope = runtime.openCompilerThreadScope()) {
+                    try (AutoCloseable compilerThreadScope = runtime.openCompilerThreadScope();
+                                    AutoCloseable polyglotThreadScope = GraalRuntimeAccessor.ENGINE.createPolyglotThreadScope()) {
                         super.run();
                         if (compilationExecutorService.allowsCoreThreadTimeOut()) {
                             // If core threads are always kept alive (no timeout), the

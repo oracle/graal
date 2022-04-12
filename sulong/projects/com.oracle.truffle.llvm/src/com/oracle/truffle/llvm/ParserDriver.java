@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -339,6 +339,16 @@ final class ParserDriver {
         return substring;
     }
 
+    private static TargetTriple getTargetTriple(ModelModule module) {
+        com.oracle.truffle.llvm.parser.model.target.TargetTriple parsedTargetTriple;
+        parsedTargetTriple = module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class);
+        if (parsedTargetTriple != null) {
+            return TargetTriple.create(parsedTargetTriple.toString());
+        } else {
+            return null;
+        }
+    }
+
     /**
      * Parses a binary (bitcode with optional meta information from an ELF, Mach-O object file).
      */
@@ -348,8 +358,7 @@ final class ParserDriver {
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source);
         TargetDataLayout layout = module.getTargetDataLayout();
         DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
-        TargetTriple targetTriple = TargetTriple.create(module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class).toString());
-        verifyBitcodeSource(source, targetDataLayout, targetTriple);
+        verifyBitcodeSource(source, targetDataLayout, getTargetTriple(module));
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         // Create a new public file scope to be returned inside sulong library.
         LLVMScope publicFileScope = new LLVMScope();

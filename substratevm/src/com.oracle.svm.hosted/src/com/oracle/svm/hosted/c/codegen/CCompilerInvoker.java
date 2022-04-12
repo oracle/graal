@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -346,8 +346,11 @@ public abstract class CCompilerInvoker {
             this.targetArch = targetArch;
         }
 
-        @Override
-        public String toString() {
+        public String getShortDescription() {
+            return String.format("%s (%s, %s, %d.%d.%d)", compilerPath.toFile().getName(), vendor, targetArch, versionMajor, versionMinor0, versionMinor1);
+        }
+
+        public String toCGlobalDataString() {
             return String.join("|", Arrays.asList(shortName, vendor, targetArch,
                             String.format("%d.%d.%d", versionMajor, versionMinor0, versionMinor1)));
         }

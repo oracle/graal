@@ -30,6 +30,7 @@ import java.util.Iterator;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -56,6 +57,11 @@ public final class Block extends AbstractBlockBase<Block> {
     protected ProfileSource frequencySource;
     private Loop<Block> loop;
 
+    // Extra data for cases where the loop information is no longer fully up to date due to blocks
+    // being deleted during LIR control flow optimization.
+    private boolean markedAsLoopEnd = false;
+    private long numBackedges = -1;
+
     protected Block postdominator;
     private LocationSet killLocations;
     private LocationSet killLocationsBetweenThisAndDominator;
@@ -79,6 +85,7 @@ public final class Block extends AbstractBlockBase<Block> {
 
     public void setLoop(Loop<Block> loop) {
         this.loop = loop;
+        this.numBackedges = (isLoopHeader() ? loop.numBackedges() : -1);
     }
 
     @Override
@@ -92,8 +99,17 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     @Override
+    public long numBackedges() {
+        return numBackedges;
+    }
+
+    @Override
     public boolean isLoopEnd() {
-        return getEndNode() instanceof LoopEndNode;
+        return markedAsLoopEnd || getEndNode() instanceof LoopEndNode;
+    }
+
+    public void markAsLoopEnd() {
+        markedAsLoopEnd = true;
     }
 
     @Override
@@ -165,7 +181,7 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public Iterable<FixedNode> getNodes() {
-        return new Iterable<FixedNode>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<FixedNode> iterator() {
@@ -419,7 +435,9 @@ public final class Block extends AbstractBlockBase<Block> {
     public void delete() {
 
         // adjust successor and predecessor lists
+        GraalError.guarantee(getSuccessorCount() == 1, "can only delete blocks with exactly one successor");
         Block next = getSuccessors()[0];
+        int predecessorCount = getPredecessorCount();
         for (Block pred : getPredecessors()) {
             Block[] predSuccs = pred.successors;
             Block[] newPredSuccs = new Block[predSuccs.length];
@@ -430,7 +448,16 @@ public final class Block extends AbstractBlockBase<Block> {
                     newPredSuccs[i] = predSuccs[i];
                 }
             }
-            pred.setSuccessors(newPredSuccs);
+            pred.setSuccessors(newPredSuccs, pred.getSuccessorProbabilities());
+
+            if (isLoopEnd()) {
+                // The predecessor becomes a loop end.
+                pred.markAsLoopEnd();
+            }
+        }
+        if (isLoopEnd()) {
+            GraalError.guarantee(next.isLoopHeader(), "a loop end's successor must be a loop header");
+            next.numBackedges += predecessorCount - 1;
         }
 
         ArrayList<Block> newPreds = new ArrayList<>();
@@ -445,7 +472,7 @@ public final class Block extends AbstractBlockBase<Block> {
             }
         }
 
-        next.setPredecessors(newPreds.toArray(new Block[0]));
+        next.setPredecessors(newPreds.toArray(Block.EMPTY_ARRAY));
     }
 
     protected void setPostDominator(Block postdominator) {

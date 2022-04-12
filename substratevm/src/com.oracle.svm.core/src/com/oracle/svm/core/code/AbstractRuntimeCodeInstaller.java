@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -31,6 +32,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.thread.JavaVMOperation;
 
@@ -62,20 +64,10 @@ public class AbstractRuntimeCodeInstaller {
     }
 
     protected static void doInstallPreparedAndTethered(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
-        Throwable[] errorBox = {null};
-        JavaVMOperation.enqueueBlockingSafepoint("Install code", () -> {
-            try {
-                assert !installedCode.isValid() && !installedCode.isAlive();
-                CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
-                CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
-                platformHelper().performCodeSynchronization(codeInfo);
-                installedCode.setAddress(codeStart.rawValue(), method);
-            } catch (Throwable e) {
-                errorBox[0] = e;
-            }
-        });
-        if (errorBox[0] != null) {
-            throw rethrow(errorBox[0]);
+        InstallCodeOperation vmOp = new InstallCodeOperation(method, codeInfo, installedCode);
+        vmOp.enqueue();
+        if (vmOp.error != null) {
+            throw rethrow(vmOp.error);
         }
     }
 
@@ -86,6 +78,35 @@ public class AbstractRuntimeCodeInstaller {
 
     protected static RuntimeCodeInstallerPlatformHelper platformHelper() {
         return ImageSingletons.lookup(RuntimeCodeInstallerPlatformHelper.class);
+    }
+
+    private static class InstallCodeOperation extends JavaVMOperation {
+        private final SharedMethod method;
+        private final CodeInfo codeInfo;
+        private final SubstrateInstalledCode installedCode;
+        private Throwable error;
+
+        InstallCodeOperation(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
+            super(VMOperationInfos.get(InstallCodeOperation.class, "Install code", SystemEffect.SAFEPOINT));
+            this.method = method;
+            this.codeInfo = codeInfo;
+            this.installedCode = installedCode;
+        }
+
+        @Override
+        protected void operate() {
+            try {
+                assert !installedCode.isValid() && !installedCode.isAlive();
+                CodePointer codeStart = CodeInfoAccess.getCodeStart(codeInfo);
+                installedCode.setAddress(codeStart.rawValue(), method);
+
+                CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
+                platformHelper().performCodeSynchronization(codeInfo);
+                VMError.guarantee(CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_CODE_CONSTANTS_LIVE && installedCode.isValid(), "The code can't be invalidated before the VM operation finishes");
+            } catch (Throwable e) {
+                error = e;
+            }
+        }
     }
 
     /** Methods which are platform specific. */

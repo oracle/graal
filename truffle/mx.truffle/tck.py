@@ -321,28 +321,26 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     # Interface InlineVerifier defined in truffle-tck-common.jar is used to define the service exposed by the VerifierInstrument.
     # Instruments are loaded by our custom ClassLoader and if the InlineVerifier interface is loaded by the custom class loader
     # when the instrument is defined and by the app class loader when the service is looked up, then the lookup fails.
-    # For that reason we put the truffle-tck-common.jar together with its dependencies to bootclasspath on JDK8.
+    # For that reason we used to put the truffle-tck-common.jar together with its dependencies to bootclasspath on JDK8.
     # On JDK9+ this does not work as one of the dependencies is Graal SDK which is in Java module org.graalvm.sdk, so instead
     # we patch the org.graalvm.sdk module to include the truffle-tck-common.jar and also its other dependency polyglot-tck.jar.
     # GR-35018 was filed to resolve this inconvenience.
-    jdk9Plus = _is_modular_jvm(graalvm_home)
     additional_vm_arguments = []
-    if jdk9Plus:
-        jarsToPatch = []
-        for jarPath in cp:
-            if 'polyglot-tck.jar' in jarPath:
-                additional_vm_arguments.append('--add-exports=org.graalvm.sdk/org.graalvm.polyglot.tck=ALL-UNNAMED')
-                jarsToPatch.append(os.path.abspath(jarPath))
-            if 'truffle-tck-common.jar' in jarPath:
-                additional_vm_arguments.append('--add-exports=org.graalvm.sdk/com.oracle.truffle.tck.common.inline=ALL-UNNAMED')
-                jarsToPatch.append(os.path.abspath(jarPath))
-        if jarsToPatch:
-            additional_vm_arguments.extend(['--patch-module', 'org.graalvm.sdk=' + ':'.join(jarsToPatch)])
+    jarsToPatch = []
+    for jarPath in cp:
+        if 'polyglot-tck.jar' in jarPath:
+            additional_vm_arguments.append('--add-exports=org.graalvm.sdk/org.graalvm.polyglot.tck=ALL-UNNAMED')
+            jarsToPatch.append(os.path.abspath(jarPath))
+        if 'truffle-tck-common.jar' in jarPath:
+            additional_vm_arguments.append('--add-exports=org.graalvm.sdk/com.oracle.truffle.tck.common.inline=ALL-UNNAMED')
+            jarsToPatch.append(os.path.abspath(jarPath))
+    if jarsToPatch:
+        additional_vm_arguments.extend(['--patch-module', 'org.graalvm.sdk=' + ':'.join(jarsToPatch)])
 
     return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter,
         [_ClassPathEntry(os.path.abspath(e)) for e in cp],
         [_ClassPathEntry(os.path.abspath(e)) for e in truffle_cp],
-        [] if jdk9Plus else [_ClassPathEntry(os.path.abspath(e)) for e in boot_cp],
+        [],
         additional_vm_arguments + (vm_args if isinstance(vm_args, list) else list(vm_args)),
         debug_port)
 
@@ -371,18 +369,6 @@ _MVN_DEPENDENCIES = {
         {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation', 'required':True},
     ]
 }
-
-def _is_modular_jvm(java_home):
-    release_file = os.path.join(java_home, 'release')
-    if os.path.isfile(release_file) and os.access(release_file, os.R_OK):
-        p = re.compile(r'JAVA_VERSION="(.*)"')
-        with open(release_file) as f:
-            for l in f.readlines():
-                m = p.match(l)
-                if m:
-                    version = m.group(1)
-                    return not (version.startswith('1.8.') or version.startswith('8.'))
-    return True
 
 def _main(argv):
 
@@ -446,10 +432,7 @@ def _main(argv):
         cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TESTS']]
         truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
         tck = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TCK']]
-        if _is_modular_jvm(parsed_args.graalvm_home):
-            cp.extend(tck)
-        else:
-            boot.extend(tck)
+        cp.extend(tck)
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
                 cp.append(_ClassPathEntry(os.path.abspath(e)))

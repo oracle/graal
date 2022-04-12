@@ -56,7 +56,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public class IsolateArgumentParser {
     private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
-                    SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread};
+                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
@@ -71,11 +71,6 @@ public class IsolateArgumentParser {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public IsolateArgumentParser() {
-    }
-
-    @Fold
-    public static boolean isSupported() {
-        return ImageSingletons.contains(IsolateArgumentParser.class);
     }
 
     @Fold
@@ -134,8 +129,10 @@ public class IsolateArgumentParser {
     private static long toLong(Object value) {
         if (value instanceof Boolean) {
             return ((Boolean) value) ? 1 : 0;
+        } else if (value instanceof Integer) {
+            return (Integer) value;
         } else if (value instanceof Long) {
-            return ((Long) value);
+            return (Long) value;
         } else {
             throw VMError.shouldNotReachHere("Unexpected option value: " + value);
         }
@@ -158,18 +155,19 @@ public class IsolateArgumentParser {
         }
 
         CLongPointer numericValue = StackValue.get(Long.BYTES);
-        for (int i = 0; i < argc; i++) {
+        // Ignore the first argument as it represents the executable file name.
+        for (int i = 1; i < argc; i++) {
             CCharPointer arg = argv.read(i);
             if (arg.isNonNull()) {
                 CCharPointer tail = matchPrefix(arg);
                 if (tail.isNonNull()) {
-                    tail = matchXOption(tail);
-                    if (tail.isNonNull()) {
-                        parseXOption(parsedArgs, numericValue, tail);
+                    CCharPointer xOptionTail = matchXOption(tail);
+                    if (xOptionTail.isNonNull()) {
+                        parseXOption(parsedArgs, numericValue, xOptionTail);
                     } else {
-                        tail = matchXXOption(arg);
-                        if (tail.isNonNull()) {
-                            parseXXOption(parsedArgs, numericValue, tail);
+                        CCharPointer xxOptionTail = matchXXOption(tail);
+                        if (xxOptionTail.isNonNull()) {
+                            parseXXOption(parsedArgs, numericValue, xxOptionTail);
                         }
                     }
                 }
@@ -190,8 +188,14 @@ public class IsolateArgumentParser {
         }
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean getBooleanOptionValue(int index) {
         return PARSED_OPTION_VALUES[index] == 1;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int getIntOptionValue(int index) {
+        return (int) PARSED_OPTION_VALUES[index];
     }
 
     private static Object getOptionValue(int index) {
@@ -200,6 +204,8 @@ public class IsolateArgumentParser {
         if (optionValueType == Boolean.class) {
             assert value == 0 || value == 1;
             return value == 1;
+        } else if (optionValueType == Integer.class) {
+            return (int) value;
         } else if (optionValueType == Long.class) {
             return value;
         } else {
@@ -277,7 +283,7 @@ public class IsolateArgumentParser {
             for (int i = 0; i < OPTION_COUNT; i++) {
                 int pos = OPTION_NAME_POSITIONS.get().read(i);
                 CCharPointer optionName = OPTION_NAMES.get().addressOf(pos);
-                if (OPTION_TYPES.get().read(i) == OptionValueType.Long && parseNumericXXOption(tail, optionName, numericValue)) {
+                if (OptionValueType.isNumeric(OPTION_TYPES.get().read(i)) && parseNumericXXOption(tail, optionName, numericValue)) {
                     parsedArgs.write(i, numericValue.read());
                     break;
                 }
@@ -411,16 +417,24 @@ public class IsolateArgumentParser {
 
     private static class OptionValueType {
         public static byte Boolean = 1;
-        public static byte Long = 2;
+        public static byte Integer = 2;
+        public static byte Long = 3;
 
         public static byte fromClass(Class<?> c) {
             if (c == Boolean.class) {
                 return Boolean;
+            } else if (c == Integer.class) {
+                return Integer;
             } else if (c == Long.class) {
                 return Long;
             } else {
                 throw VMError.shouldNotReachHere("Option value has unexpected type: " + c);
             }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isNumeric(byte optionValueType) {
+            return optionValueType == Integer || optionValueType == Long;
         }
     }
 }

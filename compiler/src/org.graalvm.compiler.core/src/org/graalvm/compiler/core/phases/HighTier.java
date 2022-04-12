@@ -111,7 +111,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new BoxNodeIdentityPhase());
 
         if (PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(new PartialEscapePhase(true, canonicalizer, options).setFinalPEA());
+            appendPhase(PartialEscapePhase.createFinalPEA(true, canonicalizer, null, options));
         }
 
         if (OptReadElimination.getValue(options)) {

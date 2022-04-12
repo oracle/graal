@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.phases;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -54,9 +58,10 @@ import org.graalvm.compiler.phases.contract.PhaseSizeContract;
 import jdk.vm.ci.meta.JavaMethod;
 
 /**
- * Base class for all compiler phases. Subclasses should be stateless. There will be one global
- * instance for each compiler phase that is shared for all compilations. VM-, target- and
- * compilation-specific data can be passed with a context object.
+ * Base class for all compiler phases. Subclasses should be stateless, except for subclasses of
+ * {@link SingleRunSubphase}. There will be one global instance for each compiler phase that is
+ * shared for all compilations. VM-, target- and compilation-specific data can be passed with a
+ * context object.
  */
 public abstract class BasePhase<C> implements PhaseSizeContract {
 
@@ -132,7 +137,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<BasePhaseStatistics>() {
+    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected BasePhaseStatistics computeValue(Class<?> c) {
             return new BasePhaseStatistics(c);
@@ -191,8 +196,18 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    /**
+     * An extension point for subclasses, called at the start of
+     * {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     */
+    protected void startApplyHook() {
+
+    }
+
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+        startApplyHook();
+
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
@@ -404,5 +419,18 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         private ExcludePhaseFilter(EconomicMap<Pattern, MethodFilter> filters) {
             this.filters = filters;
         }
+    }
+
+    /**
+     * Marker interface for fields inside phase classes that capture some state that is shared
+     * across all compilations. Such fields must be declared {@code private static volatile}. They
+     * should only be used under exceptional circumstances, e.g., to guard code that adds a
+     * {@linkplain Runtime#addShutdownHook(Thread) runtime shutdown hook} for printing global phase
+     * statistics at VM shutdown.
+     */
+    @Target(value = {ElementType.FIELD})
+    @Retention(value = RetentionPolicy.RUNTIME)
+    public static @interface SharedGlobalPhaseState {
+
     }
 }

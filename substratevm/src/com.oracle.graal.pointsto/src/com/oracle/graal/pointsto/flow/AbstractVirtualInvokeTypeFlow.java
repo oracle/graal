@@ -50,8 +50,6 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
 
     @SuppressWarnings("unused") protected volatile Object callees;
 
-    private boolean isContextInsensitive;
-
     /**
      * The context insensitive invoke needs to keep track of all the locations it is swapped in. For
      * all the other invokes this is null, their location is the source node location.
@@ -67,14 +65,6 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         super(bb, methodFlows, original);
     }
 
-    public void markAsContextInsensitive() {
-        isContextInsensitive = true;
-    }
-
-    public boolean isContextInsensitive() {
-        return isContextInsensitive;
-    }
-
     public boolean addInvokeLocation(BytecodePosition invokeLocation) {
         if (invokeLocation != null) {
             return addElement(this, INVOKE_LOCATIONS_UPDATER, invokeLocation);
@@ -82,7 +72,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         return false;
     }
 
-    /** The context insensitive virual invoke returns all the locations where it is swapped in. */
+    /** The context insensitive virtual invoke returns all the locations where it is swapped in. */
     public Collection<BytecodePosition> getInvokeLocations() {
         if (isContextInsensitive) {
             return getElements(this, INVOKE_LOCATIONS_UPDATER);
@@ -110,11 +100,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
     public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
-        /* When the receiver flow saturates start observing the flow of the receiver type. */
-        replaceObservedWith(bb, receiverType);
-    }
+    public abstract void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed);
 
     protected boolean addCallee(AnalysisMethod callee) {
         boolean add = addElement(this, CALLEES_UPDATER, callee);

@@ -32,21 +32,15 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordFactory;
 
 @TargetClass(className = "java.lang.Continuation", onlyWith = LoomJDK.class)
 public final class Target_java_lang_Continuation {
     @Alias//
     Runnable target;
+
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    public StoredContinuation internalContinuation;
+    public Continuation internal;
 
     @Alias//
     short cs;
@@ -59,20 +53,6 @@ public final class Target_java_lang_Continuation {
     // Checkstyle: stop
     static byte FLAG_SAFEPOINT_YIELD = 1 << 1;
     // Checkstyle: resume
-
-    /**
-     * Frame pointer of
-     * {@link Target_java_lang_Continuation#enterSpecial(Target_java_lang_Continuation, boolean)} if
-     * continuation is running, else frame pointer of
-     * {@link JavaContinuations#yield(Target_java_lang_Continuation)}.
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Pointer sp = WordFactory.nullPointer();
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    CodePointer ip = WordFactory.nullPointer();
-
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    int monitorBefore;
 
     @SuppressWarnings("unused")
     @Alias
@@ -87,7 +67,7 @@ public final class Target_java_lang_Continuation {
 
     @Substitute
     private boolean isEmpty() {
-        return sp.isNull();
+        return internal.isEmpty();
     }
 
     @Alias
@@ -137,14 +117,14 @@ public final class Target_java_lang_Continuation {
     @Substitute
     @NeverInline("access stack pointer")
     private static int isPinned0(Target_java_lang_ContinuationScope scope) {
-        return JavaContinuations.isPinned(
+        return LoomSupport.isPinned(
                         SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class),
                         scope, true);
     }
 
     @Substitute
     boolean isStarted() {
-        return this.sp.isNonNull();
+        return internal.isStarted();
     }
 
     @Alias
@@ -155,7 +135,7 @@ public final class Target_java_lang_Continuation {
     public static native Target_java_lang_Continuation getCurrentContinuation(Target_java_lang_ContinuationScope scope);
 
     @Substitute
-    private static void enterSpecial(Target_java_lang_Continuation cont, boolean isContinue) {
+    static void enterSpecial(Target_java_lang_Continuation cont, boolean isContinue) {
         enter(cont, isContinue);
     }
 
@@ -166,56 +146,30 @@ public final class Target_java_lang_Continuation {
     private static int doYield(int scopes) {
         assert scopes == 0;
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
-        Target_java_lang_Continuation cont = JavaContinuations.getContinuation(tjlt);
+        Target_java_lang_Continuation cont = LoomSupport.getContinuation(tjlt);
 
-        int pinnedReason = JavaContinuations.isPinned(tjlt, cont.getScope(), true);
+        int pinnedReason = LoomSupport.isPinned(tjlt, cont.getScope(), true);
         if (pinnedReason != 0) {
             return pinnedReason;
         }
 
-        return JavaContinuations.yield(cont);
+        return LoomSupport.yield(cont);
     }
 
     @Substitute
     private void finish() {
         done = true;
-        sp = WordFactory.nullPointer();
-        ip = WordFactory.nullPointer();
         assert isEmpty();
     }
 
     @Substitute
-    @NeverInline("access stack pointer")
-    @Uninterruptible(reason = "write stack", calleeMustBe = false)
     private static void enter(Target_java_lang_Continuation cont, boolean isContinue) {
-        Pointer currentSP = KnownIntrinsics.readCallerStackPointer();
-        CodePointer currentIP = KnownIntrinsics.readReturnAddress();
-
-        if (isContinue) {
-            assert cont.internalContinuation != null;
-            assert cont.ip.isNonNull();
-
-            byte[] buf = StoredContinuationImpl.allocateBuf(cont.internalContinuation);
-            StoredContinuationImpl.writeBuf(cont.internalContinuation, buf);
-
-            for (int i = 0; i < buf.length; i++) {
-                currentSP.writeByte(i - buf.length, buf[i]);
-            }
-
-            CodePointer ip = cont.ip;
-
-            cont.internalContinuation = null;
-            cont.sp = currentSP;
-            cont.ip = currentIP;
-            KnownIntrinsics.farReturn(0, currentSP.subtract(buf.length), ip, false);
-        } else {
-            assert cont.sp.isNull() && cont.ip.isNull() && cont.internalContinuation == null;
-            cont.monitorBefore = 0;
-            cont.sp = currentSP;
-            cont.ip = currentIP;
-
-            cont.enter0();
+        if (!isContinue) {
+            assert cont.internal == null;
+            cont.internal = new Continuation(cont::enter0);
         }
+
+        cont.internal.enter();
     }
 
     @Substitute
@@ -240,17 +194,17 @@ public final class Target_java_lang_Continuation {
 
         if (innermost != cont) {
             Target_java_lang_ContinuationScope scope = cont.getScope();
-            int pinned = JavaContinuations.isPinned(thread, cont.getScope(), false);
+            int pinned = LoomSupport.isPinned(thread, cont.getScope(), false);
             if (pinned != 0) {
                 return pinned;
             }
             cont.yieldInfo = scope;
         }
-        int preemptResult = JavaContinuations.tryPreempt(this, SubstrateUtil.cast(thread, Thread.class));
-        if (preemptResult == 0) {
+        int preemptResult = internal.tryPreempt(SubstrateUtil.cast(thread, Thread.class));
+        if (preemptResult == Continuation.YIELD_SUCCESS) {
             flags = FLAG_SAFEPOINT_YIELD;
         }
-        return preemptResult;
+        return LoomSupport.convertInternalYieldResult(preemptResult);
     }
 }
 

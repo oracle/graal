@@ -199,6 +199,11 @@ public class SingleTypeState extends TypeState {
     }
 
     @Override
+    public boolean isMerged() {
+        return merged;
+    }
+
+    @Override
     public int hashCode() {
         int result = 1;
         result = 31 * result + Arrays.hashCode(objects);

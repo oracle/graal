@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ public abstract class Message {
      * @since 19.0
      * @deprecated Use {@link #Message(Class, String, int, Class, Class[])}.
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     protected Message(Class<? extends Library> libraryClass, String messageName, Class<?> returnType, Class<?>... parameterTypes) {
         this(libraryClass, -1, messageName, returnType, parameterTypes);
     }

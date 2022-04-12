@@ -33,11 +33,14 @@ import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -46,6 +49,7 @@ import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -71,7 +75,8 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
             return Integer.MIN_VALUE;
         }
-        return safeDiv(x, y);
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        return safeDiv(x, PiNode.piCastNonZero(y, guard), guard);
     }
 
     @Snippet
@@ -82,7 +87,8 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
             return Long.MIN_VALUE;
         }
-        return safeDiv(x, y);
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        return safeDiv(x, PiNode.piCastNonZero(y, guard), guard);
     }
 
     @Snippet
@@ -93,7 +99,8 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
             return 0;
         }
-        return safeRem(x, y);
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        return safeRem(x, PiNode.piCastNonZero(y, guard), guard);
     }
 
     @Snippet
@@ -104,7 +111,8 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
             return 0;
         }
-        return safeRem(x, y);
+        GuardingNode guard = SnippetAnchorNode.anchor();
+        return safeRem(x, PiNode.piCastNonZero(y, guard), guard);
     }
 
     @Snippet
@@ -154,16 +162,16 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
     }
 
     @NodeIntrinsic(SafeSignedDivNode.class)
-    private static native int safeDiv(int x, int y);
+    private static native int safeDiv(int x, int y, GuardingNode guard);
 
     @NodeIntrinsic(SafeSignedDivNode.class)
-    private static native long safeDiv(long x, long y);
+    private static native long safeDiv(long x, long y, GuardingNode guard);
 
     @NodeIntrinsic(SafeSignedRemNode.class)
-    private static native int safeRem(int x, int y);
+    private static native int safeRem(int x, int y, GuardingNode guard);
 
     @NodeIntrinsic(SafeSignedRemNode.class)
-    private static native long safeRem(long x, long y);
+    private static native long safeRem(long x, long y, GuardingNode guard);
 
     @NodeIntrinsic(SafeUnsignedDivNode.class)
     private static native int safeUDiv(int x, int y);
@@ -243,7 +251,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             args.add("y", node.getY());
 
             IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroCheck() == null && yStamp.contains(0));
+            boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
             args.addConst("needsZeroCheck", needsZeroCheck);
             if (node instanceof SignedDivNode || node instanceof SignedRemNode) {
                 args.addConst("needsBoundsCheck", needsSignedBoundsCheck);
@@ -262,24 +270,32 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
 }
 
 @NodeInfo
+@NodeIntrinsicFactory
 class SafeSignedDivNode extends SignedDivNode {
     public static final NodeClass<SafeSignedDivNode> TYPE = NodeClass.create(SafeSignedDivNode.class);
 
-    protected SafeSignedDivNode(ValueNode x, ValueNode y) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode x, ValueNode y, ValueNode guard) {
+        int bits = ((IntegerStamp) x.stamp(NodeView.DEFAULT)).getBits();
+        ValueNode v = new SafeSignedDivNode(x, y, (GuardingNode) guard);
+        b.addPush(bits == 32 ? JavaKind.Int : JavaKind.Long, v);
+        b.append(v);
+        return true;
+    }
+
+    protected SafeSignedDivNode(ValueNode x, ValueNode y, GuardingNode guard) {
         /*
          * All "safe" division nodes use null as the zeroCheck guard. Since the safe nodes are still
          * fixed and no code in the backend depends on the guard information, so having an explicit
          * guard is not necessary. Passing in the guard via a snippet would be tricky (it is not a
          * GuardingNode but an arbitrary ValueNode until after snippet instantiation).
          */
-        super(TYPE, x, y, null);
+        super(TYPE, x, y, guard);
     }
 
     @Override
     protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
-        assert forZeroCheck == null;
         // note that stateBefore is irrelevant, as this "safe" variant will not deoptimize
-        return new SafeSignedDivNode(forX, forY);
+        return new SafeSignedDivNode(forX, forY, forZeroCheck);
     }
 
     @Override
@@ -293,17 +309,25 @@ class SafeSignedDivNode extends SignedDivNode {
 }
 
 @NodeInfo
+@NodeIntrinsicFactory
 class SafeSignedRemNode extends SignedRemNode {
     public static final NodeClass<SafeSignedRemNode> TYPE = NodeClass.create(SafeSignedRemNode.class);
 
-    protected SafeSignedRemNode(ValueNode x, ValueNode y) {
-        super(TYPE, x, y, null);
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode x, ValueNode y, ValueNode guard) {
+        int bits = ((IntegerStamp) x.stamp(NodeView.DEFAULT)).getBits();
+        SafeSignedRemNode v = new SafeSignedRemNode(x, y, (GuardingNode) guard);
+        b.addPush(bits == 32 ? JavaKind.Int : JavaKind.Long, v);
+        b.append(v);
+        return true;
+    }
+
+    protected SafeSignedRemNode(ValueNode x, ValueNode y, GuardingNode guard) {
+        super(TYPE, x, y, guard);
     }
 
     @Override
     protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
-        assert forZeroCheck == null;
-        return new SafeSignedRemNode(forX, forY);
+        return new SafeSignedRemNode(forX, forY, forZeroCheck);
     }
 
     @Override

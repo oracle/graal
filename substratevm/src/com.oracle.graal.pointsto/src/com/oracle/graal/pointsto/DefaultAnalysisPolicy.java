@@ -36,6 +36,8 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -119,13 +121,32 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
+    public TypeState dynamicNewInstanceState(PointsToAnalysis bb, TypeState currentState, TypeState newState, BytecodeLocation allocationSite, AnalysisContext allocationContext) {
+        /* Just return the new type state as there is no allocation context. */
+        return newState.forNonNull(bb);
+    }
+
+    @Override
+    public TypeState cloneState(PointsToAnalysis bb, TypeState currentState, TypeState inputState, BytecodeLocation cloneSite, AnalysisContext allocationContext) {
+        return inputState.forNonNull(bb);
+    }
+
+    @Override
+    public void linkClonedObjects(PointsToAnalysis bb, TypeFlow<?> inputFlow, CloneTypeFlow cloneFlow, BytecodePosition source) {
+        /*
+         * Nothing to do for the context insensitive analysis. The source and clone flows are
+         * identical, thus their elements are modeled by the same array or field flows.
+         */
+    }
+
+    @Override
     public BytecodeLocation createAllocationSite(PointsToAnalysis bb, int bci, AnalysisMethod method) {
         return BytecodeLocation.create(bci, method);
     }
 
     @Override
     public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        return new UnifiedFieldTypeStore(field, object);
+        return new UnifiedFieldTypeStore(field, object, new ContextInsensitiveFieldTypeFlow(field, field.getType(), object));
     }
 
     @Override
@@ -285,7 +306,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             }
 
             /* Link the saturated invoke. */
-            AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source);
+            AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false);
             contextInsensitiveInvoke.addInvokeLocation(getSource());
 
             /*
@@ -319,7 +340,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         @Override
         public final Collection<AnalysisMethod> getCallees() {
             if (isSaturated()) {
-                return targetMethod.getContextInsensitiveInvoke().getCallees();
+                return targetMethod.getContextInsensitiveVirtualInvoke().getCallees();
             } else {
                 return super.getCallees();
             }
@@ -359,7 +380,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone();
+            assert (this.isClone() || this.isContextInsensitive()) && !isSaturated();
             /* The receiver state has changed. Process the invoke. */
 
             /*

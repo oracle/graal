@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -81,18 +80,11 @@ public abstract class InvokeEspressoNode extends Node {
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments,
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
-                    @Cached(value = "createDirectCallNode(method.getCallTargetNoInit())") DirectCallNode directCallNode,
+                    @Cached(value = "createDirectCallNode(method.getMethod().getCallTargetForceInit())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
 
         checkValidInvoke(method.getMethod(), receiver);
-        // explicitly ensure declaring class is initialized, since we use the
-        // NoInit variant of getCallTarget, because obtaining the cached direct
-        // call node is run under AST locking
-        if (!cachedMethod.getMethod().getDeclaringKlass().isInitialized()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            cachedMethod.getMethod().getDeclaringKlass().safeInitialize();
-        }
 
         int expectedArity = cachedMethod.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
@@ -144,7 +136,10 @@ public abstract class InvokeEspressoNode extends Node {
             return indirectCallNode.call(method.getCallTarget(), argumentsWithReceiver);
         }
 
-        return indirectCallNode.call(method.getCallTarget(), /* static => no receiver */ convertedArguments);
+        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*
+                                                                                   * static => no
+                                                                                   * receiver
+                                                                                   */ convertedArguments);
     }
 
     private static void checkValidInvoke(Method method, Object receiver) {

@@ -15,6 +15,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
   }
   ```
 * (GR-35010) Added API for Truffle Languages (`Language#getWebsite()`) and Instruments (`Instrument#getWebsite()`) to provide website information.
+* (GR-33851) Dropped Java 8 support.
 
 ## Version 22.0.0
 * (GR-31170) Native Image API: Added `WINDOWS_AARCH64` Platform.

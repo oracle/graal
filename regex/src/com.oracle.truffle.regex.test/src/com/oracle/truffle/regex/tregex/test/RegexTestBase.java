@@ -139,6 +139,10 @@ public abstract class RegexTestBase {
         }
     }
 
+    void testUnsupported(String pattern, String flags) {
+        Assert.assertTrue(compileRegex(pattern, flags).isNull());
+    }
+
     private static Charset encodingToCharSet(Encodings.Encoding encoding) {
         switch (encoding.getName()) {
             case "UTF-8":
@@ -170,8 +174,10 @@ public abstract class RegexTestBase {
             sb.append(", ");
             sb.append(result.invokeMember("getEnd", i).asInt());
         }
-        sb.append(", ");
-        sb.append(result.getMember("lastGroup").asInt());
+        if (captureGroupBoundsAndLastGroup.length % 2 == 1) {
+            sb.append(", ");
+            sb.append(result.getMember("lastGroup").asInt());
+        }
         Assert.fail(sb.append("]").toString());
     }
 }

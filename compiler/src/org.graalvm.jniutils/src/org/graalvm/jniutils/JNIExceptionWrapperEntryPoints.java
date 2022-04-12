@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Entry points in HotSpot for exception handling from a JNI native method.
@@ -49,7 +47,7 @@ final class JNIExceptionWrapperEntryPoints {
      * @return the updated {@link Throwable}
      */
     static Throwable updateStackTrace(Throwable target, byte[] serializedStackTrace) {
-        try (DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(serializedStackTrace)))) {
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(serializedStackTrace))) {
             int len = in.readInt();
             StackTraceElement[] elements = new StackTraceElement[len];
             for (int i = 0; i < len; i++) {
@@ -79,7 +77,7 @@ final class JNIExceptionWrapperEntryPoints {
 
     static byte[] getStackTrace(Throwable throwable) {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        try (DataOutputStream out = new DataOutputStream(new GZIPOutputStream(bout))) {
+        try (DataOutputStream out = new DataOutputStream(bout)) {
             StackTraceElement[] stackTraceElements = throwable.getStackTrace();
             out.writeInt(stackTraceElements.length);
             for (StackTraceElement stackTraceElement : stackTraceElements) {

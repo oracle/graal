@@ -42,7 +42,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -133,8 +132,8 @@ public class JNIFunctionTablesFeature implements Feature {
             assert annotation != null : "only entry points allowed in class";
             CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> {
                 CEntryPointData data = CEntryPointData.create(method);
-                if (!SubstrateOptions.JNIExportSymbols.getValue() && data.getPublishAs() != CEntryPointOptions.Publish.NotPublished) {
-                    data = data.copyWithPublishAs(CEntryPointOptions.Publish.NotPublished);
+                if (!SubstrateOptions.JNIExportSymbols.getValue() && data.getPublishAs() != CEntryPoint.Publish.NotPublished) {
+                    data = data.copyWithPublishAs(CEntryPoint.Publish.NotPublished);
                 }
                 return data;
             });
@@ -154,7 +153,7 @@ public class JNIFunctionTablesFeature implements Feature {
                     JNIFieldAccessorMethod method = ImageSingletons.lookup(JNIFieldAccessorMethod.Factory.class).create(kind, isSetter, isStatic, generatedMethodClass, constantPool,
                                     wrappedMetaAccess);
                     AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                    access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
+                    access.getBigBang().addRootMethod(analysisMethod, true).registerAsEntryPoint(method.createEntryPointData());
                     generated.add(method);
                 }
             }
@@ -167,7 +166,7 @@ public class JNIFunctionTablesFeature implements Feature {
             for (Operation op : Operation.values()) {
                 JNIPrimitiveArrayOperationMethod method = new JNIPrimitiveArrayOperationMethod(kind, op, generatedMethodClass, constantPool, wrappedMetaAccess);
                 AnalysisMethod analysisMethod = access.getUniverse().lookup(method);
-                access.getBigBang().addRootMethod(analysisMethod).registerAsEntryPoint(method.createEntryPointData());
+                access.getBigBang().addRootMethod(analysisMethod, true).registerAsEntryPoint(method.createEntryPointData());
                 generated.add(method);
             }
         }

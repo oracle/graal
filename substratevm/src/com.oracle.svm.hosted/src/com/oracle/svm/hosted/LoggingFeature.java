@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Field;
 import java.util.logging.LogManager;
 
 import org.graalvm.compiler.options.Option;
@@ -35,6 +36,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 @AutomaticFeature
 public class LoggingFeature implements Feature {
@@ -51,6 +53,8 @@ public class LoggingFeature implements Feature {
 
     private boolean reflectionConfigured = false;
 
+    private Field loggersField;
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return LoggingFeature.Options.EnableLoggingFeature.getValue();
@@ -60,11 +64,14 @@ public class LoggingFeature implements Feature {
     public void duringSetup(DuringSetupAccess access) {
         /* Ensure that the log manager is initialized and the initial configuration is read. */
         LogManager.getLogManager();
+        loggersField = ((DuringSetupAccessImpl) access).findField("sun.util.logging.PlatformLogger", "loggers");
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        access.rescanRoot(loggersField);
 
         if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(java.util.logging.Logger.class).isPresent()) {
             registerForReflection(java.util.logging.ConsoleHandler.class);

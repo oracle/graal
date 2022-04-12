@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -174,8 +174,8 @@ public class ExportsParser extends AbstractParser<ExportsData> {
                 List<AnnotationMirror> exportedMessageMirrors = getRepeatedAnnotation(member.getAnnotationMirrors(), types.ExportMessage);
                 if (!exportedMessageMirrors.isEmpty()) {
                     model.addError("Class declares @%s annotations but does not export any libraries. "//
-                                    + "Exported messages cannot be resoved without exported library. "//
-                                    + "Add @%s(MyLibrary.class) to the class ot resolve this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
+                                    + "Exported messages cannot be resolved without exported library. "//
+                                    + "Add @%s(MyLibrary.class) to the class to fix this.", getSimpleName(types.ExportMessage), getSimpleName(types.ExportLibrary));
                     return model;
                 }
             }

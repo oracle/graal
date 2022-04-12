@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,7 +152,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
 
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
+    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PrintGraphTarget v = PrintGraph.getValueOrDefault(values);

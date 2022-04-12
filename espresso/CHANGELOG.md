@@ -1,8 +1,27 @@
 # Espresso Changelog
 
+## Version 22.1.0
+### User-visible changes
+* Added HotSwap support for changing the super class and implemented interfaces.
+* Added HotSwap support for 'Move Field in Hierarchy' refactoring where state is preserved.
+* HotSwap support for changing fields and class access modifiers are now turned on by default.
+### Internal changes
+* The truffle `AbstractTruffleException` API is now fully adopted.
+* Better integration with the Truffle safepoint API
+* Add new implementation for reading jimages (`libs/modules`) . It is used by default, `--java.JImage=native` can be used to revert to the old implementation.
+* New command: `<ProcessReferences>`. Allows embedders to manually trigger reference processing in single-threaded mode.
+
 ## Version 22.0.0
+### User-visible changes
+* New HotSwap support for changing fields. Enable with the `--java.ArbitraryChangesSupport=true` experimental flag.
+* New HotSwap support for changing class access modifiers. Enable with the `--java.ArbitraryChangesSupport=true` experimental flag.
+* Added support for running native code with the LLVM runtime. This can be enabled with the `--java.NativeBackend=nfi-llvm` experimental flag.
+  Native JDK libraries can be installed with `gu install espresso-llvm`. When installed, those libraries will be picked up by the `nfi-llvm` native backend.
+  This allows to bypass some limitations of the default native backend (`nfi-dlmopen`). In particular, it avoids crashes that can happen on some glibc versions when using multiple contexts.
 ### Internal changes
 * Espresso adopted the new Frame API.
+### Noteworthy fixes
+* Fix Strings sometimes not properly displayed in the debugger view through JDWP
 
 
 ## Version 21.3.0

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,7 +86,6 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
 import org.graalvm.compiler.debug.GlobalMetrics;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.MetricKey;
 import org.graalvm.compiler.debug.TTY;
@@ -102,7 +101,6 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalIsolate;
 import org.graalvm.libgraal.LibGraalScope;
@@ -131,8 +129,7 @@ public final class CompileTheWorld {
     }
 
     /**
-     * Magic token to denote that JDK classes are to be compiled. For JDK 8, the classes in
-     * {@code rt.jar} are compiled. Otherwise the classes in the Java runtime image are compiled.
+     * Magic token to denote that the classes in the Java runtime image are compiled.
      */
     public static final String SUN_BOOT_CLASS_PATH = "sun.boot.class.path";
 
@@ -331,7 +328,7 @@ public final class CompileTheWorld {
             return stackTraceBuffer.get();
         }
 
-        private final ThreadLocal<StackTraceBuffer> stackTraceBuffer = new ThreadLocal<StackTraceBuffer>() {
+        private final ThreadLocal<StackTraceBuffer> stackTraceBuffer = new ThreadLocal<>() {
             @Override
             protected StackTraceBuffer initialValue() {
                 StackTraceBuffer buffer = new StackTraceBuffer(10_000);
@@ -427,22 +424,7 @@ public final class CompileTheWorld {
     public void compile() throws Throwable {
         try (LibGraalParams libgraal = LibGraal.isAvailable() ? new LibGraalParams(compilerOptions) : null) {
             if (SUN_BOOT_CLASS_PATH.equals(inputClassPath)) {
-                String bcpEntry = null;
-                if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                    final String[] entries = System.getProperty(SUN_BOOT_CLASS_PATH).split(File.pathSeparator);
-                    for (int i = 0; i < entries.length && bcpEntry == null; i++) {
-                        String entry = entries[i];
-                        File entryFile = new File(entry);
-                        if (entryFile.getName().endsWith("rt.jar") && entryFile.isFile()) {
-                            bcpEntry = entry;
-                        }
-                    }
-                    if (bcpEntry == null) {
-                        throw new GraalError("Could not find rt.jar on boot class path %s", System.getProperty(SUN_BOOT_CLASS_PATH));
-                    }
-                } else {
-                    bcpEntry = JRT_CLASS_PATH_ENTRY;
-                }
+                String bcpEntry = JRT_CLASS_PATH_ENTRY;
                 compile(bcpEntry, libgraal);
             } else {
                 compile(inputClassPath, libgraal);
@@ -531,7 +513,7 @@ public final class CompileTheWorld {
         public List<String> getClassNames() throws IOException {
             List<String> classNames = new ArrayList<>();
             String root = dir.getPath();
-            SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+            SimpleFileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
                     if (attrs.isRegularFile()) {

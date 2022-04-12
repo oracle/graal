@@ -67,6 +67,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -79,6 +80,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -117,6 +119,7 @@ import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.jni.JniVersion;
 import com.oracle.truffle.espresso.jni.NativeEnv;
+import com.oracle.truffle.espresso.jni.NoSafepoint;
 import com.oracle.truffle.espresso.jvmti.JVMTI;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
@@ -127,6 +130,7 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.overlay.ReferenceSupport;
+import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -135,9 +139,9 @@ import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
+import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
-import com.oracle.truffle.espresso.substitutions.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -146,6 +150,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
 import com.oracle.truffle.espresso.vm.structs.Structs;
@@ -179,8 +184,6 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final long rtldDefaultValue;
     private final long processHandleValue;
 
-    private final JavaVersion javaVersion;
-
     private final Structs structs;
 
     private final JniEnv jniEnv;
@@ -188,9 +191,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final JVMTI jvmti;
 
     private @Pointer TruffleObject mokapotEnvPtr;
-
-    // libjava must be loaded after mokapot.
-    private final @Pointer TruffleObject javaLibrary;
+    private @Pointer TruffleObject javaLibrary;
 
     private static String stringify(List<Path> paths) {
         StringJoiner joiner = new StringJoiner(File.pathSeparator);
@@ -216,21 +217,20 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
     }
 
+    public Management getManagement() {
+        return management;
+    }
+
+    public @Pointer TruffleObject getJavaLibrary() {
+        return javaLibrary;
+    }
+
     public static final class GlobalFrameIDs {
         private static final AtomicLong id = new AtomicLong();
 
         public static long getID() {
             return id.incrementAndGet();
         }
-    }
-
-    @Override
-    public JavaVersion getJavaVersion() {
-        return javaVersion;
-    }
-
-    public @Pointer TruffleObject getJavaLibrary() {
-        return javaLibrary;
     }
 
     private @Pointer TruffleObject loadJavaLibrary(List<Path> bootLibraryPath) {
@@ -243,14 +243,15 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getNativeAccess().loadLibrary(bootLibraryPath, "java", true);
     }
 
-    private void libJavaOnLoad(TruffleObject libJava) {
+    private void initializeJavaLibrary(TruffleObject libJava) {
+        // HotSpot calls libjava's JNI_OnLoad only on 8.
         if (getJavaVersion().java8OrEarlier()) {
-            // The JNI_OnLoad handling is normally done by method load in
-            // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
-            // explicitly so we have to check for JNI_OnLoad as well
-            // libjava is initialized after libjvm (Espresso VM native context).
-
-            // TODO(peterssen): Use JVM_FindLibraryEntry.
+            /*
+             * The JNI_OnLoad handling is normally done by method load in
+             * java.lang.ClassLoader$NativeLibrary, but the VM loads the base library explicitly so
+             * we have to check for JNI_OnLoad as well.
+             */
+            EspressoError.guarantee(getVM() != null, "The VM must be initialized before libjava's JNI_OnLoad");
             TruffleObject jniOnLoad = getNativeAccess().lookupAndBindSymbol(libJava, "JNI_OnLoad", NativeSignature.create(NativeType.INT, NativeType.POINTER, NativeType.POINTER));
             if (jniOnLoad != null) {
                 try {
@@ -279,15 +280,23 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (major == 1) {
                 // Version 1.X
                 int minor = (versionInfo & 0x00FF0000) >> 16;
-                return new JavaVersion(minor);
+                return JavaVersion.forVersion(minor);
             } else {
                 // Version X.Y
-                return new JavaVersion(major);
+                return JavaVersion.forVersion(major);
             }
         } else {
             // JDK 14+
-            return new JavaVersion(JavaVersion.LATEST_SUPPORTED);
+            return JavaVersion.latestSupported();
         }
+    }
+
+    public void loadAndInitializeJavaLibrary(List<Path> searchPaths) {
+        assert javaLibrary == null : "java library already initialized";
+        this.javaLibrary = loadJavaLibrary(searchPaths);
+        JavaVersion javaVersion = findJavaVersion(this.javaLibrary);
+        getEspressoLanguage().tryInitializeJavaVersion(javaVersion);
+        initializeJavaLibrary(this.javaLibrary);
     }
 
     private VM(JniEnv jniEnv) {
@@ -350,24 +359,19 @@ public final class VM extends NativeEnv implements ContextAccess {
             getLogger().finest(() -> String.format("Got RTLD_DEFAULT=0x%016x and ProcessHandle=0x%016x", rtldDefaultValue, processHandleValue));
             assert getUncached().isPointer(this.mokapotEnvPtr);
             assert !getUncached().isNull(this.mokapotEnvPtr);
-
-            javaLibrary = loadJavaLibrary(props.bootLibraryPath());
-            javaVersion = findJavaVersion(javaLibrary);
-            libJavaOnLoad(javaLibrary);
-
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
-        }
-        if (getJavaVersion().java9OrLater()) {
-            stackWalk = new StackWalk();
-        } else {
-            stackWalk = null;
         }
     }
 
     @Override
     public EspressoContext getContext() {
         return jniEnv.getContext();
+    }
+
+    @Override
+    protected String getName() {
+        return "VM";
     }
 
     public @Pointer TruffleObject getJavaVM() {
@@ -377,6 +381,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert getUncached().isPointer(ptr);
             return ptr;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("getJavaVM failed", e);
         }
     }
@@ -562,6 +567,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
+    @NoSafepoint
     public static boolean JVM_IsNaN(double d) {
         return Double.isNaN(d);
     }
@@ -685,7 +691,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     case Void:
                     case ReturnAddress:
                     case Illegal:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
                 }
 
@@ -770,7 +776,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notifyAll is just forwarded from the guest.")
     public void JVM_MonitorNotifyAll(@JavaType(Object.class) StaticObject self, @Inject SubstitutionProfiler profiler) {
         try {
-            InterpreterToVM.monitorNotifyAll(self.getLock());
+            InterpreterToVM.monitorNotifyAll(self.getLock(getContext()));
         } catch (IllegalMonitorStateException e) {
             profiler.profile(0);
             Meta meta = getMeta();
@@ -782,7 +788,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .notify is just forwarded from the guest.")
     public void JVM_MonitorNotify(@JavaType(Object.class) StaticObject self, @Inject SubstitutionProfiler profiler) {
         try {
-            InterpreterToVM.monitorNotify(self.getLock());
+            InterpreterToVM.monitorNotify(self.getLock(getContext()));
         } catch (IllegalMonitorStateException e) {
             profiler.profile(0);
             Meta meta = getMeta();
@@ -793,14 +799,15 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl(isJni = true)
     @TruffleBoundary
     @SuppressFBWarnings(value = {"IMSE"}, justification = "Not dubious, .wait is just forwarded from the guest.")
+    @SuppressWarnings("try")
     public void JVM_MonitorWait(@JavaType(Object.class) StaticObject self, long timeout,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
 
         EspressoContext context = getContext();
         StaticObject currentThread = context.getCurrentThread();
-        try {
-            meta.getThreadAccess().fromRunnable(currentThread, (timeout > 0 ? State.TIMED_WAITING : State.WAITING));
+        State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
+        try (Transition transition = Transition.transition(context, state)) {
             if (context.EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
@@ -810,16 +817,16 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (report) {
                 context.reportMonitorWait(self, timeout);
             }
-            boolean timedOut = !InterpreterToVM.monitorWait(self.getLock(), timeout);
+            boolean timedOut = !InterpreterToVM.monitorWait(self.getLock(getContext()), timeout);
             if (report) {
                 context.reportMonitorWaited(self, timedOut);
             }
-        } catch (InterruptedException e) {
+        } catch (GuestInterruptedException e) {
             profiler.profile(0);
             if (getThreadAccess().isInterrupted(currentThread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            getThreadAccess().checkDeprecation();
+            getThreadAccess().fullSafePoint(currentThread);
         } catch (IllegalMonitorStateException e) {
             profiler.profile(1);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalMonitorStateException, e.getMessage());
@@ -830,7 +837,6 @@ public final class VM extends NativeEnv implements ContextAccess {
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
             }
-            meta.getThreadAccess().toRunnable(currentThread);
         }
     }
 
@@ -1471,7 +1477,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert context.getCurrentThread() != null;
         try {
             context.destroyVM(!context.ExitHost);
-        } catch (EspressoExitException exit) {
+        } catch (AbstractTruffleException exit) {
             // expected
         }
         return JNI_OK;
@@ -1558,14 +1564,14 @@ public final class VM extends NativeEnv implements ContextAccess {
             getThreadAccess().terminate(currentThread);
         } catch (EspressoException e) {
             try {
-                StaticObject ex = e.getExceptionObject();
+                StaticObject ex = e.getGuestException();
                 String exception = ex.getKlass().getExternalName();
                 String threadName = getThreadAccess().getThreadName(currentThread);
                 context.getLogger().warning(String.format("Exception: %s thrown while terminating thread \"%s\"", exception, threadName));
                 Method printStackTrace = ex.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
                 printStackTrace.invokeDirect(ex);
             } catch (EspressoException ee) {
-                String exception = ee.getExceptionObject().getKlass().getExternalName();
+                String exception = ee.getGuestException().getKlass().getExternalName();
                 context.getLogger().warning(String.format("Exception: %s thrown while trying to print stack trace", exception));
             } catch (EspressoExitException ee) {
                 // ignore
@@ -1611,7 +1617,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
-            StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+            StaticObject currentThread = getContext().getCurrentThread();
             if (currentThread == null) {
                 return JNI_EDETACHED;
             }
@@ -2040,15 +2046,49 @@ public final class VM extends NativeEnv implements ContextAccess {
         return handle2Sym.get(handle);
     }
 
+    private static boolean hasDynamicLoaderCacheValue = false;
+    private static boolean hasDynamicLoaderCacheInit = false;
+
+    private static boolean hasDynamicLoaderCache() {
+        if (hasDynamicLoaderCacheInit) {
+            return hasDynamicLoaderCacheValue;
+        }
+        // Implement JDK-8275703 on our side
+        if (OS.getCurrent() == OS.Darwin) {
+            String osVersion = System.getProperty("os.version");
+            // dynamic linker cache support on os.version >= 11.x
+            int major = 11;
+            int i = osVersion.indexOf('.');
+            try {
+                major = Integer.parseInt(i < 0 ? osVersion : osVersion.substring(0, i));
+            } catch (NumberFormatException e) {
+            }
+            hasDynamicLoaderCacheValue = major >= 11;
+        } else {
+            hasDynamicLoaderCacheValue = false;
+        }
+        hasDynamicLoaderCacheInit = true;
+        return hasDynamicLoaderCacheValue;
+    }
+
     @VmImpl
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
         getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
+
+        // We don't pass `throwException` down due to GR-37925, but even if Sulong would
+        // be fixed, it might be garbage if the used base lib has a mismatching signature,
+        // so we recompute its value instead on our side.
+        boolean throwException = !hasDynamicLoaderCache();
+
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
         if (lib == null) {
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_UnsatisfiedLinkError, name);
+            if (throwException) {
+                Meta meta = getMeta();
+                throw meta.throwExceptionWithMessage(meta.java_lang_UnsatisfiedLinkError, name);
+            }
+            return RawPointer.create(0);
         }
         long handle = getLibraryHandle(lib);
         handle2Lib.put(handle, lib);
@@ -2581,7 +2621,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(garcia) This must only be called from SecurityManager.getClassContext
         ArrayList<StaticObject> result = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(
-                        new FrameInstanceVisitor<Object>() {
+                        new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
                                 Method m = getMethodFromFrame(frameInstance);
@@ -2721,11 +2761,11 @@ public final class VM extends NativeEnv implements ContextAccess {
             result = (StaticObject) run.invokeDirect(action);
         } catch (EspressoException e) {
             profiler.profile(2);
-            if (meta.java_lang_Exception.isAssignableFrom(e.getExceptionObject().getKlass()) &&
-                            !meta.java_lang_RuntimeException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_Exception.isAssignableFrom(e.getGuestException().getKlass()) &&
+                            !meta.java_lang_RuntimeException.isAssignableFrom(e.getGuestException().getKlass())) {
                 profiler.profile(3);
                 StaticObject wrapper = meta.java_security_PrivilegedActionException.allocateInstance();
-                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getExceptionObject());
+                getMeta().java_security_PrivilegedActionException_init_Exception.invokeDirect(wrapper, e.getGuestException());
                 throw meta.throwException(wrapper);
             }
             profiler.profile(4);
@@ -3014,6 +3054,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         } else if (meta.java_lang_reflect_Constructor.isAssignableFrom(executable.getKlass())) {
             method = Method.getHostReflectiveConstructorRoot(executable, meta);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
 
@@ -3084,6 +3125,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert constructorRoot != null;
             return (StaticObject) getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.getHiddenObject(constructorRoot);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
     }
@@ -3557,7 +3599,21 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     // region stackwalk
 
-    private final StackWalk stackWalk;
+    private volatile StackWalk stackWalk;
+
+    private StackWalk getStackWalk() {
+        StackWalk ref = stackWalk;
+        if (ref == null) {
+            EspressoError.guarantee(getJavaVersion().java9OrLater(), "Stack-Walking API requires Java 9+");
+            synchronized (this) {
+                ref = stackWalk;
+                if (ref == null) {
+                    stackWalk = ref = new StackWalk();
+                }
+            }
+        }
+        return ref;
+    }
 
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
@@ -3659,7 +3715,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     int batchSize, int startIndex,
                     @JavaType(Object[].class) StaticObject frames) {
         checkStackWalkArguments(batchSize, startIndex, frames);
-        return stackWalk.fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, getMeta());
+        return getStackWalk().fetchFirstBatch(stackStream, mode, skipframes, batchSize, startIndex, frames, getMeta());
     }
 
     @VmImpl(isJni = true)
@@ -3669,7 +3725,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     int batchSize, int startIndex,
                     @JavaType(Object[].class) StaticObject frames) {
         checkStackWalkArguments(batchSize, startIndex, frames);
-        return stackWalk.fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, getMeta());
+        return getStackWalk().fetchNextBatch(stackStream, mode, anchor, batchSize, startIndex, frames, getMeta());
     }
 
     // endregion stackwalk

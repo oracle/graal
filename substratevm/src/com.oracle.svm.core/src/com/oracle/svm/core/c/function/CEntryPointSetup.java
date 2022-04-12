@@ -108,7 +108,7 @@ public class CEntryPointSetup {
                         "Failed to leave the current IsolateThread context and to detach the current thread.");
 
         @Uninterruptible(reason = "epilogue")
-        static void leave() {
+        public static void leave() {
             int code = CEntryPointActions.leaveDetachThread();
             if (code != 0) {
                 CEntryPointActions.failFatally(code, errorMessage.get());

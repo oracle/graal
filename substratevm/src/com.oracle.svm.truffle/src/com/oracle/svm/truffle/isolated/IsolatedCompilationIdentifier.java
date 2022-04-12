@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.graal.isolated.ClientHandle;
 import com.oracle.svm.graal.isolated.ClientIsolateThread;
 import com.oracle.svm.graal.isolated.CompilerHandle;
@@ -72,14 +71,12 @@ final class IsolatedCompilationIdentifier extends IsolatedObjectProxy<TruffleCom
         return descriptions[ordinal];
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void close0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> compilationHandle) {
         IsolatedCompileClient.get().unhand(compilationHandle).close();
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static CompilerHandle<String> toString0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationIdentifier> idHandle, int verbosityOrdinal) {
         TruffleCompilationIdentifier id = IsolatedCompileClient.get().unhand(idHandle);
         String description = id.toString(VERBOSITIES[verbosityOrdinal]);

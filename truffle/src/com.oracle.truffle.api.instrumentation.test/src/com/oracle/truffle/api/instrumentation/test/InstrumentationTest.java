@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2211,7 +2211,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
         @Override
         protected void onCreate(Env env) {
-            env.registerService(new Supplier<Object>() {
+            env.registerService(new Supplier<>() {
                 @Override
                 public Object get() {
                     return env.getPolyglotBindings();
@@ -2279,7 +2279,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 @TruffleBoundary
                 private void storeInvokedTarget(MaterializedFrame frame) {
-                    CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
+                    CallTarget callTarget = Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
                     frame.setObject(TARGET_SLOT, callTarget);
                 }
 

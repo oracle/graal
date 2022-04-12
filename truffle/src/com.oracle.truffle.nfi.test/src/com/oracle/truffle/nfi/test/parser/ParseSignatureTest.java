@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,7 +143,7 @@ public class ParseSignatureTest {
     }
 
     protected static Matcher<Object> isArrayType(NativeSimpleType expected) {
-        return new TypeSafeMatcher<Object>(ArrayType.class) {
+        return new TypeSafeMatcher<>(ArrayType.class) {
 
             @Override
             protected boolean matchesSafely(Object item) {

@@ -101,12 +101,36 @@ public class ImageCodeInfo {
         return info;
     }
 
+    /**
+     * Use {@link CodeInfoTable#getImageCodeInfo()} and {@link CodeInfoAccess#getCodeStart} instead.
+     * This method is intended only for the early stages of VM initialization when
+     * {@link #prepareCodeInfo()} has not yet run.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public CodePointer getCodeStart() {
+        return codeStart;
+    }
+
+    /**
+     * Use {@link CodeInfoTable#getImageCodeInfo()} and
+     * {@link CodeInfoAccess#getStackReferenceMapEncoding} instead. This method is intended only for
+     * the early stages of VM initialization when {@link #prepareCodeInfo()} has not yet run.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public NonmovableArray<Byte> getStackReferenceMapEncoding() {
+        return NonmovableArrays.fromImageHeap(referenceMapEncoding);
+    }
+
     public boolean walkImageCode(MemoryWalker.Visitor visitor) {
         return visitor.visitCode(CodeInfoTable.getImageCodeInfo(), ImageSingletons.lookup(CodeInfoMemoryWalker.class));
     }
 
     public HostedImageCodeInfo getHostedImageCodeInfo() {
         return hostedImageCodeInfo;
+    }
+
+    public long getTotalByteArraySize() {
+        return codeInfoIndex.length + codeInfoEncodings.length + referenceMapEncoding.length + frameInfoEncodings.length;
     }
 
     /**

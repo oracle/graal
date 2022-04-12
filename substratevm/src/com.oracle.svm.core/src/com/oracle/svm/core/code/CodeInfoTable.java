@@ -27,7 +27,6 @@ package com.oracle.svm.core.code;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.svm.core.heap.ReferenceMapIndex;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -46,6 +45,8 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -147,7 +148,7 @@ public class CodeInfoTable {
         if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
             throw reportNoReferenceMap(sp, ip, info);
         }
-        return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor);
+        return CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, visitor, null);
     }
 
     public static RuntimeException reportNoReferenceMap(Pointer sp, CodePointer ip, CodeInfo info) {
@@ -183,22 +184,25 @@ public class CodeInfoTable {
     }
 
     public static void invalidateInstalledCode(SubstrateInstalledCode installedCode) {
-        /* Captures "installedCode" for the VMOperation. */
-        JavaVMOperation.enqueueBlockingSafepoint("CodeInfoTable.invalidateInstalledCode", () -> {
-            counters().invalidateInstalledCodeCount.inc();
-            if (installedCode.isAlive()) { // could be invalid (non-entrant), but executing
-                invalidateInstalledCodeAtSafepoint(WordFactory.pointer(installedCode.getAddress()));
-            }
-        });
+        InvalidateInstalledCodeOperation vmOp = new InvalidateInstalledCodeOperation(installedCode);
+        vmOp.enqueue();
     }
 
-    /**
-     * This invalidation is done at a safepoint and we acquire the tether of the {@link CodeInfo}
-     * object. Therefore, it is guaranteed that there is no conflict with the {@link CodeInfo}
-     * invalidation/freeing that the GC does because the tether is still reachable.
-     */
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private static void invalidateInstalledCodeAtSafepoint(CodePointer codePointer) {
+    private static void invalidateInstalledCodeAtSafepoint(SubstrateInstalledCode installedCode, CodePointer codePointer) {
+        /*
+         * Don't try to invalidate the code if it was already invalidated earlier. It is essential
+         * that we do this check in uninterruptible code because the GC can invalidate code as well.
+         */
+        if (!installedCode.isAlive()) {
+            return;
+        }
+
+        /*
+         * This invalidation is done at a safepoint and we acquire the tether of the {@link
+         * CodeInfo} object. Therefore, it is guaranteed that there is no conflict with the {@link
+         * CodeInfo} invalidation/freeing that the GC does because the tether is still reachable.
+         */
         UntetheredCodeInfo untetheredInfo = getRuntimeCodeCache().lookupCodeInfo(codePointer);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
@@ -250,6 +254,22 @@ public class CodeInfoTable {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static CodeInfoTableCounters counters() {
         return ImageSingletons.lookup(CodeInfoTableCounters.class);
+    }
+
+    private static class InvalidateInstalledCodeOperation extends JavaVMOperation {
+        private final SubstrateInstalledCode installedCode;
+
+        InvalidateInstalledCodeOperation(SubstrateInstalledCode installedCode) {
+            super(VMOperationInfos.get(InvalidateInstalledCodeOperation.class, "Invalidate code", SystemEffect.SAFEPOINT));
+            this.installedCode = installedCode;
+        }
+
+        @Override
+        protected void operate() {
+            counters().invalidateInstalledCodeCount.inc();
+            CodePointer codePointer = WordFactory.pointer(installedCode.getAddress());
+            invalidateInstalledCodeAtSafepoint(installedCode, codePointer);
+        }
     }
 }
 

@@ -23,13 +23,13 @@ of showing the original high-level (e.g. C language) source code.
 This debugging mode can be enabled using the `--llvm.llDebug` option:
 
 ```
-lli --inspect --enable-experimental-options --llvm.llDebug ...
+lli --inspect --experimental-options --llvm.llDebug ...
 ```
 
 To debug on the LLVM-IR level, you need to provide disassembled bitcode files
 next to the binary files that are loaded by GraalVM. These can be produced with
-the `llvm-dis` tool. Use the `--llvm.llDebug.verbose` option to get diagnostic
-messages about missing disassembled bitcode files.
+the `llvm-dis` tool. Use the `--log.llvm.LLDebug.level=FINER` option to get
+diagnostic messages about missing disassembled bitcode files.
 
 There is a helper script in `mx` to produce the disassembled bitcode files and
 put them in the correct place:
@@ -46,19 +46,19 @@ next to it with the correct name for the `--llvm.llDebug` code to find it.
 ### Tracing the execution of LLVM bitcode
 
 GraalVM can produce an LLVM IR-level trace of its program execution. You ca
-enable this feature by passing the `--llvm.traceIR=<...>` option to `lli`. This
-requires `--llvm.llDebug` to be enabled and the disassembled bitcode to be
-available.
+enable this feature by passing the `--log.llvm.TraceIR.level=FINER` option to
+`lli`. This requires `--llvm.llDebug` to be enabled and the disassembled bitcode
+to be available.
 
 ```
-$ mx lli --experimental-options --llvm.traceIR --llvm.llDebug hello.bc
-[lli] >> Entering function @main at hello.ll:9:1 with arguments:[StackPointer 0x7fd46bfff010 (Bounds: 0x7fd466fff010 - 0x7fd46bfff010), 1, 0x7fd4ec261978, 0x7fd4ec261988]
-[lli] >> hello.ll:10:1 ->   %1 = alloca i32, align 4
-[lli] >> hello.ll:11:1 ->   store i32 0, i32* %1, align 4
-[lli] >> hello.ll:12:1 ->   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)), !dbg !13
+$ mx lli --experimental-options --log.llvm.TraceIR.level=FINER --llvm.llDebug hello.bc
+[llvm::TraceIR] FINER: >> Entering function @main at hello.ll:9:1 with arguments:[StackPointer 0x7fd46bfff010 (Bounds: 0x7fd466fff010 - 0x7fd46bfff010), 1, 0x7fd4ec261978, 0x7fd4ec261988]
+[llvm::TraceIR] FINER: >> hello.ll:10:1 ->   %1 = alloca i32, align 4
+[llvm::TraceIR] FINER: >> hello.ll:11:1 ->   store i32 0, i32* %1, align 4
+[llvm::TraceIR] FINER: >> hello.ll:12:1 ->   %2 = call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.str, i32 0, i32 0)), !dbg !13
 Hello, World!
-[lli] >> hello.ll:13:1 ->   ret i32 0, !dbg !14
-[lli] >> Leaving @main
+[llvm::TraceIR] FINER: >> hello.ll:13:1 ->   ret i32 0, !dbg !14
+[llvm::TraceIR] FINER: >> Leaving @main
 ```
 
 ## Debugging the runtime

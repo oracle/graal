@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,6 +36,8 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
@@ -115,7 +117,7 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         args.add("y", node.getY());
 
         IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
-        boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroCheck() == null && yStamp.contains(0));
+        boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
         args.addConst("needsZeroCheck", needsZeroCheck);
 
         template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
@@ -125,32 +127,40 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
     public static int idivSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static long ldivSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeDiv(x, y);
+        } else {
+            return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeDiv(x, y);
     }
 
     @Snippet
     public static int iremSnippet(int x, int y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet
     public static long lremSnippet(long x, long y, @ConstantParameter boolean needsZeroCheck) {
         if (needsZeroCheck) {
             checkForZero(y);
+            return safeRem(x, y);
+        } else {
+            return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()));
         }
-        return safeRem(x, y);
     }
 
     @Snippet

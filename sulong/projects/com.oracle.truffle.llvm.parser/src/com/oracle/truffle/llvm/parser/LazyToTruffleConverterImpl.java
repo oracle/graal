@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -84,7 +84,6 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 import org.graalvm.options.OptionValues;
 
-import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
@@ -149,15 +148,17 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         NodeFactory nodeFactory = runtime.getNodeFactory();
         OptionValues options = context.getEnv().getOptions();
 
-        String printASTOption = options.get(SulongEngineOption.PRINT_AST);
         boolean printAST = false;
-        if (!printASTOption.isEmpty()) {
-            String[] regexes = printASTOption.split(",");
-            for (String regex : regexes) {
-                if (method.getName().matches(regex)) {
-                    printAST = true;
-                    System.out.println("\n========== " + method.getName() + "\n");
-                    break;
+        if (LLVMContext.printAstEnabled()) {
+            String printASTOption = options.get(SulongEngineOption.PRINT_AST_FILTER);
+            if (!printASTOption.isEmpty()) {
+                String[] regexes = printASTOption.split(",");
+                for (String regex : regexes) {
+                    if (method.getName().matches(regex)) {
+                        printAST = true;
+                        LLVMContext.printAstLog("========== " + method.getName());
+                        break;
+                    }
                 }
             }
         }
@@ -220,7 +221,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         info.setBlocks(blockNodes);
 
         int loopSuccessorSlot = -1;
-        if (options.get(SulongEngineOption.ENABLE_OSR) && !options.get(SulongEngineOption.AOTCacheStore)) {
+        if (options.get(SulongEngineOption.OSR_MODE) == SulongEngineOption.OSRMode.CFG && !options.get(SulongEngineOption.AOTCacheStore)) {
             LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
             cfg.build();
 
@@ -241,7 +242,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
         if (printAST) {
             printCompactTree(rootNode);
-            System.out.println();
+            LLVMContext.printAstLog("");
         }
 
         return rootNode.getCallTarget();
@@ -268,23 +269,15 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
     }
 
     private static void printCompactTree(Node node) {
-        printCompactTree(new PrintWriter(System.out), null, node, null, 1);
+        printCompactTree(node, null, 1);
     }
 
-    private static void printCompactTree(PrintWriter p, NodeInterface parent, NodeInterface node, String fieldName, int level) {
+    private static void printCompactTree(NodeInterface node, String fieldName, int level) {
         if (node == null) {
             return;
         }
-        for (int i = 0; i < level; i++) {
-            p.print("  ");
-        }
-        if (parent == null) {
-            p.println(node);
-        } else {
-            p.print(fieldName);
-            p.print(" = ");
-            p.println(node);
-        }
+
+        LLVMContext.printAstLog(String.format("%s%s = %s", "  ".repeat(level), fieldName, node));
 
         for (Class<?> c = node.getClass(); c != Object.class; c = c.getSuperclass()) {
             Field[] fields = c.getDeclaredFields();
@@ -297,7 +290,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                         field.setAccessible(true);
                         NodeInterface value = (NodeInterface) field.get(node);
                         if (value != null) {
-                            printCompactTree(p, node, value, field.getName(), level + 1);
+                            printCompactTree(value, field.getName(), level + 1);
                         }
                     } catch (IllegalAccessException | RuntimeException e) {
                         // ignore
@@ -308,7 +301,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                         NodeInterface[] value = (NodeInterface[]) field.get(node);
                         if (value != null) {
                             for (int i = 0; i < value.length; i++) {
-                                printCompactTree(p, node, value[i], field.getName() + "[" + i + "]", level + 1);
+                                printCompactTree(value[i], field.getName() + "[" + i + "]", level + 1);
                             }
                         }
                     } catch (IllegalAccessException | RuntimeException e) {
@@ -317,7 +310,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
                 }
             }
         }
-        p.flush();
     }
 
     private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info, OptionValues options) {

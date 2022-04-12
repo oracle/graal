@@ -107,6 +107,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             guestMainThread = self;
         }
         activeThreads.add(self);
+        context.registerCurrentThread(self);
     }
 
     public final AtomicLong createdThreadCount = new AtomicLong();
@@ -149,6 +150,9 @@ public final class EspressoThreadRegistry implements ContextAccess {
             }
         }
         pushThread(Math.toIntExact(host.getId()), guest);
+        if (host == Thread.currentThread()) {
+            context.registerCurrentThread(guest);
+        }
     }
 
     /**

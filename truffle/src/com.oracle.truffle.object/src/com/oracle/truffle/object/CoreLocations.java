@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -305,18 +305,23 @@ abstract class CoreLocations {
         }
     }
 
-    public abstract static class ArrayLocation extends CoreLocation {
-        protected final int index;
-        protected final CoreLocation arrayLocation;
+    abstract static class InstanceLocation extends CoreLocation {
 
-        protected ArrayLocation(int index, CoreLocation arrayLocation) {
+        protected final int index;
+
+        protected InstanceLocation(int index) {
             this.index = index;
-            this.arrayLocation = arrayLocation;
         }
 
-        protected final Object getArray(DynamicObject store, boolean guard) {
-            // non-null cast
-            return arrayLocation.get(store, guard);
+        public final int getIndex() {
+            return index;
+        }
+    }
+
+    public abstract static class ArrayLocation extends InstanceLocation {
+
+        protected ArrayLocation(int index) {
+            super(index);
         }
 
         @Override
@@ -339,21 +344,16 @@ abstract class CoreLocations {
             return true;
         }
 
-        public final int getIndex() {
-            return index;
-        }
-
         @Override
         public String getWhereString() {
             return "[" + index + "]";
         }
     }
 
-    public abstract static class FieldLocation extends CoreLocation {
-        private final int index;
+    public abstract static class FieldLocation extends InstanceLocation {
 
         protected FieldLocation(int index) {
-            this.index = index;
+            super(index);
         }
 
         @Override
@@ -376,10 +376,6 @@ abstract class CoreLocations {
             return true;
         }
 
-        public final int getIndex() {
-            return index;
-        }
-
         @Override
         public String getWhereString() {
             return "@" + index;
@@ -387,32 +383,38 @@ abstract class CoreLocations {
 
         public abstract Class<? extends DynamicObject> getDeclaringClass();
 
-        protected final void receiverCheck(DynamicObject store) {
-            if (!getDeclaringClass().isInstance(store)) {
+        protected static DynamicObject receiverCast(DynamicObject store, Class<? extends DynamicObject> tclass) {
+            try {
+                return tclass.cast(Objects.requireNonNull(store));
+            } catch (ClassCastException | NullPointerException ex) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw illegalReceiver(store);
+                throw illegalReceiver(store, tclass);
             }
         }
 
-        private IllegalArgumentException illegalReceiver(DynamicObject store) {
+        protected static IllegalArgumentException illegalReceiver(DynamicObject store, Class<? extends DynamicObject> declaringClass) {
             CompilerAsserts.neverPartOfCompilation();
-            return new IllegalArgumentException(String.format("Invalid receiver type (expected %s, was %s)", getDeclaringClass(), store == null ? null : store.getClass()));
+            return new IllegalArgumentException("Invalid receiver type (expected " + declaringClass + ", was " + (store == null ? null : store.getClass()) + ")");
         }
     }
 
     static class ObjectArrayLocation extends ArrayLocation implements ObjectLocation {
-        protected ObjectArrayLocation(int index, CoreLocation arrayLocation) {
-            super(index, arrayLocation);
+        protected ObjectArrayLocation(int index) {
+            super(index);
+        }
+
+        protected static final Object[] getArray(DynamicObject store) {
+            return LayoutImpl.ACCESS.getObjectArray(store);
         }
 
         @Override
         public Object get(DynamicObject store, boolean guard) {
-            return ((Object[]) getArray(store, guard))[index];
+            return getArray(store)[index];
         }
 
         @Override
         public final void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            ((Object[]) getArray(store, guard))[index] = value;
+            getArray(store)[index] = value;
         }
 
         @Override
@@ -495,13 +497,13 @@ abstract class CoreLocations {
 
         protected final boolean allowInt;
 
-        protected LongArrayLocation(int index, CoreLocation arrayLocation, boolean allowInt) {
-            super(index, arrayLocation);
+        protected LongArrayLocation(int index, boolean allowInt) {
+            super(index);
             this.allowInt = allowInt;
         }
 
-        protected LongArrayLocation(int index, CoreLocation arrayLocation) {
-            this(index, arrayLocation, false);
+        protected LongArrayLocation(int index) {
+            this(index, false);
         }
 
         @Override
@@ -526,14 +528,18 @@ abstract class CoreLocations {
             }
         }
 
+        protected static final int[] getArray(DynamicObject store) {
+            return LayoutImpl.ACCESS.getPrimitiveArray(store);
+        }
+
         @Override
         public long getLong(DynamicObject store, boolean guard) {
-            int[] array = (int[]) getArray(store, guard);
+            int[] array = getArray(store);
             return UNSAFE.getLong(array, getOffset(array));
         }
 
         public final void setLongInternal(DynamicObject store, long value) {
-            int[] array = (int[]) getArray(store, false);
+            int[] array = getArray(store);
             long offset = getOffset(array);
             UNSAFE.putLong(array, offset, value);
         }
@@ -920,9 +926,6 @@ abstract class CoreLocations {
         }
     }
 
-    static final SimpleObjectFieldLocation OBJECT_ARRAY_LOCATION;
-    static final SimpleObjectFieldLocation PRIMITIVE_ARRAY_LOCATION;
-
     static long decodeLong(int lower, int upper) {
         return (lower & 0xffff_ffffL) | ((long) upper << 32);
     }
@@ -955,14 +958,12 @@ abstract class CoreLocations {
 
         @Override
         public Object get(DynamicObject store, boolean guard) {
-            receiverCheck(store);
-            return UNSAFE.getObject(store, offset);
+            return UNSAFE.getObject(receiverCast(store, tclass), offset);
         }
 
         @Override
         public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-            receiverCheck(store);
-            UNSAFE.putObject(store, offset, value);
+            UNSAFE.putObject(receiverCast(store, tclass), offset, value);
         }
 
         @Override
@@ -988,14 +989,12 @@ abstract class CoreLocations {
 
         @Override
         public long getLong(DynamicObject store, boolean guard) {
-            receiverCheck(store);
-            return UNSAFE.getLong(store, offset);
+            return UNSAFE.getLong(receiverCast(store, tclass), offset);
         }
 
         @Override
         public void setLong(DynamicObject store, long value, boolean guard, boolean init) {
-            receiverCheck(store);
-            UNSAFE.putLong(store, offset, value);
+            UNSAFE.putLong(receiverCast(store, tclass), offset, value);
         }
 
         @Override
@@ -1028,42 +1027,5 @@ abstract class CoreLocations {
         } catch (Exception e) {
             throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
         }
-    }
-
-    static {
-        int index = 0;
-        OBJECT_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
-            @Override
-            public Object[] get(DynamicObject store, boolean guard) {
-                return LayoutImpl.ACCESS.getObjectArray(store);
-            }
-
-            @Override
-            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-                LayoutImpl.ACCESS.setObjectArray(store, (Object[]) value);
-            }
-
-            @Override
-            public Class<? extends DynamicObject> getDeclaringClass() {
-                return DynamicObject.class;
-            }
-        };
-
-        PRIMITIVE_ARRAY_LOCATION = new SimpleObjectFieldLocation(index++) {
-            @Override
-            public int[] get(DynamicObject store, boolean guard) {
-                return LayoutImpl.ACCESS.getPrimitiveArray(store);
-            }
-
-            @Override
-            public void set(DynamicObject store, Object value, boolean guard, boolean init) {
-                LayoutImpl.ACCESS.setPrimitiveArray(store, (int[]) value);
-            }
-
-            @Override
-            public Class<? extends DynamicObject> getDeclaringClass() {
-                return DynamicObject.class;
-            }
-        };
     }
 }

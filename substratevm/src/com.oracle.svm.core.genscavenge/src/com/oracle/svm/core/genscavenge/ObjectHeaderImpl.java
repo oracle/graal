@@ -142,13 +142,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         return (DynamicHub) objectValue;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public Pointer readPotentialDynamicHubFromPointer(Pointer ptr) {
         UnsignedWord potentialHeader = ObjectHeaderImpl.readHeaderFromPointer(ptr);
         UnsignedWord pointerBits = clearBits(potentialHeader);
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
-            UnsignedWord compressedBits = pointerBits.unsignedShiftRight(getCompressionShift());
-            return KnownIntrinsics.heapBase().add(compressedBits.shiftLeft(getCompressionShift()));
+            UnsignedWord compressedBits = pointerBits.unsignedShiftRight(ObjectHeader.getCompressionShift());
+            return KnownIntrinsics.heapBase().add(compressedBits.shiftLeft(ObjectHeader.getCompressionShift()));
         } else {
             return (Pointer) pointerBits;
         }
@@ -377,10 +378,5 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Fold
     static boolean hasBase() {
         return ImageSingletons.lookup(CompressEncoding.class).hasBase();
-    }
-
-    @Fold
-    static int getCompressionShift() {
-        return ReferenceAccess.singleton().getCompressEncoding().getShift();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,7 +82,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 return valueInterop.asString(value);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -650,8 +650,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     case RUNTIME_ERROR : return meta.polyglot.ExceptionType_RUNTIME_ERROR.getObject(staticStorage);
                     case PARSE_ERROR   : return meta.polyglot.ExceptionType_PARSE_ERROR.getObject(staticStorage);
                     default:
-                        CompilerDirectives.transferToInterpreter();
-                        throw EspressoError.shouldNotReachHere("Unexpected ExceptionType: ", exceptionType);
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        throw EspressoError.shouldNotReachHere("Unexpected ExceptionType: " + exceptionType);
                 }
                 // @formatter:on
             } catch (InteropException e) {
@@ -3910,8 +3910,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         UnsupportedMessageException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.UnsupportedMessageException_create.getCallTarget())") DirectCallNode create,
-                        @Cached("create(getMeta().polyglot.UnsupportedMessageException_create_Throwable.getCallTarget())") DirectCallNode createWithCause) {
+                        @Cached("create(getMeta().polyglot.UnsupportedMessageException_create.getCallTargetForceInit())") DirectCallNode create,
+                        @Cached("create(getMeta().polyglot.UnsupportedMessageException_create_Throwable.getCallTargetForceInit())") DirectCallNode createWithCause) {
             Throwable cause = e.getCause();
             assert cause == null || cause instanceof AbstractTruffleException;
             StaticObject exception = noCauseProfile.profile(cause == null)
@@ -3927,8 +3927,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         UnknownIdentifierException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.UnknownIdentifierException_create_String.getCallTarget())") DirectCallNode createWithIdentifier,
-                        @Cached("create(getMeta().polyglot.UnknownIdentifierException_create_String_Throwable.getCallTarget())") DirectCallNode createWithIdentifierAndCause) {
+                        @Cached("create(getMeta().polyglot.UnknownIdentifierException_create_String.getCallTargetForceInit())") DirectCallNode createWithIdentifier,
+                        @Cached("create(getMeta().polyglot.UnknownIdentifierException_create_String_Throwable.getCallTargetForceInit())") DirectCallNode createWithIdentifierAndCause) {
             StaticObject unknownIdentifier = getMeta().toGuestString(e.getUnknownIdentifier());
             Throwable cause = e.getCause();
             StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
@@ -3947,8 +3947,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         ArityException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.ArityException_create_int_int_int.getCallTarget())") DirectCallNode createWithArityRange,
-                        @Cached("create(getMeta().polyglot.ArityException_create_int_int_int_Throwable.getCallTarget())") DirectCallNode createWithArityRangeAndCause) {
+                        @Cached("create(getMeta().polyglot.ArityException_create_int_int_int.getCallTargetForceInit())") DirectCallNode createWithArityRange,
+                        @Cached("create(getMeta().polyglot.ArityException_create_int_int_int_Throwable.getCallTargetForceInit())") DirectCallNode createWithArityRangeAndCause) {
             int expectedMinArity = e.getExpectedMinArity();
             int expectedMaxArity = e.getExpectedMaxArity();
             int actualArity = e.getActualArity();
@@ -3973,8 +3973,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         UnsupportedTypeException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.UnsupportedTypeException_create_Object_array_String.getCallTarget())") DirectCallNode createWithValuesHint,
-                        @Cached("create(getMeta().polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.getCallTarget())") DirectCallNode createWithValuesHintAndCause) {
+                        @Cached("create(getMeta().polyglot.UnsupportedTypeException_create_Object_array_String.getCallTargetForceInit())") DirectCallNode createWithValuesHint,
+                        @Cached("create(getMeta().polyglot.UnsupportedTypeException_create_Object_array_String_Throwable.getCallTargetForceInit())") DirectCallNode createWithValuesHintAndCause) {
             Object[] hostValues = e.getSuppliedValues();
             // Transform suppliedValues[] into a guest Object[].
             StaticObject[] backingArray = new StaticObject[hostValues.length];
@@ -4002,8 +4002,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         InvalidArrayIndexException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.InvalidArrayIndexException_create_long.getCallTarget())") DirectCallNode createWithIndex,
-                        @Cached("create(getMeta().polyglot.InvalidArrayIndexException_create_long_Throwable.getCallTarget())") DirectCallNode createWithIndexAndCause) {
+                        @Cached("create(getMeta().polyglot.InvalidArrayIndexException_create_long.getCallTargetForceInit())") DirectCallNode createWithIndex,
+                        @Cached("create(getMeta().polyglot.InvalidArrayIndexException_create_long_Throwable.getCallTargetForceInit())") DirectCallNode createWithIndexAndCause) {
             long invalidIndex = e.getInvalidIndex();
             Throwable cause = e.getCause();
             StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
@@ -4021,8 +4021,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         InvalidBufferOffsetException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.InvalidBufferOffsetException_create_long_long.getCallTarget())") DirectCallNode createWithOffsetLength,
-                        @Cached("create(getMeta().polyglot.InvalidBufferOffsetException_create_long_long_Throwable.getCallTarget())") DirectCallNode createWithOffsetLengthAndCause) {
+                        @Cached("create(getMeta().polyglot.InvalidBufferOffsetException_create_long_long.getCallTargetForceInit())") DirectCallNode createWithOffsetLength,
+                        @Cached("create(getMeta().polyglot.InvalidBufferOffsetException_create_long_long_Throwable.getCallTargetForceInit())") DirectCallNode createWithOffsetLengthAndCause) {
             long byteOffset = e.getByteOffset();
             long length = e.getLength();
             Throwable cause = e.getCause();
@@ -4042,8 +4042,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         StopIterationException e,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.StopIterationException_create.getCallTarget())") DirectCallNode create,
-                        @Cached("create(getMeta().polyglot.StopIterationException_create_Throwable.getCallTarget())") DirectCallNode createWithCause) {
+                        @Cached("create(getMeta().polyglot.StopIterationException_create.getCallTargetForceInit())") DirectCallNode create,
+                        @Cached("create(getMeta().polyglot.StopIterationException_create_Throwable.getCallTargetForceInit())") DirectCallNode createWithCause) {
             Throwable cause = e.getCause();
             StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))
                             /* StopIterationException.create() */
@@ -4059,8 +4059,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary keyInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary causeInterop,
                         @Cached ConditionProfile noCauseProfile,
-                        @Cached("create(getMeta().polyglot.UnknownKeyException_create_Object.getCallTarget())") DirectCallNode createWithKey,
-                        @Cached("create(getMeta().polyglot.UnknownKeyException_create_Object_Throwable.getCallTarget())") DirectCallNode createWithKeyAndCause) {
+                        @Cached("create(getMeta().polyglot.UnknownKeyException_create_Object.getCallTargetForceInit())") DirectCallNode createWithKey,
+                        @Cached("create(getMeta().polyglot.UnknownKeyException_create_Object_Throwable.getCallTargetForceInit())") DirectCallNode createWithKeyAndCause) {
             StaticObject unknownKey = InteropUtils.maybeWrapAsObject(e.getUnknownKey(), keyInterop, getContext());
             Throwable cause = e.getCause();
             StaticObject exception = noCauseProfile.profile(cause == null || !(cause instanceof AbstractTruffleException))

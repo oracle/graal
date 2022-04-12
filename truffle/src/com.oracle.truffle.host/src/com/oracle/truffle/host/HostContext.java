@@ -99,7 +99,7 @@ final class HostContext {
         }
     }, this);
 
-    final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<Map<List<Class<?>>, AdapterResult>>() {
+    final ClassValue<Map<List<Class<?>>, AdapterResult>> adapterCache = new ClassValue<>() {
         @Override
         protected Map<List<Class<?>>, AdapterResult> computeValue(Class<?> type) {
             return new ConcurrentHashMap<>();
@@ -181,8 +181,8 @@ final class HostContext {
         try {
             ClassLoader classLoader = getClassloader();
             Class<?> foundClass = classLoader.loadClass(className);
-            Object currentModule = HostAccessor.JDKSERVICES.getUnnamedModule(classLoader);
-            if (HostAccessor.JDKSERVICES.verifyModuleVisibility(currentModule, foundClass)) {
+            Object currentModule = getUnnamedModule(classLoader);
+            if (verifyModuleVisibility(currentModule, foundClass)) {
                 return foundClass;
             } else {
                 throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
@@ -195,6 +195,47 @@ final class HostContext {
     void validateClass(String className) {
         if (classFilter != null && !classFilter.test(className)) {
             throw new HostLanguageException(String.format("Access to host class %s is not allowed.", className));
+        }
+    }
+
+    static Object getUnnamedModule(ClassLoader classLoader) {
+        if (classLoader == null) {
+            return null;
+        }
+        return classLoader.getUnnamedModule();
+    }
+
+    static boolean verifyModuleVisibility(Object module, Class<?> memberClass) {
+        Module lookupModule = (Module) module;
+        if (lookupModule == null) {
+            /*
+             * This case may currently happen in AOT as the module support there is not complete.
+             * See GR-19155.
+             */
+            return true;
+        }
+        Module memberModule = memberClass.getModule();
+        if (lookupModule == memberModule) {
+            return true;
+        } else {
+            String pkg = memberClass.getPackageName();
+            if (lookupModule.isNamed()) {
+                if (memberModule.isNamed()) {
+                    // both modules are named. check whether they are exported.
+                    return memberModule.isExported(pkg, lookupModule);
+                } else {
+                    // no access from named modules to unnamed modules
+                    return false;
+                }
+            } else {
+                if (memberModule.isNamed()) {
+                    // unnamed modules see all exported packages
+                    return memberModule.isExported(pkg);
+                } else {
+                    // full access from unnamed modules to unnamed modules
+                    return true;
+                }
+            }
         }
     }
 

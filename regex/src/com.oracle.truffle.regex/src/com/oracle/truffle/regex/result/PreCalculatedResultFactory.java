@@ -114,6 +114,12 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         }
     }
 
+    public void clearIndices(TBitSet clearIndices) {
+        for (int i : clearIndices) {
+            result[i] = -1;
+        }
+    }
+
     public RegexResult createFromStart(int start) {
         return createFromOffset(start);
     }

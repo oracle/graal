@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
@@ -179,7 +180,8 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
             /* Infrastructure nodes that are not even visible to the policy. */
             throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
         }
-        if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof FrameState || node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
+        if (node instanceof FullInfopointNode || node instanceof ValueProxy || node instanceof ValueAnchorNode || node instanceof FrameState ||
+                        node instanceof AbstractBeginNode || node instanceof AbstractEndNode) {
             /*
              * Infrastructure nodes that are never counted. We could look at the NodeSize annotation
              * of a node, but that is a bit unreliable. For example, FrameState and

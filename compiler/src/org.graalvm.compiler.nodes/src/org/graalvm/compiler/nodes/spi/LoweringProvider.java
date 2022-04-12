@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -86,4 +86,11 @@ public interface LoweringProvider {
      */
     TargetDescription getTarget();
 
+    /**
+     * Indicates whether the target platform complies with the JVM specification semantics for
+     * {@code idiv} and {@code ldiv} when the dividend is {@link Integer#MAX_VALUE} or
+     * {@link Long#MAX_VALUE} respectively and the divisor is {@code -1}. The specified result for
+     * this case is the dividend.
+     */
+    boolean divisionOverflowIsJVMSCompliant();
 }

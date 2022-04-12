@@ -242,6 +242,10 @@ public final class CoverageTest {
         static final com.oracle.truffle.api.source.Source statementSource = com.oracle.truffle.api.source.Source.newBuilder(RootAndStatementInDifferentSources.ID, "for use in statement",
                         "statement").build();
 
+        public RootAndStatementInDifferentSources() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return new RootNode(this) {

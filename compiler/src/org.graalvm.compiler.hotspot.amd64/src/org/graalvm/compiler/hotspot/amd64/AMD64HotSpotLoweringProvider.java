@@ -44,7 +44,6 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
-import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
@@ -70,13 +69,12 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
         convertSnippets = new AMD64ConvertSnippets.Templates(options, providers);
         mathSnippets = new AMD64X87MathSnippets.Templates(options, providers);
-        providers.getReplacements().registerSnippetTemplateCache(new AMD64TruffleArrayUtilsWithMaskSnippets.Templates(options, providers));
         super.initialize(options, factories, providers, config, allocationSnippetTemplates);
     }
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (lowerAMD64(n, tool)) {
+        if (lowerAMD64(n)) {
             return;
         }
         if (n instanceof FloatConvertNode) {

@@ -31,6 +31,9 @@ import org.graalvm.compiler.core.common.calc.FloatConvert;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.FloatConvertOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.UnaryOp;
+import org.graalvm.compiler.core.common.type.FloatStamp;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -93,9 +96,34 @@ public final class FloatConvertNode extends UnaryArithmeticNode<FloatConvertOp> 
             case F2D:
             case I2D:
                 return true;
+            case I2F:
+            case L2D:
+            case L2F:
+                if (value.stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                    return isLosslessIntegerToFloatingPoint((IntegerStamp) value.stamp(NodeView.DEFAULT), (FloatStamp) stamp(NodeView.DEFAULT));
+                } else {
+                    return false;
+                }
             default:
                 return false;
         }
+    }
+
+    private static boolean isLosslessIntegerToFloatingPoint(IntegerStamp inputStamp, FloatStamp resultStamp) {
+        int mantissaBits;
+        switch (resultStamp.getBits()) {
+            case 32:
+                mantissaBits = 24;
+                break;
+            case 64:
+                mantissaBits = 53;
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        long max = 1L << mantissaBits;
+        long min = -(1L << mantissaBits);
+        return min <= inputStamp.lowerBound() && inputStamp.upperBound() <= max;
     }
 
     @Override

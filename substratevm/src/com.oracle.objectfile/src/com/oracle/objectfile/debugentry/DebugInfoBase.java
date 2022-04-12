@@ -374,7 +374,7 @@ public abstract class DebugInfoBase {
         Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isInline, caller);
         classEntry.indexSubRange(subRange);
         try (DebugContext.Scope s = debugContext.scope("Subranges")) {
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]",
+            debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]",
                             ownerType.toJavaName(), methodName, filePath, fileName, line, lo, hi);
         }
         return subRange;

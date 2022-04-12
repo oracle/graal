@@ -188,14 +188,14 @@ public final class MemoryTracer implements Closeable {
         return Collections.unmodifiableMap(returnValue);
     }
 
-    Supplier<Payload> payloadFactory = new Supplier<Payload>() {
+    Supplier<Payload> payloadFactory = new Supplier<>() {
         @Override
         public Payload get() {
             return new Payload();
         }
     };
 
-    Function<Payload, Payload> copyPayload = new Function<Payload, Payload>() {
+    Function<Payload, Payload> copyPayload = new Function<>() {
         @Override
         public Payload apply(Payload payload) {
             Payload copy = new Payload();
@@ -207,7 +207,7 @@ public final class MemoryTracer implements Closeable {
         }
     };
 
-    BiConsumer<Payload, Payload> mergePayload = new BiConsumer<Payload, Payload>() {
+    BiConsumer<Payload, Payload> mergePayload = new BiConsumer<>() {
         @Override
         public void accept(Payload source, Payload dest) {
             dest.totalAllocations += source.totalAllocations;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.SortedMap;
@@ -49,7 +50,7 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -67,6 +68,7 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.c.util.FileUtils;
@@ -105,7 +107,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
-        r.register1("loadLibrary", String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("loadLibrary", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
                 /*
@@ -153,6 +155,21 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     private void addShimExports(String shimName, String... exports) {
         assert exports != null && exports.length > 0;
         shimExports.computeIfAbsent(shimName, s -> new TreeSet<>()).addAll(Arrays.asList(exports));
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (isWindows()) {
+            ((BeforeImageWriteAccessImpl) access).registerLinkerInvocationTransformer(linkerInvocation -> {
+                /* Make sure the native image exports all the symbols necessary for shim DLLs. */
+                shimExports.values().stream()
+                                .flatMap(Collection::stream)
+                                .distinct()
+                                .map("/export:"::concat)
+                                .forEach(linkerInvocation::addNativeLinkerOption);
+                return linkerInvocation;
+            });
+        }
     }
 
     private AfterImageWriteAccessImpl accessImpl;

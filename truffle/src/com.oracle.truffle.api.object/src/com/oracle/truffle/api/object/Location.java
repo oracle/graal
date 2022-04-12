@@ -42,7 +42,6 @@ package com.oracle.truffle.api.object;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
  * Property location.
@@ -269,7 +268,7 @@ public abstract class Location {
      * @since 0.18
      */
     public Assumption getFinalAssumption() {
-        return NeverValidAssumption.INSTANCE;
+        return Assumption.NEVER_VALID;
     }
 
     /**

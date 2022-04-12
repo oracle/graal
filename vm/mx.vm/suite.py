@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "22.1.0",
-    "mxversion" : "5.316.15",
+    "version" : "22.2.0",
+    "mxversion" : "5.317.12",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f2511a99522c8363a48f778dbbeb5c615832ec2c",
+                "version": "aab8e5f4ca3ef9b01af5bb07fef185990dc2eab7",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f2511a99522c8363a48f778dbbeb5c615832ec2c",
+                "version": "aab8e5f4ca3ef9b01af5bb07fef185990dc2eab7",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "bd36e75003a1f2d57dbc947350cb076e9a827cbd",
+                "version": "23dd067955356c6b574d88b3a2d521d59f76e67f",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "c050f89dcfc4a57ca77db1bd585591820aa44758",
+                "version": "cb9e331bcef33b821555febb30504880444af9fc",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "37b184de5fa7ee876b0d56e0c2e3115eb8c853a2",
+                "version": "3f34b06b96923a611b4db5bf89c3e8f61f6b5022",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -89,13 +89,14 @@ suite = {
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyleVersion" : "8.36.1",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
                 "truffle:TruffleJSON",
             ],
+            "requires" : ["java.logging"],
         },
         "org.graalvm.component.installer.test" : {
             "subDir" : "src",
@@ -104,24 +105,28 @@ suite = {
                 "mx:JUNIT",
                 "org.graalvm.component.installer"
             ],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
+            "requires" : ["java.logging"],
         },
         "org.graalvm.polybench" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
             ],
+            "requires": [
+                "java.logging",
+            ],
         },
         "org.graalvm.polybench.micro" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
@@ -134,11 +139,14 @@ suite = {
         "org.graalvm.polybench.instruments" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "truffle:TRUFFLE_API",
+            ],
+            "requires": [
+                "jdk.management",
             ],
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
@@ -163,8 +171,8 @@ suite = {
         # Note: small warmup benchmarks can be placed directly under `graal/vm/benchmarks/warmup`
         # and uncomment the corresponding line for the `layout` of `POLYBENCH_BENCHMARKS` in current suite.
         "WARMUP_BENCHMARKS" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.3.tar.gz"],
-            "sha1" : "4e23a980be3cb92a183efe7d6d3354438134a55f"
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
+            "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
         }
     },
 

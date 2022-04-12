@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,10 @@ package com.oracle.truffle.llvm.parser.coff;
 
 import java.nio.charset.StandardCharsets;
 
-import org.graalvm.polyglot.io.ByteSequence;
-
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+
+import org.graalvm.polyglot.io.ByteSequence;
 
 /**
  * @see <a href=
@@ -56,11 +56,13 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 public final class CoffFile {
     private final ByteSequence bytes;
     private final ImageFileHeader header;
+    private final ImageOptionHeader optionHeader;
     private final ImageSectionHeader[] sections;
 
-    private CoffFile(ByteSequence bytes, ImageFileHeader header) {
+    private CoffFile(ByteSequence bytes, ImageFileHeader header, ImageOptionHeader optionHeader) {
         this.bytes = bytes;
         this.header = header;
+        this.optionHeader = optionHeader;
         this.sections = new ImageSectionHeader[header.numberOfSections];
     }
 
@@ -80,13 +82,36 @@ public final class CoffFile {
         }
     }
 
+    ImageSectionHeader lookupOffset(int offset) {
+        for (int i = 0; i < sections.length; i++) {
+            int virtualOffset = offset - sections[i].virtualAddress;
+            if (virtualOffset >= 0 && virtualOffset <= sections[i].sizeOfRawData) {
+                return sections[i];
+            }
+        }
+        throw new LLVMParserException(String.format("Invalid virtual address %d.", offset));
+    }
+
+    public ImageOptionHeader getOptionHeader() {
+        return optionHeader;
+    }
+
+    public ObjectFileReader getReaderAtVirtualAddress(int virtualAddress) {
+        ImageSectionHeader section = lookupOffset(virtualAddress);
+        ByteSequence sectionBytes = bytes.subSequence(section.pointerToRawData, section.pointerToRawData + section.sizeOfRawData);
+        ObjectFileReader reader = new ObjectFileReader(sectionBytes, true);
+        reader.setPosition(virtualAddress - section.virtualAddress);
+        return reader;
+    }
+
     public static CoffFile create(ByteSequence bytes) {
         return create(bytes, new ObjectFileReader(bytes, true));
     }
 
     static CoffFile create(ByteSequence bytes, ObjectFileReader reader) {
         ImageFileHeader header = ImageFileHeader.createImageFileHeader(reader);
-        CoffFile coffFile = new CoffFile(bytes, header);
+        ImageOptionHeader optionHeader = header.sizeOfOptionalHeader > 0 ? ImageOptionHeader.create(reader) : null;
+        CoffFile coffFile = new CoffFile(bytes, header, optionHeader);
         coffFile.initializeSections(reader);
         return coffFile;
     }
@@ -105,7 +130,7 @@ public final class CoffFile {
      *     WORD    Characteristics;
      * } IMAGE_FILE_HEADER, *PIMAGE_FILE_HEADER;
      * </pre>
-     * 
+     *
      * @see <a href=
      *      "https://msdn.microsoft.com/en-us/library/windows/desktop/ms680313(v=vs.85).aspx">IMAGE_FILE_HEADER
      *      structure (winnt.h)</a>
@@ -131,16 +156,17 @@ public final class CoffFile {
             int pointerToSymbolTable = reader.getInt();
             int numberOfSymbols = reader.getInt();
             short sizeOfOptionalHeader = reader.getShort();
+            /* short characteristics */ reader.getShort();
             int firstSection = headerStartOffset + ImageFileHeader.IMAGE_SIZEOF_FILE_HEADER + Short.toUnsignedInt(sizeOfOptionalHeader);
             int stringTablePosition = getStringTablePosition(pointerToSymbolTable, numberOfSymbols);
-            return new ImageFileHeader(numberOfSections, firstSection, stringTablePosition);
+            return new ImageFileHeader(numberOfSections, firstSection, stringTablePosition, sizeOfOptionalHeader);
         }
 
         /**
          * <quote>Immediately following the COFF symbol table is the COFF string table. The position
          * of this table is found by taking the symbol table address in the COFF header and adding
          * the number of symbols multiplied by the size of a symbol.</quote>
-         * 
+         *
          * @see <a href=
          *      "https://docs.microsoft.com/en-gb/windows/win32/debug/pe-format?#coff-string-table">COFF
          *      String Table</a>
@@ -151,6 +177,7 @@ public final class CoffFile {
 
         private static void checkIdent(short magic) {
             if (magic != ImageFileHeader.IMAGE_FILE_MACHINE_AMD64) {
+                // TODO: This should probably be more specific (e.g. with 32 bit files)
                 throw new LLVMParserException("Invalid COFF file!");
             }
         }
@@ -158,11 +185,13 @@ public final class CoffFile {
         private final short numberOfSections;
         private final int firstSection;
         private final int stringTablePosition;
+        private final short sizeOfOptionalHeader;
 
-        ImageFileHeader(short numberOfSections, int firstSection, int stringTablePosition) {
+        ImageFileHeader(short numberOfSections, int firstSection, int stringTablePosition, short sizeOfOptionalHeader) {
             this.numberOfSections = numberOfSections;
             this.firstSection = firstSection;
             this.stringTablePosition = stringTablePosition;
+            this.sizeOfOptionalHeader = sizeOfOptionalHeader;
         }
 
         @Override
@@ -171,6 +200,208 @@ public final class CoffFile {
                             "numberOfSections=" + numberOfSections +
                             ']';
         }
+    }
+
+    /**
+     * Image Data Directory.
+     *
+     * <pre>
+     * typedef struct _IMAGE_DATA_DIRECTORY {
+     *    DWORD   VirtualAddress;
+     *    DWORD   Size;
+     * } IMAGE_DATA_DIRECTORY, *PIMAGE_DATA_DIRECTORY;
+     * </pre>
+     */
+    public static final class ImageDataDirectory {
+        private static ImageDataDirectory createImageDataDirectory(ObjectFileReader reader) {
+            int virtualAddress = reader.getInt();
+            int size = reader.getInt();
+            return new ImageDataDirectory(virtualAddress, size);
+        }
+
+        private final int virtualAddress;
+        private final int size;
+
+        public ImageDataDirectory(int virtualAddress, int size) {
+            this.virtualAddress = virtualAddress;
+            this.size = size;
+        }
+
+        public int getVirtualAddress() {
+            return virtualAddress;
+        }
+
+        public int getSize() {
+            return size;
+        }
+    }
+
+    /**
+     * Standard Image Optional Header.
+     *
+     * @see ImageOptionNT64Header
+     */
+    public abstract static class ImageOptionHeader {
+        byte majorLinkerVersion;
+        byte minorLinkerVersion;
+        int sizeOfCode;
+        int sizeOfInitializedData;
+        int sizeOfUninitializedData;
+        int addressOfEntryPoint;
+        int baseOfCode;
+
+        private static ImageOptionHeader create(ObjectFileReader reader) {
+            short magic = reader.getShort();
+            ImageOptionHeader header;
+            switch (magic) {
+                case ImageOptionNT64Header.IMAGE_NT_OPTIONAL_HDR64_MAGIC:
+                    header = new ImageOptionNT64Header();
+                    break;
+                default:
+                    throw new LLVMParserException(String.format("Unsupported coff optional header magic number 0x%x.", magic));
+            }
+
+            header.readStandard(reader);
+            header.readExtended(reader);
+
+            return header;
+        }
+
+        protected void readStandard(ObjectFileReader reader) {
+            this.majorLinkerVersion = reader.getByte();
+            this.minorLinkerVersion = reader.getByte();
+            this.sizeOfCode = reader.getInt();
+            this.sizeOfInitializedData = reader.getInt();
+            this.sizeOfUninitializedData = reader.getInt();
+            this.addressOfEntryPoint = reader.getInt();
+            this.baseOfCode = reader.getInt();
+        }
+
+        protected abstract void readExtended(ObjectFileReader reader);
+
+        private ImageOptionHeader() {
+        }
+    }
+
+    /**
+     * Image Optional Header.
+     *
+     * <pre>
+     * typedef struct _IMAGE_OPTIONAL_HEADER64 {
+     * // Standard fields
+     *     WORD        Magic;
+     *     BYTE        MajorLinkerVersion;
+     *     BYTE        MinorLinkerVersion;
+     *     DWORD       SizeOfCode;
+     *     DWORD       SizeOfInitializedData;
+     *     DWORD       SizeOfUninitializedData;
+     *     DWORD       AddressOfEntryPoint;
+     *     DWORD       BaseOfCode;
+     * // Windows-specific fields
+     *     ULONGLONG   ImageBase;
+     *     DWORD       SectionAlignment;
+     *     DWORD       FileAlignment;
+     *     WORD        MajorOperatingSystemVersion;
+     *     WORD        MinorOperatingSystemVersion;
+     *     WORD        MajorImageVersion;
+     *     WORD        MinorImageVersion;
+     *     WORD        MajorSubsystemVersion;
+     *     WORD        MinorSubsystemVersion;
+     *     DWORD       Win32VersionValue;
+     *     DWORD       SizeOfImage;
+     *     DWORD       SizeOfHeaders;
+     *     DWORD       CheckSum;
+     *     WORD        Subsystem;
+     *     WORD        DllCharacteristics;
+     *     ULONGLONG   SizeOfStackReserve;
+     *     ULONGLONG   SizeOfStackCommit;
+     *     ULONGLONG   SizeOfHeapReserve;
+     *     ULONGLONG   SizeOfHeapCommit;
+     *     DWORD       LoaderFlags;
+     *     DWORD       NumberOfRvaAndSizes;
+     * // Data directories
+     *     IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
+     * } IMAGE_OPTIONAL_HEADER64, *PIMAGE_OPTIONAL_HEADER64;
+     * </pre>
+     *
+     * @see <a href=
+     *      "https://docs.microsoft.com/en-gb/windows/win32/debug/pe-format?redirectedfrom=MSDN#optional-header-windows-specific-fields-image-only">Option
+     *      Header</a>
+     */
+    public static final class ImageOptionNT64Header extends ImageOptionHeader {
+        protected static final short IMAGE_NT_OPTIONAL_HDR64_MAGIC = 0x20b;
+
+        long imageBase;
+        int sectionAlignment;
+        int fileAlignment;
+        short majorOperatingSystemVersion;
+        short minorOperatingSystemVersion;
+        short majorImageVersion;
+        short minorImageVersion;
+        short majorSubsystemVersion;
+        short minorSubsystemVersion;
+        int win32VersionValue;
+        int sizeOfImage;
+        int sizeOfHeaders;
+        int checksum;
+        short subsystem;
+        short dllCharacteristics;
+        long sizeOfStackReserve;
+        long sizeOfStackCommit;
+        long sizeOfHeadReserve;
+        long sizeOfHeadCommit;
+        int loaderFlags;
+        ImageDataDirectory[] directories;
+
+        @Override
+        protected void readExtended(ObjectFileReader reader) {
+            imageBase = reader.getLong();
+            sectionAlignment = reader.getInt();
+            fileAlignment = reader.getInt();
+            majorOperatingSystemVersion = reader.getShort();
+            minorOperatingSystemVersion = reader.getShort();
+            majorImageVersion = reader.getShort();
+            minorImageVersion = reader.getShort();
+            majorSubsystemVersion = reader.getShort();
+            minorSubsystemVersion = reader.getShort();
+            win32VersionValue = reader.getInt();
+            sizeOfImage = reader.getInt();
+            sizeOfHeaders = reader.getInt();
+            checksum = reader.getInt();
+            subsystem = reader.getShort();
+            dllCharacteristics = reader.getShort();
+            sizeOfStackReserve = reader.getLong();
+            sizeOfStackCommit = reader.getLong();
+            sizeOfHeadReserve = reader.getLong();
+            sizeOfHeadCommit = reader.getLong();
+            loaderFlags = reader.getInt();
+            int numberOfRvaAndSizes = reader.getInt();
+
+            directories = new ImageDataDirectory[numberOfRvaAndSizes];
+            for (int i = 0; i < numberOfRvaAndSizes; i++) {
+                directories[i] = ImageDataDirectory.createImageDataDirectory(reader);
+            }
+        }
+
+        private ImageOptionNT64Header() {
+        }
+
+        private ImageDataDirectory getDirectoryByIndex(int index) {
+            return directories.length > index ? directories[index] : null;
+        }
+
+        public ImageDataDirectory getExportDirectory() {
+            return getDirectoryByIndex(0);
+        }
+
+        public ImageDataDirectory getImportDirectory() {
+            return getDirectoryByIndex(1);
+        }
+
+        public ImageDataDirectory getImportAddressTableDirectory() {
+            return getDirectoryByIndex(12);
+        }
+
     }
 
     /**
@@ -193,28 +424,28 @@ public final class CoffFile {
      *     DWORD   Characteristics;
      * } IMAGE_SECTION_HEADER, *PIMAGE_SECTION_HEADER;
      * </pre>
-     * 
+     *
      * @see <a href=
      *      "https://docs.microsoft.com/en-gb/windows/win32/api/winnt/ns-winnt-image_section_header">IMAGE_SECTION_HEADER
      *      structure (winnt.h)</a>
      */
     public final class ImageSectionHeader {
         private static final int IMAGE_SIZEOF_SHORT_NAME = 8;
-        @SuppressWarnings("unused") private static final int VIRTUAL_ADDRESS_OFFSET = 12;
-        private static final int SIZE_OF_RAW_DATA_OFFSET = 16;
-        @SuppressWarnings("unused") private static final int POINTER_TO_RAW_DATA_OFFSET = 20;
-        private static final int IMAGE_SIZEOF_SECTION_HEADER = 40;
 
-        private final int startOffset;
-        private final String name;
-        private final int sizeOfRawData;
-        private final int pointerToRawData;
+        final int startOffset;
+        int virtualSize;
+        int virtualAddress;
+        String name;
+        int sizeOfRawData;
+        int pointerToRawData;
+        int pointerToRelocations;
+        int pointerToLinenumbers;
+        short numberOfRelocations;
+        short numberOfLinenumbers;
+        int characteristics;
 
-        private ImageSectionHeader(int startOffset, String name, int sizeOfRawData, int pointerToRawData) {
+        private ImageSectionHeader(int startOffset) {
             this.startOffset = startOffset;
-            this.name = name;
-            this.sizeOfRawData = sizeOfRawData;
-            this.pointerToRawData = pointerToRawData;
         }
 
         public String getName() {
@@ -225,7 +456,8 @@ public final class CoffFile {
         public String toString() {
             return "ImageSectionHeader[" +
                             name +
-                            ", startOffset=" + startOffset +
+                            ", virtualSize=" + virtualAddress +
+                            ", virtualAddress=" + virtualAddress +
                             ", sizeOfRawData=" + sizeOfRawData +
                             ", pointerToRawData=" + pointerToRawData +
                             ']';
@@ -234,30 +466,37 @@ public final class CoffFile {
         public ByteSequence getData() {
             return bytes.subSequence(pointerToRawData, pointerToRawData + sizeOfRawData);
         }
-
     }
 
     private ImageSectionHeader createImageSectionHeader(ObjectFileReader reader) {
         int startOffset = reader.getPosition();
+        ImageSectionHeader section = new ImageSectionHeader(startOffset);
         byte[] nameBytes = new byte[ImageSectionHeader.IMAGE_SIZEOF_SHORT_NAME];
         reader.get(nameBytes);
-        String name = parseName(nameBytes, reader);
-        reader.setPosition(startOffset + ImageSectionHeader.SIZE_OF_RAW_DATA_OFFSET);
-        int sizeOfRawData = reader.getInt();
-        int pointerToRawData = reader.getInt();
-        reader.setPosition(startOffset + ImageSectionHeader.IMAGE_SIZEOF_SECTION_HEADER);
-        return new ImageSectionHeader(startOffset, name, sizeOfRawData, pointerToRawData);
+        section.virtualSize = reader.getInt();
+        section.virtualAddress = reader.getInt();
+        section.sizeOfRawData = reader.getInt();
+        section.pointerToRawData = reader.getInt();
+        section.pointerToRelocations = reader.getInt();
+        section.pointerToLinenumbers = reader.getInt();
+        section.numberOfRelocations = reader.getShort();
+        section.numberOfLinenumbers = reader.getShort();
+        section.characteristics = reader.getInt();
+        int endOffset = reader.getPosition();
+        section.name = parseName(nameBytes, reader);
+        reader.setPosition(endOffset);
+        return section;
     }
 
     /**
      * Parse section name.
-     * 
+     *
      * An 8-byte, null-padded UTF-8 string. There is no terminating null character if the string is
      * exactly eight characters long. For longer names, this member contains a forward slash (/)
      * followed by an ASCII representation of a decimal number that is an offset into the string
      * table. Executable images do not use a string table and do not support section names longer
      * than eight characters.
-     * 
+     *
      * @see ImageSectionHeader
      */
     private String parseName(byte[] nameBytes, ObjectFileReader reader) {
@@ -282,6 +521,17 @@ public final class CoffFile {
         }
         int end = reader.getPosition();
         return reader.getString(start, end, StandardCharsets.UTF_8);
+    }
+
+    public String readStringAtVirtualOffset(int offset) {
+        ImageSectionHeader section = lookupOffset(offset);
+        int virtualOffset = offset - section.virtualAddress + section.pointerToRawData;
+        int endOffset = virtualOffset;
+        // find end of string
+        while (bytes.byteAt(endOffset) != 0) {
+            endOffset++;
+        }
+        return new String(bytes.subSequence(virtualOffset, endOffset).toByteArray(), StandardCharsets.UTF_8);
     }
 
     private static String nameBytesToString(byte[] nameBytes) {

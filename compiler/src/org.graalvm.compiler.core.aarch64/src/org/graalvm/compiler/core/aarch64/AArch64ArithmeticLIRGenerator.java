@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -331,16 +331,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
          * The net effect of a narrow is only to change the underlying AArchKind. Because AArch64
          * instructions operate on registers of either 32 or 64 bits, if needed, we switch the value
          * type from QWORD to DWORD.
-         *
-         * Ideally, switching the value type shouldn't require a move, but instead could be
-         * reinterpreted in some other way.
          */
         if (inputVal.getPlatformKind() == AArch64Kind.QWORD && toBits <= 32) {
             LIRKind resultKind = getLIRKindForBitSize(toBits, inputVal);
             assert resultKind.getPlatformKind() == AArch64Kind.DWORD;
-            Variable result = getLIRGen().newVariable(resultKind);
-            getLIRGen().emitMove(result, inputVal);
-            return result;
+            return new CastValue(resultKind, asAllocatable(inputVal));
         } else {
             return inputVal;
         }
@@ -387,15 +382,15 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         return result;
     }
 
-    private static LIRKind getLIRKindForBitSize(int bitSize, Value... inputValues) {
+    private static LIRKind getLIRKindForBitSize(int bitSize, Value inputValue) {
         /*
          * AArch64 general-purpose operations are either 32 or 64 bits.
          */
         assert bitSize <= 64;
         if (bitSize <= 32) {
-            return LIRKind.combine(inputValues).changeType(AArch64Kind.DWORD);
+            return LIRKind.combine(inputValue).changeType(AArch64Kind.DWORD);
         } else {
-            return LIRKind.combine(inputValues).changeType(AArch64Kind.QWORD);
+            return LIRKind.combine(inputValue).changeType(AArch64Kind.QWORD);
         }
     }
 
@@ -471,8 +466,14 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Value emitNegate(Value inputVal) {
-        return emitUnary(getOpCode(inputVal, AArch64ArithmeticOp.NEG, AArch64ArithmeticOp.FNEG), inputVal);
+    public Value emitNegate(Value inputVal, boolean setFlags) {
+        if (isNumericInteger(inputVal.getPlatformKind())) {
+            AArch64ArithmeticOp op = setFlags ? AArch64ArithmeticOp.NEGS : AArch64ArithmeticOp.NEG;
+            return emitUnary(op, inputVal);
+        } else {
+            assert !setFlags : "Cannot set flags on floating point arithmetic";
+            return emitUnary(AArch64ArithmeticOp.FNEG, inputVal);
+        }
     }
 
     @Override

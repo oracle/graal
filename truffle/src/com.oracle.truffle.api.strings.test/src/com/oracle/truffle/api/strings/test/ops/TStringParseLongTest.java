@@ -68,8 +68,15 @@ public class TStringParseLongTest extends TStringTestBase {
     public void testAll() throws Exception {
         for (long n : new long[]{Long.MIN_VALUE, Long.MIN_VALUE + 1, ((long) Integer.MIN_VALUE) - 1, Integer.MIN_VALUE, Integer.MIN_VALUE + 1, Short.MIN_VALUE, -12345, -1, 0,
                         1, 12345, Short.MAX_VALUE, Integer.MAX_VALUE - 1, Integer.MAX_VALUE, ((long) Integer.MAX_VALUE) + 1, Long.MAX_VALUE - 1, Long.MAX_VALUE}) {
-            int[] radixes = {10, 16};
-            String[] strings = {String.valueOf(n), n < 0 ? '-' + Long.toHexString(-n) : Long.toHexString(n)};
+            int[] radixes;
+            String[] strings;
+            if (n < 0) {
+                strings = new String[]{String.valueOf(n), '-' + Long.toHexString(-n)};
+                radixes = new int[]{10, 16};
+            } else {
+                strings = new String[]{String.valueOf(n), '+' + String.valueOf(n), Long.toHexString(n)};
+                radixes = new int[]{10, 10, 16};
+            }
             for (int i = 0; i < radixes.length; i++) {
                 int radix = radixes[i];
                 checkAsciiString(strings[i], (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {

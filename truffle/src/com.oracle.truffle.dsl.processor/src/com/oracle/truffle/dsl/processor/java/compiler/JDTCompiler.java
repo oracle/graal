@@ -141,7 +141,7 @@ public class JDTCompiler extends AbstractCompiler {
 
     private static Comparator<Element> createSourceOrderComparator(final TypeElement enclosing) {
 
-        Comparator<Element> comparator = new Comparator<Element>() {
+        Comparator<Element> comparator = new Comparator<>() {
 
             final List<Object> declarationOrder = lookupDeclarationOrder(enclosing);
 
@@ -212,7 +212,7 @@ public class JDTCompiler extends AbstractCompiler {
             sortedElements.addAll(Arrays.asList(sortedTypes));
         }
 
-        Collections.sort(sortedElements, new Comparator<Object>() {
+        Collections.sort(sortedElements, new Comparator<>() {
             public int compare(Object o1, Object o2) {
                 try {
                     int structOffset1 = (int) field(o1, "structOffset");

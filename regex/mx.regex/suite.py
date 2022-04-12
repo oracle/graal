@@ -43,7 +43,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "22.1.0",
+  "version" : "22.2.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -88,13 +88,18 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:ICU4J",
+      ],
+      "requires" : [
+        "java.logging",
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "exports" : [
         "com.oracle.truffle.regex.chardata",
       ],
       "checkstyleVersion" : "8.36.1",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,
     },
@@ -112,7 +117,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "com.oracle.truffle.regex",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Regex",
     },
   },

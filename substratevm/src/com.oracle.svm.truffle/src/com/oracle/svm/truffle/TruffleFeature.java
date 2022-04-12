@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,7 +104,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
@@ -123,7 +123,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -137,6 +136,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
@@ -245,13 +245,13 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, CompilerAsserts.class);
         r.setAllowOverwrite(true);
-        r.register0("neverPartOfCompilation", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("neverPartOfCompilation") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return handleNeverPartOfCompilation(b, targetMethod, null);
             }
         });
-        r.register1("neverPartOfCompilation", String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("neverPartOfCompilation", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 return handleNeverPartOfCompilation(b, targetMethod, message);
@@ -283,7 +283,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
-        FeatureImpl.BeforeAnalysisAccessImpl config = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
 
         ImageSingletons.lookup(TruffleBaseFeature.class).setProfilingEnabled(truffleRuntime.isProfilingEnabled());
 
@@ -292,7 +292,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work
-        config.registerAsCompiled((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()));
+        config.registerAsCompiled((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
@@ -350,8 +350,16 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsCompiled((AnalysisMethod) method);
+            config.registerAsCompiled((AnalysisMethod) method, true);
         }
+
+        /*
+         * The concrete subclass of OptimizedCallTarget needs to be registered as in heap for the
+         * forced compilation of frame methods to work. Forcing compilation of a method effectively
+         * adds it as a root and non-static root methods are only compiled if types implementing
+         * them or any of their subtypes are allocated.
+         */
+        access.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass());
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system
@@ -361,6 +369,9 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
          */
         TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());
         TruffleBaseFeature.preInitializeEngine();
+
+        /* Ensure org.graalvm.polyglot.io.IOHelper.IMPL is initialized. */
+        ((BeforeAnalysisAccessImpl) access).ensureInitialized("org.graalvm.polyglot.io.IOHelper");
     }
 
     static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
@@ -384,7 +395,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (original.hasNeverInlineDirective()) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (invocationPlugins.lookupInvocation(original) != null) {
+            } else if (invocationPlugins.lookupInvocation(original, builder.getOptions()) != null) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (original.getAnnotation(ExplodeLoop.class) != null) {
                 /*
@@ -398,7 +409,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
                  * loops of the inlined callee are exploded too.
                  */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (replacements.hasSubstitution(original)) {
+            } else if (replacements.hasSubstitution(original, builder.getOptions())) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 
@@ -417,7 +428,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         }
     }
 
-    private static void registerKnownTruffleFields(FeatureImpl.BeforeAnalysisAccessImpl config, KnownTruffleTypes knownTruffleFields) {
+    private static void registerKnownTruffleFields(BeforeAnalysisAccessImpl config, KnownTruffleTypes knownTruffleFields) {
         for (Class<?> klass = knownTruffleFields.getClass(); klass != Object.class; klass = klass.getSuperclass()) {
             for (Field field : klass.getDeclaredFields()) {
                 if (Modifier.isPublic(field.getModifiers())) {
@@ -439,14 +450,9 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     }
 
     private boolean includeCallee(ResolvedJavaMethod implementationMethod, GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
-        Uninterruptible uninterruptibleAnnotation = implementationMethod.getAnnotation(Uninterruptible.class);
         if (implementationMethod.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return false;
-        } else if (implementationMethod.hasNeverInlineDirective()) {
-            /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
-            return false;
-        } else if (Uninterruptible.Utils.isUninterruptible(implementationMethod) && (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined())) {
-            /* The semantics of Uninterruptible would get lost during partial evaluation. */
+        } else if (!((SubstrateTruffleRuntime) Truffle.getRuntime()).isInlineable(implementationMethod)) {
             return false;
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {
             return false;
@@ -495,7 +501,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     }
 
     private void initializeMethodBlocklist(MetaAccessProvider metaAccess, FeatureAccess featureAccess) {
-        blocklistMethod(metaAccess, Object.class, "clone");
         blocklistMethod(metaAccess, Object.class, "equals", Object.class);
         blocklistMethod(metaAccess, Object.class, "hashCode");
         blocklistMethod(metaAccess, Object.class, "toString");

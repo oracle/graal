@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,14 +102,56 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * @see LoopConditionProfile
  * @since 0.10
  */
-public abstract class LoopConditionProfile extends ConditionProfile {
+public final class LoopConditionProfile extends ConditionProfile {
+
+    private static final LoopConditionProfile DISABLED;
+    static {
+        LoopConditionProfile profile = new LoopConditionProfile();
+        profile.trueCount = Long.MAX_VALUE;
+        profile.falseCount = Integer.MAX_VALUE;
+        DISABLED = profile;
+    }
+
+    @CompilationFinal private long trueCount; // long for long running loops.
+    @CompilationFinal private int falseCount;
 
     LoopConditionProfile() {
     }
 
     /** @since 0.10 */
     @Override
-    public abstract boolean profile(boolean value);
+    public boolean profile(boolean condition) {
+        // locals required to guarantee no overflow in multi-threaded environments
+        long trueCountLocal = trueCount;
+        int falseCountLocal = falseCount;
+        if (trueCountLocal == 0) {
+            // Deopt for never entering the loop.
+            if (condition) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+        }
+        // No deopt for not entering the loop.
+
+        if (CompilerDirectives.inInterpreter()) {
+            if (condition) {
+                if (trueCountLocal < Long.MAX_VALUE) {
+                    trueCount = trueCountLocal + 1;
+                }
+            } else {
+                if (falseCountLocal < Integer.MAX_VALUE) {
+                    falseCount = falseCountLocal + 1;
+                }
+            }
+            // no branch probability calculation in the interpreter
+            return condition;
+        } else {
+            if (this != DISABLED) {
+                return CompilerDirectives.injectBranchProbability(calculateProbability(trueCountLocal, falseCountLocal), condition);
+            } else {
+                return condition;
+            }
+        }
+    }
 
     /**
      * Provides an alternative way to profile counted loops with less interpreter footprint. Please
@@ -118,7 +160,18 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      * @see #inject(boolean)
      * @since 0.10
      */
-    public abstract void profileCounted(long length);
+    public void profileCounted(long length) {
+        if (CompilerDirectives.inInterpreter()) {
+            long trueCountLocal = trueCount + length;
+            if (trueCountLocal >= 0) { // don't write overflow values
+                trueCount = trueCountLocal;
+                int falseCountLocal = falseCount;
+                if (falseCountLocal < Integer.MAX_VALUE) {
+                    falseCount = falseCountLocal + 1;
+                }
+            }
+        }
+    }
 
     /**
      * Provides an alternative way to profile counted loops with less interpreter footprint. Please
@@ -127,7 +180,75 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      * @see #inject(boolean)
      * @since 0.10
      */
-    public abstract boolean inject(boolean condition);
+    public boolean inject(boolean condition) {
+        if (CompilerDirectives.inCompiledCode() && this != DISABLED) {
+            return CompilerDirectives.injectBranchProbability(calculateProbability(trueCount, falseCount), condition);
+        } else {
+            return condition;
+        }
+    }
+
+    private static double calculateProbability(long trueCountLocal, int falseCountLocal) {
+        if (falseCountLocal == 0 && trueCountLocal == 0) {
+            /* Avoid division by zero if profile was never used. */
+            return 0.0;
+        } else {
+            return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        if (this.trueCount == 0) {
+            this.trueCount = 1;
+        }
+        if (this.falseCount == 0) {
+            this.falseCount = 1;
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        if (this != DISABLED) {
+            this.trueCount = 0L;
+            this.falseCount = 0;
+        }
+    }
+
+    /* for testing */
+    long getTrueCount() {
+        return trueCount;
+    }
+
+    /* for testing */
+    int getFalseCount() {
+        return falseCount;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled(LoopConditionProfile.class);
+        } else {
+            return toString(LoopConditionProfile.class, falseCount == 0, false, //
+                            String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), trueCount, falseCount));
+        }
+    }
 
     /**
      * Returns a {@link LoopConditionProfile} that speculates on loop conditions to be never
@@ -139,9 +260,9 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      */
     public static LoopConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Enabled.createLazyLoadClass();
+            return new LoopConditionProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -163,143 +284,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      * @since 19.0
      */
     public static LoopConditionProfile getUncached() {
-        return Disabled.INSTANCE;
-    }
-
-    static final class Enabled extends LoopConditionProfile {
-
-        @CompilationFinal private long trueCount; // long for long running loops.
-        @CompilationFinal private int falseCount;
-
-        @Override
-        public boolean profile(boolean condition) {
-            // locals required to guarantee no overflow in multi-threaded environments
-            long trueCountLocal = trueCount;
-            int falseCountLocal = falseCount;
-            if (trueCountLocal == 0) {
-                // Deopt for never entering the loop.
-                if (condition) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-            }
-            // No deopt for not entering the loop.
-
-            if (CompilerDirectives.inInterpreter()) {
-                if (condition) {
-                    if (trueCountLocal < Long.MAX_VALUE) {
-                        trueCount = trueCountLocal + 1;
-                    }
-                } else {
-                    if (falseCountLocal < Integer.MAX_VALUE) {
-                        falseCount = falseCountLocal + 1;
-                    }
-                }
-                // no branch probability calculation in the interpreter
-                return condition;
-            } else {
-                return CompilerDirectives.injectBranchProbability(calculateProbability(trueCountLocal, falseCountLocal), condition);
-            }
-        }
-
-        @Override
-        public void profileCounted(long length) {
-            if (CompilerDirectives.inInterpreter()) {
-                long trueCountLocal = trueCount + length;
-                if (trueCountLocal >= 0) { // don't write overflow values
-                    trueCount = trueCountLocal;
-                    int falseCountLocal = falseCount;
-                    if (falseCountLocal < Integer.MAX_VALUE) {
-                        falseCount = falseCountLocal + 1;
-                    }
-                }
-            }
-        }
-
-        @Override
-        public void disable() {
-            if (this.trueCount == 0) {
-                this.trueCount = 1;
-            }
-            if (this.falseCount == 0) {
-                this.falseCount = 1;
-            }
-        }
-
-        @Override
-        public void reset() {
-            this.trueCount = 0L;
-            this.falseCount = 0;
-        }
-
-        @Override
-        public boolean inject(boolean condition) {
-            if (CompilerDirectives.inCompiledCode()) {
-                return CompilerDirectives.injectBranchProbability(calculateProbability(trueCount, falseCount), condition);
-            } else {
-                return condition;
-            }
-        }
-
-        private static double calculateProbability(long trueCountLocal, int falseCountLocal) {
-            if (falseCountLocal == 0 && trueCountLocal == 0) {
-                /* Avoid division by zero if profile was never used. */
-                return 0.0;
-            } else {
-                return (double) trueCountLocal / (double) (trueCountLocal + falseCountLocal);
-            }
-        }
-
-        /* for testing */
-        long getTrueCount() {
-            return trueCount;
-        }
-
-        /* for testing */
-        int getFalseCount() {
-            return falseCount;
-        }
-
-        @Override
-        public String toString() {
-            return toString(LoopConditionProfile.class, falseCount == 0, false, //
-                            String.format("trueProbability=%s (trueCount=%s, falseCount=%s)", calculateProbability(trueCount, falseCount), trueCount, falseCount));
-        }
-
-        /* Needed for lazy class loading. */
-        static LoopConditionProfile createLazyLoadClass() {
-            return new Enabled();
-        }
-
-    }
-
-    static final class Disabled extends LoopConditionProfile {
-
-        static final LoopConditionProfile INSTANCE = new Disabled();
-
-        @Override
-        protected Object clone() {
-            return INSTANCE;
-        }
-
-        @Override
-        public boolean profile(boolean condition) {
-            return condition;
-        }
-
-        @Override
-        public void profileCounted(long length) {
-        }
-
-        @Override
-        public boolean inject(boolean condition) {
-            return condition;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(LoopConditionProfile.class);
-        }
-
+        return DISABLED;
     }
 
 }

@@ -200,7 +200,7 @@ public class ReflectionGraphKit extends HostedGraphKit {
             return values.get(0);
         }
         assert values.size() == merge.forwardEndCount();
-        return unique(new ValuePhiNode(StampTool.meetOrNull(values, null), merge, values.toArray(new ValueNode[0])));
+        return unique(new ValuePhiNode(StampTool.meetOrNull(values, null), merge, values.toArray(ValueNode.EMPTY_ARRAY)));
     }
 
     public void fillArgsArray(ValueNode argumentArray, int receiverOffset, ValueNode[] args, Class<?>[] argTypes) {

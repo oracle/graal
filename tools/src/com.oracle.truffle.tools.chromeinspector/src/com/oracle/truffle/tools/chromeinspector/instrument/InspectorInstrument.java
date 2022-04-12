@@ -296,7 +296,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             @Override
             public Iterator<OptionDescriptor> iterator() {
                 Iterator<OptionDescriptor> iterator = descriptors.iterator();
-                return new Iterator<OptionDescriptor>() {
+                return new Iterator<>() {
                     @Override
                     public boolean hasNext() {
                         return iterator.hasNext();

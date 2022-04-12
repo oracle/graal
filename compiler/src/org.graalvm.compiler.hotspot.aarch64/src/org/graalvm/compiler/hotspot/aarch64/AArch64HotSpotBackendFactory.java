@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -100,7 +100,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AArch64GraphBuilderPlugins.register(plugins, replacements, /* registerForeignCallMath */true, config.useFMAIntrinsics, options);
+        AArch64GraphBuilderPlugins.register(plugins, replacements, /* registerForeignCallMath */true, options);
         return plugins;
     }
 

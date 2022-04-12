@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -191,8 +191,8 @@ public class InlineableGraph implements Inlineable {
     @SuppressWarnings("try")
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, caller.allowAssumptions()).method(method).trackNodeSourcePosition(trackNodeSourcePosition).useProfilingInfo(
-                        caller.useProfilingInfo()).speculationLog(caller.getSpeculationLog()).build();
+        StructuredGraph newGraph = new StructuredGraph.Builder(caller.getOptions(), debug, caller.allowAssumptions()).method(method).trackNodeSourcePosition(trackNodeSourcePosition).profileProvider(
+                        caller.getProfileProvider()).speculationLog(caller.getSpeculationLog()).build();
         try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
             if (!caller.isUnsafeAccessTrackingEnabled()) {
                 newGraph.disableUnsafeAccessTracking();

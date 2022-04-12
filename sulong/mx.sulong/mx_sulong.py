@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -232,6 +232,15 @@ def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, ge
     if "tools" in (s.name for s in mx.suites()):
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+
+@mx.command(_suite.name, "lli-mul")
+def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
+    """run multi-context java launcher"""
+    vmArgs, sulongArgs = truffle_extract_VM_args(args)
+    dists = []
+    if "tools" in (s.name for s in mx.suites()):
+        dists.append('CHROMEINSPECTOR')
+    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 @mx.command(_suite.name, "lli")
 def lli(args=None, out=None):
@@ -479,6 +488,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
     truffle_jars=['sulong:SULONG_NATIVE'],
     support_distributions=[
+        'sulong:SULONG_BITCODE_HOME',
         'sulong:SULONG_NATIVE_HOME',
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),

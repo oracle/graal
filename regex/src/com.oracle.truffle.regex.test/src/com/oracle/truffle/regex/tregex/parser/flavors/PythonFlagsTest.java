@@ -60,6 +60,5 @@ public class PythonFlagsTest {
         assertTrue(parse("t").isTemplate());
         assertTrue(parse("u").isUnicodeExplicitlySet());
         assertTrue(parse("x").isVerbose());
-        assertTrue(parse("y").isSticky());
     }
 }

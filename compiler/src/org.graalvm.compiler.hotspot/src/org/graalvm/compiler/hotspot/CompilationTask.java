@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,6 +48,7 @@ import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.StableProfileProvider;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -81,7 +82,8 @@ public class CompilationTask {
      */
     private final boolean installAsDefault;
 
-    private final boolean useProfilingInfo;
+    private final StableProfileProvider profileProvider;
+
     private final boolean shouldRetainLocalVariables;
 
     final class HotSpotCompilationWrapper extends CompilationWrapper<HotSpotCompilationRequestResult> {
@@ -171,8 +173,8 @@ public class CompilationTask {
 
             StructuredGraph graph;
             try (DebugContext.Scope s = debug.scope("Compiling", new DebugDumpScope(getIdString(), true))) {
-                graph = compiler.createGraph(method, entryBCI, useProfilingInfo, compilationId, debug.getOptions(), debug);
-                result = compiler.compile(graph, method, entryBCI, useProfilingInfo, shouldRetainLocalVariables, compilationId, debug);
+                graph = compiler.createGraph(method, entryBCI, profileProvider, compilationId, debug.getOptions(), debug);
+                result = compiler.compile(graph, shouldRetainLocalVariables, compilationId, debug);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -216,7 +218,7 @@ public class CompilationTask {
         this.jvmciRuntime = jvmciRuntime;
         this.compiler = compiler;
         this.compilationId = new HotSpotCompilationIdentifier(request);
-        this.useProfilingInfo = useProfilingInfo;
+        this.profileProvider = useProfilingInfo ? new StableProfileProvider() : null;
         this.shouldRetainLocalVariables = shouldRetainLocalVariables;
         this.installAsDefault = installAsDefault;
     }

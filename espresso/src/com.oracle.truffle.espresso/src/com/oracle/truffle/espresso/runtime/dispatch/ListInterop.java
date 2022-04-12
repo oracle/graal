@@ -120,7 +120,7 @@ public final class ListInterop extends IterableInterop {
                 return unwrapForeign(execute(receiver, (int) index));
             } catch (EspressoException e) {
                 error.enter();
-                if (InterpreterToVM.instanceOf(e.getExceptionObject(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
                     throw InvalidArrayIndexException.create(index);
                 }
                 throw e; // unexpected exception
@@ -159,7 +159,7 @@ public final class ListInterop extends IterableInterop {
                 execute(receiver, (int) index, value);
             } catch (EspressoException e) {
                 error.enter();
-                if (InterpreterToVM.instanceOf(e.getExceptionObject(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
+                if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_IndexOutOfBoundsException)) {
                     throw InvalidArrayIndexException.create(index);
                 }
                 throw e; // unexpected exception

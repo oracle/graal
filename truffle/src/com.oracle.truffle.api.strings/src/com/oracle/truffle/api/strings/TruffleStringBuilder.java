@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -839,7 +839,6 @@ public final class TruffleStringBuilder {
         @Specialization
         void append(TruffleStringBuilder sb, String javaString, int fromIndex, int lengthStr,
                         @Cached AppendArrayIntlNode appendArrayIntlNode,
-                        @Cached AppendCharArrayIntlNode appendCharArrayIntlNode,
                         @Cached ConditionProfile stride0Profile,
                         @Cached ConditionProfile errorProfile) {
             if (errorProfile.profile(!isUTF16(sb))) {
@@ -850,40 +849,24 @@ public final class TruffleStringBuilder {
             }
             boundsCheckRegionI(fromIndex, lengthStr, javaString.length());
             final int appendCodePointLength;
-            if (TStringUnsafe.JAVA_SPEC <= 8) {
-                if (errorProfile.profile(javaString.length() > TStringConstants.MAX_ARRAY_SIZE_S1)) {
-                    throw InternalErrors.outOfMemory();
+            final byte[] arrayStr = TStringUnsafe.getJavaStringArray(javaString);
+            final int strideStr = TStringUnsafe.getJavaStringStride(javaString);
+            final int offsetStr = fromIndex << strideStr;
+            if (stride0Profile.profile(strideStr == 0)) {
+                if (is7Bit(sb.codeRange)) {
+                    sb.updateCodeRange(TStringOps.calcStringAttributesLatin1(this, arrayStr, offsetStr, lengthStr));
                 }
-                final char[] arrayStr = TStringUnsafe.getJavaStringArrayJDK8(javaString);
-                final int offsetStr = fromIndex << 1;
+                appendCodePointLength = lengthStr;
+            } else {
                 if (!isBrokenMultiByteOrUnknown(sb.codeRange)) {
-                    final long attrs = TStringOps.calcStringAttributesUTF16C(this, arrayStr, offsetStr, lengthStr);
+                    long attrs = TStringOps.calcStringAttributesUTF16(this, arrayStr, offsetStr, lengthStr, false);
                     sb.updateCodeRange(StringAttributes.getCodeRange(attrs));
                     appendCodePointLength = StringAttributes.getCodePointLength(attrs);
                 } else {
                     appendCodePointLength = 0;
                 }
-                appendCharArrayIntlNode.execute(sb, arrayStr, offsetStr, lengthStr, Stride.fromCodeRangeUTF16(sb.codeRange));
-            } else {
-                final byte[] arrayStr = TStringUnsafe.getJavaStringArrayJDK9(javaString);
-                final int strideStr = TStringUnsafe.getJavaStringStride(javaString);
-                final int offsetStr = fromIndex << strideStr;
-                if (stride0Profile.profile(strideStr == 0)) {
-                    if (is7Bit(sb.codeRange)) {
-                        sb.updateCodeRange(TStringOps.calcStringAttributesLatin1(this, arrayStr, offsetStr, lengthStr));
-                    }
-                    appendCodePointLength = lengthStr;
-                } else {
-                    if (!isBrokenMultiByteOrUnknown(sb.codeRange)) {
-                        long attrs = TStringOps.calcStringAttributesUTF16(this, arrayStr, offsetStr, lengthStr, false);
-                        sb.updateCodeRange(StringAttributes.getCodeRange(attrs));
-                        appendCodePointLength = StringAttributes.getCodePointLength(attrs);
-                    } else {
-                        appendCodePointLength = 0;
-                    }
-                }
-                appendArrayIntlNode.execute(sb, arrayStr, offsetStr, lengthStr, strideStr, Stride.fromCodeRangeUTF16(sb.codeRange));
             }
+            appendArrayIntlNode.execute(sb, arrayStr, offsetStr, lengthStr, strideStr, Stride.fromCodeRangeUTF16(sb.codeRange));
             sb.appendLength(lengthStr, appendCodePointLength);
         }
 
@@ -1025,36 +1008,6 @@ public final class TruffleStringBuilder {
             TStringOps.arraycopyWithStride(location,
                             array, offsetA, cachedStrideA, 0,
                             sb.buf, 0, cachedStrideNew, sb.length, lengthA);
-        }
-    }
-
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class AppendCharArrayIntlNode extends Node {
-
-        abstract void execute(TruffleStringBuilder sb, char[] array, int offsetA, int lengthA, int strideNew);
-
-        @Specialization(guards = {"sb.stride == cachedStrideSB", "strideNew == cachedStrideNew"}, limit = TStringOpsNodes.LIMIT_STRIDE)
-        void doCached(TruffleStringBuilder sb, char[] array, int offsetA, int lengthA, @SuppressWarnings("unused") int strideNew,
-                        @Cached(value = "sb.stride") int cachedStrideSB,
-                        @Cached(value = "strideNew") int cachedStrideNew,
-                        @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
-            doAppend(this, sb, array, offsetA, lengthA, cachedStrideSB, cachedStrideNew, bufferGrowProfile, errorProfile);
-        }
-
-        @Specialization(replaces = "doCached")
-        void doUnached(TruffleStringBuilder sb, char[] array, int offsetA, int lengthA, int strideNew,
-                        @Cached ConditionProfile bufferGrowProfile,
-                        @Cached ConditionProfile errorProfile) {
-            doAppend(this, sb, array, offsetA, lengthA, sb.stride, strideNew, bufferGrowProfile, errorProfile);
-        }
-
-        private static void doAppend(Node location, TruffleStringBuilder sb, char[] array, int offsetA, int lengthA, int cachedStrideSB, int cachedStrideNew, ConditionProfile bufferGrowProfile,
-                        ConditionProfile errorProfile) {
-            sb.ensureCapacity(location, lengthA, cachedStrideSB, cachedStrideNew, bufferGrowProfile, errorProfile);
-            assert sb.stride == cachedStrideNew;
-            TStringOps.arraycopyWithStrideCB(location, array, offsetA, sb.buf, sb.length << cachedStrideNew, cachedStrideNew, lengthA);
         }
     }
 

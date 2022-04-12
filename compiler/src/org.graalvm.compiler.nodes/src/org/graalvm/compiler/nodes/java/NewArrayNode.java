@@ -54,7 +54,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * The {@code NewArrayNode} is used for all array allocations where the element type is know at
+ * The {@code NewArrayNode} is used for all array allocations where the element type is known at
  * compile time.
  */
 // JaCoCo Exclude

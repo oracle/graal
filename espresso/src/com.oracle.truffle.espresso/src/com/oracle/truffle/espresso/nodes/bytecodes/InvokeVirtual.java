@@ -33,6 +33,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -81,7 +82,7 @@ public abstract class InvokeVirtual extends Node {
         return (StaticObject) args[0];
     }
 
-    @ImportStatic(InvokeVirtual.class)
+    @ImportStatic({InvokeVirtual.class, Utils.class})
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
@@ -95,6 +96,7 @@ public abstract class InvokeVirtual extends Node {
 
         public abstract Object execute(Object[] args);
 
+        @ImportStatic(Utils.class)
         abstract static class LazyDirectCallNode extends Node {
 
             final Method.MethodVersion resolvedMethod;
@@ -106,13 +108,17 @@ public abstract class InvokeVirtual extends Node {
             public abstract Object execute(Object[] args);
 
             @Specialization
-            Object doCached(Object[] args, @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
+            Object doCached(Object[] args, @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
                 return directCallNode.call(args);
             }
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
             return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        protected ClassHierarchyAssumption readLeafAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().isLeafMethod(resolutionSeed.getMethodVersion());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
@@ -123,17 +129,16 @@ public abstract class InvokeVirtual extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
                         @SuppressWarnings("unused") @Cached("maybeSingleImplementor.get()") ObjectKlass implementor,
-                        @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
+                        @SuppressWarnings("unused") @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
             return directCallNode.execute(args);
         }
 
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
-                                        "resolutionSeed.getLeafAssumption()",
+                                        "readLeafAssumption().getAssumption()",
                                         "resolvedMethod.getRedefineAssumption()"
                         })
         Object callLeafMethod(Object[] args,
@@ -143,7 +148,6 @@ public abstract class InvokeVirtual extends Node {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             assert resolvedMethod.getMethod() == resolutionSeed;
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
             return directCallNode.execute(args);
         }
 
@@ -156,10 +160,9 @@ public abstract class InvokeVirtual extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
             return directCallNode.call(args);
         }
 
@@ -172,7 +175,6 @@ public abstract class InvokeVirtual extends Node {
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
             Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
-            assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -245,7 +247,6 @@ public abstract class InvokeVirtual extends Node {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
                 Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
-                assert target.getMethod().getDeclaringKlass().isInitialized() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }

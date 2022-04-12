@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,10 +125,10 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
-        if (hasMemoryFences()) {
+    protected NodeSize dynamicNodeSizeEstimate() {
+        if (ordersMemoryAccesses()) {
             return SIZE_2;
         }
-        return super.estimatedNodeSize();
+        return super.dynamicNodeSizeEstimate();
     }
 }

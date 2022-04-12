@@ -39,7 +39,7 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
+public abstract class AnalysisField extends AnalysisElement implements ResolvedJavaField, OriginalFieldProvider {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
@@ -70,9 +70,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     /**
      * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types.
+     * all the sub-types. It doesn't track any context-sensitive information.
      */
-    private FieldSinkTypeFlow instanceFieldFlow;
+    private ContextInsensitiveFieldTypeFlow instanceFieldFlow;
 
     private AtomicBoolean isAccessed = new AtomicBoolean();
     private AtomicBoolean isRead = new AtomicBoolean();
@@ -97,10 +97,10 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     protected TypeState instanceFieldTypeState;
 
     /** Field's position in the list of declaring type's fields, including inherited fields. */
-    private int position;
+    protected int position;
 
-    private final AnalysisType declaringClass;
-    private final AnalysisType fieldType;
+    protected final AnalysisType declaringClass;
+    protected final AnalysisType fieldType;
 
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
@@ -127,7 +127,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             this.initialInstanceFieldFlow = null;
         } else {
             this.canBeNull = true;
-            this.instanceFieldFlow = new FieldSinkTypeFlow(this, getType());
+            this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
     }
@@ -222,7 +222,8 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return staticFieldFlow;
     }
 
-    public FieldSinkTypeFlow getInstanceFieldFlow() {
+    /** Get the field type flow, stripped of any context. */
+    public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
         assert !Modifier.isStatic(this.getModifiers());
 
         return instanceFieldFlow;
@@ -241,7 +242,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         boolean firstAttempt = AtomicUtils.atomicMark(isAccessed);
         notifyUpdateAccessInfo();
         if (firstAttempt) {
+            onReachable();
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
@@ -253,7 +256,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             readBy.put(method, Boolean.TRUE);
         }
         if (firstAttempt) {
+            onReachable();
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
@@ -270,8 +275,11 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         if (writtenBy != null && method != null) {
             writtenBy.put(method, Boolean.TRUE);
         }
-        if (firstAttempt && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object)) {
-            getUniverse().onFieldAccessed(this);
+        if (firstAttempt) {
+            onReachable();
+            if (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object) {
+                getUniverse().onFieldAccessed(this);
+            }
         }
         return firstAttempt;
     }
@@ -279,6 +287,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     public void markFolded() {
         if (AtomicUtils.atomicMark(isFolded)) {
             getDeclaringClass().registerAsReachable();
+            onReachable();
         }
     }
 
@@ -382,8 +391,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return isFolded.get();
     }
 
+    @Override
     public boolean isReachable() {
         return isAccessed.get() || isRead.get() || isWritten.get() || isFolded.get();
+    }
+
+    @Override
+    public void onReachable() {
+        notifyReachabilityCallbacks(declaringClass.getUniverse());
     }
 
     public void setCanBeNull(boolean canBeNull) {

@@ -56,10 +56,13 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class SLHostClassLoadingTest {
 
     @Test
     public void testSLHostClassLoading() throws IOException {
+        TruffleTestAssumptions.assumeNotAOT();
         HostAccess accessPolicy = HostAccess.newBuilder(HostAccess.ALL).build();
         try (Context context = Context.newBuilder().allowIO(true).allowHostAccess(accessPolicy).allowHostClassLookup(cls -> true).allowHostClassLoading(true).build()) {
             final Class<?> hostClass = HostClassLoadingTestClass1.class;

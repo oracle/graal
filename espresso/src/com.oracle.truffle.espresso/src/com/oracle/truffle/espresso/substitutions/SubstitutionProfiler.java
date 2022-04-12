@@ -34,22 +34,20 @@ public class SubstitutionProfiler extends Node {
     private long profiles = 0;
 
     /**
-     * Profiles whether a branch was hit or not. Current implementation only allows 16 branches per
+     * Profiles whether a branch was hit or not. Current implementation only allows 64 branches per
      * substitution.
      */
     public final void profile(int branch) {
         assert branch < 64;
-        if ((profiles << branch) == 0) {
+        long mask = 1L << branch;
+        if ((profiles & mask) == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            profiles |= (1 << branch);
+            reportPolymorphicSpecialize();
+            profiles |= mask;
         }
     }
 
-    /**
-     * Should return true if the substitution uses profiles. This will allow to spawn a profile for
-     * every call site.
-     */
-    public boolean shouldSplit() {
+    public boolean canSplit() {
         return false;
     }
 

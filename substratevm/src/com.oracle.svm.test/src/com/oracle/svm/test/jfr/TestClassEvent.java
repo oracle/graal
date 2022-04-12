@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,29 +26,22 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertNotNull;
-
+import com.oracle.svm.test.jfr.events.ClassEvent;
 import org.junit.Test;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordingFile;
+public class TestClassEvent extends JfrTest {
 
-public class TestClassEvent extends JFRTest {
+    @Override
+    public String[] getTestedEvents() {
+        return new String[]{
+                        ClassEvent.class.getName()
+        };
+    }
+
     @Test
     public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestClassEvent");
-
         ClassEvent event = new ClassEvent();
         event.clazz = TestClassEvent.class;
         event.commit();
-
-        jfr.endRecording(recording);
-        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-            assertNotNull(recordingFile);
-        } finally {
-            jfr.cleanupRecording(recording);
-        }
     }
-
 }

@@ -34,7 +34,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -61,11 +60,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import com.oracle.svm.core.thread.Target_java_lang_ContinuationScope;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(value = java.lang.StackWalker.class)
@@ -138,7 +137,7 @@ final class Target_java_lang_StackWalker {
 
         final Thread thread = Thread.currentThread();
 
-        if (JavaContinuations.useLoom() && this.continuation != null) {
+        if (LoomSupport.isEnabled() && this.continuation != null) {
             // walking a yielded continuation
             spliterator = new ContinuationSpliterator(this.contScope, this.continuation);
         } else {
@@ -146,13 +145,12 @@ final class Target_java_lang_StackWalker {
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
 
-            if (JavaContinuations.useLoom() && (this.contScope != null || JavaThreads.isVirtual(thread))) {
+            if (LoomSupport.isEnabled() && (this.contScope != null || VirtualThreads.singleton().isVirtual(thread))) {
                 // has a delimitation scope
-                VMError.guarantee(JavaContinuations.useLoom());
                 Target_java_lang_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
                 Target_java_lang_Continuation topContinuation = Target_java_lang_Continuation.getCurrentContinuation(delimitationScope);
                 if (topContinuation != null) {
-                    JavaStackWalker.initWalk(walk, sp, JavaContinuations.getSP(topContinuation));
+                    JavaStackWalker.initWalk(walk, sp, LoomSupport.getBottomSP(topContinuation));
                 } else {
                     // the delimitation scope is not present in current continuation chain or null
                     JavaStackWalker.initWalk(walk, sp);
@@ -253,10 +251,10 @@ final class Target_java_lang_StackWalker {
         private Target_java_lang_Continuation continuation;
 
         ContinuationSpliterator(Target_java_lang_ContinuationScope contScope, Target_java_lang_Continuation continuation) {
-            VMError.guarantee(JavaContinuations.useLoom());
+            VMError.guarantee(LoomSupport.isEnabled());
             this.contScope = contScope;
             this.continuation = continuation;
-            if (this.continuation.internalContinuation != null) {
+            if (this.continuation.internal.stored != null) {
                 initCurrentContinuation();
             } // else the continuation is done and no frame should be visited
         }
@@ -285,11 +283,11 @@ final class Target_java_lang_StackWalker {
         }
 
         private void initCurrentContinuation() {
-            curStoredContinuation = continuation.internalContinuation;
+            curStoredContinuation = continuation.internal.stored;
             VMError.guarantee(curStoredContinuation != null);
             sp = StoredContinuationImpl.payloadFrameStart(curStoredContinuation);
-            endSp = sp.add(TypeConversion.asU4(StoredContinuationImpl.readAllFrameSize(curStoredContinuation)));
-            ip = JavaContinuations.getIP(continuation);
+            endSp = sp.add(StoredContinuationImpl.readAllFrameSize(curStoredContinuation));
+            ip = LoomSupport.getIP(continuation);
             curFrameIndex = 0;
             curFrameCount = StoredContinuationImpl.readFrameCount(curStoredContinuation);
         }

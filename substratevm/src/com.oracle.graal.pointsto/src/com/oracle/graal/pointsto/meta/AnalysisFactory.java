@@ -24,8 +24,15 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public interface AnalysisFactory {
     AnalysisMethod createMethod(AnalysisUniverse universe, ResolvedJavaMethod method);
+
+    AnalysisField createField(AnalysisUniverse universe, ResolvedJavaField field);
+
+    AnalysisType createType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType);
 }

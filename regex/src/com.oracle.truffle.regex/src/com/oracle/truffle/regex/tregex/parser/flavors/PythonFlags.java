@@ -62,8 +62,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
 
     private final int value;
 
-    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x', 'y');
-    private static final TBitSet VALID_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x');
+    private static final TBitSet ALL_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'i', 'm', 's', 't', 'u', 'x');
     private static final TBitSet TYPE_FLAG_CHARS = TBitSet.valueOf('L', 'a', 'u');
 
     private static final String FLAGS = "iLmsxatu";
@@ -76,17 +75,14 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     private static final int FLAG_ASCII = 1 << 5;
     private static final int FLAG_TEMPLATE = 1 << 6;
     private static final int FLAG_UNICODE = 1 << 7;
-    // TODO: This flag should be deprecated and removed in flavor of the PythonMethod option.
-    private static final int FLAG_STICKY = 1 << 8;
 
     private static final int[] FLAG_LOOKUP = {
                     FLAG_ASCII, 0, 0, 0, 0, 0, 0, 0, FLAG_IGNORE_CASE, 0, 0, FLAG_LOCALE, FLAG_MULTILINE, 0, 0, 0,
-                    0, 0, FLAG_DOT_ALL, FLAG_TEMPLATE, FLAG_UNICODE, 0, 0, FLAG_VERBOSE, FLAG_STICKY
+                    0, 0, FLAG_DOT_ALL, FLAG_TEMPLATE, FLAG_UNICODE, 0, 0, FLAG_VERBOSE
     };
 
     private static final int TYPE_FLAGS = FLAG_LOCALE | FLAG_ASCII | FLAG_UNICODE;
     private static final int GLOBAL_FLAGS = FLAG_TEMPLATE;
-    private static final int INTERNAL_FLAGS = FLAG_STICKY;
 
     public static final PythonFlags EMPTY_INSTANCE = new PythonFlags("");
     public static final PythonFlags TYPE_FLAGS_INSTANCE = new PythonFlags(TYPE_FLAGS);
@@ -105,9 +101,9 @@ public final class PythonFlags extends AbstractConstantKeysObject {
 
     private static int maskForFlag(int flagChar) {
         assert ALL_FLAG_CHARS.get(flagChar);
-        // flagChar must be one of [A-Ya-y].
+        // flagChar must be one of [A-Xa-x].
         // (flagChar | 0x20) effectively downcases the character and allows us to use an array of
-        // just 25 integers for the lookup.
+        // just 24 integers for the lookup.
         return FLAG_LOOKUP[(flagChar | 0x20) - 'a'];
     }
 
@@ -162,10 +158,6 @@ public final class PythonFlags extends AbstractConstantKeysObject {
         }
     }
 
-    public boolean isSticky() {
-        return hasFlag(FLAG_STICKY);
-    }
-
     public PythonFlags addFlag(int flagChar) {
         return new PythonFlags(this.value | maskForFlag(flagChar));
     }
@@ -211,7 +203,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     }
 
     public static boolean isValidFlagChar(int candidateChar) {
-        return VALID_FLAG_CHARS.get(candidateChar);
+        return ALL_FLAG_CHARS.get(candidateChar);
     }
 
     public static boolean isTypeFlagChar(int candidateChar) {
@@ -243,7 +235,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     @TruffleBoundary
     @Override
     public String toString() {
-        char[] out = new char[Integer.bitCount(value & ~INTERNAL_FLAGS)];
+        char[] out = new char[Integer.bitCount(value)];
         int iOut = 0;
         for (int i = 0; i < FLAGS.length(); i++) {
             char flag = FLAGS.charAt(i);

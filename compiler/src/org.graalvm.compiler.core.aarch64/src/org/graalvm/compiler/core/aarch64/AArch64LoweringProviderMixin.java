@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,11 @@ package org.graalvm.compiler.core.aarch64;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
 public interface AArch64LoweringProviderMixin extends LoweringProvider {
+
+    @Override
+    default boolean divisionOverflowIsJVMSCompliant() {
+        return true;
+    }
 
     @Override
     default Integer smallestCompareWidth() {

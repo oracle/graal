@@ -35,6 +35,8 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.c.NativeLibraries;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
@@ -73,7 +75,10 @@ public class JNIRegistrationPrefs extends JNIRegistrationUtil implements Feature
     }
 
     private static void handlePreferencesClassReachable(@SuppressWarnings("unused") DuringAnalysisAccess access) {
+        NativeLibraries nativeLibraries = ((FeatureImpl.DuringAnalysisAccessImpl) access).getNativeLibraries();
+
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("prefs");
+        nativeLibraries.addStaticJniLibrary("prefs");
         if (isDarwin()) {
             /* Darwin allocates a string array from native code */
             JNIRuntimeAccess.register(String[].class);

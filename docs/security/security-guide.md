@@ -32,7 +32,7 @@ If untrusted and potentially malicious code is to be executed, we recommend Graa
 Debug features should only be used in a trusted environment as they provide privileged access to an application, allowing to inspect and change its state and behavior.
 They may further open network sockets to allow debug clients to connect.
 
-Experimental and early-adopter features in GraalVM are not for production use and may have security limitations not covered in the Security Guide.
+Experimental features in GraalVM are not for production use and may have security limitations not covered in the Security Guide.
 
 We appreciate reports of bugs that break the security model via the process
 outlined in the [Reporting Vulnerabilities guide](https://www.oracle.com/corporate/security-practices/assurance/vulnerability/reporting.html).

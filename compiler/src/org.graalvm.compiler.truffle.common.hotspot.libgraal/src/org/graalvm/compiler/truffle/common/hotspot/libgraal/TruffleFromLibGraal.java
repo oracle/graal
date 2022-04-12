@@ -106,6 +106,7 @@ public @interface TruffleFromLibGraal {
         IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsSuppressedFailure(boolean.class, Object.class, Object.class, Supplier.class),
         IsTrivial(boolean.class, Object.class),
+        IsInlineable(boolean.class, Object.class, long.class),
         IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
         InliningData(Object.class, Object.class),

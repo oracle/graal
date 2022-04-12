@@ -78,10 +78,15 @@ public class HostedConfiguration {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
-    public static void setDefaultIfEmpty() {
+    public static void setInstanceIfEmpty(HostedConfiguration config) {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
+            ImageSingletons.add(HostedConfiguration.class, config);
+        }
+    }
 
+    public static void setDefaultIfEmpty() {
+        setInstanceIfEmpty(new HostedConfiguration());
+        if (!ImageSingletons.contains(CompressEncoding.class)) {
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
@@ -102,21 +107,18 @@ public class HostedConfiguration {
      * The layout of instance objects is:
      * <ul>
      * <li>hub (reference)</li>
+     * <li>identity hashcode (int)</li>
      * <li>instance fields (references, primitives)</li>
-     * <li>optional: identity hashcode (int)</li>
+     * <li>if needed, object monitor (reference)</li>
      * </ul>
-     * The hashcode is appended after instance fields and is only present if the identity hashcode
-     * is used for that type.
      *
      * The layout of array objects is:
      * <ul>
      * <li>hub (reference)</li>
-     * <li>array length (int)</li>
      * <li>identity hashcode (int)</li>
+     * <li>array length (int)</li>
      * <li>array elements (length * reference or primitive)</li>
      * </ul>
-     * The hashcode is always present in arrays. Note that on 64-bit targets it does not impose any
-     * size overhead for arrays with 64-bit aligned elements (e.g. arrays of objects).
      */
     public static ObjectLayout createObjectLayout(JavaKind referenceKind) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();

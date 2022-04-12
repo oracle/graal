@@ -7,14 +7,16 @@ permalink: /reference-manual/native-image/BuildOutput/
 # Native Image Build Output
 
 This page provides documentation for the build output of GraalVM Native Image.
+Below is the example output when building a native image of the `HelloWorld` class:
 
-## HelloWorld Example Output
-```text
+```shell
 ================================================================================
-GraalVM Native Image: Generating 'helloworld'...
+GraalVM Native Image: Generating 'helloworld' (executable)...
 ================================================================================
 [1/7] Initializing...                                            (2.5s @ 0.21GB)
  Version info: 'GraalVM dev Java 11 CE'
+ C compiler: gcc (linux, x86_64, 9.3.0)
+ Garbage collector: Serial GC
 [2/7] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
    2,565 (82.61%) of  3,105 classes reachable
    3,216 (60.42%) of  5,323 fields reachable
@@ -33,17 +35,17 @@ GraalVM Native Image: Generating 'helloworld'...
   13.57MB in total
 --------------------------------------------------------------------------------
 Top 10 packages in code area:           Top 10 object types in image heap:
- 606.23KB java.util                        1.64MB byte[] for general heap data
- 282.34KB java.lang                      715.56KB java.lang.String
- 222.47KB java.util.regex                549.46KB java.lang.Class
- 219.55KB java.text                      451.79KB byte[] for java.lang.String
- 193.17KB com.oracle.svm.jni             363.23KB java.util.HashMap$Node
- 149.80KB java.util.concurrent           192.00KB java.util.HashMap$Node[]
- 118.07KB java.math                      139.83KB java.lang.String[]
- 103.60KB com.oracle.svm.core.reflect    139.04KB char[]
-  97.83KB sun.text.normalizer            130.59KB j.u.c.ConcurrentHashMap$Node
-  88.78KB c.oracle.svm.core.genscavenge  103.92KB s.u.l.LocaleObjec~e$CacheEntry
-      ... 111 additional packages             ... 723 additional object types
+ 607.28KB java.util                      862.66KB byte[] for general heap data
+ 288.63KB java.lang                      834.02KB byte[] for code metadata
+ 223.34KB java.util.regex                723.00KB java.lang.String
+ 220.45KB java.text                      534.05KB java.lang.Class
+ 194.21KB com.oracle.svm.jni             457.63KB byte[] for java.lang.String
+ 153.69KB java.util.concurrent           363.75KB java.util.HashMap$Node
+ 118.78KB java.math                      192.70KB java.util.HashMap$Node[]
+  99.00KB com.oracle.svm.core.reflect    140.03KB java.lang.String[]
+  98.21KB sun.text.normalizer            139.04KB char[]
+  89.95KB c.oracle.svm.core.genscavenge  132.78KB c.o.s.c.h.DynamicHubCompanion
+      ... 112 additional packages             ... 734 additional object types
                        (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
     0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
@@ -62,10 +64,24 @@ Finished generating 'helloworld' in 16.2s.
 ### <a name="stage-initializing"></a>Initializing
 In this stage, the Native Image build process is set up and [`Features`][jdoc_feature] are initialized.
 
+#### <a name="glossary-imagekind"></a>Native Image Kind
+By default, Native Image generates *executables* but it can also generate [*shared libraries*][doc_shared_library] and [*static executables*][doc_static_images].
+
 #### <a name="glossary-version-info"></a>Version Info
 The version info of the Native Image process.
 This string is also used for the `java.vm.version` property within the generated image.
 Please report this version info when you [file issues][new_issue].
+
+#### <a name="glossary-ccompiler"></a>C Compiler
+The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
+
+#### <a name="glossary-gc"></a>Garbage Collector
+The garbage collector used within the generated image:
+- The *Serial GC* is the default GC and optimized for low memory footprint and small Java heap sizes.
+- The *G1 GC* (only available with GraalVM Enterprise Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency while achieving high throughput.
+- The *Epsilon GC* does not do any garbage collection and is designed for very short-running applications that only allocate a small amount of memory.
+
+For more information see the [docs on Memory Management at Image Run Time][doc_mem_mgmt].
 
 #### <a name="glossary-user-provided-features"></a>User-provided Features
 All [`Features`][jdoc_feature] that are provided by the user or implicitly registered for the user, for example, by a framework.
@@ -83,7 +99,7 @@ To reduce overhead, please ensure that the classpath only contains entries that 
 
 #### <a name="glossary-reflection-registrations"></a>Reflection Registrations
 The number of classes, fields, and methods that are registered for reflection.
-Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native image (see [method metadata](#glossary-method-metadata)).
+Large numbers can cause significant reflection overheads, slow down the build process, and increase the size of the native image (see [reflection metadata](#glossary-reflection-metadata)).
 
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of classes, fields, and methods that are registered for [JNI][doc_jni] access.
@@ -114,23 +130,27 @@ Debug info is also generated as part of this stage (if requested).
 
 #### <a name="glossary-code-area"></a>Code Area
 The code area contains machine code produced by the Graal compiler for all reachable methods.
-Therefore, reducing the number of reachable methods also reduces the size of the code area.
+Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
 
 #### <a name="glossary-image-heap"></a>Image Heap
-The image heap contains reachable objects such as static data, classes initialized at run-time, and `byte[]` for different purposes.
+The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes.
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
-The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [graph encodings](#glossary-graph-encodings), nor [method metadata](#glossary-method-metadata).
-This typically dominates
+The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [reflection metadata](#glossary-reflection-metadata), nor [graph encodings](#glossary-graph-encodings).
+Therefore, this can also include `byte[]` objects from application code.
+
+##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
+The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
+Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of this metadata.
+
+##### <a name="glossary-reflection-metadata"></a>Reflection Metadata Stored in `byte[]`
+The total size of all `byte[]` objects used for reflection metadata, including class, field, method and constructor data.
+To reduce the amount of reflection metadata, reduce the number of [elements registered for reflection](#glossary-reflection-registrations).
 
 ##### <a name="glossary-graph-encodings"></a>Graph Encodings Stored in `byte[]`
 The total size of all `byte[]` objects used for graph encodings.
 These encodings are a result of [runtime compiled methods](#glossary-runtime-methods).
 Therefore, reducing the number of such methods also reduces the size of corresponding graph encodings.
-
-##### <a name="glossary-method-metadata"></a>Method Metadata Stored in `byte[]`
-The total size of all `byte[]` objects used for method metadata, a type of reflection metadata.
-To reduce the amount of method metadata, reduce the number of [classes registered for reflection](#glossary-reflection-classes).
 
 #### <a name="glossary-debug-info"></a>Debug Info
 The total size of generated debug information (if enabled).
@@ -166,12 +186,14 @@ Run `native-image --expert-options-all | grep "BuildOutput"` to see all build ou
 -H:±BuildOutputLinks         Show links in build output. Default: + (enabled).
 -H:±BuildOutputPrefix        Prefix build output with '<pid>:<image name>'. Default: - (disabled).
 -H:±BuildOutputProgress      Report progress in build output. Default: + (enabled).
--H:±BuildOutputUseNewStyle   Use new build output style. Default: + (enabled).
 ```
 
 
 [jdoc_feature]: https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html
 [doc_jni]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/JNI.md
+[doc_mem_mgmt]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/MemoryManagement.md
+[doc_shared_library]: https://github.com/oracle/graal/tree/master/docs/reference-manual/native-image#build-a-shared-library
+[doc_static_images]: https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/StaticImages.md
 [new_issue]: https://github.com/oracle/graal/issues/new
 [oopsla19_initialize_once_start_fast]: https://dl.acm.org/doi/10.1145/3360610
 [rss_wiki]: https://en.wikipedia.org/wiki/Resident_set_size

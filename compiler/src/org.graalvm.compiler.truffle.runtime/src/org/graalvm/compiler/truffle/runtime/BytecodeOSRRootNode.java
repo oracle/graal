@@ -33,14 +33,12 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
-    @Child private BytecodeOSRNode bytecodeOSRNode;
     private final int target;
     private final Object interpreterState;
     @CompilationFinal private boolean seenMaterializedFrame;
 
     BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, int target, Object interpreterState) {
-        super(language, frameDescriptor);
-        this.bytecodeOSRNode = bytecodeOSRNode;
+        super(language, frameDescriptor, bytecodeOSRNode);
         this.target = target;
         this.interpreterState = interpreterState;
         this.seenMaterializedFrame = materializeCalled(frameDescriptor);
@@ -62,23 +60,29 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             }
         }
 
+        BytecodeOSRNode osrNode = (BytecodeOSRNode) loopNode;
         if (seenMaterializedFrame) {
             // If materialize has ever happened, just use the parent frame.
             // This will be slower, since we cannot do scalar replacement on the frame, but it is
             // required to prevent the materialized frame from getting out of sync during OSR.
-            return bytecodeOSRNode.executeOSR(parentFrame, target, interpreterState);
+            return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
-            bytecodeOSRNode.copyIntoOSRFrame(frame, parentFrame, target);
+            osrNode.copyIntoOSRFrame(frame, parentFrame, target);
             try {
-                return bytecodeOSRNode.executeOSR(frame, target, interpreterState);
+                return osrNode.executeOSR(frame, target, interpreterState);
             } finally {
-                bytecodeOSRNode.restoreParentFrame(frame, parentFrame);
+                osrNode.restoreParentFrame(frame, parentFrame);
             }
         }
     }
 
     @Override
+    public String getName() {
+        return toString();
+    }
+
+    @Override
     public String toString() {
-        return bytecodeOSRNode.toString() + "<OSR@" + target + ">";
+        return loopNode.toString() + "<OSR@" + target + ">";
     }
 }

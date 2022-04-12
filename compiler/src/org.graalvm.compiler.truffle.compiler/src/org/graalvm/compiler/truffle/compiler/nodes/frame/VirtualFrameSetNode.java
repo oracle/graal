@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,7 +93,9 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                         if (valueKind == JavaKind.Object) {
                             // clear out native entry
                             ValueNode primitiveAlias = tool.getAlias(frame.getPrimitiveArray(type));
-                            tool.setVirtualEntry((VirtualObjectNode) primitiveAlias, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                            if (primitiveAlias instanceof VirtualObjectNode) {
+                                tool.setVirtualEntry((VirtualObjectNode) primitiveAlias, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                            }
                         }
                         tool.delete();
                         return;

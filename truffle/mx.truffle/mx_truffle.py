@@ -91,13 +91,9 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
     def extraVmArgs(self):
         extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
-        jdk = mx.get_jdk()
-        if jdk.javaCompliance <= '1.8':
-            extraVmArgs = ['-XX:-UseJVMCIClassLoader'] + extraVmArgs
-        else:
-            extraVmArgs.extend(_open_module_exports_args())
-            # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
-            extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
+        extraVmArgs.extend(_open_module_exports_args())
+        # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
+        extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
         return extraVmArgs
 
 mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
@@ -208,29 +204,28 @@ def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     # Disable DefaultRuntime warning
     vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-    jdk = mx.get_jdk(tag='default')
-    if jdk.javaCompliance > '1.8':
-        # This is required to access jdk.internal.module.Modules which
-        # in turn allows us to dynamically open fields/methods to reflection.
-        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # The arguments below are only actually needed if Truffle is deployed as a
-        # module. However, that's determined by the compiler suite which may not
-        # be present. In that case, adding these options results in annoying
-        # but harmless messages from the VM:
-        #
-        #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
-        #
+    # This is required to access jdk.internal.module.Modules which
+    # in turn allows us to dynamically open fields/methods to reflection.
+    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
+    # The arguments below are only actually needed if Truffle is deployed as a
+    # module. However, that's determined by the compiler suite which may not
+    # be present. In that case, adding these options results in annoying
+    # but harmless messages from the VM:
+    #
+    #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
+    #
 
-        # This is required for the call to setAccessible in
-        # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+    # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
 
-        # Needed for object model tests.
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
+    # This is required for the call to setAccessible in
+    # TruffleTCK.testValueWithSource to work.
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+
+    # Needed for object model tests.
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
 
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:

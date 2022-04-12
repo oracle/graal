@@ -41,6 +41,8 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -55,12 +57,12 @@ import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoLock;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.Transition;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -91,7 +93,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean monitorWait(EspressoLock self, long timeout) throws InterruptedException {
+    public static boolean monitorWait(EspressoLock self, long timeout) throws GuestInterruptedException {
         return self.await(timeout);
     }
 
@@ -116,16 +118,21 @@ public final class InterpreterToVM implements ContextAccess {
         return getArrayInt(index, array, null);
     }
 
+    @TruffleBoundary
+    private static String outOfBoundsMessage(int index, int length) {
+        return "Index " + index + " out of bounds for length " + length;
+    }
+
     public int getArrayInt(int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<int[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        int[] underlying = array.<int[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public StaticObject getArrayObject(int index, @JavaType(Object[].class) StaticObject array) {
@@ -133,15 +140,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public StaticObject getArrayObject(int index, @JavaType(Object[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<StaticObject[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        StaticObject[] underlying = array.<StaticObject[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public long getArrayLong(int index, @JavaType(long[].class) StaticObject array) {
@@ -149,15 +156,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public long getArrayLong(int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<long[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        long[] underlying = array.<long[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public float getArrayFloat(int index, @JavaType(float[].class) StaticObject array) {
@@ -165,15 +172,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public float getArrayFloat(int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<float[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        float[] underlying = array.<float[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public double getArrayDouble(int index, @JavaType(double[].class) StaticObject array) {
@@ -181,15 +188,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public double getArrayDouble(int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<double[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        double[] underlying = array.<double[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public byte getArrayByte(int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array) {
@@ -197,15 +204,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public byte getArrayByte(int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<byte[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        byte[] underlying = array.<byte[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public char getArrayChar(int index, @JavaType(char[].class) StaticObject array) {
@@ -213,15 +220,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public char getArrayChar(int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<char[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        char[] underlying = array.<char[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public short getArrayShort(int index, @JavaType(short[].class) StaticObject array) {
@@ -229,15 +236,15 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public short getArrayShort(int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            return (array.<short[]> unwrap())[index];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        short[] underlying = array.<short[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            return underlying[index];
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     // endregion
@@ -249,15 +256,16 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayInt(int value, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<int[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        int[] underlying = array.<int[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayLong(long value, int index, @JavaType(long[].class) StaticObject array) {
@@ -265,15 +273,16 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayLong(long value, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<long[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        long[] underlying = array.<long[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayFloat(float value, int index, @JavaType(float[].class) StaticObject array) {
@@ -281,15 +290,16 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayFloat(float value, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<float[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        float[] underlying = array.<float[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayDouble(double value, int index, @JavaType(double[].class) StaticObject array) {
@@ -297,15 +307,16 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayDouble(double value, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<double[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        double[] underlying = array.<double[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayByte(byte value, int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array) {
@@ -313,16 +324,17 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayByte(byte value, int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        byte val = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
-        try {
-            (array.<byte[]> unwrap())[index] = val;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        byte maybeMaskedValue = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
+        byte[] underlying = array.<byte[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = maybeMaskedValue;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayChar(char value, int index, @JavaType(char[].class) StaticObject array) {
@@ -330,15 +342,16 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayChar(char value, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<char[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        char[] underlying = array.<char[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayShort(short value, int index, @JavaType(short[].class) StaticObject array) {
@@ -346,15 +359,16 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayShort(short value, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        try {
-            (array.<short[]> unwrap())[index] = value;
-        } catch (ArrayIndexOutOfBoundsException e) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, e.getMessage());
+        short[] underlying = array.<short[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            underlying[index] = value;
+            return;
         }
+        if (bytecodeNode != null) {
+            bytecodeNode.enterImplicitExceptionProfile();
+        }
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper) {
@@ -362,45 +376,42 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
-        if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
-            try {
-                (wrapper.<StaticObject[]> unwrap())[index] = value;
-            } catch (ArrayIndexOutOfBoundsException e) {
-                throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
+        StaticObject[] underlying = wrapper.<StaticObject[]> unwrap();
+        if (Integer.compareUnsigned(index, underlying.length) < 0) {
+            if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
+                underlying[index] = value;
+                return;
+            } // else throw ArrayStoreException
+            if (bytecodeNode != null) {
+                bytecodeNode.enterImplicitExceptionProfile();
             }
-        } else {
-            // We must throw ArrayIndexOutOfBoundsException before ArrayStoreException
-            if (Integer.compareUnsigned(index, wrapper.length()) >= 0) {
-                throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
-            } else {
-                throwArrayStoreException(getMeta(), bytecodeNode);
-            }
-        }
-    }
-
-    private static void throwArrayIndexOutOfBoundsException(Meta meta, BytecodeNode bytecodeNode) {
+            Meta meta = getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_ArrayStoreException, value.getKlass().getTypeAsString());
+        } // else throw ArrayIndexOutOfBoundsException
         if (bytecodeNode != null) {
             bytecodeNode.enterImplicitExceptionProfile();
         }
-        throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        Meta meta = getMeta();
+        throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    private static StaticObject throwArrayStoreException(Meta meta, BytecodeNode bytecodeNode) {
-        if (bytecodeNode != null) {
-            bytecodeNode.enterImplicitExceptionProfile();
-        }
-        throw meta.throwException(meta.java_lang_ArrayStoreException);
-    }
     // endregion
 
     // region Monitor enter/exit
 
     public static void monitorEnter(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final EspressoLock lock = obj.getLock();
+        final EspressoLock lock = obj.getLock(meta.getContext());
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
-            StaticObject thread = context.getCurrentThread();
-            meta.getThreadAccess().fromRunnable(thread, State.BLOCKED);
+            contendedMonitorEnter(obj, meta, lock, context);
+        }
+    }
+
+    @TruffleBoundary /*- Throwable.addSuppressed blacklisted by SVM (from try-with-resources) */
+    @SuppressWarnings("try")
+    private static void contendedMonitorEnter(StaticObject obj, Meta meta, EspressoLock lock, EspressoContext context) {
+        StaticObject thread = context.getCurrentThread();
+        try (Transition transition = Transition.transition(context, State.BLOCKED)) {
             if (context.EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
@@ -418,12 +429,11 @@ public final class InterpreterToVM implements ContextAccess {
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }
-            meta.getThreadAccess().toRunnable(thread);
         }
     }
 
     public static void monitorExit(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final EspressoLock lock = obj.getLock();
+        final EspressoLock lock = obj.getLock(meta.getContext());
         if (!holdsLock(lock)) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.
@@ -598,7 +608,7 @@ public final class InterpreterToVM implements ContextAccess {
             case 10 : return StaticObject.wrap(new int[length], meta);
             case 11 : return StaticObject.wrap(new long[length], meta);
             default :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
@@ -725,7 +735,7 @@ public final class InterpreterToVM implements ContextAccess {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         VM.StackTrace frames = new VM.StackTrace();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             boolean first = skipFirst;
 
             @Override

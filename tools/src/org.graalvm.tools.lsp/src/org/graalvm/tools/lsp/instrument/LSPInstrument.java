@@ -330,7 +330,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
         }
 
         private <T> Callable<T> wrapWithNewContext(Callable<T> taskWithResult, boolean cached) {
-            return new Callable<T>() {
+            return new Callable<>() {
 
                 @Override
                 public T call() throws Exception {

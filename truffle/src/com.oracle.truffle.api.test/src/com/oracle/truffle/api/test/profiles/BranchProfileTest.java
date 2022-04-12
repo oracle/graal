@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.api.test.profiles;
 
-import static com.oracle.truffle.api.test.ReflectionUtils.invokeStatic;
-import static com.oracle.truffle.api.test.ReflectionUtils.loadRelative;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.test.ReflectionUtils;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class BranchProfileTest {
@@ -59,14 +58,14 @@ public class BranchProfileTest {
 
     @Test
     public void testEnter() {
-        BranchProfile profile = (BranchProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "BranchProfile$Enabled"), "create0");
+        BranchProfile profile = ReflectionUtils.newInstance(BranchProfile.class);
         profile.enter();
         profile.enter();
     }
 
     @Test
     public void testToString() {
-        BranchProfile profile = (BranchProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "BranchProfile$Enabled"), "create0");
+        BranchProfile profile = ReflectionUtils.newInstance(BranchProfile.class);
         assertTrue(profile.toString().contains(BranchProfile.class.getSimpleName()));
         assertTrue(profile.toString().contains("UNINITIALIZED"));
         assertTrue(profile.toString().contains(Integer.toHexString(profile.hashCode())));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -81,14 +81,16 @@ public final class LLVMPThreadStart {
                 pThreadContext.setThreadReturnValue(Thread.currentThread().getId(), LLVMNativePointer.createNull());
                 throw t;
             } finally {
-                // call destructors from key create
-                for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
-                    final LLVMPointer destructor = pThreadContext.getDestructor(key);
-                    if (destructor != null && !destructor.isNull()) {
-                        final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
-                        if (keyMapping != null) {
-                            assert !keyMapping.isNull();
-                            pThreadContext.getPthreadCallTarget().call(destructor, keyMapping);
+                if (!this.context.getEnv().getContext().isClosed()) {
+                    // call destructors from key create
+                    for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
+                        final LLVMPointer destructor = pThreadContext.getDestructor(key);
+                        if (destructor != null && !destructor.isNull()) {
+                            final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
+                            if (keyMapping != null) {
+                                assert !keyMapping.isNull();
+                                pThreadContext.getPthreadCallTarget().call(destructor, keyMapping);
+                            }
                         }
                     }
                 }
@@ -114,7 +116,7 @@ public final class LLVMPThreadStart {
                                             nodeFactory.createGetStackFromFrame(),
                                             LLVMObjectReadNode.create(argSlot)
                             },
-                            FunctionType.create(PointerType.VOID, PointerType.VOID, false));
+                            FunctionType.create(PointerType.VOID, PointerType.VOID));
         }
 
         public static LLVMPThreadFunctionRootNode create(LLVMLanguage language, NodeFactory nodeFactory) {

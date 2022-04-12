@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,9 +61,9 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final ModuleLimits limits;
     private final Source source;
 
-    private CodeEntry[] codeEntries;
+    @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
 
-    @CompilationFinal(dimensions = 1) private byte[] data;
+    @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal private boolean isParsed;
 
     private WasmModule(String name, byte[] data, ModuleLimits limits, Source source) {
@@ -136,5 +136,13 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
 
     public CodeEntry[] getCodeEntries() {
         return codeEntries;
+    }
+
+    public void removeCodeEntries() {
+        codeEntries = null;
+    }
+
+    public boolean hasCodeEntries() {
+        return codeEntries != null;
     }
 }

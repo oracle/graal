@@ -25,10 +25,12 @@ package com.oracle.truffle.espresso.runtime;
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,9 +46,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
-import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -61,6 +60,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -68,10 +68,10 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.FinalizationSupport;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
+import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -81,6 +81,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -97,6 +100,8 @@ import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
+import com.oracle.truffle.espresso.ref.FinalizationSupport;
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
@@ -145,6 +150,7 @@ public final class EspressoContext {
     // region Helpers
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
+    @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
     private final EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -169,6 +175,7 @@ public final class EspressoContext {
     private final boolean shouldReportVMEvents;
     private final VMEventListenerImpl eventListener;
     private ClassRedefinition classRedefinition;
+    private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
@@ -183,7 +190,8 @@ public final class EspressoContext {
     public final boolean InlineFieldAccessors;
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
-    public final boolean livenessAnalysis;
+    public final EspressoOptions.LivenessAnalysisMode LivenessAnalysisMode;
+    public final int LivenessAnalysisMinimumLocals;
     public final boolean EnableClassHierarchyAnalysis;
 
     // Behavior control
@@ -198,6 +206,8 @@ public final class EspressoContext {
     public final boolean NativeAccessAllowed;
     public final boolean EnableAgents;
     public final int TrivialMethodSize;
+    public final boolean UseHostFinalReference;
+    public final EspressoOptions.JImageMode jimageMode;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -220,13 +230,6 @@ public final class EspressoContext {
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
-
-    // region ThreadDeprecated
-    // Set on calling guest Thread.stop0(), or when closing context.
-    @CompilationFinal private Assumption noThreadStop = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private Assumption noSuspend = Truffle.getRuntime().createAssumption();
-    @CompilationFinal private Assumption noThreadDeprecationCalled = Truffle.getRuntime().createAssumption();
-    // endregion ThreadDeprecated
 
     @CompilationFinal private TruffleObject topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
@@ -285,11 +288,20 @@ public final class EspressoContext {
         this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
-        this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        this.LivenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        this.LivenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         this.EnableClassHierarchyAnalysis = env.getOptions().get(EspressoOptions.CHA);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
+        boolean useHostFinalReferenceOption = getEnv().getOptions().get(EspressoOptions.UseHostFinalReference);
+        this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
+        if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
+            getLogger().warning("--java.UseHostFinalReference is set to 'true' but Espresso cannot access the host java.lang.ref.FinalReference class.\n" +
+                            "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
+                            "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
+        }
+
         String multiThreadingDisabledReason = null;
         if (!env.getOptions().get(EspressoOptions.MultiThreaded)) {
             multiThreadingDisabledReason = "java.MultiThreaded option is set to false";
@@ -308,6 +320,12 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
+
+        EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
+        if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
+            throw new IllegalArgumentException("JImage=native can only be set if native access is allowed");
+        }
+        this.jimageMode = requestedJImageMode;
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
@@ -483,8 +501,12 @@ public final class EspressoContext {
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
-                this.vm = VM.create(getJNI()); // Mokapot is loaded
+                this.jniEnv = JniEnv.create(this); // libnespresso
+                this.vm = VM.create(this.jniEnv); // libjvm
                 vm.attachThread(Thread.currentThread());
+                // The Java version is extracted from libjava and is available after this line.
+                vm.loadAndInitializeJavaLibrary(vmProperties.bootLibraryPath()); // libjava
+                EspressoError.guarantee(getJavaVersion() != null, "Java version");
             }
 
             if (getJavaVersion().modulesEnabled()) {
@@ -501,6 +523,7 @@ public final class EspressoContext {
             }
             this.metaInitialized = true;
             this.threads = new ThreadsAccess(meta);
+            this.blockingSupport = BlockingSupport.create(threads);
 
             this.interpreterToVM = new InterpreterToVM(this);
 
@@ -685,7 +708,7 @@ public final class EspressoContext {
         return vm;
     }
 
-    public JImageLibrary jimageLibrary() {
+    private JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             EspressoError.guarantee(getJavaVersion().modulesEnabled(), "Jimage available for java >= 9");
@@ -694,8 +717,29 @@ public final class EspressoContext {
         return jimageLibrary;
     }
 
+    public JImageHelper createJImageHelper(String jimagePath) {
+        if (jimageMode == EspressoOptions.JImageMode.NATIVE) {
+            JImageLibrary library = jimageLibrary();
+            TruffleObject image = library.open(jimagePath);
+            if (InteropLibrary.getUncached().isNull(image)) {
+                return null;
+            }
+            return new NativeJImageHelper(library, image);
+        } else {
+            assert jimageMode == EspressoOptions.JImageMode.JAVA;
+            try {
+                return new JavaJImageHelper(BasicImageReader.open(Paths.get(jimagePath)), this);
+            } catch (BasicImageReader.NotAnImageFile e) {
+                return null;
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "failed to open jimage", e);
+                return null;
+            }
+        }
+    }
+
     public JavaVersion getJavaVersion() {
-        return vm.getJavaVersion();
+        return getLanguage().getJavaVersion();
     }
 
     public boolean advancedRedefinitionEnabled() {
@@ -810,6 +854,10 @@ public final class EspressoContext {
         return threads;
     }
 
+    public BlockingSupport<StaticObject> getBlockingSupport() {
+        return blockingSupport;
+    }
+
     /**
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
@@ -844,8 +892,12 @@ public final class EspressoContext {
         return threadRegistry.getGuestThreadFromHost(host);
     }
 
+    public void registerCurrentThread(StaticObject guestThread) {
+        getLanguage().getThreadLocalState().setCurrentThread(guestThread);
+    }
+
     public StaticObject getCurrentThread() {
-        return threadRegistry.getGuestThreadFromHost(Thread.currentThread());
+        return getLanguage().getThreadLocalState().getCurrentThread(this);
     }
 
     /**
@@ -881,29 +933,7 @@ public final class EspressoContext {
     }
 
     public void interruptThread(StaticObject guestThread) {
-        threads.interruptThread(guestThread);
-    }
-
-    public void invalidateNoThreadStop(String message) {
-        noThreadDeprecationCalled.invalidate();
-        noThreadStop.invalidate(message);
-    }
-
-    public boolean shouldCheckStop() {
-        return !noThreadStop.isValid();
-    }
-
-    public void invalidateNoSuspend(String message) {
-        noThreadDeprecationCalled.invalidate();
-        noSuspend.invalidate(message);
-    }
-
-    public boolean shouldCheckDeprecationStatus() {
-        return !noThreadDeprecationCalled.isValid();
-    }
-
-    public boolean shouldCheckSuspend() {
-        return !noSuspend.isValid();
+        threads.callInterrupt(guestThread);
     }
 
     public boolean isMainThreadCreated() {
@@ -969,6 +999,10 @@ public final class EspressoContext {
 
     public void waitForReferencePendingList() {
         referenceDrainer.waitForReferencePendingList();
+    }
+
+    public void triggerDrain() {
+        referenceDrainer.triggerDrain();
     }
 
     // endregion ReferenceDrain
@@ -1065,6 +1099,14 @@ public final class EspressoContext {
 
     public ClassRedefinition getClassRedefinition() {
         return classRedefinition;
+    }
+
+    public boolean anyHierarchyChanged() {
+        return !anyHierarchyChanges.isValid();
+    }
+
+    public void markChangedHierarchy() {
+        anyHierarchyChanges.invalidate();
     }
 
     public ClassHierarchyOracle getClassHierarchyOracle() {

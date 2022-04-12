@@ -53,6 +53,9 @@ class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
+        if (method instanceof JNINativeCallWrapperMethod) { // already substituted
+            return method;
+        }
         if (method.getDeclaringClass().equals(trampolinesType)) {
             return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(originalMetaAccess, method.getName());
         }

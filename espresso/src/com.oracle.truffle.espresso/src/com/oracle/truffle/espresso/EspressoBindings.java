@@ -113,7 +113,7 @@ public final class EspressoBindings implements TruffleObject {
             return clazz.getMirrorKlass();
         } catch (EspressoException e) {
             error.enter();
-            if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.java_lang_ClassNotFoundException)) {
+            if (InterpreterToVM.instanceOf(e.getGuestException(), meta.java_lang_ClassNotFoundException)) {
                 throw UnknownIdentifierException.create(member, e);
             }
             throw e; // exception during class loading

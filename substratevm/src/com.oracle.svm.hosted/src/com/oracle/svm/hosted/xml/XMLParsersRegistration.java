@@ -42,11 +42,14 @@ import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization
 
 public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
-    public void registerConfigs(Feature.DuringAnalysisAccess access) {
+    public void registerConfigs(Feature.DuringAnalysisAccess a) {
+        FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
         List<String> parserClasses = xmlParserClasses();
-        registerReflectionClasses((FeatureImpl.DuringAnalysisAccessImpl) access, parserClasses);
+        registerReflectionClasses(access, parserClasses);
         registerResources();
-        access.requireAnalysisIteration();
+        if (!access.concurrentReachabilityHandlers()) {
+            access.requireAnalysisIteration();
+        }
     }
 
     abstract List<String> xmlParserClasses();

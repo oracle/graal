@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.test.GraalTest;
@@ -141,19 +142,23 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      * Test that OSR fails if the code cannot be compiled.
      */
     @Test
-    public void testFailedCompilation() {
-        Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
-        builder.option("engine.MultiTier", "false");
-        builder.option("engine.OSR", "true");
-        builder.option("engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
-        setupContext(builder);
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        UncompilableFixedIterationLoop osrNode = new UncompilableFixedIterationLoop(frameDescriptor);
-        RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
-        Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
-        // Compilation should be disabled after a compilation failure.
-        Assert.assertEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+    public void testFailedCompilation() throws IOException, InterruptedException {
+        // Run in a subprocess to prevent graph graal dumps that are enabled by the default mx
+        // unittest options.
+        SubprocessTestUtils.executeInSubprocess(BytecodeOSRNodeTest.class, () -> {
+            Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
+            builder.option("engine.MultiTier", "false");
+            builder.option("engine.OSR", "true");
+            builder.option("engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
+            setupContext(builder);
+            FrameDescriptor frameDescriptor = new FrameDescriptor();
+            UncompilableFixedIterationLoop osrNode = new UncompilableFixedIterationLoop(frameDescriptor);
+            RootNode rootNode = new Program(osrNode, frameDescriptor);
+            OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+            Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
+            // Compilation should be disabled after a compilation failure.
+            Assert.assertEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
+        });
     }
 
     /*
@@ -959,7 +964,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @TruffleBoundary
         void checkCallerFrame() {
-            Assert.assertEquals(caller, Truffle.getRuntime().getCallerFrame().getCallTarget());
+            Assert.assertEquals(caller, Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget(), 1));
         }
 
         public static class Caller extends RootNode {

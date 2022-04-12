@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,6 +85,7 @@ public abstract class AbstractDebugTest {
 
     protected DebuggerTester tester;
     private final ArrayDeque<DebuggerTester> sessionStack = new ArrayDeque<>();
+    private final AtomicReference<Value> functionWithArgument = new AtomicReference<>();
 
     AbstractDebugTest() {
     }
@@ -97,6 +98,7 @@ public abstract class AbstractDebugTest {
     @After
     public void dispose() {
         popContext();
+        functionWithArgument.set(null);
     }
 
     protected final void resetContext(DebuggerTester newTester) {
@@ -162,16 +164,26 @@ public abstract class AbstractDebugTest {
         return v;
     }
 
+    private Value getFunctionWithArgument() {
+        return functionWithArgument.updateAndGet(value -> {
+            if (value == null) {
+                Source source = testSource("DEFINE(function, ROOT(\n" +
+                                "  ARGUMENT(a), \n" +
+                                "  STATEMENT()\n" +
+                                "))\n");
+                return getFunctionValue(source, "function");
+            } else {
+                return value;
+            }
+        });
+    }
+
     protected final void checkDebugValueOf(Object object, Consumer<DebugValue> checker) {
         checkDebugValueOf(object, (event, value) -> checker.accept(value));
     }
 
     protected final void checkDebugValueOf(Object object, BiConsumer<SuspendedEvent, DebugValue> checker) {
-        final Source source = testSource("DEFINE(function, ROOT(\n" +
-                        "  ARGUMENT(a), \n" +
-                        "  STATEMENT()\n" +
-                        "))\n");
-        Value functionValue = getFunctionValue(source, "function");
+        Value functionValue = getFunctionWithArgument();
 
         AtomicBoolean suspended = new AtomicBoolean(false);
         try (DebuggerSession session = startSession()) {

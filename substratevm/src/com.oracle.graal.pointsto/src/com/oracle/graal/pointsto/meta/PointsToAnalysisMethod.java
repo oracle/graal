@@ -24,14 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,24 +32,38 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
+import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.AtomicUtils;
+
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+
 public class PointsToAnalysisMethod extends AnalysisMethod {
     private MethodTypeFlow typeFlow;
 
     private ConcurrentMap<InvokeTypeFlow, Object> invokedBy;
     private ConcurrentMap<InvokeTypeFlow, Object> implementationInvokedBy;
+    /**
+     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
+     * receiver type of the method, i.e., its declaring-class. Therefore, this invoke will link with
+     * all possible callees.
+     */
+    private final AtomicReference<InvokeTypeFlow> contextInsensitiveVirtualInvoke = new AtomicReference<>();
+    private final AtomicReference<InvokeTypeFlow> contextInsensitiveSpecialInvoke = new AtomicReference<>();
 
-    public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
+    PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped);
         typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
-    }
-
-    @Override
-    public void cleanupAfterAnalysis() {
-        super.cleanupAfterAnalysis();
-        contextInsensitiveInvoke.set(null);
-        typeFlow = null;
-        invokedBy = null;
-        implementationInvokedBy = null;
     }
 
     @Override
@@ -111,31 +117,81 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         return getTypeFlow().getParsingContext();
     }
 
-    /**
-     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
-     * receiver type of the method, i.e., its declaring class. Therefore this invoke will link with
-     * all possible callees.
-     */
-    private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
-
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation) {
-        if (contextInsensitiveInvoke.get() == null) {
-            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
-            boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
-            if (set) {
-                /*
-                 * Only register the winning context insensitive invoke as an observer of the target
-                 * method declaring class type flow.
-                 */
-                InvokeTypeFlow.initContextInsensitiveInvoke(bb, this, invoke);
-            }
-        }
-        return contextInsensitiveInvoke.get();
+    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial) {
+        return AtomicUtils.produceAndSetValue(isSpecial ? contextInsensitiveSpecialInvoke : contextInsensitiveVirtualInvoke,
+                        () -> createContextInsensitiveInvoke(bb, this, originalLocation, isSpecial),
+                        (t) -> initContextInsensitiveInvoke(bb, this, t));
     }
 
-    public InvokeTypeFlow getContextInsensitiveInvoke() {
-        InvokeTypeFlow invoke = contextInsensitiveInvoke.get();
+    /**
+     * Create an unique, per method, context insensitive virtual or special invoke. The context
+     * insensitive invoke uses the receiver type of the method, i.e., its declaring class. Therefore
+     * this invoke will link with all possible callees.
+     */
+    private static InvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, PointsToAnalysisMethod method, BytecodePosition originalLocation, boolean isSpecial) {
+        assert !method.isStatic();
+        /*
+         * The context insensitive invoke has actual parameters and return flows that will be linked
+         * to the original actual parameters and return flows at each call site where it will be
+         * swapped in.
+         */
+        TypeFlow<?>[] actualParameters = new TypeFlow<?>[method.getSignature().getParameterCount(true)];
+
+        AnalysisType receiverType = method.getDeclaringClass();
+        /*
+         * The receiver flow of the context insensitive invoke is the type flow of its declaring
+         * class.
+         */
+        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+
+        actualParameters[0] = receiverFlow;
+        for (int i = 1; i < actualParameters.length; i++) {
+            actualParameters[i] = new ActualParameterTypeFlow((AnalysisType) method.getSignature().getParameterType(i - 1, null));
+        }
+        ActualReturnTypeFlow actualReturn = null;
+        AnalysisType returnType = (AnalysisType) method.getSignature().getReturnType(null);
+        if (returnType.getStorageKind() == JavaKind.Object) {
+            actualReturn = new ActualReturnTypeFlow(returnType);
+        }
+
+        InvokeTypeFlow invoke;
+        if (isSpecial) {
+            invoke = bb.analysisPolicy().createSpecialInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
+                            actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
+        } else {
+            invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
+                            actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
+        }
+        invoke.markAsContextInsensitive();
+
+        return invoke;
+    }
+
+    /**
+     * Register the context insensitive invoke flow as an observer of its receiver type, i.e., the
+     * declaring class of its target method. This also triggers an update of the context insensitive
+     * invoke, linking all callees.
+     */
+    private static void initContextInsensitiveInvoke(PointsToAnalysis bb, AnalysisMethod method, InvokeTypeFlow invoke) {
+        AnalysisType receiverType = method.getDeclaringClass();
+        AllInstantiatedTypeFlow receiverFlow = receiverType.getTypeFlow(bb, false);
+        receiverFlow.addObserver(bb, invoke);
+    }
+
+    public InvokeTypeFlow getContextInsensitiveVirtualInvoke() {
+        InvokeTypeFlow invoke = contextInsensitiveVirtualInvoke.get();
         AnalysisError.guarantee(invoke != null);
         return invoke;
     }
+
+    @Override
+    public void cleanupAfterAnalysis() {
+        super.cleanupAfterAnalysis();
+        contextInsensitiveVirtualInvoke.set(null);
+        contextInsensitiveSpecialInvoke.set(null);
+        typeFlow = null;
+        invokedBy = null;
+        implementationInvokedBy = null;
+    }
+
 }

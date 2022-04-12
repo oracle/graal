@@ -1,0 +1,106 @@
+;
+; Copyright (c) 2022, Oracle and/or its affiliates.
+;
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, with or without modification, are
+; permitted provided that the following conditions are met:
+;
+; 1. Redistributions of source code must retain the above copyright notice, this list of
+; conditions and the following disclaimer.
+;
+; 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+; conditions and the following disclaimer in the documentation and/or other materials provided
+; with the distribution.
+;
+; 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+; endorse or promote products derived from this software without specific prior written
+; permission.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+; OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+; COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+; EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+; GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+; AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+; OF THE POSSIBILITY OF SUCH DAMAGE.
+;
+
+EXPORTS
+  _graalvm_llvm_create_handle
+  _graalvm_llvm_resolve_handle
+  _graalvm_llvm_release_handle
+  _graalvm_llvm_create_deref_handle
+  _graalvm_llvm_is_handle
+  _graalvm_llvm_points_to_handle_space
+  _graalvm_llvm_resolve_function
+  polyglot_from_buffer
+  polyglot_from_const_buffer
+  polyglot_has_buffer_elements
+  polyglot_is_buffer_writable
+  polyglot_get_buffer_size
+  polyglot_import
+  polyglot_export
+  polyglot_eval
+  polyglot_eval_file
+  polyglot_java_type
+  polyglot_get_arg
+  polyglot_get_arg_count
+  polyglot_as_i8
+  polyglot_as_i16
+  polyglot_as_i32
+  polyglot_as_i64
+  polyglot_as_float
+  polyglot_as_double
+  polyglot_as_boolean
+  polyglot_can_execute
+  polyglot_invoke
+  polyglot_can_instantiate
+  polyglot_new_instance
+  polyglot_has_members
+  polyglot_has_member
+  polyglot_get_member
+  polyglot_put_member
+  polyglot_remove_member
+  polyglot_has_array_elements
+  polyglot_get_array_size
+  polyglot_get_array_element
+  polyglot_set_array_element
+  polyglot_remove_array_element
+  polyglot_get_string_size
+  polyglot_as_string
+  polyglot_from_string
+  polyglot_from_string_n
+  polyglot_is_value
+  polyglot_is_null
+  polyglot_is_number
+  polyglot_is_boolean
+  polyglot_is_string
+  polyglot_fits_in_i8
+  polyglot_fits_in_i16
+  polyglot_fits_in_i32
+  polyglot_fits_in_i64
+  polyglot_fits_in_float
+  polyglot_fits_in_double
+  polyglot_array_typeid
+  __polyglot_as_typeid
+  polyglot_as_typed
+  polyglot_from_typed
+  toolchain_api_tool
+  toolchain_api_paths
+  toolchain_api_identifier
+  truffle_load_library
+  truffle_virtual_malloc
+  truffle_managed_malloc
+  truffle_managed_memcpy
+  truffle_handle_for_managed
+  truffle_release_handle
+  truffle_managed_from_handle
+  truffle_is_handle_to_managed
+  truffle_assign_managed
+  truffle_deref_handle_for_managed
+  truffle_cannot_be_handle
+  truffle_decorate_function
+  __sulong_destructor_functions

@@ -72,7 +72,11 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers) {
+    public boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration) {
+        if (peelingIteration > 0) {
+            // Do not do iterative peeling by default.
+            return false;
+        }
         LoopBeginNode loopBegin = loop.loopBegin();
         double entryProbability = cfg.blockFor(loopBegin.forwardEnd()).getRelativeFrequency();
         StructuredGraph graph = cfg.graph;

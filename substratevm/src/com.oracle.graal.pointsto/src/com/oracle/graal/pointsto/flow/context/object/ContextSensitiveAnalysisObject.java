@@ -96,10 +96,6 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
         }
     }
 
-    protected void mergeInstanceFieldFlow(PointsToAnalysis bb, FieldTypeStore fieldTypeStore) {
-        mergeInstanceFieldFlow(bb, fieldTypeStore, type.getContextInsensitiveAnalysisObject());
-    }
-
     /**
      * Merge the read and write flows of the fieldTypeStore with those of the context insensitive
      * object.
@@ -111,10 +107,13 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
         FieldTypeFlow writeFieldFlow = fieldTypeStore.writeFlow();
 
         FieldTypeFlow parentWriteFieldFlow = object.getInstanceFieldFlow(bb, field, true);
-        FieldTypeFlow parentReadFieldFlow = object.getInstanceFieldFlow(bb, field, false);
 
         parentWriteFieldFlow.addUse(bb, writeFieldFlow);
-        readFieldFlow.addUse(bb, parentReadFieldFlow);
+        /*
+         * Route the values from the field flow to the context-sensitive parent write field flow.
+         * This will effectively merge this values with their context-insensitive version.
+         */
+        readFieldFlow.addUse(bb, parentWriteFieldFlow);
     }
 
     @Override
@@ -158,6 +157,21 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
         }
 
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
+    }
+
+    @Override
+    protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
+        // link the initial instance field flow to the field write flow
+        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the instance field flow
+        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+        // Also link the field read flow the field flow on the context insensitive object.
+        // This ensures that the all values flowing into a context-sensitive field flow
+        // are also visible from the context-insensitive field flow.
+        // Note that the context-insensitive field flow strips down all context from incoming state,
+        // so there is no risk that the context-sensitive objects will get flagged as merged.
+        FieldTypeFlow parentReadFieldFlow = type.getContextInsensitiveAnalysisObject().getInstanceFieldFlow(bb, field, false);
+        fieldStore.readFlow().addUse(bb, parentReadFieldFlow);
     }
 
     /**

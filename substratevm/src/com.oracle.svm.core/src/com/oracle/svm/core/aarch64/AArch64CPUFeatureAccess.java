@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,30 +28,18 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
-
-@AutomaticFeature
-@Platforms(Platform.AARCH64.class)
-class AArch64CPUFeatureAccessFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CPUFeatureAccess.class, new AArch64CPUFeatureAccess());
-    }
-}
 
 public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
@@ -110,8 +98,9 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
         }
     }
 
+    @Override
     @Platforms(Platform.AARCH64.class)
-    public static EnumSet<AArch64.CPUFeature> determineHostCPUFeatures() {
+    public EnumSet<AArch64.CPUFeature> determineHostCPUFeatures() {
         EnumSet<AArch64.CPUFeature> features = EnumSet.noneOf(AArch64.CPUFeature.class);
 
         AArch64LibCHelper.CPUFeatures cpuFeatures = StackValue.get(AArch64LibCHelper.CPUFeatures.class);

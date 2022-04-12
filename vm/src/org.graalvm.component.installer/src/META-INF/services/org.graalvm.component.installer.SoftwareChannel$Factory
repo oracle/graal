@@ -1,3 +1,4 @@
 org.graalvm.component.installer.ce.WebCatalog$WebCatalogFactory
 org.graalvm.component.installer.persist.DirectoryChannelFactory
 org.graalvm.component.installer.gds.GraalChannelFactory
+org.graalvm.component.installer.gds.rest.GDSChannelFactory

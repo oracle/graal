@@ -25,7 +25,6 @@
 
 package com.oracle.objectfile.io;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
@@ -90,19 +89,12 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
         return !buf.hasRemaining();
     }
 
-    /**
-     * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
-     */
-    private static Buffer asBaseBuffer(Buffer obj) {
-        return obj;
-    }
-
     @Override
     public void seek(long pos) {
         if (pos > pos()) {
             ensure((int) (pos - pos()));
         }
-        asBaseBuffer(buf).position((int) pos);
+        buf.position((int) pos);
     }
 
     @Override
@@ -291,7 +283,7 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
             ByteBuffer nbuf = ByteBuffer.allocate(newCap);
             nbuf.order(ByteOrder.nativeOrder());
             byte[] old = new byte[pos];
-            asBaseBuffer(buf).rewind();
+            buf.rewind();
             buf.get(old);
             nbuf.put(old);
             buf = nbuf;
@@ -302,7 +294,7 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
     public byte[] getBlob() {
         int len = buf.position();
         byte[] bytes = new byte[len];
-        asBaseBuffer(buf).position(0);
+        buf.position(0);
         buf.get(bytes);
         return bytes;
     }

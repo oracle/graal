@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -291,6 +291,8 @@ public class AMD64ControlFlow {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
             assert size == DWORD || size == QWORD;
             this.size = size;
+
+            assert x.getPlatformKind().getVectorLength() == 1;
 
             this.x = x;
             this.y = y;
@@ -598,15 +600,16 @@ public class AMD64ControlFlow {
         protected final Constant[] keyConstants;
         private final LabelRef[] keyTargets;
         private LabelRef defaultTarget;
-        @Alive({REG}) protected Value key;
-        @Temp({REG, ILLEGAL}) protected Value scratch;
+        @Alive({REG}) protected AllocatableValue key;
+        @Temp({REG, ILLEGAL}) protected AllocatableValue scratch;
         protected final SwitchStrategy strategy;
 
-        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+        public StrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue scratch) {
             this(TYPE, strategy, keyTargets, defaultTarget, key, scratch);
         }
 
-        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Value key, Value scratch) {
+        protected StrategySwitchOp(LIRInstructionClass<? extends StrategySwitchOp> c, SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key,
+                        AllocatableValue scratch) {
             super(c);
             this.strategy = strategy;
             this.keyConstants = strategy.getKeyConstants();
@@ -751,12 +754,12 @@ public class AMD64ControlFlow {
         private final JavaConstant[] keys;
         private final LabelRef defaultTarget;
         private final LabelRef[] targets;
-        @Alive protected Value value;
-        @Alive protected Value hash;
-        @Temp({REG}) protected Value entryScratch;
-        @Temp({REG}) protected Value scratch;
+        @Alive({REG}) protected AllocatableValue value;
+        @Alive({REG}) protected AllocatableValue hash;
+        @Temp({REG}) protected AllocatableValue entryScratch;
+        @Temp({REG}) protected AllocatableValue scratch;
 
-        public HashTableSwitchOp(final JavaConstant[] keys, final LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash, Variable scratch, Variable entryScratch) {
+        public HashTableSwitchOp(final JavaConstant[] keys, final LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, AllocatableValue hash, Variable scratch, Variable entryScratch) {
             super(TYPE);
             this.keys = keys;
             this.defaultTarget = defaultTarget;
@@ -903,7 +906,7 @@ public class AMD64ControlFlow {
         private final boolean unorderedIsTrue;
         private final boolean isSelfEqualsCheck;
 
-        public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, Variable trueValue, Variable falseValue, boolean isSelfEqualsCheck) {
+        public FloatCondMoveOp(Variable result, Condition condition, boolean unorderedIsTrue, AllocatableValue trueValue, AllocatableValue falseValue, boolean isSelfEqualsCheck) {
             super(TYPE);
             this.result = result;
             this.condition = floatCond(condition);

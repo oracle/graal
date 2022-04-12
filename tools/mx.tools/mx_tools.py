@@ -190,14 +190,13 @@ def dap_types_gen(args):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    if mx.get_jdk(tag='default').javaCompliance > '1.8':
-        # This is required to access jdk.internal.module.Modules which
-        # in turn allows us to dynamically open fields/methods to reflection.
-        vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
+    # This is required to access jdk.internal.module.Modules which
+    # in turn allows us to dynamically open fields/methods to reflection.
+    vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # This is required for the call to setAccessible in
-        # TruffleTCK.testValueWithSource to work.
-        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
+    # This is required for the call to setAccessible in
+    # TruffleTCK.testValueWithSource to work.
+    vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -215,7 +216,6 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
     private void emitDefault(ProcessorContext context, Log log, Message message) {
         Kind kind = message.getKind();
-
         Element messageElement = getMessageElement();
         AnnotationMirror messageAnnotation = getMessageAnnotation();
         AnnotationValue messageValue = getMessageAnnotationValue();
@@ -231,7 +231,7 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
             throw new AssertionError("Tried to emit message to generated element: " + messageElement + ". Make sure messages are redirected correctly. Message: " + message.getText());
         }
 
-        String text = message.getText();
+        String text = trimLongMessage(message.getText());
         List<String> expectedErrors = ExpectError.getExpectedErrors(context.getEnvironment(), messageElement);
         if (!expectedErrors.isEmpty()) {
             if (ExpectError.isExpectedError(context.getEnvironment(), messageElement, text)) {
@@ -245,6 +245,33 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
                 log.message(kind, enclosedElement, null, null, text);
             }
         }
+    }
+
+    private static final int MAX_MARKER_BYTE_LENGTH = 60000;
+
+    /**
+     * Eclipse JDT does not support markers bigger than 65535 bytes. In order to avoid making an JDT
+     * assertion fail that hides the actual error we truncate the message showing only the beginning
+     * and the end. After all messages with that size are not expected anyway and most likely an
+     * error.
+     */
+    private static String trimLongMessage(String valueString) {
+        if (valueString.length() < 21000) {
+            // optimized test based on maximum 3 bytes per character
+            return valueString;
+        }
+        byte[] bytes;
+        try {
+            bytes = valueString.getBytes(("UTF-8"));
+        } catch (UnsupportedEncodingException uee) {
+            return valueString;
+        }
+        if (bytes.length > MAX_MARKER_BYTE_LENGTH) {
+            return String.format("Java compiler message is too long. Showing the first few 8000 and the last 2000 characters only: %n%s%n ... truncated ... %n%s",
+                            valueString.substring(0, 8000),
+                            valueString.substring(valueString.length() - 2000, valueString.length()));
+        }
+        return valueString;
     }
 
     public AnnotationMirror getMessageAnnotation() {

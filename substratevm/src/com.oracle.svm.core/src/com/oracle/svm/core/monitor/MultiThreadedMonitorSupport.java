@@ -38,10 +38,8 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -58,14 +56,11 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implementation of synchronized-related operations.
@@ -90,25 +85,7 @@ import sun.misc.Unsafe;
  */
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
-    /**
-     * This is only used for preempting a continuation in the experimental Loom JDK support. There's
-     * performance impact in this solution.
-     */
-    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt("MultiThreadedMonitorSupport.lockedMonitors");
-
-    protected static void onMonitorLocked() {
-        if (JavaContinuations.useLoom()) {
-            lockedMonitors.set(lockedMonitors.get() + 1);
-        }
-    }
-
-    protected static void onMonitorUnlocked() {
-        if (JavaContinuations.useLoom()) {
-            lockedMonitors.set(lockedMonitors.get() - 1);
-        }
-    }
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     /**
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
@@ -266,8 +243,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorEnter(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.lock();
-
-        onMonitorLocked();
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -305,8 +280,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorExit(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.unlock();
-
-        onMonitorUnlocked();
     }
 
     @Override
@@ -360,7 +333,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         int newState = oldState + 1;
         VMError.guarantee(newState > 0, "Maximum lock count exceeded");
 
-        boolean success = UNSAFE.compareAndSwapInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
+        boolean success = UNSAFE.compareAndSetInt(qSync, SYNC_STATE_FIELD_OFFSET, oldState, newState);
         VMError.guarantee(success, "Could not re-lock object during deoptimization");
         aSync.exclusiveOwnerThread = currentThread;
     }
@@ -375,12 +348,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public boolean isLockedByAnyThread(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, false);
         return lockObject != null && lockObject.isLocked();
-    }
-
-    @Override
-    public int countThreadLock(IsolateThread vmThread) {
-        VMError.guarantee(JavaContinuations.useLoom(), "This method is only supported when continuations are enabled.");
-        return lockedMonitors.get(vmThread);
     }
 
     @SuppressFBWarnings(value = {"WA_AWAIT_NOT_IN_LOOP"}, justification = "This method is a wait implementation.")
@@ -461,7 +428,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
         /* Atomically put a new lock in place of the null at the monitorOffset. */
         ReentrantLock newMonitor = newMonitorLock();
-        if (UNSAFE.compareAndSwapObject(obj, monitorOffset, null, newMonitor)) {
+        if (UNSAFE.compareAndSetObject(obj, monitorOffset, null, newMonitor)) {
             return newMonitor;
         }
         /* We lost the race, use the lock some other thread installed. */
@@ -551,7 +518,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             return existingCondition;
         }
         ConditionObject newCondition = (ConditionObject) monitorLock.newCondition();
-        if (!UNSAFE.compareAndSwapObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
+        if (!UNSAFE.compareAndSetObject(sync, SYNC_MONITOR_CONDITION_FIELD_OFFSET, MONITOR_WITHOUT_CONDITION, newCondition)) {
             newCondition = SubstrateUtil.cast(sync.objectMonitorCondition, ConditionObject.class);
             assert isMonitorCondition(newCondition) : "race winner must have installed valid condition";
         }

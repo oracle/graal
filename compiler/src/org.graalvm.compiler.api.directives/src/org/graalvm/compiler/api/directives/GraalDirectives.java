@@ -464,4 +464,68 @@ public final class GraalDirectives {
     public static boolean isCompilationConstant(Object value) {
         return false;
     }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(boolean value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(byte value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(short value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(char value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(int value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(float value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(long value) {
+        return false;
+    }
+
+    /**
+     * @see #isCompilationConstant(Object)
+     */
+    @SuppressWarnings("unused")
+    public static boolean isCompilationConstant(double value) {
+        return false;
+    }
 }

@@ -67,6 +67,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
@@ -78,7 +79,7 @@ import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage0StackFramePrintVisitor;
 import com.oracle.svm.core.stack.ThreadStackPrinter.Stage1StackFramePrintVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -130,6 +131,19 @@ public class SubstrateDiagnostics {
                         !VMThreads.printLocationInfo(log, value, allowUnsafeOperations) &&
                         !Heap.getHeap().printLocationInfo(log, value, allowJavaHeapAccess, allowUnsafeOperations)) {
             log.string("is an unknown value");
+        }
+    }
+
+    @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
+    public static void printObjectInfo(Log log, Pointer ptr) {
+        DynamicHub objHub = Heap.getHeap().getObjectHeader().readDynamicHubFromPointer(ptr);
+        if (objHub == DynamicHub.fromClass(DynamicHub.class)) {
+            // The pointer is already a hub, so print some information about the hub.
+            DynamicHub hub = (DynamicHub) ptr.toObject();
+            log.string("is the hub of ").string(hub.getName());
+        } else {
+            // The pointer is an object, so print some information about the object's hub.
+            log.string("is an object of type ").string(objHub.getName());
         }
     }
 
@@ -191,7 +205,7 @@ public class SubstrateDiagnostics {
          * further errors occur while printing diagnostics.
          */
         if (!fatalErrorState().trySet(log, sp, ip, registerContext, frameHasCalleeSavedRegisters) && !isFatalErrorHandlingThread()) {
-            log.string("Error: printDiagnostics already in progress by another thread.").newline();
+            log.string("Error: printFatalError already in progress by another thread.").newline();
             log.newline();
             return false;
         }
@@ -470,6 +484,19 @@ public class SubstrateDiagnostics {
         }
     }
 
+    private static class DumpCurrentTimestamp extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline().newline();
+        }
+    }
+
     private static class DumpRegisters extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
@@ -645,7 +672,7 @@ public class SubstrateDiagnostics {
                     log.string(" (").string(SafepointBehavior.toString(safepointBehavior)).string(")");
 
                     if (allowJavaHeapAccess) {
-                        Thread threadObj = JavaThreads.fromVMThread(thread);
+                        Thread threadObj = PlatformThreads.fromVMThread(thread);
                         log.string(" \"").string(threadObj.getName()).string("\" - ").zhex(Word.objectToUntrackedPointer(threadObj));
                         if (threadObj != null && threadObj.isDaemon()) {
                             log.string(", daemon");
@@ -940,8 +967,8 @@ public class SubstrateDiagnostics {
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DiagnosticThunkRegistry() {
-            this.diagnosticThunks = new DiagnosticThunk[]{new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(), new DumpTopFrame(),
-                            new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
+            this.diagnosticThunks = new DiagnosticThunk[]{new DumpCurrentTimestamp(), new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(),
+                            new DumpTopFrame(), new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
                             new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
                             new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
 

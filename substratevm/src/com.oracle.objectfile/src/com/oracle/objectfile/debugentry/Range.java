@@ -277,7 +277,7 @@ public class Range {
         if (next == null) {
             return;
         }
-        debugContext.log(DebugContext.INFO_LEVEL, "Merge subranges [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
+        debugContext.log(DebugContext.DETAILED_LEVEL, "Merge subranges [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
         /* merge siblings together if possible, reparenting children to the merged node */
         while (next != null) {
             next = next.maybeMergeSibling(debugContext);
@@ -297,7 +297,7 @@ public class Range {
      */
     private Range maybeMergeSibling(DebugContext debugContext) {
         Range sibling = getSiblingCallee();
-        debugContext.log(DebugContext.INFO_LEVEL, "Merge subrange (maybe) [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
+        debugContext.log(DebugContext.DETAILED_LEVEL, "Merge subrange (maybe) [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
         if (sibling == null) {
             /* all child nodes at this level have been merged */
             return null;
@@ -334,7 +334,7 @@ public class Range {
                         lo, hi, getFullMethodNameWithParams(), sibling.getLo(), sibling.getHi(), sibling.getFullMethodNameWithParams());
         assert this.isInlined == sibling.isInlined : String.format("change in inlined [0x%x,0x%x] %s %s [0x%x,0x%x] %s %s",
                         lo, hi, getFullMethodNameWithParams(), Boolean.valueOf(this.isInlined), sibling.lo, sibling.hi, sibling.getFullMethodNameWithParams(), Boolean.valueOf(sibling.isInlined));
-        debugContext.log(DebugContext.INFO_LEVEL, "Combining [0x%x, 0x%x] %s into [0x%x, 0x%x] %s", sibling.lo, sibling.hi, sibling.getFullMethodName(), lo, hi, getFullMethodNameWithParams());
+        debugContext.log(DebugContext.DETAILED_LEVEL, "Combining [0x%x, 0x%x] %s into [0x%x, 0x%x] %s", sibling.lo, sibling.hi, sibling.getFullMethodName(), lo, hi, getFullMethodNameWithParams());
         this.hi = sibling.hi;
         this.siblingCallee = sibling.siblingCallee;
     }
@@ -342,7 +342,7 @@ public class Range {
     private void reparentChildren(DebugContext debugContext, Range sibling) {
         Range siblingNext = sibling.getFirstCallee();
         while (siblingNext != null) {
-            debugContext.log(DebugContext.INFO_LEVEL, "Reparenting [0x%x, 0x%x] %s to [0x%x, 0x%x] %s", siblingNext.lo, siblingNext.hi, siblingNext.getFullMethodName(), lo, hi,
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Reparenting [0x%x, 0x%x] %s to [0x%x, 0x%x] %s", siblingNext.lo, siblingNext.hi, siblingNext.getFullMethodName(), lo, hi,
                             getFullMethodNameWithParams());
             siblingNext.caller = this;
             Range newSiblingNext = siblingNext.siblingCallee;

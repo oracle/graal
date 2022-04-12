@@ -48,11 +48,11 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil.InlineeReturnAct
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
+import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
-@NodeInfo(nameTemplate = "{p#truffleAST}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
+@NodeInfo(nameTemplate = "{p#directCallTarget}", cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
 public final class CallNode extends Node implements Comparable<CallNode> {
 
     private static final NodeClass<CallNode> TYPE = NodeClass.create(CallNode.class);
@@ -75,6 +75,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     // Effectively final, cannot be initialized in the constructor because needs getParent() to
     // calculate
     private int recursionDepth;
+    // Effectively final, populated only as part of expanded if debug dump level >= info
+    @SuppressWarnings("unused") private StructuredGraph irAfterPE;
     // Effectively final, populated only as part of expanded
     private StructuredGraph ir;
     // Effectively final, populated only as part of expanded (unless root, root does not have
@@ -99,14 +101,15 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     /**
      * Returns a fully expanded and partially evaluated CallNode to be used as a root of a callTree.
      */
-    static CallNode makeRoot(CallTree callTree, PartialEvaluator.Request request) {
+    static CallNode makeRoot(CallTree callTree, TruffleTierContext context) {
         Objects.requireNonNull(callTree);
-        Objects.requireNonNull(request);
-        CallNode root = new CallNode(null, request.compilable, 1, 0, callTree.nextId());
+        Objects.requireNonNull(context);
+        CallNode root = new CallNode(null, context.compilable, 1, 0, callTree.nextId());
         callTree.add(root);
-        root.ir = request.graph;
+        root.ir = context.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
         final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        root.irAfterPE = entry.graphAfterPEForDebugDump;
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -232,6 +235,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
         verifyTrivial(entry);
         ir = copyGraphAndAddChildren(entry);
+        irAfterPE = entry.graphAfterPEForDebugDump;
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
     }

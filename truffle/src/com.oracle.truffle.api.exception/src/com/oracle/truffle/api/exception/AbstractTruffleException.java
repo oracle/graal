@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,16 +42,12 @@ package com.oracle.truffle.api.exception;
 
 import org.graalvm.polyglot.PolyglotException;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleStackTrace;
-import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A base class for an exception thrown during the execution of a guest language program.<br>
@@ -155,8 +151,8 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 20.3
  */
-@SuppressWarnings({"serial", "deprecation"})
-public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
+@SuppressWarnings({"serial"})
+public abstract class AbstractTruffleException extends RuntimeException implements TruffleObject {
 
     /**
      * The constant for an unlimited stack trace element limit.
@@ -264,7 +260,6 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @since 20.3
      */
-    @Override
     public final Node getLocation() {
         return location;
     }
@@ -278,139 +273,8 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @since 20.3
      */
-    @Override
     public final int getStackTraceElementLimit() {
         return stackTraceElementLimit;
-    }
-
-    /**
-     * Returns a location where this exception occurred in the AST.
-     *
-     * @deprecated Use {@link InteropLibrary#getSourceLocation(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final SourceSection getSourceLocation() {
-        InteropLibrary interop = InteropLibrary.getUncached();
-        if (interop.hasSourceLocation(this)) {
-            try {
-                return interop.getSourceLocation(this);
-            } catch (UnsupportedMessageException um) {
-                throw CompilerDirectives.shouldNotReachHere(um);
-            }
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Returns {@code this} as an additional guest language object.
-     *
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final Object getExceptionObject() {
-        return this;
-    }
-
-    /**
-     * Returns {@code true} if this exception indicates a parser or syntax error.
-     *
-     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final boolean isSyntaxError() {
-        return getExceptionType() == ExceptionType.PARSE_ERROR;
-    }
-
-    /**
-     * Returns {@code true} if this exception indicates a syntax error that is indicating that the
-     * syntax is incomplete.
-     *
-     * @deprecated Use {@link InteropLibrary#isExceptionIncompleteSource(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final boolean isIncompleteSource() {
-        try {
-            return InteropLibrary.getUncached().isExceptionIncompleteSource(this);
-        } catch (UnsupportedMessageException um) {
-            throw CompilerDirectives.shouldNotReachHere(um);
-        }
-    }
-
-    /**
-     * Returns {@code false} as internal error is no {@link InteropLibrary#isException(Object)
-     * exception object}.
-     *
-     * @deprecated Use {@link InteropLibrary#isException(java.lang.Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final boolean isInternalError() {
-        return false;
-    }
-
-    /**
-     * Returns {@code true} if this exception indicates that guest language application was
-     * cancelled during its execution.
-     *
-     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final boolean isCancelled() {
-        return false;
-    }
-
-    /**
-     * Returns {@code true} if the exception indicates that the application was exited within the
-     * guest language program.
-     *
-     * @deprecated Use {@link InteropLibrary#getExceptionType(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final boolean isExit() {
-        return getExceptionType() == ExceptionType.EXIT;
-    }
-
-    /**
-     * Returns the exit status if this exception indicates that the application was exited.
-     *
-     * @deprecated Use {@link InteropLibrary#getExceptionExitStatus(Object)}.
-     * @since 20.3
-     */
-    @Deprecated
-    @Override
-    public final int getExitStatus() {
-        try {
-            return InteropLibrary.getUncached().getExceptionExitStatus(this);
-        } catch (UnsupportedMessageException um) {
-            throw CompilerDirectives.shouldNotReachHere(um);
-        }
-    }
-
-    /**
-     * Setting a cause is not supported.
-     *
-     * @deprecated Pass in the cause using the constructors instead.
-     * @since 20.3
-     */
-    @Deprecated
-    @TruffleBoundary
-    @Override
-    @SuppressWarnings("sync-override")
-    public final Throwable initCause(Throwable throwable) {
-        throw new UnsupportedOperationException("Not supported. Pass in the cause using the constructors instead.");
     }
 
     /**
@@ -430,18 +294,5 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
 
     void setLazyStackTrace(Throwable stackTrace) {
         this.lazyStackTrace = stackTrace;
-    }
-
-    private ExceptionType getExceptionType() {
-        try {
-            return InteropLibrary.getUncached().getExceptionType(this);
-        } catch (UnsupportedMessageException um) {
-            throw CompilerDirectives.shouldNotReachHere(um);
-        }
-    }
-
-    @SuppressWarnings("deprecation")
-    static boolean isTruffleException(Throwable t) {
-        return t instanceof com.oracle.truffle.api.TruffleException;
     }
 }

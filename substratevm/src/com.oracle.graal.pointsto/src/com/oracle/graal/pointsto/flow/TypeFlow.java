@@ -28,7 +28,6 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -40,7 +39,6 @@ import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeStateUtils;
-import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.ClassUtil;
 
@@ -63,7 +61,7 @@ public abstract class TypeFlow<T> {
      */
     protected final AnalysisType declaredType;
 
-    private volatile TypeState state;
+    protected volatile TypeState state;
 
     /** The set of all {@link TypeFlow}s that need to be update when this flow changes. */
     @SuppressWarnings("unused") private volatile Object uses;
@@ -226,6 +224,10 @@ public abstract class TypeFlow<T> {
 
     public boolean isClone() {
         return isClone;
+    }
+
+    public boolean isContextInsensitive() {
+        return false;
     }
 
     public AnalysisType getDeclaredType() {
@@ -440,12 +442,7 @@ public abstract class TypeFlow<T> {
                      * Notify the observer after registering. This flow might have already reached a
                      * fixed point and might never notify its observers otherwise.
                      */
-                    bb.postTask(new DebugContextRunnable() {
-                        @Override
-                        public void run(DebugContext ignore) {
-                            observer.onObservedUpdate(bb);
-                        }
-                    });
+                    bb.postTask(ignore -> observer.onObservedUpdate(bb));
                 }
             }
             return true;
@@ -462,6 +459,11 @@ public abstract class TypeFlow<T> {
          * An observer is linked even if it is already saturated itself, hence no
          * 'observer.isSaturated()' check is performed here. For observers the saturation state is
          * that of the values flowing through and not that of the objects they observe.
+         * 
+         * Some observers may need to continue to observe the state of their receiver object until
+         * the receiver object saturates itself, e.g., instance field stores, other observers may
+         * deregister themselves from observing the receiver object when they saturate, e.g.,
+         * instance field loads.
          */
         if (observer.equals(this)) {
             return false;
@@ -479,13 +481,6 @@ public abstract class TypeFlow<T> {
 
     public Collection<TypeFlow<?>> getObservers() {
         return ConcurrentLightHashSet.getElements(this, OBSERVERS_UPDATER);
-    }
-
-    /** Let the observers know that the state has changed. */
-    protected void notifyObservers(PointsToAnalysis bb) {
-        for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedUpdate(bb);
-        }
     }
 
     // manage observees
@@ -553,7 +548,9 @@ public abstract class TypeFlow<T> {
             }
         }
 
-        notifyObservers(bb);
+        for (TypeFlow<?> observer : getObservers()) {
+            observer.onObservedUpdate(bb);
+        }
     }
 
     /** Notify the observer that the observed type flow state has changed. */
@@ -596,8 +593,14 @@ public abstract class TypeFlow<T> {
 
         /* Mark the flow as saturated, this will lead to lazy removal from *all* its inputs. */
         setSaturated();
+        /* Run flow-specific saturation tasks, e.g., stop observing receivers. */
+        onSaturated();
         /* Notify uses and observers that this input is saturated and unlink them. */
         notifySaturated(bb);
+    }
+
+    protected void onSaturated() {
+        // hook for flow-specific saturation tasks
     }
 
     /*** Notify the uses and observers that this flow is saturated and unlink them. */

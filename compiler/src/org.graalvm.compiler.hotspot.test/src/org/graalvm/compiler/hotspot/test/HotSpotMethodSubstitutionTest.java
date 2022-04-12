@@ -29,7 +29,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.nodes.IfNode;
@@ -37,7 +36,7 @@ import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.junit.Test;
 
 /**
- * Tests HotSpot specific {@link MethodSubstitution}s.
+ * Tests HotSpot specific substitutions.
  */
 public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 

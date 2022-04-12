@@ -247,7 +247,7 @@ class ReferenceOperand extends Operand {
                 }
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
-                if (thisKlass.getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                if (thisKlass.getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                     throw failNoClassDefFound(type.toString());
                 }
                 throw e;

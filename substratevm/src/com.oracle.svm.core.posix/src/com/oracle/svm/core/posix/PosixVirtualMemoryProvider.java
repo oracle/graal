@@ -27,6 +27,7 @@ package com.oracle.svm.core.posix;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_ANON;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_FAILED;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_FIXED;
+import static com.oracle.svm.core.posix.headers.Mman.MAP_JIT;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_NORESERVE;
 import static com.oracle.svm.core.posix.headers.Mman.MAP_PRIVATE;
 import static com.oracle.svm.core.posix.headers.Mman.PROT_EXEC;
@@ -38,8 +39,10 @@ import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.mprotect;
 import static com.oracle.svm.core.posix.headers.Mman.NoTransitions.munmap;
 import static org.graalvm.word.WordFactory.nullPointer;
 
+import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
@@ -107,7 +110,7 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
         if (nbytes.equal(0)) {
             return WordFactory.nullPointer();
         }
@@ -119,7 +122,11 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
             mappingSize = mappingSize.add(alignment);
         }
         mappingSize = UnsignedUtils.roundUp(mappingSize, granularity);
-        Pointer mappingBegin = mmap(nullPointer(), mappingSize, PROT_NONE(), MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
+        int flags = MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE();
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && executable) {
+            flags |= MAP_JIT();
+        }
+        Pointer mappingBegin = mmap(nullPointer(), mappingSize, PROT_NONE(), flags, NO_FD, NO_FD_OFFSET);
         if (mappingBegin.equal(MAP_FAILED())) {
             return nullPointer();
         }
@@ -167,6 +174,11 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         if (start.isNonNull()) {
             flags |= MAP_FIXED();
         }
+
+        boolean isWX = (access & Access.WRITE) != 0 && (access & Access.EXECUTE) != 0;
+        if (Platform.includedIn(Platform.MACOS_AARCH64.class) && isWX) {
+            flags |= MAP_JIT();
+        }
         /* The memory returned by mmap is guaranteed to be zeroed. */
         final Pointer result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
         return result.notEqual(MAP_FAILED()) ? result : nullPointer();
@@ -180,6 +192,12 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
         }
 
         return mprotect(start, nbytes, accessAsProt(access));
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void jitWriteProtect(boolean protect) {
+        DarwinPthread.pthread_jit_write_protect_np(protect ? 1 : 0);
     }
 
     @Override

@@ -39,20 +39,11 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
     private final NativeToHotSpotBridgeGenerator generator;
 
     private NativeToHotSpotBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
-        super(processor, typeCache, typeCache.generateNativeToHSBridge, typeCache.hSObject);
+        super(processor, typeCache,
+                        createConfiguration(typeCache),
+                        HotSpotToNativeBridgeParser.createConfiguration(processor.env().getTypeUtils(), typeCache));
         this.typeCache = typeCache;
         this.generator = new NativeToHotSpotBridgeGenerator(this, typeCache);
-    }
-
-    @Override
-    Iterable<List<? extends TypeMirror>> getSubClassReferenceConstructorTypes() {
-        return Collections.singleton(Arrays.asList(typeCache.jniEnv, typeCache.jObject));
-    }
-
-    @Override
-    Iterable<List<? extends TypeMirror>> getHandleReferenceConstructorTypes() {
-        return Arrays.asList(Collections.singletonList(typeCache.hSObject),
-                        Arrays.asList(typeCache.hSObject, typeCache.jniEnv));
     }
 
     @Override
@@ -69,31 +60,35 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
         return new NativeToHotSpotBridgeParser(processor, new TypeCache(processor));
     }
 
+    static Configuration createConfiguration(AbstractTypeCache typeCache) {
+        return new Configuration(typeCache.generateNativeToHSBridge, typeCache.hSObject,
+                        Collections.singleton(Arrays.asList(typeCache.jniEnv, typeCache.jObject)),
+                        Arrays.asList(Collections.singletonList(typeCache.hSObject), Arrays.asList(typeCache.hSObject, typeCache.jniEnv)));
+    }
+
     static final class TypeCache extends AbstractTypeCache {
 
+        final DeclaredType currentIsolate;
         final DeclaredType jNIExceptionHandler;
         final DeclaredType jNIExceptionHandlerContext;
-        final DeclaredType generateNativeToHSBridge;
         final DeclaredType hotSpotCalls;
         final DeclaredType hSObject;
         final DeclaredType jNIClassCache;
         final DeclaredType jNIMethod;
         final DeclaredType jValue;
         final DeclaredType runtimeException;
-        final DeclaredType stackValue;
 
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
+            this.currentIsolate = (DeclaredType) processor.getType("org.graalvm.nativeimage.CurrentIsolate");
             this.jNIExceptionHandler = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler");
             this.jNIExceptionHandlerContext = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext");
-            this.generateNativeToHSBridge = (DeclaredType) processor.getType(GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
             this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls");
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.jNIClassCache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIClassCache");
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
-            this.stackValue = (DeclaredType) processor.getType("org.graalvm.nativeimage.StackValue");
         }
     }
 }

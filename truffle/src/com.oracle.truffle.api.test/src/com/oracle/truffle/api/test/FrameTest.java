@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -188,12 +189,17 @@ public class FrameTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                FrameInstance frameInstance = runtime.getCurrentFrame();
-                Frame readWrite = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-                Frame materialized = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                Frame result = runtime.iterateFrames(f -> {
+                    Frame readWrite = f.getFrame(FrameInstance.FrameAccess.READ_WRITE);
+                    Frame materialized = f.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
 
-                assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
-                assertEquals("It's my frame", frame, readWrite);
+                    assertTrue("Really materialized: " + materialized, materialized instanceof MaterializedFrame);
+                    assertEquals("It's my frame", frame, readWrite);
+                    return materialized;
+                });
+                // at least one frame available
+                assertNotNull(result);
+
                 return this;
             }
         }

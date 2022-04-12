@@ -141,7 +141,7 @@ public final class NodeFlood implements Iterable<Node> {
     }
 
     public Iterable<Node> unmarkedNodes() {
-        return new Iterable<Node>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Node> iterator() {

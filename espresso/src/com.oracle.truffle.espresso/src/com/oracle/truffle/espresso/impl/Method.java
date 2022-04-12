@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
@@ -43,6 +44,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.IntFunction;
 import java.util.logging.Level;
 
@@ -52,18 +54,16 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.EspressoOptions;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
-import com.oracle.truffle.espresso.classfile.attributes.BootstrapMethodsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
@@ -81,8 +81,6 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
-import com.oracle.truffle.espresso.jdwp.api.LineNumberTableRef;
-import com.oracle.truffle.espresso.jdwp.api.LocalVariableTableRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodHook;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.jni.Mangle;
@@ -91,6 +89,7 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
+import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
@@ -130,6 +129,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @CompilationFinal private volatile MethodVersion methodVersion;
 
     private boolean removedByRedefinition;
+    private final ClassHierarchyAssumption isLeaf;
 
     private MethodHook[] hooks = MethodHook.EMPTY;
     private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
@@ -141,7 +141,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     private Method(Method method, CodeAttribute split) {
         this.rawSignature = method.rawSignature;
         this.declaringKlass = method.declaringKlass;
-        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(), method.getMethodVersion().isLeaf,
+        this.methodVersion = new MethodVersion(method.getMethodVersion().klassVersion, method.getRuntimeConstantPool(), method.getLinkedMethod(),
                         method.getMethodVersion().poisonPill, split);
 
         try {
@@ -154,6 +154,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Proxy the method, so that we have the same callTarget if it is not yet initialized.
         // Allows for not duplicating the codeAttribute
         this.proxy = method.proxy == null ? method : method.proxy;
+        this.isLeaf = method.isLeaf;
     }
 
     Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, RuntimeConstantPool pool) {
@@ -163,7 +164,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     Method(ObjectKlass.KlassVersion klassVersion, LinkedMethod linkedMethod, Symbol<Signature> rawSignature, RuntimeConstantPool pool) {
         this.declaringKlass = klassVersion.getKlass();
         this.rawSignature = rawSignature;
-        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, null, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
+        this.methodVersion = new MethodVersion(klassVersion, pool, linkedMethod, false, (CodeAttribute) linkedMethod.getAttribute(CodeAttribute.NAME));
 
         try {
             this.parsedSignature = getSignatures().parsed(this.getRawSignature());
@@ -173,6 +174,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             throw meta.throwExceptionWithMessage(meta.java_lang_ClassFormatError, e.getMessage());
         }
         this.proxy = null;
+        this.isLeaf = getContext().getClassHierarchyOracle().createLeafAssumptionForNewMethod(this);
     }
 
     public Method identity() {
@@ -181,7 +183,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public Symbol<Name> getName() {
-        return getLinkedMethod().getName();
+        return getMethodVersion().getName();
     }
 
     // can have a different constant pool than it's declaring class
@@ -218,6 +220,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return parsedSignature;
     }
 
+    public ClassHierarchyAssumption getLeafAssumption(ClassHierarchyOracle.ClassHierarchyAccessor accessor) {
+        Objects.requireNonNull(accessor);
+        return isLeaf;
+    }
+
     private Source source;
 
     public int getRefKind() {
@@ -230,19 +237,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @TruffleBoundary
     public int bciToLineNumber(int atBCI) {
-        if (atBCI < 0) {
-            return atBCI;
-        }
-        return getCodeAttribute().bciToLineNumber(atBCI);
+        return getMethodVersion().bciToLineNumber(atBCI);
     }
 
     @Override
     public EspressoContext getContext() {
         return declaringKlass.getContext();
-    }
-
-    public BootstrapMethodsAttribute getBootstrapMethods() {
-        return (BootstrapMethodsAttribute) getAttribute(BootstrapMethodsAttribute.NAME);
     }
 
     public byte[] getOriginalCode() {
@@ -275,7 +275,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public static NativeSignature buildJniNativeSignature(Symbol<Type>[] signature) {
         NativeType returnType = NativeAccess.kindToNativeType(Signatures.returnKind(signature));
-        int argCount = Signatures.parameterCount(signature, false);
+        int argCount = Signatures.parameterCount(signature);
 
         // Prepend JNIEnv* and class|receiver.
         NativeType[] parameterTypes = new NativeType[argCount + 2];
@@ -311,8 +311,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getMethodVersion().getCallTarget();
     }
 
-    public CallTarget getCallTargetNoInit() {
-        return getMethodVersion().getCallTargetNoInit();
+    /**
+     * Exposed to Interop API, to ensure that VM calls to guest classes properly initialize guest
+     * classes prior to the calls.
+     */
+    public CallTarget getCallTargetForceInit() {
+        getDeclaringKlass().safeInitialize();
+        return getCallTarget();
     }
 
     /**
@@ -444,12 +449,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @TruffleBoundary
     public Object invokeWithConversions(Object self, Object... args) {
         getContext().getJNI().clearPendingException();
-        assert args.length == Signatures.parameterCount(getParsedSignature(), false);
+        assert args.length == Signatures.parameterCount(getParsedSignature());
         // assert !isStatic() || ((StaticObject) self).isStatic();
 
         final Object[] filteredArgs;
         if (isStatic()) {
-            // clinit done when obtaining call target
+            getDeclaringKlass().safeInitialize();
             filteredArgs = new Object[args.length];
             for (int i = 0; i < filteredArgs.length; ++i) {
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
@@ -474,11 +479,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Object invokeDirect(Object self, Object... args) {
         getContext().getJNI().clearPendingException();
         if (isStatic()) {
-            assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-            // clinit performed on obtaining call target
+            assert args.length == Signatures.parameterCount(getParsedSignature());
+            getDeclaringKlass().safeInitialize();
             return getCallTarget().call(args);
         } else {
-            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
+            assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature()) + (isStatic() ? 0 : 1);
             Object[] fullArgs = new Object[args.length + 1];
             System.arraycopy(args, 0, fullArgs, 1, args.length);
             fullArgs[0] = self;
@@ -492,11 +497,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     @Override
     public int getModifiers() {
-        return getLinkedMethod().getFlags();
+        return getMethodVersion().getModifiers();
     }
 
     public boolean isCallerSensitive() {
         return (getModifiers() & ACC_CALLER_SENSITIVE) != 0;
+    }
+
+    /**
+     * The {@code @ForceInline} annotation only takes effect for methods or constructors of classes
+     * loaded by the boot loader. Annotations on methods or constructors of classes loaded outside
+     * of the boot loader are ignored.
+     */
+    public boolean isForceInline() {
+        return (getModifiers() & ACC_FORCE_INLINE) != 0 && StaticObject.isNull(getDeclaringKlass().getDefiningClassLoader());
     }
 
     public boolean isHidden() {
@@ -504,12 +518,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public int getMethodModifiers() {
-        return getLinkedMethod().getFlags() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
+        return getMethodVersion().getModifiers() & Constants.JVM_RECOGNIZED_METHOD_MODIFIERS;
     }
 
     @Override
     public String toString() {
-        return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
+        return getMethodVersion().toString();
     }
 
     public JavaKind getReturnKind() {
@@ -519,7 +533,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Klass[] resolveParameterKlasses() {
         // TODO(peterssen): Use resolved signature.
         final Symbol<Type>[] signature = getParsedSignature();
-        int paramCount = Signatures.parameterCount(signature, false);
+        int paramCount = Signatures.parameterCount(signature);
         Klass[] paramsKlasses = paramCount > 0 ? new Klass[paramCount] : Klass.EMPTY_ARRAY;
         for (int i = 0; i < paramCount; ++i) {
             Symbol<Type> paramType = Signatures.parameterType(signature, i);
@@ -539,7 +553,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public int getParameterCount() {
-        return Signatures.parameterCount(getParsedSignature(), false);
+        return Signatures.parameterCount(getParsedSignature());
     }
 
     public int getArgumentCount() {
@@ -591,7 +605,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return false;
         }
         Symbol<Type>[] signature = getParsedSignature();
-        if (Signatures.parameterCount(signature, false) != 1) {
+        if (Signatures.parameterCount(signature) != 1) {
             return false;
         }
         if (Signatures.parameterType(signature, 0) != Type.java_lang_Object_array) {
@@ -674,7 +688,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public boolean isInlinableGetter() {
         if (getSubstitutions().get(this) == null) {
             if (getParameterCount() == 0 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
                     return hasGetterBytecodes();
                 }
             }
@@ -699,7 +713,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public boolean isInlinableSetter() {
         if (getSubstitutions().get(this) == null) {
             if (getParameterCount() == 1 && !isAbstract() && !isNative() && !isSynchronized()) {
-                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || leafAssumption() || isStatic()) {
+                if (isFinalFlagSet() || declaringKlass.isFinalFlagSet() || getContext().getClassHierarchyOracle().isLeafMethod(getMethodVersion()).isValid() || isStatic()) {
                     return hasSetterBytecodes();
                 }
             }
@@ -721,14 +735,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return false;
     }
 
-    public Assumption getLeafAssumption() {
-        return getMethodVersion().isLeaf;
-    }
-
-    public boolean leafAssumption() {
-        return getMethodVersion().leafAssumption();
-    }
-
     public void unregisterNative() {
         assert isNative();
         if (getMethodVersion().callTarget != null) {
@@ -742,28 +748,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         new BytecodeStream(getOriginalCode()).printBytecode(declaringKlass, out);
     }
 
-    public LineNumberTableAttribute getLineNumberTable() {
-        CodeAttribute attribute = getCodeAttribute();
-        if (attribute != null) {
-            return attribute.getLineNumberTableAttribute();
-        }
-        return LineNumberTableAttribute.EMPTY;
-    }
-
     public LocalVariableTable getLocalVariableTable() {
-        CodeAttribute attribute = getCodeAttribute();
-        if (attribute != null) {
-            return attribute.getLocalvariableTable();
-        }
-        return LocalVariableTable.EMPTY_LVT;
-    }
-
-    public LocalVariableTable getLocalVariableTypeTable() {
-        CodeAttribute attribute = getCodeAttribute();
-        if (attribute != null) {
-            return attribute.getLocalvariableTypeTable();
-        }
-        return LocalVariableTable.EMPTY_LVTT;
+        return getMethodVersion().getLocalVariableTable();
     }
 
     /**
@@ -829,11 +815,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // region jdwp-specific
     public long getBCIFromLine(int line) {
-        return getLineNumberTable().getBCI(line);
+        return getMethodVersion().getBCIFromLine(line);
     }
 
     public boolean hasLine(int lineNumber) {
-        return getLineNumberTable().getBCI(lineNumber) != -1;
+        return getMethodVersion().hasLine(lineNumber);
     }
 
     public String getNameAsString() {
@@ -849,10 +835,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getRawSignature().toString();
     }
 
-    public boolean isMethodNative() {
-        return isNative();
-    }
-
     public KlassRef[] getParameters() {
         return resolveParameterKlasses();
     }
@@ -864,21 +846,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return theCallee;
         }
         return invokeWithConversions(callee, args);
-    }
-
-    public boolean isLastLine(long codeIndex) {
-        LineNumberTableAttribute table = getLineNumberTable();
-        int lastLine = table.getLastLine();
-        int lineAt = table.getLineNumber((int) codeIndex);
-        return lastLine == lineAt;
-    }
-
-    public int getFirstLine() {
-        return getLineNumberTable().getFirstLine();
-    }
-
-    public int getLastLine() {
-        return getLineNumberTable().getLastLine();
     }
 
     public String getGenericSignatureAsString() {
@@ -987,7 +954,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         MethodVersion oldVersion = methodVersion;
         methodVersion = oldVersion.replace(klassVersion, runtimePool, newLinkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
-        return new SharedRedefinitionContent(newLinkedMethod, runtimePool, newCodeAttribute);
+        return new SharedRedefinitionContent(methodVersion, newLinkedMethod, runtimePool, newCodeAttribute);
     }
 
     public void redefine(ObjectKlass.KlassVersion klassVersion, SharedRedefinitionContent content, Ids<Object> ids) {
@@ -997,7 +964,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         ids.replaceObject(oldVersion, methodVersion);
     }
 
-    public void swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
+    public MethodVersion swapMethodVersion(ObjectKlass.KlassVersion klassVersion, Ids<Object> ids) {
         MethodVersion oldVersion = methodVersion;
         CodeAttribute codeAttribute = oldVersion.getCodeAttribute();
         // create a copy of the code attribute using the original
@@ -1007,6 +974,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         CodeAttribute newCodeAttribute = codeAttribute != null ? new CodeAttribute(codeAttribute) : null;
         methodVersion = oldVersion.replace(klassVersion, oldVersion.pool, oldVersion.linkedMethod, newCodeAttribute);
         ids.replaceObject(oldVersion, methodVersion);
+        return methodVersion;
     }
 
     public MethodVersion getMethodVersion() {
@@ -1103,13 +1071,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return instance;
     }
 
-    public final class MethodVersion implements MethodRef {
+    public final class MethodVersion implements MethodRef, ModifiersProvider {
         private final ObjectKlass.KlassVersion klassVersion;
         private final RuntimeConstantPool pool;
         private final LinkedMethod linkedMethod;
         private final CodeAttribute codeAttribute;
         private final ExceptionsAttribute exceptionsAttribute;
-        private final Assumption isLeaf;
 
         @CompilationFinal private CallTarget callTarget;
 
@@ -1130,27 +1097,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // Multiple maximally-specific interface methods. Fail on call.
         @CompilationFinal private boolean poisonPill;
 
-        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, Assumption leafAssumption, boolean poisonPill, CodeAttribute codeAttribute) {
+        private MethodVersion(ObjectKlass.KlassVersion klassVersion, RuntimeConstantPool pool, LinkedMethod linkedMethod, boolean poisonPill,
+                        CodeAttribute codeAttribute) {
             this.klassVersion = klassVersion;
             this.pool = pool;
             this.linkedMethod = linkedMethod;
             this.codeAttribute = codeAttribute;
             this.exceptionsAttribute = (ExceptionsAttribute) linkedMethod.getAttribute(ExceptionsAttribute.NAME);
-
-            if (leafAssumption != null) {
-                this.isLeaf = leafAssumption;
-            } else {
-                int flags = linkedMethod.getFlags();
-                if (Modifier.isAbstract(flags)) {
-                    // Disabled for abstract methods to reduce footprint.
-                    this.isLeaf = NeverValidAssumption.INSTANCE;
-                } else if (Modifier.isStatic(flags) || Modifier.isPrivate(flags) || Modifier.isFinal(flags) || klassVersion.isFinalFlagSet()) {
-                    // Nothing to assume, spare an assumption.
-                    this.isLeaf = AlwaysValidAssumption.INSTANCE;
-                } else {
-                    this.isLeaf = Truffle.getRuntime().createAssumption();
-                }
-            }
             this.poisonPill = poisonPill;
             initRefKind();
         }
@@ -1169,7 +1122,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         public MethodVersion replace(ObjectKlass.KlassVersion version, RuntimeConstantPool constantPool, LinkedMethod newLinkedMethod, CodeAttribute newCodeAttribute) {
-            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, null, false, newCodeAttribute);
+            MethodVersion result = new MethodVersion(version, constantPool, newLinkedMethod, false, newCodeAttribute);
             // make sure the table indices are copied
             result.vtableIndex = vtableIndex;
             result.itableIndex = itableIndex;
@@ -1201,44 +1154,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return linkedMethod.getName();
         }
 
-        protected Symbol<Signature> getRawSignature() {
+        public Symbol<Signature> getRawSignature() {
             return getMethod().getRawSignature();
         }
 
         public Assumption getRedefineAssumption() {
             return klassVersion.getAssumption();
-        }
-
-        public boolean leafAssumption() {
-            return isLeaf.isValid();
-        }
-
-        public void invalidateLeaf() {
-            isLeaf.invalidate();
-        }
-
-        public boolean isStatic() {
-            return getMethod().isStatic();
-        }
-
-        public boolean isPrivate() {
-            return getMethod().isPrivate();
-        }
-
-        public boolean isProtected() {
-            return getMethod().isProtected();
-        }
-
-        public boolean isPublic() {
-            return getMethod().isPublic();
-        }
-
-        public boolean isAbstract() {
-            return getMethod().isAbstract();
-        }
-
-        public boolean isFinalFlagSet() {
-            return getMethod().isFinalFlagSet();
         }
 
         public CodeAttribute getCodeAttribute() {
@@ -1279,14 +1200,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return pool;
         }
 
-        public CallTarget getCallTarget() {
-            return getCallTarget(true);
-        }
-
-        public CallTarget getCallTargetNoInit() {
-            return getCallTarget(false);
-        }
-
         private CallTarget getCallTargetNoSubstitution() {
             CompilerAsserts.neverPartOfCompilation();
             EspressoError.guarantee(getSubstitutions().hasSubstitutionFor(getMethod()),
@@ -1294,21 +1207,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return findCallTarget();
         }
 
-        private CallTarget getCallTarget(boolean initKlass) {
+        public CallTarget getCallTarget() {
             if (callTarget == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
                 checkPoisonPill(meta);
-                if (initKlass) {
-                    /*
-                     * Initializing a class costs a lock, do it outside of this method's lock to
-                     * avoid congestion. Note that requesting a call target is immediately followed
-                     * by a call to the method, before advancing BCI. This ensures that we are
-                     * respecting the specs, saying that a class must be initialized before a method
-                     * is called, while saving a call to safeInitialize after a method lookup.
-                     */
-                    declaringKlass.safeInitialize();
-                }
                 synchronized (this) {
                     if (callTarget != null) {
                         return callTarget;
@@ -1341,7 +1244,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         private CallTarget findCallTarget() {
             CallTarget target;
-            if (getMethod().isNative()) {
+            if (isNative()) {
                 // Bind native method.
                 target = lookupLibJavaCallTarget();
                 if (target == null) {
@@ -1367,7 +1270,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 }
 
                 if (target == null) {
-                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", getMethod().toString());
+                    getContext().getLogger().log(Level.WARNING, "Failed to link native method: {0}", toString());
                     Meta meta = getMeta();
                     throw meta.throwException(meta.java_lang_UnsatisfiedLinkError);
                 }
@@ -1412,7 +1315,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public long getBCIFromLine(int line) {
-            return getMethod().getBCIFromLine(line);
+            return getLineNumberTable().getBCI(line);
         }
 
         @Override
@@ -1422,7 +1325,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean hasLine(int lineNumber) {
-            return getMethod().hasLine(lineNumber);
+            return getLineNumberTable().getBCI(lineNumber) != -1;
         }
 
         @Override
@@ -1432,7 +1335,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public String getNameAsString() {
-            return getMethod().getNameAsString();
+            return getName().toString();
         }
 
         @Override
@@ -1447,17 +1350,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public int getModifiers() {
-            return getMethod().getModifiers();
+            return linkedMethod.getFlags();
         }
 
         @Override
         public int bciToLineNumber(int bci) {
-            return getMethod().bciToLineNumber(bci);
+            if (bci < 0) {
+                return bci;
+            }
+            return getCodeAttribute().bciToLineNumber(bci);
         }
 
         @Override
         public boolean isMethodNative() {
-            return getMethod().isMethodNative();
+            return isNative();
         }
 
         @Override
@@ -1471,13 +1377,19 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public LocalVariableTableRef getLocalVariableTable() {
-            return getMethod().getLocalVariableTable();
+        public LocalVariableTable getLocalVariableTable() {
+            if (codeAttribute != null) {
+                return codeAttribute.getLocalvariableTable();
+            }
+            return LocalVariableTable.EMPTY_LVT;
         }
 
         @Override
-        public LocalVariableTableRef getLocalVariableTypeTable() {
-            return getMethod().getLocalVariableTypeTable();
+        public LocalVariableTable getLocalVariableTypeTable() {
+            if (codeAttribute != null) {
+                return codeAttribute.getLocalvariableTypeTable();
+            }
+            return LocalVariableTable.EMPTY_LVTT;
         }
 
         @Override
@@ -1486,8 +1398,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
 
         @Override
-        public LineNumberTableRef getLineNumberTable() {
-            return getMethod().getLineNumberTable();
+        public LineNumberTableAttribute getLineNumberTable() {
+            return getLineNumberTableAttribute();
         }
 
         @Override
@@ -1495,7 +1407,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             if (getMethod().isRemovedByRedefition()) {
                 Meta meta = getMeta();
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError,
-                                meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getMethod().getName() + getMethod().getRawSignature()));
+                                meta.toGuestString(getMethod().getDeclaringKlass().getNameAsString() + "." + getName() + getRawSignature()));
             }
             return getMethod().invokeMethod(callee, args);
         }
@@ -1507,7 +1419,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public boolean isLastLine(long codeIndex) {
-            return getMethod().isLastLine(codeIndex);
+            LineNumberTableAttribute table = getLineNumberTable();
+            int lastLine = table.getLastLine();
+            int lineAt = table.getLineNumber((int) codeIndex);
+            return lastLine == lineAt;
         }
 
         @Override
@@ -1517,12 +1432,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public int getFirstLine() {
-            return getMethod().getFirstLine();
+            return getLineNumberTable().getFirstLine();
         }
 
         @Override
         public int getLastLine() {
-            return getMethod().getLastLine();
+            return getLineNumberTable().getLastLine();
         }
 
         @Override
@@ -1574,7 +1489,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public String toString() {
-            return getMethod().toString();
+            return "EspressoMethod<" + getDeclaringKlass().getType() + "." + getName() + getRawSignature() + ">";
         }
 
         public boolean usesMonitors() {
@@ -1652,14 +1567,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     static class SharedRedefinitionContent {
 
+        private final MethodVersion version;
         private final LinkedMethod linkedMethod;
         private final RuntimeConstantPool pool;
         private final CodeAttribute codeAttribute;
 
-        SharedRedefinitionContent(LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+        SharedRedefinitionContent(MethodVersion version, LinkedMethod linkedMethod, RuntimeConstantPool pool, CodeAttribute codeAttribute) {
+            this.version = version;
             this.linkedMethod = linkedMethod;
             this.pool = pool;
             this.codeAttribute = codeAttribute;
+        }
+
+        public MethodVersion getMethodVersion() {
+            return version;
         }
 
         public LinkedMethod getLinkedMethod() {

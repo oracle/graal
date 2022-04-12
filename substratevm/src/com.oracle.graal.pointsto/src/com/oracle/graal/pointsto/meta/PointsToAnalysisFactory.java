@@ -24,11 +24,24 @@
  */
 package com.oracle.graal.pointsto.meta;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class PointsToAnalysisFactory implements AnalysisFactory {
     @Override
     public AnalysisMethod createMethod(AnalysisUniverse universe, ResolvedJavaMethod method) {
         return new PointsToAnalysisMethod(universe, method);
+    }
+
+    @Override
+    public AnalysisField createField(AnalysisUniverse universe, ResolvedJavaField field) {
+        return new PointsToAnalysisField(universe, field);
+    }
+
+    @Override
+    public AnalysisType createType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
+        return new PointsToAnalysisType(universe, javaType, storageKind, objectType, cloneableType);
     }
 }

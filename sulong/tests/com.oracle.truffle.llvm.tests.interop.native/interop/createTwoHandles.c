@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,11 @@
 #include <graalvm/llvm/handles.h>
 
 int main() {
-    void *p = polyglot_import("object");
+    void *o1 = polyglot_import("object1");
+    void *o2 = polyglot_import("object2");
 
-    void *p1 = create_handle(p);
-    void *p2 = create_handle(p);
+    void *p1 = create_handle(o1);
+    void *p2 = create_handle(o2);
 
     if (p1 != p2) {
         return 1;

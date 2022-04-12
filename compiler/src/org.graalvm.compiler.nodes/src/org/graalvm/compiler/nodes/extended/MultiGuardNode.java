@@ -84,7 +84,7 @@ public final class MultiGuardNode extends FloatingNode implements GuardingNode, 
                         list.add(guard);
                     }
                 }
-                return new MultiGuardNode(list.toArray(new ValueNode[0]));
+                return new MultiGuardNode(list.toArray(ValueNode.EMPTY_ARRAY));
             }
         }
 

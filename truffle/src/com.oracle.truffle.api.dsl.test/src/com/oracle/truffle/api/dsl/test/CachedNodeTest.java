@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.Cached1NodeGen;
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.Cached2NodeGen;
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.CustomCreateTakesPrecedenceCallNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.CustomCreateTakesPrecedenceNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.MultipleParametersNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.ValidDSLCachedNodeGen;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -119,6 +120,16 @@ public class CachedNodeTest {
             return new ValidNode2("uncached " + arg0);
         }
 
+        public static ValidNode2 create(Object arg0, Object arg1) {
+            createCalls++;
+            return new ValidNode2("cached " + arg0 + " " + arg1);
+        }
+
+        public static ValidNode2 getUncached(Object arg0, Object arg1) {
+            uncachedCalls++;
+            return new ValidNode2("uncached " + arg0 + " " + arg1);
+        }
+
     }
 
     @GenerateUncached
@@ -149,6 +160,38 @@ public class CachedNodeTest {
         assertEquals(1, ValidNode2.uncachedCalls);
         assertEquals("uncached 43", uncachedNode.execute(43));
         assertEquals(2, ValidNode2.uncachedCalls);
+    }
+
+    @Test
+    public void testMultipleParametersNode() {
+        ValidNode2.createCalls = 0;
+        ValidNode2.uncachedCalls = 0;
+        MultipleParametersNode cachedNode = MultipleParametersNodeGen.create();
+        assertEquals(0, ValidNode2.createCalls);
+        assertEquals("cached 42 42", cachedNode.execute(42, 42));
+        assertEquals(1, ValidNode2.createCalls);
+        assertEquals("cached 42 42", cachedNode.execute(43, 43));
+        assertEquals(1, ValidNode2.createCalls);
+
+        MultipleParametersNode uncachedNode = MultipleParametersNodeGen.getUncached();
+        assertEquals(0, ValidNode2.uncachedCalls);
+        assertEquals("uncached 42 42", uncachedNode.execute(42, 42));
+        assertEquals(1, ValidNode2.uncachedCalls);
+        assertEquals("uncached 43 43", uncachedNode.execute(43, 43));
+        assertEquals(2, ValidNode2.uncachedCalls);
+    }
+
+    @GenerateUncached
+    public abstract static class MultipleParametersNode extends Node {
+
+        abstract Object execute(Object arg0, Object arg1);
+
+        @Specialization
+        static Object s0(Object arg0, Object arg1,
+                        @Cached(parameters = {"arg0", "arg1"}) ValidNode2 validNode) {
+            return validNode.execute();
+        }
+
     }
 
     @GenerateUncached

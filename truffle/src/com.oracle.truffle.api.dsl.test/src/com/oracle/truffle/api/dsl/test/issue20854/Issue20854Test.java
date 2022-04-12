@@ -54,13 +54,15 @@ import com.oracle.truffle.api.library.ExportMessage;
  */
 @SuppressWarnings("unused")
 @ExportLibrary(InteropLibrary.class)
-class Issue20854Test extends BaseType {
+final class Issue20854Test extends BaseType {
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     public boolean isExecutable() {
         return false;
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     Object execute(Object[] args) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();

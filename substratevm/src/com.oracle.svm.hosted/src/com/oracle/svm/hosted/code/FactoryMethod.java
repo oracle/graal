@@ -107,7 +107,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
 
         AbstractNewObjectNode newInstance = support.createNewInstance(kit, universeTargetConstructor.getDeclaringClass(), true);
 
-        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(new ValueNode[0]);
+        ValueNode[] originalArgs = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
         ValueNode[] invokeArgs = new ValueNode[originalArgs.length + 1];
         invokeArgs[0] = newInstance;
         System.arraycopy(originalArgs, 0, invokeArgs, 1, originalArgs.length);

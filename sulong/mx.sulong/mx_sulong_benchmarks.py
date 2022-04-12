@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -446,8 +446,16 @@ class ClangVm(GccLikeVm):
 
 
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
+    def __init__(self, config_name, options, host_vm=None):
+        super(SulongVm, self).__init__(host_vm)
+        self._config_name = config_name
+        self._options = options
+
+    def with_host_vm(self, host_vm):
+        return SulongVm(self._config_name, self._options, host_vm)
+
     def config_name(self):
-        return "default"
+        return self._config_name
 
     def toolchain_name(self):
         return "native"
@@ -463,7 +471,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
 
     def run(self, cwd, args):
         bench_file_and_args = args[-3:]
-        launcher_args = self.launcher_args(args[:-3]) + bench_file_and_args
+        launcher_args = self.launcher_args(args[:-3]) + self._options + bench_file_and_args
         if hasattr(self.host_vm(), 'run_launcher'):
             result = self.host_vm().run_launcher(self.launcherName(), launcher_args, cwd)
         else:
@@ -728,7 +736,8 @@ native_vm_registry.add_vm(GccVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
-native_vm_registry.add_vm(SulongVm(), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default', []), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-osr-bytecode', ['--llvm.OSR=BYTECODE']), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
 native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',

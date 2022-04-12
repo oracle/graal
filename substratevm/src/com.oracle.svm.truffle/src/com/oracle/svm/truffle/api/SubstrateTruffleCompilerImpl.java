@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
+
 import java.io.PrintStream;
 import java.util.Map;
 
@@ -42,6 +44,8 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
+import org.graalvm.compiler.truffle.compiler.phases.InstrumentationSuite;
+import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -62,7 +66,7 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateTruffleCompilerImpl(TruffleCompilerConfiguration config) {
         super(config);
-        compilerConfigurationName = GraalConfiguration.instance().getCompilerConfigurationName();
+        compilerConfigurationName = GraalConfiguration.runtimeInstance().getCompilerConfigurationName();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -77,6 +81,13 @@ public class SubstrateTruffleCompilerImpl extends TruffleCompilerImpl implements
         for (Backend backend : getConfig().backends()) {
             SubstrateGraalUtils.updateGraalArchitectureWithHostCPUFeatures(backend);
         }
+    }
+
+    @Override
+    protected TruffleTier newTruffleTier(org.graalvm.options.OptionValues options) {
+        return new TruffleTier(options, partialEvaluator,
+                        new InstrumentationSuite(partialEvaluator.instrumentationCfg, config.snippetReflection(), partialEvaluator.getInstrumentation()),
+                        new SubstratePostPartialEvaluationSuite(options.get(IterativePartialEscape)));
     }
 
     @Override

@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -57,7 +58,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -145,7 +145,7 @@ public class ReflectionFeature implements GraalFeature {
 
     private CFunctionPointer register(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
-        analysisAccess.registerAsCompiled(aMethod);
+        analysisAccess.registerAsCompiled(aMethod, true);
         return new MethodPointer(aMethod);
     }
 
@@ -156,7 +156,7 @@ public class ReflectionFeature implements GraalFeature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
 
-        reflectionData = new ReflectionDataBuilder((FeatureAccessImpl) access);
+        reflectionData = new ReflectionDataBuilder();
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
     }
 
@@ -164,8 +164,6 @@ public class ReflectionFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         aUniverse = access.getUniverse();
-
-        access.registerObjectReplacer(new ReflectionObjectReplacer(access.getMetaAccess()));
 
         ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
@@ -181,6 +179,8 @@ public class ReflectionFeature implements GraalFeature {
         analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         /* duplicated to reduce the number of analysis iterations */
         reflectionData.flushConditionalConfiguration(access);
+        /* Make sure array classes don't need to be registered for reflection. */
+        RuntimeReflection.register(Object[].class.getMethods());
     }
 
     @Override

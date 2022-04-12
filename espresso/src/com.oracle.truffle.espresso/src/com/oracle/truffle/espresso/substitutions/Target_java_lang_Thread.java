@@ -31,6 +31,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -38,6 +39,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
+import com.oracle.truffle.espresso.threads.Transition;
 
 // @formatter:off
 /**
@@ -189,8 +191,7 @@ public final class Target_java_lang_Thread {
         StaticObject execute(@JavaType(Thread.class) StaticObject self,
                         @Bind("getContext()") EspressoContext context,
                         @Cached("create(context.getMeta().sun_misc_VM_toThreadState.getCallTarget())") DirectCallNode toThreadState) {
-            Meta meta = context.getMeta();
-            return (StaticObject) toThreadState.call(meta.java_lang_Thread_threadStatus.getInt(self));
+            return (StaticObject) toThreadState.call(context.getThreadAccess().getState(self));
         }
     }
 
@@ -206,25 +207,26 @@ public final class Target_java_lang_Thread {
         if (StaticObject.isNull(object)) {
             throw meta.throwNullPointerException();
         }
-        return object.getLock().isHeldByCurrentThread();
+        return object.getLock(meta.getContext()).isHeldByCurrentThread();
     }
 
     @TruffleBoundary
     @Substitution
-    public static void sleep(long millis, @Inject Meta meta) {
+    @SuppressWarnings("try")
+    public static void sleep(long millis, @Inject Meta meta, @Inject SubstitutionProfiler location) {
+        if (millis < 0) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "timeout value is negative");
+        }
         StaticObject thread = meta.getContext().getCurrentThread();
-        try {
-            meta.getThreadAccess().fromRunnable(thread, State.TIMED_WAITING);
-            Thread.sleep(millis);
-        } catch (InterruptedException e) {
+        try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
+            meta.getContext().getBlockingSupport().sleep(millis, location);
+        } catch (GuestInterruptedException e) {
             if (meta.getThreadAccess().isInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
             }
-            meta.getThreadAccess().checkDeprecation();
+            meta.getThreadAccess().fullSafePoint(thread);
         } catch (IllegalArgumentException e) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-        } finally {
-            meta.getThreadAccess().toRunnable(thread);
         }
     }
 
@@ -260,7 +262,6 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void suspend0(@JavaType(Object.class) StaticObject toSuspend,
                     @Inject EspressoContext context) {
-        context.invalidateNoSuspend("Calling Thread.suspend()");
         context.getThreadAccess().suspend(toSuspend);
     }
 
@@ -268,7 +269,6 @@ public final class Target_java_lang_Thread {
     @Substitution(hasReceiver = true)
     public static void stop0(@JavaType(Object.class) StaticObject self, @JavaType(Object.class) StaticObject throwable,
                     @Inject EspressoContext context) {
-        context.invalidateNoThreadStop("Calling thread.stop()");
         context.getThreadAccess().stop(self, throwable);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -92,6 +92,12 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
         AccessLocation location = access.execute(type, foreign, offset);
         return read.execute(location.identifier, location, accessType);
+    }
+
+    @Specialization(guards = {"type != null"})
+    Object doSpecialType(LLVMInteropType.SpecialStruct type, Object foreign, long offset, @SuppressWarnings("unused") ForeignToLLVMType accessType,
+                    @Cached LLVMInteropSpecialAccessNode access) {
+        return access.execute(foreign, accessType, type, offset);
     }
 
     @Specialization(guards = {"type != null", "offset != 0 || !hasVirtualMethods(type)"})

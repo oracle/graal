@@ -48,7 +48,7 @@ public class RubyTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=Ruby,IgnoreAtomicGroups=true";
+        return "Flavor=Ruby,Encoding=UTF-16";
     }
 
     void testUTF8(String pattern, String flags, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
@@ -342,7 +342,7 @@ public class RubyTests extends RegexTestBase {
 
     @Test
     public void ignoreAtomicGroups() {
-        test("(?>foo)", "", "foo", 0, true, 0, 3);
+        test("(?>foo)", "", "IgnoreAtomicGroups=true", "foo", 0, true, 0, 3);
     }
 
     @Test
@@ -377,5 +377,136 @@ public class RubyTests extends RegexTestBase {
                         "              | (?-mix:(?<width>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\.(?<precision>(?-mix:\\d+|(?-mix:\\*(?-mix:(\\d+)\\$)?))))? (?-mix:\\{(?<name>\\w+)\\})\n" +
                         "            )", "x").getMember("groupCount").asInt());
         // Checkstyle: resume line length
+    }
+
+    @Test
+    public void beginningAnchor() {
+        test("\\Ga", "", "a", 0, true, 0, 1);
+        test("\\Ga", "", "ba", 0, false);
+        test("\\Ga", "", "ba", 1, true, 1, 2);
+
+        test("\\Ga|\\Gb", "", "a", 0, true, 0, 1);
+        test("\\Ga|\\Gb", "", "b", 0, true, 0, 1);
+        test("\\Ga|\\Gb", "", "cab", 0, false);
+        test("\\Ga|\\Gb", "", "cab", 1, true, 1, 2);
+        test("\\Ga|\\Gb", "", "cab", 2, true, 2, 3);
+    }
+
+    @Test
+    public void nonRecursiveSubexpressionCalls() {
+        // numeric subexpression calls
+        test("(a)\\g<1>", "", "aa", 0, true, 0, 2, 1, 2);
+        // named subexpression calls
+        test("(?<foo>foo.)bar\\g<foo>", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
+        test("(?<three_digits>[0-9]{3})-\\g<three_digits>", "", "123-456", 0, true, 0, 7, 4, 7);
+        // chained calls
+        test("(?<digit>\\d)-(?<two_digits>\\g<digit>\\g<digit>)-(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)", "", "1-23-45678", 0, true, 0, 10, 9, 10, 8, 10, 5, 10);
+        // with forward references
+        test("\\g<1>(a)", "", "aa", 0, true, 0, 2, 1, 2);
+        test("\\g<foo>bar(?<foo>foo.)", "", "foo1barfoo2", 0, true, 0, 11, 7, 11);
+        test("\\g<three_digits>-(?<three_digits>[0-9]{3})", "", "123-456", 0, true, 0, 7, 4, 7);
+        test("(?<five_digits>\\g<two_digits>\\g<digit>\\g<two_digits>)-(?<two_digits>\\g<digit>\\g<digit>)-(?<digit>\\d)", "", "12345-67-8", 0, true, 0, 10, 0, 5, 6, 8, 9, 10);
+        // quantifier of called group is not copied
+        test("(a)+b\\g<1>b", "", "aaabab", 0, true, 0, 6, 4, 5);
+        test("(a)+b\\g<1>b", "", "aaabaaab", 0, false);
+        // quantifier of subexpression call is preserved
+        test("(a)\\g<1>+", "", "aaaa", 0, true, 0, 4, 3, 4);
+        // quantifier of subexpression call replaced quantifier of called group
+        test("(a)?b\\g<1>+", "", "abaaa", 0, true, 0, 5, 4, 5);
+        test("(a)?b\\g<1>+", "", "ab", 0, false);
+    }
+
+    @Test
+    public void recursiveSubexpressionCalls() {
+        testUnsupported("(a\\g<1>?)(b\\g<2>?)", "");
+        testUnsupported("(?<a>a\\g<b>?)(?<b>b\\g<a>?)", "");
+    }
+
+    @Test
+    public void atomicGroups() {
+        test("(?>foo)(?>bar)", "", "foobar", 0, true, 0, 6);
+        test("(?>foo*)obar", "", "foooooooobar", 0, false);
+
+        // quantifiers on atomic groups
+        test("\\A\\s*([0-9]+(?>\\.[0-9a-zA-Z]+)*(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?)?\\s*\\z", "", "0.a", 0, true, 0, 3, 0, 3, -1, -1, -1, -1);
+    }
+
+    @Test
+    public void quantifiersOnLookarounds() {
+        // CRuby doesn't rerun looped lookaround assertions, even though they could be updating the
+        // state on each run. Currently, TRegex does the same on the examples below.
+
+        // ?
+        test("(?<=(a))?", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))?", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))?", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // *
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // +
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // {2}
+        test("(?<=(a)){2}", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a)){2}", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a)){2}", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a)){2}", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+
+        // {3}
+        test("(?<=(a))*", "", "a", 1, true, 1, 1, 0, 1);
+        test("(?=(a))*", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=\\2()|(a))*", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
+        test("(?=\\2()|\\3()|(a))*", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);
+    }
+
+    @Test
+    public void possessiveQuantifiers() {
+        test("fooA++bar", "", "fooAAAbar", 0, true, 0, 9);
+        test("fooA++Abar", "", "fooAAAbar", 0, false);
+        test("fooA?+Abar", "", "fooAAAbar", 0, false);
+        test("fooA*+Abar", "", "fooAAAbar", 0, false);
+
+        // Intervals cannot be possessive, the + is treated as another quantifier
+        test("foo(A{0,1}+)Abar", "", "fooAAAbar", 0, true, 0, 9, 3, 5);
+    }
+
+    @Test
+    public void backreferencesHomonymousCaptureGroups() {
+        // Homonymous capture groups can be referenced using backreferences.
+        test("(?<x>a)\\k<x>(?<x>a)", "", "aaa", 0, true, 0, 3, 0, 1, 2, 3);
+        // Named forward references are not allowed.
+        expectSyntaxError("(\\k<x>|(?<x>a))+", "", "undefined name <x> reference");
+        // A named backreference can only use the values matched by capture groups that precede
+        // it lexically (i.e. named forward references do not work).
+        test("(?<x>.)((?<y>\\k<x>)|(?<x>a))+", "", "-aa", 0, true, 0, 3, 0, 1, -1, -1, 2, 3);
+        // A named backreference can match the contents of any (preceding) capture groups that has
+        // the same name.
+        test("(?<x>a)?(?<x>b)?\\k<x>", "", "bb", 0, true, 0, 2, -1, -1, 0, 1);
+        test("(?<x>a)?(?<x>b)?\\k<x>", "", "aa", 0, true, 0, 2, 0, 1, -1, -1);
+        // Lexical order, not index of match nor length of match, determines the priority of
+        // choosing the referent.
+        test("(?=a(?<x>ab))(?<x>a)ab\\k<x>", "", "aabab", 0, true, 0, 4, 1, 3, 0, 1);
+        test("(?<x>a)ab(?<=a(?<x>ab))\\k<x>", "", "aabab", 0, true, 0, 5, 0, 1, 1, 3);
+        // When the higher priority referent cannot be matched, the next highest is tried.
+        // This is currently broken in CRuby (https://bugs.ruby-lang.org/issues/18631).
+        test("(?<x>a)ab(?<=a(?<x>ab))\\k<x>", "", "aaba", 0, true, 0, 4, 0, 1, 1, 3);
+    }
+
+    @Test
+    public void gr37962() {
+        // Minimal test case.
+        test("^(?>(aa)?)+$", "", "a", 0, false);
+        // Original test case.
+        String a1000 = new String(new char[1000]).replace('\0', 'a');
+        String a500 = new String(new char[500]).replace('\0', 'a');
+        test("^(?>(?=a)(" + a1000 + "|))++$", "", a500, 0, false);
     }
 }

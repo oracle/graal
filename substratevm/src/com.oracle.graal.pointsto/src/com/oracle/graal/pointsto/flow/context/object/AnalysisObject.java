@@ -220,9 +220,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         assert !Modifier.isStatic(field.getModifiers());
         assert bb != null && !bb.getUniverse().sealed();
 
-        if (!field.getDeclaringClass().isAssignableFrom(type)) {
-            throw AnalysisError.fieldNotPresentError(bb, objectFlow, context, field, type);
-        }
+        checkField(bb, objectFlow, context, field);
 
         if (instanceFieldsTypeStore == null) {
             AnalysisField[] fields = type.getInstanceFields(true);
@@ -237,16 +235,34 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
             boolean result = instanceFieldsTypeStore.compareAndSet(field.getPosition(), null, fieldStore);
             if (result) {
                 fieldStore.init(bb);
-                // link the initial instance field flow to the field write flow
-                field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
-                // link the field read flow to the context insensitive instance field flow
-                fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+                linkFieldFlows(bb, field, fieldStore);
             } else {
                 fieldStore = instanceFieldsTypeStore.get(field.getPosition());
             }
         }
 
         return fieldStore;
+    }
+
+    private void checkField(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
+        /*
+         * Assignable types are assigned on AnalysisType creation, before the type is published, so
+         * if other is assignable to this then other would have been added to
+         * this.assignableTypesState and there is no risk of calling this.isAssignableFrom(other)
+         * too early. Using the type state based check is cheaper than getting the assignable
+         * information from the host vm every time.
+         */
+        if (!field.getDeclaringClass().getAssignableTypes(false).containsType(type)) {
+            throw AnalysisError.fieldNotPresentError(bb, objectFlow, context, field, type);
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
+        // link the initial instance field flow to the field write flow
+        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the context insensitive instance field flow
+        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
     }
 
     /**
@@ -285,7 +301,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
 
     @Override
     public String toString() {
-        return String.format("0x%016X", id) + ":" + kind.prefix + ":" + (type != null ? type.toJavaName(false) : "");
+        return String.format("0x%016X", id) + ":" + kind.prefix + ":" + (merged ? "M" : "") + ":" + (type != null ? type.toJavaName(false) : "");
     }
 
     @Override

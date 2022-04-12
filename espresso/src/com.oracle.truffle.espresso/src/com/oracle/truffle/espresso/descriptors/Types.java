@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.descriptors.ByteSequence.wrap;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -321,7 +322,8 @@ public final class Types {
     public static String checkType(String type) {
         // FIXME(peterssen): Do check.
         if (type.length() <= 0) {
-            throw EspressoError.unimplemented("boom");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.unimplemented();
         }
         return type;
         // throw EspressoError.unimplemented();

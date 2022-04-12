@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.code;
 
 import java.lang.annotation.Annotation;
 
+import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.spi.Replacements;
@@ -74,7 +75,7 @@ public class NativeMethodSubstitutionProcessor extends SubstitutionProcessor {
             }
             assert annotation.annotationType() != CFunction.class : "CFunction must have been handled by another SubstitutionProcessor";
         }
-        boolean isHandledByPlugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method) != null;
+        boolean isHandledByPlugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, HostedOptionValues.singleton()) != null;
         if (isHandledByPlugin) {
             return method;
         }

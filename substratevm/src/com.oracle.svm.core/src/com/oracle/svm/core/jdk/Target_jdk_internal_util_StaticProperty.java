@@ -65,7 +65,7 @@ final class Target_jdk_internal_util_StaticProperty {
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaIoTmpDir() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).tmpDir();
+        return ImageSingletons.lookup(SystemPropertiesSupport.class).javaIoTmpDir();
     }
 
     @Substitute

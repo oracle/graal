@@ -180,7 +180,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
      */
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object execute(final TRegexExecutorLocals abstractLocals, final TruffleString.CodeRange codeRange) {
+    public Object execute(final TRegexExecutorLocals abstractLocals, final TruffleString.CodeRange codeRange, boolean tString) {
         TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.partialEvaluationConstant(states);
@@ -289,7 +289,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     inputAdvance(locals);
                     state.beforeFindSuccessor(locals, this);
                     if (isForward() && state.canDoIndexOf() && inputHasNext(locals)) {
-                        int indexOfResult = state.loopOptimizationNode.execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), getEncoding());
+                        int indexOfResult = state.loopOptimizationNode.execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), getEncoding(), tString);
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
                         state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex);
                         assert locals.getIndex() == postLoopIndex;
@@ -509,11 +509,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (!inputHasNext(locals)) {
                         break outer;
                     }
-                    locals.setIndex(state.executeInnerLiteralSearch(locals, this));
+                    locals.setIndex(state.executeInnerLiteralSearch(locals, this, tString));
                     if (locals.getIndex() < 0) {
                         break outer;
                     }
-                    if (!state.hasPrefixMatcher() || state.prefixMatcherMatches(locals, codeRange)) {
+                    if (!state.hasPrefixMatcher() || state.prefixMatcherMatches(locals, codeRange, tString)) {
                         if (!state.hasPrefixMatcher() && isSimpleCG()) {
                             locals.getCGData().results[0] = locals.getIndex();
                         }

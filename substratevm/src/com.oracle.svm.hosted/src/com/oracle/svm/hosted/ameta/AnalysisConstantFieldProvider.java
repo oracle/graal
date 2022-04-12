@@ -62,7 +62,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
         T foldedValue = null;
         if (f.wrapped instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) f.wrapped;
-            if (readableField.allowConstantFolding()) {
+            if (readableField.allowConstantFolding() && readableField.isValueAvailable()) {
                 JavaConstant fieldValue = readableField.readValue(metaAccess, universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
                     foldedValue = analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));

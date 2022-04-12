@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 class PureMustBeSafeEarly {
     static int v;

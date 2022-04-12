@@ -125,10 +125,12 @@ public class JNIAccessFeature implements Feature {
     }
 
     private class JNIRuntimeAccessibilitySupportImpl extends ConditionalConfigurationRegistry implements JNIRuntimeAccess.JNIRuntimeAccessibilitySupport, ReflectionRegistry {
+
         @Override
-        public void register(ConfigurationCondition condition, Class<?>... classes) {
+        public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
+            assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newClasses.addAll(Arrays.asList(classes)));
+            registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
         }
 
         @Override
@@ -184,7 +186,7 @@ public class JNIAccessFeature implements Feature {
         access.registerAsAccessed(access.getUniverse().lookup(field));
         String name = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, name);
-        access.registerAsCompiled(method);
+        access.registerAsCompiled(method, true);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
@@ -302,7 +304,7 @@ public class JNIAccessFeature implements Feature {
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
-                access.getBigBang().addRootMethod(analysisWrapper);
+                access.getBigBang().addRootMethod(analysisWrapper, true);
                 analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
             return jniMethod;

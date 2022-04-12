@@ -69,7 +69,7 @@ public final class Signatures {
     @SuppressWarnings({"unchecked"})
     public Symbol<Signature> toBasic(Symbol<Signature> raw, boolean keepLastArg) {
         Symbol<Type>[] sig = parsed(raw);
-        int pcount = parameterCount(sig, false);
+        int pcount = parameterCount(sig);
         int params = max(pcount - (keepLastArg ? 0 : 1), 0);
         List<Symbol<Type>> buf = new ArrayList<>();
         for (int i = 0; i < params; i++) {
@@ -198,7 +198,7 @@ public final class Signatures {
     @ExplodeLoop
     public static int slotsForParameters(final Symbol<Type>[] signature) {
         int slots = 0;
-        int count = parameterCount(signature, false);
+        int count = parameterCount(signature);
         for (int i = 0; i < count; ++i) {
             slots += parameterKind(signature, i).getSlotCount();
         }
@@ -208,8 +208,8 @@ public final class Signatures {
     /**
      * Gets the number of parameters in this (parsed) signature object.
      */
-    public static int parameterCount(final Symbol<Type>[] signature, boolean includeReceiver) {
-        return signature.length - 1 + (includeReceiver ? 1 : 0);
+    public static int parameterCount(final Symbol<Type>[] signature) {
+        return signature.length - 1;
     }
 
     /**

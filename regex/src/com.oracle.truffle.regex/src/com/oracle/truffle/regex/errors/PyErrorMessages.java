@@ -113,8 +113,23 @@ public interface PyErrorMessages {
     }
 
     @TruffleBoundary
+    static String missing(String name) {
+        return "missing " + name;
+    }
+
+    @TruffleBoundary
+    static String missingUnterminatedName(char terminator) {
+        return "missing " + terminator + ", unterminated name";
+    }
+
+    @TruffleBoundary
     static String redefinitionOfGroupName(String name, int newId, int oldId) {
         return String.format("redefinition of group name '%s' as group %d; was group %d", name, newId, oldId);
+    }
+
+    @TruffleBoundary
+    static String undefinedCharacterName(String name) {
+        return "undefined character name '" + name + "'";
     }
 
     @TruffleBoundary

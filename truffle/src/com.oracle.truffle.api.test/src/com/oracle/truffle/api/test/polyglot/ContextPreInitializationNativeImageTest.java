@@ -42,7 +42,6 @@ package com.oracle.truffle.api.test.polyglot;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.polyglot.Context;
 import org.junit.BeforeClass;
@@ -54,7 +53,6 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -89,7 +87,7 @@ public class ContextPreInitializationNativeImageTest {
     @Test
     public void test() {
         // only supported in AOT
-        assumeTrue(TruffleOptions.AOT);
+        TruffleTestAssumptions.assumeAOT();
 
         try (Context context = Context.create(LANGUAGE)) {
             context.initialize(LANGUAGE);

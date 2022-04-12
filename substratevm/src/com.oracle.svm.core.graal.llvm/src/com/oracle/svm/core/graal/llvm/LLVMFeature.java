@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.Map;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -48,6 +49,7 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMLoadExceptionObjectLowering;
 import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
 import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
+import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode;
 import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
@@ -62,6 +64,7 @@ import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.image.NativeImageCodeCacheFactory;
 import com.oracle.svm.hosted.image.NativeImageHeap;
+import com.oracle.svm.util.ModuleSupport;
 
 /*
  * This feature enables the LLVM backend of Native Image. It does so by registering the backend,
@@ -86,6 +89,10 @@ public class LLVMFeature implements Feature, GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
+        if (ModuleSupport.modulePathBuild) {
+            ModuleSupport.openModuleByClass(LLVMIntrinsicNode.class, NodeClass.class);
+        }
+
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
             @Override
             public SubstrateBackend newBackend(Providers newProviders) {
@@ -98,7 +105,7 @@ public class LLVMFeature implements Feature, GraalFeature {
         ImageSingletons.add(NativeImageCodeCacheFactory.class, new NativeImageCodeCacheFactory() {
             @Override
             public NativeImageCodeCache newCodeCache(CompileQueue compileQueue, NativeImageHeap heap, Platform platform, Path tempDir) {
-                return new LLVMNativeImageCodeCache(compileQueue.getCompilations(), heap, platform, tempDir);
+                return new LLVMNativeImageCodeCache(compileQueue.getCompilationResults(), heap, platform, tempDir);
             }
         });
 
@@ -112,7 +119,7 @@ public class LLVMFeature implements Feature, GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()));
+        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
     }
 
     @Override

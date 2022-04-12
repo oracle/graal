@@ -29,9 +29,13 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.OSRCo
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ReplaceReprofileCount;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.SingleTierCompilationThreshold;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -39,6 +43,7 @@ import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -54,7 +59,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -66,6 +73,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 @RunWith(Theories.class)
 @SuppressWarnings("deprecation")
@@ -81,6 +89,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
                     writtenFrameSlots) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
 
     private int osrThreshold;
+    private Context context;
+    private TruffleLanguage.Env languageEnv;
 
     @BeforeClass
     public static void doBefore() {
@@ -97,9 +107,11 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
-        setupContext("engine.MultiTier", "false");
+        context = setupContext("engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         osrThreshold = target.getOptionValue(OSRCompilationThreshold);
+        context.initialize(ProxyLanguage.ID);
+        languageEnv = ProxyLanguage.LanguageContext.get(null).getEnv();
     }
 
     /*
@@ -611,6 +623,43 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         rootNode.forceOSR();
         target.call(1);
+    }
+
+    /*
+     * Test that thread local actions never expose the OSR root node.
+     */
+    @Theory
+    public void testSafepointLocationInLoop(OSRLoopFactory factory) {
+        TestRootNode rootNode = new TestRootNode(osrThreshold, factory, new TestRepeatingNode());
+
+        // avoid thread local action being processed right away
+        context.leave();
+        AtomicBoolean locationAssertEnabled = new AtomicBoolean(false);
+        AtomicInteger safepointCounter = new AtomicInteger(0);
+        Future<?> f = languageEnv.submitThreadLocal(null, new ThreadLocalAction(false, false, true) {
+            @Override
+            protected void perform(Access access) { // recurring
+                if (locationAssertEnabled.get()) {
+                    // we need to make sure we never observe the OSR root node here.
+                    // we expect either the loop node or the root node of the loop node as location.
+                    Assert.assertTrue(access.getLocation().toString(), access.getLocation() == rootNode || access.getLocation() == rootNode.loopNode);
+                    Assert.assertSame(Truffle.getRuntime().getCurrentFrame().getCallTarget(), rootNode.getCallTarget());
+                    safepointCounter.incrementAndGet();
+                }
+            }
+        });
+        context.enter();
+
+        // enter or close might trigger safepoints, but we have no guarantees on the location there
+        locationAssertEnabled.set(true);
+        try {
+            assertNotCompiled(rootNode.getOSRTarget());
+            rootNode.getCallTarget().call(osrThreshold + 1); // triggers
+            assertCompiled(rootNode.getOSRTarget());
+            assertTrue(safepointCounter.get() > 0);
+        } finally {
+            f.cancel(true);
+        }
     }
 
     private static class TestOSRStackTrace extends TestRepeatingNode {

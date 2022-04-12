@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
 import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -42,6 +42,6 @@ public interface AMD64ArithmeticLIRGeneratorTool extends ArithmeticLIRGeneratorT
 
     Value emitResetLowestSetBit(Value value);
 
-    void emitCompareOp(AMD64Kind cmpKind, Variable left, Value right);
+    void emitCompareOp(AMD64Kind cmpKind, AllocatableValue left, Value right);
 
 }

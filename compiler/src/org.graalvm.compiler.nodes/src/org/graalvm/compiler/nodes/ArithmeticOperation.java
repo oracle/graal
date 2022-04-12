@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,12 +25,13 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.Op;
+import org.graalvm.compiler.graph.Node.IndirectCanonicalization;
 
 /**
  * An {@code ArithmeticOperation} is an operation that does primitive value arithmetic without side
  * effect.
  */
-public interface ArithmeticOperation {
+public interface ArithmeticOperation extends IndirectCanonicalization {
 
     Op getArithmeticOp();
 }

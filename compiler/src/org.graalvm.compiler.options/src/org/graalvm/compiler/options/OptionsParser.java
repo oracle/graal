@@ -51,7 +51,13 @@ public class OptionsParser {
         if (IS_IN_NATIVE_IMAGE || cachedOptionDescriptors != null) {
             return cachedOptionDescriptors;
         }
-        return ModuleSupport.getOptionsLoader();
+        /*
+         * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader.
+         * Modules that depend on and extend Graal are loaded by the app class loader. As such, we
+         * need to start the provider search at the app class loader instead of the platform class
+         * loader.
+         */
+        return ServiceLoader.load(OptionDescriptors.class, ClassLoader.getSystemClassLoader());
     }
 
     public static void setCachedOptionDescriptors(List<OptionDescriptors> list) {

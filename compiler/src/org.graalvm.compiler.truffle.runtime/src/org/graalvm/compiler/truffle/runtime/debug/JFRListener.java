@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.compiler.truffle.jfr.EventFactory;
 import org.graalvm.compiler.truffle.jfr.InvalidationEvent;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.ModuleUtil;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.serviceprovider.TruffleRuntimeServices;
@@ -68,7 +69,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
             if (provider == null) {
                 factory = null;
             } else {
-                CompilerDebugAccessor.jdkServicesAccessor().exportTo(provider.getClass());
+                ModuleUtil.exportTo(provider.getClass());
                 factory = provider == null ? null : provider.getEventFactory();
             }
         }

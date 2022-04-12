@@ -94,11 +94,44 @@ public final class RedefineAddedField extends Field {
                     if (getKind().isObject()) {
                         linkedField.setObject(storageObject, StaticObject.NULL);
                     }
+                    if (getDeclaringKlass() != instance.getKlass()) {
+                        // we have to check if there's a field value
+                        // in a subclass field that was removed in order
+                        // to proeserve the state f a pull-up field
+                        checkPullUpField(instance, storageObject);
+                    }
                     storageObjects.put(instance, storageObject);
                 }
             }
         }
         return storageObject;
+    }
+
+    private void checkPullUpField(StaticObject instance, FieldStorageObject storageObject) {
+        if (instance.getKlass() instanceof ObjectKlass) {
+            ObjectKlass current = (ObjectKlass) instance.getKlass();
+            while (current != getDeclaringKlass()) {
+                Field removedField = current.getRemovedField(this);
+                if (removedField != null) {
+                    // OK, copy the state to the extension object
+                    // @formatter:off
+                    switch (getKind()) {
+                        case Boolean: linkedField.setBoolean(storageObject, removedField.linkedField.getBooleanVolatile(instance)); return;
+                        case Byte: linkedField.setByte(storageObject, removedField.linkedField.getByteVolatile(instance)); return;
+                        case Short: linkedField.setShort(storageObject, removedField.linkedField.getShortVolatile(instance)); return;
+                        case Char: linkedField.setChar(storageObject, removedField.linkedField.getCharVolatile(instance)); return;
+                        case Int: linkedField.setInt(storageObject, removedField.linkedField.getIntVolatile(instance)); return;
+                        case Float: linkedField.setFloat(storageObject, removedField.linkedField.getFloatVolatile(instance)); return;
+                        case Long: linkedField.setLong(storageObject, removedField.linkedField.getLongVolatile(instance)); return;
+                        case Double: linkedField.setDouble(storageObject, removedField.linkedField.getDoubleVolatile(instance)); return;
+                        case Object: linkedField.setObject(storageObject, removedField.linkedField.getObjectVolatile(instance)); return;
+                        default: break;
+                    }
+                    // @formatter:on
+                }
+                current = current.getSuperKlass();
+            }
+        }
     }
 
     @Override
@@ -107,11 +140,19 @@ public final class RedefineAddedField extends Field {
             return getCompatibleField().getObject(obj, forceVolatile);
         } else {
             FieldStorageObject storageObject = getStorageObject(obj);
+            StaticObject result;
             if (forceVolatile) {
-                return (StaticObject) linkedField.getObjectVolatile(storageObject);
+                result = (StaticObject) linkedField.getObjectVolatile(storageObject);
             } else {
-                return (StaticObject) linkedField.getObject(storageObject);
+                result = (StaticObject) linkedField.getObject(storageObject);
             }
+            if (result == StaticObject.NULL) {
+                return result;
+            }
+            if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
+                return checkGetValueValidity(result);
+            }
+            return result;
         }
     }
 
@@ -120,6 +161,9 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setObject(obj, value, forceVolatile);
         } else {
+            if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
+                checkSetValueValifity(value);
+            }
             FieldStorageObject storageObject = getStorageObject(obj);
             if (forceVolatile) {
                 linkedField.setObjectVolatile(storageObject, value);

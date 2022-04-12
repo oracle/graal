@@ -254,37 +254,6 @@ public final class RegexLexer {
         index = restoreIndex;
     }
 
-    public boolean hasBackReferences() {
-        int nCG = numberOfCaptureGroups();
-        final int restoreIndex = index;
-        boolean insideCharClass = false;
-        while (findChars('\\', '[', ']')) {
-            switch (consumeChar()) {
-                case '\\':
-                    if (!atEnd()) {
-                        char c = consumeChar();
-                        if (!insideCharClass) {
-                            if ('1' <= c && c <= '9' && parseInteger(c - '0') < nCG) {
-                                index = restoreIndex;
-                                return true;
-                            }
-                        }
-                    }
-                    break;
-                case '[':
-                    insideCharClass = true;
-                    break;
-                case ']':
-                    insideCharClass = false;
-                    break;
-                default:
-                    throw CompilerDirectives.shouldNotReachHere();
-            }
-        }
-        index = restoreIndex;
-        return false;
-    }
-
     private Token charClass(int codePoint) {
         if (flags.isIgnoreCase()) {
             curCharClass.clear();
@@ -311,12 +280,8 @@ public final class RegexLexer {
             CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
             CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
         }
-        CodePointSet cps = pruneCharClass(curCharClass.toCodePointSet());
+        CodePointSet cps = curCharClass.toCodePointSet();
         return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
-    }
-
-    private CodePointSet pruneCharClass(CodePointSet cps) {
-        return encoding.getFullSet().createIntersection(cps, curCharClass.getTmp());
     }
 
     /* lexer */
@@ -325,7 +290,7 @@ public final class RegexLexer {
         final char c = consumeChar();
         switch (c) {
             case '.':
-                return Token.createCharClass(pruneCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT));
+                return Token.createCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT);
             case '^':
                 return Token.createCaret();
             case '$':
@@ -416,7 +381,7 @@ public final class RegexLexer {
                 // the case-folding step in the `charClass` method and call `Token::createCharClass`
                 // directly.
                 if (isPredefCharClass(c)) {
-                    return Token.createCharClass(pruneCharClass(parsePredefCharClass(c)));
+                    return Token.createCharClass(parsePredefCharClass(c));
                 } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
                     return charClass(parseUnicodeCharacterProperty(c == 'P'));
                 } else {

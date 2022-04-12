@@ -27,14 +27,26 @@ package org.graalvm.compiler.truffle.runtime;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Base class for on-stack replaced (OSR) root nodes.
  */
 public abstract class BaseOSRRootNode extends RootNode {
-    protected BaseOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+
+    /**
+     * Not adopted by the OSRRootNode; belongs to another RootNode. OptimizedCallTarget treats
+     * OSRRootNodes specially, skipping adoption of child nodes.
+     *
+     * This loop node instance is also used by the compiler to find the real root node e.g. for the
+     * truffle guest safepoint location. See TruffleSafepointInsertionPhase#skipOSRRoot.
+     */
+    @Child protected NodeInterface loopNode;
+
+    protected BaseOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, NodeInterface loopNode) {
         super(language, frameDescriptor);
+        this.loopNode = loopNode;
     }
 
     @Override

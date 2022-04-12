@@ -101,7 +101,18 @@ public class AnalysisError extends Error {
             msg += "Parsing context:" + ReportUtils.parsingContext(method);
             return msg;
         }
+    }
 
+    /**
+     * Thrown when the analysis is misused.
+     */
+    public static class UserError extends AnalysisError {
+
+        private static final long serialVersionUID = -7167507945764369928L;
+
+        UserError(String message) {
+            super(message);
+        }
     }
 
     public static class FieldNotPresentError extends AnalysisError {
@@ -139,6 +150,10 @@ public class AnalysisError extends Error {
 
     public static ParsingError parsingError(AnalysisMethod method, Throwable original) {
         throw new ParsingError(method, original);
+    }
+
+    public static UserError userError(String message) {
+        throw new UserError(message);
     }
 
     public static FieldNotPresentError fieldNotPresentError(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, AnalysisType type) {

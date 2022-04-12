@@ -11,4 +11,3 @@ GraalVM Community Edition security updates will be released on a quarterly basis
 ### Security-Related Information
 
 Please refer to the [GraalVM Security Guide](https://www.graalvm.org/docs/security-guide/) for security related topics such as how to support trusted and less trusted code execution using the Truffle language framework, or compiler mitigations for transitive execution attacks. However please note that we do not currently support the execution of untrusted or adversarial code. Non-vulnerability related security issues may be discussed on GitHub Issues or the Security channel in the [GraalVM Slack Workspace](https://graalvm.slack.com/)
-

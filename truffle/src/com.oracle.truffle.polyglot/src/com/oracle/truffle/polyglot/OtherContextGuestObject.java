@@ -126,18 +126,29 @@ final class OtherContextGuestObject implements TruffleObject {
 
     private static final Message IDENTICAL = Message.resolve(InteropLibrary.class, "isIdentical");
 
+    static Object[] enterContext(PolyglotEngineImpl engine, PolyglotContextImpl context, PolyglotContextImpl enclosingContext) {
+        try {
+            return engine.enter(context);
+        } catch (Throwable e) {
+            throw toHostOrInnerContextBoundaryException(enclosingContext, e, context);
+        }
+    }
+
+    static void leaveContext(PolyglotEngineImpl engine, Object[] prev, PolyglotContextImpl context, PolyglotContextImpl enclosingContext) {
+        try {
+            engine.leave(prev, context);
+        } catch (Throwable e) {
+            throw toHostOrInnerContextBoundaryException(enclosingContext, e, context);
+        }
+    }
+
     static Object sendImpl(PolyglotSharingLayer layer, Object receiver, Message message, Object[] args, PolyglotContextImpl receiverContext,
                     PolyglotContextImpl delegateContext,
                     ReflectionLibrary delegateLibrary,
                     BranchProfile seenOther,
                     BranchProfile seenError) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
-            Object[] prev;
-            try {
-                prev = layer.engine.enter(delegateContext);
-            } catch (Throwable e) {
-                throw toHostException(receiverContext, e);
-            }
+            Object[] prev = enterContext(layer.engine, delegateContext, receiverContext);
             try {
                 Object returnValue;
                 Object[] migratedArgs = migrateArgs(message, args, receiverContext, delegateContext);
@@ -158,15 +169,11 @@ final class OtherContextGuestObject implements TruffleObject {
                     returnValue = delegateLibrary.send(receiver, message, migratedArgs);
                 }
                 return migrateReturn(returnValue, receiverContext, delegateContext);
-            } catch (Exception e) {
+            } catch (Throwable e) {
                 seenError.enter();
                 throw migrateException(receiverContext, e, delegateContext);
             } finally {
-                try {
-                    layer.engine.leave(prev, delegateContext);
-                } catch (Throwable e) {
-                    throw toHostException(receiverContext, e);
-                }
+                leaveContext(layer.engine, prev, delegateContext, receiverContext);
             }
         } else {
             seenOther.enter();
@@ -174,8 +181,9 @@ final class OtherContextGuestObject implements TruffleObject {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @TruffleBoundary
-    static <T extends Exception> RuntimeException migrateException(PolyglotContextImpl receiverContext, T e, PolyglotContextImpl valueContext) throws T {
+    static <T extends Throwable> RuntimeException migrateException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl valueContext) throws T {
         if (e instanceof OtherContextException) {
             OtherContextException other = (OtherContextException) e;
             if (other.receiverContext == receiverContext && other.delegateContext == valueContext) {
@@ -187,23 +195,71 @@ final class OtherContextGuestObject implements TruffleObject {
             if (e instanceof AbstractTruffleException) {
                 throw new OtherContextException(receiverContext, (AbstractTruffleException) e, valueContext);
             } else {
-                throw new OtherContextException(receiverContext, e, valueContext);
+                throw new OtherContextException(receiverContext, (Exception) e, valueContext);
             }
-        } else if (e instanceof PolyglotEngineException) {
+        } else if (e instanceof PolyglotEngineException || e instanceof PolyglotEngineImpl.CancelExecution || e instanceof PolyglotContextImpl.ExitException) {
             // [GR-35549] Truffle isolate enters the guest context as result of
             // delegateLibrary#send(). Exceptions thrown by enter are wrapped as
             // PolyglotEngineException. We need to unwrap them and throw as host exception.
-            throw toHostException(receiverContext, e);
+            throw toHostOrInnerContextBoundaryException(receiverContext, e, valueContext);
         } else {
-            throw e;
+            throw (T) e;
         }
     }
 
-    private static RuntimeException toHostException(PolyglotContextImpl context, Throwable e) {
+    @TruffleBoundary
+    private static RuntimeException toHostOrInnerContextBoundaryException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl delegateContext) {
         try {
-            throw PolyglotImpl.engineToLanguageException(e);
+            if (e instanceof PolyglotEngineImpl.CancelExecution) {
+                PolyglotContextImpl.State enclosingState = receiverContext != null ? receiverContext.state : PolyglotContextImpl.State.DEFAULT;
+                if (!enclosingState.isCancelling() && enclosingState != PolyglotContextImpl.State.CLOSED_CANCELLED) {
+                    delegateContext.runOnCancelled();
+                    if (delegateContext.parent != null) {
+                        throw new IllegalStateException("Context cancel exception of inner context leaks outside to a non-cancelled context!");
+                    }
+                }
+                if (delegateContext.parent != null) {
+                    throw (PolyglotEngineImpl.CancelExecution) e;
+                } else {
+                    throw PolyglotImpl.guestToHostException(delegateContext.getHostContext(), e, false);
+                }
+            } else if (e instanceof PolyglotContextImpl.ExitException) {
+                PolyglotContextImpl.State enclosingState = receiverContext != null ? receiverContext.state : PolyglotContextImpl.State.DEFAULT;
+                if (!enclosingState.isExiting() && enclosingState != PolyglotContextImpl.State.CLOSED_EXITED) {
+                    delegateContext.runOnExited(((PolyglotContextImpl.ExitException) e).getExitCode());
+                    if (delegateContext.parent != null) {
+                        throw new IllegalStateException("Context exit exception of inner context leaks outside to a non-exited context!");
+                    }
+                }
+                if (delegateContext.parent != null) {
+                    throw (PolyglotContextImpl.ExitException) e;
+                } else {
+                    throw PolyglotImpl.guestToHostException(delegateContext.getHostContext(), e, false);
+                }
+            } else {
+                if (e instanceof PolyglotEngineException && ((PolyglotEngineException) e).closedException) {
+                    PolyglotContextImpl.State enclosingState = receiverContext != null ? receiverContext.state : PolyglotContextImpl.State.DEFAULT;
+                    boolean enclosingDisposing = receiverContext != null && receiverContext.disposing;
+                    if (enclosingState != PolyglotContextImpl.State.CLOSED && !enclosingDisposing) {
+                        delegateContext.runOnClosed();
+                        if (delegateContext.parent != null) {
+                            throw new IllegalStateException("Context close exception of inner context leaks outside to a non-closed context!");
+                        }
+                    }
+                }
+                throw PolyglotImpl.engineToLanguageException(e);
+            }
         } catch (Throwable ex) {
-            throw context.engine.host.toHostException(context.getHostContextImpl(), ex);
+            if (delegateContext.parent != null) {
+                /*
+                 * Note that the parent context might be different from the receiverContext. In any
+                 * case, if the delegateContext has parent, we don't wrap the resulting exception
+                 * with HostException.
+                 */
+                throw ex;
+            } else {
+                throw receiverContext.engine.host.toHostException(receiverContext.getHostContextImpl(), ex);
+            }
         }
     }
 

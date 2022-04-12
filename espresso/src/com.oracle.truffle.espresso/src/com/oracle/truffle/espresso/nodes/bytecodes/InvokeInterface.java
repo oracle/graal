@@ -82,7 +82,7 @@ public abstract class InvokeInterface extends Node {
         return (StaticObject) args[0];
     }
 
-    @ImportStatic(InvokeInterface.class)
+    @ImportStatic({InvokeInterface.class, Utils.class})
     @NodeInfo(shortName = "INVOKEINTERFACE !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
 
@@ -123,8 +123,8 @@ public abstract class InvokeInterface extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
                         @Cached("maybeSingleImplementor.get()") ObjectKlass implementor,
-                        @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode,
+                        @SuppressWarnings("unused") @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode,
                         @Cached BranchProfile notAnImplementorProfile) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
@@ -134,8 +134,6 @@ public abstract class InvokeInterface extends Node {
                 notAnImplementorProfile.enter();
                 throw reportNotAnImplementor(receiver.getKlass());
             }
-
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
             return directCallNode.call(args);
         }
 
@@ -147,9 +145,8 @@ public abstract class InvokeInterface extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
             return directCallNode.call(args);
         }
 
@@ -161,7 +158,6 @@ public abstract class InvokeInterface extends Node {
             assert !StaticObject.isNull(receiver);
             // itable lookup.
             Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
-            assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -226,7 +222,6 @@ public abstract class InvokeInterface extends Node {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
                 Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
-                assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }

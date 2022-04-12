@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,8 +78,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -417,7 +418,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * They are too complex and cannot be reduced to a single invoke or field access.
                  * There is also no need to inline them, because they are not related to any
                  * MethodHandle mechanism.
-                 * 
+                 *
                  * Methods defined in VarHandle itself are fine and not covered by this rule, apart
                  * from well-known methods that are never useful to be inlined. If these methods are
                  * reached, intrinsification will not be possible in any case.
@@ -462,7 +463,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
-        r.register1("ensureInitialized", Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 /*
@@ -476,7 +477,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         });
 
         r = new Registration(plugins, "java.lang.invoke.Invokers", replacements);
-        r.registerOptional1("maybeCustomize", MethodHandle.class, new InvocationPlugin() {
+        r.register(new OptionalInvocationPlugin("maybeCustomize", MethodHandle.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode mh) {
                 /*
@@ -489,7 +490,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         });
 
         r = new Registration(plugins, Objects.class, replacements);
-        r.register1("requireNonNull", Object.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("requireNonNull", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode object) {
                 /*
@@ -534,7 +535,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         GraphBuilderPhase.Instance graphBuilder = new GraphBuilderPhase.Instance(parsingProviders, graphBuilderConfig, OptimisticOptimizations.NONE, null);
 
         DebugContext debug = b.getDebug();
-        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug).method(NativeImageUtil.toOriginal(methodHandleMethod)).build();
+        StructuredGraph graph = new StructuredGraph.Builder(b.getOptions(), debug)
+                        .method(NativeImageUtil.toOriginal(methodHandleMethod))
+                        .recordInlinedMethods(false)
+                        .build();
         try (DebugContext.Scope s = debug.scope("IntrinsifyMethodHandles", graph)) {
             graphBuilder.apply(graph);
             /*
@@ -673,7 +677,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 ValueNode[] tExceptionArguments;
                 if (oGuard.getReason() == DeoptimizationReason.NullCheckException) {
                     tExceptionKind = BytecodeExceptionKind.NULL_POINTER;
-                    tExceptionArguments = new ValueNode[0];
+                    tExceptionArguments = ValueNode.EMPTY_ARRAY;
                 } else if (oGuard.getReason() == DeoptimizationReason.ClassCastException && oGuard.condition().getClass() == InstanceOfNode.class) {
                     /*
                      * Throwing the ClassCastException requires the checked object and the expected

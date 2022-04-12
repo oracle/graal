@@ -62,6 +62,8 @@ public class RegexProperties implements JsonConvertible {
     private static final int FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK = 1 << 11;
     private static final int FLAG_FIXED_CODEPOINT_WIDTH = 1 << 12;
     private static final int FLAG_CAPTURE_GROUPS_IN_LOOK_AROUND_ASSERTIONS = 1 << 13;
+    private static final int FLAG_EMPTY_CAPTURE_GROUPS = 1 << 14;
+    private static final int FLAG_ATOMIC_GROUPS = 1 << 15;
 
     private int flags = FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK | FLAG_FIXED_CODEPOINT_WIDTH;
     private int innerLiteralStart = -1;
@@ -93,6 +95,22 @@ public class RegexProperties implements JsonConvertible {
 
     public void setCaptureGroups() {
         setFlag(FLAG_CAPTURE_GROUPS);
+    }
+
+    public boolean hasEmptyCaptureGroups() {
+        return getFlag(FLAG_EMPTY_CAPTURE_GROUPS);
+    }
+
+    public void setEmptyCaptureGroups() {
+        setFlag(FLAG_EMPTY_CAPTURE_GROUPS);
+    }
+
+    public boolean hasAtomicGroups() {
+        return getFlag(FLAG_ATOMIC_GROUPS);
+    }
+
+    public void setAtomicGroups() {
+        setFlag(FLAG_ATOMIC_GROUPS);
     }
 
     public boolean hasCharClasses() {

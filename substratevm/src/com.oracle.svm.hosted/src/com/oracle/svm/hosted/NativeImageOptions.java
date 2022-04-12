@@ -35,7 +35,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.SubstrateOptions;
@@ -55,6 +54,21 @@ public class NativeImageOptions {
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list.", type = User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
+    @APIOption(name = "list-cpu-features")//
+    @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
+    public static final HostedOptionKey<Boolean> ListCPUFeatures = new HostedOptionKey<>(false);
+
+    @Option(help = "Comma separated list of CPU features that will be enabled for runtime checks. The " +
+                    "native image may check at run time if such features are supported by the target " +
+                    "CPU, and can optimize certain operations based on this information. If a feature " +
+                    "is not supported at run time, a less optimized variant will be executed. Because of " +
+                    "the presence of multiple code variants, enabling runtime features can result in " +
+                    "larger executables. To completely turn off runtime checked CPU features, set this " +
+                    "option to the empty string. The specific options available are target platform " +
+                    "dependent. See --list-cpu-features for feature list. The default values are: " +
+                    "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);
@@ -96,14 +110,9 @@ public class NativeImageOptions {
     @Option(help = "Report usage of unsupported methods and fields at run time when they are accessed the first time, instead of as an error during image building", type = User)//
     public static final HostedOptionKey<Boolean> ReportUnsupportedElementsAtRuntime = new HostedOptionKey<>(false);
 
-    @APIOption(name = "allow-incomplete-classpath")//
-    @Option(help = "Allow image building with an incomplete class path: report type resolution errors at run time when they are accessed the first time, instead of during image building", type = User)//
-    public static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            PointstoOptions.UnresolvedIsError.update(values, !newValue);
-        }
-    };
+    @APIOption(name = "allow-incomplete-classpath", deprecated = "Allowing an incomplete classpath is now the default. Use --link-at-build-time to report linking errors at image build time for a class or package.")//
+    @Option(help = "Deprecated", type = User)//
+    static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false);
 
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {

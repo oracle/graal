@@ -425,7 +425,7 @@ public final class GraalFeature implements Feature {
 
     private static void populateMatchRuleRegistry() {
         GraalSupport.get().setMatchRuleRegistry(new HashMap<>());
-        GraalConfiguration.instance().populateMatchRuleRegistry(GraalSupport.get().getMatchRuleRegistry());
+        GraalConfiguration.runtimeInstance().populateMatchRuleRegistry(GraalSupport.get().getMatchRuleRegistry());
     }
 
     @SuppressWarnings("unused")
@@ -471,7 +471,7 @@ public final class GraalFeature implements Feature {
 
         if (!methods.containsKey(aMethod)) {
             methods.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
-            config.registerAsInvoked(aMethod);
+            config.registerAsInvoked(aMethod, true);
         }
 
         return sMethod;
@@ -493,7 +493,7 @@ public final class GraalFeature implements Feature {
         for (CallTreeNode node : methods.values()) {
             methodsToCompileArr[idx++] = objectReplacer.createMethod(node.implementationMethod);
         }
-        if (GraalSupport.setMethodsToCompile(methodsToCompileArr)) {
+        if (GraalSupport.setMethodsToCompile(config, methodsToCompileArr)) {
             config.requireAnalysisIteration();
         }
 
@@ -503,11 +503,11 @@ public final class GraalFeature implements Feature {
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
         }
-        if (GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
+        if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
 
-        if (objectReplacer.updateDataDuringAnalysis(config.getMetaAccess())) {
+        if (objectReplacer.updateDataDuringAnalysis()) {
             config.requireAnalysisIteration();
         }
     }
@@ -534,7 +534,10 @@ public final class GraalFeature implements Feature {
                     return;
                 }
                 parse = true;
-                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES).method(method).build();
+                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
+                                .method(method)
+                                .recordInlinedMethods(false)
+                                .build();
             }
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
@@ -727,9 +730,12 @@ public final class GraalFeature implements Feature {
         }
 
         ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
-        GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
+        GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis((AnalysisMetaAccess) hMetaAccess.getWrapped());
+        objectReplacer.updateDataDuringAnalysis();
+
+        /* All the temporary data structures used during encoding are no longer necessary. */
+        graphEncoder = null;
     }
 
     private static void removeUnreachableInvokes(CallTreeNode node) {

@@ -136,7 +136,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
                             snippetReflection, platformConfig, metaAccessExtensionProvider, loopsDataProvider);
-            backends.put(config, GraalConfiguration.instance().createBackend(newProviders));
+            backends.put(config, GraalConfiguration.runtimeInstance().createBackend(newProviders));
         }
 
         runtimeConfig = new RuntimeConfiguration(p, snippetReflection, backends, wordTypes);
@@ -175,7 +175,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     protected LoweringProvider createLoweringProvider(Providers p) {
-        return SubstrateLoweringProvider.create(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
+        return SubstrateLoweringProvider.createForRuntime(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
     }
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);

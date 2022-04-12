@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -263,8 +263,11 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
+    protected NodeSize dynamicNodeSizeEstimate() {
         List<VirtualObjectNode> v = getVirtualObjects();
+        if (v == null) {
+            return SIZE_UNKNOWN;
+        }
         int fieldWriteCount = 0;
         for (int i = 0; i < v.size(); i++) {
             VirtualObjectNode node = v.get(i);

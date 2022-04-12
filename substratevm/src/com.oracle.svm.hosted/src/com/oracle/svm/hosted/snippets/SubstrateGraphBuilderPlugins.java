@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,8 +59,9 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
@@ -78,6 +79,7 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.AllocateUninitializedArrayPlugin;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordCastNode;
@@ -150,7 +152,6 @@ import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class SubstrateGraphBuilderPlugins {
 
@@ -186,7 +187,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerSystemPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
-            r.register0("getSecurityManager", new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("getSecurityManager") {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     /* System.getSecurityManager() always returns null. */
@@ -196,7 +197,7 @@ public class SubstrateGraphBuilderPlugins {
             });
         }
 
-        r.register1("identityHashCode", Object.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("identityHashCode", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, new SubstrateIdentityHashCodeNode(object, b.bci()));
@@ -207,15 +208,10 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection", replacements);
-        r.register0("getCallerClass", new InvocationPlugin() {
+        r.register(new RequiredInlineOnlyInvocationPlugin("getCallerClass") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new SubstrateReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -223,7 +219,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerImageInfoPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration proxyRegistration = new Registration(plugins, ImageInfo.class);
-        proxyRegistration.register0("inImageCode", new InvocationPlugin() {
+        proxyRegistration.register(new RequiredInvocationPlugin("inImageCode") {
             /** See {@link ImageInfo#inImageCode()}. */
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -231,7 +227,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        proxyRegistration.register0("inImageBuildtimeCode", new InvocationPlugin() {
+        proxyRegistration.register(new RequiredInvocationPlugin("inImageBuildtimeCode") {
             /** See {@link ImageInfo#inImageBuildtimeCode()}. */
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -239,7 +235,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        proxyRegistration.register0("inImageRuntimeCode", new InvocationPlugin() {
+        proxyRegistration.register(new RequiredInvocationPlugin("inImageRuntimeCode") {
             /** See {@link ImageInfo#inImageRuntimeCode()}. */
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -252,7 +248,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerProxyPlugins(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, InvocationPlugins plugins, ParsingReason reason) {
         if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             Registration proxyRegistration = new Registration(plugins, Proxy.class);
-            proxyRegistration.register2("getProxyClass", ClassLoader.class, Class[].class, new InvocationPlugin() {
+            proxyRegistration.register(new RequiredInvocationPlugin("getProxyClass", ClassLoader.class, Class[].class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode) {
                     interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
@@ -260,7 +256,7 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            proxyRegistration.register3("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class, new InvocationPlugin() {
+            proxyRegistration.register(new RequiredInvocationPlugin("newProxyInstance", ClassLoader.class, Class[].class, InvocationHandler.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classLoaderNode, ValueNode interfacesNode, ValueNode invocationHandlerNode) {
                     interceptProxyInterfaces(b, targetMethod, snippetReflection, annotationSubstitutions, interfacesNode);
@@ -463,7 +459,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerAtomicUpdaterPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
         Registration referenceUpdaterRegistration = new Registration(plugins, AtomicReferenceFieldUpdater.class);
-        referenceUpdaterRegistration.register3("newUpdater", Class.class, Class.class, String.class, new InvocationPlugin() {
+        referenceUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode vclassNode, ValueNode fieldNameNode) {
                 interceptUpdaterInvoke(metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
@@ -473,7 +469,7 @@ public class SubstrateGraphBuilderPlugins {
         });
 
         Registration integerUpdaterRegistration = new Registration(plugins, AtomicIntegerFieldUpdater.class);
-        integerUpdaterRegistration.register2("newUpdater", Class.class, String.class, new InvocationPlugin() {
+        integerUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
                 interceptUpdaterInvoke(metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
@@ -483,7 +479,7 @@ public class SubstrateGraphBuilderPlugins {
         });
 
         Registration longUpdaterRegistration = new Registration(plugins, AtomicLongFieldUpdater.class);
-        longUpdaterRegistration.register2("newUpdater", Class.class, String.class, new InvocationPlugin() {
+        longUpdaterRegistration.register(new RequiredInvocationPlugin("newUpdater", Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode tclassNode, ValueNode fieldNameNode) {
                 interceptUpdaterInvoke(metaAccess, snippetReflection, reason, tclassNode, fieldNameNode);
@@ -531,7 +527,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
-        r.register1("clone", Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("clone", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
@@ -540,7 +536,7 @@ public class SubstrateGraphBuilderPlugins {
             }
         });
 
-        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("hashCode", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
@@ -551,11 +547,11 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
-        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, reason, true);
+        registerUnsafePlugins(metaAccess, new Registration(plugins, "sun.misc.Unsafe"), snippetReflection, reason, true);
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
         registerUnsafePlugins(metaAccess, r, snippetReflection, reason, false);
 
-        r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("objectFieldOffset", Receiver.class, Class.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
                 if (classNode.isConstant() && nameNode.isConstant()) {
@@ -572,36 +568,16 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-        r.register3("allocateUninitializedArray", Receiver.class, Class.class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
-                /*
-                 * For simplicity, we only intrinsify if the componentType is a compile-time
-                 * constant. That also allows us to constant-fold the required check that the
-                 * component type is a primitive type.
-                 */
-                if (!componentTypeNode.isJavaConstant() || componentTypeNode.asJavaConstant().isNull()) {
-                    return false;
-                }
-                ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
-                if (componentType == null || !componentType.isPrimitive()) {
-                    return false;
-                }
-                /* Emits a null-check for the otherwise unused receiver. */
-                unsafe.get();
-                /*
-                 * Note that allocateUninitializedArray must throw a IllegalArgumentException, and
-                 * not a NegativeArraySizeException, when the length is negative.
-                 */
-                ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
-                b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthPositive, false));
-                return true;
-            }
-        });
+        // We intrinsify allocateUninitializedArray instead of the
+        // HotSpotIntrinsicCandidate-annotated method allocateUninitializedArray0, because when
+        // intrinsifying the latter, the Class argument is never a compile-time constant without
+        // method inlining, while allocateUninitializedArray is too large and not inlined before
+        // static analysis.
+        r.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray", true));
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason, boolean isSunMiscUnsafe) {
-        r.register2("staticFieldOffset", Receiver.class, Field.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("staticFieldOffset", Receiver.class, Field.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
@@ -611,7 +587,7 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-        r.register2("staticFieldBase", Receiver.class, Field.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("staticFieldBase", Receiver.class, Field.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
@@ -622,7 +598,7 @@ public class SubstrateGraphBuilderPlugins {
 
             }
         });
-        r.register2("objectFieldOffset", Receiver.class, Field.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("objectFieldOffset", Receiver.class, Field.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
                 if (fieldNode.isConstant()) {
@@ -632,7 +608,7 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("allocateInstance", Receiver.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
                 /* Emits a null-check for the otherwise unused receiver. */
@@ -650,7 +626,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static boolean processFieldOffset(GraphBuilderContext b, Field targetField, ParsingReason reason, MetaAccessProvider metaAccess, boolean isSunMiscUnsafe) {
-        if (!isValidField(targetField, isSunMiscUnsafe)) {
+        if (!isValidField(targetField, isSunMiscUnsafe) || reason == ParsingReason.JITCompilation) {
             return false;
         }
 
@@ -716,7 +692,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
-        r.register2("newInstance", Class.class, int[].class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {
                 if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
@@ -745,14 +721,14 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerKnownIntrinsicsPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, KnownIntrinsics.class);
-        r.register0("heapBase", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("heapBase") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 return true;
             }
         });
-        r.register1("readHub", Object.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("readHub", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 ValueNode nonNullObject = b.nullCheckedValue(object);
@@ -760,7 +736,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("nonNullPointer", Pointer.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("nonNullPointer", Pointer.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Object, new PiNode(object, nonZeroWord()));
@@ -768,14 +744,14 @@ public class SubstrateGraphBuilderPlugins {
             }
         });
 
-        r.register0("readStackPointer", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("readStackPointer") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, ReadReservedRegister.createReadStackPointerNode(b.getGraph()));
                 return true;
             }
         });
-        r.register0("readCallerStackPointer", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("readCallerStackPointer") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 checkNeverInline(b);
@@ -783,7 +759,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register0("readReturnAddress", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("readReturnAddress") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 checkNeverInline(b);
@@ -791,7 +767,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register4("farReturn", Object.class, Pointer.class, CodePointer.class, boolean.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("farReturn", Object.class, Pointer.class, CodePointer.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode sp, ValueNode ip,
                             ValueNode fromMethodWithCalleeSavedRegisters) {
@@ -804,7 +780,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register0("testDeoptimize", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("testDeoptimize") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new TestDeoptimizeNode());
@@ -812,7 +788,7 @@ public class SubstrateGraphBuilderPlugins {
             }
         });
 
-        r.register0("isDeoptimizationTarget", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("isDeoptimizationTarget") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.parseOnce()) {
@@ -838,7 +814,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     public static void registerCastExact(Registration r) {
-        r.register2("castExact", Object.class, Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("castExact", Object.class, Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode javaClass) {
                 ValueNode nullCheckedClass = b.nullCheckedValue(javaClass);
@@ -868,7 +844,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerStackValuePlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, StackValue.class);
 
-        r.register1("get", int.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sizeNode) {
                 long size = longValue(b, targetMethod, sizeNode, "size");
@@ -876,7 +852,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("get", Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", Class.class) {
             @SuppressWarnings("unchecked")
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
@@ -886,7 +862,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register2("get", int.class, int.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode numElementsNode, ValueNode elementSizeNode) {
                 long numElements = longValue(b, targetMethod, numElementsNode, "numElements");
@@ -895,7 +871,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register2("get", int.class, Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", int.class, Class.class) {
             @SuppressWarnings("unchecked")
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode numElementsNode, ValueNode classNode) {
@@ -914,7 +890,7 @@ public class SubstrateGraphBuilderPlugins {
 
     public static void registerClassDesiredAssertionStatusPlugin(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, Class.class);
-        r.register1("desiredAssertionStatus", Receiver.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("desiredAssertionStatus", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 JavaConstant constantReceiver = receiver.get().asJavaConstant();
@@ -939,7 +915,7 @@ public class SubstrateGraphBuilderPlugins {
     private static void registerEdgesPlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Edges.class).setAllowOverwrite(true);
         for (Class<?> c : new Class<?>[]{Node.class, NodeList.class}) {
-            r.register2("get" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("get" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset) {
                     b.addPush(JavaKind.Object, new UnsafePartitionLoadNode(node, offset, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
@@ -947,7 +923,7 @@ public class SubstrateGraphBuilderPlugins {
                 }
             });
 
-            r.register3("put" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, c, new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("put" + ClassUtil.getUnqualifiedName(c) + "Unsafe", Node.class, long.class, c) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode node, ValueNode offset, ValueNode value) {
                     b.add(new UnsafePartitionStoreNode(node, offset, value, JavaKind.Object, LocationIdentity.any(), GraalEdgeUnsafePartition.get(), metaAccess.lookupJavaType(c)));
@@ -966,7 +942,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerVMConfigurationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, ImageSingletons.class);
-        r.register1("contains", Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("contains", Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
@@ -975,7 +951,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("lookup", Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("lookup", Class.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
@@ -988,7 +964,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerPlatformPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Platform.class);
-        r.register1("includedIn", Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("includedIn", Class.class) {
             @SuppressWarnings("unchecked")
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode) {
@@ -1005,9 +981,9 @@ public class SubstrateGraphBuilderPlugins {
      * mode, we eliminate native methods that depend on 'awt_xawt' library in the call-tree.
      */
     private static void registerAWTPlugins(InvocationPlugins plugins) {
-        if (OS.getCurrent() == OS.LINUX) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             Registration r = new Registration(plugins, GraphicsEnvironment.class);
-            r.register0("isHeadless", new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("isHeadless") {
                 @SuppressWarnings("unchecked")
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -1021,7 +997,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerSizeOfPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {
         Registration r = new Registration(plugins, SizeOf.class);
-        r.register1("get", Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get", Class.class) {
             @SuppressWarnings("unchecked")
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
@@ -1031,7 +1007,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("unsigned", Class.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("unsigned", Class.class) {
             @SuppressWarnings("unchecked")
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
@@ -1045,7 +1021,7 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerReferenceAccessPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, ReferenceAccessImpl.class);
-        r.register2("getCompressedRepresentation", Receiver.class, Object.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getCompressedRepresentation", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode objectNode) {
                 if (ReferenceAccess.singleton().haveCompressedReferences()) {
@@ -1059,7 +1035,7 @@ public class SubstrateGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register2("uncompressReference", Receiver.class, UnsignedWord.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("uncompressReference", Receiver.class, UnsignedWord.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode wordNode) {
                 if (ReferenceAccess.singleton().haveCompressedReferences()) {

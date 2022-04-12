@@ -41,6 +41,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -372,7 +373,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public int getThreadStatus(Object thread) {
-        return (int) context.getMeta().java_lang_Thread_threadStatus.get((StaticObject) thread);
+        return context.getThreadAccess().getState((StaticObject) thread);
     }
 
     @Override
@@ -522,7 +523,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getGuestException(Throwable exception) {
         if (exception instanceof EspressoException) {
             EspressoException ex = (EspressoException) exception;
-            return ex.getExceptionObject();
+            return ex.getGuestException();
         } else {
             throw new RuntimeException("unknown exception type: " + exception.getClass(), exception);
         }
@@ -543,7 +544,6 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        context.invalidateNoThreadStop("JDWP STOP");
         context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
     }
 
@@ -617,7 +617,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public Object getMonitorOwnerThread(Object object) {
         if (object instanceof StaticObject) {
-            EspressoLock lock = ((StaticObject) object).getLock();
+            EspressoLock lock = ((StaticObject) object).getLock(context);
             return asGuestThread(lock.getOwnerThread());
         }
         return null;
@@ -626,7 +626,7 @@ public final class JDWPContextImpl implements JDWPContext {
     @Override
     public int getMonitorEntryCount(Object monitor) {
         if (monitor instanceof StaticObject) {
-            EspressoLock lock = ((StaticObject) monitor).getLock();
+            EspressoLock lock = ((StaticObject) monitor).getLock(context);
             return lock.getEntryCount();
         }
         return -1;
@@ -812,7 +812,7 @@ public final class JDWPContextImpl implements JDWPContext {
         Collections.sort(invalidatedClasses, new SubClassHierarchyComparator());
         for (ObjectKlass invalidatedClass : invalidatedClasses) {
             if (!redefinedClasses.contains(invalidatedClass)) {
-                JDWP.LOGGER.fine(() -> "Updating invalidated class " + invalidatedClass.getName());
+                JDWP.LOGGER.fine(() -> "Refreshing invalidated class " + invalidatedClass.getName());
                 invalidatedClass.swapKlassVersion(ids);
             }
         }

@@ -45,6 +45,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -85,7 +86,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
@@ -150,7 +151,7 @@ meth public org.graalvm.polyglot.Context$Builder allowCreateThread(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowEnvironmentAccess(org.graalvm.polyglot.EnvironmentAccess)
 meth public org.graalvm.polyglot.Context$Builder allowExperimentalOptions(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowHostAccess(boolean)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public org.graalvm.polyglot.Context$Builder allowHostAccess(org.graalvm.polyglot.HostAccess)
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLoading(boolean)
 meth public org.graalvm.polyglot.Context$Builder allowHostClassLookup(java.util.function.Predicate<java.lang.String>)
@@ -166,7 +167,7 @@ meth public org.graalvm.polyglot.Context$Builder environment(java.util.Map<java.
 meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
 meth public org.graalvm.polyglot.Context$Builder hostClassFilter(java.util.function.Predicate<java.lang.String>)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public org.graalvm.polyglot.Context$Builder hostClassLoader(java.lang.ClassLoader)
 meth public org.graalvm.polyglot.Context$Builder in(java.io.InputStream)
 meth public org.graalvm.polyglot.Context$Builder logHandler(java.io.OutputStream)
@@ -199,7 +200,7 @@ meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
-hfds EMPTY,JDK8_OR_EARLIER,currentAPI,dispatch,initializationException,receiver
+hfds EMPTY,currentAPI,dispatch,initializationException,receiver
 hcls APIAccessImpl,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
@@ -313,6 +314,7 @@ meth public java.lang.String getId()
 meth public java.lang.String getImplementationName()
 meth public java.lang.String getName()
 meth public java.lang.String getVersion()
+meth public java.lang.String getWebsite()
 meth public java.util.Set<java.lang.String> getMimeTypes()
 meth public org.graalvm.options.OptionDescriptors getOptions()
 supr java.lang.Object
@@ -413,7 +415,7 @@ meth public int getLineNumber(int)
 meth public int getLineStartOffset(int)
 meth public int hashCode()
 meth public java.io.InputStream getInputStream()
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public java.io.Reader getReader()
 meth public java.lang.CharSequence getCharacters()
 meth public java.lang.CharSequence getCharacters(int)
@@ -472,7 +474,7 @@ meth public int getStartLine()
 meth public int hashCode()
 meth public java.lang.CharSequence getCharacters()
 meth public java.lang.CharSequence getCode()
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="19.0")
 meth public java.lang.String toString()
 meth public org.graalvm.polyglot.Source getSource()
 supr java.lang.Object

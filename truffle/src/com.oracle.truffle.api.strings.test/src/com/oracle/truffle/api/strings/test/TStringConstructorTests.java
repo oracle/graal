@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,12 +50,12 @@ import static com.oracle.truffle.api.strings.TruffleString.fromNativePointerUnca
 
 import java.nio.ByteOrder;
 
-import com.oracle.truffle.api.strings.InternalByteArray;
 import org.graalvm.shadowed.org.jcodings.Encoding;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.AbstractTruffleString;
+import com.oracle.truffle.api.strings.InternalByteArray;
 import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;

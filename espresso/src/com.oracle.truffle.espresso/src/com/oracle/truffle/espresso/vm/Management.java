@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.vm;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
-import java.lang.management.ThreadInfo;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -213,6 +212,11 @@ public final class Management extends NativeEnv {
         return context;
     }
 
+    @Override
+    protected String getName() {
+        return "Management";
+    }
+
     // Checkstyle: stop method name check
 
     @ManagementImpl
@@ -246,7 +250,7 @@ public final class Management extends NativeEnv {
         }
     }
 
-    private static void validateThreadInfoArray(Meta meta, @JavaType(ThreadInfo[].class) StaticObject infoArray, SubstitutionProfiler profiler) {
+    private static void validateThreadInfoArray(Meta meta, @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject infoArray, SubstitutionProfiler profiler) {
         // check if the element of infoArray is of type ThreadInfo class
         Klass infoArrayKlass = infoArray.getKlass();
         if (infoArray.isArray()) {
@@ -308,7 +312,7 @@ public final class Management extends NativeEnv {
                 getInterpreterToVM().setArrayObject(StaticObject.NULL, i, infoArray);
             } else {
 
-                int threadStatus = meta.java_lang_Thread_threadStatus.getInt(thread);
+                int threadStatus = meta.getThreadAccess().getState(thread);
                 StaticObject lockObj = StaticObject.NULL;
                 StaticObject lockOwner = StaticObject.NULL;
                 int mask = State.BLOCKED.value | State.WAITING.value | State.TIMED_WAITING.value;
@@ -319,7 +323,7 @@ public final class Management extends NativeEnv {
                     }
                     Thread hostOwner = StaticObject.isNull(lockObj)
                                     ? null
-                                    : lockObj.getLock().getOwnerThread();
+                                    : lockObj.getLock(getContext()).getOwnerThread();
                     if (hostOwner != null && hostOwner.isAlive()) {
                         lockOwner = getContext().getGuestThreadFromHost(hostOwner);
                         if (lockOwner == null) {
@@ -448,9 +452,7 @@ public final class Management extends NativeEnv {
                 long elapsedNanos = System.nanoTime() - getContext().initDoneTimeNanos;
                 return TimeUnit.NANOSECONDS.toMillis(elapsedNanos);
             case JMM_OS_PROCESS_ID:
-                String processName = java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-                String[] parts = processName.split("@");
-                return Long.parseLong(parts[0]);
+                return ProcessHandle.current().pid();
             case JMM_THREAD_DAEMON_COUNT:
                 int daemonCount = 0;
                 for (StaticObject t : getContext().getActiveThreads()) {
@@ -561,7 +563,7 @@ public final class Management extends NativeEnv {
 
     @ManagementImpl
     @SuppressWarnings("unused")
-    public @JavaType(ThreadInfo[].class) StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
+    public @JavaType(internalName = "[Ljava/lang/management/ThreadInfo;") StaticObject DumpThreads(@JavaType(long[].class) StaticObject ids, boolean lockedMonitors, boolean lockedSynchronizers,
                     @Inject SubstitutionProfiler profiler) {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {

@@ -74,7 +74,7 @@ public final class Target_java_lang_ClassLoader {
     @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     private Vector<Class<?>> classes;
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstanceWhenNotNull, declClass = ConcurrentHashMap.class)//
     private ConcurrentHashMap<String, Object> parallelLockMap;
 
     /**
@@ -188,12 +188,6 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute //
-    @SuppressWarnings({"unused"})
-    Object getClassLoadingLock(String className) {
-        throw VMError.unsupportedFeature("Target_java_lang_ClassLoader.getClassLoadingLock(String)");
-    }
-
-    @Substitute //
     @SuppressWarnings({"unused"}) //
     private Class<?> findLoadedClass0(String name) {
         if (name == null) {
@@ -208,7 +202,27 @@ public final class Target_java_lang_ClassLoader {
      * boot class loader.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
-    ConcurrentHashMap<?, ?> classLoaderValueMap;
+    volatile ConcurrentHashMap<?, ?> classLoaderValueMap;
+
+    /**
+     * This substitution is a temporary workaround for GR-33896 until GR-36494 is merged.
+     */
+    @Substitute //
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    @SuppressWarnings({"unused"}) //
+    ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
+        ConcurrentHashMap<?, ?> result = classLoaderValueMap;
+        if (result == null) {
+            // Checkstyle: allow synchronization
+            synchronized (this) {
+                result = classLoaderValueMap;
+                if (result == null) {
+                    classLoaderValueMap = result = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        return result;
+    }
 
     @Alias
     native Stream<Package> packages();
@@ -384,7 +398,12 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
      */
 
     @Delete
+    @TargetElement(onlyWith = Load0With2Args.class)
     private native boolean load0(String name, boolean isBuiltin);
+
+    @Delete
+    @TargetElement(onlyWith = Load0With3Args.class)
+    private native boolean load0(String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete
     private native long findEntry(String name);

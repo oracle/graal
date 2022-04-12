@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 
+import com.oracle.truffle.regex.tregex.parser.ast.AtomicGroup;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
 import com.oracle.truffle.regex.tregex.parser.ast.Group;
@@ -48,6 +49,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.SubexpressionCall;
 
 /**
  * AST visitor base class that will visit a given subtree in depth-first order. Whenever all
@@ -150,6 +152,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
     }
 
     @Override
+    protected void visit(SubexpressionCall subexpressionCall) {
+    }
+
+    @Override
     protected void visit(PositionAssertion assertion) {
     }
 
@@ -159,6 +165,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
+    }
+
+    @Override
+    protected void visit(AtomicGroup atomicGroup) {
     }
 
     @Override
@@ -179,6 +189,10 @@ public abstract class DepthFirstTraversalRegexASTVisitor extends RegexASTVisitor
 
     @Override
     protected void leave(LookAheadAssertion assertion) {
+    }
+
+    @Override
+    protected void leave(AtomicGroup atomicGroup) {
     }
 
     private boolean advance(RegexASTVisitorIterable iterable) {

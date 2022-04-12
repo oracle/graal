@@ -88,7 +88,7 @@ public class NodeSourcePosition extends BytecodePosition implements Iterable<Nod
 
     @Override
     public Iterator<NodeSourcePosition> iterator() {
-        return new Iterator<NodeSourcePosition>() {
+        return new Iterator<>() {
             private NodeSourcePosition currentPosition = NodeSourcePosition.this;
 
             @Override

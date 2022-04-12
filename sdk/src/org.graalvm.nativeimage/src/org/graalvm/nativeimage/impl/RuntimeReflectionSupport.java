@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,22 +40,44 @@
  */
 package org.graalvm.nativeimage.impl;
 
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.Set;
 
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
-    // specific to java.lang.reflect reflection
-    Set<Executable> getQueriedOnlyMethods();
+    Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
+
+    Set<Field> getReflectionFields();
+
+    Set<Executable> getReflectionExecutables();
+
+    Object getAccessor(Executable method);
 
     /*
-     * Returns the methods that shadow a superclass method registered for reflection, to be excluded
-     * from reflection queries.
+     * Returns the methods and fields that shadow a superclass element registered for reflection, to
+     * be excluded from reflection queries.
      */
-    Set<?> getHidingMethods();
+    Set<?> getHidingReflectionFields();
+
+    Set<?> getHidingReflectionMethods();
+
+    Object[] getRecordComponents(Class<?> type);
+
+    void registerHeapDynamicHub(Object hub);
+
+    Set<?> getHeapDynamicHubs();
+
+    void registerHeapReflectionObject(AccessibleObject object);
+
+    Set<AccessibleObject> getHeapReflectionObjects();
 
     int getReflectionClassesCount();
 
     int getReflectionMethodsCount();
 
     int getReflectionFieldsCount();
+
+    boolean requiresProcessing();
 }

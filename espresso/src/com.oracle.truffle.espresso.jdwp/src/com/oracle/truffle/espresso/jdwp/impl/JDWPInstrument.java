@@ -33,6 +33,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 
 @Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = DebuggerController.class)
@@ -128,7 +131,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         }
     }
 
-    @SuppressWarnings("deprecation")
     private void handleConnectException(ConnectException ex, boolean swallowExitException) {
         System.err.println("ERROR: transport error 202: connect failed: " + ex.getMessage());
         System.err.println("ERROR: JDWP Transport dt_socket failed to initialize, TRANSPORT_INIT(510)");
@@ -139,11 +141,11 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
             if (swallowExitException) {
                 // swallow exit exception if thread will exit anyway
                 if (t instanceof AbstractTruffleException) {
-                    if (!((AbstractTruffleException) t).isExit()) {
-                        throw t;
-                    }
-                } else if (t instanceof com.oracle.truffle.api.TruffleException) {
-                    if (!((com.oracle.truffle.api.TruffleException) t).isExit()) {
+                    try {
+                        if ((InteropLibrary.getUncached().getExceptionType(t)) != ExceptionType.EXIT) {
+                            throw t;
+                        }
+                    } catch (UnsupportedMessageException e) {
                         throw t;
                     }
                 }
@@ -161,7 +163,7 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         // The VM started event must be sent when we're ready to process commands
         // doProcessCommands method will control when events can be fired without
         // causing races, so pass on a Callable
-        Callable<Void> vmStartedJob = new Callable<Void>() {
+        Callable<Void> vmStartedJob = new Callable<>() {
             @Override
             public Void call() {
                 controller.getEventListener().vmStarted(suspend);

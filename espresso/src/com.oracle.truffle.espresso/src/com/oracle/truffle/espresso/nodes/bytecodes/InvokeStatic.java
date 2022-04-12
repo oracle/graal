@@ -63,7 +63,7 @@ public abstract class InvokeStatic extends Node {
         return invokeStatic.execute(args);
     }
 
-    @ImportStatic(InvokeStatic.class)
+    @ImportStatic({InvokeStatic.class, Utils.class})
     @NodeInfo(shortName = "INVOKESTATIC !initcheck")
     public abstract static class WithoutClassInitCheck extends Node {
 
@@ -82,8 +82,7 @@ public abstract class InvokeStatic extends Node {
         @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             return directCallNode.call(args);
         }
 
@@ -91,7 +90,6 @@ public abstract class InvokeStatic extends Node {
         Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
             Method.MethodVersion target = methodLookup(staticMethod);
-            assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -143,7 +141,6 @@ public abstract class InvokeStatic extends Node {
             Object callIndirect(Method staticMethod, Object[] args,
                             @Cached IndirectCallNode indirectCallNode) {
                 Method.MethodVersion target = methodLookup(staticMethod);
-                assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }

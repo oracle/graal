@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.profiles.BranchProfile;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
@@ -58,6 +59,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
 public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     private final Object executable;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     public ExecuteInParentContextNode(WasmLanguage language, WasmInstance instance, Object executable) {
         super(language, instance);
@@ -72,7 +74,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
         try {
             return InteropLibrary.getUncached().execute(executable, frame.getArguments());
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-            errorBranch();
+            errorBranch.enter();
             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Call failed: %s", getMessage(e));
         } finally {
             truffleContext.leave(this, prev);

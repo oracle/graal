@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,8 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
+
+import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler;
@@ -427,6 +429,23 @@ public class AArch64Move {
         }
     }
 
+    /**
+     * This helper method moves sp to a scratch gp register before generating the store code. This
+     * is needed because store instructions cannot directly refer to the sp register. This is
+     * because both ZR and SP are encoded as '31'.
+     */
+    public static int moveSPAndEmitStore(AArch64MacroAssembler masm, Register input, Function<Register, Integer> storeGen) {
+        if (input.equals(sp)) {
+            try (ScratchRegister scratch = masm.getScratchRegister()) {
+                Register newInput = scratch.getRegister();
+                masm.mov(64, newInput, sp);
+                return storeGen.apply(newInput);
+            }
+        } else {
+            return storeGen.apply(input);
+        }
+    }
+
     public static final class StoreOp extends MemOp {
         public static final LIRInstructionClass<StoreOp> TYPE = LIRInstructionClass.create(StoreOp.class);
         @Use protected AllocatableValue input;
@@ -439,16 +458,17 @@ public class AArch64Move {
         @Override
         protected int emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             int destSize = accessKind.getSizeInBytes() * Byte.SIZE;
-            Register src = asRegister(input);
             AArch64Address address = addressValue.toAddress();
-            int memPosition = masm.position();
-            boolean tryMerge = mergingAllowed(crb, memPosition);
-            if (accessKind.isInteger()) {
-                masm.str(destSize, src, address, tryMerge);
-            } else {
-                masm.fstr(destSize, src, address, tryMerge);
-            }
-            return memPosition;
+            return moveSPAndEmitStore(masm, asRegister(input), src -> {
+                int memPosition = masm.position();
+                boolean tryMerge = mergingAllowed(crb, memPosition);
+                if (accessKind.isInteger()) {
+                    masm.str(destSize, src, address, tryMerge);
+                } else {
+                    masm.fstr(destSize, src, address, tryMerge);
+                }
+                return memPosition;
+            });
         }
     }
 
@@ -465,30 +485,32 @@ public class AArch64Move {
         protected int emitMemAccess(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             int destSize = accessKind.getSizeInBytes() * Byte.SIZE;
 
-            try (ScratchRegister scratch1 = masm.getScratchRegister()) {
-                AArch64Address address = addressValue.toAddress();
-                final Register addrReg;
-                if (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
-                    // Can directly use the base register as the address
-                    addrReg = address.getBase();
-                } else {
-                    addrReg = scratch1.getRegister();
-                    masm.loadAddress(addrReg, address);
-                }
-                int memPosition;
-                if (accessKind.isInteger()) {
-                    memPosition = masm.position();
-                    masm.stlr(destSize, asRegister(input), addrReg);
-                } else {
-                    try (ScratchRegister scratch2 = masm.getScratchRegister()) {
-                        Register temp = scratch2.getRegister();
-                        masm.fmov(destSize, temp, asRegister(input));
-                        memPosition = masm.position();
-                        masm.stlr(destSize, temp, addrReg);
+            return moveSPAndEmitStore(masm, asRegister(input), src -> {
+                try (ScratchRegister scratch1 = masm.getScratchRegister()) {
+                    AArch64Address address = addressValue.toAddress();
+                    final Register addrReg;
+                    if (address.getAddressingMode() == AArch64Address.AddressingMode.BASE_REGISTER_ONLY) {
+                        // Can directly use the base register as the address
+                        addrReg = address.getBase();
+                    } else {
+                        addrReg = scratch1.getRegister();
+                        masm.loadAddress(addrReg, address);
                     }
+                    int memPosition;
+                    if (accessKind.isInteger()) {
+                        memPosition = masm.position();
+                        masm.stlr(destSize, src, addrReg);
+                    } else {
+                        try (ScratchRegister scratch2 = masm.getScratchRegister()) {
+                            Register temp = scratch2.getRegister();
+                            masm.fmov(destSize, temp, src);
+                            memPosition = masm.position();
+                            masm.stlr(destSize, temp, addrReg);
+                        }
+                    }
+                    return memPosition;
                 }
-                return memPosition;
-            }
+            });
         }
 
         public AArch64Kind getAccessKind() {
@@ -511,7 +533,7 @@ public class AArch64Move {
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             int loadPosition = masm.position();
-            masm.ldr(64, zr, address.toAddress(), crb.getLastImplicitExceptionOffset() == loadPosition - 4);
+            masm.deadLoad(64, address.toAddress(), crb.getLastImplicitExceptionOffset() == loadPosition - 4);
             // Adjust implicit exception position if this ldr has been merged to ldp.
             if (loadPosition == masm.position()) {
                 /*

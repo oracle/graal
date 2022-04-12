@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -390,13 +390,13 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             return maxName;
         }
 
-        @Deprecated
+        @Deprecated(since = "20.3")
         @Override
         public void accept(int value) {
             throw new UnsupportedOperationException();
         }
 
-        @Deprecated
+        @Deprecated(since = "20.3")
         @Override
         public void combine(IntSummaryStatistics other) {
             throw new UnsupportedOperationException();
@@ -419,13 +419,13 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             return maxName;
         }
 
-        @Deprecated
+        @Deprecated(since = "20.3")
         @Override
         public void accept(long value) {
             throw new UnsupportedOperationException();
         }
 
-        @Deprecated
+        @Deprecated(since = "20.3")
         @Override
         public void combine(LongSummaryStatistics other) {
             throw new UnsupportedOperationException();

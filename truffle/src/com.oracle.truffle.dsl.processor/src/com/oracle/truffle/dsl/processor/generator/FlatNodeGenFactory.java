@@ -69,6 +69,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -676,6 +677,7 @@ public class FlatNodeGenFactory {
         if (node.isUncachable() && node.isGenerateUncached()) {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
+            uncached.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
 
             for (NodeFieldData field : node.getFields()) {
                 if (!field.isGenerated()) {
@@ -1290,6 +1292,10 @@ public class FlatNodeGenFactory {
             }
 
             for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
+                if (!assumption.needsCaching()) {
+                    continue;
+                }
+
                 String fieldName = createAssumptionFieldName(specialization, assumption);
                 TypeMirror type;
                 int compilationFinalDimensions;
@@ -3604,7 +3610,10 @@ public class FlatNodeGenFactory {
             }
 
             if (specialization != null && !specialization.getAssumptionExpressions().isEmpty()) {
-                builder.tree(createFastPathAssumptionCheck(builder, specialization, forType, frameState));
+                BlockState state = IfTriple.materialize(builder, createAssumptionCheck(frameState, specialization, NodeExecutionMode.FAST_PATH, false), false);
+                builder.tree(createTransferToInterpreterAndInvalidate());
+                builder.tree(createRemoveThis(builder, frameState, forType, specialization));
+                builder.end(state.blockCount);
             }
 
             boolean extractInBoundary = false;
@@ -3879,7 +3888,7 @@ public class FlatNodeGenFactory {
 
             BlockState innerIfCount = BlockState.NONE;
             cachedTriples.addAll(createMethodGuardChecks(frameState, group, guardExpressions, mode));
-            cachedTriples.addAll(createAssumptionCheckTriples(frameState, specialization, NodeExecutionMode.FALLBACK_GUARD));
+            cachedTriples.addAll(createAssumptionCheck(frameState, specialization, NodeExecutionMode.FALLBACK_GUARD, true));
 
             cachedTriples = IfTriple.optimize(cachedTriples);
 
@@ -3910,9 +3919,7 @@ public class FlatNodeGenFactory {
         } else if (mode.isUncached()) {
             BlockState ifCount = BlockState.NONE;
 
-            if (specialization != null) {
-                cachedTriples.addAll(createAssumptionCheckTriples(frameState, specialization, NodeExecutionMode.UNCACHED));
-            }
+            cachedTriples.addAll(createAssumptionCheck(frameState, specialization, NodeExecutionMode.UNCACHED, true));
 
             ifCount = ifCount.add(IfTriple.materialize(builder, IfTriple.optimize(cachedTriples), false));
             cachedTriples = createMethodGuardChecks(frameState, group, guardExpressions, mode);
@@ -3990,36 +3997,63 @@ public class FlatNodeGenFactory {
         return innerBuilder;
     }
 
-    private List<IfTriple> createAssumptionCheckTriples(FrameState frameState, SpecializationData specialization, NodeExecutionMode mode) {
+    private List<IfTriple> createAssumptionCheck(FrameState frameState, SpecializationData specialization, NodeExecutionMode mode, boolean testValid) {
         if (specialization == null || specialization.getAssumptionExpressions().isEmpty()) {
             return Collections.emptyList();
         }
 
+        CodeTreeBuilder builder = new CodeTreeBuilder(null);
+
         List<IfTriple> triples = new ArrayList<>();
-        List<AssumptionExpression> assumptions = specialization.getAssumptionExpressions();
-        for (AssumptionExpression assumption : assumptions) {
-            CodeTree prepare = null;
+        for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
             CodeTree assumptionReference;
-            if (mode.isUncached()) {
-                String localName = assumption.getId();
-                CodeTreeBuilder builder = new CodeTreeBuilder(null);
-                CodeTree assumptionInit = writeExpression(frameState, specialization, assumption.getExpression());
-                builder.declaration(assumption.getExpression().getResolvedType(), localName,
-                                assumptionInit);
-                prepare = builder.build();
-                assumptionReference = CodeTreeBuilder.singleString(localName);
+            CodeTree nullCheckReference;
+
+            boolean needsCaching = assumption.needsCaching();
+            if (mode.isUncached() || !needsCaching) {
+                assumptionReference = writeExpression(frameState, specialization, assumption.getExpression());
+
+                /*
+                 * For the receiver null check we need to get to the root field expression.
+                 *
+                 */
+                DSLExpression e = assumption.getExpression();
+                while (e instanceof Variable) {
+                    Variable v = (Variable) e;
+                    if (v.getReceiver() == null) {
+                        break;
+                    }
+                    e = v.getReceiver();
+                }
+                nullCheckReference = writeExpression(frameState, specialization, e);
             } else {
                 assumptionReference = createAssumptionReference(frameState, specialization, assumption);
+                nullCheckReference = assumptionReference;
             }
 
-            CodeTree assumptionGuard = createAssumptionGuard(assumptionReference);
-            CodeTreeBuilder builder = new CodeTreeBuilder(null);
-            builder.string("(");
-            builder.tree(assumptionReference).string(" == null || ");
-            builder.tree(assumptionGuard);
-            builder.string(")");
-            triples.add(new IfTriple(prepare, builder.build(), null));
+            if (testValid) {
+                if (!builder.isEmpty()) {
+                    builder.string(" && ");
+                }
+                if (mode.isGuardFallback()) {
+                    builder.string("(");
+                    builder.tree(nullCheckReference);
+                    builder.string(" == null || ");
+                    builder.tree(createAssumptionGuard(assumptionReference));
+                    builder.string(")");
+                } else {
+                    builder.tree(createAssumptionGuard(assumptionReference));
+                }
+            } else {
+                if (!builder.isEmpty()) {
+                    builder.string(" || ");
+                }
+                builder.string("!");
+                builder.tree(createAssumptionGuard(assumptionReference));
+            }
+
         }
+        triples.add(new IfTriple(null, builder.build(), null));
         return triples;
     }
 
@@ -4074,7 +4108,7 @@ public class FlatNodeGenFactory {
 
         List<IfTriple> duplicationtriples = new ArrayList<>();
         duplicationtriples.addAll(createMethodGuardChecks(innerFrameState, group, guardExpressions, NodeExecutionMode.FAST_PATH));
-        duplicationtriples.addAll(createAssumptionCheckTriples(innerFrameState, specialization, NodeExecutionMode.SLOW_PATH));
+        duplicationtriples.addAll(createAssumptionCheck(innerFrameState, specialization, NodeExecutionMode.SLOW_PATH, true));
         BlockState duplicationIfCount = IfTriple.materialize(builder, IfTriple.optimize(duplicationtriples), false);
         if (useDuplicate) {
             builder.startStatement().string(duplicateFoundName, " = true").end();
@@ -4174,6 +4208,9 @@ public class FlatNodeGenFactory {
     private List<IfTriple> persistAssumptions(FrameState frameState, SpecializationData specialization) {
         List<IfTriple> triples = new ArrayList<>();
         for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
+            if (!assumption.needsCaching()) {
+                continue;
+            }
             LocalVariable var = frameState.get(assumption.getId());
             String name = createAssumptionFieldName(specialization, assumption);
             CodeTreeBuilder builder = new CodeTreeBuilder(null);
@@ -4235,7 +4272,7 @@ public class FlatNodeGenFactory {
         // here: we must ensure that the item that is being appended to the list is fully
         // initialized.
         builder.startStatement();
-        builder.startStaticCall(context.getTypes().MemoryFence, "storeStore");
+        builder.startStaticCall(context.getType(VarHandle.class), "storeStoreFence");
         builder.end();
         builder.end();
         builder.startStatement();
@@ -4344,24 +4381,6 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private CodeTree createFastPathAssumptionCheck(CodeTreeBuilder parent, SpecializationData specialization, ExecutableTypeData forType, FrameState frameState)
-                    throws AssertionError {
-        CodeTreeBuilder builder = parent.create();
-        builder.startIf();
-        String sep = "";
-        for (AssumptionExpression assumption : specialization.getAssumptionExpressions()) {
-            builder.string(sep);
-            builder.string("!");
-            builder.tree(createAssumptionGuard(createAssumptionReference(frameState, specialization, assumption)));
-            sep = " || ";
-        }
-        builder.end().startBlock();
-        builder.tree(createTransferToInterpreterAndInvalidate());
-        builder.tree(createRemoveThis(builder, frameState, forType, specialization));
-        builder.end();
-        return builder.build();
-    }
-
     private static CodeTree createTryExecuteChild(LocalVariable value, CodeTree executeChild, boolean needDeclaration, boolean hasTry) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         boolean hasDeclaration = false;
@@ -4434,7 +4453,7 @@ public class FlatNodeGenFactory {
         return builder.build();
     }
 
-    private Map<SpecializationData, CodeExecutableElement> removeThisMethods = new HashMap<>();
+    private final Map<SpecializationData, CodeExecutableElement> removeThisMethods = new LinkedHashMap<>();
 
     private CodeTree createExcludeThis(CodeTreeBuilder parent, FrameState frameState, ExecutableTypeData forType, SpecializationData specialization) {
         CodeTreeBuilder builder = parent.create();

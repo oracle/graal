@@ -58,7 +58,7 @@ public interface MetricKey {
     /**
      * Comparator to sort keys by their names.
      */
-    Comparator<MetricKey> NAME_COMPARATOR = new Comparator<MetricKey>() {
+    Comparator<MetricKey> NAME_COMPARATOR = new Comparator<>() {
 
         @Override
         public int compare(MetricKey o1, MetricKey o2) {

@@ -31,11 +31,11 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 /**
  * The field filter flow is used for unsafe writes to fields. An unsafe write to an object can write
  * to any of the unsafe accessed fields of that object, however the written values may not be
- * compatible with all the fields. Thus the written values need to be filtered using the field
+ * compatible with all the fields. Thus, the written values need to be filtered using the field
  * FieldFilterTypeFlow type. The FieldFilterTypeFlow is a simplified version of FilterTypeFlow in
- * that it is 'not-exact', i.e., it allows types of that are sub-types of the field declared type,
+ * that it is 'not-exact', i.e., it allows all types that are sub-types of the field declared type,
  * it is always 'assignable', i.e., it allows types that are assignable to the field declared type,
- * and it 'includes-null', i.e., it allows null values to pass through. However it's 'source' is an
+ * and it 'includes-null', i.e., it allows null values to pass through. However, it's 'source' is an
  * AnalysisField and not a ValueNode, thus it's a completely different class.
  */
 public class FieldFilterTypeFlow extends TypeFlow<AnalysisField> {

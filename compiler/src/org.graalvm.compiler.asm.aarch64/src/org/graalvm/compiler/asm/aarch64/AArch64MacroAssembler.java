@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,12 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     private boolean isImmLoadStoreMerged = false;
 
     public final AArch64ASIMDMacroAssembler neon;
+
+    // preferred byte alignment for the start of a loop
+    public static final int PREFERRED_LOOP_ALIGNMENT = 16;
+
+    // preferred byte alignment for a branch target
+    public static final int PREFERRED_BRANCH_TARGET_ALIGNMENT = 16;
 
     public AArch64MacroAssembler(TargetDescription target) {
         super(target);
@@ -425,7 +431,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param size register size. Has to be 32 or 64.
      */
     public void mov(int size, Register dst, Register src) {
-        if (dst.equals(src)) {
+        if (dst.equals(src) && size == 64) {
             /* No action necessary */
         } else if (dst.equals(sp) || src.equals(sp)) {
             add(size, dst, src, 0);
@@ -745,6 +751,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             ldr(srcSize, rt, address);
         } else {
             super.ldrs(targetSize, srcSize, rt, address);
+        }
+    }
+
+    /**
+     * Performs a load to the zero register. The effect of this is to test the address's page
+     * permissions.
+     */
+    public void deadLoad(int srcSize, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.ldrHelper(srcSize, zr, address, true);
+        } else if (!tryMergeLoadStore(srcSize, zr, address, false, false)) {
+            super.ldrHelper(srcSize, zr, address, true);
         }
     }
 
@@ -1314,6 +1335,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * C.6.2.179 Logical Shift Left (immediate).
+     * <p>
      * dst = src << (shiftAmt & (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
@@ -1324,12 +1347,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void lsl(int size, Register dst, Register src, long shiftAmt) {
         int clampedShift = clampShiftAmt(size, shiftAmt);
         if (clampedShift != 0 || !dst.equals(src)) {
-            int remainingBits = size - clampedShift;
-            super.ubfm(size, dst, src, remainingBits, remainingBits - 1);
+            int immr = (-clampedShift) & (size - 1);
+            int imms = size - 1 - clampedShift;
+            super.ubfm(size, dst, src, immr, imms);
         }
     }
 
     /**
+     * C.6.2.182 Logical Shift Right (immediate).
+     * <p>
      * dst = src >>> (shiftAmt & (size - 1)).
      *
      * @param size register size. Has to be 32 or 64.
@@ -1547,7 +1573,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      * @param src Either floating-point or general-purpose register. If general-purpose register may
      *            not be stackpointer. Cannot be null in any case.
      */
-    @Override
     public void fmov(int size, Register dst, Register src) {
         assert size == 32 || size == 64;
         assert !(dst.getRegisterCategory().equals(CPU) && src.getRegisterCategory().equals(CPU)) : "src and dst cannot both be integer registers.";
@@ -1556,7 +1581,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         } else if (src.getRegisterCategory().equals(CPU)) {
             fmovCpu2Fpu(size, dst, src);
         } else {
-            super.fmov(size, dst, src);
+            fmovFpu2Fpu(size, dst, src);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -211,6 +211,11 @@ final class TruffleSplittingStrategy {
 
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
+
+        if (callTarget.isSplit()) { // ignore split call targets
+            return;
+        }
+
         if (callTarget.isOSR()) {
             /*
              * There is no splitting needed for OSR call targets as there are no direct call nodes
@@ -219,6 +224,7 @@ final class TruffleSplittingStrategy {
              */
             return;
         }
+
         final EngineData engineData = callTarget.engine;
         if (engineData.splitting) {
             engineData.splitLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());
@@ -279,9 +285,9 @@ final class TruffleSplittingStrategy {
 
     private static final class SplitStatisticsReporter implements GraalTruffleRuntimeListener {
 
-        private static final String D_FORMAT = "%n%-40s: %10d";
+        private static final String D_FORMAT = "%n%-82s: %10d";
         private static final String D_LONG_FORMAT = "%n%-120s: %10d";
-        private static final String P_FORMAT = "%n%-40s: %9.2f%%";
+        private static final String P_FORMAT = "%n%-82s: %9.2f%%";
         private static final String DELIMITER_FORMAT = "%n--- %s";
 
         SplitStatisticsReporter() {
@@ -294,14 +300,14 @@ final class TruffleSplittingStrategy {
                 StringWriter messageBuilder = new StringWriter();
                 try (PrintWriter out = new PrintWriter(messageBuilder)) {
                     out.print("Splitting Statistics");
-                    out.printf(D_FORMAT, "Split count", engineData.splitCount);
-                    out.printf(D_FORMAT, "Split limit", engineData.splitLimit);
-                    out.printf(D_FORMAT, "Splits", stat.splitCount);
-                    out.printf(D_FORMAT, "Forced splits", stat.forcedSplitCount);
-                    out.printf(D_FORMAT, "Nodes created through splitting", stat.splitNodeCount);
-                    out.printf(D_FORMAT, "Nodes created without splitting", stat.totalCreatedNodeCount);
+                    out.printf(D_FORMAT, "Split count (sum of uninitializedNodeCount for all split targets)", engineData.splitCount);
+                    out.printf(D_FORMAT, "Split limit (limit for the number of nodes to create through splitting)", engineData.splitLimit);
+                    out.printf(D_FORMAT, "Splits (number of targets created through splitting)", stat.splitCount);
+                    out.printf(D_FORMAT, "Forced splits (number of targets created through DirectCallNode#cloneCallTarget)", stat.forcedSplitCount);
+                    out.printf(D_FORMAT, "Nodes created through splitting (sum of uninitializedNodeCount for split targets)", stat.splitNodeCount);
+                    out.printf(D_FORMAT, "Nodes created without splitting (sum of uninitializedNodeCount for source targets)", stat.totalCreatedNodeCount);
                     out.printf(P_FORMAT, "Increase in nodes", (stat.splitNodeCount * 100.0) / (stat.totalCreatedNodeCount));
-                    out.printf(D_FORMAT, "Split nodes wasted", stat.wastedNodeCount);
+                    out.printf(D_FORMAT, "Split nodes wasted (callee split nodes wasted due to splitting the caller later)", stat.wastedNodeCount);
                     out.printf(P_FORMAT, "Percent of split nodes wasted", (stat.wastedNodeCount * 100.0) / (stat.splitNodeCount));
                     out.printf(D_FORMAT, "Targets wasted due to splitting", stat.wastedTargetCount);
                     out.printf(D_FORMAT, "Total nodes executed", stat.totalExecutedNodeCount);

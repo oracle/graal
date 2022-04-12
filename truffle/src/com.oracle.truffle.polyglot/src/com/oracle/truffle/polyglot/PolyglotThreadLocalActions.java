@@ -75,7 +75,7 @@ final class PolyglotThreadLocalActions {
 
     private static final Future<Void> COMPLETED_FUTURE = CompletableFuture.completedFuture(null);
 
-    private static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
+    static final ThreadLocalHandshake TL_HANDSHAKE = EngineAccessor.ACCESSOR.runtimeSupport().getThreadLocalHandshake();
     private final PolyglotContextImpl context;
     private final Map<AbstractTLHandshake, Void> activeEvents = new LinkedHashMap<>();
     @CompilationFinal private TruffleLogger logger;

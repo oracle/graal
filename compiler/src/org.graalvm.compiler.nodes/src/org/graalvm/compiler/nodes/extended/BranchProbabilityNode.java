@@ -121,6 +121,11 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
         return condition;
     }
 
+    public void setProbability(ValueNode probability) {
+        updateUsages(this.probability, probability);
+        this.probability = probability;
+    }
+
     @Override
     public Node canonical(CanonicalizerTool tool) {
         if (condition.isConstant()) {
@@ -173,8 +178,8 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                 ValueNode currentCondition = condition;
                 IntegerStamp currentStamp = (IntegerStamp) currentCondition.stamp(NodeView.DEFAULT);
                 if (currentStamp.lowerBound() < 0 || 1 < currentStamp.upperBound()) {
-                    ValueNode narrow = graph().maybeAddOrUnique(NarrowNode.create(currentCondition, 1, NodeView.DEFAULT));
-                    currentCondition = graph().maybeAddOrUnique(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
+                    ValueNode narrow = graph().addOrUnique(NarrowNode.create(currentCondition, 1, NodeView.DEFAULT));
+                    currentCondition = graph().addOrUnique(ZeroExtendNode.create(narrow, 32, NodeView.DEFAULT));
                 }
                 replaceAndDelete(currentCondition);
                 if (tool != null) {
@@ -208,7 +213,7 @@ public final class BranchProbabilityNode extends FloatingNode implements Simplif
                                 ValueNode canonical = eq.canonical(tool);
                                 if (canonical != eq && canonical != null) {
                                     tool.addToWorkList(eq.usages());
-                                    eq.replaceAtUsages(graph().maybeAddOrUnique(canonical));
+                                    eq.replaceAtUsages(graph().addOrUnique(canonical));
                                     GraphUtil.killWithUnusedFloatingInputs(eq);
                                 }
                             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,23 +40,18 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CallTarget;
+import static com.oracle.truffle.api.test.common.TestUtils.getDefaultLanguageId;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 
-@TruffleLanguage.Registration(id = ContextAPITestInternalLanguage.ID, name = ContextAPITestInternalLanguage.ID, version = "1.0", internal = true)
-public class ContextAPITestInternalLanguage extends TruffleLanguage<Object> {
-
-    static final String ID = "ContextAPITestInternalLanguage";
-
-    @Override
-    protected Object createContext(Env env) {
-        return null;
-    }
+@TruffleLanguage.Registration(internal = true)
+public class ContextAPITestInternalLanguage extends AbstractExecutableTestLanguage {
+    static final String ID = getDefaultLanguageId(ContextAPITestInternalLanguage.class);
 
     @Override
-    protected CallTarget parse(ParsingRequest request) throws Exception {
-        return RootNode.createConstantNode("").getCallTarget();
+    protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
+        return "";
     }
-
 }

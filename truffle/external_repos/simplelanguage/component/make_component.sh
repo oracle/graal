@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,8 @@
 
 declare -r JAVA_VERSION="${1:?First argument must be java version.}"
 declare -r GRAALVM_VERSION="${2:?Second argument must be GraalVM version.}"
-if [[ $JAVA_VERSION == 1.8* ]]; then
-    JRE="jre/"
-else
-	JRE=""
-fi
 readonly COMPONENT_DIR="component_temp_dir"
-readonly LANGUAGE_PATH="$COMPONENT_DIR/$JRE/languages/sl"
+readonly LANGUAGE_PATH="$COMPONENT_DIR/languages/sl"
 if [[ -f ../native/slnative ]]; then
     INCLUDE_SLNATIVE="TRUE"
 fi
@@ -82,15 +77,15 @@ mkdir -p "$COMPONENT_DIR/META-INF"
 cd $COMPONENT_DIR || exit 1
 $JAVA_HOME/bin/jar cfm ../sl-component.jar META-INF/MANIFEST.MF .
 
-echo "bin/sl = ../$JRE/languages/sl/bin/sl" > META-INF/symlinks
+echo "bin/sl = ../languages/sl/bin/sl" > META-INF/symlinks
 if [[ $INCLUDE_SLNATIVE = "TRUE" ]]; then
-    echo "bin/slnative = ../$JRE/languages/sl/bin/slnative" >> META-INF/symlinks
+    echo "bin/slnative = ../languages/sl/bin/slnative" >> META-INF/symlinks
 fi
 $JAVA_HOME/bin/jar uf ../sl-component.jar META-INF/symlinks
 
 {
-    echo "$JRE"'languages/sl/bin/sl = rwxrwxr-x'
-    echo "$JRE"'languages/sl/bin/slnative = rwxrwxr-x'
+    echo 'languages/sl/bin/sl = rwxrwxr-x'
+    echo 'languages/sl/bin/slnative = rwxrwxr-x'
 } > META-INF/permissions
 $JAVA_HOME/bin/jar uf ../sl-component.jar META-INF/permissions
 )

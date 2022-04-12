@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -414,15 +414,24 @@ public class ExposeToGuestTest {
         }
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     interface EmptyInterface {
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     interface UnmarkedInterface {
 
         Object exported(String arg);
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @Implementable
     interface MarkedInterface {
 
@@ -430,6 +439,9 @@ public class ExposeToGuestTest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     interface MarkedFunctional {
 
@@ -437,6 +449,9 @@ public class ExposeToGuestTest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     interface UnmarkedFunctional {
 
         int f();
@@ -685,6 +700,7 @@ public class ExposeToGuestTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testAdapterClass() {
+        TruffleTestAssumptions.assumeNotAOT();
         HostAccess access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementations(MarkedClass.class).build();
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);

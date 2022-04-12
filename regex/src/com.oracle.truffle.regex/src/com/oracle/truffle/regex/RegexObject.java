@@ -40,13 +40,10 @@
  */
 package com.oracle.truffle.regex;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -72,10 +69,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompilationRequest;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlags;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
 import com.oracle.truffle.regex.tregex.string.Encodings;
-import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
-import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
-import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
 
 /**
  * {@link RegexObject} represents a compiled regular expression that can be used to match against
@@ -109,6 +103,12 @@ import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
  * The return value is a {@link RegexResult}. The contents of the {@code exec} can be compiled
  * lazily and so its first invocation might involve a longer delay as the regular expression is
  * compiled on the fly.
+ * <li>{@link TruffleObject} {@code groups}: a Truffle object that has a member for every named
+ * capture group. The value of the member depends on the flavor of regular expressions. In flavors
+ * where all capture groups must have a unique name, the value of the member is a single integer,
+ * the index of the group that bears the member's name. In flavors where it is possible to have
+ * multiple groups of the same name (as in Ruby), the value of the member has array elements that
+ * give the indices of the groups with the member's name.</li>
  * <li>{@code boolean isBacktracking}: whether or not matching with this regular expression will use
  * backtracking when matching, which could result in an exponential runtime in the worst case
  * scenario</li>
@@ -133,31 +133,23 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private final AbstractRegexObject flags;
     private final int numberOfCaptureGroups;
     private final AbstractRegexObject namedCaptureGroups;
-    @CompilationFinal private CallTarget execCallTarget;
-    @CompilationFinal private CallTarget execBooleanCallTarget;
+    @CompilationFinal private RegexRootNode execRootNode;
+    @CompilationFinal private RegexRootNode execBooleanRootNode;
     private final boolean backtracking;
 
-    public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
+    public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, AbstractRegexObject namedCaptureGroups) {
         this.language = execNode.getRegexLanguage();
         this.source = source;
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
-        this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
-        RootCallTarget callTarget = new RegexRootNode(execNode.getRegexLanguage(), execNode).getCallTarget();
+        this.namedCaptureGroups = namedCaptureGroups;
+        RegexRootNode rootNode = new RegexRootNode(execNode.getRegexLanguage(), execNode);
         if (execNode.isBooleanMatch()) {
-            this.execBooleanCallTarget = callTarget;
+            this.execBooleanRootNode = rootNode;
         } else {
-            this.execCallTarget = callTarget;
+            this.execRootNode = rootNode;
         }
         this.backtracking = execNode.isBacktracking();
-    }
-
-    @TruffleBoundary
-    private static AbstractRegexObject createNamedCaptureGroupMap(Map<String, Integer> namedCaptureGroups) {
-        if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
-            return TruffleSmallReadOnlyStringToIntMap.create(namedCaptureGroups);
-        }
-        return new TruffleReadOnlyMap(namedCaptureGroups);
     }
 
     public RegexSource getSource() {
@@ -177,19 +169,19 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     public CallTarget getExecCallTarget() {
-        if (execCallTarget == null) {
+        if (execRootNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            execCallTarget = new RegexRootNode(language, new TRegexCompilationRequest(language, source.withoutBooleanMatch()).compile()).getCallTarget();
+            execRootNode = new RegexRootNode(language, new TRegexCompilationRequest(language, execBooleanRootNode.getSource().withoutBooleanMatch()).compile());
         }
-        return execCallTarget;
+        return execRootNode.getCallTarget();
     }
 
     public CallTarget getExecBooleanCallTarget() {
-        if (execBooleanCallTarget == null) {
+        if (execBooleanRootNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            execBooleanCallTarget = new RegexRootNode(language, new TRegexCompilationRequest(language, source.withBooleanMatch()).compile()).getCallTarget();
+            execBooleanRootNode = new RegexRootNode(language, new TRegexCompilationRequest(language, execRootNode.getSource().withBooleanMatch()).compile());
         }
-        return execBooleanCallTarget;
+        return execBooleanRootNode.getCallTarget();
     }
 
     public boolean isBacktracking() {

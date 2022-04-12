@@ -39,17 +39,21 @@ import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
+import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * Provides functionality to query information about a unit of compiled code from a {@link CodeInfo}
  * object. This helper class is necessary to ensure that {@link CodeInfo} objects are used
  * correctly, as they are garbage collected even though they live in unmanaged memory. For that
  * purpose, every {@link CodeInfo} object has a tether object. The garbage collector can free a
- * {@link CodeInfo} object if its tether object is unreachable at a safepoint, that is, in any
- * method that is not annotated with {@link Uninterruptible}.
+ * {@link CodeInfo} object if its tether object is unreachable at a safepoint, that is, in
+ * <b>ANY</b> method that is <b>NOT</b> annotated with {@link Uninterruptible}. Even a blocking VM
+ * operation that needs a safepoint won't guarantee that the {@link CodeInfo} object is kept alive
+ * because GCs can be triggered within VM operations as well.
  * <p>
  * For better type-safety (i.e., to indicate if the tether of a {@link CodeInfo} object was already
  * acquired), we distinguish between {@link UntetheredCodeInfo} and {@link CodeInfo}.
@@ -156,6 +160,8 @@ public final class CodeInfoAccess {
                 return "partially freed";
             case CodeInfo.STATE_UNREACHABLE:
                 return "unreachable";
+            case CodeInfo.STATE_FREED:
+                return "invalid (freed)";
             default:
                 return "invalid state";
         }
@@ -297,6 +303,7 @@ public final class CodeInfoAccess {
         return CodeInfoQueryResult.getTotalFrameSize(codeInfoQueryResult.getEncodedFrameSize());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getStackReferenceMapEncoding(CodeInfo info) {
         return cast(info).getStackReferenceMapEncoding();
     }
@@ -309,6 +316,7 @@ public final class CodeInfoAccess {
         CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void lookupCodeInfo(CodeInfo info, long ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
         CodeInfoDecoder.lookupCodeInfo(info, ip, codeInfoQueryResult);
     }
@@ -366,10 +374,12 @@ public final class CodeInfoAccess {
         return (CodePointer) ((UnsignedWord) impl.getCodeStart()).add(impl.getCodeSize());
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getCodeInfoIndex(CodeInfo info) {
         return cast(info).getCodeInfoIndex();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static NonmovableArray<Byte> getCodeInfoEncodings(CodeInfo info) {
         return cast(info).getCodeInfoEncodings();
     }
@@ -397,22 +407,58 @@ public final class CodeInfoAccess {
     }
 
     public static void printCodeInfo(Log log, CodeInfo info, boolean allowJavaHeapAccess) {
-        String name = allowJavaHeapAccess ? CodeInfoAccess.getName(info) : null;
-        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info));
+        String name = null;
+        HasInstalledCode hasInstalledCode = HasInstalledCode.Unknown;
+        SubstrateInstalledCode installedCode = null;
+        if (allowJavaHeapAccess) {
+            name = CodeInfoAccess.getName(info);
+            installedCode = RuntimeCodeInfoAccess.getInstalledCode(info);
+            hasInstalledCode = (installedCode == null) ? HasInstalledCode.No : HasInstalledCode.Yes;
+        }
+
+        printCodeInfo(log, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info), hasInstalledCode, installedCode);
     }
 
-    public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd) {
+    public static void printCodeInfo(Log log, UntetheredCodeInfo info, int state, String name, CodePointer codeStart, CodePointer codeEnd, HasInstalledCode hasInstalledCode,
+                    SubstrateInstalledCode installedCode) {
+        long installedCodeAddress = 0;
+        long installedCodeEntryPoint = 0;
+        if (installedCode != null) {
+            assert hasInstalledCode == HasInstalledCode.Yes;
+            installedCodeAddress = installedCode.getAddress();
+            installedCodeEntryPoint = installedCode.getEntryPoint();
+        }
+
+        printCodeInfo(log, info, state, name, codeStart, codeEnd, hasInstalledCode, installedCodeAddress, installedCodeEntryPoint);
+    }
+
+    public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd, HasInstalledCode hasInstalledCode,
+                    long installedCodeAddress, long installedCodeEntryPoint) {
         log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
                         .string(CodeInfoAccess.stateToString(state));
         if (name != null) {
             log.string(" - ").string(name);
         }
         log.string(", ip: (").zhex(codeStart).string(" - ").zhex(codeEnd).string(")");
-        log.newline();
-        /*
-         * Note that we are not trying to output the InstalledCode object. It is not a pinned
-         * object, so when log printing (for, e.g., a fatal error) occurs during a GC, then the VM
-         * could segfault.
-         */
+
+        switch (hasInstalledCode) {
+            case Yes:
+                log.string(", installedCode: (address: ").zhex(installedCodeAddress).string(", entryPoint: ").zhex(installedCodeEntryPoint).string(")");
+                break;
+            case No:
+                log.string(", installedCode: null.");
+                break;
+            case Unknown:
+                // nothing to do.
+                break;
+            default:
+                throw VMError.shouldNotReachHere("Unexpected value for HasInstalledCode");
+        }
+    }
+
+    public enum HasInstalledCode {
+        Yes,
+        No,
+        Unknown
     }
 }

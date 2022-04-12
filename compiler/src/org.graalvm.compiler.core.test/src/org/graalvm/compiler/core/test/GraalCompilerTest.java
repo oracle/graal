@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -108,9 +108,9 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -125,7 +125,6 @@ import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
 import org.junit.After;
 import org.junit.Assert;
@@ -169,7 +168,6 @@ import jdk.vm.ci.meta.SpeculationLog;
  * <p>
  * These tests will be run by the {@code mx unittest} command.
  */
-@AddExports({"java.base/jdk.internal.org.objectweb.asm", "java.base/jdk.internal.org.objectweb.asm.tree"})
 public abstract class GraalCompilerTest extends GraalTest {
 
     /**
@@ -191,8 +189,7 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     /**
      * Exports the package named {@code packageName} declared in {@code moduleMember}'s module to
-     * this object's module. This must be called before accessing packages that are no longer public
-     * as of JDK 9.
+     * this object's module. This must be called before accessing non-public packages.
      */
     protected final void exportPackage(Class<?> moduleMember, String packageName) {
         ModuleSupport.exportPackageTo(moduleMember, packageName, getClass());
@@ -1072,6 +1069,19 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
+     * Set {@code stableDimension} of all array constants in the graph to {@code 1}.
+     */
+    protected StructuredGraph makeAllArraysStable(StructuredGraph graph) {
+        for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
+            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null && constantNode.getStableDimension() < 1) {
+                ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
+                constantNode.replaceAndDelete(newConstantNode);
+            }
+        }
+        return graph;
+    }
+
+    /**
      * Compiles a given method.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed
@@ -1408,27 +1418,27 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param invocationPlugins
      */
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        invocationPlugins.register(new InvocationPlugin() {
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("breakpoint") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
                 return true;
             }
-        }, GraalCompilerTest.class, "breakpoint");
-        invocationPlugins.register(new InvocationPlugin() {
+        });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("breakpoint", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
                 b.add(new BreakpointNode(arg0));
                 return true;
             }
-        }, GraalCompilerTest.class, "breakpoint", int.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("shouldBeOptimizedAway") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NotOptimizedNode());
                 return true;
             }
-        }, GraalCompilerTest.class, "shouldBeOptimizedAway");
+        });
     }
 
     /**

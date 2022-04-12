@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -313,7 +313,7 @@ final class TestContext implements Closeable {
     }
 
     private static final class LanguageIdPredicate implements Predicate<Map.Entry<String, ? extends LanguageProvider>> {
-        private static final Predicate<Map.Entry<String, ? extends LanguageProvider>> TRUE = new Predicate<Map.Entry<String, ? extends LanguageProvider>>() {
+        private static final Predicate<Map.Entry<String, ? extends LanguageProvider>> TRUE = new Predicate<>() {
             @Override
             public boolean test(Map.Entry<String, ? extends LanguageProvider> e) {
                 return true;

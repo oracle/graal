@@ -58,38 +58,273 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  *
  * @since 0.10
  */
-public abstract class PrimitiveValueProfile extends ValueProfile {
+public final class PrimitiveValueProfile extends ValueProfile {
+
+    private static final PrimitiveValueProfile DISABLED;
+    static {
+        PrimitiveValueProfile profile = new PrimitiveValueProfile();
+        profile.disable();
+        DISABLED = profile;
+    }
+
+    private static final Object UNINITIALIZED = new Object();
+    private static final Object GENERIC = new Object();
+
+    // Use only one field for thread safety.
+    @CompilationFinal private Object cachedValue = UNINITIALIZED;
 
     PrimitiveValueProfile() {
     }
 
-    /** @since 0.10 */
+    /** @since 0.8 or earlier */
+    @SuppressWarnings("unchecked")
     @Override
-    public abstract <T> T profile(T value);
+    public <T> T profile(T v) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            Object value = v;
+            if (snapshot instanceof Byte) {
+                if (value instanceof Byte && (byte) snapshot == (byte) value) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Short) {
+                if (value instanceof Short && (short) snapshot == (short) value) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Integer) {
+                if (value instanceof Integer && (int) snapshot == (int) value) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Long) {
+                if (value instanceof Long && (long) snapshot == (long) value) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Float) {
+                /*
+                 * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+                 * differentiate.
+                 */
+                if (value instanceof Float && Float.floatToRawIntBits((float) snapshot) == Float.floatToRawIntBits((float) value)) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Double) {
+                /*
+                 * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+                 * differentiate.
+                 */
+                if (value instanceof Double && Double.doubleToRawLongBits((double) snapshot) == Double.doubleToRawLongBits((double) value)) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Boolean) {
+                if (value instanceof Boolean && (boolean) snapshot == (boolean) value) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot instanceof Character) {
+                if (value instanceof Character && (char) snapshot == (char) value) {
+                    return (T) snapshot;
+                }
+            } else if (snapshot == value) {
+                return (T) snapshot;
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            slowPath(value);
+        }
+        return v;
+    }
 
-    /** @since 0.10 */
-    public abstract byte profile(byte value);
+    /** @since 0.8 or earlier */
+    public byte profile(byte value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Byte && (byte) snapshot == value) {
+                return (byte) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract short profile(short value);
+    /** @since 0.8 or earlier */
+    public short profile(short value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Short && (short) snapshot == value) {
+                return (short) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract int profile(int value);
+    /** @since 0.8 or earlier */
+    public int profile(int value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Integer && (int) snapshot == value) {
+                return (int) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract long profile(long value);
+    /** @since 0.8 or earlier */
+    public long profile(long value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Long && (long) snapshot == value) {
+                return (long) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract float profile(float value);
+    /** @since 0.8 or earlier */
+    public float profile(float value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            /*
+             * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+             * differentiate.
+             */
+            if (snapshot instanceof Float && Float.floatToRawIntBits((float) snapshot) == Float.floatToRawIntBits(value)) {
+                return (float) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract double profile(double value);
+    /** @since 0.8 or earlier */
+    public double profile(double value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            /*
+             * -0.0 == 0.0, but you can tell the difference through other means, so we need to
+             * differentiate.
+             */
+            if (snapshot instanceof Double && Double.doubleToRawLongBits((double) snapshot) == Double.doubleToRawLongBits(value)) {
+                return (double) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract boolean profile(boolean value);
+    /** @since 0.8 or earlier */
+    public boolean profile(boolean value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Boolean && (boolean) snapshot == value) {
+                return (boolean) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
 
-    /** @since 0.10 */
-    public abstract char profile(char value);
+    /** @since 0.8 or earlier */
+    public char profile(char value) {
+        Object snapshot = this.cachedValue;
+        if (snapshot != GENERIC) {
+            if (snapshot instanceof Character && (char) snapshot == value) {
+                return (char) snapshot;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                slowPath(value);
+            }
+        }
+        return value;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void disable() {
+        this.cachedValue = GENERIC;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public void reset() {
+        if (this != DISABLED) {
+            this.cachedValue = UNINITIALIZED;
+        }
+    }
+
+    private void slowPath(Object value) {
+        if (cachedValue == UNINITIALIZED) {
+            cachedValue = value;
+        } else {
+            cachedValue = GENERIC;
+        }
+    }
+
+    boolean isGeneric() {
+        return cachedValue == GENERIC;
+    }
+
+    boolean isUninitialized() {
+        return cachedValue == UNINITIALIZED;
+    }
+
+    Object getCachedValue() {
+        return cachedValue;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 22.1
+     */
+    @Override
+    public String toString() {
+        if (this == DISABLED) {
+            return toStringDisabled(PrimitiveValueProfile.class);
+        } else {
+            return toString(PrimitiveValueProfile.class, isUninitialized(), isGeneric(), formatSpecialization());
+        }
+    }
+
+    private String formatSpecialization() {
+        if (!isUninitialized() && !isGeneric()) {
+            Object snapshot = this.cachedValue;
+            if (snapshot == null) {
+                return String.format("value == null");
+            } else {
+                if (snapshot instanceof Byte || snapshot instanceof Short || snapshot instanceof Integer || snapshot instanceof Long || snapshot instanceof Float || snapshot instanceof Double ||
+                                snapshot instanceof Boolean || snapshot instanceof Character) {
+                    return String.format("value == (%s)%s", snapshot.getClass().getSimpleName(), snapshot);
+                } else {
+                    String simpleName = snapshot.getClass().getSimpleName();
+                    return String.format("value == %s@%x", simpleName, Objects.hash(snapshot));
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * Returns a {@link PrimitiveValueProfile} that speculates on the primitive equality or object
@@ -99,10 +334,21 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
      */
     @SuppressWarnings("deprecation")
     public static PrimitiveValueProfile createEqualityProfile() {
+        return create();
+    }
+
+    /**
+     * Returns a {@link PrimitiveValueProfile} that speculates on the primitive equality or object
+     * identity of a value.
+     *
+     * @since 22.1
+     */
+    @SuppressWarnings("deprecation")
+    public static PrimitiveValueProfile create() {
         if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+            return new PrimitiveValueProfile();
         } else {
-            return Disabled.INSTANCE;
+            return DISABLED;
         }
     }
 
@@ -112,319 +358,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
      * @since 19.0
      */
     public static PrimitiveValueProfile getUncached() {
-        return Disabled.INSTANCE;
-    }
-
-    static final class Enabled extends PrimitiveValueProfile {
-
-        private static final Object UNINITIALIZED = new Object();
-        private static final Object GENERIC = new Object();
-
-        // Use only one field for thread safety.
-        @CompilationFinal private Object cachedValue = UNINITIALIZED;
-
-        Enabled() {
-        }
-
-        @SuppressWarnings("unchecked")
-        @Override
-        public <T> T profile(T v) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                Object value = v;
-                if (snapshot instanceof Byte) {
-                    if (value instanceof Byte && (byte) snapshot == (byte) value) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Short) {
-                    if (value instanceof Short && (short) snapshot == (short) value) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Integer) {
-                    if (value instanceof Integer && (int) snapshot == (int) value) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Long) {
-                    if (value instanceof Long && (long) snapshot == (long) value) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Float) {
-                    /*
-                     * -0.0 == 0.0, but you can tell the difference through other means, so we need
-                     * to differentiate.
-                     */
-                    if (value instanceof Float && Float.floatToRawIntBits((float) snapshot) == Float.floatToRawIntBits((float) value)) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Double) {
-                    /*
-                     * -0.0 == 0.0, but you can tell the difference through other means, so we need
-                     * to differentiate.
-                     */
-                    if (value instanceof Double && Double.doubleToRawLongBits((double) snapshot) == Double.doubleToRawLongBits((double) value)) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Boolean) {
-                    if (value instanceof Boolean && (boolean) snapshot == (boolean) value) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot instanceof Character) {
-                    if (value instanceof Character && (char) snapshot == (char) value) {
-                        return (T) snapshot;
-                    }
-                } else if (snapshot == value) {
-                    return (T) snapshot;
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                slowPath(value);
-            }
-            return v;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public byte profile(byte value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                if (snapshot instanceof Byte && (byte) snapshot == value) {
-                    return (byte) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public short profile(short value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                if (snapshot instanceof Short && (short) snapshot == value) {
-                    return (short) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public int profile(int value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                if (snapshot instanceof Integer && (int) snapshot == value) {
-                    return (int) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public long profile(long value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                if (snapshot instanceof Long && (long) snapshot == value) {
-                    return (long) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public float profile(float value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                /*
-                 * -0.0 == 0.0, but you can tell the difference through other means, so we need to
-                 * differentiate.
-                 */
-                if (snapshot instanceof Float && Float.floatToRawIntBits((float) snapshot) == Float.floatToRawIntBits(value)) {
-                    return (float) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public double profile(double value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                /*
-                 * -0.0 == 0.0, but you can tell the difference through other means, so we need to
-                 * differentiate.
-                 */
-                if (snapshot instanceof Double && Double.doubleToRawLongBits((double) snapshot) == Double.doubleToRawLongBits(value)) {
-                    return (double) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public boolean profile(boolean value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                if (snapshot instanceof Boolean && (boolean) snapshot == value) {
-                    return (boolean) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        /** @since 0.8 or earlier */
-        @Override
-        public char profile(char value) {
-            Object snapshot = this.cachedValue;
-            if (snapshot != GENERIC) {
-                if (snapshot instanceof Character && (char) snapshot == value) {
-                    return (char) snapshot;
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    slowPath(value);
-                }
-            }
-            return value;
-        }
-
-        @Override
-        public void disable() {
-            this.cachedValue = GENERIC;
-        }
-
-        @Override
-        public void reset() {
-            this.cachedValue = UNINITIALIZED;
-        }
-
-        private void slowPath(Object value) {
-            if (cachedValue == UNINITIALIZED) {
-                cachedValue = value;
-            } else {
-                cachedValue = GENERIC;
-            }
-        }
-
-        boolean isGeneric() {
-            return cachedValue == GENERIC;
-        }
-
-        boolean isUninitialized() {
-            return cachedValue == UNINITIALIZED;
-        }
-
-        Object getCachedValue() {
-            return cachedValue;
-        }
-
-        @Override
-        public String toString() {
-            return toString(PrimitiveValueProfile.class, isUninitialized(), isGeneric(), formatSpecialization());
-        }
-
-        private String formatSpecialization() {
-            if (!isUninitialized() && !isGeneric()) {
-                Object snapshot = this.cachedValue;
-                if (snapshot == null) {
-                    return String.format("value == null");
-                } else {
-                    if (snapshot instanceof Byte || snapshot instanceof Short || snapshot instanceof Integer || snapshot instanceof Long || snapshot instanceof Float || snapshot instanceof Double ||
-                                    snapshot instanceof Boolean || snapshot instanceof Character) {
-                        return String.format("value == (%s)%s", snapshot.getClass().getSimpleName(), snapshot);
-                    } else {
-                        String simpleName = snapshot.getClass().getSimpleName();
-                        return String.format("value == %s@%x", simpleName, Objects.hash(snapshot));
-                    }
-                }
-            }
-            return null;
-        }
-
-        /**
-         * Returns a {@link PrimitiveValueProfile} that speculates on the primitive equality or
-         * object identity of a value.
-         */
-        static PrimitiveValueProfile create() {
-            return new Enabled();
-        }
-    }
-
-    static final class Disabled extends PrimitiveValueProfile {
-
-        static final PrimitiveValueProfile INSTANCE = new PrimitiveValueProfile.Disabled();
-
-        @Override
-        public <T> T profile(T value) {
-            return value;
-        }
-
-        @Override
-        public byte profile(byte value) {
-            return value;
-        }
-
-        @Override
-        public short profile(short value) {
-            return value;
-        }
-
-        @Override
-        public int profile(int value) {
-            return value;
-        }
-
-        @Override
-        public long profile(long value) {
-            return value;
-        }
-
-        @Override
-        public float profile(float value) {
-            return value;
-        }
-
-        @Override
-        public double profile(double value) {
-            return value;
-        }
-
-        @Override
-        public boolean profile(boolean value) {
-            return value;
-        }
-
-        @Override
-        public char profile(char value) {
-            return value;
-        }
-
-        @Override
-        public String toString() {
-            return toStringDisabled(PrimitiveValueProfile.class);
-        }
-
+        return DISABLED;
     }
 
 }

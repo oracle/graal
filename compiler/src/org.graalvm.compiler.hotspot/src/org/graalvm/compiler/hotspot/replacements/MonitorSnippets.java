@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import static org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode.beginLockSco
 import static org.graalvm.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
 import static org.graalvm.compiler.hotspot.nodes.VMErrorNode.vmError;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.DISPLACED_MARK_WORD_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_ACCESS_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_CXQ_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.OBJECT_MONITOR_ENTRY_LIST_LOCATION;
@@ -44,7 +45,10 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.ageMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockMaskInPlace;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.biasedLockPattern;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.diagnoseSyncOnValueBasedClasses;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.epochMaskInPlace;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccIsValueBasedClass;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.loadWordFromObject;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.lockDisplacedMarkOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.markOffset;
@@ -248,6 +252,13 @@ public class MonitorSnippets implements Snippets {
         trace(trace, "             mark: 0x%016lx\n", mark);
 
         incCounter();
+
+        if (diagnoseSyncOnValueBasedClasses(INJECTED_VMCONFIG)) {
+            if (hub.readWord(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION).and(jvmAccIsValueBasedClass(INJECTED_VMCONFIG)).notEqual(0)) {
+                monitorenterStubC(MONITORENTER, object, lock);
+                return;
+            }
+        }
 
         if (useBiasedLocking(INJECTED_VMCONFIG)) {
             if (tryEnterBiased(object, hub, lock, mark, threadRegister, trace, counters)) {
@@ -469,6 +480,13 @@ public class MonitorSnippets implements Snippets {
                 traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
                 counters.inflatedFailedCas.inc();
             }
+        } else if (owner.equal(registerAsWord(threadRegister))) {
+            int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
+            Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
+            monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);
+            traceObject(trace, "+lock{inflated:recursive}", object, true);
+            counters.inflatedRecursive.inc();
+            return true;
         } else {
             traceObject(trace, "+lock{stub:inflated:owned}", object, true);
             counters.inflatedOwned.inc();
@@ -590,10 +608,8 @@ public class MonitorSnippets implements Snippets {
                     if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
                         // There may be a thread spinning on this monitor. Temporarily setting
                         // the monitor owner to null, and hope that the other thread will grab it.
-                        memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
-                        monitor.writeWord(ownerOffset, zero());
-                        memoryBarrier(MembarNode.FenceKind.STORE_ACQUIRE);
-                        succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                        monitor.writeWordVolatile(ownerOffset, zero());
+                        succ = monitor.readWordVolatile(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
                         if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
                             // We manage to release the monitor before the other running thread even
                             // notices.
@@ -613,6 +629,12 @@ public class MonitorSnippets implements Snippets {
                         }
                     }
                 }
+            } else {
+                // Recursive inflated unlock
+                monitor.writeWord(recursionsOffset, recursions.subtract(1), OBJECT_MONITOR_RECURSION_LOCATION);
+                counters.unlockInflatedRecursive.inc();
+                traceObject(trace, "-lock{stub:recursive}", object, false);
+                return true;
             }
             counters.unlockStubInflated.inc();
             traceObject(trace, "-lock{stub:inflated}", object, false);
@@ -715,6 +737,7 @@ public class MonitorSnippets implements Snippets {
         public final SnippetCounter lockStubFailedCas;
         public final SnippetCounter inflatedCas;
         public final SnippetCounter inflatedFailedCas;
+        public final SnippetCounter inflatedRecursive;
         public final SnippetCounter inflatedOwned;
         public final SnippetCounter unbiasable;
         public final SnippetCounter revokeBias;
@@ -731,6 +754,7 @@ public class MonitorSnippets implements Snippets {
         public final SnippetCounter unlockStubInflated;
         public final SnippetCounter unlockInflatedSimple;
         public final SnippetCounter unlockInflatedTransfer;
+        public final SnippetCounter unlockInflatedRecursive;
 
         public Counters(SnippetCounter.Group.Factory factory) {
             SnippetCounter.Group enter = factory.createSnippetCounterGroup("MonitorEnters");
@@ -745,6 +769,7 @@ public class MonitorSnippets implements Snippets {
             lockStubFailedCas = new SnippetCounter(enter, "lock{stub:failed-cas/stack}", "stub-locked, failed cas and stack locking");
             inflatedCas = new SnippetCounter(enter, "lock{inflated:cas}", "heavyweight-locked, cas-locked");
             inflatedFailedCas = new SnippetCounter(enter, "lock{inflated:failed-cas}", "heavyweight-locked, failed cas");
+            inflatedRecursive = new SnippetCounter(enter, "lock{inflated:recursive}", "heavyweight-locked, recursive");
             inflatedOwned = new SnippetCounter(enter, "lock{inflated:owned}", "heavyweight-locked, already owned");
             unbiasable = new SnippetCounter(enter, "unbiasable", "object with unbiasable type");
             revokeBias = new SnippetCounter(enter, "revokeBias", "object had bias revoked");
@@ -756,6 +781,7 @@ public class MonitorSnippets implements Snippets {
             unlockStubInflated = new SnippetCounter(exit, "unlock{stub:inflated}", "stub-unlocked an object with inflated monitor");
             unlockInflatedSimple = new SnippetCounter(exit, "unlock{inflated}", "unlocked an object monitor");
             unlockInflatedTransfer = new SnippetCounter(exit, "unlock{inflated:transfer}", "unlocked an object monitor in the presence of ObjectMonitor::_succ");
+            unlockInflatedRecursive = new SnippetCounter(exit, "unlock{inflated:recursive}", "unlocked an object monitor, recursive");
         }
     }
 
@@ -866,7 +892,7 @@ public class MonitorSnippets implements Snippets {
                     // Only insert the nodes if this is the first monitorenter being lowered.
                     JavaType returnType = initCounter.getMethod().getSignature().getReturnType(initCounter.getMethod().getDeclaringClass());
                     StampPair returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
-                    MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter.getMethod(), new ValueNode[0], returnStamp, null));
+                    MethodCallTargetNode callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, initCounter.getMethod(), ValueNode.EMPTY_ARRAY, returnStamp, null));
                     InvokeNode invoke = graph.add(new InvokeNode(callTarget, 0));
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
@@ -884,7 +910,8 @@ public class MonitorSnippets implements Snippets {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnStamp, null));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         Bytecode code = new ResolvedJavaMethodBytecode(graph.method());
-                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, new ValueNode[0], new ValueNode[0], 0, null, null, new ValueNode[0], null, false, false);
+                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, ValueNode.EMPTY_ARRAY, ValueNode.EMPTY_ARRAY, 0, null, null, ValueNode.EMPTY_ARRAY, null, false,
+                                        false);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 

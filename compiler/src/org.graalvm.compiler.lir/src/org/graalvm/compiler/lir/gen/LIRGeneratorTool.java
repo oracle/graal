@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.gen;
 
+import org.graalvm.compiler.asm.VectorSize;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -182,7 +183,13 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     AllocatableValue asAllocatable(Value value);
 
-    Variable load(Value value);
+    /**
+     * Returns an {@link AllocatableValue} of the address {@code value} with an integer
+     * representation.
+     */
+    default AllocatableValue addressAsAllocatableInteger(Value value) {
+        return asAllocatable(value);
+    }
 
     <I extends LIRInstruction> I append(I op);
 
@@ -200,17 +207,44 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    default Variable emitArrayRegionCompareTo(JavaKind strideA, JavaKind strideB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
-        throw GraalError.unimplemented("Array.equals with different types substitution is not implemented on this architecture");
+    default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        throw GraalError.unimplemented("Array.equals with offset substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
-    default Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value sourcePointer, Value sourceCount, Value fromIndex, Value... searchValues) {
+    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
+                    Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length) {
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitArrayCopyWithConversion(JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitCalcStringAttributes(Object op, Value array, Value offset, Value length, boolean isValid) {
+        throw GraalError.unimplemented("CalcStringAttributes substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value array, Value offset, Value length, Value fromIndex,
+                    Value... searchValues) {
         throw GraalError.unimplemented("String.indexOf substitution is not implemented on this architecture");
     }
 
@@ -232,6 +266,21 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     @SuppressWarnings("unused")
     default Variable emitStringUTF16Compress(Value src, Value dst, Value len) {
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
+    }
+
+    enum CharsetName {
+        ASCII,
+        ISO_8859_1
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitHasNegatives(Value array, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
     }
 
     void emitBlackhole(Value operand);
@@ -296,4 +345,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * {@code isPreSync == true}) or following (if {@code isPreSync == false}) memory writes.
      */
     void emitCacheWritebackSync(boolean isPreSync);
+
+    /**
+     * Returns the maximum size of vector registers.
+     */
+    default VectorSize getMaxVectorSize() {
+        throw GraalError.unimplemented("Max vector size is not specified on this architecture");
+    }
 }

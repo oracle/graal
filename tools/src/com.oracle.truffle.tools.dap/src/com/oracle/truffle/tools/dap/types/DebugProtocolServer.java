@@ -399,7 +399,7 @@ public class DebugProtocolServer {
                         if (server.getLogger().isLoggable(Level.FINER)) {
                             String format = "[Trace - %s] Received request '%s - (%d)'\nArgs: %s";
                             server.getLogger().log(Level.FINER,
-                                            String.format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments()).toString()));
+                                            String.format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
                         }
                         processRequest(request);
                         break;
@@ -407,7 +407,7 @@ public class DebugProtocolServer {
                         final Response response = new Response(message.jsonData);
                         if (server.getLogger().isLoggable(Level.FINER)) {
                             String format = "[Trace - %s] Received response '(%d)'\nResult: %s";
-                            server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody()).toString()));
+                            server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody())));
                         }
                         processResponse(response);
                         break;
@@ -643,6 +643,7 @@ public class DebugProtocolServer {
                                             asExceptionWithMessage(throwable).getDebugMessage()), seq, false, command, sequenceNum.getAndIncrement()).setMessage(throwable.getMessage()));
                         } else {
                             final String msg = throwable.getMessage() != null ? throwable.getMessage() : "";
+                            server.getLogger().log(Level.SEVERE, msg, throwable);
                             sendErrorResponse((ErrorResponse) ErrorResponse.create(ErrorResponse.ResponseBody.create().setError(
                                             Message.create(1104, "Internal Error: {_err}").setVariables(Collections.singletonMap("_err", msg))),
                                             seq, false, command, sequenceNum.getAndIncrement()).setMessage(String.format("Internal Error: `%s`", msg)));
@@ -688,7 +689,7 @@ public class DebugProtocolServer {
             CompletableFuture<Response> future = new CompletableFuture<>();
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending request '%s - (%d)'\nArgs: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments()).toString()));
+                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), request.getCommand(), request.getSeq(), getJSONData(request.getArguments())));
             }
             writeMessage(getJSONData(request).toString());
             pendingSentRequests.put(request.getSeq(), future);
@@ -698,7 +699,7 @@ public class DebugProtocolServer {
         private void sendResponse(Response response) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending response '(%d)'\nResult: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody()).toString()));
+                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody())));
             }
             writeMessage(getJSONData(response).toString());
         }
@@ -706,7 +707,7 @@ public class DebugProtocolServer {
         private void sendErrorResponse(ErrorResponse response) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending error response '(%d)'\nError: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody().getError()).toString()));
+                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), response.getRequestSeq(), getJSONData(response.getBody().getError())));
             }
             writeMessage(getJSONData(response).toString());
 
@@ -715,7 +716,7 @@ public class DebugProtocolServer {
         private void sendEvent(Event event) {
             if (server.getLogger().isLoggable(Level.FINER)) {
                 String format = "[Trace - %s] Sending event '%s'\nBody: %s";
-                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), event.getType(), getJSONData(event.getBody()).toString()));
+                server.getLogger().log(Level.FINER, String.format(format, Instant.now().toString(), event.getType(), getJSONData(event.getBody())));
             }
             writeMessage(getJSONData(event).toString());
         }
@@ -772,11 +773,12 @@ public class DebugProtocolServer {
         }
     }
 
+    @SuppressWarnings("serial")
     public static class ExceptionWithMessage extends RuntimeException {
 
         private static final long serialVersionUID = 4950848492025420535L;
 
-        private Message debugMessage;
+        private final Message debugMessage;
 
         public ExceptionWithMessage(Message debugMessage, String message) {
             super(message);

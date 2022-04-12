@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor;
 
+import static com.oracle.truffle.dsl.processor.LanguageRegistrationProcessor.resolveLanguageId;
 import static javax.lang.model.element.Modifier.ABSTRACT;
 
 import java.util.ArrayList;
@@ -197,7 +198,8 @@ public class OptionProcessor extends AbstractProcessor {
             if (context.getEnvironment().getTypeUtils().isAssignable(info.type.asType(), erasedTruffleType)) {
                 AnnotationMirror registration = ElementUtils.findAnnotationMirror(info.type, types.TruffleLanguage_Registration);
                 if (registration != null) {
-                    groupPrefixStrings = Arrays.asList(ElementUtils.getAnnotationValue(String.class, registration, "id"));
+                    String languageId = resolveLanguageId(info.type, registration);
+                    groupPrefixStrings = Arrays.asList(languageId);
                     if (groupPrefixStrings.get(0).isEmpty()) {
                         error(element, elementAnnotation, "%s must specify an id such that Truffle options can infer their prefix.",
                                         types.TruffleLanguage_Registration.asElement().getSimpleName().toString());

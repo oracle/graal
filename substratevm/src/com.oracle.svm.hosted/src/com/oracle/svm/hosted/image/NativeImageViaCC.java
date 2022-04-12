@@ -399,9 +399,9 @@ public abstract class NativeImageViaCC extends NativeImage {
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
         Matcher m = p.matcher(linkerOutput);
         if (m.matches()) {
-            OS os = OS.getCurrent();
-            String libPrefix = os == OS.WINDOWS ? "" : "lib";
-            String libSuffix = os == OS.WINDOWS ? ".lib" : ".a";
+            boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+            String libPrefix = targetWindows ? "" : "lib";
+            String libSuffix = targetWindows ? ".lib" : ".a";
             potentialCauses.add(String.format("It appears as though %s%s%s is missing. Please install it.", libPrefix, m.group(1), libSuffix));
         }
         return potentialCauses;
@@ -455,7 +455,7 @@ public abstract class NativeImageViaCC extends NativeImage {
                 Path imagePath = inv.getOutputFile();
                 BuildArtifacts.singleton().add(imageKind.isExecutable ? ArtifactType.EXECUTABLE : ArtifactType.SHARED_LIB, imagePath);
 
-                if (OS.getCurrent() == OS.WINDOWS && !imageKind.isExecutable) {
+                if (Platform.includedIn(Platform.WINDOWS.class) && !imageKind.isExecutable) {
                     /* Provide an import library for the built shared library. */
                     String importLib = imageName + ".lib";
                     Path importLibPath = imagePath.resolveSibling(importLib);
@@ -465,7 +465,7 @@ public abstract class NativeImageViaCC extends NativeImage {
 
                 if (SubstrateOptions.GenerateDebugInfo.getValue() > 0) {
                     BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, SubstrateOptions.getDebugInfoSourceCacheRoot());
-                    if (OS.getCurrent() == OS.WINDOWS) {
+                    if (Platform.includedIn(Platform.WINDOWS.class)) {
                         BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath.resolveSibling(imageName + ".pdb"));
                     } else {
                         BuildArtifacts.singleton().add(ArtifactType.DEBUG_INFO, imagePath);

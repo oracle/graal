@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -210,8 +210,8 @@ public class LLVMVaListStorage implements TruffleObject {
     }
 
     protected static DataLayout findDataLayoutFromCurrentFrame() {
-        RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
-        return (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
+        RootCallTarget callTarget = (RootCallTarget) Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
+        return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
 
     public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,
@@ -452,6 +452,7 @@ public class LLVMVaListStorage implements TruffleObject {
         private static final StackAllocationNode UNCACHED = new StackAllocationNode();
 
         @Child VarargsAreaStackAllocationNode allocNode;
+        @CompilerDirectives.CompilationFinal boolean aot;
 
         private StackAllocationNode() {
         }
@@ -464,10 +465,15 @@ public class LLVMVaListStorage implements TruffleObject {
             return UNCACHED;
         }
 
+        public boolean isAOT() {
+            return aot;
+        }
+
         @Override
         public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
             allocNode = createVarargsAreaStackAllocationNode();
             insert((Node) allocNode);
+            aot = true;
         }
 
         public LLVMPointer executeWithTarget(long size, Frame frame) {

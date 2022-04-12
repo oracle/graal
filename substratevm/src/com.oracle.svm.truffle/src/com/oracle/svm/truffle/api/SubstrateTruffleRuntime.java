@@ -53,6 +53,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.jdk.RuntimeSupport;
@@ -131,11 +132,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return SubstrateFastThreadLocal.SINGLETON;
     }
 
-    @Override
-    protected AutoCloseable openCompilerThreadScope() {
-        return new CompilerThreadScope();
-    }
-
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
@@ -145,7 +141,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
     }
 
     private void teardown() {
@@ -372,6 +368,18 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
+            Uninterruptible uninterruptibleAnnotation = method.getAnnotation(Uninterruptible.class);
+            if (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined()) {
+                /* The semantics of Uninterruptible would get lost during partial evaluation. */
+                return false;
+            }
+        }
+        return super.isInlineable(method);
+    }
+
+    @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
         TriState res = TruffleSupport.singleton().tryIsSuppressedFailure(compilable, serializedException);
         switch (res) {
@@ -387,7 +395,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     /**
-     * Compilation task used when truffle runtime is run in single threaded mode.
+     * Compilation task used when Truffle runtime is run in single threaded mode.
      */
     private static class SingleThreadedCompilationTask implements TruffleCompilationTask {
         private final boolean lastTierCompilation;
@@ -421,21 +429,4 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
     }
-
-    private static final class CompilerThreadScope implements AutoCloseable {
-
-        CompilerThreadScope() {
-            open();
-        }
-
-        // Substituted by EnterpriseTruffleFeature
-        private void open() {
-        }
-
-        // Substituted by EnterpriseTruffleFeature
-        @Override
-        public void close() {
-        }
-    }
-
 }

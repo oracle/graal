@@ -25,6 +25,7 @@
 package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
+import java.lang.ref.ReferenceQueue;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -197,8 +198,24 @@ public abstract class Heap {
     public abstract boolean isInPrimaryImageHeap(Pointer objectPtr);
 
     /**
+     * If the automatic reference handling is disabled (see
+     * {@link com.oracle.svm.core.SubstrateOptions.ConcealedOptions#AutomaticReferenceHandling}),
+     * then this method can be called to do the reference handling manually. On execution, the
+     * current thread will enqueue pending {@link Reference}s into their corresponding
+     * {@link ReferenceQueue}s and it will execute pending cleaners.
+     *
+     * This method must not be called from within a VM operation as this could result in deadlocks.
+     * Furthermore, it is up to the caller to ensure that this method is only called in places where
+     * neither the reference handling nor the cleaner execution can cause any unexpected side
+     * effects on the application behavior.
+     *
+     * If the automatic reference handling is enabled, then this method is a no-op.
+     */
+    public abstract void doReferenceHandling();
+
+    /**
      * Determines if the heap currently has {@link Reference} objects that are pending to be
-     * {@linkplain java.lang.ref.ReferenceQueue enqueued}.
+     * {@linkplain ReferenceQueue enqueued}.
      */
     public abstract boolean hasReferencePendingList();
 
@@ -232,4 +249,8 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract long getThreadAllocatedMemory(IsolateThread thread);
+
+    /** Consider all references in the given object as needing remembered set entries. */
+    @Uninterruptible(reason = "Ensure that no GC can occur between modification of the object and this call.", callerMustBe = true)
+    public abstract void dirtyAllReferencesOf(Object obj);
 }

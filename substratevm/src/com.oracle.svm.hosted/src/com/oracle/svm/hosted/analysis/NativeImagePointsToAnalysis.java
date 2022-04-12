@@ -29,8 +29,6 @@ import java.util.concurrent.ForkJoinPool;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
-import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -40,31 +38,30 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
 
     private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
     private final DynamicHubInitializer dynamicHubInitializer;
-    private final UnknownFieldHandler unknownFieldHandler;
+    private final CustomTypeFieldHandler customTypeFieldHandler;
     private final CallChecker callChecker;
 
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
-                    ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures) {
-        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, unsupportedFeatures, SubstrateOptions.parseOnce());
+                    ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection) {
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, unsupportedFeatures, timerCollection, SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
-        dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
-        unknownFieldHandler = new PointsToUnknownFieldHandler(this, metaAccess);
+        dynamicHubInitializer = new DynamicHubInitializer(this);
+        customTypeFieldHandler = new PointsToCustomTypeFieldHandler(this, metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -79,14 +76,6 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
-    protected void checkObjectGraph(ObjectScanner objectScanner) {
-        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(dynamicHubInitializer::initializeMetaData);
-
-        /* Scan hubs of all types that end up in the native image. */
-        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(type -> scanHub(objectScanner, type));
-    }
-
-    @Override
     public SVMHost getHostVM() {
         return (SVMHost) hostVM;
     }
@@ -94,7 +83,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public void cleanupAfterAnalysis() {
         super.cleanupAfterAnalysis();
-        unknownFieldHandler.cleanupAfterAnalysis();
+        customTypeFieldHandler.cleanupAfterAnalysis();
     }
 
     @Override
@@ -110,13 +99,16 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     public void onFieldAccessed(AnalysisField field) {
-        unknownFieldHandler.handleUnknownValueField(field);
+        customTypeFieldHandler.handleField(field);
     }
 
-    private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
-        SVMHost svmHost = (SVMHost) hostVM;
-        JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, OtherReason.HUB);
+    @Override
+    public void onTypeInitialized(AnalysisType type) {
+        postTask(debug -> initializeMetaData(type));
+    }
+
+    public void initializeMetaData(AnalysisType type) {
+        dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
     }
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {

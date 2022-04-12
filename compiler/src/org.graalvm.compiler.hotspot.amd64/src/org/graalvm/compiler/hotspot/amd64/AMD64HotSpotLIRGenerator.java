@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.amd64.AMD64ArithmeticLIRGenerator;
 import org.graalvm.compiler.core.amd64.AMD64LIRGenerator;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -75,6 +76,7 @@ import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.gen.MoveFactory.BackupSlotProvider;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
@@ -121,8 +123,19 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected int getMaxVectorSize() {
-        return config.maxVectorSize;
+    public AVXSize getMaxVectorSize() {
+        int maxVectorSize = config.maxVectorSize;
+        if (supports(CPUFeature.AVX512VL)) {
+            if (maxVectorSize < 0 || maxVectorSize >= 64) {
+                return AVXSize.ZMM;
+            }
+        }
+        if (supports(CPUFeature.AVX2)) {
+            if (maxVectorSize < 0 || maxVectorSize >= 32) {
+                return AVXSize.YMM;
+            }
+        }
+        return AVXSize.XMM;
     }
 
     @Override
@@ -591,7 +604,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {
         return new AMD64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
     }
 

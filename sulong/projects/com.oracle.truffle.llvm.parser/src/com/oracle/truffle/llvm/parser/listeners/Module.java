@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -175,14 +175,23 @@ public final class Module implements ParserListener {
         final int initialiser = buffer.readInt();
         final long linkage = buffer.read();
         final int align = buffer.readInt();
-        buffer.skip();
+        final int sectionIndex = buffer.readInt();
+        String sectionName = null;
+        if (sectionIndex > 0) {
+            sectionName = module.getSectionNames().get(sectionIndex - 1);
+        }
 
         long visibility = Visibility.DEFAULT.getEncodedValue();
         if (buffer.remaining() > 0) {
             visibility = buffer.read();
         }
 
-        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser, index.getAndIncrement());
+        long threadLocal = 0;
+        if (buffer.remaining() > 0) {
+            threadLocal = buffer.read();
+        }
+
+        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, sectionName, linkage, visibility, threadLocal, scope.getSymbols(), initialiser, index.getAndIncrement());
         assignNameFromStrTab(name, global);
         module.addGlobalVariable(global);
         scope.addSymbol(global, global.getType());
@@ -273,7 +282,7 @@ public final class Module implements ParserListener {
     private static final int MODULE_TARGET_TRIPLE = 2;
     private static final int MODULE_TARGET_DATALAYOUT = 3;
     // private static final int MODULE_ASM = 4;
-    // private static final int MODULE_SECTION_NAME = 5;
+    private static final int MODULE_SECTION_NAME = 5;
     // private static final int MODULE_DEPLIB = 6;
     private static final int MODULE_GLOBAL_VARIABLE = 7;
     private static final int MODULE_FUNCTION = 8;
@@ -302,6 +311,10 @@ public final class Module implements ParserListener {
             case MODULE_TARGET_DATALAYOUT:
                 final TargetDataLayout layout = TargetDataLayout.fromString(buffer.readString());
                 module.setTargetDataLayout(layout);
+                break;
+
+            case MODULE_SECTION_NAME:
+                module.addSectionName(buffer.readString());
                 break;
 
             case MODULE_GLOBAL_VARIABLE:

@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
+import org.graalvm.compiler.nodes.loop.InductionVariable;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -62,6 +63,15 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     protected void onSafepointDisabledLoopBegin(LoopEx loop) {
     }
 
+    /**
+     * Determines whether guest safepoints should be allowed at all. To be implemented by
+     * subclasses. The default implementation returns <code>false</code>, leading to guest
+     * safepoints being disabled for all loops in the graph.
+     */
+    protected boolean allowGuestSafepoints() {
+        return false;
+    }
+
     private static boolean loopIsIn32BitRange(LoopEx loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
@@ -78,7 +88,16 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                     return false;
                 }
                 final long startToLimitDistance = Math.abs(upperBoundLimit - lowerBoundStart);
-                return startToLimitDistance <= IntegerRangeDistance;
+
+                /*
+                 * Divide the distance by the absolute value of the stride. For non-constant strides
+                 * assume a worst case stride of 1 since a stride of 0 isn't recognized as an
+                 * induction variable.
+                 */
+                final InductionVariable counter = loop.counted().getLimitCheckedIV();
+                final long stride = counter.isConstantStride() ? Math.abs(counter.constantStride()) : 1;
+                final long strideRelativeStartToLimitDistance = startToLimitDistance / stride;
+                return strideRelativeStartToLimitDistance <= IntegerRangeDistance;
             }
         }
         return false;
@@ -112,6 +131,9 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
             }
         }
         for (LoopEx loop : loops.loops()) {
+            if (!allowGuestSafepoints()) {
+                loop.loopBegin().disableGuestSafepoint();
+            }
             for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                 Block b = loops.getCFG().blockFor(loopEnd);
                 blocks: while (b != loop.loop().getHeader()) {

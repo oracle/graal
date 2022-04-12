@@ -126,6 +126,13 @@ public interface StackOverflowCheck {
     void initialize(IsolateThread thread);
 
     /**
+     * Determines whether the given address, e.g. a potential stack pointer, is within the safe
+     * boundaries of the current thread's stack (which includes the yellow zone if
+     * {@linkplain #makeYellowZoneAvailable() made available}.
+     */
+    boolean isWithinBounds(UnsignedWord address);
+
+    /**
      * Make the yellow zone of the stack available for usage. It must be eventually followed by a
      * call to {@link #protectYellowZone()}. Nested calls are supported: if the yellow zone is
      * already available, this function is a no-op.
@@ -144,6 +151,15 @@ public interface StackOverflowCheck {
      * Returns the combined size of the yellow and red zone.
      */
     int yellowAndRedZoneSize();
+
+    /** @see #setState */
+    int getState();
+
+    /**
+     * Restore the specified state of the stack overflow checks obtained from {@link #getState}.
+     * This is intended for yielding and resuming continuations on a thread.
+     */
+    void setState(int state);
 
     /**
      * Disables all stack overflow checks for this thread. This operation is not reversible, i.e.,

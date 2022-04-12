@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,6 +71,10 @@ public class CommonConstants {
 
     public static final String PATH_JRE_BIN = "bin/"; // NOI18N
 
+    public static final String PATH_USER_GU = ".gu"; // NOI18N
+
+    public static final String PATH_GDS_CONFIG = "config"; // NOI18N
+
     /**
      * System property to specify catalog URL.
      */
@@ -127,6 +131,11 @@ public class CommonConstants {
     public static final String RELEASE_CATALOG_KEY = "component_catalog"; // NOI18N
 
     /**
+     * Key in <code>release</code> file with GDS Product ID.
+     */
+    public static final String RELEASE_GDS_PRODUCT_ID_KEY = "gds_product_id"; // NOI18N
+
+    /**
      * Default installation dir encoded in RPM packages. The installer will strip this prefix to
      * relocate the package contents.
      */
@@ -147,10 +156,12 @@ public class CommonConstants {
     public static final String ENV_COPY_CONTENTS = "GU_POST_COPY_CONTENTS"; // NOI18N
 
     public static final String ARCH_X8664 = "x86_64"; // NOI18N
+    public static final String ARCH_AARCH64 = "aarch64"; // NOI18N
     public static final String ARCH_AMD64 = "amd64"; // NOI18N
 
     public static final String OS_MACOS_DARWIN = "darwin"; // NOI18N
-    public static final String OS_TOKEN_MACOS = "macos"; // NOI18N
+    public static final String OS_TOKEN_MAC = "mac"; // NOI18N
+    public static final String OS_TOKEN_MACOS = OS_TOKEN_MAC + "os"; // NOI18N
     public static final String OS_TOKEN_LINUX = "linux"; // NOI18N
     public static final String OS_TOKEN_WINDOWS = "windows"; // NOI18N
 
@@ -164,4 +175,8 @@ public class CommonConstants {
      * format.
      */
     public static final String SYSPROP_SIMPLE_OUTPUT = "org.graalvm.component.installer.SimpleOutput";
+
+    public static final String SYSPROP_OS_NAME = "os.name"; // NOI18N
+    public static final String SYSPROP_ARCH_NAME = "os.arch"; // NOI18N
+    public static final String SYSPROP_USER_HOME = "user.home"; // NOI18N
 }

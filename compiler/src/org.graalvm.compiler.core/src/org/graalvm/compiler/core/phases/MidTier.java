@@ -28,15 +28,16 @@ import static org.graalvm.compiler.core.common.GraalOptions.ConditionalEliminati
 import static org.graalvm.compiler.core.common.GraalOptions.LoopPredication;
 import static org.graalvm.compiler.core.common.GraalOptions.OptDeoptimizationGrouping;
 import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
-import static org.graalvm.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateExpressions;
+import static org.graalvm.compiler.core.common.GraalOptions.SpeculativeGuardMovement;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.GuardTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.NonDeoptGuardTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.loop.phases.LoopFullUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
@@ -97,6 +98,7 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new VerifyHeapAtReturnPhase());
         }
 
+        appendPhase(new LoopFullUnrollPhase(canonicalizer, createLoopPolicies(options)));
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()));
 
         appendPhase(new LoopSafepointInsertionPhase());
@@ -107,7 +109,7 @@ public class MidTier extends BaseTier<MidTierContext> {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
         }
 
-        appendPhase(new OptimizeDivPhase());
+        appendPhase(new OptimizeDivPhase(canonicalizer));
 
         appendPhase(new FrameStateAssignmentPhase());
 

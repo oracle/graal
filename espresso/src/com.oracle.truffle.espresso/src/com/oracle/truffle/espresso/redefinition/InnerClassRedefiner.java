@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.redefinition;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.lang.instrument.IllegalClassFormatException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -136,7 +135,7 @@ public final class InnerClassRedefiner {
                 if (rules != null && !rules.isEmpty()) {
                     try {
                         classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules, context));
-                    } catch (IllegalClassFormatException ex) {
+                    } catch (ClassFormatError ex) {
                         throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
                     }
                 }
@@ -160,7 +159,7 @@ public final class InnerClassRedefiner {
         ArrayList<Symbol<Symbol.Name>> innerNames = new ArrayList<>(1);
         try {
             searchConstantPoolForInnerClassNames(hotswapInfo, innerNames);
-        } catch (IllegalClassFormatException ex) {
+        } catch (ClassFormatError ex) {
             throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
         }
 
@@ -207,7 +206,7 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void searchConstantPoolForInnerClassNames(ClassInfo classInfo, ArrayList<Symbol<Symbol.Name>> innerNames) throws IllegalClassFormatException {
+    private void searchConstantPoolForInnerClassNames(ClassInfo classInfo, ArrayList<Symbol<Symbol.Name>> innerNames) throws ClassFormatError {
         byte[] bytes = classInfo.getBytes();
         assert bytes != null;
 

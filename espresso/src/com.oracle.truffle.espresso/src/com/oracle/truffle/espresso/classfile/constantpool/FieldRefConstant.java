@@ -26,7 +26,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -131,16 +130,23 @@ public interface FieldRefConstant extends MemberRefConstant {
 
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
-                Meta meta = pool.getContext().getMeta();
-                EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
                 ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
-                Assumption missingFieldAssumption;
                 if (classRedefinition != null) {
-                    missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
-                } else {
-                    missingFieldAssumption = AlwaysValidAssumption.INSTANCE;
+                    // could be due to ongoing redefinition
+                    classRedefinition.check();
+                    field = lookupField(holderKlass, name, type);
                 }
-                return new Missing(failure, missingFieldAssumption);
+                if (field == null) {
+                    Meta meta = pool.getContext().getMeta();
+                    EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
+                    Assumption missingFieldAssumption;
+                    if (classRedefinition != null) {
+                        missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
+                    } else {
+                        missingFieldAssumption = Assumption.ALWAYS_VALID;
+                    }
+                    return new Missing(failure, missingFieldAssumption);
+                }
             }
 
             MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());

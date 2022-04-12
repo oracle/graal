@@ -398,4 +398,12 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         }
         return snapshot;
     }
+
+    public boolean divisionOverflowIsJVMSCompliant() {
+        if (getLowerer() != null) {
+            return getLowerer().divisionOverflowIsJVMSCompliant();
+        }
+        // prevent accidental floating of divs if we dont know the target arch
+        return false;
+    }
 }

@@ -233,6 +233,10 @@ public abstract class TypeState {
     public void noteMerge(@SuppressWarnings("unused") PointsToAnalysis bb) {
     }
 
+    public boolean isMerged() {
+        return false;
+    }
+
     /**
      * This method is needed for accessing the SingleTypeState associated with an specific type of a
      * MutiTypeState, e.g. for transferring the state from a virtual invoke type flow to the formal
@@ -1386,10 +1390,6 @@ final class EmptyTypeState extends TypeState {
     }
 
     @Override
-    public void noteMerge(PointsToAnalysis bb) {
-    }
-
-    @Override
     public boolean hasExactTypes(BitSet typesBitSet) {
         if (typesBitSet.isEmpty()) {
             return true;
@@ -1474,10 +1474,6 @@ final class NullTypeState extends TypeState {
 
     private NullTypeState() {
         super(BitArrayUtils.EMPTY_BIT_ARRAY);
-    }
-
-    @Override
-    public void noteMerge(PointsToAnalysis bb) {
     }
 
     @Override

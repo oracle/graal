@@ -34,10 +34,11 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 
-final class NativeSecureRandomFilesCloserShutdownHook implements Runnable {
+final class NativeSecureRandomFilesCloserTearDownHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
+    public void execute(boolean isFirstIsolate) {
         Target_sun_security_provider_NativePRNG_RandomIO instance = Target_sun_security_provider_NativePRNG.INSTANCE;
         if (instance != null) {
             close(instance.nextIn);
@@ -86,7 +87,7 @@ public final class PosixSunSecuritySubstitutions {
     private PosixSunSecuritySubstitutions() {
     }
 
-    public static Runnable getShutdownHook() {
-        return new NativeSecureRandomFilesCloserShutdownHook();
+    public static RuntimeSupport.Hook getTearDownHook() {
+        return new NativeSecureRandomFilesCloserTearDownHook();
     }
 }

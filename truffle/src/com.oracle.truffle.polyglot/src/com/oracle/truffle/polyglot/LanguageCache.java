@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -239,7 +239,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                  * language since the Truffle API module descriptor only exports the packages to
                  * modules known at build time (such as the Graal module).
                  */
-                EngineAccessor.JDKSERVICES.exportTo(loader, null);
+                ModuleUtils.exportTo(loader, null);
             }
             for (TruffleLanguage.Provider provider : ServiceLoader.load(TruffleLanguage.Provider.class, loader)) {
                 loadLanguageImpl(provider, caches);

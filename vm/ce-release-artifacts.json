@@ -17,6 +17,10 @@
                 "arch": "amd64"
             },
             {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
                 "os": "windows",
                 "arch": "amd64"
             }
@@ -38,6 +42,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             },
             {
                 "os": "windows",
@@ -102,6 +110,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             }
         ]
     },
@@ -121,6 +133,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             }
         ]
     },
@@ -140,6 +156,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             },
             {
                 "os": "windows",
@@ -163,6 +183,10 @@
             {
                 "os": "darwin",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
             },
             {
                 "os": "windows",
@@ -332,6 +356,10 @@
                 "arch": "amd64"
             },
             {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
                 "os": "windows",
                 "arch": "amd64"
             }
@@ -355,6 +383,10 @@
                 "arch": "amd64"
             },
             {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
                 "os": "windows",
                 "arch": "amd64"
             }
@@ -368,6 +400,10 @@
             {
                 "os": "linux",
                 "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
             }
         ]
     },
@@ -378,6 +414,10 @@
         "artifacts": [
             {
                 "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
                 "arch": "amd64"
             }
         ]

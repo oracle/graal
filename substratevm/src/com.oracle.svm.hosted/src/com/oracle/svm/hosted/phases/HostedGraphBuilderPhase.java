@@ -124,14 +124,18 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
 
     @Override
     protected BciBlockMapping generateBlockMap() {
+        // Double effort expended to handle irreducible loops in AOT compilation
+        // since failure means native-image fails.
+        int maxDuplicationBoost = 2;
+
         if (isDeoptimizationEnabled() && isMethodDeoptTarget()) {
             /*
              * Need to add blocks representing where deoptimization entrypoint nodes will be
              * inserted.
              */
-            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug(), false);
+            return HostedBciBlockMapping.create(stream, code, options, graph.getDebug(), false, maxDuplicationBoost);
         } else {
-            return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness());
+            return BciBlockMapping.create(stream, code, options, graph.getDebug(), asyncExceptionLiveness(), maxDuplicationBoost);
         }
     }
 
@@ -300,8 +304,8 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      */
     private final Set<DeoptEntryInsertionPoint> insertedBlocks;
 
-    private HostedBciBlockMapping(Bytecode code, DebugContext debug) {
-        super(code, debug);
+    private HostedBciBlockMapping(Bytecode code, DebugContext debug, int maxDuplicationBoost) {
+        super(code, debug, maxDuplicationBoost);
         insertedBlocks = new HashSet<>();
     }
 
@@ -466,8 +470,8 @@ final class HostedBciBlockMapping extends BciBlockMapping {
      * Creates a BciBlockMapping with blocks explicitly representing where DeoptEntryNodes and
      * DeoptProxyAnchorNodes are to be inserted.
      */
-    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions) {
-        BciBlockMapping map = new HostedBciBlockMapping(code, debug);
+    public static BciBlockMapping create(BytecodeStream stream, Bytecode code, OptionValues options, DebugContext debug, boolean hasAsyncExceptions, int maxDuplicationBoost) {
+        BciBlockMapping map = new HostedBciBlockMapping(code, debug, maxDuplicationBoost);
         buildMap(stream, code, options, debug, map, hasAsyncExceptions);
         return map;
     }

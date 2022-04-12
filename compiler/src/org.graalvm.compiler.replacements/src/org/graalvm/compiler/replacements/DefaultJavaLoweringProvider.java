@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static org.graalvm.compiler.core.common.GraalOptions.EmitStringSubstitutions;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
@@ -99,6 +100,7 @@ import org.graalvm.compiler.nodes.extended.LoadArrayComponentHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
+import org.graalvm.compiler.nodes.extended.MembarNode.FenceKind;
 import org.graalvm.compiler.nodes.extended.ObjectIsArrayNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
@@ -111,7 +113,6 @@ import org.graalvm.compiler.nodes.java.AccessIndexedNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
-import org.graalvm.compiler.nodes.java.FinalFieldBarrierNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -159,7 +160,6 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.CodeUtil;
-import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -189,6 +189,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     private BoxingSnippets.Templates boxingSnippets;
     protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
     protected IsArraySnippets.Templates isArraySnippets;
+    protected StringLatin1Snippets.Templates latin1Templates;
+    protected StringUTF16Snippets.Templates utf16templates;
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
@@ -204,6 +206,12 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
         replacements = providers.getReplacements();
         boxingSnippets = new BoxingSnippets.Templates(options, factory, providers);
+        if (EmitStringSubstitutions.getValue(options)) {
+            latin1Templates = new StringLatin1Snippets.Templates(options, providers);
+            providers.getReplacements().registerSnippetTemplateCache(latin1Templates);
+            utf16templates = new StringUTF16Snippets.Templates(options, providers);
+            providers.getReplacements().registerSnippetTemplateCache(utf16templates);
+        }
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers));
     }
 
@@ -292,8 +300,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 lowerUnaryMath((UnaryMathIntrinsicNode) n, tool);
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 lowerBinaryMath((BinaryMathIntrinsicNode) n, tool);
-            } else if (n instanceof ArrayIndexOfDispatchNode) {
-                lowerArrayIndexOf((ArrayIndexOfDispatchNode) n, tool);
             } else if (n instanceof UnpackEndianHalfNode) {
                 lowerSecondHalf((UnpackEndianHalfNode) n);
             } else if (n instanceof RegisterFinalizerNode) {
@@ -321,16 +327,29 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * potential safepoints and above it's uses.
          */
         for (Node use : n.usages().snapshot()) {
+            FixedNode fixed;
             if (use instanceof FixedNode) {
-                FixedNode fixed = (FixedNode) use;
-                StructuredGraph graph = n.graph();
-                GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
-                graph.addBeforeFixed(fixed, address);
-                AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
-                use.replaceFirstInput(n, add);
+                fixed = (FixedNode) use;
+
+            } else if (use instanceof ValuePhiNode) {
+                ValuePhiNode phi = (ValuePhiNode) use;
+                int inputPosition = 0;
+                while (inputPosition < phi.valueCount()) {
+                    if (phi.valueAt(inputPosition) == n) {
+                        break;
+                    }
+                    inputPosition++;
+                }
+                GraalError.guarantee(inputPosition < phi.valueCount(), "Failed to find expected input");
+                fixed = phi.merge().phiPredecessorAt(inputPosition);
             } else {
                 throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
             }
+            StructuredGraph graph = n.graph();
+            GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
+            graph.addBeforeFixed(fixed, address);
+            AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
+            use.replaceFirstInput(n, add);
         }
         GraphUtil.unlinkFixedNode(n);
         n.safeDelete();
@@ -339,12 +358,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     private void lowerSecondHalf(UnpackEndianHalfNode n) {
         ByteOrder byteOrder = target.arch.getByteOrder();
         n.lower(byteOrder);
-    }
-
-    private static void lowerArrayIndexOf(ArrayIndexOfDispatchNode dispatchNode, LoweringTool tool) {
-        StructuredGraph graph = dispatchNode.graph();
-        ForeignCallNode call = graph.add(new ForeignCallNode(tool.getForeignCalls(), dispatchNode.getStubCallDescriptor(), dispatchNode.getStubCallArgs()));
-        graph.replaceFixed(dispatchNode, call);
     }
 
     private void lowerBinaryMath(BinaryMathIntrinsicNode math, LoweringTool tool) {
@@ -464,7 +477,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
      * important to allow the index to be used as an int in the address mode.
      */
     protected ValueNode createPositiveIndex(StructuredGraph graph, ValueNode index, GuardingNode boundsCheck) {
-        return graph.maybeAddOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
+        return graph.addOrUnique(PiNode.create(index, POSITIVE_ARRAY_INDEX_STAMP, boundsCheck != null ? boundsCheck.asNode() : null));
     }
 
     public AddressNode createArrayIndexAddress(StructuredGraph graph, ValueNode array, JavaKind elementKind, ValueNode index, GuardingNode boundsCheck) {
@@ -632,7 +645,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
              */
             ValueNode synonym = LoadHubNode.findSynonym(object, loadHubOrNullNode.stamp(NodeView.DEFAULT), tool.getMetaAccess(), tool.getConstantReflection());
             if (synonym != null) {
-                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.maybeAddOrUnique(synonym));
+                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.addOrUnique(synonym));
                 return;
             }
         }
@@ -1014,7 +1027,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * actually be used.
          */
         ArrayList<MonitorEnterNode> enters = null;
-        FrameState stateBefore = SnippetTemplate.findLastFrameState(insertionPoint);
+        FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             List<MonitorIdNode> locks = commit.getLocks(objIndex);
             if (locks.size() > 1) {
@@ -1057,16 +1070,16 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     }
 
     /**
-     * Insert the required {@link MemoryBarriers#STORE_STORE} barrier for an allocation and also
-     * include the {@link MemoryBarriers#LOAD_STORE} required for final fields if any final fields
-     * are being written, as if {@link FinalFieldBarrierNode} were emitted.
+     * Insert the required {@link FenceKind#ALLOCATION_INIT} barrier for an allocation.
+     * Alternatively, issue a {@link FenceKind#CONSTRUCTOR_FREEZE} required for final fields if any
+     * final fields are being written.
      */
     private static void insertAllocationBarrier(FixedWithNextNode insertAfter, CommitAllocationNode commit, StructuredGraph graph) {
-        MembarNode.FenceKind fence = MembarNode.FenceKind.STORE_STORE;
+        FenceKind fence = FenceKind.ALLOCATION_INIT;
         outer: for (VirtualObjectNode vobj : commit.getVirtualObjects()) {
             for (ResolvedJavaField field : vobj.type().getInstanceFields(true)) {
                 if (field.isFinal()) {
-                    fence = MembarNode.FenceKind.CONSTRUCTOR_FREEZE;
+                    fence = FenceKind.CONSTRUCTOR_FREEZE;
                     break outer;
                 }
             }
@@ -1267,7 +1280,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (nullCheck == null) {
             return object;
         }
-        return before.graph().maybeAddOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
+        return before.graph().addOrUnique(PiNode.create(object, (object.stamp(NodeView.DEFAULT)).join(StampFactory.objectNonNull()), (ValueNode) nullCheck));
     }
 
     @Override

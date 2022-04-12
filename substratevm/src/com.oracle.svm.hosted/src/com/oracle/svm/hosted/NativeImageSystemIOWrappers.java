@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 
 package com.oracle.svm.hosted;
 
-import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.util.Objects;
 
@@ -33,26 +32,20 @@ import com.oracle.svm.core.util.UserError;
 
 public class NativeImageSystemIOWrappers {
 
-    final CapturingStdioWrapper outWrapper;
-    final CapturingStdioWrapper errWrapper;
+    final StdioWrapper outWrapper;
+    final StdioWrapper errWrapper;
 
-    boolean useCapturing;
+    ProgressReporter progressReporter = null;
 
     NativeImageSystemIOWrappers() {
-        outWrapper = new CapturingStdioWrapper(System.out, new ByteArrayOutputStream(128));
-        errWrapper = new CapturingStdioWrapper(System.err, new ByteArrayOutputStream(128));
-        useCapturing = false;
+        outWrapper = new StdioWrapper(System.out);
+        errWrapper = new StdioWrapper(System.err);
     }
 
     void verifySystemOutErrReplacement() {
         String format = "%s was changed during image building. This is not allowed.";
         UserError.guarantee(System.out == outWrapper, format, "System.out");
         UserError.guarantee(System.err == errWrapper, format, "System.err");
-    }
-
-    void flushCapturedContent() {
-        outWrapper.flushCapturedContent();
-        errWrapper.flushCapturedContent();
     }
 
     void replaceSystemOutErr() {
@@ -81,40 +74,33 @@ public class NativeImageSystemIOWrappers {
     }
 
     /**
-     * Wrapper with the ability to temporarily capture output to stdout and stderr.
+     * Wrapper with the ability to inform {@link ProgressReporter} before a write.
      */
-    private final class CapturingStdioWrapper extends PrintStream {
-        private final ByteArrayOutputStream buffer;
+    private final class StdioWrapper extends PrintStream {
         private PrintStream delegate;
 
-        private CapturingStdioWrapper(PrintStream delegate, ByteArrayOutputStream buffer) {
-            super(buffer);
-            this.buffer = buffer;
+        private StdioWrapper(PrintStream delegate) {
+            super(delegate);
             this.delegate = delegate;
         }
 
         @Override
         public void write(int b) {
-            if (useCapturing) {
-                super.write(b);
-            } else {
-                delegate.write(b);
-            }
+            maybeInformProgressReporterOnce();
+            delegate.write(b);
         }
 
         @Override
         public void write(byte[] buf, int off, int len) {
-            if (useCapturing) {
-                super.write(buf, off, len);
-            } else {
-                delegate.write(buf, off, len);
-            }
+            maybeInformProgressReporterOnce();
+            delegate.write(buf, off, len);
         }
 
-        private void flushCapturedContent() {
-            byte[] byteArray = buffer.toByteArray();
-            delegate.write(byteArray, 0, byteArray.length);
-            buffer.reset();
+        private void maybeInformProgressReporterOnce() {
+            if (progressReporter != null) {
+                progressReporter.beforeNextStdioWrite();
+                progressReporter = null;
+            }
         }
     }
 }

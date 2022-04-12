@@ -26,16 +26,12 @@ package com.oracle.graal.pointsto.flow;
 
 import java.util.List;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.JavaWriteNode;
-import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.svm.util.UnsafePartitionKind;
 
@@ -57,15 +53,17 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
      * The type of the receiver object of the offset store operation. Can be approximated by Object
      * or Object[] when it cannot be infered from stamps.
      */
-    private final AnalysisType objectType;
+    protected final AnalysisType objectType;
 
     /** The flow of the input value. */
-    private final TypeFlow<?> valueFlow;
+    protected final TypeFlow<?> valueFlow;
     /** The flow of the receiver object. */
     protected TypeFlow<?> objectFlow;
 
-    public OffsetStoreTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-        super(node.getNodeSourcePosition(), componentType);
+    boolean isContextInsensitive;
+
+    public OffsetStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+        super(storeLocation, componentType);
         this.objectType = objectType;
         this.valueFlow = valueFlow;
         this.objectFlow = objectFlow;
@@ -74,7 +72,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     public OffsetStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
         super(original, methodFlows);
         this.objectType = original.objectType;
-        this.valueFlow = methodFlows.lookupCloneOf(bb, original.valueFlow);
+        this.valueFlow = original.valueFlow != null ? methodFlows.lookupCloneOf(bb, original.valueFlow) : null;
         this.objectFlow = methodFlows.lookupCloneOf(bb, original.objectFlow);
     }
 
@@ -103,10 +101,15 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     public abstract void onObservedUpdate(PointsToAnalysis bb);
 
     @Override
-    public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
-        /* When receiver object flow saturates start observing the flow of the the object type. */
-        replaceObservedWith(bb, objectType);
+    public abstract void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed);
+
+    public void markAsContextInsensitive() {
+        isContextInsensitive = true;
+    }
+
+    @Override
+    public boolean isContextInsensitive() {
+        return isContextInsensitive;
     }
 
     /**
@@ -117,8 +120,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
      */
     public static class StoreIndexedTypeFlow extends OffsetStoreTypeFlow {
 
-        public StoreIndexedTypeFlow(ValueNode node, AnalysisType arrayType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, arrayType, arrayType.getComponentType(), objectFlow, valueFlow);
+        public StoreIndexedTypeFlow(BytecodePosition storeLocation, AnalysisType arrayType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(storeLocation, arrayType, arrayType.getComponentType(), objectFlow, valueFlow);
         }
 
         public StoreIndexedTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, StoreIndexedTypeFlow original) {
@@ -133,14 +136,14 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         @Override
         public boolean addState(PointsToAnalysis bb, TypeState add) {
             /* Only a clone should be updated */
-            assert this.isClone();
+            assert this.isClone() || this.isContextInsensitive();
             return super.addState(bb, add, true);
         }
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
             /* Only a clone should be updated */
-            assert this.isClone();
+            assert this.isClone() || this.isContextInsensitive();
 
             TypeState objectState = objectFlow.getState();
             /* Iterate over the receiver objects. */
@@ -161,6 +164,31 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            assert this.isClone() && !this.isContextInsensitive();
+            /*
+             * When receiver flow saturates swap in the saturated indexed store type flow. When the
+             * store itself saturates it propagates the saturation state to the uses/observers and
+             * unlinks them, but it still observes the receiver state to notify no-yet-reachable
+             * field flows of saturation.
+             */
+
+            /* Deregister the store as an observer of the receiver. */
+            objectFlow.removeObserver(this);
+
+            /* Deregister the store as a use of the value flow. */
+            valueFlow.removeUse(this);
+
+            /* Link the saturated store. */
+            StoreIndexedTypeFlow contextInsensitiveStore = ((PointsToAnalysisType) objectType).initAndGetContextInsensitiveIndexedStore(bb, source);
+            /*
+             * Link the value flow to the saturated store. The receiver is already set in the
+             * saturated store.
+             */
+            valueFlow.addUse(bb, contextInsensitiveStore);
+        }
+
+        @Override
         public String toString() {
             return "StoreIndexedTypeFlow<" + getState() + ">";
         }
@@ -168,8 +196,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
     public abstract static class AbstractUnsafeStoreTypeFlow extends OffsetStoreTypeFlow {
 
-        AbstractUnsafeStoreTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, objectType, componentType, objectFlow, valueFlow);
+        AbstractUnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(storeLocation, objectType, componentType, objectFlow, valueFlow);
         }
 
         AbstractUnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, OffsetStoreTypeFlow original) {
@@ -201,8 +229,8 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public boolean addState(PointsToAnalysis bb, TypeState add) {
-            /* Only a clone should be updated */
-            assert this.isClone();
+            /* Only a clone or a context insensitive flow should be updated */
+            assert this.isClone() || this.isContextInsensitive();
             return super.addState(bb, add, true);
         }
 
@@ -218,17 +246,36 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
                 }
             }
         }
+    }
+
+    /**
+     * Implements an unsafe store operation type flow.
+     */
+    public static class UnsafeStoreTypeFlow extends AbstractUnsafeStoreTypeFlow {
+
+        public UnsafeStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+            super(storeLocation, objectType, componentType, objectFlow, valueFlow);
+        }
+
+        public UnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
+            super(bb, methodFlows, original);
+        }
+
+        @Override
+        public UnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+            return new UnsafeStoreTypeFlow(bb, methodFlows, this);
+        }
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
+            /* Only a clone or a context insensitive flow should be updated */
+            assert this.isClone() || this.isContextInsensitive();
 
             TypeState objectState = objectFlow.getState();
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {
-                AnalysisType objectType = object.type();
-                if (objectType.isArray()) {
+                AnalysisType type = object.type();
+                if (type.isArray()) {
                     if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
                         /* Cannot write to a primitive array or an empty array constant. */
                         continue;
@@ -242,28 +289,34 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
                     TypeFlow<?> elementsFlow = object.getArrayElementsFlow(bb, true);
                     this.addUse(bb, elementsFlow);
                 } else {
-                    handleUnsafeAccessedFields(bb, objectType.unsafeAccessedFields(), object);
+                    handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(DefaultUnsafePartition.get()), object);
                 }
             }
         }
-    }
-
-    /**
-     * Implements an unsafe store operation type flow.
-     */
-    public static class UnsafeStoreTypeFlow extends AbstractUnsafeStoreTypeFlow {
-
-        public UnsafeStoreTypeFlow(RawStoreNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, objectType, componentType, objectFlow, valueFlow);
-        }
-
-        public UnsafeStoreTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeStoreTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
 
         @Override
-        public UnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new UnsafeStoreTypeFlow(bb, methodFlows, this);
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            assert this.isClone() && !this.isContextInsensitive();
+            /*
+             * When receiver flow saturates swap in the saturated unsafe store type flow. When the
+             * store itself saturates it propagates the saturation state to the uses/observers and
+             * unlinks them, but it still observes the receiver state to notify no-yet-reachable
+             * unsafe fields of saturation.
+             */
+
+            /* Deregister the store as an observer of the receiver. */
+            objectFlow.removeObserver(this);
+
+            /* Deregister the store as a use of the value flow. */
+            valueFlow.removeUse(this);
+
+            /* Link the saturated store. */
+            AbstractUnsafeStoreTypeFlow contextInsensitiveStore = ((PointsToAnalysisType) objectType).initAndGetContextInsensitiveUnsafeStore(bb, source);
+            /*
+             * Link the value flow to the saturated store. The receiver is already set in the
+             * saturated store.
+             */
+            valueFlow.addUse(bb, contextInsensitiveStore);
         }
 
         @Override
@@ -272,62 +325,14 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
     }
 
-    /**
-     * Implements an unsafe compare and swap operation type flow.
-     */
-    public static class CompareAndSwapTypeFlow extends AbstractUnsafeStoreTypeFlow {
-
-        public CompareAndSwapTypeFlow(UnsafeCompareAndSwapNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, objectType, componentType, objectFlow, valueFlow);
-        }
-
-        public CompareAndSwapTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, CompareAndSwapTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
-
-        @Override
-        public CompareAndSwapTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new CompareAndSwapTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public String toString() {
-            return "CompareAndSwapTypeFlow<" + getState() + ">";
-        }
-    }
-
-    /**
-     * Implements an atomic read and write operation type flow.
-     */
-    public static class AtomicWriteTypeFlow extends AbstractUnsafeStoreTypeFlow {
-
-        public AtomicWriteTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, objectType, componentType, objectFlow, valueFlow);
-        }
-
-        public AtomicWriteTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AtomicWriteTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
-
-        @Override
-        public AtomicWriteTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new AtomicWriteTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public String toString() {
-            return "AtomicWriteTypeFlow<" + getState() + ">";
-        }
-    }
-
     public static class UnsafePartitionStoreTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
         protected final UnsafePartitionKind partitionKind;
         protected final AnalysisType partitionType;
 
-        public UnsafePartitionStoreTypeFlow(UnsafePartitionStoreNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
+        public UnsafePartitionStoreTypeFlow(BytecodePosition storeLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow,
                         UnsafePartitionKind partitionKind, AnalysisType partitionType) {
-            super(node, objectType, componentType, objectFlow, valueFlow);
+            super(storeLocation, objectType, componentType, objectFlow, valueFlow);
             this.partitionKind = partitionKind;
             this.partitionType = partitionType;
         }
@@ -370,11 +375,18 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects()) {
-                AnalysisType objectType = object.type();
-                assert !objectType.isArray();
+                AnalysisType type = object.type();
+                assert !type.isArray();
 
-                handleUnsafeAccessedFields(bb, objectType.unsafeAccessedFields(partitionKind), object);
+                handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(partitionKind), object);
             }
+        }
+
+        @Override
+        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+            assert this.isClone();
+            /* When receiver object flow saturates start observing the flow of the object type. */
+            replaceObservedWith(bb, objectType);
         }
 
         @Override
@@ -382,29 +394,4 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             return "UnsafePartitionStoreTypeFlow<" + getState() + "> : " + partitionKind;
         }
     }
-
-    /**
-     * Implements the raw memory store operation type flow.
-     */
-    public static class JavaWriteTypeFlow extends AbstractUnsafeStoreTypeFlow {
-
-        public JavaWriteTypeFlow(JavaWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
-            super(node, objectType, componentType, objectFlow, valueFlow);
-        }
-
-        public JavaWriteTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, JavaWriteTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
-
-        @Override
-        public JavaWriteTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new JavaWriteTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public String toString() {
-            return "JavaWriteTypeFlow<" + getState() + ">";
-        }
-    }
-
 }

@@ -60,14 +60,14 @@ public final class PureNFAMap {
 
     private final RegexAST ast;
     private final PureNFA root;
-    private final PureNFAIndex lookArounds;
+    private final PureNFAIndex subtrees;
     private int prefixLength = 0;
     private StateSet<PureNFAIndex, PureNFA>[] prefixLookbehindEntries;
 
-    public PureNFAMap(RegexAST ast, PureNFA root, PureNFAIndex lookArounds) {
+    public PureNFAMap(RegexAST ast, PureNFA root, PureNFAIndex subtrees) {
         this.ast = ast;
         this.root = root;
-        this.lookArounds = lookArounds;
+        this.subtrees = subtrees;
     }
 
     public RegexAST getAst() {
@@ -78,8 +78,8 @@ public final class PureNFAMap {
         return root;
     }
 
-    public PureNFAIndex getLookArounds() {
-        return lookArounds;
+    public PureNFAIndex getSubtrees() {
+        return subtrees;
     }
 
     public int getPrefixLength() {
@@ -87,7 +87,7 @@ public final class PureNFAMap {
     }
 
     public RegexASTSubtreeRootNode getASTSubtree(PureNFA nfa) {
-        return nfa == root ? ast.getRoot().getSubTreeParent() : ast.getLookArounds().get(nfa.getSubTreeId());
+        return nfa == root ? ast.getRoot().getSubTreeParent() : ast.getSubtrees().get(nfa.getSubTreeId());
     }
 
     /**
@@ -110,12 +110,11 @@ public final class PureNFAMap {
             PureNFAState target = t.getTarget();
             switch (target.getKind()) {
                 case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
-                    break;
                 case PureNFAState.KIND_BACK_REFERENCE:
                 case PureNFAState.KIND_EMPTY_MATCH:
                     return false;
-                case PureNFAState.KIND_LOOK_AROUND:
-                    if (target.isLookAroundNegated() || target.isLookBehind(ast) || !mergeInitialStateMatcher(lookArounds.get(target.getLookAroundId()), acc)) {
+                case PureNFAState.KIND_SUB_MATCHER:
+                    if (target.isSubMatcherNegated() || target.isLookBehind(ast) || !mergeInitialStateMatcher(subtrees.get(target.getSubtreeId()), acc)) {
                         return false;
                     }
                     break;
@@ -145,7 +144,7 @@ public final class PureNFAMap {
         }
         int i = offset - 1;
         if (prefixLookbehindEntries[i] == null) {
-            prefixLookbehindEntries[i] = StateSet.create(lookArounds);
+            prefixLookbehindEntries[i] = StateSet.create(subtrees);
         }
         prefixLookbehindEntries[i].add(lookBehind);
         prefixLength = Math.max(prefixLength, offset);
@@ -153,6 +152,6 @@ public final class PureNFAMap {
 
     public JsonValue toJson() {
         return Json.obj(Json.prop("root", root.toJson(ast)),
-                        Json.prop("lookArounds", lookArounds.stream().map(x -> x.toJson(ast))));
+                        Json.prop("lookArounds", subtrees.stream().map(x -> x.toJson(ast))));
     }
 }

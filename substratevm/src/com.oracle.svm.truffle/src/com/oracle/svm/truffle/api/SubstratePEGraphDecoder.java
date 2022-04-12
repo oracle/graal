@@ -26,6 +26,8 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
@@ -34,7 +36,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -45,8 +46,6 @@ import com.oracle.svm.graal.GraalSupport;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SubstratePEGraphDecoder extends PEGraphDecoder {
 
@@ -61,8 +60,7 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, MethodSubstitutionPlugin plugin, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition) {
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
         /*
          * The EncodedGraph instance also serves as a cache for some information during decoding,
          * e.g., the start offsets of encoded nodes. So it is beneficial to have a cache of the

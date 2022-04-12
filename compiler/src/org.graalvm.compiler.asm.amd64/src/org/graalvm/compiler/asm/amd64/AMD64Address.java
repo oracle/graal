@@ -46,7 +46,7 @@ public final class AMD64Address extends AbstractAddress {
     /**
      * The start of the instruction, i.e., the value that is used as the key for looking up
      * placeholder patching information. Only used for {@link AMD64Assembler#getPlaceholder
-     * placeholder addresses}.
+     * placeholder addresses}. This value is negative for non-placeholder addresses.
      */
     final int instructionStartPosition;
 
@@ -246,5 +246,9 @@ public final class AMD64Address extends AbstractAddress {
 
     public Object getDisplacementAnnotation() {
         return displacementAnnotation;
+    }
+
+    boolean isPlaceholder() {
+        return instructionStartPosition >= 0;
     }
 }
