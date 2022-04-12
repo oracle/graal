@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
@@ -552,9 +551,6 @@ public class PointsToStats {
         } else if (flow instanceof InvokeTypeFlow) {
             InvokeTypeFlow invoke = (InvokeTypeFlow) flow;
             return "Invoke(" + formatMethod(invoke.getTargetMethod()) + ")@" + formatSource(flow);
-        } else if (flow instanceof InitialParamTypeFlow) {
-            InitialParamTypeFlow param = (InitialParamTypeFlow) flow;
-            return "InitialParam(" + param.position() + ")@" + formatMethod(param.method());
         } else if (flow instanceof FormalParamTypeFlow) {
             FormalParamTypeFlow param = (FormalParamTypeFlow) flow;
             return "Parameter(" + param.position() + ")@" + formatMethod(param.method());
