@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.test;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -110,7 +111,7 @@ public class VarargsNFITest extends NFITest {
         @Child FormatNode printf = FormatNodeGen.create();
 
         public SimpleFormatRoot() {
-            this.formatString = lookupAndBind("format_string", "([sint8], uint64, string, ...double) : sint32");
+            this.formatString = lookupAndBind("format_string", "([sint8], uint16, string, ...double) : sint32");
         }
 
         @Override
@@ -167,14 +168,14 @@ public class VarargsNFITest extends NFITest {
 
         public MultiSignatureRoot() {
             super(
-                            new FormatSpec("15 37 28", "([sint8], uint64, string, ...sint64, sint64, sint64) : sint32", "%d %d %d", 15, 37, 28),
-                            new FormatSpec("15 37 28.00", "([sint8], uint64, string, ...sint64, sint64, double) : sint32", "%d %d %f", 15, 37, 28),
-                            new FormatSpec("15 37.00 28", "([sint8], uint64, string, ...sint64, double, sint64) : sint32", "%d %f %d", 15, 37, 28),
-                            new FormatSpec("15 37.00 28.00", "([sint8], uint64, string, ...sint64, double, double) : sint32", "%d %f %f", 15, 37, 28),
-                            new FormatSpec("15.00 37 28", "([sint8], uint64, string, ...double, sint64, sint64) : sint32", "%f %d %d", 15, 37, 28),
-                            new FormatSpec("15.00 37 28.00", "([sint8], uint64, string, ...double, sint64, double) : sint32", "%f %d %f", 15, 37, 28),
-                            new FormatSpec("15.00 37.00 28", "([sint8], uint64, string, ...double, double, sint64) : sint32", "%f %f %d", 15, 37, 28),
-                            new FormatSpec("15.00 37.00 28.00", "([sint8], uint64, string, ...double, double, double) : sint32", "%f %f %f", 15, 37, 28));
+                            new FormatSpec("15 37 28", "([sint8], uint16, string, ...sint64, sint64, sint64) : sint32", "%l %l %l", 15, 37, 28),
+                            new FormatSpec("15 37 28.00", "([sint8], uint16, string, ...sint64, sint64, double) : sint32", "%l %l %f", 15, 37, 28),
+                            new FormatSpec("15 37.00 28", "([sint8], uint16, string, ...sint64, double, sint64) : sint32", "%l %f %l", 15, 37, 28),
+                            new FormatSpec("15 37.00 28.00", "([sint8], uint16, string, ...sint64, double, double) : sint32", "%l %f %f", 15, 37, 28),
+                            new FormatSpec("15.00 37 28", "([sint8], uint16, string, ...double, sint64, sint64) : sint32", "%f %l %l", 15, 37, 28),
+                            new FormatSpec("15.00 37 28.00", "([sint8], uint16, string, ...double, sint64, double) : sint32", "%f %l %f", 15, 37, 28),
+                            new FormatSpec("15.00 37.00 28", "([sint8], uint16, string, ...double, double, sint64) : sint32", "%f %f %l", 15, 37, 28),
+                            new FormatSpec("15.00 37.00 28.00", "([sint8], uint16, string, ...double, double, double) : sint32", "%f %f %f", 15, 37, 28));
         }
     }
 
@@ -187,14 +188,14 @@ public class VarargsNFITest extends NFITest {
 
         public MultiTypesRoot() {
             super(
-                            new FormatSpec("42 8472", "([sint8], uint64, string, ...sint64, sint64) : sint32", "%d %d", 42, 8472),
-                            new FormatSpec("(nil) 8472", "([sint8], uint64, string, ...pointer, sint64) : sint32", "%p %d", new NullObject(), 8472),
-                            new FormatSpec("42.00 8472", "([sint8], uint64, string, ...double, sint64) : sint32", "%f %d", 42, 8472),
-                            new FormatSpec("hello 8472", "([sint8], uint64, string, ...string, sint64) : sint32", "%s %d", "hello", 8472),
-                            new FormatSpec("42 world", "([sint8], uint64, string, ...sint64, string) : sint32", "%d %s", 42, "world"),
-                            new FormatSpec("(nil) world", "([sint8], uint64, string, ...pointer, string) : sint32", "%p %s", new NullObject(), "world"),
-                            new FormatSpec("42.00 world", "([sint8], uint64, string, ...double, string) : sint32", "%f %s", 42, "world"),
-                            new FormatSpec("hello world", "([sint8], uint64, string, ...string, string) : sint32", "%s %s", "hello", "world"));
+                            new FormatSpec("42 8472", "([sint8], uint16, string, ...sint64, sint64) : sint32", "%l %l", 42, 8472),
+                            new FormatSpec("(nil) 8472", "([sint8], uint16, string, ...pointer, sint64) : sint32", "%p %l", new NullObject(), 8472),
+                            new FormatSpec("42.00 8472", "([sint8], uint16, string, ...double, sint64) : sint32", "%f %l", 42, 8472),
+                            new FormatSpec("hello 8472", "([sint8], uint16, string, ...string, sint64) : sint32", "%s %l", "hello", 8472),
+                            new FormatSpec("42 world", "([sint8], uint16, string, ...sint64, string) : sint32", "%l %s", 42, "world"),
+                            new FormatSpec("(nil) world", "([sint8], uint16, string, ...pointer, string) : sint32", "%p %s", new NullObject(), "world"),
+                            new FormatSpec("42.00 world", "([sint8], uint16, string, ...double, string) : sint32", "%f %s", 42, "world"),
+                            new FormatSpec("hello world", "([sint8], uint16, string, ...string, string) : sint32", "%s %s", "hello", "world"));
         }
     }
 
@@ -207,21 +208,69 @@ public class VarargsNFITest extends NFITest {
 
         public VariableArgCountFormatRoot() {
             super(
-                            new FormatSpec("42", "([sint8], uint64, string, ...sint64) : sint32", "%d", 42),
-                            new FormatSpec("42 x", "([sint8], uint64, string, ...sint64, string) : sint32", "%d %s", 42, "x"),
-                            new FormatSpec("42 x (nil)", "([sint8], uint64, string, ...sint64, string, pointer) : sint32", "%d %s %p", 42, "x", new NullObject()),
-                            new FormatSpec("42 x (nil) 42.00", "([sint8], uint64, string, ...sint64, string, pointer, double) : sint32", "%d %s %p %f", 42, "x", new NullObject(), 42),
-                            new FormatSpec("x", "([sint8], uint64, string, ...string) : sint32", "%s", new BoxedPrimitive("x")),
-                            new FormatSpec("x (nil)", "([sint8], uint64, string, ...string, pointer) : sint32", "%s %p", new BoxedPrimitive("x"), new NullObject()),
-                            new FormatSpec("x (nil) 42.00", "([sint8], uint64, string, ...string, pointer, double) : sint32", "%s %p %f", new BoxedPrimitive("x"), new NullObject(), 42),
-                            new FormatSpec("x (nil) 42.00 42", "([sint8], uint64, string, ...string, pointer, double, sint64) : sint32", "%s %p %f %d", new BoxedPrimitive("x"), new NullObject(), 42,
+                            new FormatSpec("42", "([sint8], uint16, string, ...sint64) : sint32", "%l", 42),
+                            new FormatSpec("42 x", "([sint8], uint16, string, ...sint64, string) : sint32", "%l %s", 42, "x"),
+                            new FormatSpec("42 x (nil)", "([sint8], uint16, string, ...sint64, string, pointer) : sint32", "%l %s %p", 42, "x", new NullObject()),
+                            new FormatSpec("42 x (nil) 42.00", "([sint8], uint16, string, ...sint64, string, pointer, double) : sint32", "%l %s %p %f", 42, "x", new NullObject(), 42),
+                            new FormatSpec("x", "([sint8], uint16, string, ...string) : sint32", "%s", new BoxedPrimitive("x")),
+                            new FormatSpec("x (nil)", "([sint8], uint16, string, ...string, pointer) : sint32", "%s %p", new BoxedPrimitive("x"), new NullObject()),
+                            new FormatSpec("x (nil) 42.00", "([sint8], uint16, string, ...string, pointer, double) : sint32", "%s %p %f", new BoxedPrimitive("x"), new NullObject(), 42),
+                            new FormatSpec("x (nil) 42.00 42", "([sint8], uint16, string, ...string, pointer, double, sint64) : sint32", "%s %p %f %l", new BoxedPrimitive("x"), new NullObject(), 42,
                                             42),
-                            new FormatSpec("x (nil)", "([sint8], uint64, string, ...string, nullable) : sint32", "%s %p", new BoxedPrimitive("x"), new NullObject()));
+                            new FormatSpec("x (nil)", "([sint8], uint16, string, ...string, nullable) : sint32", "%s %p", new BoxedPrimitive("x"), new NullObject()));
         }
     }
 
     @Test
     public void testVariableArgCountFormat(@Inject(VariableArgCountFormatRoot.class) CallTarget callTarget) {
+        callTarget.call();
+    }
+
+    public static class PromoteArgTypeFormatRoot extends MultiFormatRoot {
+
+        private static final FormatSpec[] EMPTY = new FormatSpec[0];
+
+        private enum TestValue {
+            TEST_S8_1("%d", "sint8", Byte.MAX_VALUE),
+            TEST_S8_2("%d", "sint8", Byte.MIN_VALUE),
+            TEST_U8("%d", "uint8", 0xFF),
+            TEST_S16_1("%d", "sint16", Short.MAX_VALUE),
+            TEST_S16_2("%d", "sint16", Short.MIN_VALUE),
+            TEST_U16("%d", "uint16", 0xFFFF),
+            TEST_FLOAT("%f", "float", 42.25f);
+
+            String format;
+            String nfiType;
+            Object value;
+
+            TestValue(String format, String nfiType, Object value) {
+                this.format = format;
+                this.nfiType = nfiType;
+                this.value = value;
+            }
+        }
+
+        static FormatSpec[] genSpecs() {
+            ArrayList<FormatSpec> specs = new ArrayList<>();
+            for (TestValue v1 : TestValue.values()) {
+                for (TestValue v2 : TestValue.values()) {
+                    String formatString = String.format("%s %s", v1.format, v2.format);
+                    String signature = String.format("([sint8], uint16, string, ...%s, %s) : sint32", v1.nfiType, v2.nfiType);
+                    String expected = String.format("%s %s", v1.value, v2.value);
+
+                    specs.add(new FormatSpec(expected, signature, formatString, v1.value, v2.value));
+                }
+            }
+            return specs.toArray(EMPTY);
+        }
+
+        public PromoteArgTypeFormatRoot() {
+            super(genSpecs());
+        }
+    }
+
+    @Test
+    public void testPromoteArgType(@Inject(PromoteArgTypeFormatRoot.class) CallTarget callTarget) {
         callTarget.call();
     }
 }
