@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -95,10 +98,15 @@ final class LibFFISignature {
         } else {
             cif = context.prepareSignatureVarargs(realRetType, argCount, fixedArgCount, argTypes);
         }
+        if (cif == 0) {
+            throw CompilerDirectives.shouldNotReachHere(String.format("invalid signature (ret: %s, argCount: %d, fixedArgCount: %d, args: %s)",
+                            retType, argCount, fixedArgCount, Arrays.toString(argTypes)));
+        }
         return create(cif, info);
     }
 
     private static LibFFISignature create(long cif, CachedSignatureInfo info) {
+        assert cif > 0;
         LibFFISignature ret = new LibFFISignature(cif, info);
         NativeAllocation.getGlobalQueue().registerNativeAllocation(ret, new FreeDestructor(cif));
         return ret;

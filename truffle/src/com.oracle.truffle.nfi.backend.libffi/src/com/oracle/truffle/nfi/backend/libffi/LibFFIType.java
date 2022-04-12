@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosureArgumentNode;
@@ -124,6 +125,13 @@ final class LibFFIType {
     protected LibFFIType(CachedTypeInfo typeInfo, long type) {
         this.typeInfo = typeInfo;
         this.type = type;
+    }
+
+    @Override
+    public String toString() {
+        // debug output only
+        CompilerAsserts.neverPartOfCompilation();
+        return typeInfo.toString();
     }
 
     enum Direction {
@@ -235,6 +243,11 @@ final class LibFFIType {
                     throw CompilerDirectives.shouldNotReachHere(simpleType.name());
             }
         }
+
+        @Override
+        public String toString() {
+            return simpleType.toString();
+        }
     }
 
     static final class SimpleType extends BasicType {
@@ -338,11 +351,6 @@ final class LibFFIType {
                 default:
                     return this;
             }
-        }
-
-        @Override
-        public String toString() {
-            return simpleType.toString();
         }
     }
 
@@ -486,6 +494,11 @@ final class LibFFIType {
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
+
+        @Override
+        public String toString() {
+            return "[" + elementType.toString() + "]";
+        }
     }
 
     @SuppressWarnings("unused")
@@ -512,6 +525,11 @@ final class LibFFIType {
         @Override
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return new InjectedClosureArgumentNode();
+        }
+
+        @Override
+        public String toString() {
+            return "ENV";
         }
     }
 }
