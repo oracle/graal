@@ -45,7 +45,7 @@ public class LoadLocalInstruction extends Instruction {
         b.startGroup();
         b.startCall("LE_BYTES", "getShort");
         b.variable(vars.bc);
-        b.startGroup().variable(vars.bci).string(" + 1").end();
+        b.startGroup().variable(vars.bci).string(" + " + getArgumentOffset(0)).end();
         b.end();
         b.string(" + VALUES_OFFSET");
         b.end();

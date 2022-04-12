@@ -46,7 +46,7 @@ public class ConditionalBranchInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.declaration(ConditionProfile, "profile", "conditionProfiles[LE_BYTES.getShort(bc, bci + 3)]");
+        b.declaration(ConditionProfile, "profile", "conditionProfiles[LE_BYTES.getShort(bc, bci + " + getArgumentOffset(1) + ")]");
 
         if (boxed) {
             b.declaration("boolean", "cond", "(boolean) frame.getObject(sp - 1)");
@@ -72,7 +72,7 @@ public class ConditionalBranchInstruction extends Instruction {
         b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
         b.statement("continue loop");
         b.end().startElseBlock();
-        b.startAssign(vars.bci).string("LE_BYTES.getShort(bc, bci + 1)").end();
+        b.startAssign(vars.bci).string("LE_BYTES.getShort(bc, bci + " + getArgumentOffset(0) + ")").end();
         b.statement("continue loop");
         b.end();
 

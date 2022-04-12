@@ -5,12 +5,14 @@ import java.io.StringWriter;
 import java.io.Writer;
 
 import javax.lang.model.element.Element;
+import javax.lang.model.type.TypeKind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
@@ -52,7 +54,9 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createReadOpcode(CodeTree bc, CodeTree bci) {
-        return CodeTreeBuilder.createBuilder().tree(bc).string("[").tree(bci).string("]").build();
+        return CodeTreeBuilder.createBuilder()//
+                        .startCall("LE_BYTES", "getShort")//
+                        .tree(bc).tree(bci).end(1).build();
     }
 
     public static CodeTree createReadOpcode(CodeVariableElement bc, CodeVariableElement bci) {
@@ -62,7 +66,12 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree createWriteOpcode(CodeTree bc, CodeTree bci, CodeTree value) {
-        return CodeTreeBuilder.createBuilder().startStatement().tree(bc).string("[").tree(bci).string("] = ").tree(value).end().build();
+        return CodeTreeBuilder.createBuilder().startStatement()//
+                        .startCall("LE_BYTES", "putShort")//
+                        .tree(bc) //
+                        .tree(bci) //
+                        .startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).tree(value).end() //
+                        .end(2).build();
     }
 
     public static CodeTree createWriteOpcode(CodeVariableElement bc, CodeVariableElement bci, CodeVariableElement value) {

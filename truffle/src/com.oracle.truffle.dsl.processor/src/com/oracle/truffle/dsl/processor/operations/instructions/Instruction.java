@@ -13,6 +13,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 
 public abstract class Instruction {
@@ -350,7 +351,7 @@ public abstract class Instruction {
     }
 
     public int opcodeLength() {
-        return 1;
+        return 2;
     }
 
     public int getArgumentOffset(int index) {
@@ -425,7 +426,7 @@ public abstract class Instruction {
         b.end(2);
 
         // emit opcode
-        b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string("] = ").variable(opcodeIdField).end();
+        b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, opcodeIdField));
 
         // emit arguments
         int argIndex = 0;

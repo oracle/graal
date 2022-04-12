@@ -319,7 +319,7 @@ public class OperationsBytecodeCodeGenerator {
 
             CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");
             CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
-            CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(byte.class), "curOpcode");
+            CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(short.class), "curOpcode");
 
             b.declaration("int", varSp.getName(), "maxLocals + VALUES_OFFSET");
             b.declaration("int", varBci.getName(), "0");
@@ -343,7 +343,7 @@ public class OperationsBytecodeCodeGenerator {
             vars.sp = varSp;
             vars.returnValue = varReturnValue;
 
-            b.declaration("byte", varCurOpcode.getName(), CodeTreeBuilder.singleString("bc[bci]"));
+            b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(fldBc, varBci));
 
             b.startTryBlock();
 
@@ -557,7 +557,7 @@ public class OperationsBytecodeCodeGenerator {
             b.startWhile().variable(vars.bci).string(" < ").variable(varTargetBci).end();
             b.startBlock();
 
-            b.startSwitch().string("bc[bci]").end();
+            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(fldBc, vars.bci)).end();
             b.startBlock();
 
             for (Instruction instr : m.getInstructions()) {
@@ -678,7 +678,7 @@ public class OperationsBytecodeCodeGenerator {
 
             b.statement("sb.append(String.format(\" %04x \", bci))");
 
-            b.startSwitch().string("bc[bci]").end();
+            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(fldBc, vars.bci)).end();
             b.startBlock();
 
             for (Instruction op : m.getInstructions()) {

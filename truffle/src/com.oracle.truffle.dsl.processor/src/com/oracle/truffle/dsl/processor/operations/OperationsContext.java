@@ -21,7 +21,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstru
 
 public class OperationsContext {
 
-    private int instructionId = 1;
+    private int instructionId = 257;
     private int operationId = 1;
 
     public Instruction commonPop;
@@ -63,7 +63,6 @@ public class OperationsContext {
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
 
         createLoadConstant();
-
         createLoadArgument();
         createLoadStoreLocal();
         createReturn();
