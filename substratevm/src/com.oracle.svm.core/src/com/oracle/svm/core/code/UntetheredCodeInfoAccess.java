@@ -32,7 +32,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 
 /**
- * Provides access to {@link UntetheredCodeInfo} objects. All methods in here should only be called
+ * Provides access to {@link UntetheredCodeInfo} objects. All methods in here may only be called
  * from uninterruptible code as the GC could free the {@link UntetheredCodeInfo} otherwise.
  */
 public final class UntetheredCodeInfoAccess {

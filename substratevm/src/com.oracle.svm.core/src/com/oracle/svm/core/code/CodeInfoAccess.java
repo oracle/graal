@@ -50,8 +50,10 @@ import com.oracle.svm.core.util.VMError;
  * object. This helper class is necessary to ensure that {@link CodeInfo} objects are used
  * correctly, as they are garbage collected even though they live in unmanaged memory. For that
  * purpose, every {@link CodeInfo} object has a tether object. The garbage collector can free a
- * {@link CodeInfo} object if its tether object is unreachable at a safepoint, that is, in any
- * method that is not annotated with {@link Uninterruptible}.
+ * {@link CodeInfo} object if its tether object is unreachable at a safepoint, that is, in
+ * <b>ANY</b> method that is <b>NOT</b> annotated with {@link Uninterruptible}. Even a blocking VM
+ * operation that needs a safepoint won't guarantee that the {@link CodeInfo} object is kept alive
+ * because GCs can be triggered within VM operations as well.
  * <p>
  * For better type-safety (i.e., to indicate if the tether of a {@link CodeInfo} object was already
  * acquired), we distinguish between {@link UntetheredCodeInfo} and {@link CodeInfo}.

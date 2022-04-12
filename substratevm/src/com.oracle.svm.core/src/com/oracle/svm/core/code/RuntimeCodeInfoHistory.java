@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoAccess.HasInstalledCode;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.thread.Safepoint;
@@ -72,7 +73,12 @@ public class RuntimeCodeInfoHistory {
         assert VMOperation.isInProgressAtSafepoint();
 
         traceCodeCache(kind, info, true);
-        recentOperations.next().setValues(kind, info, CodeInfoAccess.getState(info), CodeInfoAccess.getName(info), CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info),
+        logOperation0(kind, info, CodeInfoAccess.getName(info));
+    }
+
+    @Uninterruptible(reason = "Prevent the GC from logging any invalidations as this could causes races.")
+    private void logOperation0(String kind, CodeInfo info, String name) {
+        recentOperations.next().setValues(kind, info, CodeInfoAccess.getState(info), name, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info),
                         RuntimeCodeInfoAccess.getInstalledCode(info));
     }
 
@@ -80,8 +86,7 @@ public class RuntimeCodeInfoHistory {
         assert VMOperation.isInProgressAtSafepoint() || VMThreads.isTearingDown();
 
         traceCodeCache("Freed", info, false);
-        recentOperations.next().setValues("Freed", info, CodeInfoAccess.getState(info), null, CodeInfoAccess.getCodeStart(info), CodeInfoAccess.getCodeEnd(info),
-                        RuntimeCodeInfoAccess.getInstalledCode(info));
+        logOperation0("Freed", info, null);
     }
 
     private static void traceCodeCache(String kind, CodeInfo info, boolean allowJavaHeapAccess) {
@@ -128,6 +133,7 @@ public class RuntimeCodeInfoHistory {
         CodeCacheLogEntry() {
         }
 
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public void setValues(String kind, CodeInfo codeInfo, int codeInfoState, String codeName, CodePointer codeStart, CodePointer codeEnd, SubstrateInstalledCode installedCode) {
             assert VMOperation.isInProgressAtSafepoint();
             assert Heap.getHeap().isInImageHeap(kind);

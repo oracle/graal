@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -101,6 +102,7 @@ public class AbstractRuntimeCodeInstaller {
 
                 CodeInfoTable.getRuntimeCodeCache().addMethod(codeInfo);
                 platformHelper().performCodeSynchronization(codeInfo);
+                VMError.guarantee(CodeInfoAccess.getState(codeInfo) == CodeInfo.STATE_CODE_CONSTANTS_LIVE && installedCode.isValid(), "The code can't be invalidated before the VM operation finishes");
             } catch (Throwable e) {
                 error = e;
             }

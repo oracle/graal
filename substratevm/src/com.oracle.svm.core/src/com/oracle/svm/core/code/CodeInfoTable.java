@@ -188,13 +188,21 @@ public class CodeInfoTable {
         vmOp.enqueue();
     }
 
-    /**
-     * This invalidation is done at a safepoint and we acquire the tether of the {@link CodeInfo}
-     * object. Therefore, it is guaranteed that there is no conflict with the {@link CodeInfo}
-     * invalidation/freeing that the GC does because the tether is still reachable.
-     */
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    private static void invalidateInstalledCodeAtSafepoint(CodePointer codePointer) {
+    private static void invalidateInstalledCodeAtSafepoint(SubstrateInstalledCode installedCode, CodePointer codePointer) {
+        /*
+         * Don't try to invalidate the code if it was already invalidated earlier. It is essential
+         * that we do this check in uninterruptible code because the GC can invalidate code as well.
+         */
+        if (!installedCode.isAlive()) {
+            return;
+        }
+
+        /*
+         * This invalidation is done at a safepoint and we acquire the tether of the {@link
+         * CodeInfo} object. Therefore, it is guaranteed that there is no conflict with the {@link
+         * CodeInfo} invalidation/freeing that the GC does because the tether is still reachable.
+         */
         UntetheredCodeInfo untetheredInfo = getRuntimeCodeCache().lookupCodeInfo(codePointer);
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try {
@@ -259,9 +267,8 @@ public class CodeInfoTable {
         @Override
         protected void operate() {
             counters().invalidateInstalledCodeCount.inc();
-            if (installedCode.isAlive()) { // could be invalid (non-entrant), but executing
-                invalidateInstalledCodeAtSafepoint(WordFactory.pointer(installedCode.getAddress()));
-            }
+            CodePointer codePointer = WordFactory.pointer(installedCode.getAddress());
+            invalidateInstalledCodeAtSafepoint(installedCode, codePointer);
         }
     }
 }
