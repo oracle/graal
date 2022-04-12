@@ -33,25 +33,25 @@
 #include <time.h>
 
 int main() {
-  struct timespec duration = { .tv_sec = 0, .tv_nsec = 100E6 };
-  struct timespec start, end;
+    struct timespec duration = { .tv_sec = 0, .tv_nsec = 100E6 };
+    struct timespec start, end;
 
-  if (timespec_get(&start, TIME_UTC) != 0) {
-    abort();
-  }
+    if (timespec_get(&start, TIME_UTC) != 0) {
+        abort();
+    }
 
-  if (thrd_sleep(&duration, &duration) != 0) {
-    abort();
-  }
+    if (thrd_sleep(&duration, &duration) != 0) {
+        abort();
+    }
 
-  if (timespec_get(&end, TIME_UTC) != 0) {
-    abort();
-  }
+    if (timespec_get(&end, TIME_UTC) != 0) {
+        abort();
+    }
 
-  // Some time should have elapsed.
-  if (start.tv_sec == end.tv_sec && start.tv_nsec == end.tv_nsec) {
-    abort();
-  }
+    // Some time should have elapsed.
+    if (start.tv_sec == end.tv_sec && start.tv_nsec == end.tv_nsec) {
+        abort();
+    }
 
-  return 0;
+    return 0;
 }

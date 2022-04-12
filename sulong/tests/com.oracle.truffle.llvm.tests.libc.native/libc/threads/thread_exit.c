@@ -32,29 +32,29 @@
 #include <stdlib.h>
 #include <threads.h>
 
-int run(void * arg) {
-  thrd_exit(42);
+int run(void *arg) {
+    thrd_exit(42);
 
-  printf("should not reach here!\n");
-  abort();
-  return 0;
+    printf("should not reach here!\n");
+    abort();
+    return 0;
 }
 
 int main() {
-  thrd_t thread;
+    thrd_t thread;
 
-  if (thrd_create(&thread, run, NULL) != thrd_success) {
-    abort();
-  }
+    if (thrd_create(&thread, run, NULL) != thrd_success) {
+        abort();
+    }
 
-  int res;
-  if (thrd_join(thread, &res) != thrd_success) {
-    abort();
-  }
+    int res;
+    if (thrd_join(thread, &res) != thrd_success) {
+        abort();
+    }
 
-  if (res != 42) {
-    abort();
-  }
+    if (res != 42) {
+        abort();
+    }
 
-  return 0;
+    return 0;
 }
