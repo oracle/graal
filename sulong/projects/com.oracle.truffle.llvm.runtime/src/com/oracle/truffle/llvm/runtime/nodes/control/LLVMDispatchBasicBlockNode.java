@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -99,6 +100,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
             CompilerAsserts.partialEvaluationConstant(basicBlockIndex);
             if (CompilerDirectives.hasNextTier()) {
                 if (basicBlockIndex <= counters.previousBasicBlockIndex) {
+                    TruffleSafepoint.poll(this);
                     counters.backEdgeCounter++;
                     if (CompilerDirectives.inInterpreter() && osrMode == SulongEngineOption.OSRMode.BYTECODE && BytecodeOSRNode.pollOSRBackEdge(this)) {
                         returnValue = BytecodeOSRNode.tryOSR(this, basicBlockIndex, counters, null, frame);
