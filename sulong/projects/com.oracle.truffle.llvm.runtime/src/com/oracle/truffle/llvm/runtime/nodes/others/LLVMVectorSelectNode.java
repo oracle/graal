@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,7 +57,7 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     @Specialization
     protected Object doOp(boolean condition, Object trueValue, Object elseValue,
-                                @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+                    @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
         return conditionProfile.profile(condition) ? trueValue : elseValue;
     }
 
