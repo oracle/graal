@@ -5,6 +5,7 @@ import java.util.List;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeKind;
 
+import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -26,6 +27,8 @@ public class CustomInstruction extends Instruction {
     private DataKind[] dataKinds = null;
     private int numChildNodes;
     private int numConsts;
+    private CodeExecutableElement setResultUnboxedMethod;
+    private CodeExecutableElement setInputUnboxedMethod;
 
     public SingleOperationData getData() {
         return data;
@@ -201,4 +204,37 @@ public class CustomInstruction extends Instruction {
     public void setNumConsts(int numConsts) {
         this.numConsts = numConsts;
     }
+
+    public void setSetResultUnboxedMethod(CodeExecutableElement setResultUnboxedMethod) {
+        this.setResultUnboxedMethod = setResultUnboxedMethod;
+    }
+
+    public void setSetInputUnboxedMethod(CodeExecutableElement setInputUnboxedMethod) {
+        this.setInputUnboxedMethod = setInputUnboxedMethod;
+    }
+
+    @Override
+    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+        return CodeTreeBuilder.createBuilder() //
+                        .startStatement() //
+                        .startCall("this", setResultUnboxedMethod) //
+                        .variable(vars.bci) //
+                        .end(2).build();
+    }
+
+    @Override
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+        if (data.getMainProperties().isVariadic) {
+            return null;
+        }
+
+        return CodeTreeBuilder.createBuilder() //
+                        .startStatement() //
+                        .startCall("this", setInputUnboxedMethod) //
+                        .variable(vars.bci) //
+                        .tree(index) //
+                        .end(2).build();
+
+    }
+
 }

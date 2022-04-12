@@ -1,6 +1,7 @@
 package com.oracle.truffle.api.operation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -32,6 +33,10 @@ public abstract class OperationsBuilder {
         labelFills.clear();
         maxLocals = -1;
         instrumentationId = 0;
+
+        instructionIndex = 0;
+        curStack = 0;
+        maxStack = 0;
     }
 
     protected final Object trackLocalsHelper(Object value) {
@@ -144,6 +149,55 @@ public abstract class OperationsBuilder {
         }
         lbl.hasValue = true;
         lbl.targetBci = bci;
+    }
+
+    // ------------------------ stack / successor handling ------------------------
+
+    private int instructionIndex;
+
+    private int[] stackSourceIndices = new int[1024];
+    private int curStack;
+    private int maxStack;
+
+    private short[] predecessorIndices = new short[65535];
+
+    protected void doBeforeEmitInstruction(int bci, int numPops, boolean pushValue) {
+        for (int i = numPops - 1; i >= 0; i--) {
+            int predIndex = stackSourceIndices[--curStack];
+            predecessorIndices[predIndex] = (short) bci;
+            predecessorIndices[predIndex + 1] = (short) i;
+        }
+
+        // TODO: we could only record instrs that produce values
+
+        if (pushValue) {
+            int index = instructionIndex;
+            instructionIndex += 2;
+
+            stackSourceIndices[curStack++] = index;
+
+            if (curStack > maxStack) {
+                maxStack = curStack;
+            }
+        }
+    }
+
+    protected short[] createPredecessorIndices() {
+        return Arrays.copyOf(predecessorIndices, instructionIndex);
+    }
+
+    protected int createMaxStack() {
+        return maxStack;
+    }
+
+    protected int getCurStack() {
+        return curStack;
+    }
+
+    protected void setCurStack(int curStack) {
+        // this should probably be:
+        // assert this.curStack == curStack;
+        this.curStack = curStack;
     }
 
     // ------------------------ source sections ------------------------

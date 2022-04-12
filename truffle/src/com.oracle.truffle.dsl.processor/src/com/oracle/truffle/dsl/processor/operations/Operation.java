@@ -17,6 +17,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction.ConstantKind;
 
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
@@ -52,8 +54,6 @@ public abstract class Operation {
         public CodeVariableElement lastChildPushCount;
         public CodeVariableElement childIndex;
         public CodeVariableElement numChildren;
-        public CodeVariableElement curStack;
-        public CodeVariableElement maxStack;
         public CodeVariableElement keepingInstrumentation;
         public CodeVariableElement numChildNodes;
     }
@@ -134,6 +134,47 @@ public abstract class Operation {
         }
     }
 
+    public static class LoadConstant extends Operation {
+        private final LoadConstantInstruction[] instructions;
+
+        protected LoadConstant(OperationsContext builder, int id, LoadConstantInstruction... instructions) {
+            super(builder, "ConstObject", id, 0);
+            this.instructions = instructions;
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            CodeTree[] arguments = new CodeTree[]{CodeTreeBuilder.singleString("arg0")};
+            for (ConstantKind kind : ConstantKind.values()) {
+                if (kind == ConstantKind.OBJECT) {
+                    b.startElseBlock();
+                } else {
+                    b.startIf(kind.ordinal() > 0);
+                    b.string("arg0 instanceof " + kind.getTypeNameBoxed());
+                    b.end().startBlock();
+                }
+
+                b.tree(instructions[kind.ordinal()].createEmitCode(vars, arguments));
+
+                b.end();
+            }
+
+            return b.build();
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(ProcessorContext.getInstance().getType(Object.class));
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("1");
+        }
+    }
+
     public static class Block extends Operation {
         protected Block(OperationsContext builder, int id) {
             super(builder, "Block", id, VARIABLE_CHILDREN);
@@ -142,6 +183,15 @@ public abstract class Operation {
         // for child classes
         protected Block(OperationsContext builder, String name, int id) {
             super(builder, name, id, VARIABLE_CHILDREN);
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startAssign(vars.lastChildPushCount).string("0").end();
+
+            return b.build();
         }
 
         @Override
@@ -418,7 +468,7 @@ public abstract class Operation {
             CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
             b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
             b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
-            b.startStatement().variable(varBeh).string(".startStack = ").variable(vars.curStack).end();
+            b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
             b.startStatement().variable(varBeh).string(".exceptionIndex = (int)").variable(vars.operationData).string(".arguments[0]").end();
             b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
 
@@ -459,7 +509,7 @@ public abstract class Operation {
             b.startIf().variable(vars.childIndex).string(" == 1").end();
             b.startBlock();
 
-            b.startAssign(vars.curStack).tree(createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler)).string(".startStack").end();
+            b.startStatement().startCall("setCurStack").startGroup().tree(createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler)).string(".startStack").end(3);
             b.startStatement().tree(createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler)).string(".handlerBci = ").variable(vars.bci).end();
 
             b.end();

@@ -40,4 +40,14 @@ public class BranchInstruction extends Instruction {
     public boolean isBranchInstruction() {
         return true;
     }
+
+    @Override
+    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+        return null;
+    }
+
+    @Override
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+        return null;
+    }
 }

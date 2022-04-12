@@ -35,4 +35,14 @@ public class LoadLocalInstruction extends Instruction {
         return b.build();
     }
 
+    @Override
+    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+        // TODO implement local (un)boxing
+        return null;
+    }
+
+    @Override
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+        return null;
+    }
 }

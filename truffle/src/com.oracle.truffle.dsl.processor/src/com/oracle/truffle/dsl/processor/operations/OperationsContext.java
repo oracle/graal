@@ -1,7 +1,12 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
+import java.util.List;
 
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
@@ -13,10 +18,12 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.Resu
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationEnterInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationExitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationLeaveInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadArgumentInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction.ConstantKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.SuperInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.TransferInstruction;
 
 public class OperationsContext {
 
@@ -24,8 +31,11 @@ public class OperationsContext {
     private int operationId = 1;
 
     public Instruction commonPop;
+
     public Instruction commonBranch;
+
     public Instruction commonBranchFalse;
+    public Instruction commonBranchFalseBoxed;
 
     public final ArrayList<Instruction> instructions = new ArrayList<>();
     public final ArrayList<Operation> operations = new ArrayList<>();
@@ -37,8 +47,11 @@ public class OperationsContext {
 
     private void createCommonInstructions() {
         commonPop = add(new DiscardInstruction("pop", instructionId++, InputType.STACK_VALUE_IGNORED));
+
         commonBranch = add(new BranchInstruction(instructionId++));
-        commonBranchFalse = add(new ConditionalBranchInstruction(instructionId++));
+
+        commonBranchFalse = add(new ConditionalBranchInstruction(this, instructionId++, false));
+        commonBranchFalseBoxed = add(new ConditionalBranchInstruction(this, instructionId++, true));
     }
 
     private void createBuiltinOperations() {
@@ -54,11 +67,14 @@ public class OperationsContext {
 
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
-        add(new Operation.Simple(this, "ConstObject", operationId++, 0, add(new TransferInstruction("load.constant", instructionId++, ResultType.STACK_VALUE, InputType.CONST_POOL))));
-        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, add(new TransferInstruction("load.argument", instructionId++, ResultType.STACK_VALUE, InputType.ARGUMENT))));
+
+        createLoadConstant();
+
+        createLoadArgument();
+
         add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(instructionId++))));
         add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(instructionId++))));
-        add(new Operation.Simple(this, "Return", operationId++, 1, add(new TransferInstruction("return", instructionId++, ResultType.RETURN, InputType.STACK_VALUE))));
+        createReturn();
 
         add(new Operation.Instrumentation(this, operationId++,
                         add(new InstrumentationEnterInstruction(instructionId++)),
@@ -70,12 +86,49 @@ public class OperationsContext {
 // iStloc}));
     }
 
-    public Instruction add(Instruction elem) {
+    private void createLoadArgument() {
+        LoadArgumentInstruction ldargInit = add(new LoadArgumentInstruction(instructionId++));
+        LoadArgumentInstruction ldargUninit = add(new LoadArgumentInstruction(instructionId++, ldargInit));
+        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, ldargUninit));
+    }
+
+    private void createLoadConstant() {
+        LoadConstantInstruction loadObject = add(new LoadConstantInstruction(instructionId++, false, ConstantKind.OBJECT, null));
+
+        LoadConstantInstruction[] instrs = new LoadConstantInstruction[ConstantKind.values().length];
+        LoadConstantInstruction[] instrsBoxed = new LoadConstantInstruction[ConstantKind.values().length];
+
+        for (ConstantKind kind : ConstantKind.values()) {
+            if (kind.isSingleByte()) {
+                instrsBoxed[kind.ordinal()] = add(new LoadConstantInstruction(instructionId++, true, kind, null));
+            } else {
+                instrsBoxed[kind.ordinal()] = loadObject;
+            }
+        }
+
+        for (ConstantKind kind : ConstantKind.values()) {
+            if (kind == ConstantKind.OBJECT) {
+                instrs[kind.ordinal()] = loadObject;
+            } else {
+                instrs[kind.ordinal()] = add(new LoadConstantInstruction(instructionId++, false, kind, instrsBoxed[kind.ordinal()]));
+            }
+        }
+
+        add(new Operation.LoadConstant(this, operationId++, instrs));
+    }
+
+    private void createReturn() {
+        ReturnInstruction retInit = add(new ReturnInstruction(instructionId++));
+        ReturnInstruction retUninit = add(new ReturnInstruction(instructionId++, retInit));
+        add(new Operation.Simple(this, "Return", operationId++, 1, retUninit));
+    }
+
+    public <T extends Instruction> T add(T elem) {
         instructions.add(elem);
         return elem;
     }
 
-    public Operation add(Operation elem) {
+    public <T extends Operation> T add(T elem) {
         operations.add(elem);
         return elem;
     }

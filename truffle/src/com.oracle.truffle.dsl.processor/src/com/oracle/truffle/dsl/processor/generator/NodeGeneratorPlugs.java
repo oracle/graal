@@ -8,6 +8,7 @@ import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -16,6 +17,7 @@ import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 
 public interface NodeGeneratorPlugs {
     String transformNodeMethodName(String name);
@@ -44,13 +46,13 @@ public interface NodeGeneratorPlugs {
 
     void initializeFrameState(FrameState frameState, CodeTreeBuilder builder);
 
-    boolean createCallSpecialization(SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder builder, boolean inBoundary);
+    boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder builder, boolean inBoundary);
 
-    boolean createCallExecuteAndSpecialize(CodeTreeBuilder builder, CodeTree call);
+    boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call);
 
     void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments);
 
-    boolean createCallWrapInAMethod(CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters);
+    boolean createCallWrapInAMethod(FrameState frameState, CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters);
 
     CodeTree createAssignExecuteChild(
                     NodeData node, FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType, LocalVariable targetValue,
@@ -60,4 +62,13 @@ public interface NodeGeneratorPlugs {
 
     Boolean needsFrameToExecute(List<SpecializationData> specializations);
 
+    void addAdditionalStateBits(List<Object> stateObjects);
+
+    void setMultiState(MultiStateBitSet multiState);
+
+    int getRequiredStateBits(TypeSystemData types, Object object);
+
+    void createSpecialize(FrameState frameState, SpecializationData specialization, CodeTreeBuilder builder);
+
+    boolean needsRewrites();
 }

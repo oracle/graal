@@ -18,7 +18,7 @@ class TestLanguageBackend {
         b.beginSource(source);
         build(ast);
         b.endSource();
-        b.build();
+        System.out.println(b.build().dump());
     }
 
     private void build(TestLanguageAst ast) {

@@ -74,8 +74,16 @@ public class TestOperations {
     @Operation
     static class ThrowOperation {
         @Specialization
-        public static void perform(@Bind("$bci") int bci, @Bind("this") OperationsNode node) {
+        public static Object perform(@Bind("$bci") int bci, @Bind("this") OperationsNode node) {
             throw new TestException("fail", node, bci);
+        }
+    }
+
+    @Operation
+    static class AlwaysBoxOperation {
+        @Specialization
+        public static Object perform(Object value) {
+            return value;
         }
     }
 }

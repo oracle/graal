@@ -97,6 +97,10 @@ public class OperationsBytecodeCodeGenerator {
         GeneratorUtils.addCompilationFinalAnnotation(fldConditionBranches, 1);
         builderBytecodeNodeType.add(fldConditionBranches);
 
+        CodeVariableElement fldSuccessorIndices = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(short.class)), "successorIndices");
+        GeneratorUtils.addCompilationFinalAnnotation(fldSuccessorIndices, 1);
+        builderBytecodeNodeType.add(fldSuccessorIndices);
+
         CodeVariableElement fldProbeNodes = null;
         if (withInstrumentation) {
             fldProbeNodes = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.OperationsInstrumentTreeNode), "instruments");
@@ -153,7 +157,7 @@ public class OperationsBytecodeCodeGenerator {
 
                 int numStackValues = isVariadic ? 0 : cinstr.numPopStatic();
 
-                NodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(
+                OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(
                                 fldBc, fldChildren, constIndices,
                                 innerTypeNames, additionalData,
                                 methodNames, isVariadic, soData,
@@ -251,7 +255,50 @@ public class OperationsBytecodeCodeGenerator {
                 cinstr.setDataKinds(additionalDataKinds.toArray(new DataKind[additionalDataKinds.size()]));
                 cinstr.setNumChildNodes(childIndices.size());
                 cinstr.setNumConsts(constIndices.size());
+
+                {
+                    CodeExecutableElement metSetResultUnboxed = new CodeExecutableElement(
+                                    Set.of(Modifier.PRIVATE),
+                                    context.getType(void.class), soData.getName() + "_doSetResultUnboxed_",
+                                    new CodeVariableElement(context.getType(int.class), "$bci"));
+                    builderBytecodeNodeType.add(metSetResultUnboxed);
+                    cinstr.setSetResultUnboxedMethod(metSetResultUnboxed);
+
+                    CodeTreeBuilder b = metSetResultUnboxed.createBuilder();
+                    b.tree(plugs.createSetResultBoxed());
+                }
+
+                if (!isVariadic) {
+                    CodeExecutableElement metSetInputUnboxed = new CodeExecutableElement(
+                                    Set.of(Modifier.PRIVATE),
+                                    context.getType(void.class), soData.getName() + "_doSetInputUnboxed_",
+                                    new CodeVariableElement(context.getType(int.class), "$bci"),
+                                    new CodeVariableElement(context.getType(int.class), "index"));
+                    builderBytecodeNodeType.add(metSetInputUnboxed);
+                    cinstr.setSetInputUnboxedMethod(metSetInputUnboxed);
+
+                    CodeTreeBuilder b = metSetInputUnboxed.createBuilder();
+
+                    if (cinstr.numPopStatic() == 0) {
+                        b.startAssert().string("false : \"operation has no input\"").end();
+                    } else if (cinstr.numPopStatic() == 1) {
+                        b.startAssert().string("index == 0 : \"operation has only one input\"").end();
+                        b.tree(plugs.createSetInputBoxed(0));
+                    } else {
+                        b.startSwitch().string("index").end().startBlock();
+                        for (int i = 0; i < cinstr.numPopStatic(); i++) {
+                            b.startCase().string("" + i).end().startCaseBlock();
+                            b.tree(plugs.createSetInputBoxed(i));
+                            b.statement("break");
+                            b.end();
+                        }
+                        b.caseDefault().startCaseBlock();
+                        b.tree(GeneratorUtils.createShouldNotReachHere("invalid input index"));
+                        b.end(2);
+                    }
+                }
             }
+
         }
 
         ExecutionVariables vars = new ExecutionVariables();
@@ -319,7 +366,6 @@ public class OperationsBytecodeCodeGenerator {
 
             b.startIf().variable(varSp).string(" < maxLocals + VALUES_OFFSET").end();
             b.startBlock();
-            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
             b.tree(GeneratorUtils.createShouldNotReachHere("stack underflow"));
             b.end();
 
@@ -499,12 +545,135 @@ public class OperationsBytecodeCodeGenerator {
         }
 
         {
+            CodeExecutableElement mDoSetResultUnboxed = new CodeExecutableElement(MOD_PRIVATE, context.getType(void.class), "doSetResultBoxed");
+            builderBytecodeNodeType.add(mDoSetResultUnboxed);
+
+            CodeVariableElement varTargetBci = new CodeVariableElement(context.getType(int.class), "targetBci");
+            mDoSetResultUnboxed.addParameter(varTargetBci);
+
+            CodeVariableElement varIndices = new CodeVariableElement(context.getType(int.class), "...indices");
+            mDoSetResultUnboxed.addParameter(varIndices);
+
+            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
+
+            CodeTreeBuilder b = mDoSetResultUnboxed.createBuilder();
+
+            b.startStatement().startStaticCall(types.CompilerAsserts, "neverPartOfCompilation").end(2);
+
+            b.declaration("int", vars.bci.getName(), "0");
+            b.declaration("int", "instrIndex", "0");
+
+            b.startWhile().variable(vars.bci).string(" < ").variable(varTargetBci).end();
+            b.startBlock();
+
+            b.startSwitch().string("bc[bci]").end();
+            b.startBlock();
+
+            for (Instruction instr : m.getInstructions()) {
+                if (instr.isInstrumentationOnly() && !withInstrumentation) {
+                    continue;
+                }
+
+                b.startCase().variable(instr.opcodeIdField).end();
+                b.startBlock();
+
+                if (instr.numPush() > 0) {
+                    CodeTree tree = instr.createSetResultBoxed(vars);
+                    if (tree != null) {
+                        b.startIf().variable(fldSuccessorIndices).string("[instrIndex] == ").variable(varTargetBci).end().startBlock();
+                        b.tree(tree);
+                        b.end();
+                    }
+                    b.statement("instrIndex += 2");
+                }
+                b.startAssign(vars.bci).variable(vars.bci).string(" + " + instr.length()).end();
+                b.statement("break");
+
+                b.end();
+            }
+
+            b.end();
+
+            b.end(); // while block
+        }
+
+        {
+            CodeExecutableElement mDoSetInputUnboxed = new CodeExecutableElement(MOD_PRIVATE, context.getType(void.class), "doSetInputBoxed");
+            builderBytecodeNodeType.add(mDoSetInputUnboxed);
+
+            CodeVariableElement varTargetBci = new CodeVariableElement(context.getType(int.class), "targetBci");
+            mDoSetInputUnboxed.addParameter(varTargetBci);
+
+            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
+
+            CodeTreeBuilder b = mDoSetInputUnboxed.createBuilder();
+
+            b.startStatement().startStaticCall(types.CompilerAsserts, "neverPartOfCompilation").end(2);
+
+            b.declaration("int", vars.bci.getName(), "0");
+            b.declaration("int", "instrIndex", "0");
+
+            b.startWhile().variable(vars.bci).string(" < ").variable(varTargetBci).end();
+            b.startBlock();
+
+            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(fldBc, vars.bci)).end();
+            b.startBlock();
+
+            for (Instruction instr : m.getInstructions()) {
+                if (instr.isInstrumentationOnly() && !withInstrumentation) {
+                    continue;
+                }
+
+                b.startCase().variable(instr.opcodeIdField).end();
+                b.startCaseBlock();
+
+                b.startAssign(vars.bci).variable(vars.bci).string(" + " + instr.length()).end();
+                if (instr.numPush() > 0) {
+                    b.statement("instrIndex += 2");
+                }
+                b.statement("break");
+
+                b.end();
+            }
+
+            b.end(); // switch block
+
+            b.end(); // while block
+
+            b.startAssert().variable(vars.bci).string(" == ").variable(varTargetBci).end();
+
+            b.startAssign(vars.bci).variable(fldSuccessorIndices).string("[instrIndex]").end();
+            b.declaration("int", "succInput", CodeTreeBuilder.createBuilder().variable(fldSuccessorIndices).string("[instrIndex + 1]").build());
+
+            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci)).end();
+            b.startBlock();
+
+            for (Instruction instr : m.getInstructions()) {
+                if (instr.isInstrumentationOnly() && !withInstrumentation) {
+                    continue;
+                }
+
+                b.startCase().variable(instr.opcodeIdField).end();
+                b.startCaseBlock();
+
+                b.tree(instr.createSetInputBoxed(vars, CodeTreeBuilder.singleString("succInput")));
+
+                b.statement("break");
+
+                b.end();
+            }
+
+            b.end(); // switch block
+        }
+
+        {
             CodeExecutableElement mDump = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(String.class), "dump");
             builderBytecodeNodeType.add(mDump);
 
             CodeTreeBuilder b = mDump.getBuilder();
 
             b.declaration("int", "bci", "0");
+            b.declaration("int", "instrIndex", "0");
             b.declaration("StringBuilder", "sb", "new StringBuilder()");
 
             vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
@@ -527,6 +696,13 @@ public class OperationsBytecodeCodeGenerator {
                 }
                 b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
+
+                if (op.numPush() == 0) {
+                    b.statement("sb.append(\"            \")");
+                } else {
+                    b.statement("sb.append(String.format(\"[ %04x %2d ] \", successorIndices[instrIndex], successorIndices[instrIndex + 1]))");
+                    b.statement("instrIndex += 2");
+                }
 
                 for (int i = 0; i < 16; i++) {
                     if (i < op.length()) {

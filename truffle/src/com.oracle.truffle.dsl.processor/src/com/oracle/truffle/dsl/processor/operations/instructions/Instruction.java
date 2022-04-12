@@ -13,10 +13,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.Operation;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
-import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
 
 public abstract class Instruction {
 
@@ -240,6 +237,7 @@ public abstract class Instruction {
     public final InputType[] inputs;
     public final ResultType[] results;
 
+    @SuppressWarnings("unused")
     public CodeTree createStackEffect(BuilderVariables vars, CodeTree[] arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         int result = 0;
@@ -414,6 +412,18 @@ public abstract class Instruction {
     public CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
+        // calculate stack offset
+        int numPush = numPush();
+        CodeTree numPop = numPop(vars);
+
+        assert numPush == 1 || numPush == 0;
+
+        b.startStatement().startCall("doBeforeEmitInstruction");
+        b.variable(vars.bci);
+        b.tree(numPop);
+        b.string(numPush == 0 ? "false" : "true");
+        b.end(2);
+
         // emit opcode
         b.startStatement().variable(vars.bc).string("[").variable(vars.bci).string("] = ").variable(opcodeIdField).end();
 
@@ -429,15 +439,6 @@ public abstract class Instruction {
         b.tree(createInitializeAdditionalStateBytes(vars, arguments));
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
-
-        // calculate stack offset
-        int numPush = numPush();
-        CodeTree numPop = numPop(vars);
-        b.startAssign(vars.curStack).variable(vars.curStack).string(" + " + numPush + " - ").tree(numPop).end();
-        if (numPush > 0) {
-            b.startIf().variable(vars.curStack).string(" > ").variable(vars.maxStack).end();
-            b.startBlock().startAssign(vars.maxStack).variable(vars.curStack).end(2);
-        }
 
         return b.build();
     }
@@ -488,6 +489,7 @@ public abstract class Instruction {
         return 0;
     }
 
+    @SuppressWarnings("unused")
     protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
         return null;
     }
@@ -519,4 +521,9 @@ public abstract class Instruction {
     public boolean isReturnInstruction() {
         return Arrays.stream(results).anyMatch(x -> x == ResultType.RETURN);
     }
+
+    public abstract CodeTree createSetResultBoxed(ExecutionVariables vars);
+
+    public abstract CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index);
+
 }

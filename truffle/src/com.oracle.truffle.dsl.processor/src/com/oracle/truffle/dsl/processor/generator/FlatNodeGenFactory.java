@@ -280,10 +280,16 @@ public class FlatNodeGenFactory {
             }
             stateObjects.addAll(implicitCasts);
         }
+        if (plugs != null) {
+            plugs.addAdditionalStateBits(stateObjects);
+        }
         if (activeStateEndIndex == -1) {
             activeStateEndIndex = stateObjects.size();
         }
         this.multiState = createMultiStateBitset(stateObjects, activeStateStartIndex, activeStateEndIndex, volatileState);
+        if (plugs != null) {
+            plugs.setMultiState(this.multiState);
+        }
         this.allMultiState = new MultiStateBitSet(this.multiState.all, this.multiState.all);
         this.exclude = new ExcludeBitSet(excludeObjects.toArray(new SpecializationData[0]), volatileState, plugs);
         this.executeAndSpecializeType = createExecuteAndSpecializeType();
@@ -360,6 +366,9 @@ public class FlatNodeGenFactory {
     }
 
     private boolean needsRewrites() {
+        if (plugs != null) {
+            return plugs.needsRewrites();
+        }
         return node.needsRewrites(context);
     }
 
@@ -2491,7 +2500,7 @@ public class FlatNodeGenFactory {
         addExplodeLoop(builder, group);
 
         CodeTreeBuilder parentBuilder = parent.create();
-        if (plugs == null || !plugs.createCallWrapInAMethod(parentBuilder, method, () -> multiState.addReferencesTo(frameState, parentBuilder))) {
+        if (plugs == null || !plugs.createCallWrapInAMethod(frameState, parentBuilder, method, () -> multiState.addReferencesTo(frameState, parentBuilder))) {
             parentBuilder.startReturn();
             parentBuilder.startCall(method.getSimpleName().toString());
             multiState.addReferencesTo(frameState, parentBuilder);
@@ -3423,7 +3432,7 @@ public class FlatNodeGenFactory {
             }
 
             CodeTree specializationCall = callMethod(frameState, null, specialization.getMethod(), bindings);
-            if (plugs == null || !plugs.createCallSpecialization(specialization, specializationCall, builder, inBoundary)) {
+            if (plugs == null || !plugs.createCallSpecialization(frameState, specialization, specializationCall, builder, inBoundary)) {
                 if (isVoid(specialization.getMethod().getReturnType())) {
                     builder.statement(specializationCall);
                     if (isVoid(forType.getReturnType())) {
@@ -3911,6 +3920,10 @@ public class FlatNodeGenFactory {
                     builder.tree(updateImplicitCast);
                 }
                 builder.tree(multiState.createSet(frameState, new SpecializationData[]{specialization}, true, true));
+
+                if (plugs != null) {
+                    plugs.createSpecialize(frameState, specialization, builder);
+                }
 
                 if (needsDuplicationCheck) {
                     hasFallthrough = true;
@@ -4780,7 +4793,7 @@ public class FlatNodeGenFactory {
         CodeTree call = builder.build();
 
         builder = builder.create();
-        if (plugs == null || !plugs.createCallExecuteAndSpecialize(builder, call)) {
+        if (plugs == null || !plugs.createCallExecuteAndSpecialize(frameState, builder, call)) {
             if (isVoid(forType.getReturnType())) {
                 builder.statement(call);
                 builder.returnStatement();
@@ -5614,14 +5627,14 @@ public class FlatNodeGenFactory {
 
     }
 
-    static int getRequiredStateBits(TypeSystemData types, Object object) {
+    int getRequiredStateBits(TypeSystemData typeData, Object object) {
         if (object instanceof SpecializationData) {
             return 1;
         } else if (object instanceof TypeGuard) {
             TypeGuard guard = (TypeGuard) object;
 
             TypeMirror type = guard.getType();
-            Collection<TypeMirror> sourceTypes = types.lookupSourceTypes(type);
+            Collection<TypeMirror> sourceTypes = typeData.lookupSourceTypes(type);
             if (sourceTypes.size() > 1) {
                 return sourceTypes.size();
             }
@@ -5630,6 +5643,8 @@ public class FlatNodeGenFactory {
             return 1;
         } else if (object == AOT_PREPARED) {
             return 1;
+        } else if (plugs != null) {
+            return plugs.getRequiredStateBits(typeData, object);
         } else {
             throw new AssertionError();
         }
@@ -5918,6 +5933,10 @@ public class FlatNodeGenFactory {
             FrameState context = new FrameState(factory, mode, method);
             context.loadEvaluatedValues(type, varargsThreshold);
             return context;
+        }
+
+        public static FrameState createEmpty() {
+            return new FrameState(null, null, null);
         }
 
         private void loadEvaluatedValues(ExecutableTypeData executedType, int varargsThreshold) {

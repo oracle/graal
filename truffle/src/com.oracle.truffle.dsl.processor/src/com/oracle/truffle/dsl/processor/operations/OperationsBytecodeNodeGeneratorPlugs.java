@@ -1,5 +1,7 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -14,6 +16,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -26,6 +29,7 @@ import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 
@@ -45,8 +49,25 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
     private final ProcessorContext context;
     private final TruffleTypes types;
+    private final Object[] inputsBoxedState;
+    private final Object resultBoxedState;
 
-    private static final boolean LOG_GET_VALUE_CALLS = false;
+    private MultiStateBitSet multiState;
+
+    private static final boolean DO_LOG_BOXING_ELIM = false;
+
+    private static class InputBoxedState {
+        private final int index;
+
+        InputBoxedState(int index) {
+            this.index = index;
+        }
+
+        @Override
+        public String toString() {
+            return "INPUT-BOXED(" + index + ")";
+        }
+    }
 
     OperationsBytecodeNodeGeneratorPlugs(CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
                     Set<String> innerTypeNames, List<Object> additionalData,
@@ -67,6 +88,45 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         this.context = ProcessorContext.getInstance();
         this.types = context.getTypes();
+
+        if (!isVariadic) {
+            inputsBoxedState = new Object[cinstr.numPopStatic()];
+            for (int i = 0; i < cinstr.numPopStatic(); i++) {
+                inputsBoxedState[i] = new InputBoxedState(i);
+            }
+        } else {
+            inputsBoxedState = null;
+        }
+
+        if (cinstr.numPush() == 0) {
+            resultBoxedState = null;
+        } else {
+            resultBoxedState = new Object() {
+                @Override
+                public String toString() {
+                    return "RESULT-BOXED";
+                }
+            };
+        }
+    }
+
+    @Override
+    public void addAdditionalStateBits(List<Object> stateObjects) {
+        if (inputsBoxedState != null) {
+            stateObjects.addAll(Arrays.asList(inputsBoxedState));
+        }
+        if (resultBoxedState != null) {
+            stateObjects.add(resultBoxedState);
+        }
+    }
+
+    public void setMultiState(MultiStateBitSet multiState) {
+        this.multiState = multiState;
+    }
+
+    @Override
+    public int getRequiredStateBits(TypeSystemData typesData, Object object) {
+        return 1;
     }
 
     @Override
@@ -240,6 +300,24 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
         }
     }
 
+    private static boolean isUnboxable(TypeKind kind) {
+        switch (kind) {
+            case INT:
+            case BYTE:
+            case BOOLEAN:
+            case DOUBLE:
+            case FLOAT:
+            case LONG:
+                return true;
+            case DECLARED:
+            case CHAR:
+            case SHORT:
+                return false;
+            default:
+                throw new IllegalArgumentException("Unknown primitive type: " + kind);
+        }
+    }
+
     @Override
     public CodeTree createThrowUnsupportedChild(NodeExecutionData execution) {
         return CodeTreeBuilder.singleString("null");
@@ -263,7 +341,7 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
         frameState.set("frameValue", new LocalVariable(types.VirtualFrame, "$frame", null));
     }
 
-    private void createPushResult(CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {
+    private void createPushResult(FrameState frameState, CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {
         if (cinstr.numPush() == 0) {
             b.statement(specializationCall);
             b.returnStatement();
@@ -283,48 +361,55 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
             b.statement(specializationCall);
             value = CodeTreeBuilder.singleString("null");
             typeName = "Object";
-        } else if (retType.getKind().isPrimitive()) {
+        } else {
             value = specializationCall;
             typeName = getFrameName(retType.getKind());
-        } else {
-            value = specializationCall;
-            typeName = "Object";
         }
 
-        if (OperationsBytecodeCodeGenerator.DO_STACK_LOGGING) {
-            b.startBlock();
-            b.declaration(retType, "__value__", value);
-            b.statement("System.out.printf(\" pushing " + typeName + " at -" + destOffset + ": %s%n\", __value__)");
-        }
-
-        b.startStatement();
-        b.startCall("$frame", "set" + typeName);
-        b.string("$sp - " + destOffset);
-        if (OperationsBytecodeCodeGenerator.DO_STACK_LOGGING) {
-            b.string("__value__");
-        } else {
+        if (typeName.equals("Object")) {
+            // no boxing elim here
+            b.startStatement();
+            b.startCall("$frame", "set" + typeName);
+            b.string("$sp - " + destOffset);
             b.tree(value);
+            b.end(2);
+        } else {
+            b.startIf();
+            b.tree(multiState.createContains(frameState, new Object[]{resultBoxedState}));
+            b.end().startBlock();
+            {
+                b.startStatement();
+                b.startCall("$frame", "setObject");
+                b.string("$sp - " + destOffset);
+                b.tree(value);
+                b.end(2);
+            }
+            b.end().startElseBlock();
+            {
+                b.startStatement();
+                b.startCall("$frame", "set" + typeName);
+                b.string("$sp - " + destOffset);
+                b.tree(value);
+                b.end(2);
+            }
+            b.end();
         }
-        b.end(2);
 
         b.returnStatement();
 
-        if (OperationsBytecodeCodeGenerator.DO_STACK_LOGGING) {
-            b.end();
-        }
     }
 
     @Override
-    public boolean createCallSpecialization(SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary) {
+    public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary) {
         if (isVariadic || inBoundary)
             return false;
 
-        createPushResult(b, specializationCall, specialization.getMethod().getReturnType());
+        createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
         return true;
     }
 
     @Override
-    public boolean createCallExecuteAndSpecialize(CodeTreeBuilder builder, CodeTree call) {
+    public boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call) {
         if (isVariadic) {
             return false;
         }
@@ -352,11 +437,11 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
         addArguments.accept(callBuilder);
         callBuilder.end();
 
-        createPushResult(builder, callBuilder.build(), boundaryMethod.getReturnType());
+        createPushResult(frameState, builder, callBuilder.build(), boundaryMethod.getReturnType());
     }
 
     @Override
-    public boolean createCallWrapInAMethod(CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters) {
+    public boolean createCallWrapInAMethod(FrameState frameState, CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters) {
         parentBuilder.startStatement().startCall(method.getSimpleName().toString());
         addNodeCallParameters(parentBuilder, false, false);
         addStateParameters.run();
@@ -372,21 +457,77 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
             throw new AssertionError("variadic instructions should not have children");
         }
 
-        int offset = cinstr.numPopStatic() - execution.getIndex();
+        int childIndex = execution.getIndex();
+        int offset = cinstr.numPopStatic() - childIndex;
 
         CodeTreeBuilder b = parent.create();
 
         b.tree(targetValue.createDeclaration(null));
 
-        b.startTryBlock();
-        b.startAssign(targetValue.getName());
-        b.startCall("$frame", "get" + getFrameName(targetValue.getTypeMirror().getKind()));
-        b.string("$sp - " + offset);
-        b.end(3);
+        String typeName = getFrameName(targetValue.getTypeMirror().getKind());
 
-        b.startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"), "ex");
+        if (typeName.equals("Object")) {
+            b.startTryBlock();
+            b.startAssign(targetValue.getName());
+            b.startCall("$frame", "getObject");
+            b.string("$sp - " + offset);
+            b.end(3);
 
+            createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, false, "neverbox");
+        } else {
+            b.startIf().tree(multiState.createContains(frameState, new Object[]{inputsBoxedState[childIndex]})).end();
+            b.startBlock();
+            {
+                b.startTryBlock();
+                b.startAssign(targetValue.getName());
+                b.cast(targetValue.getTypeMirror());
+                b.startCall("$frame", "getObject");
+                b.string("$sp - " + offset);
+                b.end(3);
+
+                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, true, false, "box -> unbox");
+            }
+            b.end().startElseBlock();
+            {
+                b.startTryBlock();
+                b.startAssign(targetValue.getName());
+                b.startCall("$frame", "get" + typeName);
+                b.string("$sp - " + offset);
+                b.end(3);
+
+                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, true, "unbox -> box");
+            }
+            b.end();
+        }
+
+        return b.build();
+    }
+
+    private void createExecuteChildCatch(NodeData node, FrameState frameState, NodeExecutionData execution, LocalVariable targetValue, Function<FrameState, CodeTree> createExecuteAndSpecialize,
+                    int offset, CodeTreeBuilder b, boolean alsoCastException, boolean setBoxedInput, String reason) {
+
+        if (alsoCastException) {
+            b.startCatchBlock(new TypeMirror[]{
+                            context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"),
+                            context.getType(ClassCastException.class),
+            }, "ex");
+        } else {
+            b.startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"), "ex");
+        }
+
+        if (DO_LOG_BOXING_ELIM) {
+            b.statement("System.out.printf(\" -- frame mispredict " + cinstr.name + "(" + reason + ": %s) @ %04x: %s %n\", $frame.getTag($sp - " + offset + "), $bci, ex)");
+        }
         FrameState slowPathFrameState = frameState.copy();
+
+        if (setBoxedInput) {
+            // TODO lock
+            b.tree(multiState.createSet(slowPathFrameState, new Object[]{inputsBoxedState[execution.getIndex()]}, true, true));
+            b.startStatement().startCall("doSetResultBoxed");
+            b.string("$bci");
+            b.string("" + execution.getIndex());
+            b.end(2);
+        }
 
         CodeTreeBuilder accessBuilder = b.create();
         accessBuilder.startCall("$frame", "getValue");
@@ -395,11 +536,13 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
 
         slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(accessBuilder.build()));
 
+        int curOffset = offset;
         boolean found = false;
+
         for (NodeExecutionData otherExecution : node.getChildExecutions()) {
             if (found) {
                 LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, context.getType(Object.class));
-                b.declaration("Object", childEvaluatedValue.getName(), "$frame.getValue($sp - " + (--offset) + ")");
+                b.declaration("Object", childEvaluatedValue.getName(), "$frame.getValue($sp - " + (--curOffset) + ")");
                 slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
             } else {
                 // skip forward already evaluated
@@ -410,7 +553,58 @@ final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
         b.tree(createExecuteAndSpecialize.apply(slowPathFrameState));
 
         b.end();
+    }
 
+    @Override
+    public void createSpecialize(FrameState frameState, SpecializationData specialization, CodeTreeBuilder b) {
+        if (isVariadic)
+            return;
+
+        List<Integer> referenceArguments = new ArrayList<>();
+        List<Object> inputsBoxedStateList = new ArrayList<>();
+
+        int i = -1;
+        for (TypeMirror arg : specialization.getTypeSignature()) {
+            if (i >= 0 && !isUnboxable(arg.getKind())) {
+                referenceArguments.add(i);
+                inputsBoxedStateList.add(inputsBoxedState[i]);
+            }
+
+            i++;
+        }
+
+        if (referenceArguments.isEmpty()) {
+            return;
+        }
+
+        b.startIf().string("!").startParantheses().tree(multiState.createContainsAll(frameState, inputsBoxedStateList.toArray())).end(2).startBlock();
+        {
+            // not all of them are set, set them
+            b.tree(multiState.createSet(frameState, inputsBoxedStateList.toArray(), true, true));
+
+            b.startStatement().startCall("doSetResultBoxed");
+            b.string("$bci");
+            for (int arg : referenceArguments) {
+                b.string("" + arg);
+            }
+            b.end(2);
+        }
+        b.end();
+    }
+
+    public CodeTree createSetResultBoxed() {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{resultBoxedState}, true, true));
         return b.build();
+    }
+
+    public CodeTree createSetInputBoxed(int index) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{inputsBoxedState[index]}, true, true));
+        return b.build();
+    }
+
+    public boolean needsRewrites() {
+        return true;
     }
 }

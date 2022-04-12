@@ -235,12 +235,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeVariableElement fldLastPush = new CodeVariableElement(context.getType(int.class), "lastPush");
         typBuilderImpl.add(fldLastPush);
 
-        CodeVariableElement fldMaxStack = new CodeVariableElement(context.getType(int.class), "maxStack");
-        typBuilderImpl.add(fldMaxStack);
-
-        CodeVariableElement fldCurStack = new CodeVariableElement(context.getType(int.class), "curStack");
-        typBuilderImpl.add(fldCurStack);
-
         CodeVariableElement fldBci = new CodeVariableElement(context.getType(int.class), "bci");
         typBuilderImpl.add(fldBci);
 
@@ -293,8 +287,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.lastChildPushCount = fldLastPush;
         vars.operationData = fldOperationData;
         vars.consts = fldConstPool;
-        vars.maxStack = fldMaxStack;
-        vars.curStack = fldCurStack;
         vars.exteptionHandlers = fldExceptionHandlers;
         vars.keepingInstrumentation = fldKeepInstrumentation;
         vars.numChildNodes = fldNumChildNodes;
@@ -312,8 +304,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startAssign(fldBci).string("0").end();
             b.startAssign(fldNumChildNodes).string("0").end();
             b.startAssign(fldNumBranchProfiles).string("0").end();
-            b.startAssign(fldCurStack).string("0").end();
-            b.startAssign(fldMaxStack).string("0").end();
             if (FLAG_NODE_AST_PRINTING) {
                 b.startAssign(fldIndent).string("0").end();
             }
@@ -374,7 +364,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.string("sourceInfo");
                 b.string("sources");
                 b.variable(fldNodeNumber);
-                b.variable(fldMaxStack);
+                b.string("createMaxStack()");
                 b.startGroup().string("maxLocals + 1").end();
                 b.string("bcCopy");
                 b.string("cpCopy");
@@ -393,13 +383,14 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("sourceInfo");
             b.string("sources");
             b.variable(fldNodeNumber);
-            b.variable(fldMaxStack);
+            b.string("createMaxStack()");
             b.startGroup().string("maxLocals + 1").end();
             b.string("bcCopy");
             b.string("cpCopy");
             b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
             b.string("handlers");
             b.string("condProfiles");
+            b.startCall("createPredecessorIndices").end();
             b.end(2);
 
             if (ENABLE_INSTRUMENTATION) {
@@ -427,7 +418,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mDoLeave.createBuilder();
 
-            b.startWhile().variable(vars.curStack).string(" > data.stackDepth").end();
+            b.startWhile().string("getCurStack() > data.stackDepth").end();
             b.startBlock();
 
             b.tree(m.getOperationsContext().commonPop.createEmitCode(vars, new CodeTree[0]));
@@ -654,7 +645,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     b.variable(fldOperationData);
                     b.variable(op.idConstantField);
-                    b.variable(fldCurStack);
+                    b.string("getCurStack()");
                     b.string("" + op.getNumAuxValues());
                     b.string("" + op.hasLeaveCode());
 
@@ -763,7 +754,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     b.field("this", fldOperationData);
                     b.variable(op.idConstantField);
-                    b.variable(fldCurStack);
+                    b.string("getCurStack()");
                     b.string("" + op.getNumAuxValues());
                     b.string("false");
 

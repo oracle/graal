@@ -224,6 +224,12 @@ public class BitSet {
         return builder.build();
     }
 
+    public CodeTree createIsEmpty(FrameState frameState) {
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.tree(createReference(frameState)).string(" == 0");
+        return builder.build();
+    }
+
     private CodeTree createMaskedReference(FrameState frameState, long maskedElements) {
         if (maskedElements == this.allMask) {
             // no masking needed

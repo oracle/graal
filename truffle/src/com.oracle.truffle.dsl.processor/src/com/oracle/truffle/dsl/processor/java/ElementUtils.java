@@ -237,10 +237,11 @@ public class ElementUtils {
     public static String createReferenceName(ExecutableElement method) {
         StringBuilder b = new StringBuilder();
 
-        if (method.getEnclosingElement() != null) {
-            b.append(method.getEnclosingElement().getSimpleName());
-            b.append('#');
-        }
+        // if (method.getEnclosingElement() != null) {
+        // b.append(method.getEnclosingElement().getSimpleName());
+        // b.append('#');
+        // }
+
         b.append(method.getSimpleName().toString());
         b.append("(");
 

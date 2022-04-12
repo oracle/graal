@@ -135,6 +135,17 @@ class MultiBitSet<T extends BitSet> {
         return builder.build();
     }
 
+    public CodeTree createIsEmpty(FrameState frameState) {
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        String sep = "";
+        for (BitSet set : sets) {
+            builder.string(sep);
+            builder.tree(set.createIsEmpty(frameState));
+            sep = " && ";
+        }
+        return builder.build();
+    }
+
     public CodeTree createIsNotAny(FrameState frameState, Object[] elements) {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.string("(");

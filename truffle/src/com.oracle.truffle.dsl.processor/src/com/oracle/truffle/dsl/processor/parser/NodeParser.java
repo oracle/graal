@@ -137,7 +137,6 @@ import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.NodeChildData;
 import com.oracle.truffle.dsl.processor.model.NodeChildData.Cardinality;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.NodeFieldData;
@@ -252,7 +251,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } catch (CompileErrorException e) {
             throw e;
         } catch (Throwable e) {
-            RuntimeException e2 = new RuntimeException(String.format("Parsing of Node %s failed.", getQualifiedName(rootType)));
+            RuntimeException e2 = new RuntimeException(String.format("Parsing of Node %s failed", getQualifiedName(rootType)));
             e.addSuppressed(e2);
             throw e;
         }

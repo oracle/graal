@@ -44,6 +44,8 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 public class SLOperationsVisitor extends SLBaseVisitor {
 
+    private static final boolean DO_LOG_NODE_CREATION = false;
+
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source, SLOperationsBuilder builder) {
         return parseSLImpl(source, new SLOperationsVisitor(language, source, builder));
     }
@@ -148,13 +150,15 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         OperationsNode node = b.build();
 
-        // try {
-        // System.out.println("----------------------------------------------");
-        // System.out.printf(" Node: %s%n", name);
-        // System.out.println(node.dump());
-        // System.out.println("----------------------------------------------");
-        // } catch (Exception ignored) {
-        // }
+        if (DO_LOG_NODE_CREATION) {
+            try {
+                System.out.println("----------------------------------------------");
+                System.out.printf(" Node: %s%n", name);
+                System.out.println(node.dump());
+                System.out.println("----------------------------------------------");
+            } catch (Exception ignored) {
+            }
+        }
 
         SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node, name);
 

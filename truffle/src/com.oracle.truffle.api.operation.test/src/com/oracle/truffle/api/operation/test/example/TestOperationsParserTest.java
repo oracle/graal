@@ -52,7 +52,8 @@ public class TestOperationsParserTest {
     }
 
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
-        return TestOperationsBuilder.parse(null, builder)[0].createRootNode(null, "TestFunction").getCallTarget();
+        OperationsNode operationsNode = TestOperationsBuilder.parse(null, builder)[0];
+        return operationsNode.createRootNode(null, "TestFunction").getCallTarget();
     }
 
     @Test
@@ -181,6 +182,56 @@ public class TestOperationsParserTest {
     }
 
     @Test
+    public void testVariableBoxingElim() {
+        RootCallTarget root = parse(b -> {
+            b.beginStoreLocal(0);
+            b.emitConstObject(0L);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(1);
+            b.emitConstObject(0L);
+            b.endStoreLocal();
+
+            b.beginWhile();
+
+            b.beginLessThanOperation();
+            b.emitLoadLocal(0);
+            b.emitConstObject(100L);
+            b.endLessThanOperation();
+
+            b.beginBlock();
+
+            b.beginStoreLocal(1);
+            b.beginAddOperation();
+            b.beginAlwaysBoxOperation();
+            b.emitLoadLocal(1);
+            b.endAlwaysBoxOperation();
+            b.emitLoadLocal(0);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            b.beginStoreLocal(0);
+            b.beginAddOperation();
+            b.emitLoadLocal(0);
+            b.emitConstObject(1L);
+            b.endAddOperation();
+            b.endStoreLocal();
+
+            b.endBlock();
+
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(1);
+            b.endReturn();
+
+            b.build();
+        });
+
+        Assert.assertEquals(4950L, root.call());
+    }
+
+    @Test
     public void testSourceInfo() {
         String src = "  (return (add 1 2))";
         new Tester(src).then(node -> {
@@ -264,4 +315,5 @@ public class TestOperationsParserTest {
 
         Assert.assertEquals(Value.asValue(7L), v.execute(3L, 4L));
     }
+
 }

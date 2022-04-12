@@ -155,4 +155,14 @@ public class SuperInstruction extends Instruction {
 
         return b.build();
     }
+
+    @Override
+    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+        return null;
+    }
+
+    @Override
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+        return null;
+    }
 }

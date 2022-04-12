@@ -4,15 +4,23 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class ConditionalBranchInstruction extends Instruction {
 
-    private final DeclaredType ConditionProfile = ProcessorContext.getInstance().getDeclaredType("com.oracle.truffle.api.profiles.ConditionProfile");
+    private final ProcessorContext context = ProcessorContext.getInstance();
+    private final DeclaredType ConditionProfile = context.getDeclaredType("com.oracle.truffle.api.profiles.ConditionProfile");
+    private final OperationsContext ctx;
+    private final boolean boxed;
 
-    public ConditionalBranchInstruction(int id) {
-        super("branch.false", id, ResultType.BRANCH, InputType.BRANCH_TARGET, InputType.STACK_VALUE, InputType.BRANCH_PROFILE);
+    public ConditionalBranchInstruction(OperationsContext ctx, int id, boolean boxed) {
+        super(boxed ? "branch.false.boxed" : "branch.false", id, ResultType.BRANCH, InputType.BRANCH_TARGET, InputType.STACK_VALUE, InputType.BRANCH_PROFILE);
+        this.ctx = ctx;
+        this.boxed = boxed;
     }
 
     @Override
@@ -39,7 +47,24 @@ public class ConditionalBranchInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.declaration(ConditionProfile, "profile", "conditionProfiles[LE_BYTES.getShort(bc, bci + 3)]");
-        b.declaration("boolean", "cond", "frame.isBoolean(sp - 1) ? frame.getBoolean(sp - 1) : (boolean) frame.getObject(sp - 1)");
+
+        if (boxed) {
+            b.declaration("boolean", "cond", "(boolean) frame.getObject(sp - 1)");
+        } else {
+            b.declaration("boolean", "cond", (CodeTree) null);
+
+            b.startTryBlock();
+            b.statement("cond = frame.getBoolean(sp - 1)");
+            b.end().startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"), "ex");
+            b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+
+            b.statement("cond = (boolean) frame.getObject(sp - 1)");
+
+            // TODO lock
+            b.startStatement().startCall("doSetResultBoxed").variable(vars.bci).string("0").end(2);
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.commonBranchFalseBoxed.opcodeIdField));
+            b.end();
+        }
         b.statement("sp -= 1");
 
         b.startIf().startCall("profile", "profile").string("cond").end(2);
@@ -51,6 +76,23 @@ public class ConditionalBranchInstruction extends Instruction {
         b.statement("continue loop");
         b.end();
 
+        return b.build();
+    }
+
+    @Override
+    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+        return null;
+    }
+
+    @Override
+    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
+        if (boxed) {
+            return null;
+        }
+        // TODO should be locked
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startAssert().tree(index).string(" == 0 : \"invalid input index\"").end();
+        b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.commonBranchFalseBoxed.opcodeIdField));
         return b.build();
     }
 }

@@ -51,6 +51,27 @@ public class OperationGeneratorUtils {
         return createEmitLabel(vars, CodeTreeBuilder.singleVariable(label));
     }
 
+    public static CodeTree createReadOpcode(CodeTree bc, CodeTree bci) {
+        return CodeTreeBuilder.createBuilder().tree(bc).string("[").tree(bci).string("]").build();
+    }
+
+    public static CodeTree createReadOpcode(CodeVariableElement bc, CodeVariableElement bci) {
+        return createReadOpcode(
+                        CodeTreeBuilder.singleVariable(bc),
+                        CodeTreeBuilder.singleVariable(bci));
+    }
+
+    public static CodeTree createWriteOpcode(CodeTree bc, CodeTree bci, CodeTree value) {
+        return CodeTreeBuilder.createBuilder().startStatement().tree(bc).string("[").tree(bci).string("] = ").tree(value).end().build();
+    }
+
+    public static CodeTree createWriteOpcode(CodeVariableElement bc, CodeVariableElement bci, CodeVariableElement value) {
+        return createWriteOpcode(
+                        CodeTreeBuilder.singleVariable(bc),
+                        CodeTreeBuilder.singleVariable(bci),
+                        CodeTreeBuilder.singleVariable(value));
+    }
+
     public static String printCode(Element el) {
         StringWriter wr = new StringWriter();
         new AbstractCodeWriter() {
@@ -67,4 +88,5 @@ public class OperationGeneratorUtils {
 
         return wr.toString();
     }
+
 }
