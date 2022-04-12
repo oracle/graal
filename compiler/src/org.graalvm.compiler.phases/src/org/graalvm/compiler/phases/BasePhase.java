@@ -433,4 +433,23 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static @interface SharedGlobalPhaseState {
 
     }
+
+    @Override
+    public int hashCode() {
+        return this.getClass().getName().hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof BasePhase)) {
+            return false;
+        }
+
+        return this.getClass().getName().equals(((BasePhase<?>) obj).getClass().getName());
+    }
+
 }
