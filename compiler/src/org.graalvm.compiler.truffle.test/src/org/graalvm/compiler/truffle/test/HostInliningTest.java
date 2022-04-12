@@ -253,9 +253,6 @@ public class HostInliningTest extends GraalCompilerTest {
 
     @BytecodeParserNeverInline
     static int notExplorable(int value) {
-        /*
-         *
-         */
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
