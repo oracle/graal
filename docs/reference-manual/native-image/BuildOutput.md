@@ -72,6 +72,10 @@ The version info of the Native Image process.
 This string is also used for the `java.vm.version` property within the generated image.
 Please report this version info when you [file issues][new_issue].
 
+#### <a name="glossary-java-version-info"></a>Java Version Info
+The precise base Java version info of the Native Image process.
+Please report this version info when you [file issues][new_issue].
+
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
 

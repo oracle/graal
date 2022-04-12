@@ -249,6 +249,10 @@ public class ProgressReporter {
     public void printInitializeEnd(Collection<String> libraries) {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").println();
+        String javaVersion = System.getProperty("java.runtime.version");
+        if (javaVersion != null) {
+            l().a(" ").doclink("Java version info", "#glossary-java-version-info").a(": '").a(javaVersion).a("'").println();
+        }
         if (ImageSingletons.contains(CCompilerInvoker.class)) {
             l().a(" ").doclink("C compiler", "#glossary-ccompiler").a(": ").a(ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.getShortDescription()).println();
         }
