@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
@@ -45,7 +44,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 /**
  * This node creates an instance of a platform specific managed va_list object. The instantiation is
  * delegated to
- * {@link PlatformCapability#createVAListStorage(RootNode, com.oracle.truffle.llvm.runtime.pointer.LLVMPointer)})
+ * {@link PlatformCapability#createVAListStorage(LLVMVAListNode, com.oracle.truffle.llvm.runtime.pointer.LLVMPointer)})
  * so that this class remains platform independent. This node is appended to the AST when
  * {@link NodeFactory#createAlloca(Type, int)} is called. That method is the place where the request
  * to allocate a <code>va_list</code> variable on the stack is intercepted by comparing the type
@@ -69,7 +68,7 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
                     @Cached("createAllocaNode()") LLVMExpressionNode allocaNode) {
         // allocaNode == null indicates that no native stack is supported
         LLVMNativePointer vaListNativeStackPtr = allocaNode == null ? LLVMNativePointer.createNull() : LLVMNativePointer.cast(allocaNode.executeGeneric(frame));
-        Object vaListStorage = LLVMLanguage.get(this).getCapability(PlatformCapability.class).createVAListStorage(getRootNode(), vaListNativeStackPtr);
+        Object vaListStorage = LLVMLanguage.get(this).getCapability(PlatformCapability.class).createVAListStorage(this, vaListNativeStackPtr);
         return LLVMManagedPointer.create(vaListStorage);
     }
 
