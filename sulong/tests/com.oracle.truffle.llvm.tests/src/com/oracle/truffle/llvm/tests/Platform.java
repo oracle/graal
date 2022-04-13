@@ -122,6 +122,10 @@ public class Platform {
         return OS.getOS() == OS.Linux;
     }
 
+    public static boolean isWindows() {
+        return OS.getOS() == OS.Windows;
+    }
+
     public static boolean isSolaris() {
         return OS.getOS() == OS.Solaris;
     }
