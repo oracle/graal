@@ -42,9 +42,13 @@ int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {
     return thrd_error;
 }
 
+#if !defined(thrd_equal)
+// some libcs have thrd_equal as a macro that simply does == others have it as
+// an actual function
 int thrd_equal(thrd_t lhs, thrd_t rhs) {
     return lhs == rhs;
 }
+#endif
 
 thrd_t thrd_current(void) {
     return (thrd_t) __sulong_thread_self();
