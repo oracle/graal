@@ -70,6 +70,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
                                 debug.log("Peeling %s, iteration %s", loop, iteration);
                                 PEELED.increment(debug);
                                 LoopTransformations.peel(loop);
+                                loop.invalidateFragmentsAndIVs();
                                 data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
                                 debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s, iteration %s", loop, iteration);
                             }
