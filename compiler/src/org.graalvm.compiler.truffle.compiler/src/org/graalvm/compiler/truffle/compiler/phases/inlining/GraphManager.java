@@ -72,13 +72,9 @@ final class GraphManager {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
             final TruffleTierContext context = newContext(truffleAST, false);
             context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
-            int graphSize = partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
             StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
             postPartialEvaluationSuite.apply(context.graph, context);
-            if (context.options.get(PolyglotCompilerOptions.InliningUsePreciseSize)) {
-                graphSize = NodeCostUtil.computeGraphSize(context.graph);
-            }
-            entry = new Entry(context.graph, plugin, graphAfterPE, graphSize);
+            entry = new Entry(context.graph, plugin, graphAfterPE, NodeCostUtil.computeGraphSize(context.graph));
             irCache.put(truffleAST, entry);
         }
         return entry;
@@ -103,13 +99,9 @@ final class GraphManager {
 
     Entry peRoot(TruffleTierContext context) {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
-        int graphSize = partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
         postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
-        if (context.options.get(PolyglotCompilerOptions.InliningUsePreciseSize)) {
-            graphSize = NodeCostUtil.computeGraphSize(context.graph);
-        }
-        return new Entry(rootContext.graph, plugin, graphAfterPE, graphSize);
+        return new Entry(rootContext.graph, plugin, graphAfterPE, NodeCostUtil.computeGraphSize(context.graph));
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
