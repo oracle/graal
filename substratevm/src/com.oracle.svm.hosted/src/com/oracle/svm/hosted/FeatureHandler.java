@@ -68,10 +68,15 @@ public class FeatureHandler {
         private static List<String> userEnabledFeatures() {
             return OptionUtils.flatten(",", Options.Features.getValue());
         }
+
+        @Option(help = "A comma-separated list of fully qualified Feature implementation classes that should be disabled")//
+        public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
     }
 
     private final ArrayList<Feature> featureInstances = new ArrayList<>();
     private final HashSet<Class<?>> registeredFeatures = new HashSet<>();
+    private final HashSet<Class<?>> disabledFeatures = new HashSet<>();
+    private final ArrayList<Feature> disabledFeatureInstances = new ArrayList<>();
 
     public void forEachFeature(Consumer<Feature> consumer) {
         for (Feature feature : featureInstances) {
@@ -91,6 +96,21 @@ public class FeatureHandler {
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
+        List<String> invalidDisables = new ArrayList<>();
+        OptionUtils.flatten(",", Options.DisableFeatures.getValue()).forEach(featureName -> {
+            try {
+                disabledFeatures.add(Class.forName(featureName, false, loader.getClassLoader()));
+            } catch (ClassNotFoundException e) {
+                invalidDisables.add(featureName);
+            }
+        });
+
+        if (!invalidDisables.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("The following features specified by -H:").append(Options.DisableFeatures.getName()).append(" are not available:\n");
+            sb.append(invalidDisables.stream().reduce((s1, s2) -> s1 + "," + s2).get());
+            VMError.shouldNotReachHere(sb.toString());
+        }
         LinkedHashSet<Class<?>> automaticFeatures = new LinkedHashSet<>(loader.findAnnotatedClasses(AutomaticFeature.class, true));
         Map<Class<?>, Class<?>> specificAutomaticFeatures = new HashMap<>();
         for (Class<?> automaticFeature : automaticFeatures) {
@@ -180,6 +200,11 @@ public class FeatureHandler {
             throw UserError.abort(ex.getCause(), "Error instantiating Feature class %s. Ensure the class is not abstract and has a no-argument constructor.", featureClass.getTypeName());
         }
 
+        if (disabledFeatures.contains(featureClass)) {
+            disabledFeatureInstances.add(feature);
+            return;
+        }
+
         if (!feature.isInConfiguration(access)) {
             return;
         }
@@ -207,5 +232,9 @@ public class FeatureHandler {
                         .filter(f -> (!(f instanceof InternalFeature) || !((InternalFeature) f).isHidden()) &&
                                         (classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName())))
                         .collect(Collectors.toList());
+    }
+
+    public ArrayList<Feature> getDisabledFeatureInstances() {
+        return disabledFeatureInstances;
     }
 }

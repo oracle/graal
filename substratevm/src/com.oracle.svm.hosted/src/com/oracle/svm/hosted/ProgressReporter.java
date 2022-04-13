@@ -267,10 +267,15 @@ public class ProgressReporter {
         }
     }
 
-    public void printFeatures(List<Feature> features) {
+    public void printFeatures(List<Feature> enabledFeatures, List<Feature> disabledFeatures) {
+        printFeatures(enabledFeatures, "user-specific feature(s)");
+        printFeatures(disabledFeatures, "user-disabled feature(s)");
+    }
+
+    private void printFeatures(List<Feature> features, String hintMsg) {
         int numFeatures = features.size();
         if (numFeatures > 0) {
-            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").println();
+            l().a(" ").a(numFeatures).a(" ").doclink(hintMsg, "#glossary-user-specific-features").println();
             features.sort((a, b) -> a.getClass().getName().compareTo(b.getClass().getName()));
             for (Feature feature : features) {
                 printFeature(l(), feature);
