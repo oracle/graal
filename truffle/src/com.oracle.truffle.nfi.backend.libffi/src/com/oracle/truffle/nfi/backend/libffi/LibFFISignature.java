@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -418,6 +419,14 @@ final class LibFFISignature {
             state = newState;
         }
 
+        LibFFIType maybePromote(Node node, LibFFIType argType) {
+            if (fixedArgCount == NOT_VARARGS) {
+                return argType;
+            } else {
+                return argType.varargsPromoteType(node);
+            }
+        }
+
         @ExportMessage
         static class SetReturnType {
 
@@ -431,19 +440,23 @@ final class LibFFISignature {
         @ExportMessage
         static class AddArgument {
 
-            @Specialization(guards = {"builder.state == oldState", "argType.typeInfo == cachedTypeInfo"})
-            static void doCached(SignatureBuilder builder, LibFFIType argType,
+            @Specialization(guards = {"builder.state == oldState", "promotedType.typeInfo == cachedTypeInfo"})
+            static void doCached(SignatureBuilder builder, @SuppressWarnings("unused") LibFFIType argType,
+                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self,
+                            @Bind("builder.maybePromote(self, argType)") LibFFIType promotedType,
                             @Cached("builder.state") ArgsState oldState,
-                            @Cached("argType.typeInfo") CachedTypeInfo cachedTypeInfo,
+                            @Cached("promotedType.typeInfo") CachedTypeInfo cachedTypeInfo,
                             @Cached("oldState.addArg(cachedTypeInfo)") ArgsState newState) {
-                assert builder.state == oldState && argType.typeInfo == cachedTypeInfo;
-                builder.addArg(argType, newState);
+                assert builder.state == oldState && promotedType.typeInfo == cachedTypeInfo;
+                builder.addArg(promotedType, newState);
             }
 
             @Specialization(replaces = "doCached")
-            static void doGeneric(SignatureBuilder builder, LibFFIType argType) {
-                ArgsState newState = builder.state.addArg(argType.typeInfo);
-                builder.addArg(argType, newState);
+            static void doGeneric(SignatureBuilder builder, LibFFIType argType,
+                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
+                LibFFIType promotedType = builder.maybePromote(self, argType);
+                ArgsState newState = builder.state.addArg(promotedType.typeInfo);
+                builder.addArg(promotedType, newState);
             }
         }
 
