@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -654,14 +654,15 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
         return self.source_dirs()[0]
 
     def _archivable_results(self, target_arch, use_relpath, single):
-        def result(base_dir, file_path):
-            assert not mx.isabs(file_path)
-            archive_path = file_path if use_relpath else mx.basename(file_path)
-            return mx.join(base_dir, file_path), archive_path
-
         out_dir_arch = self._install_dir
-        for _result in self.getResults():
-            yield result(out_dir_arch, _result)
+        for file_path in self.getResults():
+            assert not mx.isabs(file_path)
+            abs_path = mx.join(out_dir_arch, file_path)
+            archive_path = file_path if use_relpath else mx.basename(file_path)
+
+            # if the parent folder does not exist, the test has been skipped and should not be included
+            if mx.exists(mx.dirname(abs_path)):
+                yield abs_path, archive_path
 
 
 class ExternalCMakeTestSuite(ExternalTestSuiteMixin, SulongCMakeTestSuite):  # pylint: disable=too-many-ancestors
