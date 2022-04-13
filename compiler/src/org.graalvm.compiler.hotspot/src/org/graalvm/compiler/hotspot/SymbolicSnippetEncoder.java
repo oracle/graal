@@ -64,6 +64,7 @@ import org.graalvm.compiler.hotspot.EncodedSnippets.GraalCapability;
 import org.graalvm.compiler.hotspot.EncodedSnippets.GraphData;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicEncodedGraph;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicResolvedJavaField;
+import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicResolvedJavaFieldLocationIdentity;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicResolvedJavaMethod;
 import org.graalvm.compiler.hotspot.EncodedSnippets.SymbolicResolvedJavaMethodBytecode;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
@@ -76,6 +77,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.GraphEncoder;
@@ -692,6 +694,13 @@ public class SymbolicSnippetEncoder {
                 return filterField(debug, (HotSpotResolvedJavaField) o);
             } else if (o instanceof HotSpotResolvedJavaType) {
                 return filterType(debug, (HotSpotResolvedJavaType) o);
+            } else if (o instanceof FieldLocationIdentity) {
+                FieldLocationIdentity fli = (FieldLocationIdentity) o;
+                if (fli.getField() instanceof HotSpotResolvedJavaField) {
+                    return filterFieldLocationIdentity(debug, (HotSpotResolvedJavaField) fli.getField());
+                } else {
+                    return o;
+                }
             } else if (o instanceof HotSpotObjectConstant) {
                 return new SnippetObjectConstant(getSnippetReflection().asObject(Object.class, (HotSpotObjectConstant) o));
             } else if (o instanceof NodeSourcePosition) {
@@ -751,6 +760,18 @@ public class SymbolicSnippetEncoder {
             debug.log(DebugContext.VERBOSE_LEVEL, "filtered %s -> %s", type, unresolvedJavaType);
             cachedFilteredObjects.put(type, unresolvedJavaType);
             return unresolvedJavaType;
+        }
+
+        private Object filterFieldLocationIdentity(DebugContext debug, HotSpotResolvedJavaField field) {
+            if (!field.getDeclaringClass().getName().startsWith("Ljava/lang/")) {
+                // Might require adjustments in HotSpotSubstrateConstantReflectionProvider
+                throw new InternalError("All other fields must have been resolved: " + field);
+            }
+            UnresolvedJavaType declaringType = (UnresolvedJavaType) filterType(debug, field.getDeclaringClass());
+            String name = field.getName();
+            UnresolvedJavaType signature = (UnresolvedJavaType) filterType(debug, (ResolvedJavaType) field.getType());
+            boolean isStatic = field.isStatic();
+            return new SymbolicResolvedJavaFieldLocationIdentity(declaringType, name, signature, isStatic);
         }
 
         private Object filterField(DebugContext debug, HotSpotResolvedJavaField field) {

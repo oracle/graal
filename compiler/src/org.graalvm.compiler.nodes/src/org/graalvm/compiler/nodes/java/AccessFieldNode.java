@@ -52,7 +52,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     public static final NodeClass<AccessFieldNode> TYPE = NodeClass.create(AccessFieldNode.class);
     @OptionalInput ValueNode object;
-    // protected final LocationIdentity location;
+    protected final FieldLocationIdentity location;
     protected final ResolvedJavaField field;
     protected final MemoryOrderMode memoryOrder;
 
@@ -73,7 +73,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
         this.object = object;
         this.field = field;
         this.memoryOrder = memoryOrder;
-        // this.location = new FieldLocationIdentity(field);
+        this.location = new FieldLocationIdentity(field);
     }
 
     /**
@@ -88,10 +88,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @Override
     public LocationIdentity getLocationIdentity() {
-        // return location;
-        // using a field location identity generates a parsing error on svm due to a hotspot field
-        // flowing into the analysis?
-        return new FieldLocationIdentity(field);
+        return location;
     }
 
     /**
