@@ -85,6 +85,7 @@ public final class LLVMThreadIntrinsics {
 
     public abstract static class LLVMThreadYield extends LLVMBuiltin {
         @Specialization
+        @TruffleBoundary
         protected Object doYield() {
             Thread.yield();
             return null;
@@ -95,6 +96,7 @@ public final class LLVMThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "nanos")
     public abstract static class LLVMThreadSleep extends LLVMBuiltin {
         @Specialization
+        @TruffleBoundary
         protected int doSleep(long millis, int nanos) {
             try {
                 Thread.sleep(millis, nanos);
