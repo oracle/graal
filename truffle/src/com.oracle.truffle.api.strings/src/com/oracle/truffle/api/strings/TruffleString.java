@@ -1497,7 +1497,7 @@ public final class TruffleString extends AbstractTruffleString {
          * option is only supported on {@link TruffleString.Encoding#UTF_16} and
          * {@link TruffleString.Encoding#UTF_32}.
          *
-         * @since 22.1
+         * @since 22.2
          */
         public abstract TruffleString execute(int codepoint, Encoding encoding, boolean allowUTF16Surrogates);
 
@@ -1509,7 +1509,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile exoticProfile,
                         @Cached ConditionProfile bmpProfile) {
-            assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-8, UTF-16 and UTF-32";
+            assert !allowUTF16Surrogates || isUTF16Or32(enc) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
             if (Integer.toUnsignedLong(c) > 0x10ffff) {
                 throw InternalErrors.invalidCodePoint(c);
             }
@@ -1638,7 +1638,7 @@ public final class TruffleString extends AbstractTruffleString {
     /**
      * Shorthand for calling the uncached version of {@link FromCodePointNode}.
      *
-     * @since 22.1
+     * @since 22.2
      */
     @TruffleBoundary
     public static TruffleString fromCodePointUncached(int codepoint, Encoding encoding, boolean allowUTF16Surrogates) {
@@ -2874,7 +2874,7 @@ public final class TruffleString extends AbstractTruffleString {
      * Node to convert a given byte index to a codepoint index. See
      * {@link #execute(AbstractTruffleString, int, int, TruffleString.Encoding)} for details.
      *
-     * @since 22.1
+     * @since 22.2
      */
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
@@ -2888,7 +2888,7 @@ public final class TruffleString extends AbstractTruffleString {
          * Convert the given byte index to a codepoint index, relative to starting point
          * {@code byteOffset}.
          *
-         * @since 22.1
+         * @since 22.2
          */
         public abstract int execute(AbstractTruffleString a, int byteOffset, int byteIndex, Encoding expectedEncoding);
 
@@ -2912,7 +2912,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Create a new {@link ByteIndexToCodePointIndexNode}.
          *
-         * @since 22.1
+         * @since 22.2
          */
         public static ByteIndexToCodePointIndexNode create() {
             return TruffleStringFactory.ByteIndexToCodePointIndexNodeGen.create();
@@ -2921,7 +2921,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Get the uncached version of {@link ByteIndexToCodePointIndexNode}.
          *
-         * @since 22.1
+         * @since 22.2
          */
         public static ByteIndexToCodePointIndexNode getUncached() {
             return TruffleStringFactory.ByteIndexToCodePointIndexNodeGen.getUncached();

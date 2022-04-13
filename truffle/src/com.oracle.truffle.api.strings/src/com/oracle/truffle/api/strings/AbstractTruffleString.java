@@ -613,7 +613,7 @@ public abstract class AbstractTruffleString {
      * Shorthand for calling the uncached version of
      * {@link TruffleString.ByteIndexToCodePointIndexNode}.
      *
-     * @since 22.1
+     * @since 22.2
      */
     @TruffleBoundary
     public final int byteIndexToCodePointIndexUncached(int byteOffset, int byteIndex, TruffleString.Encoding expectedEncoding) {

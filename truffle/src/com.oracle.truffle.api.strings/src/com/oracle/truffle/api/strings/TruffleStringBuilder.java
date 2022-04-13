@@ -357,7 +357,7 @@ public final class TruffleStringBuilder {
         /**
          * Append a codepoint to the string builder, {@code repeat} times.
          *
-         * @since 22.1
+         * @since 22.2
          */
         public final void execute(TruffleStringBuilder sb, int codepoint, int repeat) {
             execute(sb, codepoint, repeat, false);
@@ -372,7 +372,7 @@ public final class TruffleStringBuilder {
          * option is only supported on {@link TruffleString.Encoding#UTF_16} and
          * {@link TruffleString.Encoding#UTF_32}.
          *
-         * @since 22.1
+         * @since 22.2
          */
         public abstract void execute(TruffleStringBuilder sb, int codepoint, int repeat, boolean allowUTF16Surrogates);
 
@@ -381,7 +381,7 @@ public final class TruffleStringBuilder {
                         @Cached AppendCodePointIntlNode appendCodePointIntlNode,
                         @Cached ConditionProfile bufferGrowProfile,
                         @Cached ConditionProfile errorProfile) {
-            assert !allowUTF16Surrogates || isUTF16Or32(sb.encoding) : "allowUTF16Surrogates is only supported on UTF-8, UTF-16 and UTF-32";
+            assert !allowUTF16Surrogates || isUTF16Or32(sb.encoding) : "allowUTF16Surrogates is only supported on UTF-16 and UTF-32";
             if (errorProfile.profile(c < 0 || c > 0x10ffff)) {
                 throw InternalErrors.invalidCodePoint(c);
             }
@@ -560,7 +560,7 @@ public final class TruffleStringBuilder {
     /**
      * Shorthand for calling the uncached version of {@link AppendCodePointNode}.
      *
-     * @since 22.1
+     * @since 22.2
      */
     @TruffleBoundary
     public void appendCodePointUncached(int codepoint, int repeat) {
@@ -570,7 +570,7 @@ public final class TruffleStringBuilder {
     /**
      * Shorthand for calling the uncached version of {@link AppendCodePointNode}.
      *
-     * @since 22.1
+     * @since 22.2
      */
     @TruffleBoundary
     public void appendCodePointUncached(int codepoint, int repeat, boolean allowUTF16Surrogates) {
