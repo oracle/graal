@@ -109,7 +109,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         callTree.add(root);
         root.ir = context.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
-        final GraphManager.Entry entry = callTree.getGraphManager().peRoot(context);
+        final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
         root.irAfterPE = entry.graphAfterPEForDebugDump;
         root.graphSize = entry.graphSize;
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;

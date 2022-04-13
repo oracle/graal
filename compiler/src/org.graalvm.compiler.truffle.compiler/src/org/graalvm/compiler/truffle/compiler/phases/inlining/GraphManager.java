@@ -48,7 +48,6 @@ import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 final class GraphManager {
 
@@ -71,6 +70,7 @@ final class GraphManager {
         if (entry == null) {
             final PEAgnosticInlineInvokePlugin plugin = newPlugin();
             final TruffleTierContext context = newContext(truffleAST, false);
+            partialEvaluator.doGraphPE(context, plugin, graphCacheForInlining);
             context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
             postPartialEvaluationSuite.apply(context.graph, context);
@@ -97,11 +97,12 @@ final class GraphManager {
         return new PEAgnosticInlineInvokePlugin(rootContext.task.inliningData(), partialEvaluator);
     }
 
-    Entry peRoot(TruffleTierContext context) {
+    Entry peRoot() {
         final PEAgnosticInlineInvokePlugin plugin = newPlugin();
+        partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
         postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
-        return new Entry(rootContext.graph, plugin, graphAfterPE, NodeCostUtil.computeGraphSize(context.graph));
+        return new Entry(rootContext.graph, plugin, graphAfterPE, NodeCostUtil.computeGraphSize(rootContext.graph));
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
