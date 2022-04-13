@@ -43,7 +43,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -57,7 +56,6 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
@@ -195,12 +193,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     private LLVMPointer overflowArgAreaBaseNativePtr;
     private LLVMPointer regSaveAreaNativePtr;
 
-    private final LLVMRootNode rootNode;
-
-    public LLVMX86_64VaListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
+    public LLVMX86_64VaListStorage(LLVMPointer vaListStackPtr) {
         super(vaListStackPtr);
-        assert rootNode instanceof LLVMRootNode;
-        this.rootNode = (LLVMRootNode) rootNode;
     }
 
     // NativeTypeLibrary library
@@ -536,7 +530,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         @GenerateAOT.Exclude // recursion cut
         static void copyManagedToNative(LLVMX86_64VaListStorage source, NativeVAListWrapper dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
-            LLVMX86_64VaListStorage dummyClone = new LLVMX86_64VaListStorage(source.rootNode, dest.nativeVAListPtr);
+            LLVMX86_64VaListStorage dummyClone = new LLVMX86_64VaListStorage(dest.nativeVAListPtr);
             dummyClone.nativized = true;
             vaListLibrary.initialize(dummyClone, source.realArguments, source.numberOfExplicitArguments, frame);
         }

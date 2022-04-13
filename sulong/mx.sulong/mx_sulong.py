@@ -106,7 +106,7 @@ def runLLVMUnittests(unittest_runner):
 def findBundledLLVMProgram(llvm_program):
     llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
-    return os.path.join(dep.get_output(), 'bin', llvm_program)
+    return os.path.join(dep.get_output(), 'bin', mx.exe_suffix(llvm_program))
 
 
 def truffle_extract_VM_args(args, useDoubleDash=False):
