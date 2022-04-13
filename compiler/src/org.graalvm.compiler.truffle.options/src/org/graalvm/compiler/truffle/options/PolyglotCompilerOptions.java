@@ -558,9 +558,6 @@ public final class PolyglotCompilerOptions {
     @Option(help = "TODO", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> InliningUseSize = new OptionKey<>(false);
 
-    @Option(help = "TODO", category = OptionCategory.INTERNAL) //
-    public static final OptionKey<Boolean> InliningUsePreciseSize = new OptionKey<>(false);
-
     public static OptionDescriptors getDescriptors() {
         return new PolyglotCompilerOptionsOptionDescriptors();
     }
