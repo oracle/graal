@@ -24,34 +24,53 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler;
+import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
+import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl;
+import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
@@ -67,6 +86,14 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
 
         Register frameRegister = registerConfig.getFrameRegister();
         List<Register> calleeSavedRegisters = new ArrayList<>(registerConfig.getAllocatableRegisters().asList());
+        List<Register> calleeSavedXMMRegisters = new ArrayList<>();
+
+        /*
+         * Check whether JIT support is enabled. Since GraalFeature is not visible here, we check
+         * for DeoptimizationSupport#enabled() instead, which is available iff the GraalFeature is
+         * enabled.
+         */
+        boolean isRuntimeCompilationEnabled = DeoptimizationSupport.enabled();
 
         /*
          * Reverse list so that CPU registers are spilled close to the beginning of the frame, i.e.,
@@ -79,7 +106,18 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         Map<Register, Integer> calleeSavedRegisterOffsets = new HashMap<>();
         for (Register register : calleeSavedRegisters) {
             calleeSavedRegisterOffsets.put(register, offset);
-            offset += target.arch.getLargestStorableKind(register.getRegisterCategory()).getSizeInBytes();
+            RegisterCategory category = register.getRegisterCategory();
+            boolean isXMM = category.equals(AMD64.XMM);
+            if (isXMM) {
+                // XMM registers are handled separately
+                calleeSavedXMMRegisters.add(register);
+            }
+            if (isXMM && isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+                // we might need to save the full 512 bit vector register
+                offset += AMD64Kind.V512_QWORD.getSizeInBytes();
+            } else {
+                offset += target.arch.getLargestStorableKind(category).getSizeInBytes();
+            }
         }
         int calleeSavedRegistersSizeInBytes = offset;
 
@@ -88,40 +126,38 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                         calleeSavedRegistersSizeInBytes);
 
         ImageSingletons.add(CalleeSavedRegisters.class,
-                        new AMD64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedRegisterOffsets, calleeSavedRegistersSizeInBytes, saveAreaOffsetInFrame));
+                        new AMD64CalleeSavedRegisters(frameRegister, calleeSavedRegisters, calleeSavedXMMRegisters, calleeSavedRegisterOffsets, calleeSavedRegistersSizeInBytes,
+                                        saveAreaOffsetInFrame, isRuntimeCompilationEnabled));
     }
 
+    private final List<Register> calleeSavedXMMRegister;
+    private final boolean isRuntimeCompilationEnabled;
+
     @Platforms(Platform.HOSTED_ONLY.class)
-    private AMD64CalleeSavedRegisters(Register frameRegister, List<Register> calleeSavedRegisters, Map<Register, Integer> offsetsInSaveArea, int saveAreaSize, int saveAreaOffsetInFrame) {
+    private AMD64CalleeSavedRegisters(Register frameRegister, List<Register> calleeSavedRegisters, List<Register> calleeSavedXMMRegisters, Map<Register, Integer> offsetsInSaveArea, int saveAreaSize,
+                    int saveAreaOffsetInFrame, boolean isRuntimeCompilationEnabled) {
         super(frameRegister, calleeSavedRegisters, offsetsInSaveArea, saveAreaSize, saveAreaOffsetInFrame);
+        this.calleeSavedXMMRegister = calleeSavedXMMRegisters;
+        this.isRuntimeCompilationEnabled = isRuntimeCompilationEnabled;
     }
 
     /**
      * The increasing different size and number of registers of SSE vs. AVX vs. AVX512 complicates
      * saving and restoring when AOT compilation and JIT compilation use different CPU features: A
-     * JIT compiled caller could expect AVX512 registes to be saved, but the AOT compiled callee
-     * only saves the SSE registers. Therefore, AOT and JIT compiled code need to have the same CPU
-     * features right now. See {@link AMD64CPUFeatureAccess#enableFeatures}.
+     * JIT compiled caller might use AVX512 registers, but the AOT compiled callee is compiled to
+     * use SSE registers only. To make this work, AOT compiled callees must dynamically check which
+     * features are enabled at run time and store the appropriate register sizes. See
+     * {@link AMD64CPUFeatureAccess#enableFeatures}.
      */
-    public void emitSave(AMD64MacroAssembler asm, int frameSize) {
-        SubstrateTargetDescription target = ConfigurationValues.getTarget();
-        AMD64 arch = (AMD64) target.arch;
-        boolean hasAVX = arch.getFeatures().contains(AMD64.CPUFeature.AVX);
-        boolean hasAVX512 = arch.getFeatures().contains(AMD64.CPUFeature.AVX512F);
-
+    public void emitSave(AMD64MacroAssembler asm, int frameSize, CompilationResultBuilder crb) {
         for (Register register : calleeSavedRegisters) {
             AMD64Address address = calleeSaveAddress(asm, frameSize, register);
             RegisterCategory category = register.getRegisterCategory();
             if (category.equals(AMD64.CPU)) {
                 asm.movq(address, register);
             } else if (category.equals(AMD64.XMM)) {
-                if (hasAVX512) {
-                    asm.evmovdqu64(address, register);
-                } else if (hasAVX) {
-                    asm.vmovdqu(address, register);
-                } else {
-                    asm.movdqu(address, register);
-                }
+                // handled later
+                continue;
             } else if (category.equals(AMD64.MASK)) {
                 /* Graal does not use the AVX512 mask registers yet. */
                 throw VMError.unimplemented();
@@ -129,14 +165,10 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
                 throw VMError.shouldNotReachHere();
             }
         }
+        emitXMM(asm, crb, frameSize, Mode.SAVE);
     }
 
-    public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister) {
-        SubstrateTargetDescription target = ConfigurationValues.getTarget();
-        AMD64 arch = (AMD64) target.arch;
-        boolean hasAVX = arch.getFeatures().contains(AMD64.CPUFeature.AVX);
-        boolean hasAVX512 = arch.getFeatures().contains(AMD64.CPUFeature.AVX512F);
-
+    public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister, CompilationResultBuilder crb) {
         for (Register register : calleeSavedRegisters) {
             if (register.equals(excludedRegister)) {
                 continue;
@@ -147,23 +179,225 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
             if (category.equals(AMD64.CPU)) {
                 asm.movq(register, address);
             } else if (category.equals(AMD64.XMM)) {
-                if (hasAVX512) {
-                    asm.evmovdqu64(register, address);
-                } else if (hasAVX) {
-                    asm.vmovdqu(register, address);
-                } else {
-                    asm.movdqu(register, address);
-                }
+                // handled later
+                continue;
             } else if (category.equals(AMD64.MASK)) {
                 throw VMError.unimplemented();
             } else {
                 throw VMError.shouldNotReachHere();
             }
         }
+        emitXMM(asm, crb, frameSize, Mode.RESTORE);
+    }
+
+    private void emitXMM(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Mode mode) {
+        new XMMSaverRestorer(asm, crb, frameSize, mode).emit();
     }
 
     private AMD64Address calleeSaveAddress(AMD64MacroAssembler asm, int frameSize, Register register) {
         return asm.makeAddress(frameRegister, frameSize + getOffsetInFrame(register));
+    }
+
+    private enum Mode {
+        SAVE,
+        RESTORE
+    }
+
+    private final class XMMSaverRestorer {
+
+        private final AMD64MacroAssembler asm;
+        private final CompilationResultBuilder crb;
+        private final int frameSize;
+        private final Mode mode;
+
+        XMMSaverRestorer(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Mode mode) {
+            this.asm = asm;
+            this.crb = crb;
+            this.frameSize = frameSize;
+            this.mode = mode;
+        }
+
+        public void emit() {
+            assert isRuntimeCompilationEnabled == DeoptimizationSupport.enabled() : "JIT compilation enabled after registering singleton?";
+            if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+                Label end = new Label();
+                try {
+                    // AVX512
+                    if (emitConditionalSaveRestore(end, CPUFeature.AVX512F)) {
+                        // AVX512 statically available, no further checks needed
+                        return;
+                    }
+                    // AVX
+                    if (emitConditionalSaveRestore(end, CPUFeature.AVX)) {
+                        // AVX statically available, no further checks needed
+                        return;
+                    }
+                    // SSE
+                    emitSaveRestore(null);
+                } finally {
+                    asm.bind(end);
+                }
+            } else {
+                var features = ((AMD64) ConfigurationValues.getTarget().arch).getFeatures();
+                final CPUFeature avxVersion;
+                if (features.contains(CPUFeature.AVX512F)) {
+                    avxVersion = CPUFeature.AVX512F;
+                } else if (features.contains(CPUFeature.AVX)) {
+                    avxVersion = CPUFeature.AVX;
+                } else {
+                    avxVersion = null;
+                }
+                emitSaveRestore(avxVersion);
+            }
+        }
+
+        /**
+         * @return {@code true} if the {@code avxVersion} is statically available (so no further
+         *         checks are needed).
+         */
+        private boolean emitConditionalSaveRestore(Label end, CPUFeature avxVersion) {
+            var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
+            if (hostedCPUFeatures.contains(avxVersion)) {
+                emitSaveRestore(avxVersion);
+                return true;
+            }
+            if (SubstrateUtil.HOSTED) {
+                /*
+                 * Only emit dynamic feature checks for compilations at image build time. For
+                 * run-time compilations, use the features available at run time. This is only used
+                 * for the stub calling convention which is hosted-only.
+                 */
+                Label avxVersionNotAvailable = emitRuntimeFeatureTest(avxVersion);
+                // do we need vzeroupper?
+                boolean isAvxSseTransition = !hostedCPUFeatures.contains(CPUFeature.AVX);
+                if (isAvxSseTransition && avxVersion == CPUFeature.AVX512F) {
+                    // we need AVX for vzeroupper
+                    asm.addFeatures(EnumSet.of(CPUFeature.AVX, CPUFeature.AVX512F));
+                } else {
+                    asm.addFeatures(EnumSet.of(avxVersion));
+                }
+                if (isAvxSseTransition && mode == Mode.RESTORE) {
+                    /*
+                     * We are leaving an SSE-only region and are about to restore AVX registers.
+                     * Need vzeroupper.
+                     */
+                    asm.vzeroupper();
+                }
+                try {
+                    emitSaveRestore(avxVersion);
+                } finally {
+                    if (isAvxSseTransition && mode == Mode.SAVE) {
+                        /*
+                         * We are entering an SSE-only region and have saved AVX register . Need
+                         * vzeroupper.
+                         */
+                        asm.vzeroupper();
+                    }
+                    asm.removeFeatures();
+                }
+                asm.jmp(end);
+                asm.bind(avxVersionNotAvailable);
+            }
+            return false;
+        }
+
+        private void emitSaveRestore(CPUFeature avxVersion) {
+            for (Register register : calleeSavedXMMRegister) {
+                AMD64Address address = calleeSaveAddress(asm, frameSize, register);
+                RegisterCategory category = register.getRegisterCategory();
+                assert category.equals(AMD64.XMM);
+                if (CPUFeature.AVX512F.equals(avxVersion)) {
+                    if (mode == Mode.SAVE) {
+                        asm.evmovdqu64(address, register);
+                    } else {
+                        asm.evmovdqu64(register, address);
+                    }
+                } else if (CPUFeature.AVX.equals(avxVersion)) {
+                    if (mode == Mode.SAVE) {
+                        asm.vmovdqu(address, register);
+                    } else {
+                        asm.vmovdqu(register, address);
+                    }
+                } else {
+                    if (mode == Mode.SAVE) {
+                        asm.movdqu(address, register);
+                    } else {
+                        asm.movdqu(register, address);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Emits the run time feature check.
+         * 
+         * @return a new {@link Label} to continue execution of the {@code feature} is <em>not</em>
+         *         available.
+         */
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private Label emitRuntimeFeatureTest(CPUFeature feature) {
+            AMD64Address address = getFeatureMapAddress();
+            int mask = RuntimeCPUFeatureCheckImpl.instance().computeFeatureMask(EnumSet.of(feature));
+            GraalError.guarantee(mask != 0, "Mask must not be 0 for features %s", feature);
+            Label label = new Label();
+            asm.testAndJcc(getSize(), address, mask, AMD64Assembler.ConditionFlag.NotEqual, label, false, null);
+            return label;
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private AMD64BaseAssembler.OperandSize getSize() {
+            Class<?> fieldType = RuntimeCPUFeatureCheckImpl.getMaskField().getType();
+            Class<?> expectedType = int.class;
+            GraalError.guarantee(expectedType.equals(fieldType), "Expected %s field, got %s", expectedType, fieldType);
+            return DWORD;
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private AMD64Address getFeatureMapAddress() {
+            SubstrateObjectConstant object = (SubstrateObjectConstant) SubstrateObjectConstant.forObject(RuntimeCPUFeatureCheckImpl.instance());
+            int fieldOffset = fieldOffset(RuntimeCPUFeatureCheckImpl.getMaskField(crb.providers.getMetaAccess()));
+            GraalError.guarantee(ConfigurationValues.getTarget().inlineObjects, "Dynamic feature check for callee saved registers requires inlined objects");
+            Register heapBase = ReservedRegisters.singleton().getHeapBaseRegister();
+            GraalError.guarantee(heapBase != null, "Heap base register must not be null");
+            return new AMD64Address(heapBase, Register.None, AMD64Address.Scale.Times1, displacement(object, (SharedConstantReflectionProvider) crb.providers.getConstantReflection()) + fieldOffset,
+                            displacementAnnotation(object));
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private int fieldOffset(ResolvedJavaField f) {
+            SharedField field = (SharedField) f;
+            GraalError.guarantee(field.isAccessed(), "Field not accessed %s", f);
+            return field.getLocation();
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private Object displacementAnnotation(SubstrateObjectConstant constant) {
+            if (SubstrateUtil.HOSTED) {
+                /*
+                 * AOT compilation during image generation happens before the image heap objects are
+                 * layouted. So the offset of the constant is not known yet during compilation time,
+                 * and instead needs to be patched in later. We annotate the machine code with the
+                 * constant that needs to be patched in.
+                 */
+                return constant;
+            } else {
+                return null;
+            }
+        }
+
+        @Platforms(Platform.HOSTED_ONLY.class)
+        private int displacement(SubstrateObjectConstant constant, SharedConstantReflectionProvider constantReflection) {
+            if (SubstrateUtil.HOSTED) {
+                return 0;
+            } else {
+                /*
+                 * For JIT compilation at run time, the image heap is known and immutable, so the
+                 * offset of the constant can be emitted immediately. No patching is required later
+                 * on.
+                 */
+                return constantReflection.getImageHeapOffset(constant);
+            }
+        }
     }
 
     @Override

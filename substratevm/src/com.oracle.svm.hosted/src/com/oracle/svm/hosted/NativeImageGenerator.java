@@ -436,8 +436,11 @@ public class NativeImageGenerator {
             if (NativeImageOptions.RuntimeCheckedCPUFeatures.hasBeenSet()) {
                 runtimeCheckedFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.RuntimeCheckedCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
             } else {
+                var disabledFeatures = RuntimeCPUFeatureCheck.getDefaultDisabledFeatures(GraalAccess.getOriginalTarget().arch);
                 for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(GraalAccess.getOriginalTarget().arch)) {
-                    runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
+                    if (!disabledFeatures.contains(feature)) {
+                        runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
+                    }
                 }
             }
             architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
