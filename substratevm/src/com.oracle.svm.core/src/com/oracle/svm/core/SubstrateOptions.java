@@ -487,7 +487,6 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
-    @Fold
     public static boolean useLLVMBackend(OptionValues options) {
         return "llvm".equals(CompilerBackend.getValue(options));
     }
