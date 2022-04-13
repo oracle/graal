@@ -63,7 +63,7 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
 
     @Override
     public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
-        return new LLVMAarch64VaListStorage(rootNode, vaListStackPtr);
+        return new LLVMAarch64VaListStorage(vaListStackPtr);
     }
 
     @Override

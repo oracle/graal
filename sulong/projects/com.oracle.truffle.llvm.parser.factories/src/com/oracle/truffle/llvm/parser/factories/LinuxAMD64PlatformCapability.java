@@ -80,7 +80,7 @@ final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAM
 
     @Override
     public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
-        return new LLVMX86_64VaListStorage(rootNode, vaListStackPtr);
+        return new LLVMX86_64VaListStorage(vaListStackPtr);
     }
 
     @Override

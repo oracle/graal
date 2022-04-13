@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -44,7 +47,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -58,7 +60,6 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.LLVMAarch64VaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
@@ -83,9 +84,6 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 5)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
@@ -98,8 +96,6 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     public static final StructureType VA_LIST_TYPE = StructureType.createNamedFromList("struct.__va_list", false,
                     new ArrayList<>(Arrays.asList(PointerType.I8, PointerType.I8, PointerType.I8, PrimitiveType.I32, PrimitiveType.I32)));
-
-    private final LLVMRootNode rootNode;
 
     private Object[] originalArgs;
     private Object[][] expansions;
@@ -119,10 +115,8 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
 
     protected OverflowArgArea overflowArgArea;
 
-    public LLVMAarch64VaListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
+    public LLVMAarch64VaListStorage(LLVMPointer vaListStackPtr) {
         super(vaListStackPtr);
-        assert rootNode instanceof LLVMRootNode;
-        this.rootNode = (LLVMRootNode) rootNode;
     }
 
     private static int calculateUsedFpArea(Object[] realArguments, int numberOfExplicitArguments) {
@@ -827,7 +821,7 @@ public final class LLVMAarch64VaListStorage extends LLVMVaListStorage {
         @GenerateAOT.Exclude // recursion cut
         static void copyManagedToNative(LLVMAarch64VaListStorage source, NativeVAListWrapper dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
-            LLVMAarch64VaListStorage dummyClone = new LLVMAarch64VaListStorage(source.rootNode, dest.nativeVAListPtr);
+            LLVMAarch64VaListStorage dummyClone = new LLVMAarch64VaListStorage(dest.nativeVAListPtr);
             dummyClone.nativized = true;
             vaListLibrary.initialize(dummyClone, source.realArguments, source.numberOfExplicitArguments, frame);
         }
