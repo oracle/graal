@@ -29,6 +29,7 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
@@ -86,8 +87,7 @@ public class JNIThreadLocalPinnedObjects {
     }
 
     public static boolean unpinArrayByAddress(PointerBase address) {
-        JNISupport support = JNISupport.singleton();
-        return unpinFirst(n -> support.isArrayLayout(n.object.getObject().getClass()) && n.object.addressOfArrayElement(0) == address);
+        return unpinFirst(n -> LayoutEncoding.isArray(n.object.getObject()) && n.object.addressOfArrayElement(0) == address);
     }
 
     static int pinnedObjectCount() {

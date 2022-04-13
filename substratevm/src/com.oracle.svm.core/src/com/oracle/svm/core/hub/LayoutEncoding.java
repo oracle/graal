@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.StoredContinuation;
@@ -67,7 +68,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <li>indexShift: the array index shift for accessing array elements or for computing the array
  * size based on the array length</li>
  * </ul>
- * </li>
+ *
+ * {@link Hybrid} objects are also encoded as arrays but are treated like instance objects in other
+ * places (e.g. {@link HubType}). Another difference to arrays is that hybrid objects need a
+ * reference map because they have fields.</li>
  * </ul>
  */
 @DuplicatedInNativeCode
