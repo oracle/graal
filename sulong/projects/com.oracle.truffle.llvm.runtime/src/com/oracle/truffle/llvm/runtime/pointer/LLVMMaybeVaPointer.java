@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -75,6 +76,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
 public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
+    private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
     private LLVMPointer address;
@@ -82,6 +84,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     public LLVMMaybeVaPointer(LLVMVAListNode allocaNode, LLVMPointer address) {
         this.allocaNode = allocaNode;
+        this.allocVAPointerAssumption = allocaNode.getAssumption();
         this.address = address;
     }
 
@@ -122,8 +125,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
      * native access is permitted after calling the cleanup method.
      */
     protected void nativeObjectAccess() {
-        if (!wasVAListPointer && allocaNode.getAssumption().isValid()) {
-            allocaNode.getAssumption().invalidate();
+        if (!wasVAListPointer && allocVAPointerAssumption.isValid()) {
+            allocVAPointerAssumption.invalidate();
         }
     }
 
