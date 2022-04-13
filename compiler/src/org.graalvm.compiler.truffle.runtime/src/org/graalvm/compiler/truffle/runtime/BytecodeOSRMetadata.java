@@ -510,10 +510,10 @@ public final class BytecodeOSRMetadata {
         volatile Cell head = null;
 
         @ExplodeLoop
-        public final OsrEntryDescription get(int key) {
+        public final OsrEntryDescription get(int target) {
             Cell cur = head;
             while (cur != null) {
-                if (cur.target == key) {
+                if (cur.target == target) {
                     return cur.entry;
                 }
                 cur = cur.next;
@@ -521,11 +521,11 @@ public final class BytecodeOSRMetadata {
             return null;
         }
 
-        public final void put(int key, OsrEntryDescription value) {
+        public final void put(int target, OsrEntryDescription value) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
-                assert get(key) == null;
-                head = new Cell(key, value, head);
+                assert get(target) == null;
+                head = new Cell(target, value, head);
             }
         }
 
@@ -541,6 +541,7 @@ public final class BytecodeOSRMetadata {
             Map<Integer, OptimizedCallTarget> map = new HashMap<>();
             while (cur != null) {
                 map.put(cur.target, cur.entry.compilationTarget);
+                cur = cur.next;
             }
             return Collections.unmodifiableMap(map);
         }
