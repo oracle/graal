@@ -219,7 +219,8 @@ public class CustomInstruction extends Instruction {
     public CodeTree createSetResultBoxed(ExecutionVariables vars) {
         return CodeTreeBuilder.createBuilder() //
                         .startStatement() //
-                        .startCall("this", setResultUnboxedMethod) //
+                        .startStaticCall(setResultUnboxedMethod) //
+                        .variable(vars.bc) //
                         .variable(vars.bci) //
                         .end(2).build();
     }
@@ -232,7 +233,8 @@ public class CustomInstruction extends Instruction {
 
         return CodeTreeBuilder.createBuilder() //
                         .startStatement() //
-                        .startCall("this", setInputUnboxedMethod) //
+                        .startStaticCall(setInputUnboxedMethod) //
+                        .variable(vars.bc) //
                         .variable(vars.bci) //
                         .tree(index) //
                         .end(2).build();

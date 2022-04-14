@@ -17,6 +17,7 @@ import com.oracle.truffle.dsl.processor.generator.BitSet;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
+import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -366,20 +367,33 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             typeName = getFrameName(retType.getKind());
         }
 
+        CodeTree isResultUnboxed = multiState.createNotContains(frameState, new Object[]{resultBoxedState});
+
         if (typeName.equals("Object")) {
-            // no boxing elim here
+            b.startIf().tree(isResultUnboxed).end().startBlock();
+            {
+                // succ is expecting a primitive, let them know we are sending a boxed value
+
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+                // TODO lock
+
+                b.tree(OperationGeneratorUtils.callSetInputBoxed("$bci"));
+
+                b.lineComment("CheckStyle: stop parameter assignment check");
+                b.tree(multiState.createSet(frameState, new Object[]{resultBoxedState}, true, true));
+                b.lineComment("CheckStyle: resume parameter assignment check");
+            }
+            b.end();
             b.startStatement();
             b.startCall("$frame", "set" + typeName);
             b.string("$sp - " + destOffset);
             b.tree(value);
             b.end(2);
         } else {
-            b.startIf();
-            b.tree(multiState.createContains(frameState, new Object[]{resultBoxedState}));
-            b.end().startBlock();
+            b.startIf().tree(isResultUnboxed).end().startBlock();
             {
                 b.startStatement();
-                b.startCall("$frame", "setObject");
+                b.startCall("$frame", "set" + typeName);
                 b.string("$sp - " + destOffset);
                 b.tree(value);
                 b.end(2);
@@ -387,7 +401,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             b.end().startElseBlock();
             {
                 b.startStatement();
-                b.startCall("$frame", "set" + typeName);
+                b.startCall("$frame", "setObject");
                 b.string("$sp - " + destOffset);
                 b.tree(value);
                 b.end(2);
@@ -466,18 +480,37 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         String typeName = getFrameName(targetValue.getTypeMirror().getKind());
 
-        if (typeName.equals("Object")) {
-            b.startTryBlock();
-            b.startAssign(targetValue.getName());
-            b.startCall("$frame", "getObject");
-            b.string("$sp - " + offset);
-            b.end(3);
+        CodeTree childBoxedTree = multiState.createContains(frameState, new Object[]{inputsBoxedState[childIndex]});
 
-            createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, false, "neverbox");
-        } else {
-            b.startIf().tree(multiState.createContains(frameState, new Object[]{inputsBoxedState[childIndex]})).end();
+        if (typeName.equals("Object")) {
+            b.startIf().tree(childBoxedTree).end();
             b.startBlock();
             {
+                // pred is already boxed, there is no need to do any catching
+                b.startAssign(targetValue.getName());
+                b.startCall("$frame", "getObject");
+                b.string("$sp - " + offset);
+                b.end(3);
+            }
+            b.end().startElseBlock();
+            {
+                // pred may not be boxed, need to do a try-catch. do a bit set ONLY IF the node is
+                // completely uninitialized (to skip the first `executeGeneric` call)
+                b.startTryBlock();
+                b.startAssign(targetValue.getName());
+                b.startCall("$frame", "getObject");
+                b.string("$sp - " + offset);
+                b.end(3);
+
+                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, true, true, "generic");
+            }
+            b.end();
+        } else {
+            b.startIf().tree(childBoxedTree).end();
+            b.startBlock();
+            {
+                // pred is boxed. we need to unbox + catch CCE. CCE plays the role of URE from
+                // before
                 b.startTryBlock();
                 b.startAssign(targetValue.getName());
                 b.cast(targetValue.getTypeMirror());
@@ -485,17 +518,20 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 b.string("$sp - " + offset);
                 b.end(3);
 
-                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, true, false, "box -> unbox");
+                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, true, false, false, "box -> unbox");
             }
             b.end().startElseBlock();
             {
+                // pred is unboxed. FSTE can happen if pred has multiple primitive possible results.
+                // then we need to box all of them (e.g. was producing ints so far, and now produced
+                // a float. both primitive, but different types)
                 b.startTryBlock();
                 b.startAssign(targetValue.getName());
                 b.startCall("$frame", "get" + typeName);
                 b.string("$sp - " + offset);
                 b.end(3);
 
-                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, true, "unbox -> box");
+                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, true, false, "unbox -> box");
             }
             b.end();
         }
@@ -504,13 +540,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     private void createExecuteChildCatch(NodeData node, FrameState frameState, NodeExecutionData execution, LocalVariable targetValue, Function<FrameState, CodeTree> createExecuteAndSpecialize,
-                    int offset, CodeTreeBuilder b, boolean alsoCastException, boolean setBoxedInput, String reason) {
+                    int offset, CodeTreeBuilder b, boolean catchCastException, boolean setBoxedInput, boolean onlyIfUninit, String reason) {
 
-        if (alsoCastException) {
-            b.startCatchBlock(new TypeMirror[]{
-                            context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"),
-                            context.getType(ClassCastException.class),
-            }, "ex");
+        if (catchCastException) {
+            b.startCatchBlock(context.getType(ClassCastException.class), "ex");
         } else {
             b.startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"), "ex");
         }
@@ -518,15 +551,27 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (DO_LOG_BOXING_ELIM) {
             b.statement("System.out.printf(\" -- frame mispredict " + cinstr.name + "(" + reason + ": %s) @ %04x: %s %n\", $frame.getTag($sp - " + offset + "), $bci, ex)");
         }
+
         FrameState slowPathFrameState = frameState.copy();
 
         if (setBoxedInput) {
+            boolean skipInit = node.needsRewrites(context) && onlyIfUninit;
+            // we cannot "skip init" if node has no rewrites, since there is no init
+
+            if (skipInit) {
+                b.startIf().tree(multiState.createIsEmpty(slowPathFrameState)).end().startBlock();
+            }
+
             // TODO lock
+            b.lineComment("CheckStyle: stop parameter assignment check");
             b.tree(multiState.createSet(slowPathFrameState, new Object[]{inputsBoxedState[execution.getIndex()]}, true, true));
-            b.startStatement().startCall("doSetResultBoxed");
-            b.string("$bci");
-            b.string("" + execution.getIndex());
-            b.end(2);
+            b.lineComment("CheckStyle: resume parameter assignment check");
+
+            b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci", execution.getIndex()));
+
+            if (skipInit) {
+                b.end();
+            }
         }
 
         CodeTreeBuilder accessBuilder = b.create();
@@ -580,14 +625,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         b.startIf().string("!").startParantheses().tree(multiState.createContainsAll(frameState, inputsBoxedStateList.toArray())).end(2).startBlock();
         {
             // not all of them are set, set them
-            b.tree(multiState.createSet(frameState, inputsBoxedStateList.toArray(), true, true));
 
-            b.startStatement().startCall("doSetResultBoxed");
-            b.string("$bci");
-            for (int arg : referenceArguments) {
-                b.string("" + arg);
-            }
-            b.end(2);
+            b.lineComment("CheckStyle: stop parameter assignment check");
+            b.tree(multiState.createSet(frameState, inputsBoxedStateList.toArray(), true, true));
+            b.lineComment("CheckStyle: resume parameter assignment check");
+
+            b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci", referenceArguments.toArray(new Integer[0])));
         }
         b.end();
     }

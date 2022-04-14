@@ -116,16 +116,9 @@ public abstract class OperationsBuilder {
         }
     }
 
-    /**
-     * Emits offset at current bci
-     *
-     * @param bci
-     * @param instr
-     * @param label
-     * @return length of the offset
-     */
+    @SuppressWarnings("unused")
     protected final int doBranchInstruction(int bci, int instr, OperationLabel label) {
-        createOffset(bci, (BuilderOperationLabel) label);
+        createOffset(bci, label);
         return 2;
     }
 
@@ -206,6 +199,9 @@ public abstract class OperationsBuilder {
             stackSourceBci[curStack] = bci;
             stackAlwaysBoxed[curStack] = resultAlwaysBoxed;
             stackSourceIndices[curStack] = index;
+
+            successorIndices[index] = -1;
+            successorIndices[index + 1] = -1;
 
             curStack++;
 

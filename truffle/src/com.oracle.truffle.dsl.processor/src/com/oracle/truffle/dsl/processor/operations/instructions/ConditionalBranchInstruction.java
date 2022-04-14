@@ -61,7 +61,6 @@ public class ConditionalBranchInstruction extends Instruction {
             b.statement("cond = (boolean) frame.getObject(sp - 1)");
 
             // TODO lock
-            b.startStatement().startCall("doSetResultBoxed").variable(vars.bci).string("0").end(2);
             b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.commonBranchFalseBoxed.opcodeIdField));
             b.end();
         }

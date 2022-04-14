@@ -2,7 +2,6 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 
 public class ReturnInstruction extends Instruction {
 

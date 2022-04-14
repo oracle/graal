@@ -596,7 +596,7 @@ public abstract class Instruction {
         b.startSwitch().tree(index).end().startBlock();
         for (int i = 0; i < numPopStatic(); i++) {
             b.startCase().string("" + i).startCaseBlock();
-            b.tree(createSetInputBoxed(vars, index));
+            b.tree(createSetInputBoxed(vars, i));
             b.statement("break");
             b.end();
         }
@@ -608,6 +608,7 @@ public abstract class Instruction {
         return b.build();
     }
 
+    @SuppressWarnings("unused")
     public boolean isInputAlwaysBoxed(int index) {
         return false;
     }

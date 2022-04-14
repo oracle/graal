@@ -127,4 +127,31 @@ public class OperationGeneratorUtils {
         return b.build();
     }
 
+    public static CodeTree callSetResultBoxed(String bci, Integer... referenceArguments) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startStatement().startCall("doSetResultBoxed");
+        b.string("bc");
+        b.string("successorIndices");
+        b.string(bci);
+        for (int arg : referenceArguments) {
+            b.string("" + arg);
+        }
+        b.end(2);
+
+        return b.build();
+    }
+
+    public static CodeTree callSetInputBoxed(String bci) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.startStatement().startCall("doSetInputBoxed");
+        b.string("bc");
+        b.string("successorIndices");
+        b.string(bci);
+        b.end(2);
+
+        return b.build();
+    }
+
 }
