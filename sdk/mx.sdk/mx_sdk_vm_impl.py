@@ -2885,7 +2885,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 workingSets=None,
             ))
 
-    if _with_debuginfo():
+    if _debuginfo_dists():
         if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
             for d in with_debuginfo:
                 register_distribution(DebuginfoDistribution(d))
@@ -3375,7 +3375,7 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
                                                          'This can be a comma-separated list of disabled libraries or `true` to disable all libraries.', default=None)
 mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included (all by default).', default=None)
-mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginfo distributions.')
+mx.add_argument('--debuginfo-dists', action='store_true', help='Generate debuginfo distributions.')
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--gds-snapshot-catalog', action='store', help='Change the default appended URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
@@ -3651,8 +3651,8 @@ def _include_sources_str():
     return ','.join(sources)
 
 
-def _with_debuginfo():
-    return mx.get_opts().with_debuginfo or _env_var_to_bool('WITH_DEBUGINFO')
+def _debuginfo_dists():
+    return mx.get_opts().debuginfo_dists or _env_var_to_bool('DEBUGINFO_DISTS')
 
 
 def _snapshot_catalog():
