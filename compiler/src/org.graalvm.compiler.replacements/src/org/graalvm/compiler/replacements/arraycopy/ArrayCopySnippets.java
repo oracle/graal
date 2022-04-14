@@ -188,10 +188,10 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        int checkedSrcPos = checked.getSrcPos();
-        int checkedDestPos = checked.getDestPos();
-        int checkedLength = checked.getLength();
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
         incrementLengthCounter(checkedLength, counters);
 
         elementKindCounter.inc();
@@ -211,10 +211,10 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        int checkedSrcPos = checked.getSrcPos();
-        int checkedDestPos = checked.getDestPos();
-        int checkedLength = checked.getLength();
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
         incrementLengthCounter(checkedLength, counters);
 
         elementKindCounter.inc();
@@ -240,10 +240,10 @@ public abstract class ArrayCopySnippets implements Snippets {
     public void delayedCheckcastArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        int checkedSrcPos = checked.getSrcPos();
-        int checkedDestPos = checked.getDestPos();
-        int checkedLength = checked.getLength();
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
         incrementLengthCounter(checkedLength, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
@@ -261,10 +261,10 @@ public abstract class ArrayCopySnippets implements Snippets {
     public void delayedGenericArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        int checkedSrcPos = checked.getSrcPos();
-        int checkedDestPos = checked.getDestPos();
-        int checkedLength = checked.getLength();
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
         incrementLengthCounter(checkedLength, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
@@ -360,42 +360,36 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
     }
 
-    private final static int SRC_IDX = 0;
-    private final static int DEST_IDX = 1;
-    private final static int LENGTH_IDX = 2;
-    public static final int LIMITS_SIZE = 3;
+    private static final int SRC_IDX = 0;
+    private static final int DEST_IDX = 1;
+    private static final int LENGTH_IDX = 2;
+    private static final int LIMITS_SIZE = 3;
+
     /**
-     * Plain data object to hold the return value of {@link #checkLimits}.
+     * Creates the return value for {@link #checkLimits}.
      */
-    protected static final class CheckedLimits {
-        private final int[] values = new int[LIMITS_SIZE];
-
-        public CheckedLimits(int srcPos, int destPos, int length) {
-            values[SRC_IDX] = srcPos;
-            values[DEST_IDX] = destPos;
-            values[LENGTH_IDX] = length;
-        }
-
-        public int getSrcPos() {
-            return values[SRC_IDX];
-        }
-
-        public int getDestPos() {
-            return values[DEST_IDX];
-        }
-
-        public int getLength() {
-            return values[LENGTH_IDX];
-        }
+    protected static int[] createCheckLimitsResult(int srcPos, int destPos, int length) {
+        int[] values = new int[LIMITS_SIZE];
+        values[SRC_IDX] = srcPos;
+        values[DEST_IDX] = destPos;
+        values[LENGTH_IDX] = length;
+        return values;
     }
 
     /**
+     * Checks the limits of {@code srcPost}, {@code destPos}, and {@code length} and return those
+     * values with better stamps.
+     *
      * Writing this as individual if statements to avoid a merge without a frame state.
      *
-     * @return {@link CheckedLimits} object holding the {@code srcPos}, {@code destPos},
-     *         {@code length} parameters, but annotated with {@link PiNode#piCastPositive}.
+     * @see #createCheckLimitsResult
+     * @return An integer array holding the {@code srcPos} (at offset {@link #SRC_IDX}),
+     *         {@code destPos} (at offset {@link #DEST_IDX}), and {@code length} parameters (at
+     *         offset {@link #LENGTH_IDX}), but annotated with {@link PiNode#piCastPositive}. This
+     *         an array rather than a dedicated class with proper members to avoid storing
+     *         information about the class in encoded snippets.
      */
-    protected CheckedLimits checkLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, Counters counters) {
+    protected int[] checkLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, Counters counters) {
         if (probability(DEOPT_PROBABILITY, srcPos < 0)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
@@ -420,7 +414,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
         counters.checkSuccessCounter.inc();
-        return new CheckedLimits(newSrcPos, newDestPos, newLength);
+        return createCheckLimitsResult(newSrcPos, newDestPos, newLength);
     }
 
     protected void checkArrayTypes(Object nonNullSrc, Object nonNullDest, ArrayCopyTypeCheck arrayTypeCheck) {
