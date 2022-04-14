@@ -28,7 +28,7 @@ In particular, no assumptions are possible about the relative positions of globa
 
 Walking the stack is only possible using the GraalVM APIs.
 There is a strict separation between code and data.
-Self-modifying of code will not work.
+Self-modifying code will not work.
 Reads, writes and pointer arithmetic on pointers to code are not supported.
 
 ## Interaction with System Libraries in Native Mode
@@ -48,11 +48,11 @@ The managed mode (enabled with the `--llvm.managed` option) is a special executi
 > Note: The managed mode is only available in GraalVM Enterprise Edition.
 
 In this mode, by design, it is not allowed to call native code and access native memory.
-All memory is managed by the garbage collector, and all code that should be run must be available in the bitcode form.
+All memory is managed by the garbage collector, and all code that should be run needs to be compiled to bitcode.
 
 Pointer arithmetic is only possible to the extent allowed by the C standard.
 In particular, overflows are prevented, and it is not possible to access different allocations via out-of-bounds access.
-All such invalid accesses result in runtime exceptions rather than in an undefined behavior.
+All such invalid accesses result in runtime exceptions rather than in undefined behavior.
 
 In managed mode, GraalVM simulates a virtual Linux/AMD64 operating system, with [musl libc](https://www.musl-libc.org/) and [libc++](https://libcxx.llvm.org/) as the C/C++ standard libraries.
 All code needs to be compiled for that system, and can then be used to run on any architecture or operating system supported by GraalVM.
@@ -67,7 +67,7 @@ In managed mode (enabled with the `--llvm.managed` option and only available in 
 * Garbage collection policies to be considered:
     - Pointers to objects of managed languages are managed by a garbage collector, therefore they do not need to be freed manually.
     - On the other hand, pointers to allocations from the LLVM code (e.g., `malloc`) are not under control of the garbage collector, so they need to be deallocated manually.
-* Unmanaged heap policies to be considered::
+* Unmanaged heap policies to be considered:
     - Native memory (e.g., `malloc`, data sections, thread locals) is not under the control of a garbage collector.
     - Pointers to foreign objects controlled by the garbage collector can not be stored in native memory directly.
     - There are handle functions available to work around this limitation (see `graalvm/llvm/handles.h`).
