@@ -51,7 +51,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -203,7 +202,7 @@ public class DynamicHubInitializer {
         } catch (VerifyError e) {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
-            registerAsCompiled(throwVerifyError);
+            bb.addRootMethod(throwVerifyError, true);
             return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
@@ -222,15 +221,10 @@ public class DynamicHubInitializer {
         AnalysisMethod classInitializer = type.getClassInitializer();
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
-            registerAsCompiled(classInitializer);
+            bb.addRootMethod(classInitializer, true);
             classInitializerFunction = new MethodPointer(classInitializer);
         }
         return new ClassInitializationInfo(classInitializerFunction);
-    }
-
-    private void registerAsCompiled(AnalysisMethod aMethod) {
-        bb.addRootMethod(aMethod, true).registerAsImplementationInvoked();
-        CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
     }
 
     private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");

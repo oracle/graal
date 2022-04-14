@@ -77,7 +77,6 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractImage;
@@ -414,25 +413,12 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(aField);
         }
 
-        public void registerAsInvoked(Executable method, boolean invokeSpecial) {
-            registerAsInvoked(getMetaAccess().lookupJavaMethod(method), invokeSpecial);
-        }
-
-        public void registerAsInvoked(AnalysisMethod aMethod, boolean invokeSpecial) {
-            bb.addRootMethod(aMethod, invokeSpecial).registerAsImplementationInvoked();
+        public void registerAsRoot(Executable method, boolean invokeSpecial) {
+            bb.addRootMethod(method, invokeSpecial);
         }
 
         public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial) {
             bb.addRootMethod(aMethod, invokeSpecial);
-        }
-
-        public void registerAsCompiled(Executable method, boolean invokeSpecial) {
-            registerAsCompiled(getMetaAccess().lookupJavaMethod(method), invokeSpecial);
-        }
-
-        public void registerAsCompiled(AnalysisMethod aMethod, boolean invokeSpecial) {
-            registerAsInvoked(aMethod, invokeSpecial);
-            CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {

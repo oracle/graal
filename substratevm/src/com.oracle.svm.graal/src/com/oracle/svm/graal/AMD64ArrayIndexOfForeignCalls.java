@@ -62,7 +62,7 @@ class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
         AnalysisMetaAccess metaAccess = impl.getMetaAccess();
         for (SubstrateForeignCallDescriptor descriptor : AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
             AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
-            impl.registerAsCompiled(method, true);
+            impl.registerAsRoot(method, true);
         }
     }
 

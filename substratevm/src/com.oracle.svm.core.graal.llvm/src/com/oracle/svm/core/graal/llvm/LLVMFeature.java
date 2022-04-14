@@ -119,7 +119,7 @@ public class LLVMFeature implements Feature, GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
+        accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
     }
 
     @Override
