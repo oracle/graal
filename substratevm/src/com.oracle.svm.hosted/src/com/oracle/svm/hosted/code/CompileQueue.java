@@ -81,6 +81,7 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -150,6 +151,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
@@ -886,7 +888,10 @@ public class CompileQueue {
             newReplacement = hUniverse.lookup((AnalysisMethod) obj);
         } else if (obj instanceof AnalysisField) {
             newReplacement = hUniverse.lookup((AnalysisField) obj);
-
+        } else if (obj instanceof FieldLocationIdentity) {
+            ResolvedJavaField inner = ((FieldLocationIdentity) obj).getField();
+            assert inner instanceof AnalysisField;
+            newReplacement = new SubstrateFieldLocationIdentity((ResolvedJavaField) replaceAnalysisObjects(inner, node, replacements, hUniverse));
         } else if (obj.getClass() == ObjectStamp.class) {
             ObjectStamp stamp = (ObjectStamp) obj;
             if (stamp.type() == null) {

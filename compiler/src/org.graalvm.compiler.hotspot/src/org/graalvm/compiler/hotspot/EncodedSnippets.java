@@ -519,47 +519,21 @@ public class EncodedSnippets {
     }
 
     static class SymbolicResolvedJavaFieldLocationIdentity implements SymbolicJVMCIReference<FieldLocationIdentity> {
-        final UnresolvedJavaType declaringType;
-        final String name;
-        final UnresolvedJavaType signature;
-        private final boolean isStatic;
+        final SymbolicResolvedJavaField inner;
 
         SymbolicResolvedJavaFieldLocationIdentity(UnresolvedJavaType declaringType, String name,
                         UnresolvedJavaType signature, boolean isStatic) {
-            this.declaringType = declaringType;
-            this.name = name;
-            this.signature = signature;
-            this.isStatic = isStatic;
+            this.inner = new SymbolicResolvedJavaField(declaringType, name, signature, isStatic);
         }
 
         @Override
         public FieldLocationIdentity resolve(ResolvedJavaType accessingClass) {
-            ResolvedJavaType resolvedType = declaringType.resolve(accessingClass);
-            if (resolvedType == null) {
-                throw new NoClassDefFoundError("Can't resolve " + declaringType.getName() + " with " + accessingClass.getName());
-            }
-            ResolvedJavaType resolvedFieldType = signature.resolve(accessingClass);
-            if (resolvedFieldType == null) {
-                throw new NoClassDefFoundError("Can't resolve " + signature.getName() + " with " + accessingClass.getName());
-            }
-            ResolvedJavaField[] fields = isStatic ? resolvedType.getStaticFields() : resolvedType.getInstanceFields(true);
-            for (ResolvedJavaField field : fields) {
-                if (field.getName().equals(name)) {
-                    if (field.getType().equals(resolvedFieldType)) {
-                        return new FieldLocationIdentity(field);
-                    }
-                }
-            }
-            throw new InternalError("Could not resolve " + this + " in context of " + accessingClass.toJavaName());
+            return new FieldLocationIdentity(inner.resolve(accessingClass));
         }
 
         @Override
         public String toString() {
-            return "SymbolicResolvedJavaFieldLocationIdentity{" +
-                            signature.getName() + ' ' +
-                            declaringType.getName() + '.' +
-                            name +
-                            '}';
+            return "SymbolicResolvedJavaFieldLocationIdentity{" + inner.toString() + "}";
         }
     }
 
