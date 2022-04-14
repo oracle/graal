@@ -267,9 +267,7 @@ public final class BytecodeOSRMetadata {
         // Transfer indexed frame slots
         transferLoop(description.indexedFrameTags.length, source, target, description.indexedFrameTags, null, FrameSlotTransfer.indexedTransfer);
         // transfer auxiliary slots
-        for (int auxSlot = 0; auxSlot < state.frameDescriptor.getNumberOfAuxiliarySlots(); auxSlot++) {
-            target.setAuxiliarySlot(auxSlot, source.getAuxiliarySlot(auxSlot));
-        }
+        transferAuxiliarySlots(source, target, state);
     }
 
     /**
@@ -317,9 +315,7 @@ public final class BytecodeOSRMetadata {
         // transfer indexed frame slots
         transferLoop(state.frameDescriptor.getNumberOfSlots(), source, target, null, null, FrameSlotTransfer.indexedTransfer);
         // transfer auxiliary slots
-        for (int auxSlot = 0; auxSlot < state.frameDescriptor.getNumberOfAuxiliarySlots(); auxSlot++) {
-            target.setAuxiliarySlot(auxSlot, source.getAuxiliarySlot(auxSlot));
-        }
+        transferAuxiliarySlots(source, target, state);
     }
 
     private static void validateDescriptors(FrameWithoutBoxing source, FrameWithoutBoxing target, LazyState state) {
@@ -368,6 +364,13 @@ public final class BytecodeOSRMetadata {
 
             transfer.transfer(source, target, i, expectedTag, frameSlotArray);
             i++;
+        }
+    }
+
+    @ExplodeLoop
+    private void transferAuxiliarySlots(FrameWithoutBoxing source, FrameWithoutBoxing target, LazyState state) {
+        for (int auxSlot = 0; auxSlot < state.frameDescriptor.getNumberOfAuxiliarySlots(); auxSlot++) {
+            target.setAuxiliarySlot(auxSlot, source.getAuxiliarySlot(auxSlot));
         }
     }
 
