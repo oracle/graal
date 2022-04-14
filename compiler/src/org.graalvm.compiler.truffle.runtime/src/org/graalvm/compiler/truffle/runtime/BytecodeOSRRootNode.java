@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.lang.reflect.Method;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -37,6 +39,8 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final Object interpreterState;
     @CompilationFinal private boolean seenMaterializedFrame;
 
+    private final boolean usesDeprecatedFrameTransfer;
+
     private final Object entryTagsCache;
 
     BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, int target, Object interpreterState, Object entryTagsCache) {
@@ -45,10 +49,21 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
         this.interpreterState = interpreterState;
         this.seenMaterializedFrame = materializeCalled(frameDescriptor);
         this.entryTagsCache = entryTagsCache;
+        this.usesDeprecatedFrameTransfer = usesDeprecatedFrameTransfer(bytecodeOSRNode);
     }
 
     private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
         return ((GraalTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
+    }
+
+    private static boolean usesDeprecatedFrameTransfer(BytecodeOSRNode osrNode) {
+        Class<? extends BytecodeOSRNode> osrNodeClass = osrNode.getClass();
+        try {
+            Method m = osrNodeClass.getMethod("copyIntoOSRFrame", VirtualFrame.class, VirtualFrame.class, int.class);
+            return m.getDeclaringClass() != BytecodeOSRNode.class;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     Object getEntryTagsCache() {
@@ -56,6 +71,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public Object executeOSR(VirtualFrame frame) {
         VirtualFrame parentFrame = (VirtualFrame) frame.getArguments()[0];
 
@@ -74,7 +90,11 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             // required to prevent the materialized frame from getting out of sync during OSR.
             return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
-            osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
+            if (usesDeprecatedFrameTransfer) {
+                osrNode.copyIntoOSRFrame(frame, parentFrame, target);
+            } else {
+                osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
+            }
             try {
                 return osrNode.executeOSR(frame, target, interpreterState);
             } finally {

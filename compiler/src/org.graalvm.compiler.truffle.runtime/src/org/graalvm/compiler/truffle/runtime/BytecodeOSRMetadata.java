@@ -81,6 +81,16 @@ public final class BytecodeOSRMetadata {
             this.frameVersion = null;
             this.frameSlots = null;
         }
+
+        private void push(int target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
+            compilationMap.put(target, callTarget);
+            put(target, entry);
+        }
+
+        private void doClear() {
+            compilationMap.clear();
+            clear();
+        }
     }
 
     @CompilationFinal private volatile LazyState lazyState;
@@ -152,7 +162,7 @@ public final class BytecodeOSRMetadata {
                 if (lockedTarget == null) {
                     OsrEntryDescription entryDescription = new OsrEntryDescription();
                     lockedTarget = createOSRTarget(target, interpreterState, parentFrame.getFrameDescriptor(), entryDescription);
-                    state.compilationMap.put(target, lockedTarget);
+                    state.push(target, lockedTarget, entryDescription);
                     requestOSRCompilation(target, lockedTarget, (FrameWithoutBoxing) parentFrame);
                 }
                 return lockedTarget;
@@ -477,7 +487,7 @@ public final class BytecodeOSRMetadata {
             osrNode.setOSRMetadata(DISABLED);
             LazyState state = lazyState;
             if (state != null) {
-                state.compilationMap.clear();
+                state.doClear();
             }
         });
     }
@@ -497,9 +507,6 @@ public final class BytecodeOSRMetadata {
     static final class OsrEntryDescription {
         @CompilationFinal(dimensions = 1) private byte[] frameTags;
         @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
-
-        OsrEntryDescription() {
-        }
     }
 
     private abstract static class FinalCompilationListMap {
