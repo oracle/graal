@@ -84,7 +84,6 @@ Depending on the GraalVM edition, the commands to the `native-image` builder may
 * `--language:wasm`: make WebAssembly available as a language for the executable
 * `--language:java`: make Java available as a language for the executable
 * `--language:llvm`: make LLVM bitcode available as a language for the executable
-* `--language:heaplang`: ?
 * `--language:js`: make JavaScript available as a language for the executable
 * `--language:nodejs`: make Node.js available for the executable
 * `--language:ruby`: make Ruby available as a language for the executable
