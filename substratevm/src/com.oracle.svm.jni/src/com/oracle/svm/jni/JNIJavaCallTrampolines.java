@@ -75,15 +75,15 @@ public final class JNIJavaCallTrampolines {
         throw VMError.shouldNotReachHere();
     }
 
-    private native void varargsJavaCallTrampoline();
+    private static native void varargsJavaCallTrampoline();
 
-    private native void arrayJavaCallTrampoline();
+    private static native void arrayJavaCallTrampoline();
 
-    private native void valistJavaCallTrampoline();
+    private static native void valistJavaCallTrampoline();
 
-    private native void varargsNonvirtualJavaCallTrampoline();
+    private static native void varargsNonvirtualJavaCallTrampoline();
 
-    private native void arrayNonvirtualJavaCallTrampoline();
+    private static native void arrayNonvirtualJavaCallTrampoline();
 
-    private native void valistNonvirtualJavaCallTrampoline();
+    private static native void valistNonvirtualJavaCallTrampoline();
 }
