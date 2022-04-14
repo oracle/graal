@@ -189,13 +189,16 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         checkArrayTypes(src, dest, arrayTypeCheck);
         CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(checked.length, counters);
+        int checkedSrcPos = checked.getSrcPos();
+        int checkedDestPos = checked.getDestPos();
+        int checkedLength = checked.getLength();
+        incrementLengthCounter(checkedLength, counters);
 
         elementKindCounter.inc();
-        elementKindCopiedCounter.add(checked.length);
+        elementKindCopiedCounter.add(checkedLength);
 
         // Don't lower until floating guards are fixed.
-        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(src, checked.srcPos, dest, checked.destPos, checked.length, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
+        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(src, checkedSrcPos, dest, checkedDestPos, checkedLength, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
                         elementKind);
     }
 
@@ -209,12 +212,15 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         checkArrayTypes(src, dest, arrayTypeCheck);
         CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(checked.length, counters);
+        int checkedSrcPos = checked.getSrcPos();
+        int checkedDestPos = checked.getDestPos();
+        int checkedLength = checked.getLength();
+        incrementLengthCounter(checkedLength, counters);
 
         elementKindCounter.inc();
-        elementKindCopiedCounter.add(checked.length);
+        elementKindCopiedCounter.add(checkedLength);
 
-        doArraycopyExactStubCallSnippet(src, checked.srcPos, dest, checked.destPos, checked.length, elementKind, locationIdentity, counters);
+        doArraycopyExactStubCallSnippet(src, checkedSrcPos, dest, checkedDestPos, checkedLength, elementKind, locationIdentity, counters);
     }
 
     protected void doArraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity locationIdentity,
@@ -235,10 +241,13 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         checkArrayTypes(src, dest, arrayTypeCheck);
         CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(checked.length, counters);
+        int checkedSrcPos = checked.getSrcPos();
+        int checkedDestPos = checked.getDestPos();
+        int checkedLength = checked.getLength();
+        incrementLengthCounter(checkedLength, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(src, checked.srcPos, dest, checked.destPos, checked.length, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, checkedSrcPos, dest, checkedDestPos, checkedLength, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -253,10 +262,13 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         checkArrayTypes(src, dest, arrayTypeCheck);
         CheckedLimits checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(checked.length, counters);
+        int checkedSrcPos = checked.getSrcPos();
+        int checkedDestPos = checked.getDestPos();
+        int checkedLength = checked.getLength();
+        incrementLengthCounter(checkedLength, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(src, checked.srcPos, dest, checked.destPos, checked.length, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, checkedSrcPos, dest, checkedDestPos, checkedLength, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -348,18 +360,32 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
     }
 
+    private final static int SRC_IDX = 0;
+    private final static int DEST_IDX = 1;
+    private final static int LENGTH_IDX = 2;
+    public static final int LIMITS_SIZE = 3;
     /**
      * Plain data object to hold the return value of {@link #checkLimits}.
      */
     protected static final class CheckedLimits {
-        private final int srcPos;
-        private final int destPos;
-        private final int length;
+        private final int[] values = new int[LIMITS_SIZE];
 
         public CheckedLimits(int srcPos, int destPos, int length) {
-            this.srcPos = srcPos;
-            this.destPos = destPos;
-            this.length = length;
+            values[SRC_IDX] = srcPos;
+            values[DEST_IDX] = destPos;
+            values[LENGTH_IDX] = length;
+        }
+
+        public int getSrcPos() {
+            return values[SRC_IDX];
+        }
+
+        public int getDestPos() {
+            return values[DEST_IDX];
+        }
+
+        public int getLength() {
+            return values[LENGTH_IDX];
         }
     }
 
