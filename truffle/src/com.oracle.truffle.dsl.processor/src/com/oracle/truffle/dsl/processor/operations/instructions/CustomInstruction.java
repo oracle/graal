@@ -119,7 +119,7 @@ public class CustomInstruction extends Instruction {
 
     @Override
     public boolean standardPrologue() {
-        return data.getMainProperties().isVariadic;
+        return false;
     }
 
     @Override
@@ -127,34 +127,57 @@ public class CustomInstruction extends Instruction {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (data.getMainProperties().isVariadic) {
-            // variadics always box
-            if (results.length > 0) {
-                b.startAssign(vars.results[0]);
-            } else {
-                b.startStatement();
-            }
+
+            b.declaration("int", "numVariadics", "LE_BYTES.getShort(bc, bci + " + getArgumentOffset(inputs.length - 1) + ")");
+
+            int additionalInputs = inputs.length - 1;
 
             int inputIndex = 0;
-            b.startCall("this", executeMethod);
-            b.variable(vars.frame);
-            b.variable(vars.bci);
-            b.variable(vars.sp);
-
+            CodeTree[] inputTrees = new CodeTree[data.getMainProperties().parameters.size()];
             for (ParameterKind kind : data.getMainProperties().parameters) {
+                String inputName = "input_" + inputIndex;
                 switch (kind) {
                     case STACK_VALUE:
+                        b.declaration("Object", inputName, "frame.getObject(sp - numVariadics - " + (additionalInputs + inputIndex) + ")");
+                        inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
+                        break;
                     case VARIADIC:
-                        b.variable(vars.inputs[inputIndex++]);
+                        b.declaration("Object[]", inputName, "new Object[numVariadics]");
+                        b.startFor().string("int varIndex = 0; varIndex < numVariadics; varIndex++").end().startBlock();
+                        b.startStatement().string(inputName, "[varIndex] = frame.getObject(sp - numVariadics + varIndex)").end();
+                        b.end();
+                        inputTrees[inputIndex++] = CodeTreeBuilder.singleString(inputName);
                         break;
                     case VIRTUAL_FRAME:
-                        b.variable(vars.frame);
+                        inputTrees[inputIndex++] = CodeTreeBuilder.singleVariable(vars.frame);
                         break;
                     default:
                         throw new IllegalArgumentException("Unexpected value: " + kind);
                 }
             }
 
+            if (results.length > 0) {
+                b.startAssign("Object result");
+            } else {
+                b.startStatement();
+            }
+
+            b.startCall("this", executeMethod);
+            b.variable(vars.frame);
+            b.variable(vars.bci);
+            b.variable(vars.sp);
+            b.trees(inputTrees);
             b.end(2);
+
+            b.startAssign(vars.sp).variable(vars.sp).string(" - " + additionalInputs + " - numVariadics + ", results.length > 0 ? "1" : "0").end();
+
+            if (results.length > 0) {
+                b.startStatement().startCall(vars.frame, "setObject");
+                b.string("sp - 1");
+                b.string("result");
+                b.end(2);
+            }
+
         } else {
             b.startStatement();
             b.startCall("this", executeMethod);

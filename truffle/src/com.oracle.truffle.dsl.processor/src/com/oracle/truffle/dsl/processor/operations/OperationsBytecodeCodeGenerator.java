@@ -333,93 +333,11 @@ public class OperationsBytecodeCodeGenerator {
                 b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
-                CodeVariableElement[] varInputs = null;
-                CodeVariableElement[] varResults = null;
-
                 if (op.standardPrologue()) {
-
-                    varInputs = new CodeVariableElement[op.inputs.length];
-                    TypeMirror[] inputTypes = op.expectedInputTypes(context);
-                    vars.inputs = varInputs;
-                    for (int i = op.inputs.length - 1; i >= 0; i--) {
-                        if (op.inputs[i] == InputType.STACK_VALUE_IGNORED) {
-                            b.statement("--sp");
-                            continue;
-                        }
-
-                        varInputs[i] = new CodeVariableElement(inputTypes[i], "input_" + i);
-
-                        b.declaration(varInputs[i].asType(), varInputs[i].getName(), createInputCode(vars, op, i, inputTypes[i]));
-                        if (op.inputs[i] == InputType.VARARG_VALUE) {
-                            b.startFor().string("int i = ").variable(varInputs[i]).string(".length - 1; i >= 0; i--").end();
-                            b.startBlock();
-                            b.startStatement().variable(varInputs[i]).string("[i] = ");
-                            b.variable(argFrame).string(".getValue(--sp)");
-                            b.end(2);
-                        }
-                    }
-
-                    varResults = new CodeVariableElement[op.results.length];
-                    vars.results = varResults;
-                    for (int i = 0; i < op.results.length; i++) {
-                        switch (op.results[i]) {
-                            case STACK_VALUE:
-                            case SET_LOCAL:
-                                varResults[i] = new CodeVariableElement(context.getType(Object.class), "result_" + i);
-                                b.statement("Object result_" + i);
-                                break;
-                            case BRANCH:
-                                varResults[i] = varBci;
-                                break;
-                            case RETURN:
-                                varResults[i] = varReturnValue;
-                                break;
-                        }
-                    }
+                    throw new AssertionError("standard prologue: " + op.name);
                 }
 
                 b.tree(op.createExecuteCode(vars));
-
-                if (op.standardPrologue()) {
-                    for (int i = 0; i < op.results.length; i++) {
-                        switch (op.results[i]) {
-                            case STACK_VALUE:
-                                b.startStatement().startCall(argFrame, "setObject").string("sp++").variable(varResults[i]).end(2);
-                                break;
-                            case SET_LOCAL:
-                                b.startStatement().startCall(vars.frame, "setObject") //
-                                                .startGroup().string("VALUES_OFFSET + ").tree(op.createReadArgumentCode(op.inputs.length + i, vars)).end() //
-                                                .variable(varResults[i]) //
-                                                .end(2);
-                                break;
-                        }
-                    }
-
-                    if (m.isTracing()) {
-                        b.startStatement().startCall(fldTracer, "traceInstruction");
-                        b.variable(varBci);
-                        b.variable(op.opcodeIdField);
-                        b.doubleQuote(op.name);
-
-                        for (CodeVariableElement input : varInputs) {
-                            if (input == null) {
-                                b.string("null");
-                            } else {
-                                b.variable(input);
-                            }
-                        }
-
-                        for (CodeVariableElement res : varResults) {
-                            if (res == null) {
-                                b.string("null");
-                            } else {
-                                b.variable(res);
-                            }
-                        }
-
-                        b.end(2);
-                    }
-                }
 
                 if (op.isReturnInstruction()) {
                     b.statement("break loop");

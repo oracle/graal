@@ -12,10 +12,18 @@ public class BranchInstruction extends Instruction {
     }
 
     @Override
+    public boolean standardPrologue() {
+        return false;
+    }
+
+    @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startAssign(vars.results[0]).variable(vars.inputs[0]).end();
+        b.startAssign(vars.bci).startCall("LE_BYTES", "getShort");
+        b.variable(vars.bc);
+        b.startGroup().variable(vars.bci).string(" + " + getArgumentOffset(0)).end();
+        b.end(2);
         b.statement("continue loop");
 
         return b.build();
