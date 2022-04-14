@@ -56,6 +56,11 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
         return ((GraalTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
     }
 
+    /*
+     * Detects usage of deprecated frame transfer, and directs the frame transfer path accordingly
+     * later. When removing the support for this deprecation, constructs used and paths related are
+     * marked with the comment "Support for deprecated frame transfer".
+     */
     private static boolean usesDeprecatedFrameTransfer(BytecodeOSRNode osrNode) {
         Class<? extends BytecodeOSRNode> osrNodeClass = osrNode.getClass();
         try {
@@ -91,6 +96,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
             if (usesDeprecatedFrameTransfer) {
+                // Support for deprecated frame transfer
                 osrNode.copyIntoOSRFrame(frame, parentFrame, target);
             } else {
                 osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);

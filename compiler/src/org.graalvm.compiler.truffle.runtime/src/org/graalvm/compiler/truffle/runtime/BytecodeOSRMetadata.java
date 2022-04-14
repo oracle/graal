@@ -67,7 +67,10 @@ public final class BytecodeOSRMetadata {
 
     // Lazily initialized state. Most nodes with back-edges will not trigger compilation, so we
     // defer initialization of some fields until they're actually used.
-    static final class LazyState extends FinalCompilationListMap {
+    static final class LazyState //
+                    // Support for deprecated frame transfer
+                    extends FinalCompilationListMap {
+
         private final Map<Integer, OptimizedCallTarget> compilationMap;
         @CompilationFinal private FrameDescriptor frameDescriptor;
         @CompilationFinal private Assumption frameVersion;
@@ -84,11 +87,13 @@ public final class BytecodeOSRMetadata {
 
         private void push(int target, OptimizedCallTarget callTarget, OsrEntryDescription entry) {
             compilationMap.put(target, callTarget);
+            // Support for deprecated frame transfer
             put(target, entry);
         }
 
         private void doClear() {
             compilationMap.clear();
+            // Support for deprecated frame transfer
             clear();
         }
     }
@@ -239,7 +244,7 @@ public final class BytecodeOSRMetadata {
 
         OsrEntryDescription description;
         if (!(entryMetadata instanceof OsrEntryDescription)) {
-            // support for deprecated path.
+            // Support for deprecated frame transfer
             description = state.get(bytecodeTarget);
         } else {
             description = (OsrEntryDescription) entryMetadata;
@@ -509,6 +514,7 @@ public final class BytecodeOSRMetadata {
         @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
     }
 
+    // Support for deprecated frame transfer
     private abstract static class FinalCompilationListMap {
         private static final class Cell {
             final Cell next;
