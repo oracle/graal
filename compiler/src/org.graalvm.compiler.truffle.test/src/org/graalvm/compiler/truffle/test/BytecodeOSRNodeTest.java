@@ -590,7 +590,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object entryMetadata) {
             setInt(osrFrame, indexSlot, getInt(parentFrame, indexSlot));
             setInt(osrFrame, numIterationsSlot, getInt(parentFrame, numIterationsSlot));
         }
@@ -1111,8 +1111,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-            super.copyIntoOSRFrame(osrFrame, parentFrame, target);
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object entryMetadata) {
+            super.copyIntoOSRFrame(osrFrame, parentFrame, target, entryMetadata);
             // Copying should not trigger a deopt.
             Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
@@ -1301,9 +1301,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object entryMetadata) {
             changeFrame(osrFrame.getFrameDescriptor()); // only changes the first time
-            super.copyIntoOSRFrame(osrFrame, parentFrame, target);
+            super.copyIntoOSRFrame(osrFrame, parentFrame, target, entryMetadata);
         }
 
         @Override
@@ -1432,7 +1432,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         @ExplodeLoop
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object entryMetadata) {
             for (int i = 0; i < regs.length; i++) {
                 setInt(osrFrame, i, getInt(parentFrame, i));
             }

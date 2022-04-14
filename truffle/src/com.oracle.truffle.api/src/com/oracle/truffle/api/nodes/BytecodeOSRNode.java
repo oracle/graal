@@ -47,7 +47,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Interface for Truffle bytecode nodes which can be on-stack replaced (OSR).
- *
+ * <p>
  * There are a few restrictions Bytecode OSR nodes must satisfy in order for OSR to work correctly:
  * <ol>
  * <li>The node must extend {@link Node} or a subclass of {@link Node}.</li>
@@ -62,10 +62,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
  *
  * <p>
  * For performance reasons, the parent frame may be copied into a new frame used for OSR. If this
- * happens, {@link BytecodeOSRNode#copyIntoOSRFrame} is used to perform the copy, and
- * {@link BytecodeOSRNode#restoreParentFrame} is used to copy the OSR frame contents back into the
- * parent frame after OSR. A node may override these methods; by default, they perform slot-wise
- * copies.
+ * happens, {@link BytecodeOSRNode#copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)} is
+ * used to perform the copy, and {@link BytecodeOSRNode#restoreParentFrame} is used to copy the OSR
+ * frame contents back into the parent frame after OSR. A node may override these methods; by
+ * default, they perform slot-wise copies.
  *
  * <p>
  * A node may also wish to override {@link BytecodeOSRNode#prepareOSR} to perform initialization.
@@ -118,7 +118,7 @@ public interface BytecodeOSRNode extends NodeInterface {
 
     /**
      * Gets the OSR metadata for this instance.
-     *
+     * <p>
      * The metadata must be stored on a
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
      * field. Refer to the documentation for this interface for a more complete description.
@@ -130,7 +130,7 @@ public interface BytecodeOSRNode extends NodeInterface {
 
     /**
      * Sets the OSR metadata for this instance.
-     *
+     * <p>
      * The metadata must be stored on a
      * {@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal @CompilationFinal} instance
      * field. Refer to the documentation for this interface for a more complete description.
@@ -139,6 +139,15 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @since 21.3
      */
     void setOSRMetadata(Object osrMetadata);
+
+    /**
+     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
+     * @deprecated since 22.2
+     */
+    @Deprecated(since = "22.2")
+    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, null);
+    }
 
     /**
      * Copies the contents of the {@code parentFrame} into the {@code osrFrame} used to execute OSR.
@@ -151,23 +160,24 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param osrFrame the frame to use for OSR.
      * @param parentFrame the frame used before performing OSR.
      * @param target the target location OSR will execute from (e.g., bytecode index).
-     * @since 21.3
+     * @param entryMetadata Additional metadata for the default frame transfer behavior.
+     * @since 22.2
      */
-    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target);
+    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object entryMetadata) {
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, entryMetadata);
     }
 
     /**
      * Restores the contents of the {@code osrFrame} back into the {@code parentFrame} after OSR. By
      * default, performs a slot-wise copy of the frame.
-     *
+     * <p>
      * Though a bytecode interpreter might not explicitly use {@code parentFrame} after OSR, it is
      * necessary to restore the state into {@code parentFrame} if it may be accessed through
      * instrumentation.
      *
      * <p>
      * NOTE: This method is only used if the Truffle runtime decided to copy the frame using
-     * {@link BytecodeOSRNode#copyIntoOSRFrame}.
+     * {@link BytecodeOSRNode#copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)}.
      *
      * @param osrFrame the frame which was used for OSR.
      * @param parentFrame the frame which will be used by the parent after returning from OSR.
@@ -194,13 +204,13 @@ public interface BytecodeOSRNode extends NodeInterface {
      *     return field;
      * }
      * </pre>
-     *
+     * <p>
      * If the field is accessed from compiled OSR code, it may trigger a deoptimization in order to
      * initialize the field. Using {@link BytecodeOSRNode#prepareOSR} to initialize the field can
      * prevent this.
      *
-     * @since 21.3
      * @param target the target location OSR will execute from (e.g., bytecode index).
+     * @since 21.3
      */
     default void prepareOSR(int target) {
         // do nothing
@@ -249,7 +259,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      *   if (osrResult != null) return osrResult;
      * }
      * </pre>
-     *
+     * <p>
      * The optional {@code interpreterState} parameter will be forwarded to
      * {@link BytecodeOSRNode#executeOSR} when OSR is performed. It should consist of additional
      * interpreter state (e.g., data pointers) needed to resume execution from {@code target}. The
@@ -271,7 +281,7 @@ public interface BytecodeOSRNode extends NodeInterface {
      *     return dispatchFromBCI(osrFrame, target, interpreterState.dataPtr);
      * }
      * </pre>
-     *
+     * <p>
      * The optional {@code beforeTransfer} callback will be called before transferring control to
      * the OSR target. Since this method may or may not perform a transfer, it is a way to ensure
      * certain actions (e.g., instrumentation events) occur before transferring to OSR code. For

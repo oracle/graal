@@ -37,15 +37,22 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final Object interpreterState;
     @CompilationFinal private boolean seenMaterializedFrame;
 
-    BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, int target, Object interpreterState) {
+    private final Object entryTagsCache;
+
+    BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, int target, Object interpreterState, Object entryTagsCache) {
         super(language, frameDescriptor, bytecodeOSRNode);
         this.target = target;
         this.interpreterState = interpreterState;
         this.seenMaterializedFrame = materializeCalled(frameDescriptor);
+        this.entryTagsCache = entryTagsCache;
     }
 
     private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
         return ((GraalTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
+    }
+
+    Object getEntryTagsCache() {
+        return entryTagsCache;
     }
 
     @Override
@@ -67,7 +74,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             // required to prevent the materialized frame from getting out of sync during OSR.
             return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
-            osrNode.copyIntoOSRFrame(frame, parentFrame, target);
+            osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
             try {
                 return osrNode.executeOSR(frame, target, interpreterState);
             } finally {

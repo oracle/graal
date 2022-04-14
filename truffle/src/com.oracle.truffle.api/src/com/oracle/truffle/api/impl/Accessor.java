@@ -1074,7 +1074,7 @@ public abstract class Accessor {
          * @param target the frame to transfer state into
          * @param bytecodeTarget the target location OSR executes from (e.g., bytecode index).
          */
-        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget);
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object entryMetadata);
 
         /**
          * Restores state from the {@code source} frame into the {@code target} frame. This method
