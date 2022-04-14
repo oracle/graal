@@ -322,21 +322,13 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayByte(EspressoLanguage language, byte value, int index, @JavaType(byte[].class /*
-                                                                                                       * or
-                                                                                                       * boolean
-                                                                                                       * [
-                                                                                                       * ]
-                                                                                                       */) StaticObject array) {
+    public void setArrayByte(EspressoLanguage language, byte value, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array) {
         setArrayByte(language, value, index, array, null);
     }
 
-    public void setArrayByte(EspressoLanguage language, byte value, int index, @JavaType(byte[].class /*
-                                                                                                       * or
-                                                                                                       * boolean
-                                                                                                       * [
-                                                                                                       * ]
-                                                                                                       */) StaticObject array, BytecodeNode bytecodeNode) {
+    public void setArrayByte(EspressoLanguage language, byte value, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array, BytecodeNode bytecodeNode) {
         byte maybeMaskedValue = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
         byte[] underlying = array.<byte[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
