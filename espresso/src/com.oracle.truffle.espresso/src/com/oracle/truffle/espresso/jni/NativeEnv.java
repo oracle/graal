@@ -304,7 +304,7 @@ public abstract class NativeEnv implements ContextAccess {
                             if (actualTarget == null) {
                                 CallableFromNative subst = factory.create();
                                 String name = getName() + '.' + factory.methodName();
-                                NativeRootNode rootNode = new NativeRootNode(EspressoLanguage.get(null), subst, name);
+                                NativeRootNode rootNode = new NativeRootNode(getLanguage(), subst, name);
                                 target = actualTarget = rootNode.getCallTarget();
                             }
                         }

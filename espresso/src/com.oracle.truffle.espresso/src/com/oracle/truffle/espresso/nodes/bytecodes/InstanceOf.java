@@ -27,7 +27,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
@@ -38,7 +37,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
 /**
  * INSTANCEOF bytecode helper nodes.
@@ -58,7 +57,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * For un-cached nodes use the stateless {@link InstanceOf.Dynamic}.
  */
 @NodeInfo(shortName = "INSTANCEOF constant class")
-public abstract class InstanceOf extends Node {
+public abstract class InstanceOf extends EspressoNode {
 
     public abstract boolean execute(Klass maybeSubtype);
 
@@ -67,7 +66,7 @@ public abstract class InstanceOf extends Node {
      */
     @GenerateUncached
     @NodeInfo(shortName = "INSTANCEOF dynamic check")
-    public abstract static class Dynamic extends Node {
+    public abstract static class Dynamic extends EspressoNode {
         protected static final int LIMIT = 4;
 
         public abstract boolean execute(Klass maybeSubtype, Klass superType);
@@ -216,7 +215,7 @@ public abstract class InstanceOf extends Node {
             if (comparison < 0) {
                 simpleSubTypeCheckProfile.enter();
                 Klass elemental = superType.getElementalType();
-                Meta meta = EspressoContext.get(this).getMeta();
+                Meta meta = getMeta();
                 return elemental == meta.java_lang_Object || elemental == meta.java_io_Serializable || elemental == meta.java_lang_Cloneable;
             }
 
@@ -240,11 +239,11 @@ public abstract class InstanceOf extends Node {
         }
 
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(superType);
+            return getContext().getClassHierarchyOracle().hasNoImplementors(superType);
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+            return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
         @Specialization(assumptions = "noImplementors")
@@ -287,11 +286,11 @@ public abstract class InstanceOf extends Node {
         }
 
         protected ClassHierarchyAssumption getNoImplementorsAssumption() {
-            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(superType);
+            return getContext().getClassHierarchyOracle().hasNoImplementors(superType);
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(superType);
+            return getContext().getClassHierarchyOracle().readSingleImplementor(superType);
         }
 
         @Specialization(assumptions = "noImplementors")
@@ -315,7 +314,7 @@ public abstract class InstanceOf extends Node {
 
         @Specialization
         public boolean doArrayKlass(@SuppressWarnings("unused") ArrayKlass maybeSubtype) {
-            Meta meta = EspressoContext.get(this).getMeta();
+            Meta meta = getMeta();
             return superType == meta.java_lang_Cloneable || superType == meta.java_io_Serializable;
         }
 

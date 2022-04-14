@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 @SuppressWarnings("unused")
-class JImageLibrary implements ContextAccess {
+final class JImageLibrary implements ContextAccess {
     private static final String VERSION_STRING = "11.0";
 
     private static final String LIBJIMAGE_NAME = "jimage";

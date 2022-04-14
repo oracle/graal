@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,13 +20,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.impl;
+package com.oracle.truffle.espresso.nodes;
 
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
+import com.oracle.truffle.espresso.impl.ClassRegistries;
+import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -36,58 +40,75 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-public interface ContextAccess {
-    EspressoContext getContext();
-
-    default EspressoLanguage getLanguage() {
-        return getContext().getLanguage();
+@NodeInfo(language = EspressoLanguage.NAME, description = "The abstract base node for all " + EspressoLanguage.IMPLEMENTATION_NAME + " nodes")
+public class EspressoNode extends Node implements ContextAccess {
+    @Override
+    public final EspressoContext getContext() {
+        return EspressoContext.get(this);
     }
 
-    default Names getNames() {
-        return getContext().getNames();
+    @Override
+    public final EspressoLanguage getLanguage() {
+        return EspressoLanguage.get(this);
     }
 
-    default Types getTypes() {
-        return getContext().getTypes();
+    @Override
+    public final Names getNames() {
+        return getLanguage().getNames();
     }
 
-    default Signatures getSignatures() {
-        return getContext().getSignatures();
+    @Override
+    public final Types getTypes() {
+        return getLanguage().getTypes();
     }
 
-    default Meta getMeta() {
+    @Override
+    public final Signatures getSignatures() {
+        return getLanguage().getSignatures();
+    }
+
+    @Override
+    public final Meta getMeta() {
         return getContext().getMeta();
     }
 
-    default VM getVM() {
+    @Override
+    public final VM getVM() {
         return getContext().getVM();
     }
 
-    default ThreadsAccess getThreadAccess() {
+    @Override
+    public final ThreadsAccess getThreadAccess() {
         return getContext().getThreadAccess();
     }
 
-    default InterpreterToVM getInterpreterToVM() {
+    @Override
+    public final InterpreterToVM getInterpreterToVM() {
         return getContext().getInterpreterToVM();
     }
 
-    default StringTable getStrings() {
+    @Override
+    public final StringTable getStrings() {
         return getContext().getStrings();
     }
 
-    default ClassRegistries getRegistries() {
+    @Override
+    public final ClassRegistries getRegistries() {
         return getContext().getRegistries();
     }
 
-    default Substitutions getSubstitutions() {
+    @Override
+    public final Substitutions getSubstitutions() {
         return getContext().getSubstitutions();
     }
 
-    default JavaVersion getJavaVersion() {
-        return getContext().getJavaVersion();
+    @Override
+    public final JavaVersion getJavaVersion() {
+        return getLanguage().getJavaVersion();
     }
 
-    default NativeAccess getNativeAccess() {
+    @Override
+    public final NativeAccess getNativeAccess() {
         return getContext().getNativeAccess();
     }
 }

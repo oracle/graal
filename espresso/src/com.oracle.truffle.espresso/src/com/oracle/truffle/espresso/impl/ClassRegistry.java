@@ -361,7 +361,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     @SuppressWarnings("try")
     public ObjectKlass defineKlass(Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
-        Meta meta = getMeta();
+        Meta meta = getContext().getMeta();
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(getContext().getTimers())) {
             parserKlass = getParserKlass(bytes, typeOrNull, info);

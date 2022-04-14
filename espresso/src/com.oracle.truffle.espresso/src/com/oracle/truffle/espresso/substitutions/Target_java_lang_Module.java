@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.substitutions;
 import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.ModulesHelperVM;
@@ -82,6 +83,7 @@ public final class Target_java_lang_Module {
                     @SuppressWarnings("unused") @JavaType(String.class) StaticObject version,
                     @SuppressWarnings("unused") @JavaType(String.class) StaticObject location,
                     @JavaType(Object[].class) StaticObject pns,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(module)) {
@@ -98,7 +100,7 @@ public final class Target_java_lang_Module {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "module name cannot be null");
         }
         String hostName = meta.toHostString(guestName);
-        String[] packages = toStringArray(pns, meta);
+        String[] packages = toStringArray(language, pns, meta);
         if (hostName.equals(JAVA_BASE)) {
             profiler.profile(5);
             meta.getVM().defineJavaBaseModule(module, packages, profiler);
@@ -108,9 +110,9 @@ public final class Target_java_lang_Module {
         }
     }
 
-    private static String[] toStringArray(StaticObject packages, Meta meta) {
-        String[] strs = new String[packages.length()];
-        StaticObject[] unwrapped = packages.unwrap();
+    private static String[] toStringArray(EspressoLanguage language, StaticObject packages, Meta meta) {
+        String[] strs = new String[packages.length(language)];
+        StaticObject[] unwrapped = packages.unwrap(language);
         for (int i = 0; i < unwrapped.length; i++) {
             StaticObject str = unwrapped[i];
             if (StaticObject.isNull(str)) {
