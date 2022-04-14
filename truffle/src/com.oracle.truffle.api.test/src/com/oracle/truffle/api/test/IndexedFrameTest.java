@@ -286,8 +286,6 @@ public class IndexedFrameTest {
 
         FrameDescriptor descriptor = builder.build();
 
-        assertEquals(FrameDescriptor.NO_STATIC_MODE, descriptor.getStaticMode());
-
         testWithFrames(descriptor, frame -> {
             for (int i = 0; i < descriptor.getNumberOfSlots(); i++) {
                 assertIsType(frame, i, FrameSlotKind.Object);
@@ -306,8 +304,6 @@ public class IndexedFrameTest {
 
         FrameDescriptor descriptor = builder.build();
 
-        assertEquals(FrameDescriptor.ALL_STATIC_MODE, descriptor.getStaticMode());
-
         testWithFrames(descriptor, frame -> {
             for (int i = 0; i < descriptor.getNumberOfSlots(); i++) {
                 assertIsType(frame, i, FrameSlotKind.Static);
@@ -325,8 +321,6 @@ public class IndexedFrameTest {
         builder.addSlot(FrameSlotKind.Double, "nameEquals", null);
 
         FrameDescriptor descriptor = builder.build();
-
-        assertEquals(FrameDescriptor.MIXED_STATIC_MODE, descriptor.getStaticMode());
 
         testWithFrames(descriptor, frame -> {
             for (int i = 0; i < 7; i++) {

@@ -1424,16 +1424,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     f64_promote_f32(frame, stackPointer);
                     break;
                 case I32_REINTERPRET_F32:
-                    // i32_reinterpret_f32(frame, stackPointer);
-                    break;
                 case I64_REINTERPRET_F64:
-                    // i64_reinterpret_f64(frame, stackPointer);
-                    break;
                 case F32_REINTERPRET_I32:
-                    // f32_reinterpret_i32(frame, stackPointer);
-                    break;
                 case F64_REINTERPRET_I64:
-                    // f64_reinterpret_i64(frame, stackPointer);
+                    // These conversions are handled by the frame.
                     break;
                 case MISC:
                     byte miscByteOpcode = BinaryStreamParser.rawPeek1(data, offset);

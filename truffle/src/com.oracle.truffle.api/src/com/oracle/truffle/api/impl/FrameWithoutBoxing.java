@@ -135,7 +135,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         final int size = descriptor.getSize();
         final int indexedSize = descriptor.getNumberOfSlots();
         final int auxiliarySize = descriptor.getNumberOfAuxiliarySlots();
-        final int staticMode = descriptor.getStaticMode();
+        final int staticMode = DefaultRuntimeAccessor.FRAME.getStaticMode(descriptor);
         Object defaultValue = descriptor.getDefaultValue();
         final Object[] localsArray;
         final long[] primitiveLocalsArray;

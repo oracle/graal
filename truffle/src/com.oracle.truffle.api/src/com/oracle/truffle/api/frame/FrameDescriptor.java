@@ -105,8 +105,6 @@ public final class FrameDescriptor implements Cloneable {
 
     private final Object descriptorInfo;
 
-    private final int staticMode;
-
     /**
      * Number of entries (starting at index 0) that need to be allocated to encompass all active
      * auxiliary slots.
@@ -126,6 +124,14 @@ public final class FrameDescriptor implements Cloneable {
      * @since 0.14
      */
     boolean materializeCalled;
+
+    /**
+     * Flag that defines the assignment strategy of initial {@link FrameSlotKind}s to slots in a
+     * frame.
+     *
+     * @since 22.2
+     */
+    final int staticMode;
 
     private static final String NEVER_PART_OF_COMPILATION_MESSAGE = "interpreter-only. includes hashmap operations.";
 
@@ -870,15 +876,6 @@ public final class FrameDescriptor implements Cloneable {
      */
     public Object getInfo() {
         return descriptorInfo;
-    }
-
-    /**
-     * @return the current static mode in the frame descriptor
-     *
-     * @since 22.2
-     */
-    public int getStaticMode() {
-        return staticMode;
     }
 
     /**

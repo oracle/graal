@@ -56,5 +56,10 @@ final class FrameAccessor extends Accessor {
         public boolean getMaterializeCalled(FrameDescriptor descriptor) {
             return descriptor.materializeCalled;
         }
+
+        @Override
+        public int getStaticMode(FrameDescriptor descriptor) {
+            return descriptor.staticMode;
+        }
     }
 }
