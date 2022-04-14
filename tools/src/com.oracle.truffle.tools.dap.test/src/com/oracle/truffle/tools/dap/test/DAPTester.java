@@ -166,7 +166,7 @@ public final class DAPTester {
                     break;
                 }
             }
-            Assert.assertFalse("Unexpected message received: " + receivedMessage, expectedObjects.size() == size);
+            Assert.assertFalse("Unexpected message received:\n" + receivedMessage + "\nExpected message:\n" + expectedObjects, expectedObjects.size() == size);
             size = expectedObjects.size();
         }
         return true;
