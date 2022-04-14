@@ -43,6 +43,7 @@ package com.oracle.truffle.api.dsl.test;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
@@ -50,7 +51,14 @@ import com.oracle.truffle.api.dsl.test.TypeSystemTest.TestRootNode;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.Unsupported1Factory;
 import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.UnsupportedNoChildNodeGen;
+import com.oracle.truffle.api.dsl.test.UnsupportedSpecializationTestFactory.UnsupportedUncachedNodeGen;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class UnsupportedSpecializationTest {
 
@@ -92,6 +100,7 @@ public class UnsupportedSpecializationTest {
             Assert.assertEquals(1, e.getSuppliedNodes().length);
             Assert.assertEquals(42d, e.getSuppliedValues()[0]);
             Assert.assertNull(e.getSuppliedNodes()[0]);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("UnsupportedSpecializationTestFactory.UnsupportedNoChildNodeGen"));
         }
     }
 
@@ -110,4 +119,135 @@ public class UnsupportedSpecializationTest {
         }
     }
 
+    @Test
+    public void testUnsupportedUncached() {
+        UnsupportedUncached child = UnsupportedUncachedNodeGen.create();
+
+        try {
+            child.execute(42d);
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+            Assert.assertNotNull(e.getSuppliedValues());
+            Assert.assertNotNull(e.getSuppliedNodes());
+            Assert.assertEquals(1, e.getSuppliedValues().length);
+            Assert.assertEquals(1, e.getSuppliedNodes().length);
+            Assert.assertEquals(42d, e.getSuppliedValues()[0]);
+            Assert.assertNull(e.getSuppliedNodes()[0]);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("UnsupportedSpecializationTestFactory.UnsupportedUncachedNodeGen"));
+        }
+        child = UnsupportedUncachedNodeGen.getUncached();
+
+        try {
+            child.execute(42d);
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+            Assert.assertNotNull(e.getSuppliedValues());
+            Assert.assertNotNull(e.getSuppliedNodes());
+            Assert.assertEquals(1, e.getSuppliedValues().length);
+            Assert.assertEquals(1, e.getSuppliedNodes().length);
+            Assert.assertEquals(42d, e.getSuppliedValues()[0]);
+            Assert.assertNull(e.getSuppliedNodes()[0]);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("UnsupportedSpecializationTestFactory.UnsupportedUncachedNodeGen.Uncached"));
+        }
+    }
+
+    @GenerateUncached
+    abstract static class UnsupportedUncached extends Node {
+
+        abstract Object execute(Object value);
+
+        @Specialization
+        static String s1(String v) {
+            return v;
+        }
+    }
+
+    @Test
+    public void testLibrary() {
+        Object obj = new TypeWithUnsupported();
+
+        InteropLibrary lib1 = InteropLibrary.getFactory().create(obj);
+        RootNode root = new RootNode(null) {
+            @Child InteropLibrary child = lib1;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Assert.fail();
+                return null;
+            }
+        };
+        root.getCallTarget();
+        InteropLibrary lib2 = InteropLibrary.getFactory().getUncached(obj);
+
+        try {
+            lib1.writeMember(obj, "foo", 42d);
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+            Assert.assertNotNull(e.getSuppliedValues());
+            Assert.assertNotNull(e.getSuppliedNodes());
+            Assert.assertEquals(3, e.getSuppliedValues().length);
+            Assert.assertEquals(3, e.getSuppliedNodes().length);
+            Assert.assertEquals(42d, e.getSuppliedValues()[2]);
+            Assert.assertNull(e.getSuppliedNodes()[0]);
+            Assert.assertNull(e.getSuppliedNodes()[1]);
+            Assert.assertNull(e.getSuppliedNodes()[2]);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("TypeWithUnsupportedGen.InteropLibraryExports.Cached"));
+        } catch (Throwable e) {
+            Assert.fail("exception: " + e);
+        }
+        try {
+            lib2.writeMember(obj, "foo", 42d);
+            Assert.fail();
+        } catch (UnsupportedSpecializationException e) {
+            Assert.assertNotNull(e.getSuppliedValues());
+            Assert.assertNotNull(e.getSuppliedNodes());
+            Assert.assertEquals(3, e.getSuppliedValues().length);
+            Assert.assertEquals(3, e.getSuppliedNodes().length);
+            Assert.assertEquals(42d, e.getSuppliedValues()[2]);
+            Assert.assertNull(e.getSuppliedNodes()[0]);
+            Assert.assertNull(e.getSuppliedNodes()[1]);
+            Assert.assertNull(e.getSuppliedNodes()[2]);
+            Assert.assertTrue(e.getMessage(), e.getMessage().contains("TypeWithUnsupportedGen.InteropLibraryExports.Uncached"));
+        } catch (Throwable e) {
+            Assert.fail("exception: " + e);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class TypeWithUnsupported implements TruffleObject {
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean hasMembers() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        Object getMembers(boolean includeInternal) {
+            Assert.fail("unexpected: " + includeInternal);
+            return null;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberModifiable(String member) {
+            return "foo".equals(member);
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberInsertable(String member) {
+            return "foo".equals(member);
+        }
+
+        @ExportMessage
+        static final class WriteMember {
+
+            @Specialization
+            static void write(TypeWithUnsupported receiver, String name, int value) {
+                Assert.fail("unexpected: " + receiver + ", " + name + ", " + value);
+            }
+        }
+    }
 }
