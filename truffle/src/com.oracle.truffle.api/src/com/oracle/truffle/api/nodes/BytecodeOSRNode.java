@@ -141,8 +141,9 @@ public interface BytecodeOSRNode extends NodeInterface {
     void setOSRMetadata(Object osrMetadata);
 
     /**
-     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
+     * @since 21.3
      * @deprecated since 22.2
+     * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
      */
     @Deprecated(since = "22.2")
     default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
