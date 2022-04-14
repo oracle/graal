@@ -721,7 +721,10 @@ class NativeImageVM(GraalVm):
         profile_path = config.profile_path_no_extension + '-agent' + config.profile_file_extension
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
         hotspot_run_args = []
-        hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
+        hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
+
+        # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
+        hotspot_vm_args += ['-XX:-UseJVMCICompiler']
 
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
