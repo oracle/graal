@@ -231,6 +231,19 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         }
 
         @Override
+        protected LogicNode canonicalizeCommonArithmetic(ValueNode forX, ValueNode forY, NodeView view) {
+            if (forX instanceof SignExtendNode && forY instanceof SignExtendNode) {
+                SignExtendNode forX1 = (SignExtendNode) forX;
+                SignExtendNode forY1 = (SignExtendNode) forY;
+                // Extending to 32 bit might be required by the architecture
+                if (forX1.getResultBits() > 32 && forX1.getResultBits() == forY1.getResultBits() && forX1.getInputBits() == forY1.getInputBits()) {
+                    return create(((SignExtendNode) forX).getValue(), ((SignExtendNode) forY).getValue(), view);
+                }
+            }
+            return super.canonicalizeCommonArithmetic(forX, forY, view);
+        }
+
+        @Override
         protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
             return IntegerStamp.addCanOverflow(a, b);
         }
