@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
@@ -92,7 +90,13 @@ public abstract class QuantifiableTerm extends Term {
     }
 
     boolean quantifierEquals(QuantifiableTerm o) {
-        return Objects.equals(quantifier, o.quantifier);
+        if (quantifier == null) {
+            return o.quantifier == null;
+        }
+        if (o.quantifier == null) {
+            return quantifier == null;
+        }
+        return quantifier.equalsSemantic(o.quantifier);
     }
 
     @Override
