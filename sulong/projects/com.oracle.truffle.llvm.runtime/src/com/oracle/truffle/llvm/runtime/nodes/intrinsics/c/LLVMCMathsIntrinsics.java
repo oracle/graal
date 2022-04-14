@@ -894,7 +894,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Override
         protected long compare(long a, long b) {
-            return Math.max(a, b) >= 0 ? a : b;
+            return Math.max(a, b);
         }
 
         @Override
@@ -918,12 +918,12 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Override
         protected int compare(int a, int b) {
-            return Math.min(a, b) <= 0 ? a : b;
+            return Math.min(a, b);
         }
 
         @Override
         protected long compare(long a, long b) {
-            return Math.min(a, b) <= 0 ? a : b;
+            return Math.min(a, b);
         }
 
         @Override
