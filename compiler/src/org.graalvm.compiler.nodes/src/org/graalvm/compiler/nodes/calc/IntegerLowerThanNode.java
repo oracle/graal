@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.calc;
 import static jdk.vm.ci.code.CodeUtil.mask;
 
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -240,9 +242,107 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                         return canonical;
                     }
                 }
+                if (forX instanceof PiNode && forY instanceof PiNode) {
+                    PiNode piX = (PiNode) forX;
+                    PiNode piY = (PiNode) forY;
+                    ValueNode originalX = piX.getOriginalNode();
+                    ValueNode originalY = piY.getOriginalNode();
+                    if (originalY instanceof AddNode && ((AddNode) originalY).getY().isConstant() && ((AddNode) originalY).getX() == originalX) {
+                        // piX <- value, piY <- value + c
+                        return canonicalizePiXLowerPiXPlusC(piX, piY, false, view);
+                    } else if (originalX instanceof AddNode && ((AddNode) originalX).getY().isConstant() && ((AddNode) originalX).getX() == originalY) {
+                        // piX <- value + c, piY <- value
+                        return canonicalizePiXLowerPiXPlusC(piY, piX, true, view);
+                    }
+                }
                 return canonicalizeCommonArithmetic(forX, forY, view);
             }
             return null;
+        }
+
+        /**
+         * Converts a {@linkplain IntegerLowerThanNode} with a certain subgraph pattern with two
+         * {@link PiNode} inputs and {@link AddNode} with a constant, into a pattern with a single
+         * {@link PiNode}.
+         *
+         * <h2>Input Subgraph</h2>
+         *
+         * <pre>
+         * +----+    +-------+   +---+    +----+
+         * | G1 |    | value |   | c |    | G2 |
+         * +----+    +---+---+   +-+-+    +-+--+
+         *       \       |   \   /         /
+         *        \      |   +-+-+        /
+         *         \     |   | + |       /
+         *          \    |   +-+-+      /
+         *           \   |      \      /
+         *            \  |       \    /
+         *           +-+-+-+     +-+-+-+
+         *           | PI1 |     | PI2 |
+         *           +-----+     +--+--+
+         *                 \       /
+         *                  \     /
+         *                  ++---++
+         *                  |  <  |
+         *                  +-----+
+         * </pre>
+         *
+         * <h2>Result Subgraph</h2>
+         *
+         * <pre>
+         *  +----+   +-------+      +----+
+         *  | G1 |   | value |      | G2 |
+         *  +----+   +---+---+      +-+--+
+         *        \      |           /
+         *         \     |          /
+         *          \    |         /
+         *           +---+-+      /
+         *           | PI1 |     /
+         *           +----++    /
+         *                 \   /
+         *                +-+-+--+
+         *                | PI*  |
+         *                +-+---++    +---+
+         *                  |    \    | c |
+         *                  |     \   +-+-+
+         *                  |      \   /
+         *                  |     +-+-+
+         *                  |     | + |
+         *                  |     ++--+
+         *                  |     /
+         *                  |    /
+         *                +-+--+-+
+         *                |  <   |
+         *                +------+
+         * </pre>
+         *
+         * The stamp of {@code PI*} is {@code stamp(PI2 - c)}.
+         *
+         * @param piValue a node with the pattern {@code PiNode(value)}
+         * @param piWithAdd a node with the pattern {@code }PiNode(AddNode(value, c))}
+         * @param mirror {@code true} if the {@link AddNode} is on {@linkplain #getY() RHS} of this
+         *            {@link IntegerLowerThanNode}.
+         */
+        private LogicNode canonicalizePiXLowerPiXPlusC(PiNode piValue, PiNode piWithAdd, boolean mirror, NodeView view) {
+            AddNode originalWithAdd = (AddNode) piWithAdd.getOriginalNode();
+            // piWithAdd <- value + c, piValue <- value
+            // to
+            // newValue <- pi(piValue, stamp(piWithAdd - c))
+            // newWithAdd <- newValue + c
+            ValueNode constant = originalWithAdd.getY();
+            // calculate the stamp of piWithAdd - c
+            Stamp piWithAddStamp = piWithAdd.stamp(view);
+            Stamp subValueStamp = ArithmeticOpTable.forStamp(piWithAddStamp).getSub() // get subOp
+                            .foldStamp(piWithAddStamp, constant.stamp(view));
+            // create piValue with better stamp
+            ValueNode newValue = PiNode.create(piValue, subValueStamp, piWithAdd.getGuard().asNode());
+            // recreate to original operation of piWithAdd but using newValue instead of value
+            ValueNode newWithAdd = AddNode.create(newValue, constant, view);
+            if (mirror) {
+                return create(newWithAdd, newValue, view);
+            } else {
+                return create(newValue, newWithAdd, view);
+            }
         }
 
         protected LogicNode canonicalizeCommonArithmetic(ValueNode forX, ValueNode forY, NodeView view) {
