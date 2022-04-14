@@ -79,7 +79,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewHybridInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -147,19 +146,16 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Snippet
-    public Object allocateArrayDynamic(DynamicHub hub, DynamicHub elementType, int length, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
+    public Object allocateArrayDynamic(DynamicHub elementType, int length, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
-        DynamicHub arrayHub = hub;
-        if (arrayHub == null) {
-            arrayHub = getCheckedArrayHub(elementType);
-        }
+        DynamicHub checkedArrayHub = getCheckedArrayHub(elementType);
 
-        int layoutEncoding = arrayHub.getLayoutEncoding();
+        int layoutEncoding = checkedArrayHub.getLayoutEncoding();
         int arrayBaseOffset = getArrayBaseOffset(layoutEncoding);
         int log2ElementSize = LayoutEncoding.getArrayIndexShift(layoutEncoding);
 
-        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(arrayHub), length, arrayBaseOffset, log2ElementSize, fillContents,
-                        afterArrayLengthOffset(), emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(checkedArrayHub), length, arrayBaseOffset, log2ElementSize, fillContents,
+                        arrayBaseOffset, emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
         return piArrayCastToSnippetReplaceeStamp(result, length);
     }
 
@@ -403,7 +399,6 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
             lowerings.put(NewArrayNode.class, new NewArrayLowering());
             lowerings.put(DynamicNewInstanceNode.class, new DynamicNewInstanceLowering());
             lowerings.put(DynamicNewArrayNode.class, new DynamicNewArrayLowering());
-            lowerings.put(SubstrateDynamicNewHybridInstanceNode.class, new DynamicNewHybridInstanceLowering());
             lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
             lowerings.put(ValidateNewInstanceClassNode.class, new ValidateNewInstanceClassLowering());
         }
@@ -583,30 +578,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 }
 
                 Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("hub", ConstantNode.defaultForKind(JavaKind.Object, graph));
                 args.add("elementType", node.getElementType());
-                args.add("length", node.length());
-                args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
-                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
-                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
-                args.addConst("profilingData", getProfilingData(node, null));
-
-                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
-            }
-        }
-
-        private class DynamicNewHybridInstanceLowering implements NodeLoweringProvider<SubstrateDynamicNewHybridInstanceNode> {
-            @Override
-            public void lower(SubstrateDynamicNewHybridInstanceNode node, LoweringTool tool) {
-                StructuredGraph graph = node.graph();
-                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
-                    return;
-                }
-
-                Arguments args = new Arguments(allocateArrayDynamic, graph.getGuardsStage(), tool.getLoweringStage());
-                args.add("hub", node.instanceType());
-                args.add("elementType", node.elementType());
                 args.add("length", node.length());
                 args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());

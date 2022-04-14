@@ -25,28 +25,32 @@
 package com.oracle.svm.core.heap;
 
 import java.io.ByteArrayOutputStream;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewHybridInstanceNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.UnsignedUtils;
-import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -54,64 +58,107 @@ import jdk.vm.ci.meta.JavaKind;
  * runtime and instances of which are allocated on the Java heap. The name <em>pod</em> refers to it
  * storing "plain old data" without further object-oriented features such as method dispatching or
  * type information, apart from having a Java superclass.
+ *
+ * @param <T> The interface of the {@linkplain #getFactory() factory} that allocates instances.
  */
 public final class Pod<T> {
-    private final Class<? extends T> podClass;
+    private final RuntimeSupport.PodInfo podInfo;
     private final int fieldsSizeWithoutRefMap;
     private final byte[] referenceMap;
+    private final T factory;
 
-    private Pod(Class<? extends T> podClass, int fieldsSize, byte[] referenceMap) {
-        this.podClass = podClass;
+    private Pod(RuntimeSupport.PodInfo podInfo, int fieldsSize, byte[] referenceMap) {
+        this.podInfo = podInfo;
+        try {
+            @SuppressWarnings("unchecked")
+            T factoryInstance = (T) podInfo.factoryCtor.newInstance(this);
+            this.factory = factoryInstance;
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
         this.fieldsSizeWithoutRefMap = fieldsSize;
         this.referenceMap = referenceMap;
     }
 
-    public T newInstance() {
-        @SuppressWarnings("unchecked")
-        T instance = (T) SubstrateDynamicNewHybridInstanceNode.allocate(podClass, byte.class, fieldsSizeWithoutRefMap + referenceMap.length);
-
-        UnsignedWord podRefMapBase = getArrayBaseOffset(podClass).add(fieldsSizeWithoutRefMap);
-        JavaMemoryUtil.copy(referenceMap, getArrayBaseOffset(byte[].class), instance, podRefMapBase, WordFactory.unsigned(referenceMap.length));
-
-        return instance;
+    public T getFactory() {
+        return factory;
     }
 
-    private static UnsignedWord getArrayBaseOffset(Class<?> clazz) {
-        DynamicHub hub = DynamicHub.fromClass(clazz);
-        return LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
+    /**
+     * Used from generated graphs: write {@link #referenceMap} to a newly allocated pod instance.
+     *
+     * {@link JavaMemoryUtil} copying is uninterruptible, so it cannot be inlined here and in our
+     * caller, and reference maps are likely too small to benefit from its optimizations. Instead,
+     * we use a simple interruptible copy loop that is safe because it does not use pointers and
+     * because a reference map decoder will not attempt to make sense of the reference map while the
+     * last two bytes (the first two it reads) remain zero, which is not a problem because all
+     * references are null at this point.
+     */
+    @SuppressWarnings("unused")
+    private void initInstanceRefMap(Object instance) {
+        Unsafe unsafe = Unsafe.getUnsafe();
+        int refMapArrayBase = unsafe.arrayBaseOffset(byte[].class);
+        int podRefMapBase = unsafe.arrayBaseOffset(podInfo.podClass) + fieldsSizeWithoutRefMap;
+        for (int offset = 0; offset < referenceMap.length; offset += 2) {
+            short entry = unsafe.getShort(referenceMap, refMapArrayBase + offset);
+            unsafe.putShort(instance, podRefMapBase + offset, entry);
+        }
     }
 
+    /**
+     * A builder for constructing pods with a specific superpod or superclass and factory interface
+     * and {@linkplain #addField additional fields}.
+     */
     public static final class Builder<T> {
-        public static Builder<Object> create() {
-            return new Builder<>(Object.class, null);
+        /**
+         * Create a builder for a pod that is derived directly from {@link Object} and
+         * {@link Supplier} as factory interface. This is supported without explicitly registering
+         * Object as superclass with {@code PodSupport}.
+         */
+        public static Builder<Supplier<Object>> create() {
+            return new Builder<>(Object.class, Supplier.class, null);
         }
 
+        /**
+         * Create a builder for a pod derived from the given superpod, which has the same
+         * superclass, uses the same factory interface for initialization, and has the same fields
+         * and in addition fields that are added with {@link #addField}. There are no guarantees
+         * with regard to Java type checks other than that {@link Object#getClass} on instances of
+         * the pods will return a {@link Class} to which the superclass of the two pods
+         * {@linkplain Class#isAssignableFrom is assignable from}.
+         */
         public static <T> Builder<T> createExtending(Pod<T> superPod) {
-            return new Builder<>(null, superPod);
+            return new Builder<>(null, null, superPod);
         }
 
-        public static <T> Builder<T> createExtending(Class<T> superClass) {
-            return new Builder<>(superClass, null);
+        /**
+         * Create a builder for a pod that extends the given superclass and instances of which can
+         * be allocated via the given factory interface. The specific pair of superclass and factory
+         * interface must have been registered during the image build with {@code PodSupport}.
+         */
+        public static <T> Builder<T> createExtending(Class<?> superClass, Class<T> factoryInterface) {
+            return new Builder<>(superClass, factoryInterface, null);
         }
 
         private final Pod<T> superPod;
-        private final Class<? extends T> podClass;
+        private final RuntimeSupport.PodInfo podInfo;
         private final List<Field> fields = new ArrayList<>();
         private boolean built = false;
 
-        private Builder(Class<T> superClass, Pod<T> superPod) {
-            if (superClass == null && superPod == null) {
+        private Builder(Class<?> superClass, Class<?> factoryInterface, Pod<T> superPod) {
+            assert superPod == null || (superClass == null && factoryInterface == null);
+            if (superPod != null) {
+                this.podInfo = superPod.podInfo;
+            } else if (superClass != null && factoryInterface != null) {
+                RuntimeSupport.PodSpec spec = new RuntimeSupport.PodSpec(superClass, factoryInterface);
+                this.podInfo = ImageSingletons.lookup(RuntimeSupport.class).getInfo(spec);
+                if (this.podInfo == null) {
+                    throw new IllegalArgumentException("Pod superclass/factory interface pair was not registered during image build: " + superClass + ", " + factoryInterface);
+                }
+            } else {
                 throw new NullPointerException();
             }
-            if (superPod != null) {
-                this.podClass = superPod.podClass;
-            } else {
-                this.podClass = ImageSingletons.lookup(RuntimeSupport.class).get(superClass);
-                if (this.podClass == null) {
-                    throw new IllegalArgumentException("Pod superclass was not registered during image build: " + superClass);
-                }
-            }
-            assert DynamicHub.fromClass(this.podClass).isPodInstanceClass();
+            assert DynamicHub.fromClass(this.podInfo.podClass).isPodInstanceClass();
             this.superPod = superPod;
         }
 
@@ -121,6 +168,11 @@ public final class Pod<T> {
             }
         }
 
+        /**
+         * Add a field of a specified type to a pod. Once the pod has been {@linkplain #build
+         * built}, its offset is available via {@link Field#getOffset} and values of the given type
+         * can be written to instances, for example using {@code Unsafe}.
+         */
         public Field addField(Class<?> type) {
             guaranteeUnbuilt();
             Objects.requireNonNull(type);
@@ -135,13 +187,19 @@ public final class Pod<T> {
             return f;
         }
 
+        /**
+         * Create and return a pod with the superclass/superpod given during builder creation and
+         * the {@linkplain #addField added fields}. This method can be called only once, after which
+         * the builder can no longer be used.
+         */
         public Pod<T> build() {
             guaranteeUnbuilt();
             built = true;
 
             Collections.sort(fields);
 
-            UnsignedWord baseOffset = getArrayBaseOffset(podClass);
+            UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(
+                            DynamicHub.fromClass(podInfo.podClass).getLayoutEncoding());
 
             byte[] superRefMap = null;
             UnsignedWord nextOffset = baseOffset;
@@ -174,7 +232,7 @@ public final class Pod<T> {
             }
 
             byte[] referenceMap = refMapEncoder.encode();
-            return new Pod<>(podClass, UnsignedUtils.safeToInt(nextOffset), referenceMap);
+            return new Pod<>(podInfo, UnsignedUtils.safeToInt(nextOffset), referenceMap);
         }
     }
 
@@ -220,21 +278,60 @@ public final class Pod<T> {
     }
 
     public static final class RuntimeSupport {
-        private final EconomicMap<Class<?>, Class<?>> superClasses = ImageHeapMap.create();
+        @Retention(RetentionPolicy.RUNTIME)
+        @Target(ElementType.TYPE)
+        public @interface PodFactory {
+            Class<?> podClass();
+        }
+
+        public static final class PodSpec {
+            final Class<?> superClass;
+            final Class<?> factoryInterface;
+
+            public PodSpec(Class<?> superClass, Class<?> factoryInterface) {
+                assert superClass != null && factoryInterface != null;
+                this.superClass = superClass;
+                this.factoryInterface = factoryInterface;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (obj != this && getClass() == obj.getClass()) {
+                    PodSpec other = (PodSpec) obj;
+                    return superClass.equals(other.superClass) && factoryInterface.equals(other.factoryInterface);
+                }
+                return (obj == this);
+            }
+
+            @Override
+            public int hashCode() {
+                return 31 * superClass.hashCode() + factoryInterface.hashCode();
+            }
+        }
+
+        public static final class PodInfo {
+            public final Class<?> podClass;
+            public final Constructor<?> factoryCtor;
+
+            public PodInfo(Class<?> podClass, Constructor<?> factoryCtor) {
+                this.podClass = podClass;
+                this.factoryCtor = factoryCtor;
+            }
+        }
+
+        private final EconomicMap<PodSpec, PodInfo> pods = ImageHeapMap.create();
 
         @Platforms(Platform.HOSTED_ONLY.class)
         public RuntimeSupport() {
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
-        public boolean registerClass(Class<?> superClass, Class<?> podClass) {
-            VMError.guarantee(podClass.getSuperclass() == superClass);
-            return superClasses.putIfAbsent(superClass, podClass) == null;
+        public boolean registerPod(PodSpec spec, PodInfo info) {
+            return pods.putIfAbsent(spec, info) == null;
         }
 
-        @SuppressWarnings("unchecked")
-        public <T> Class<? extends T> get(Class<T> clazz) {
-            return (Class<? extends T>) superClasses.get(clazz);
+        PodInfo getInfo(PodSpec spec) {
+            return pods.get(spec);
         }
     }
 

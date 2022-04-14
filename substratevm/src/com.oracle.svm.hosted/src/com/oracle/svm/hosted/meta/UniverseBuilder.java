@@ -414,8 +414,10 @@ public class UniverseBuilder {
             startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
-        if (HybridLayout.isHybrid(clazz) || PodSupport.singleton().isPodSuperclass(clazz.getJavaClass())) {
-            // Reserve space for the array length field
+        PodSupport pods = PodSupport.singleton();
+        if ((HybridLayout.isHybrid(clazz) && !pods.isPodClass(clazz.getJavaClass())) || pods.mustReserveLengthField(clazz.getJavaClass())) {
+            // Reserve space for the array length field. For pods, the ancestor subclassing Object
+            // must have already reserved this space (unless the pod subclasses Object itself).
             VMError.guarantee(startSize == layout.getArrayLengthOffset());
             int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
