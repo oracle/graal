@@ -718,18 +718,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         getRoot(); // force initialization of root node since we need it in OSR
     }
 
-    /**
-     * Override the default implementation of this method to ensure the primitive and ref arrays can
-     * be scalar replaced. Also, clear locals in the parent frame since they won't be used again.
-     */
     @Override
-    public void copyIntoOSRFrame(VirtualFrame frame, VirtualFrame parentFrame, int target) {
-        BytecodeOSRNode.super.copyIntoOSRFrame(frame, parentFrame, target);
+    public void copyIntoOSRFrame(VirtualFrame frame, VirtualFrame parentFrame, int target, Object entryMetadata) {
+        BytecodeOSRNode.super.copyIntoOSRFrame(frame, parentFrame, target, entryMetadata);
         setBCI(frame, target);
     }
 
     @Override
-    @ExplodeLoop
     public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
         BytecodeOSRNode.super.restoreParentFrame(osrFrame, parentFrame);
         setBCI(parentFrame, getBci(osrFrame));

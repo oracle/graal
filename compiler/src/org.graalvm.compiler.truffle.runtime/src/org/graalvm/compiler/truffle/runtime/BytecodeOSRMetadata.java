@@ -368,7 +368,7 @@ public final class BytecodeOSRMetadata {
     }
 
     @ExplodeLoop
-    private void transferAuxiliarySlots(FrameWithoutBoxing source, FrameWithoutBoxing target, LazyState state) {
+    private static void transferAuxiliarySlots(FrameWithoutBoxing source, FrameWithoutBoxing target, LazyState state) {
         for (int auxSlot = 0; auxSlot < state.frameDescriptor.getNumberOfAuxiliarySlots(); auxSlot++) {
             target.setAuxiliarySlot(auxSlot, source.getAuxiliarySlot(auxSlot));
         }
