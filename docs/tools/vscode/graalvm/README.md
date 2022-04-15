@@ -88,26 +88,19 @@ Follow these steps to download and install GraalVM Enterprise:
 2. Pick the GraalVM version: one of the latest major stable releases.
 3. Pick one of the available Java versions.
 4. Select the destination folder.
-5. Provide a valid email address where the license will be sent or enter existing download token.  
+5. Provide a valid email address where the license will be sent or enter the existing download token.  
    Supposedly, this is your first installation and you have not accepted the license yet.
-   Press `Enter` to confirm your input.
-
-6. Once the email address is entered, you see this popup in the bottom right corner:
+   Press `Enter`. Once the email address is entered, you see this popup in the bottom right corner:
 
     ![Continue Download popup](images/continue_download_gds.png)
 
     You are sent an email to verify your email address and accept the license.
 
-7. Go to your email client and review the the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
+6. Go to your email client and review the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
-8. Accept the licence by clicking **Verify email** at the bottom of the email content. By clicking this button you confirm the licence acceptance and generating a download token simultaneously.
+7. Accept the licence. You confirm the licence acceptance and generating a download token simultaneously.
 
-9. Return to VS Code and press **Continue Download** to continue. If you clicked **Continue Download** without accepting the license, you would see the following warning:
-
-    ![Continue Download without license acceptance](images/continue_download_not_accepted.png)
-
-10. Confirm the storage location for a download token on your computer.
-    By default, it will be saved in the `.gu/config` file in user's home directory.
+8. Return to VS Code and press **Continue Download** to continue. Your download token is then generated and saved by default in the `.gu/config` file in user's home directory (you can update the storage location later, see below).
 
     ![Download Token generated](images/download_token_generated.png)
 
@@ -116,6 +109,10 @@ Follow these steps to download and install GraalVM Enterprise:
     ![GraalVM Enterprise installation in progress](images/ee_installation_started.png)
 
     The installation wizard will download a package from Oracle's storage point.
+
+    If you clicked **Continue Download** without accepting the license, you would see the following warning:
+
+    ![Continue Download without license acceptance](images/continue_download_not_accepted.png)
 
     > Note: If your machine is behind a proxy, you must set your environment variables (`http_proxy`, `https_proxy`) appropriately. You can use the quick command  **Setup Proxy**.
 
@@ -126,14 +123,14 @@ Since you already have `.gu/config`, the installation wizard will read it, and c
 Consider the following aspects:
 
 * `.gu/config` can only be read by the installation wizard and cannot be used to access any user data or modify these.
-* You can transfer `.gu/config` to another computer and VS Code, the wizard will accept/read it. `.gu/config`is shared between VS Code installation wizard and GraalVM Updater tool - transferring it to another machine will make it available for both tools.
-* If you use the same email address to download a GraalVM Enterprise artifact (the core or additional components) from another computer, the the existing `.gu/config` will become invalid.
+* You can transfer `.gu/config` to another computer and VS Code, the wizard will accept/read it. `.gu/config`is shared between VS Code installation wizard and GraalVM Updater - transferring it to another machine will make it available for both tools.
+* If you use the same email address to download a GraalVM Enterprise artifact (the core or additional components) from another computer, the existing `.gu/config` will become invalid.
 * You will be asked to re-accept the license only if the license text has changed.
 
 #### Show Current Download Configuration
 
-There is a quick action to determine the location of an existing configuration (default location, system property, user-defined file), and to copy it into the clipboard. 
-Once copied you can re-use the configuration, for example, (1) to install GraalVM Enterprise or its component on another computer; (2) to integrate into CI/CI build pipelines, etc.
+There is a quick action to determine the location of an existing download token (default location, system property, user-defined file), and to copy it into the clipboard. 
+Once copied you can re-use the download token, for example, (1) to install GraalVM Enterprise or its component on another computer; (2) to integrate into CI/CI build pipelines, etc.
 
 1. Go to **View**, then **Command Palette** and search for **GraalVM: Show GU Configuration**:
 
@@ -224,7 +221,7 @@ Suggestions for launch configuration options are available using code completion
 
 ## Integration with VisualVM
 
-GraalVM Tools for Java extension provides integration with [VisualVM](https://visualvm.github.io), the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
+The GraalVM Tools for Java extension provides integration with [VisualVM](https://visualvm.github.io), the all-in-one Java (and polyglot) monitoring and troubleshooting tool.
 VisualVM brings powerful yet easy-to-use visual Java tooling to VS Code.
 
 When you run a Java application, the process ID will be detected automatically and displayed in the **VISUALVM** pane. 
@@ -232,11 +229,11 @@ Open VisualVM by just clicking the play button:
 
 ![VisualVM and VS Code Integration](images/open_visualvm.png)
 
-It you go to **View**, then **Command Palette**, and search for "visualvm", the following actions related to VisualVM are available:
+If you go to **View**, then **Command Palette**, and search for "visualvm", the following actions related to VisualVM are available:
 
 ![VisualVM Commands available from Command Palette](images/visualvm_commands.png)
 
-For more information how to use VisualVM from VS Code, see the [dedicated guide](visualvm-integration.md).
+For more information about using VisualVM from VS Code, see [this guide](visualvm-integration.md).
 
 ## Micronaut Support
 
