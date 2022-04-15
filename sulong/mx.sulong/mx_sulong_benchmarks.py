@@ -737,7 +737,6 @@ native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(SulongVm('default', []), _suite, 10)
-native_vm_registry.add_vm(SulongVm('default-osr-bytecode', ['--llvm.OSR=BYTECODE']), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
 native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',
