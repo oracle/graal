@@ -31,8 +31,8 @@ local javadoc = import "ci_includes/publish-javadoc.jsonnet";
 # VM
 local vm = import 'vm/ci_includes/vm.jsonnet';
 
-# Add a guard to `build` that prevents it from running in the gate.
-# for a PR that only touches *.md files, the docs, are config files for GitHub.
+# Add a guard to `build` that prevents it from running in the gate
+# for a PR that only touches *.md files, the docs, are config files for GitHub
 local add_excludes_guard(build) = build + {
   guard+: {
     excludes+: ["**.md", "docs/**", ".github/**"]
