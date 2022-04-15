@@ -96,23 +96,33 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
         }
     }
 
-    private void updateVirtualAndInterfaceTables(ObjectKlass.KlassVersion newKlass) {
-        for (Method.MethodVersion m : newKlass.getDeclaredMethodVersions()) {
-            if (!m.isPrivate() && !m.isStatic() && !Symbol.Name._clinit_.equals(m.getName()) && !Symbol.Name._init_.equals(m.getName())) {
-                // Do not bloat the vtable with methods that cannot be called through
-                // virtual invocation.
-                ArrayList<Method.MethodVersion> overrides = new ArrayList<>();
-                if (newKlass.getSuperKlass() != null) {
-                    newKlass.getSuperKlass().lookupVirtualMethodOverrides(m.getMethod(), newKlass.getKlass(), overrides);
-                    for (Method.MethodVersion override : overrides) {
-                        override.getMethod().getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
+    private void updateVirtualAndInterfaceTables(ObjectKlass.KlassVersion newKlassVersion) {
+        // We only reach here for concrete classes, we need to be careful that there might
+        // be some "leaf" methods that have already been overridden in abstract classes
+        // those must be taken care of now that we see a concrete subclass
+        ObjectKlass newKlass = newKlassVersion.getKlass();
+        Method.MethodVersion[] vTable = newKlass.getVTable();
+        for (int i = 0; i < vTable.length; i++) {
+            Method.MethodVersion m = vTable[i];
+            ObjectKlass current = newKlassVersion.getSuperKlass();
+            while (current != null) {
+                Method.MethodVersion[] vtable = current.getKlassVersion().getVtable();
+                if (i >= vtable.length) {
+                    break;
+                }
+                Method.MethodVersion overridden = vtable[i];
+                if (overridden != m) {
+                    overridden.getMethod().getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
+                    if (current.isConcrete()) {
+                        break;
                     }
                 }
+                current = current.getSuperKlass();
             }
         }
-        Method.MethodVersion[][] itables = newKlass.getItable();
+        Method.MethodVersion[][] itables = newKlassVersion.getItable();
         for (int tableIndex = 0; tableIndex < itables.length; tableIndex++) {
-            updateLeafAssumptions(itables[tableIndex], newKlass.getiKlassTable()[tableIndex].getKlass());
+            updateLeafAssumptions(itables[tableIndex], newKlassVersion.getiKlassTable()[tableIndex].getKlass());
         }
     }
 
