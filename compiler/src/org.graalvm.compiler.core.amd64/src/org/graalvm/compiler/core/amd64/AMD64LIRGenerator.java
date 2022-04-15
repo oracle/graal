@@ -91,7 +91,6 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondSetOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.RangeTableSwitchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.ReturnOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
@@ -719,16 +718,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         Variable res = newVariable(reskind);
         emitMove(res, rres);
         return res;
-    }
-
-    @Override
-    public void emitReturn(JavaKind kind, Value input) {
-        AllocatableValue operand = Value.ILLEGAL;
-        if (input != null) {
-            operand = resultOperandFor(kind, input.getValueKind());
-            emitMove(operand, input);
-        }
-        append(new ReturnOp(operand));
     }
 
     protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {

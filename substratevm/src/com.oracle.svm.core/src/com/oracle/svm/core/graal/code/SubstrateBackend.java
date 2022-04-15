@@ -26,10 +26,12 @@ package com.oracle.svm.core.graal.code;
 
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
@@ -51,6 +53,8 @@ import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+
+import java.lang.reflect.Method;
 
 public abstract class SubstrateBackend extends Backend {
 
@@ -81,6 +85,11 @@ public abstract class SubstrateBackend extends Backend {
 
     private RuntimeConfiguration runtimeConfiguration;
 
+    /**
+     * @see #setRuntimeToRuntimeInvokeMethod
+     */
+    private ResolvedJavaMethod runtimeToRuntimeInvokeMethod;
+
     protected SubstrateBackend(Providers providers) {
         super(providers);
     }
@@ -93,6 +102,39 @@ public abstract class SubstrateBackend extends Backend {
     public RuntimeConfiguration getRuntimeConfiguration() {
         assert runtimeConfiguration != null : "Access before initialization";
         return runtimeConfiguration;
+    }
+
+    /**
+     * Registers the {@link Method} that is used to dispatch direct run time to run time calls.
+     * Currently, there exists at most one such method at image run time. If this changes at some
+     * point, {@link #runtimeToRuntimeInvokeMethod} should be replaced by a list.
+     * 
+     * @see #isRuntimeToRuntimeCall
+     */
+    public void setRuntimeToRuntimeInvokeMethod(Method method) {
+        VMError.guarantee(this.runtimeToRuntimeInvokeMethod == null, "can only be set once");
+        this.runtimeToRuntimeInvokeMethod = getProviders().getMetaAccess().lookupJavaMethod(method);
+    }
+
+    /**
+     * Checks whether an invoke will directly call a run-time compiled method. Such calls are only
+     * performed by well-known methods (which might be inlined, though). Thus, run time to run time
+     * calls can be identified by inspecting the {@link LIRFrameState} at the call.
+     * 
+     * @param callState the frame state at the call
+     */
+    protected boolean isRuntimeToRuntimeCall(LIRFrameState callState) {
+        if (SubstrateUtil.HOSTED) {
+            /*
+             * Only a run-time compiled method can directly call another run-time compiled method.
+             */
+            return false;
+        }
+        if (runtimeToRuntimeInvokeMethod != null && callState != null && callState.topFrame != null) {
+            ResolvedJavaMethod m = callState.topFrame.getMethod();
+            return runtimeToRuntimeInvokeMethod.equals(m);
+        }
+        return false;
     }
 
     @Override

@@ -51,13 +51,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.classfile.constantpool.MemberRefConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -189,14 +190,14 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     @SuppressWarnings("unused")
     @Substitution
     public static int getNamedCon(int which, @JavaType(Object[].class) StaticObject name,
-                    @Inject Meta meta) {
-        if (name.getKlass() == meta.java_lang_Object_array && name.length() > 0) {
+                    @Inject EspressoLanguage language, @Inject Meta meta) {
+        if (name.getKlass() == meta.java_lang_Object_array && name.length(language) > 0) {
             if (which < CONSTANTS.size()) {
                 if (which >= CONSTANTS_BEFORE_16 && !meta.getJavaVersion().java16OrLater()) {
                     return 0;
                 }
                 Pair<String, Integer> pair = CONSTANTS.get(which);
-                meta.getInterpreterToVM().setArrayObject(meta.toGuestString(pair.getLeft()), 0, name);
+                meta.getInterpreterToVM().setArrayObject(language, meta.toGuestString(pair.getLeft()), 0, name);
                 return pair.getRight();
             }
         }
@@ -226,12 +227,13 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     @JavaType(Class.class) StaticObject originalCaller,
                     int skip,
                     @JavaType(internalName = "[Ljava/lang/invoke/MemberName;") StaticObject resultsArr,
+                    @Inject EspressoLanguage language,
                     @Inject Meta meta) {
         if (StaticObject.isNull(defc) || StaticObject.isNull(resultsArr)) {
             return -1;
         }
         EspressoContext context = meta.getContext();
-        StaticObject[] results = resultsArr.unwrap();
+        StaticObject[] results = resultsArr.unwrap(language);
         Symbol<Name> name = null;
         if (!StaticObject.isNull(matchName)) {
             name = context.getNames().lookup(meta.toHostString(matchName));
@@ -320,7 +322,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution(methodName = "resolve")
-    abstract static class ResolveOverload8 extends Node {
+    abstract static class ResolveOverload8 extends EspressoNode {
 
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -337,7 +339,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     }
 
     @Substitution(methodName = "resolve")
-    abstract static class ResolveOverload11 extends Node {
+    abstract static class ResolveOverload11 extends EspressoNode {
 
         abstract @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject execute(
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject self,
@@ -378,7 +380,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(value = Class.class) StaticObject caller,
                         int lookupMode,
                         boolean speculativeResolve,
-                        @Bind("getContext()") EspressoContext context,
                         @Cached ResolveNode resolve) {
             StaticObject result = StaticObject.NULL;
             EspressoException error = null;
@@ -387,7 +388,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             } catch (EspressoException e) {
                 error = e;
             }
-            Meta meta = context.getMeta();
+            Meta meta = getMeta();
             if (StaticObject.isNull(result)) {
                 int refKind = getRefKind(meta.java_lang_invoke_MemberName_flags.getInt(self));
                 if (!isValidRefKind(refKind)) {
@@ -422,8 +423,8 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @JavaType(internalName = "Ljava/lang/invoke/MemberName;") StaticObject memberName,
                         @JavaType(value = Class.class) StaticObject caller,
                         @SuppressWarnings("unused") int lookupMode,
-                        @Bind("getContext()") EspressoContext context,
-                        @Cached("create(context.getMeta().java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
+                        @Bind("getMeta()") Meta meta,
+                        @Cached("create(meta.java_lang_invoke_MemberName_getSignature.getCallTarget())") DirectCallNode getSignature,
                         @Cached BranchProfile isMethodProfile,
                         @Cached BranchProfile isFieldProfile,
                         @Cached BranchProfile isConstructorProfile,
@@ -432,7 +433,6 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                         @Cached BranchProfile isInvokeStaticOrInterfaceProfile,
                         @Cached BranchProfile isInvokeVirtualOrSpecialProfile,
                         @Cached BranchProfile isHandleMethodProfile) {
-            Meta meta = context.getMeta();
             if (meta.HIDDEN_VMTARGET.getHiddenObject(memberName) != null) {
                 return memberName; // Already planted
             }
@@ -493,7 +493,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
             switch (flags & ALL_KINDS) {
                 case MN_IS_CONSTRUCTOR:
                     isConstructorProfile.enter();
-                    Symbol<Signature> constructorSignature = meta.getEspressoLanguage().getSignatures().lookupValidSignature(desc);
+                    Symbol<Signature> constructorSignature = meta.getLanguage().getSignatures().lookupValidSignature(desc);
                     plantMethodMemberName(memberName, resolutionKlass, methodName, constructorSignature, refKind, callerKlass, doAccessChecks, doConstraintsChecks, meta);
                     meta.HIDDEN_VMINDEX.setHiddenObject(memberName, -3_000_000L);
                     break;
@@ -519,7 +519,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
                     break;
                 case MN_IS_FIELD:
                     isFieldProfile.enter();
-                    Symbol<Type> t = meta.getEspressoLanguage().getTypes().lookup(desc);
+                    Symbol<Type> t = meta.getLanguage().getTypes().lookup(desc);
                     plantFieldMemberName(memberName, resolutionKlass, methodName, t, refKind, callerKlass, doConstraintsChecks, meta);
                     break;
                 default:

@@ -33,5 +33,13 @@ public interface CPUFeatureAccess {
 
     void enableFeatures(Architecture architecture);
 
+    /**
+     * Compute the CPU features enabled at image run time.
+     */
     EnumSet<?> determineHostCPUFeatures();
+
+    /**
+     * CPU features enabled at image generation time.
+     */
+    EnumSet<?> buildtimeCPUFeatures();
 }

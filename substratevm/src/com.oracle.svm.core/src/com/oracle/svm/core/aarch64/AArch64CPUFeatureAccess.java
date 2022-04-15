@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -35,6 +36,7 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.util.VMError;
 
@@ -42,6 +44,20 @@ import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 
 public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
+
+    private final EnumSet<?> buildtimeCPUFeatures;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public AArch64CPUFeatureAccess() {
+        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+        var arch = (AArch64) targetDescription.arch;
+        buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
+    }
+
+    @Override
+    public EnumSet<?> buildtimeCPUFeatures() {
+        return buildtimeCPUFeatures;
+    }
 
     /**
      * We include all flags which currently impact AArch64 performance.

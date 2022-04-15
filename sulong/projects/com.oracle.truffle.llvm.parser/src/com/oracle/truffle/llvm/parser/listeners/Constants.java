@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BinaryOperationConstant;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.BlockAddressConstant;
@@ -51,6 +49,8 @@ import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.ArrayType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.math.BigInteger;
 
 public final class Constants implements ParserListener {
 
@@ -77,10 +77,14 @@ public final class Constants implements ParserListener {
     private static final int CONSTANT_CE_INBOUNDS_GEP = 20;
     private static final int CONSTANT_BLOCKADDRESS = 21;
     private static final int CONSTANT_DATA = 22;
-    private static final int CONSTANT_INLINEASM = 23;
+    private static final int CONSTANT_INLINEASM_OLD2 = 23;
     private static final int CONSTANT_CE_GEP_WITH_INRANGE_INDEX = 24;
     private static final int CONSTANT_CE_UNOP = 25;
     private static final int CONSTANT_POISON = 26;
+    // private static final int CONSTANT_DSO_LOCAL_EQUIVALENT = 27;
+    // private static final int CONSTANT_INLINEASM_OLD3 = 28;
+    // private static final int CONSTANT_NO_CFI_VALUE = 29;
+    private static final int CONSTANT_INLINEASM = 30;
 
     private static final BigInteger WIDE_INTEGER_MASK = BigInteger.ONE.shiftLeft(Long.SIZE).subtract(BigInteger.ONE);
 
@@ -195,8 +199,12 @@ public final class Constants implements ParserListener {
                 scope.addSymbol(AggregateConstant.createFromData(type, buffer), type);
                 return;
 
+            case CONSTANT_INLINEASM_OLD2:
+                scope.addSymbol(InlineAsmConstant.createFromData(type, null, buffer), type);
+                return;
             case CONSTANT_INLINEASM:
-                scope.addSymbol(InlineAsmConstant.createFromData(type, buffer), type);
+                final Type fnType = types.get(buffer.read());
+                scope.addSymbol(InlineAsmConstant.createFromData(type, fnType, buffer), type);
                 return;
 
             case CONSTANT_CE_GEP:

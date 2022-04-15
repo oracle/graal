@@ -29,20 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.Type;
-
 import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
 import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
@@ -124,11 +124,11 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     // va_list interface
 
     /**
-     * @param rootNode TODO
+     * @param allocaNode The node that performed the allocation of the va list memory.
      * @param vaListStackPtr
      * @return a new instance of a platform specific managed va_list object
      */
-    public abstract Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr);
+    public abstract Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr);
 
     /**
      * @return the type of the platform specific va_list structure

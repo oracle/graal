@@ -56,7 +56,7 @@ public final class InvokeHandleNode extends QuickNode {
         this.method = method;
         this.parsedSignature = method.getParsedSignature();
         this.hasReceiver = !method.isStatic();
-        this.intrinsic = method.spawnIntrinsicNode(accessingKlass, method.getName(), method.getRawSignature());
+        this.intrinsic = method.spawnIntrinsicNode(getLanguage(), getContext().getMeta(), accessingKlass, method.getName(), method.getRawSignature());
         this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isInvokeIntrinsic() ? 1 : 0);
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();

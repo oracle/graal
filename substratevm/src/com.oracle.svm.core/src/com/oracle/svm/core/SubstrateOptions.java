@@ -296,7 +296,7 @@ public class SubstrateOptions {
                  * With the LLVM backend, isolate support has a significant performance cost, so we
                  * disable it unless it is explicitly enabled.
                  */
-                return !useLLVMBackend();
+                return !useLLVMBackend(new OptionValues(values));
             }
             return (Boolean) values.get(this);
         }
@@ -485,6 +485,10 @@ public class SubstrateOptions {
     @Fold
     public static boolean useLLVMBackend() {
         return "llvm".equals(CompilerBackend.getValue());
+    }
+
+    public static boolean useLLVMBackend(OptionValues options) {
+        return "llvm".equals(CompilerBackend.getValue(options));
     }
 
     /*

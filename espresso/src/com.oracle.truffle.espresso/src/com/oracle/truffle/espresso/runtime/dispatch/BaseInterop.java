@@ -202,9 +202,13 @@ public class BaseInterop {
     @TruffleBoundary
     public static Object toDisplayString(StaticObject object, boolean allowSideEffects) {
         if (object.isForeignObject()) {
+            if (object.getKlass() == null) {
+                return "Foreign object: null";
+            }
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             try {
-                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(), allowSideEffects));
+                EspressoLanguage language = object.getKlass().getContext().getLanguage();
+                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(language), allowSideEffects));
             } catch (UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
             }

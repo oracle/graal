@@ -25,10 +25,10 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-public class SubstitutionProfiler extends Node {
+public class SubstitutionProfiler extends EspressoNode {
 
     @CompilationFinal //
     private long profiles = 0;

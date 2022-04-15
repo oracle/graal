@@ -34,7 +34,7 @@ public abstract class InternalRedefinitionPlugin {
     private EspressoContext context;
     private RedefinitionPluginHandler redefinitionPluginHandler;
 
-    public EspressoContext getContext() {
+    public final EspressoContext getContext() {
         return context;
     }
 

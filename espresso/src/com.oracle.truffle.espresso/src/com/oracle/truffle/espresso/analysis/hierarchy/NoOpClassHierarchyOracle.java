@@ -30,7 +30,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * An implementation of {@link ClassHierarchyOracle} which simply checks {@code final} modifier of a
  * class.
  */
-public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
+public final class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override

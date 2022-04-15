@@ -265,7 +265,7 @@ public final class EspressoContext {
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
-        this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
+        this.methodHandleIntrinsics = new MethodHandleIntrinsics();
 
         this.threadRegistry = new EspressoThreadRegistry(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
