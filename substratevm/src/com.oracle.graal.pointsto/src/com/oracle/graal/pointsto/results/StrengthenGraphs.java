@@ -385,12 +385,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                      */
                     return;
                 }
-                ParameterNode returnedCalleeParameter = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getReturnedParameter();
-                if (returnedCalleeParameter == null) {
+                int returnedCalleeParameterIndex = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getReturnedParameterIndex();
+                if (returnedCalleeParameterIndex == -1) {
                     /* This callee does not return a parameter. */
                     return;
                 }
-                int returnedCalleeParameterIndex = returnedCalleeParameter.index();
                 if (returnedParameterIndex == -1) {
                     returnedParameterIndex = returnedCalleeParameterIndex;
                 } else if (returnedParameterIndex != returnedCalleeParameterIndex) {
