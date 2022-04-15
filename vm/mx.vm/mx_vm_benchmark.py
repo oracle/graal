@@ -555,7 +555,7 @@ class NativeImageVM(GraalVm):
             metric_objects.append(obj + "_after_high_tier")
         rules = []
         for i in range(0, len(metric_objects)):
-            rules.append(mx_benchmark.JsonStdOutFileRule(r'^# Printing image build statistics to: (?P<path>\S+?)$', 'path', {
+            rules.append(mx_benchmark.JsonFixedFileRule(self.config.image_build_report_path, {
                 "benchmark": benchmark,
                 "metric.name": "image-build-stats",
                 "metric.type": "numeric",
