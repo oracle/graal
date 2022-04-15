@@ -276,7 +276,7 @@ public abstract class ArrayCopySnippets implements Snippets {
 
     /**
      * Inlines a loop that performs an {@linkplain BasicArrayCopyNode#isExact() exact}
-     * element-by-element array copy. The explict loop allows subsequent phases to optimize the
+     * element-by-element array copy. The explicit loop allows subsequent phases to optimize the
      * code.
      */
     @SuppressWarnings("unused")
