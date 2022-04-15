@@ -23,17 +23,21 @@ To start monitoring from VS Code, do the following:
    ![Process ID detected](images/visualvm_commands.png)
 
    While the project is starting, the Process node in VisualVM pane displays the project name with a "pid pending" label. 
-  Once the project process starts, the Process node is updated to show its process ID (PID).
+   Once the project process starts, the Process node is updated to show its process ID (PID).
+   > Note: VisualVM in VS Code screens the system and searches for the project process during the project startup.
 
-3. Open VisualVM by just clicking the play button:
+3. Click the play button:
 
    ![Open VisualVM from VS Code](images/open_visualvm.png)
-  
-   Note: VisualVM in VS Code screens your system every second and discovers all other Java project running. When you click the play button, the prompt will ask you which process to monitor by VisualVM:
+
+   - It starts VisualVM if no PID is selected in the Process node.
+   - It starts VisualVM and opens the PID if selected in the Process node.
+
+4. If you continue and invoke the actions like Thread dump, Heap dump, CPU sampler, Memory sampler, JFR, the prompt will ask you which process to monitor by VisualVM:
 
    ![Select Java process to monitor by VisualVM](images/select_java_process_to_monitor.png)
   
-You can manually request checking Java process running concurrently by clicking the loop icon in the **VisualVM**:**Process** field. It starts reading Java processes, and then prompts to select which process to monitor.
+You can manually request checking Java processes that run concurrently by clicking the loop icon in the **VisualVM**:**Process** field. It starts reading Java processes, and then asks to select which process to monitor.
 
 By default, VisualVM should not open when a Java process is started, but you can configure another behavior. In the VisualVM pane, click the edit button and select the action to perform when the project is started.
 

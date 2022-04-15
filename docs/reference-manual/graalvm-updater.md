@@ -7,7 +7,7 @@ permalink: /reference-manual/graalvm-updater/
 
 # GraalVM Updater
 
-* [Available Components](#available-components)
+* [Check Available Components](#check-available-components)
 * [Install Components on GraaalVM Community](#install-components-on-graaalvm-community)
 * [Install Components on GraaalVM Enterprise](#install-components-on-graaalVM-enterprise)
 * [Install Components Manually](#install-components-manually)
@@ -21,65 +21,71 @@ permalink: /reference-manual/graalvm-updater/
 * [GraalVM Updater Commands Overview](#graalvm-updater-commands-overview)
 * [Troubleshooting](#troubleshooting)
 
-GraalVM Updater, `gu`, is a command-line tool that lets you install and manage optional GraalVM language runtimes and utilities.
+GraalVM Updater, `gu`, is a command-line tool for installing and managing optional GraalVM language runtimes and utilities. 
+It is available in the core GraalVM installation.
 To assist you with the installation, language runtimes and utilities are pre-packaged as JAR files and referenced in the documentation as "components".
 GraalVM Updater can be also used to update your local GraalVM installation to a newer version or upgrade from a Community to Enterprise edition.
 Read more in [Upgrade GraalVM](#upgrade-graalvm).
 
-## Available Components
-
-The following GraalVM language runtimes and utilities are available for installation.
-
-Tools/Utilities:
-* [Native Image](native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
-* [LLVM toolchain](llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM
-
-Runtimes:
-* [Java on Truffle](java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
-* [Node.js](js/README.md) -- Node.js 16.13.2 compatible
-* [Python](python/README.md) -- Python 3.8.5-compatible
-* [Ruby](ruby/README.md) -- Ruby 3.0.2-compatible
-* [R](r/README.md) -- GNU R 4.0.3-compatible
-* [Wasm](wasm/README.md) -- WebAssembly (Wasm)
-
-GraalVM Updater verifies whether or not the version of a component is appropriate for your current GraalVM installation. 
-A component may require other components as prerequisites for its operation.
-GraalVM Updater verifies such requirements and will either attempt to download the required dependencies, or abort the installation if the component's requirements are not met.
-Components intended for Oracle GraalVM Enterprise Edition cannot be installed on GraalVM Community Edition.
+## Check Available Components
 
 To check what components are already shipped with your GraalVM installation or what you have alreay installed, run the `list` command:
 ```shell
 gu list
 ```
 
+To check what components are available for your GraalVM version to install, run the `gu available` command:
+```shell
+gu available
+Downloading: Component catalog from ...
+ComponentId              Version            Component name                
+-----------------------------------------------------------------------------
+espresso                 <version>          Java on Truffle               
+espresso-llvm            <version>          Java on Truffle LLVM Java library
+llvm-toolchain           <version>          LLVM.org toolchain            
+native-image             <version>          Native Image                  
+nodejs                   <version>          Graal.nodejs                  
+python                   <version>          Graal.Python                  
+R                        <version>          FastR                         
+ruby                     <version>          TruffleRuby                   
+wasm                     <version>          GraalWasm                     
+```
+
+Note down the `ComponentId` value for the component you would like to install.
+
+GraalVM Updater verifies whether or not the version of a component is appropriate for your current GraalVM installation. 
+A component may require other components as prerequisites for its operation.
+GraalVM Updater verifies such requirements and will either attempt to download the required dependencies, or abort the installation if the component's requirements are not met.
+Components intended for Oracle GraalVM Enterprise Edition cannot be installed on GraalVM Community Edition.
+
 Generic support for Node.js, R, Ruby, Python, and WebAssembly will work out of the box in most cases.
 It is recommended to fine-tune system-dependent configurations, following the recommendations in the component post-installation messages.
 
-## Install Components from Catalog on GraaalVM Community
+## Install Components on GraaalVM Community
 
-You can install a component on GraalVM Community Edition **by name** using GraalVM Updater: `gu install ComponentId`.
-There is a components catalog on GitHub, maintained by Oracle, from which a component will be downloaded.
+You can install a component on GraalVM Community Edition **by component's ID** using GraalVM Updater: `gu install ComponentId`. 
+GraalVM Updater downloads a component from GitHub.
 
-1. Get a list of components available in the catalog and their descriptive names:
-```shell
-gu available
-```
+1. Get a list of components available for your GraalVM version and their descriptive names:
+    ```shell
+    gu available
+    ```
 2. Install a component package using the `ComponentId` value. For example, `ruby`:
-```shell
-gu install ruby
-```
+    ```shell
+    gu install ruby
+    ```
 GraalVM Updater first downloads the list of components, then uses the information in the list to download the actual component package, and then installs it.
 To see more verbose output during the installation, as the download progress bar, print versions, and dependency information, use the `-v` (`--verbose`) switch.
 
-If a component being installed depends on another component, GraalVM Updater will search the catalog to find an appropriate dependency and install it as well.
+If a component being installed depends on another component, GraalVM Updater will search for the appropriate dependency and install it as well.
 If a required component cannot be found, installation will fail.
 
-## Install Components from Catalog on GraaalVM Enterprise
+## Install Components on GraaalVM Enterprise
 
-You can install a component on GraalVM Enteprise **by name** using GraalVM Updater: `gu install ComponentId`.
+You can install a component on GraalVM Enteprise Edition **by component's ID** using GraalVM Updater: `gu install ComponentId`.
 GraalVM Updater downloads a component from Oracle's storage point.
 
-Installing a component to GraalVM Enteprise Edition requires a user to provide a valid email address and accept a license for a given component.
+Installing a component to GraalVM Enteprise requires a user to provide a valid email address and accept a license for a given component.
 GraalVM Updater uses the **download token** (a personal access token, an alternative to using a password) which is bound to user's email and defines the set of accepted licenses.
 Follow these steps to install a component to GraalVM Enterprise, for example, Native Image: 
 
@@ -89,26 +95,24 @@ Follow these steps to install a component to GraalVM Enterprise, for example, Na
     gu available
     ```
 
-2. Install a component:
+2. Install a component using the `ComponentId` value:
 
     ```shell
     gu install native-image
     ```
-   You will see a message to provide your email address where the license will be sent or input your download token and press `ENTER`. 
-   Supposedly, this is your first installation and you have not accepted the license yet.
+   You will see a message to provide your valid email address or input your download token and press `ENTER`. 
+   Supposedly, this is your first installation and you have not accepted the license yet. So press `ENTER`.
 
-3. Press `ENTER`. You will be asked to provide your email.
+3. Type your valid email address. You will immediately be sent an email to verify your email address and accept the license. If email address is not provided, `gu` will abort the installation and print an error message that no download token was provided.
 
-4. Type your valid email address. You will immediately be sent an email to verify your email address and accept the license. If email address is not provided, `gu` will abort the installation and print an error message that no download token was provided.
+4. Go to your email client and review the the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html). 
 
-5. Go to your email client and review the the [Oracle Technology Network License Agreement GraalVM Enterprise Edition Including License for Early Adopter Versions](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html). 
+5. Accept the licence. This way you confirm the licence acceptance and generating a download token simultaneously.
 
-6. Accept the licence by clicking **Verify email** at the bottom of the email content. By clicking this button you confirm the licence acceptance and generating a download token simultaneously.
+6. Return to the console window and press `ENTER` to continue. It will ask you where to store the download token on your computer. By default, the download token will be saved in the `.gu/config` file in user's home directory. To confirm the default location, type `yes`. The download and installation of the component will start.
 
-7. Return to the console window and press `ENTER` to continue. It will ask you where to store the download token on your computer. By default, the download token will be saved in the `.gu/config` file in user's home directory. To confirm the default location, type `yes`. The download and installation of the component will start.
-
-Once the installation completes, you can continue installing other components using the same syntax: `gu install ComponentId`. 
-GraalVM Updater reads your configuration and you do not have to re-accept the licence. 
+Once the installation completes, you can continue installing other components using the same command: `gu install ComponentId`. 
+GraalVM Updater reads your `.gu/config` and you do not have to re-accept the licence. 
  
 Consider the following aspects:
 
@@ -121,16 +125,16 @@ The following commands can help you manage a download token:
 
 * `--email <address>` to print an e-mail address used for generating a download token
 * `--config <path>` to provide the path to a download token
-* `--show-ee-token` to print a saved download token. You can then copy and transfer it to another computer or use it for automated build pipelines
+* `--show-ee-token` to print a saved download token
 
 ### Save a Download Token in Environment Variable
 
-A download token can be saved in a file on your computer or in an environment variable `$GRAAL_EE_DOWNLOAD_TOKEN`.
+A download token can be saved in a file on your computer or in the environment variable `$GRAAL_EE_DOWNLOAD_TOKEN`.
 
-To set the environment variable `$GRAAL_EE_DOWNLOAD_TOKEN` to the download token, run:
+To set the environment variable to the download token, run:
 
 ```shell
-export GRAAL_EE_DOWNLOAD_TOKEN=<path-to .gu/config>
+export GRAAL_EE_DOWNLOAD_TOKEN=<path-to /.gu/config>
 ```
 
 GraalVM Updater then reads the download token from the variable.
@@ -344,9 +348,10 @@ GraalVM Updater common options:
 * `--version`: print version
 
 Additonal options:
-* `--email <address>: verify the e-mail address that confirms a license acceptance. It can be used only with some commands.
-* `--config <path>`: provide path to a configuration file containing a download token
-* `--show-ee-token`: print a download token used for installation
+
+* `--email <address>`: print an e-mail address used for generating a download token
+* `--config <path>`: provide the path to a download token
+* `--show-ee-token`: print a saved download token
 * `-k, --public-key <path>`: provide path to custom GPG public key for verification
 * `-U, --username <username>`: enter a username for login to Oracle component repository
 
