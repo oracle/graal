@@ -743,10 +743,6 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                               ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
                               'CPPFLAGS="-DNO_JAVA_RAW_API"',
                              ]
-            if mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64':
-                # configure wrongly autodetects as 'arm-apple-darwin20.0.0', see https://github.com/libffi/libffi/issues/571
-                # force it until it is fixed upstream, tracked in GR-35554
-                configure_args.append('--build=aarch64-apple-darwin20.0.0')
 
             self.delegate.buildEnv = dict(
                 SOURCES=mx.basename(self.delegate.dir),
