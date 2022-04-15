@@ -399,6 +399,7 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         return snapshot;
     }
 
+    @Override
     public boolean divisionOverflowIsJVMSCompliant() {
         if (getLowerer() != null) {
             return getLowerer().divisionOverflowIsJVMSCompliant();
