@@ -245,27 +245,7 @@ public class FloatingReadPhase extends Phase {
         if (createFloatingReads) {
             assert graph.isBeforeStage(StageFlag.FLOATING_READS);
             graph.setAfterStage(StageFlag.FLOATING_READS);
-            assert memoryTiersAligned(graph);
         }
-    }
-
-    /**
-     * Ensure {@link MemoryAccess} used in high tier aligns with the {@link MemoryAccess} nodes used
-     * in mid tier. Every non-floatable memory access either needs to be lowered to a floatable one
-     * (Which can be fixed) or it has to be a {@link MemoryKill}. Else it would mean we have a
-     * memory accessing node that was present in high tier but does not participate in the real
-     * memory graph in mid tier, this is not allowed.
-     */
-    private static boolean memoryTiersAligned(StructuredGraph graph) {
-        for (Node n : graph.getNodes()) {
-            if (n instanceof MemoryAccess && !(n instanceof MemoryAccess)) {
-                if (!MemoryKill.isMemoryKill(n)) {
-                    throw GraalError.shouldNotReachHere(
-                                    String.format("Node %s is a memory access but not a floatable one, it should have been a memory kill or be removed after the first lowering", n));
-                }
-            }
-        }
-        return true;
     }
 
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {
