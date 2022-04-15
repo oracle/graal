@@ -32,7 +32,6 @@ import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER
 
 import java.util.Map;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -77,6 +76,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
@@ -101,9 +101,9 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     public static final LocationIdentity[] TLAB_LOCATIONS = new LocationIdentity[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY};
 
     private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", true);
-    private static final SubstrateForeignCallDescriptor HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "hubErrorStub", true);
+    private static final SubstrateForeignCallDescriptor INSTANCE_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "instanceHubErrorStub", true);
     private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", true);
-    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, HUB_ERROR, ARRAY_HUB_ERROR};
+    private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, INSTANCE_HUB_ERROR, ARRAY_HUB_ERROR};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
         foreignCalls.register(FOREIGN_CALLS);
@@ -139,6 +139,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
+        // The hub was already verified by a ValidateNewInstanceClassNode.
         UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
@@ -172,7 +173,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 return nonNullHub;
             }
         }
-        callHubErrorWithExceptionStub(HUB_ERROR, DynamicHub.toClass(hub));
+        callInstanceHubErrorWithExceptionStub(INSTANCE_HUB_ERROR, DynamicHub.toClass(hub));
         throw UnreachableNode.unreachable();
     }
 
@@ -204,11 +205,11 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @NodeIntrinsic(value = ForeignCallWithExceptionNode.class)
-    private static native void callHubErrorWithExceptionStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
+    private static native void callInstanceHubErrorWithExceptionStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Class<?> hub);
 
-    /** Foreign call: {@link #HUB_ERROR}. */
+    /** Foreign call: {@link #INSTANCE_HUB_ERROR}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
-    private static void hubErrorStub(DynamicHub hub) throws InstantiationException {
+    private static void instanceHubErrorStub(DynamicHub hub) throws InstantiationException {
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
         } else if (!LayoutEncoding.isInstance(hub.getLayoutEncoding())) {
@@ -284,6 +285,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
         return ConfigurationValues.getObjectLayout().getFirstFieldOffset();
     }
 
+    @Fold
     protected static int afterArrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
     }
