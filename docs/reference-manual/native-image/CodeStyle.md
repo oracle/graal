@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Native Image Code Style
-permalink: /reference-manual/native-image/CodeStyle/
+permalink: /reference-manual/native-image/contributing/CodeStyle/
+redirect_from: /$version/reference-manual/native-image/CodeStyle/
 ---
 # Native Image Code Style
 

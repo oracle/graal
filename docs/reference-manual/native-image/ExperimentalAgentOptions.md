@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Experimental Agent Options
-permalink: /reference-manual/native-image/ExperimentalAgentOptions/
+permalink: /reference-manual/native-image/agent/ExperimentalAgentOptions
+redirect_from: /$version/reference-manual/native-image/ExperimentalAgentOptions/
 ---
 
 # Experimental Agent Options
@@ -46,7 +47,7 @@ There are two ways to specify these existing configuration files:
 
 The agent can, using a heuristic, generate configuration with reachability conditions on user specified classes.
 The agent will track configuration origins and try to deduce the conditions automatically.
-User classes are specified via an agent filter file (for more information on the format, see [Agent.md](Agent.md)).
+User classes are specified via an agent filter file (for more information on the format, see [more about the agent](AutomaticMetadataCollection.md#caller-based-filters)).
 Additionally, the resulting configuration can further be filtered using another filter file.
 
 Currently, this feature supports two modes:

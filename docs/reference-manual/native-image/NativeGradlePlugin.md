@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Native Gradle Plugin
-permalink: /reference-manual/native-image/NativeGradlePlugin/
+permalink: /reference-manual/native-image/overview/NativeGradlePlugin/
+redirect_from: /$version/reference-manual/native-image/NativeGradlePlugin/
 ---
 # Native Gradle Plugin
 

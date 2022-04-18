@@ -2,8 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Native Maven Plugin
-permalink: /reference-manual/native-image/NativeMavenPlugin/
-redirect_from: /reference-manual/native-image/NativeImageMavenPlugin/
+permalink: /reference-manual/native-image/overview/NativeMavenPlugin/
+redirect_from: /$version/reference-manual/native-image/NativeImageMavenPlugin/
 ---
 # Native Maven Plugin
 

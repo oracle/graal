@@ -2,7 +2,9 @@
 layout: docs
 toc_group: native-image
 link_title: Build Output
-permalink: /reference-manual/native-image/BuildOutput/
+permalink: /reference-manual/native-image/overview/BuildOutput/
+redirect_from: /$version/reference-manual/native-image/BuildOutput/
+
 ---
 # Native Image Build Output
 

@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Generating Heap Dumps from Native Images
-permalink: /reference-manual/native-image/NativeImageHeapdump/
+permalink: /reference-manual/native-image/debugging-and-diagnostics/NativeImageHeapdump/
+redirect_from: /$version/reference-manual/native-image/NativeImageHeapdump/
 ---
 # Generating Heap Dumps from Native Images
 

@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: JDK Flight Recorder with Native Image
-permalink: /reference-manual/native-image/JFR/
+permalink: /reference-manual/native-image/debugging-and-diagnostics/JFR
+redirect_from: /$version/reference-manual/native-image/JFR/
 ---
 
 # JDK Flight Recorder (JFR) with Native Image

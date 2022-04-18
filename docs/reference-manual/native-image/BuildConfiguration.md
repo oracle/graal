@@ -2,14 +2,15 @@
 layout: docs
 toc_group: native-image
 link_title: Build Configuration
-permalink: /reference-manual/native-image/BuildConfiguration/
+permalink: /reference-manual/native-image/overview/BuildConfiguration/
+redirect_from: /$version/reference-manual/native-image/BuildConfiguration/
 ---
 # Native Image Build Configuration
 
 * [Embedding a Configuration File](#embedding-a-configuration-file)
 * [Configuration File Format](#configuration-file-format)
 * [Memory Configuration for Building a Native Executable](#memory-configuration-for-building-a-native-executable)
-* [Runtime vs Build Time Initialization](#runtime-vs-build-time-initialization)
+* [Runtime vs Build Time Initialization](ClassInitialization.md)
 * [Specifying Types Required to Be Defined at Build Time](#specifying-types-required-to-be-defined-at-build-time)
 
 Native Image supports a wide range of options to configure the `native-image` tool.
@@ -35,14 +36,13 @@ META-INF/
 ```
 
 Note that the use of `${.}` in a _native-image.properties_ file expands to the resource location that contains that exact configuration file.
-This can be useful if the _native-image.properties_ file refers to resources within its subdirectory, for example, `-H:SubstitutionResources=${.}/substitutions.json`.
+This can be useful if the _native-image.properties_ file refers to resources within its subdirectory, for example, `-H:ResourceConfigurationResources=${.}/custom_resources.json`.
 Always make sure you use the option variants that take resources, that is, use `-H:ResourceConfigurationResources` instead of `-H:ResourceConfigurationFiles`.
 Other options that work in this context are:
 * `-H:DynamicProxyConfigurationResources`
 * `-H:JNIConfigurationResources`
 * `-H:ReflectionConfigurationResources`
 * `-H:ResourceConfigurationResources`
-* `-H:SubstitutionResources`
 * `-H:SerializationConfigurationResources`
 
 By having such a composable _native-image.properties_ file, building a native executable does not require any additional arguments on the command line.
@@ -142,19 +142,6 @@ By default, the `native-image` tool uses up to 32 threads (but not more than the
 
 For other related options available to the `native-image` tool, see the output from the command `native-image --expert-options-all`.
 
-## Runtime vs Build-Time Initialization
-
-When you build a native executable, you can decide which elements of your application are run at build time, and which elements are run at executable run time.
-
-By default, all class-initialization code (static initializers and static field initialization) of the application is run at executable run time.
-Sometimes it is beneficial to run class initialization code when the executable is built. For example, for faster startup if some static fields are initialized to values that are runtime-independent.
-This is controlled with the following `native-image` options:
-
-* `--initialize-at-build-time=<comma-separated list of packages and classes>`
-* `--initialize-at-run-time=<comma-separated list of packages and classes>`
-
-In addition to that, arbitrary computations are allowed at build time that can be put into `ImageSingletons` that are accessible at run time. For more information, see [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
-
 ## Specifying Types Required to Be Defined at Build Time
 
 A well-structured library or application should handle linking of Java types (ensuring all reachable Java types are fully defined at build time) when building a native executable by itself.
@@ -185,6 +172,7 @@ This option is only allowed to be used on command line.
 
 # Related Documentation
 * [Class Initialization in Native Image](ClassInitialization.md)
++ [Reachability Metadata](ReachabilityMetadata.md)
 * [Assisted Configuration of Native Image Builds](Agent.md#assisted-configuration-of-native-image-builds)
 * [Building Native Image with Java Reflection Example](Agent.md#building-native-image-with-java-reflection-example)
 * [Agent Advanced Usage](Agent.md#agent-advanced-usage)
