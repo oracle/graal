@@ -60,9 +60,9 @@ public class RemoveUnwindPhase extends Phase {
         SharedMethod method = (SharedMethod) graph.method();
         if (method.isDeoptTarget()) {
             /*
-             * Deoptimization targets need need to have an exception entry point for every invoke.
-             * This decouples deoptimization from exception handling: the exception handling
-             * mechanism can just deliver an exception to a deoptimized method without any checks.
+             * Deoptimization targets need to have an exception entry point for every invoke. This
+             * decouples deoptimization from exception handling: the exception handling mechanism
+             * can just deliver an exception to a deoptimized method without any checks.
              */
             return;
         }

@@ -100,10 +100,6 @@ public class FactoryMethodSupport {
         }
     }
 
-    protected boolean inlineConstructor(@SuppressWarnings("unused") ResolvedJavaMethod constructor) {
-        return false;
-    }
-
     protected AbstractNewObjectNode createNewInstance(HostedGraphKit kit, ResolvedJavaType type, boolean fillContents) {
         return kit.append(new NewInstanceNode(type, fillContents));
     }
