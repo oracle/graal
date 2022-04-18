@@ -32,7 +32,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -489,7 +488,7 @@ public class GraphDecoder {
     }
 
     @SuppressWarnings("try")
-    public final void decode(EncodedGraph encodedGraph, Collection<EncodedNodeReference> nodeReferences) {
+    public final void decode(EncodedGraph encodedGraph, Iterable<EncodedNodeReference> nodeReferences) {
         try (DebugContext.Scope scope = debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
             LoopScope loopScope = createInitialLoopScope(methodScope, null);

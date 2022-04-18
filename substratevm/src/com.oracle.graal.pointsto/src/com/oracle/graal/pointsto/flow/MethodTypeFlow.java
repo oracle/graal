@@ -246,8 +246,8 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return originalMethodFlows.getResult();
     }
 
-    public Collection<InvokeTypeFlow> getInvokes() {
-        return originalMethodFlows.getInvokeFlows();
+    public Iterable<InvokeTypeFlow> getInvokes() {
+        return originalMethodFlows.getInvokes().getValues();
     }
 
     private static int computeReturnedParameterIndex(StructuredGraph graph) {

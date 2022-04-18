@@ -458,7 +458,7 @@ public class MethodTypeFlowBuilder {
          * after static analysis.
          */
         if (bb.strengthenGraalGraphs()) {
-            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, methodFlow.originalMethodFlows.getNodeFlows().keySet()));
+            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, methodFlow.originalMethodFlows.getNodeFlows().getKeys()));
         }
     }
 

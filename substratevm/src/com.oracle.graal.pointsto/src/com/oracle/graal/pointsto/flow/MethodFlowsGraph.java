@@ -30,17 +30,13 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.stream.Collectors;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
-import org.graalvm.compiler.nodes.Invoke;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -64,14 +60,14 @@ public class MethodFlowsGraph {
     private FormalParamTypeFlow[] parameters;
     private InitialParamTypeFlow[] initialParameterFlows;
     private List<TypeFlow<?>> miscEntryFlows;
-    private Map<EncodedNodeReference, TypeFlow<?>> nodeFlows;
+    private EconomicMap<EncodedNodeReference, TypeFlow<?>> nodeFlows;
     /*
      * We keep a bci->flow mapping for instanceof and invoke flows since they are queried by the
      * analysis results builder.
      */
-    private Set<Object> nonUniqueBcis;
-    private Map<Object, InstanceOfTypeFlow> instanceOfFlows;
-    private Map<Object, InvokeTypeFlow> invokeFlows;
+    private EconomicSet<Object> nonUniqueBcis;
+    private EconomicMap<Object, InstanceOfTypeFlow> instanceOfFlows;
+    private EconomicMap<Object, InvokeTypeFlow> invokeFlows;
 
     private FormalReturnTypeFlow result;
 
@@ -108,12 +104,6 @@ public class MethodFlowsGraph {
         // lookup the return type so that it is added to the universe even if the method is
         // never linked and parsed
         method.getSignature().getReturnType(method.getDeclaringClass());
-
-        miscEntryFlows = new ArrayList<>();
-        nodeFlows = new HashMap<>();
-        instanceOfFlows = new HashMap<>();
-        invokeFlows = new HashMap<>(4, 0.75f);
-        nonUniqueBcis = new HashSet<>();
     }
 
     public MethodFlowsGraph(PointsToAnalysisMethod method, AnalysisContext context) {
@@ -146,14 +136,37 @@ public class MethodFlowsGraph {
 
         initialParameterFlows = new InitialParamTypeFlow[originalMethodFlowsGraph.initialParameterFlows.length];
 
-        nodeFlows = originalMethodFlowsGraph.nodeFlows.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> lookupCloneOf(bb, e.getValue())));
+        nodeFlows = lookupClonesOf(bb, originalMethodFlowsGraph.nodeFlows);
         result = originalMethodFlowsGraph.getResult() != null ? lookupCloneOf(bb, originalMethodFlowsGraph.getResult()) : null;
-        instanceOfFlows = originalMethodFlowsGraph.instanceOfFlows.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> lookupCloneOf(bb, e.getValue())));
-        miscEntryFlows = originalMethodFlowsGraph.miscEntryFlows.stream().map(f -> lookupCloneOf(bb, f)).collect(Collectors.toList());
-        invokeFlows = originalMethodFlowsGraph.invokeFlows.entrySet().stream().collect(Collectors.toMap(e -> e.getKey(), e -> lookupCloneOf(bb, e.getValue())));
+        instanceOfFlows = lookupClonesOf(bb, originalMethodFlowsGraph.instanceOfFlows);
+        miscEntryFlows = lookupClonesOf(bb, originalMethodFlowsGraph.miscEntryFlows);
+        invokeFlows = lookupClonesOf(bb, originalMethodFlowsGraph.invokeFlows);
 
         /* At this point all the clones should have been created. */
         sealed = true;
+    }
+
+    private <K, V extends TypeFlow<?>> EconomicMap<K, V> lookupClonesOf(PointsToAnalysis bb, EconomicMap<K, V> original) {
+        if (original == null) {
+            return null;
+        }
+        EconomicMap<K, V> result = EconomicMap.create(original.size());
+        var cursor = original.getEntries();
+        while (cursor.advance()) {
+            result.put(cursor.getKey(), lookupCloneOf(bb, cursor.getValue()));
+        }
+        return result;
+    }
+
+    private <V extends TypeFlow<?>> List<V> lookupClonesOf(PointsToAnalysis bb, List<V> original) {
+        if (original == null) {
+            return null;
+        }
+        List<V> result = new ArrayList<>(original.size());
+        for (V value : original) {
+            result.add(lookupCloneOf(bb, value));
+        }
+        return result;
     }
 
     @SuppressWarnings("unchecked")
@@ -290,12 +303,24 @@ public class MethodFlowsGraph {
                 worklist.add(param);
             }
         }
-
-        worklist.addAll(nodeFlows.values());
-        worklist.addAll(miscEntryFlows);
-        worklist.addAll(instanceOfFlows.values());
-        worklist.addAll(invokeFlows.values());
-
+        if (nodeFlows != null) {
+            for (var value : nodeFlows.getValues()) {
+                worklist.add(value);
+            }
+        }
+        if (miscEntryFlows != null) {
+            worklist.addAll(miscEntryFlows);
+        }
+        if (instanceOfFlows != null) {
+            for (var value : instanceOfFlows.getValues()) {
+                worklist.add(value);
+            }
+        }
+        if (invokeFlows != null) {
+            for (var value : invokeFlows.getValues()) {
+                worklist.add(value);
+            }
+        }
         if (result != null) {
             worklist.add(result);
         }
@@ -378,20 +403,25 @@ public class MethodFlowsGraph {
 
     public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
         assert flow != null && !(flow instanceof AllInstantiatedTypeFlow);
-        assert !nodeFlows.keySet().stream().anyMatch(existing -> existing.getNode() == key.getNode()) : "Overwriting flow for " + key.getNode() + ": " + flow;
+        if (nodeFlows == null) {
+            nodeFlows = EconomicMap.create();
+        }
         nodeFlows.put(key, flow);
     }
 
     public Collection<TypeFlow<?>> getMiscFlows() {
-        return miscEntryFlows;
+        return miscEntryFlows == null ? Collections.emptyList() : miscEntryFlows;
     }
 
-    public Map<EncodedNodeReference, TypeFlow<?>> getNodeFlows() {
-        return nodeFlows;
+    public EconomicMap<EncodedNodeReference, TypeFlow<?>> getNodeFlows() {
+        return nodeFlows == null ? EconomicMap.emptyMap() : nodeFlows;
     }
 
     public void addMiscEntryFlow(TypeFlow<?> entryFlow) {
         assert !(entryFlow instanceof AllInstantiatedTypeFlow);
+        if (miscEntryFlows == null) {
+            miscEntryFlows = new ArrayList<>();
+        }
         miscEntryFlows.add(entryFlow);
     }
 
@@ -403,41 +433,42 @@ public class MethodFlowsGraph {
         return this.result;
     }
 
-    public Set<Entry<Object, InvokeTypeFlow>> getInvokes() {
-        return invokeFlows.entrySet();
+    public EconomicMap<Object, InvokeTypeFlow> getInvokes() {
+        return invokeFlows == null ? EconomicMap.emptyMap() : invokeFlows;
     }
 
-    public InvokeTypeFlow getInvokeFlow(Invoke invoke) {
-        return invokeFlows.get(invoke);
-    }
-
-    Collection<InvokeTypeFlow> getInvokeFlows() {
-        return invokeFlows.values();
-    }
-
-    public Set<Entry<Object, InstanceOfTypeFlow>> getInstanceOfFlows() {
-        return instanceOfFlows.entrySet();
+    public EconomicMap<Object, InstanceOfTypeFlow> getInstanceOfFlows() {
+        return instanceOfFlows == null ? EconomicMap.emptyMap() : instanceOfFlows;
     }
 
     void addInstanceOf(Object key, InstanceOfTypeFlow instanceOf) {
+        if (instanceOfFlows == null) {
+            instanceOfFlows = EconomicMap.create();
+        }
         doAddFlow(key, instanceOf, instanceOfFlows);
     }
 
     void addInvoke(Object key, InvokeTypeFlow invokeTypeFlow) {
+        if (invokeFlows == null) {
+            invokeFlows = EconomicMap.create();
+        }
         doAddFlow(key, invokeTypeFlow, invokeFlows);
     }
 
-    private <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+    private <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, EconomicMap<Object, T> map) {
         assert map == instanceOfFlows || map == invokeFlows : "Keys of these maps must not be overlapping";
         Object uniqueKey = key;
-        if (nonUniqueBcis.contains(key) || removeNonUnique(key, instanceOfFlows) || removeNonUnique(key, invokeFlows)) {
+        if ((nonUniqueBcis != null && nonUniqueBcis.contains(key)) || removeNonUnique(key, instanceOfFlows) || removeNonUnique(key, invokeFlows)) {
             uniqueKey = new Object();
         }
         map.put(uniqueKey, flow);
     }
 
-    private <T extends TypeFlow<BytecodePosition>> boolean removeNonUnique(Object key, Map<Object, T> map) {
-        T oldFlow = map.remove(key);
+    private <T extends TypeFlow<BytecodePosition>> boolean removeNonUnique(Object key, EconomicMap<Object, T> map) {
+        if (map == null) {
+            return false;
+        }
+        T oldFlow = map.removeKey(key);
         if (oldFlow != null) {
             /*
              * This can happen when Graal inlines jsr/ret routines and the inlined nodes share the
@@ -446,15 +477,14 @@ public class MethodFlowsGraph {
              * uniqueKey->flow pairing.
              */
             map.put(new Object(), oldFlow);
+            if (nonUniqueBcis == null) {
+                nonUniqueBcis = EconomicSet.create();
+            }
             nonUniqueBcis.add(key);
             return true;
         } else {
             return false;
         }
-    }
-
-    public InvokeTypeFlow getInvoke(Object key) {
-        return invokeFlows.get(key);
     }
 
     public boolean isLinearized() {
@@ -476,7 +506,7 @@ public class MethodFlowsGraph {
         List<MethodFlowsGraph> callers = new ArrayList<>();
         for (AnalysisMethod caller : method.getCallers()) {
             for (MethodFlowsGraph callerFlowGraph : PointsToAnalysis.assertPointsToAnalysisMethod(caller).getTypeFlow().getFlows()) {
-                for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
+                for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
                     InvokeTypeFlow invoke = callerInvoke;
                     if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
                         /* The invoke has been replaced by the context insensitive one. */
@@ -504,7 +534,7 @@ public class MethodFlowsGraph {
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
     public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
-        for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
+        for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
             for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it

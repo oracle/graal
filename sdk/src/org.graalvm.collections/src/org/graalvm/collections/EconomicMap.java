@@ -236,31 +236,18 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      *
      * @since 22.0
      */
+    @SuppressWarnings("unchecked")
     static <K, V> MapCursor<K, V> emptyCursor() {
-        return new MapCursor<>() {
-            @Override
-            public void remove() {
-            }
+        return (MapCursor<K, V>) EmptyMap.EMPTY_CURSOR;
+    }
 
-            @Override
-            public boolean advance() {
-                return false;
-            }
-
-            @Override
-            public K getKey() {
-                return null;
-            }
-
-            @Override
-            public V getValue() {
-                return null;
-            }
-
-            @Override
-            public V setValue(V newValue) {
-                return null;
-            }
-        };
+    /**
+     * Return an empty, unmodifiable {@link EconomicMap}.
+     *
+     * @since 22.2
+     */
+    @SuppressWarnings("unchecked")
+    static <K, V> EconomicMap<K, V> emptyMap() {
+        return (EconomicMap<K, V>) EmptyMap.EMPTY_MAP;
     }
 }

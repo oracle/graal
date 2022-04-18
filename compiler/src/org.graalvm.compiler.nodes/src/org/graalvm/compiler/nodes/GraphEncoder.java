@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes;
 
 import java.util.ArrayDeque;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.Objects;
@@ -175,7 +174,7 @@ public class GraphEncoder {
     /**
      * Utility method that does everything necessary to encode a single graph.
      */
-    public static EncodedGraph encodeSingleGraph(StructuredGraph graph, Architecture architecture, Collection<EncodedNodeReference> nodeReferences) {
+    public static EncodedGraph encodeSingleGraph(StructuredGraph graph, Architecture architecture, Iterable<EncodedNodeReference> nodeReferences) {
         GraphEncoder encoder = new GraphEncoder(architecture);
         encoder.prepare(graph);
         encoder.finishPrepare();
@@ -242,7 +241,7 @@ public class GraphEncoder {
         return encode(graph, null);
     }
 
-    protected int encode(StructuredGraph graph, Collection<EncodedNodeReference> nodeReferences) {
+    protected int encode(StructuredGraph graph, Iterable<EncodedNodeReference> nodeReferences) {
         assert objectsArray != null && nodeClassesArray != null : "finishPrepare() must be called before encode()";
 
         NodeOrder nodeOrder = new NodeOrder(graph);

@@ -57,6 +57,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.compiler.java.LambdaUtils;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.InvokeInfo;
@@ -66,7 +68,6 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.java.LambdaUtils;
 
 public final class CallTreePrinter {
 
@@ -205,10 +206,14 @@ public final class CallTreePrinter {
              * Process the method: iterate the invokes, for each invoke iterate the callees, if the
              * callee was not already processed add it to the tree and to the work list.
              */
-            node.method.getInvokes()
-                            .stream()
-                            .sorted(invokeInfoComparator)
-                            .forEach(invokeInfo -> processInvoke(invokeInfo, node, workList));
+            ArrayList<InvokeInfo> invokeInfos = new ArrayList<>();
+            for (var invokeInfo : node.method.getInvokes()) {
+                invokeInfos.add(invokeInfo);
+            }
+            invokeInfos.sort(invokeInfoComparator);
+            for (var invokeInfo : invokeInfos) {
+                processInvoke(invokeInfo, node, workList);
+            }
         }
     }
 

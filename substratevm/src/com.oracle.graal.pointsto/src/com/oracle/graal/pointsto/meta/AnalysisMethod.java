@@ -31,7 +31,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -188,7 +187,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * @return analysis related invoke information for given method, mainly the possible callees to
      *         traverse the call graph
      */
-    public abstract Collection<InvokeInfo> getInvokes();
+    public abstract Iterable<? extends InvokeInfo> getInvokes();
 
     /**
      * @return the parsing context in which given method was parsed
@@ -713,7 +712,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Collection<EncodedNodeReference> nodeReferences) {
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
         if (analyzedGraph == null) {
             return null;
         }

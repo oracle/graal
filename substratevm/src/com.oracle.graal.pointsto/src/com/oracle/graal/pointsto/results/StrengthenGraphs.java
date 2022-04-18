@@ -121,7 +121,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod m) {
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
         PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-        StructuredGraph graph = method.decodeAnalyzedGraph(debug, method.getTypeFlow().getOriginalMethodFlows().getNodeFlows().keySet());
+        StructuredGraph graph = method.decodeAnalyzedGraph(debug, method.getTypeFlow().getOriginalMethodFlows().getNodeFlows().getKeys());
         if (graph != null) {
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
@@ -197,10 +197,11 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
             parameterFlows = originalFlows.getParameters();
             nodeFlows = new NodeMap<>(graph);
-            for (var entry : originalFlows.getNodeFlows().entrySet()) {
-                Node node = entry.getKey().getNode();
+            var cursor = originalFlows.getNodeFlows().getEntries();
+            while (cursor.advance()) {
+                Node node = cursor.getKey().getNode();
                 assert nodeFlows.get(node) == null : "overwriting existing entry for " + node;
-                nodeFlows.put(node, entry.getValue());
+                nodeFlows.put(node, cursor.getValue());
             }
         }
 
