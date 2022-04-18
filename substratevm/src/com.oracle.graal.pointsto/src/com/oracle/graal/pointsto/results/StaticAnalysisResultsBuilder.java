@@ -91,7 +91,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
             parameterTypeProfiles = paramProfiles.toArray(new JavaTypeProfile[paramProfiles.size()]);
         }
 
-        JavaTypeProfile resultTypeProfile = makeTypeProfile(methodFlow.foldTypeFlow(bb, originalFlows.getResult()));
+        JavaTypeProfile resultTypeProfile = makeTypeProfile(methodFlow.foldTypeFlow(bb, originalFlows.getReturnFlow()));
 
         ArrayList<BytecodeEntry> entries = new ArrayList<>(method.getCodeSize());
 

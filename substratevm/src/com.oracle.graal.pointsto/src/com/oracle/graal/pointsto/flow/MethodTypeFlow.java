@@ -151,7 +151,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     }
 
     public void setResult(FormalReturnTypeFlow result) {
-        originalMethodFlows.setResult(result);
+        originalMethodFlows.setReturnFlow(result);
     }
 
     public void setParameter(int index, FormalParamTypeFlow parameter) {
@@ -243,7 +243,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     // original result
     protected FormalReturnTypeFlow getResultFlow() {
-        return originalMethodFlows.getResult();
+        return originalMethodFlows.getReturnFlow();
     }
 
     public Iterable<InvokeTypeFlow> getInvokes() {

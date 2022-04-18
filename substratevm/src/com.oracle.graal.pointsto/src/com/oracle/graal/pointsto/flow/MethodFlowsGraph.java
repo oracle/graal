@@ -69,7 +69,7 @@ public class MethodFlowsGraph {
     private EconomicMap<Object, InstanceOfTypeFlow> instanceOfFlows;
     private EconomicMap<Object, InvokeTypeFlow> invokeFlows;
 
-    private FormalReturnTypeFlow result;
+    private FormalReturnTypeFlow returnFlow;
 
     private boolean isLinearized = false;
     private boolean sealed;
@@ -137,7 +137,7 @@ public class MethodFlowsGraph {
         initialParameterFlows = new InitialParamTypeFlow[originalMethodFlowsGraph.initialParameterFlows.length];
 
         nodeFlows = lookupClonesOf(bb, originalMethodFlowsGraph.nodeFlows);
-        result = originalMethodFlowsGraph.getResult() != null ? lookupCloneOf(bb, originalMethodFlowsGraph.getResult()) : null;
+        returnFlow = originalMethodFlowsGraph.getReturnFlow() != null ? lookupCloneOf(bb, originalMethodFlowsGraph.getReturnFlow()) : null;
         instanceOfFlows = lookupClonesOf(bb, originalMethodFlowsGraph.instanceOfFlows);
         miscEntryFlows = lookupClonesOf(bb, originalMethodFlowsGraph.miscEntryFlows);
         invokeFlows = lookupClonesOf(bb, originalMethodFlowsGraph.invokeFlows);
@@ -321,8 +321,8 @@ public class MethodFlowsGraph {
                 worklist.add(value);
             }
         }
-        if (result != null) {
-            worklist.add(result);
+        if (returnFlow != null) {
+            worklist.add(returnFlow);
         }
 
         // temporary list in which the linearized graph is built
@@ -425,12 +425,12 @@ public class MethodFlowsGraph {
         miscEntryFlows.add(entryFlow);
     }
 
-    public void setResult(FormalReturnTypeFlow result) {
-        this.result = result;
+    public void setReturnFlow(FormalReturnTypeFlow returnFlow) {
+        this.returnFlow = returnFlow;
     }
 
-    public FormalReturnTypeFlow getResult() {
-        return this.result;
+    public FormalReturnTypeFlow getReturnFlow() {
+        return this.returnFlow;
     }
 
     public EconomicMap<Object, InvokeTypeFlow> getInvokes() {

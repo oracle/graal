@@ -227,8 +227,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                      * might throw an exception instead of returning, hence the formal return is
                      * null.
                      */
-                    if (calleeFlows.getResult() != null) {
-                        calleeFlows.getResult().addUse(bb, actualReturn);
+                    if (calleeFlows.getReturnFlow() != null) {
+                        calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                     }
                 }
             } else {
@@ -236,8 +236,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                  * The callee may have a return type, hence the actualReturn is non-null, but it
                  * might throw an exception instead of returning, hence the formal return is null.
                  */
-                if (calleeFlows.getResult() != null) {
-                    calleeFlows.getResult().addUse(bb, actualReturn);
+                if (calleeFlows.getReturnFlow() != null) {
+                    calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                 }
             }
         }

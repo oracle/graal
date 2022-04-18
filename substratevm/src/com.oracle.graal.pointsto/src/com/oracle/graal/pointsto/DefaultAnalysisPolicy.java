@@ -300,8 +300,8 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                     }
                 }
                 /* Remove the link between the formal and the actual return, if present. */
-                if (actualReturn != null && calleeFlows.getResult() != null) {
-                    calleeFlows.getResult().removeUse(actualReturn);
+                if (actualReturn != null && calleeFlows.getReturnFlow() != null) {
+                    calleeFlows.getReturnFlow().removeUse(actualReturn);
                 }
             }
 
