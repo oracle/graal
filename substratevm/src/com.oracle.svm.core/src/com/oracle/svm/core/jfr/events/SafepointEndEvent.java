@@ -26,17 +26,17 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-
-import org.graalvm.nativeimage.StackValue;
-import org.graalvm.word.UnsignedWord;
 
 public class SafepointEndEvent {
     public static void emit(UnsignedWord safepointId, long startTick) {
@@ -52,13 +52,12 @@ public class SafepointEndEvent {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.SafepointEnd.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.SafepointEnd);
             JfrNativeEventWriter.putLong(data, startTick);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTick);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, safepointId.rawValue());
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }

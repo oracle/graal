@@ -272,7 +272,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE1);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getAbsolutePath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -391,7 +391,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE2);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getAbsolutePath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -1018,7 +1018,7 @@ public final class SimpleLanguageDAPTest {
         tester = DAPTester.start(false);
         File sourceFile = createTemporaryFile(CODE_VARS);
         Source source = Source.newBuilder("sl", sourceFile).build();
-        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getAbsolutePath() + "\"}";
+        String sourceJson = "{\"name\":\"" + sourceFile.getName() + "\",\"path\":\"" + sourceFile.getCanonicalPath() + "\"}";
         tester.sendMessage("{\"command\":\"initialize\",\"arguments\":{\"clientID\":\"DAPTester\",\"clientName\":\"DAP Tester\",\"adapterID\":\"graalvm\",\"pathFormat\":\"path\",\"linesStartAt1\":true,\"columnsStartAt1\":true,\"supportsVariableType\":true,\"supportsVariablePaging\":true,\"supportsRunInTerminalRequest\":true,\"locale\":\"en-us\",\"supportsProgressReporting\":true},\"type\":\"request\",\"seq\":1}");
         tester.compareReceivedMessages(
                 "{\"event\":\"initialized\",\"type\":\"event\"}",
@@ -1115,7 +1115,7 @@ public final class SimpleLanguageDAPTest {
         tester.compareReceivedMessages("{\"event\":\"thread\",\"body\":{\"threadId\":1,\"reason\":\"started\"},\"type\":\"event\",\"seq\":7}");
         tester.compareReceivedMessages(
                 "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"sourceReference\":1,\"name\":\"SL builtin\"}},\"type\":\"event\",\"seq\":8}",
-                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"path\":\"" + sourceFile.getAbsolutePath() + "\",\"name\":\"" + sourceFile.getName() + "\"}},\"type\":\"event\",\"seq\":9}"
+                "{\"event\":\"loadedSource\",\"body\":{\"reason\":\"new\",\"source\":{\"path\":\"" + sourceFile.getCanonicalPath() + "\",\"name\":\"" + sourceFile.getName() + "\"}},\"type\":\"event\",\"seq\":9}"
         );
         tester.compareReceivedMessages("{\"event\":\"stopped\",\"body\":{\"threadId\":1,\"reason\":\"debugger_statement\",\"description\":\"Paused on debugger statement\"},\"type\":\"event\",\"seq\":10}");
         tester.sendMessage("{\"command\":\"continue\",\"arguments\":{\"threadId\":1},\"type\":\"request\",\"seq\":9}");

@@ -104,6 +104,9 @@ public final class BlockingSupport<T> {
      */
     @TruffleBoundary
     public <U> void enterBlockingRegion(Interruptible<U> blockingRegion, Node location, U object) throws GuestInterruptedException {
+        if (guestInterrupter.isGuestInterrupted(Thread.currentThread(), guestInterrupter.getCurrentGuestThread())) {
+            throw new GuestInterruptedException();
+        }
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         safepoint.setBlockedWithException(location, guestInterrupter, blockingRegion, object, null, guestInterrupter::afterInterrupt);
     }
@@ -117,6 +120,9 @@ public final class BlockingSupport<T> {
      */
     @TruffleBoundary
     public <U> void enterBlockingRegion(Interruptible<U> blockingRegion, Node location, U object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
+        if (guestInterrupter.isGuestInterrupted(Thread.currentThread(), guestInterrupter.getCurrentGuestThread())) {
+            throw new GuestInterruptedException();
+        }
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
         safepoint.setBlockedWithException(location, guestInterrupter, blockingRegion, object, beforeSafepoint, (ex) -> {
             if (afterSafepoint != null) {

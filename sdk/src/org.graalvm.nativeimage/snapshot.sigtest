@@ -511,6 +511,7 @@ innr public abstract interface static !annotation IsolateContext
 innr public abstract interface static !annotation IsolateThreadContext
 innr public abstract interface static ExceptionHandler
 innr public final static !enum Builtin
+innr public final static !enum Publish
 innr public final static AlwaysIncluded
 innr public final static FatalExceptionHandler
 innr public final static NotIncludedAutomatically
@@ -520,6 +521,7 @@ meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.nativeima
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String[] documentation()
 meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Builtin builtin()
+meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Publish publishAs()
 
 CLSS public final static org.graalvm.nativeimage.c.function.CEntryPoint$AlwaysIncluded
  outer org.graalvm.nativeimage.c.function.CEntryPoint
@@ -565,6 +567,15 @@ CLSS public final static org.graalvm.nativeimage.c.function.CEntryPoint$NotInclu
 intf java.util.function.BooleanSupplier
 meth public boolean getAsBoolean()
 supr java.lang.Object
+
+CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Publish
+ outer org.graalvm.nativeimage.c.function.CEntryPoint
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish NotPublished
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolOnly
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolAndHeader
+meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish valueOf(java.lang.String)
+meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish[] values()
+supr java.lang.Enum<org.graalvm.nativeimage.c.function.CEntryPoint$Publish>
 
 CLSS public final org.graalvm.nativeimage.c.function.CEntryPointLiteral<%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer>
 meth public !varargs static <%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer> org.graalvm.nativeimage.c.function.CEntryPointLiteral<{%%0}> create(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])

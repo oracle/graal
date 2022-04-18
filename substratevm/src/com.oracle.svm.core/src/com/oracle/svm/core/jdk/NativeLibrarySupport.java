@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
@@ -70,7 +71,7 @@ public final class NativeLibrarySupport {
 
     private final ReentrantLock lock = new ReentrantLock();
 
-    private final List<NativeLibrary> knownLibraries = new ArrayList<>();
+    private final List<NativeLibrary> knownLibraries = Collections.synchronizedList(new ArrayList<>());
 
     private final Deque<NativeLibrary> currentLoadContext = new ArrayDeque<>();
 

@@ -3829,6 +3829,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    public final void sarl(Register dst) {
+        // Signed divide dst by 2, CL times.
+        prefix(dst);
+        emitByte(0xD3);
+        emitModRM(7, dst);
+    }
+
     public final void shll(Register dst, int imm8) {
         assert isShiftCount(imm8 >> 1) : "illegal shift count";
         prefix(dst);
@@ -4002,6 +4009,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AND.getRMOpcode(QWORD).emit(this, QWORD, dst, src);
     }
 
+    public final void andq(Register dst, Register src) {
+        AND.getRMOpcode(QWORD).emit(this, QWORD, dst, src);
+    }
+
     public final void bsrq(Register dst, Register src) {
         prefixq(dst, src);
         emitByte(0x0F);
@@ -4081,6 +4092,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void cvtsi2sdq(Register dst, Register src) {
         SSEOp.CVTSI2SD.emit(this, QWORD, dst, src);
+    }
+
+    public final void cvttss2sil(Register dst, Register src) {
+        SSEOp.CVTTSS2SI.emit(this, DWORD, dst, src);
     }
 
     public final void cvttsd2siq(Register dst, Register src) {
@@ -4295,6 +4310,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             emitModRM(7, dst);
             emitByte(imm8);
         }
+    }
+
+    public final void sarq(Register dst) {
+        // signed divide dst by 2, CL times.
+        prefixq(dst);
+        emitByte(0xD3);
+        emitModRM(7, dst);
     }
 
     public final void sbbq(Register dst, Register src) {

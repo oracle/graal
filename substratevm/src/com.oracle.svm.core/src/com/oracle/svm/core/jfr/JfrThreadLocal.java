@@ -251,12 +251,11 @@ public class JfrThreadLocal implements ThreadListener {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initialize(data, buffer);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.DataLoss.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.DataLoss);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, unflushedSize.rawValue());
             JfrNativeEventWriter.putLong(data, totalDataLoss.rawValue());
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 

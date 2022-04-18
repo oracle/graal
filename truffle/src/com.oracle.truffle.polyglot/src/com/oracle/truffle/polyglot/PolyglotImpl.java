@@ -372,7 +372,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public void resetPreInitializedEngine() {
         preInitializedEngineRef.set(null);
-        PolyglotEngineImpl.resetPreInitializedEngine();
     }
 
     /**
@@ -399,11 +398,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             }
         }
         return null;
-    }
-
-    @Override
-    public Collection<? extends Object> findActiveEngines() {
-        return PolyglotEngineImpl.findActiveEngines();
     }
 
     @Override

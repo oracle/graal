@@ -1892,7 +1892,7 @@ public final class Meta implements ContextAccess {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        return stringConversion.toHost(str, this);
+        return stringConversion.toHost(str, context.getLanguage(), this);
     }
 
     @TruffleBoundary
@@ -1963,7 +1963,7 @@ public final class Meta implements ContextAccess {
                 return null;
             }
             if (guestObject.isArray()) {
-                return guestObject.unwrap();
+                return guestObject.unwrap(context.getLanguage());
             }
             if (guestObject.getKlass() == java_lang_String) {
                 return toHostString(guestObject);

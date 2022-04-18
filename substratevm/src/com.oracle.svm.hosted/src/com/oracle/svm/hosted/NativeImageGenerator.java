@@ -168,7 +168,6 @@ import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
@@ -224,6 +223,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeUniverseBuildingAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.ConcurrentAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.ReporterClosable;
@@ -436,8 +436,11 @@ public class NativeImageGenerator {
             if (NativeImageOptions.RuntimeCheckedCPUFeatures.hasBeenSet()) {
                 runtimeCheckedFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.RuntimeCheckedCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
             } else {
+                var disabledFeatures = RuntimeCPUFeatureCheck.getDefaultDisabledFeatures(GraalAccess.getOriginalTarget().arch);
                 for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(GraalAccess.getOriginalTarget().arch)) {
-                    runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
+                    if (!disabledFeatures.contains(feature)) {
+                        runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
+                    }
                 }
             }
             architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
@@ -720,6 +723,8 @@ public class NativeImageGenerator {
             try (ReporterClosable c = ProgressReporter.singleton().printAnalysis(bb)) {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
+                    ConcurrentAnalysisAccessImpl concurrentConfig = new ConcurrentAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
+                    aUniverse.setConcurrentAnalysisAccess(concurrentConfig);
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
@@ -1088,20 +1093,7 @@ public class NativeImageGenerator {
             }
 
             Class<? extends BooleanSupplier> cEntryPointIncludeClass = m.getAnnotation(CEntryPoint.class).include();
-            boolean include = ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean();
-            CEntryPointOptions options = m.getAnnotation(CEntryPointOptions.class);
-            if (options != null) {
-                Class<? extends BooleanSupplier> cEntryPointOptionsIncludeClass = options.include();
-                if (cEntryPointOptionsIncludeClass != CEntryPointOptions.AlwaysIncluded.class) {
-                    if (cEntryPointIncludeClass != CEntryPoint.AlwaysIncluded.class) {
-                        throw UserError.abort(
-                                        "The 'include' attribute for entry point method %s.%s is specified both in 'CEntryPoint' and 'CEntryPointOptions' annotations. Remove the deprecated 'CEntryPointOptions#include' attribute.",
-                                        m.getDeclaringClass().getName(), m.getName());
-                    }
-                    include = ReflectionUtil.newInstance(cEntryPointOptionsIncludeClass).getAsBoolean();
-                }
-            }
-            if (include) {
+            if (ReflectionUtil.newInstance(cEntryPointIncludeClass).getAsBoolean()) {
                 entryPoints.put(m, CEntryPointData.create(m));
             }
         }

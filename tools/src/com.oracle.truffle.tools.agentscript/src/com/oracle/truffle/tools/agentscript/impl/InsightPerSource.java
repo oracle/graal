@@ -58,7 +58,7 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     private final Supplier<Source> src;
     private final AgentObject insight;
     private final IgnoreSources ignoredSources;
-    private EventBinding<?> agentBinding;
+    private volatile EventBinding<?> agentBinding;
     /* @GuardedBy("this") */
     private InsightInstrument.Key sourceBinding;
     /* @GuardedBy("this") */
@@ -160,6 +160,11 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
             bindings = null;
         }
         onInit.dispose();
+        EventBinding<?> agentInitBinding = agentBinding;
+        if (agentInitBinding != null) {
+            agentInitBinding.dispose();
+        }
+        agentBinding = null;
         instrument.closeKeys(keys);
     }
 
@@ -264,8 +269,11 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
 
         @Override
         public void onEnter(EventContext ctx, VirtualFrame frame) {
-            CompilerDirectives.transferToInterpreter();
-            agentBinding.dispose();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            EventBinding<?> agentInitBinding = agentBinding;
+            if (agentInitBinding != null) {
+                agentInitBinding.dispose();
+            }
             initializeAgent(context);
         }
 

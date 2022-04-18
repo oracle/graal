@@ -37,8 +37,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -52,7 +52,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
+public abstract class AnalysisField extends AnalysisElement implements ResolvedJavaField, OriginalFieldProvider {
 
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisField, Object> OBSERVERS_UPDATER = //
@@ -242,6 +242,7 @@ public abstract class AnalysisField implements ResolvedJavaField, OriginalFieldP
         boolean firstAttempt = AtomicUtils.atomicMark(isAccessed);
         notifyUpdateAccessInfo();
         if (firstAttempt) {
+            onReachable();
             getUniverse().onFieldAccessed(this);
             getUniverse().getHeapScanner().onFieldRead(this);
         }
@@ -255,6 +256,7 @@ public abstract class AnalysisField implements ResolvedJavaField, OriginalFieldP
             readBy.put(method, Boolean.TRUE);
         }
         if (firstAttempt) {
+            onReachable();
             getUniverse().onFieldAccessed(this);
             getUniverse().getHeapScanner().onFieldRead(this);
         }
@@ -273,8 +275,11 @@ public abstract class AnalysisField implements ResolvedJavaField, OriginalFieldP
         if (writtenBy != null && method != null) {
             writtenBy.put(method, Boolean.TRUE);
         }
-        if (firstAttempt && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object)) {
-            getUniverse().onFieldAccessed(this);
+        if (firstAttempt) {
+            onReachable();
+            if (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object) {
+                getUniverse().onFieldAccessed(this);
+            }
         }
         return firstAttempt;
     }
@@ -282,6 +287,7 @@ public abstract class AnalysisField implements ResolvedJavaField, OriginalFieldP
     public void markFolded() {
         if (AtomicUtils.atomicMark(isFolded)) {
             getDeclaringClass().registerAsReachable();
+            onReachable();
         }
     }
 
@@ -385,8 +391,14 @@ public abstract class AnalysisField implements ResolvedJavaField, OriginalFieldP
         return isFolded.get();
     }
 
+    @Override
     public boolean isReachable() {
         return isAccessed.get() || isRead.get() || isWritten.get() || isFolded.get();
+    }
+
+    @Override
+    public void onReachable() {
+        notifyReachabilityCallbacks(declaringClass.getUniverse());
     }
 
     public void setCanBeNull(boolean canBeNull) {

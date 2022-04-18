@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,50 +41,104 @@
 
 package org.graalvm.wasm.parser.validation;
 
-import org.graalvm.wasm.constants.Instructions;
+import org.graalvm.wasm.collection.IntArrayList;
 
 /**
  * Represents the scope of a block structure during module validation.
  */
-public class ControlFrame {
-    private final int opcode;
+public abstract class ControlFrame {
     private final byte[] paramTypes;
     private final byte[] resultTypes;
     private final int initialStackSize;
     private boolean unreachable;
+    private final IntArrayList conditionalBranches;
+    private final IntArrayList unconditionalBranches;
 
     /**
-     * @param opcode The opcode of the block structure.
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.
      * @param initialStackSize The size of the value stack when entering this block structure.
      * @param unreachable If the block structure should be declared unreachable.
      */
-    ControlFrame(int opcode, byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
-        this.opcode = opcode;
+    ControlFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
         this.paramTypes = paramTypes;
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
+
+        this.conditionalBranches = new IntArrayList();
+        this.unconditionalBranches = new IntArrayList();
     }
 
-    boolean isLoop() {
-        return opcode == Instructions.LOOP;
+    /**
+     * @return The types that must be on the value stack when branching to this frame.
+     */
+    abstract byte[] getLabelTypes();
+
+    /**
+     * Performs checks and actions when entering an else branch.
+     * 
+     * @param state The current parser state.
+     * @param extraData The current extra data array.
+     * @param offset The offset of the else branch in the wasm binary.
+     */
+    abstract void enterElse(ParserState state, ExtraDataList extraData, int offset);
+
+    /**
+     * Performs checks and actions when exiting a frame.
+     * 
+     * @param extraData The current extra data array.
+     * @param offset The offset of the end instruction in the wasm binary.
+     */
+    abstract void exit(ExtraDataList extraData, int offset);
+
+    /**
+     * Adds a conditional branch to this frame.
+     * 
+     * @param extraData The current extra data array.
+     */
+    void addConditionalBranch(ExtraDataList extraData) {
+        conditionalBranches.add(extraData.addConditionalBranchLocation());
     }
 
-    boolean isIf() {
-        return opcode == Instructions.IF;
+    /**
+     * Adds an unconditional branch to this frame.
+     * 
+     * @param extraData The current extra data array.
+     */
+    void addUnconditionalBranch(ExtraDataList extraData) {
+        unconditionalBranches.add(extraData.addUnconditionalBranchLocation());
+    }
+
+    /**
+     * Adds a conditional branch from a branch table entry to this fraem.
+     * 
+     * @param extraData The current extra data array.
+     * @param location The location of the branch table in the extra data array.
+     * @param index The index of the entry in the branch table.
+     */
+    void addBranchTableEntry(ExtraDataList extraData, int location, int index) {
+        conditionalBranches.add(extraData.getBranchTableEntryLocation(location, index));
+    }
+
+    protected int[] conditionalBranches() {
+        return conditionalBranches.toArray();
+    }
+
+    protected int[] unconditionalBranches() {
+        return unconditionalBranches.toArray();
+    }
+
+    protected byte[] getParamTypes() {
+        return paramTypes;
     }
 
     public byte[] getResultTypes() {
         return resultTypes;
     }
 
-    public byte[] getLabelTypes() {
-        if (isLoop()) {
-            return paramTypes;
-        }
-        return resultTypes;
+    protected int getLabelTypeLength() {
+        return getLabelTypes().length;
     }
 
     int getInitialStackSize() {
@@ -97,5 +151,9 @@ public class ControlFrame {
 
     boolean isUnreachable() {
         return unreachable;
+    }
+
+    protected void resetUnreachable() {
+        this.unreachable = false;
     }
 }

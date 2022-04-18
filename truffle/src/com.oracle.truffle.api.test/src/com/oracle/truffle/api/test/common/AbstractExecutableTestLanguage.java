@@ -81,8 +81,13 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
     private static void validateArguments(Object[] args, Context ctx) {
         for (Object object : args) {
             if (!InteropLibrary.isValidValue(object) && !(object instanceof Proxy)) {
-                // is host interop enabled?
-                if (ctx.asValue(object).getMemberKeys().isEmpty()) {
+                /*
+                 * The following check is not precise, because a host object can have no member keys
+                 * even if host access is enabled, but as there is no direct way to determine if
+                 * host access is enabled, this is the best test we came up with.
+                 */
+                Value value = ctx.asValue(object);
+                if (value.isHostObject() && value.getMemberKeys().isEmpty()) {
                     throw new AssertionError("Value " + object + " is of type " + object.getClass().getName() + " which is not a valid interop primitive but host access is not allowed. " +
                                     "Please allow host access or use primitive args only. Add builder.hostAccess(HostAccess.ALL) to enable host access.");
                 }

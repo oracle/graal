@@ -9,10 +9,25 @@
       "MX_PROFILER" : "JFR,async"
     },
     logs+: [
-      "*.jfr",
-      "**/*.jfr",
-      "*.svg",
-      "**/*.svg",
+      "*.jfr", "**/*.jfr",
+      "*.svg", "**/*.svg",
+    ]
+  },
+
+  footprint_tracking:: {
+    python_version: 3,
+    packages+: {
+      "pip:psrecord": "==1.2",
+      "pip:matplotlib": "==3.3.4",
+      "pip:psutil": "==5.9.0"
+    },
+    environment+: {
+      "MX_TRACKER" : "psrecord",
+      "MX_PROFILER" : ""
+    },
+    logs+: [
+      "ps_*.png", "**/ps_*.png",
+      "ps_*.txt", "**/ps_*.txt",
     ]
   },
 
@@ -41,8 +56,8 @@
       "--extras=${BENCH_SERVER_EXTRAS}",
       "--results-file",
       "${BENCH_RESULTS_FILE_PATH}",
-      "--machine-name=${MACHINE_NAME}",
-      "--tracker=rss"],
+      "--machine-name=${MACHINE_NAME}"] +
+      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rss"]),
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
@@ -109,7 +124,7 @@
     platform:: "libgraal",
     environment+: {
       "JVM": "server",
-      "JVM_CONFIG": config.compiler.libgraal_jvm_config,
+      "JVM_CONFIG": config.compiler.libgraal_jvm_config(true),
       "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
       "MX_ENV_PATH": config.compiler.libgraal_env_file
     }

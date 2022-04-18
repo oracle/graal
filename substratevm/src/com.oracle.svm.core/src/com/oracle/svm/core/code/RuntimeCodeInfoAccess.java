@@ -63,6 +63,7 @@ public final class RuntimeCodeInfoAccess {
     private RuntimeCodeInfoAccess() {
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static SubstrateInstalledCode getInstalledCode(CodeInfo info) {
         return CodeInfoAccess.getObjectField(info, CodeInfoImpl.INSTALLEDCODE_OBJFIELD);
     }
@@ -211,13 +212,8 @@ public final class RuntimeCodeInfoAccess {
         return SizeOf.unsigned(CodeInfoImpl.class);
     }
 
-    static void partialReleaseAfterInvalidate(CodeInfo info, boolean notifyGC) {
-        InstalledCodeObserverSupport.removeObservers(RuntimeCodeInfoAccess.getCodeObserverHandles(info));
-        freePartially(info, notifyGC);
-    }
-
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")
-    private static void freePartially(CodeInfo info, boolean notifyGC) {
+    static void freePartially(CodeInfo info, boolean notifyGC) {
         CodeInfoImpl impl = cast(info);
         assert CodeInfoAccess.isAliveState(impl.getState()) || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
         if (notifyGC) {

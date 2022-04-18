@@ -83,7 +83,7 @@ public class AOTDebugCacheTestEngineConfig extends NativeTestEngineConfig {
                 do {
                     line = lineReader.readLine();
                     acceptLine = acceptLine || (line != null && !line.startsWith("* "));
-                    if (acceptLine) {
+                    if (acceptLine && line != null) {
                         lineWriter.append(line);
                         lineWriter.newLine();
                     }

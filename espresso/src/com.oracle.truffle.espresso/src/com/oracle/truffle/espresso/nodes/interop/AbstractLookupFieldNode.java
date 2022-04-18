@@ -24,11 +24,11 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-public abstract class AbstractLookupFieldNode extends Node {
+public abstract class AbstractLookupFieldNode extends EspressoNode {
 
     public enum FieldLookupKind {
         Instance,

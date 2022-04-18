@@ -59,7 +59,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -241,6 +240,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
         public abstract String validatePolyglotAccess(PolyglotAccess access, Set<String> language);
+
+        public abstract void engineClosed(Engine engine);
 
     }
 
@@ -575,6 +576,8 @@ public abstract class AbstractPolyglotImpl {
                         boolean roots,
                         Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
 
+        public abstract void shutdown(Object engine);
+
     }
 
     public abstract static class AbstractExceptionDispatch extends AbstractDispatchClass {
@@ -785,6 +788,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
         public abstract void pin(Object receiver);
+
+        public abstract void hostExit(int exitCode);
 
     }
 
@@ -1067,10 +1072,6 @@ public abstract class AbstractPolyglotImpl {
 
     public Context getCurrentContext() {
         return getNext().getCurrentContext();
-    }
-
-    public Collection<? extends Object> findActiveEngines() {
-        return getNext().findActiveEngines();
     }
 
     public Value asValue(Object o) {

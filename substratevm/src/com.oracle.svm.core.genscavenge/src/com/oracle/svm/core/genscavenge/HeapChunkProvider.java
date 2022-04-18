@@ -128,6 +128,7 @@ final class HeapChunkProvider {
     }
 
     void freeExcessAlignedChunks() {
+        assert VMOperation.isGCInProgress();
         consumeAlignedChunks(WordFactory.nullPointer(), false);
     }
 
@@ -136,6 +137,7 @@ final class HeapChunkProvider {
      * system. This method may only be called after the chunks were already removed from the spaces.
      */
     void consumeAlignedChunks(AlignedHeader firstChunk, boolean keepAll) {
+        assert VMOperation.isGCInProgress();
         assert firstChunk.isNull() || HeapChunk.getPrevious(firstChunk).isNull() : "prev must be null";
 
         UnsignedWord maxChunksToKeep = WordFactory.zero();
@@ -173,6 +175,7 @@ final class HeapChunkProvider {
     }
 
     private static void cleanAlignedChunk(AlignedHeader alignedChunk) {
+        assert VMOperation.isGCInProgress();
         AlignedHeapChunk.reset(alignedChunk);
         if (HeapParameters.getZapConsumedHeapChunks()) {
             zap(alignedChunk, HeapParameters.getConsumedHeapChunkZapWord());
@@ -192,6 +195,7 @@ final class HeapChunkProvider {
      * list.
      */
     private void pushUnusedAlignedChunk(AlignedHeader chunk) {
+        assert VMOperation.isGCInProgress();
         if (SubstrateOptions.MultiThreaded.getValue()) {
             VMThreads.guaranteeOwnsThreadMutex("Should hold the lock when pushing to the global list.");
         }
@@ -243,7 +247,7 @@ final class HeapChunkProvider {
     }
 
     private void freeUnusedAlignedChunksAtSafepoint(UnsignedWord count) {
-        VMOperation.guaranteeInProgressAtSafepoint("Removing non-atomically from the unused chunk list.");
+        assert VMOperation.isGCInProgress();
         if (count.equal(0)) {
             return;
         }
@@ -291,6 +295,7 @@ final class HeapChunkProvider {
      * to a free list.
      */
     static void consumeUnalignedChunks(UnalignedHeader firstChunk) {
+        assert VMOperation.isGCInProgress();
         freeUnalignedChunkList(firstChunk);
     }
 
@@ -322,6 +327,7 @@ final class HeapChunkProvider {
     }
 
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
+        assert VMOperation.isInProgressAtSafepoint();
         boolean continueVisiting = true;
         MemoryWalker.HeapChunkAccess<AlignedHeapChunk.AlignedHeader> access = AlignedHeapChunk.getMemoryWalkerAccess();
         for (AlignedHeapChunk.AlignedHeader aChunk = unusedAlignedChunks.get(); continueVisiting && aChunk.isNonNull(); aChunk = HeapChunk.getNext(aChunk)) {

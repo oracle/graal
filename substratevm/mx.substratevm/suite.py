@@ -683,6 +683,24 @@ suite = {
             "spotbugs": "false",
         },
 
+        "com.oracle.svm.test.jdk17": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "SVM",
+            ],
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "17+",
+            "spotbugs": "false",
+            "testProject": True,
+        },
+
         "com.oracle.svm.configure.test": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1497,6 +1515,7 @@ suite = {
           "relpath" : True,
           "dependencies" : [
             "com.oracle.svm.test",
+            "com.oracle.svm.test.jdk17",
             "com.oracle.svm.configure.test",
             "com.oracle.svm.graal.test",
           ],

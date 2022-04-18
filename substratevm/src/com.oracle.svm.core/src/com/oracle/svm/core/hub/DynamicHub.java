@@ -119,6 +119,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     /**
      * Used to quickly determine in which category a certain hub falls (e.g., instance or array).
+     * The returned category does not necessarily match the {@link LayoutEncoding}, see
+     * {@link Hybrid} objects for more details.
      */
     private final int hubType;
 
@@ -151,7 +153,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private short typeCheckRange;
 
     /**
-     *
      * The value slot within the type id slot array to read when comparing against this type.
      */
     private short typeCheckSlot;
@@ -470,8 +471,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex) {
-        this.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex);
+    public void setReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classAccessFlags) {
+        this.reflectionMetadata = new ReflectionMetadata(fieldsEncodingIndex, methodsEncodingIndex, constructorsEncodingIndex, recordComponentsEncodingIndex, classAccessFlags);
     }
 
     /** Executed at runtime. */
@@ -642,6 +643,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     public int getModifiers() {
         return modifiers;
+    }
+
+    public int getClassAccessFlags() {
+        return reflectionMetadata != null ? reflectionMetadata.classAccessFlags : modifiers;
     }
 
     @Substitute
@@ -878,7 +883,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     /**
      * In JDK this method uses a lazily computed map of annotations.
-     *
+     * <p>
      * In SVM we have a pre-initialized array so we use a less efficient implementation from
      * {@link AnnotatedElement} that does the same.
      */
@@ -1610,11 +1615,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         @TargetElement(onlyWith = JDK17OrLater.class)//
         final int recordComponentsEncodingIndex;
 
-        private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex) {
+        final int classAccessFlags;
+
+        private ReflectionMetadata(int fieldsEncodingIndex, int methodsEncodingIndex, int constructorsEncodingIndex, int recordComponentsEncodingIndex, int classAccessFlags) {
             this.fieldsEncodingIndex = fieldsEncodingIndex;
             this.methodsEncodingIndex = methodsEncodingIndex;
             this.constructorsEncodingIndex = constructorsEncodingIndex;
             this.recordComponentsEncodingIndex = recordComponentsEncodingIndex;
+            this.classAccessFlags = classAccessFlags;
         }
     }
 
@@ -1646,7 +1654,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
  * have DynamicHub implement them, the code would not compile. But the substitution mechanism also
  * requires the class {@link DynamicHub} to be final, so we cannot use inheritance to have a
  * subclass that implements the additional interfaces.
- *
+ * <p>
  * So we use JDK-specific substitution interfaces. When the target interfaces exist, they are like
  * an alias of the original interface. For older JDK versions, they are just normal interfaces
  * without any substitution target. This means they really show up as implemented interfaces of

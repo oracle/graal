@@ -286,7 +286,7 @@ public class MethodHandleFeature implements Feature {
         RuntimeReflection.register(ReflectionUtil.lookupMethod(CallSite.class, "uninitializedCallSite", Object[].class));
     }
 
-    private static void registerVarHandleMethodsForReflection(DuringAnalysisAccess access, Class<?> subtype) {
+    private static void registerVarHandleMethodsForReflection(FeatureAccess access, Class<?> subtype) {
         if (subtype.getPackage().getName().equals("java.lang.invoke") && subtype != access.findClassByName("java.lang.invoke.VarHandle")) {
             RuntimeReflection.register(subtype.getDeclaredMethods());
         }
@@ -383,7 +383,7 @@ public class MethodHandleFeature implements Feature {
         access.rescanRoot(typedAccessors);
     }
 
-    private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
+    private static void scanBoundMethodHandle(FeatureAccess a, Class<?> bmhSubtype) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
         if (bmhSpeciesField != null) {

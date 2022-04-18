@@ -41,6 +41,7 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -114,8 +115,8 @@ public final class InterpreterToVM implements ContextAccess {
 
     // region Get (array) operations
 
-    public int getArrayInt(int index, @JavaType(int[].class) StaticObject array) {
-        return getArrayInt(index, array, null);
+    public int getArrayInt(EspressoLanguage language, int index, @JavaType(int[].class) StaticObject array) {
+        return getArrayInt(language, index, array, null);
     }
 
     @TruffleBoundary
@@ -123,8 +124,8 @@ public final class InterpreterToVM implements ContextAccess {
         return "Index " + index + " out of bounds for length " + length;
     }
 
-    public int getArrayInt(int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        int[] underlying = array.<int[]> unwrap();
+    public int getArrayInt(EspressoLanguage language, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        int[] underlying = array.<int[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -135,12 +136,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public StaticObject getArrayObject(int index, @JavaType(Object[].class) StaticObject array) {
-        return getArrayObject(index, array, null);
+    public StaticObject getArrayObject(EspressoLanguage language, int index, @JavaType(Object[].class) StaticObject array) {
+        return getArrayObject(language, index, array, null);
     }
 
-    public StaticObject getArrayObject(int index, @JavaType(Object[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        StaticObject[] underlying = array.<StaticObject[]> unwrap();
+    public StaticObject getArrayObject(EspressoLanguage language, int index, @JavaType(Object[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        StaticObject[] underlying = array.<StaticObject[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -151,12 +152,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public long getArrayLong(int index, @JavaType(long[].class) StaticObject array) {
-        return getArrayLong(index, array, null);
+    public long getArrayLong(EspressoLanguage language, int index, @JavaType(long[].class) StaticObject array) {
+        return getArrayLong(language, index, array, null);
     }
 
-    public long getArrayLong(int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        long[] underlying = array.<long[]> unwrap();
+    public long getArrayLong(EspressoLanguage language, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        long[] underlying = array.<long[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -167,12 +168,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public float getArrayFloat(int index, @JavaType(float[].class) StaticObject array) {
-        return getArrayFloat(index, array, null);
+    public float getArrayFloat(EspressoLanguage language, int index, @JavaType(float[].class) StaticObject array) {
+        return getArrayFloat(language, index, array, null);
     }
 
-    public float getArrayFloat(int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        float[] underlying = array.<float[]> unwrap();
+    public float getArrayFloat(EspressoLanguage language, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        float[] underlying = array.<float[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -183,12 +184,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public double getArrayDouble(int index, @JavaType(double[].class) StaticObject array) {
-        return getArrayDouble(index, array, null);
+    public double getArrayDouble(EspressoLanguage language, int index, @JavaType(double[].class) StaticObject array) {
+        return getArrayDouble(language, index, array, null);
     }
 
-    public double getArrayDouble(int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        double[] underlying = array.<double[]> unwrap();
+    public double getArrayDouble(EspressoLanguage language, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        double[] underlying = array.<double[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -199,12 +200,14 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public byte getArrayByte(int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array) {
-        return getArrayByte(index, array, null);
+    public byte getArrayByte(EspressoLanguage language, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array) {
+        return getArrayByte(language, index, array, null);
     }
 
-    public byte getArrayByte(int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
-        byte[] underlying = array.<byte[]> unwrap();
+    public byte getArrayByte(EspressoLanguage language, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array, BytecodeNode bytecodeNode) {
+        byte[] underlying = array.<byte[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -215,12 +218,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public char getArrayChar(int index, @JavaType(char[].class) StaticObject array) {
-        return getArrayChar(index, array, null);
+    public char getArrayChar(EspressoLanguage language, int index, @JavaType(char[].class) StaticObject array) {
+        return getArrayChar(language, index, array, null);
     }
 
-    public char getArrayChar(int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        char[] underlying = array.<char[]> unwrap();
+    public char getArrayChar(EspressoLanguage language, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        char[] underlying = array.<char[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -231,12 +234,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public short getArrayShort(int index, @JavaType(short[].class) StaticObject array) {
-        return getArrayShort(index, array, null);
+    public short getArrayShort(EspressoLanguage language, int index, @JavaType(short[].class) StaticObject array) {
+        return getArrayShort(language, index, array, null);
     }
 
-    public short getArrayShort(int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        short[] underlying = array.<short[]> unwrap();
+    public short getArrayShort(EspressoLanguage language, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        short[] underlying = array.<short[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             return underlying[index];
         }
@@ -251,12 +254,12 @@ public final class InterpreterToVM implements ContextAccess {
 
     // region Set (array) operations
 
-    public void setArrayInt(int value, int index, @JavaType(int[].class) StaticObject array) {
-        setArrayInt(value, index, array, null);
+    public void setArrayInt(EspressoLanguage language, int value, int index, @JavaType(int[].class) StaticObject array) {
+        setArrayInt(language, value, index, array, null);
     }
 
-    public void setArrayInt(int value, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        int[] underlying = array.<int[]> unwrap();
+    public void setArrayInt(EspressoLanguage language, int value, int index, @JavaType(int[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        int[] underlying = array.<int[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = value;
             return;
@@ -268,12 +271,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayLong(long value, int index, @JavaType(long[].class) StaticObject array) {
-        setArrayLong(value, index, array, null);
+    public void setArrayLong(EspressoLanguage language, long value, int index, @JavaType(long[].class) StaticObject array) {
+        setArrayLong(language, value, index, array, null);
     }
 
-    public void setArrayLong(long value, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        long[] underlying = array.<long[]> unwrap();
+    public void setArrayLong(EspressoLanguage language, long value, int index, @JavaType(long[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        long[] underlying = array.<long[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = value;
             return;
@@ -285,12 +288,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayFloat(float value, int index, @JavaType(float[].class) StaticObject array) {
-        setArrayFloat(value, index, array, null);
+    public void setArrayFloat(EspressoLanguage language, float value, int index, @JavaType(float[].class) StaticObject array) {
+        setArrayFloat(language, value, index, array, null);
     }
 
-    public void setArrayFloat(float value, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        float[] underlying = array.<float[]> unwrap();
+    public void setArrayFloat(EspressoLanguage language, float value, int index, @JavaType(float[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        float[] underlying = array.<float[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = value;
             return;
@@ -302,12 +305,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayDouble(double value, int index, @JavaType(double[].class) StaticObject array) {
-        setArrayDouble(value, index, array, null);
+    public void setArrayDouble(EspressoLanguage language, double value, int index, @JavaType(double[].class) StaticObject array) {
+        setArrayDouble(language, value, index, array, null);
     }
 
-    public void setArrayDouble(double value, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        double[] underlying = array.<double[]> unwrap();
+    public void setArrayDouble(EspressoLanguage language, double value, int index, @JavaType(double[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        double[] underlying = array.<double[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = value;
             return;
@@ -319,13 +322,15 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayByte(byte value, int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array) {
-        setArrayByte(value, index, array, null);
+    public void setArrayByte(EspressoLanguage language, byte value, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array) {
+        setArrayByte(language, value, index, array, null);
     }
 
-    public void setArrayByte(byte value, int index, @JavaType(byte[].class /* or boolean[] */) StaticObject array, BytecodeNode bytecodeNode) {
+    public void setArrayByte(EspressoLanguage language, byte value, int index,
+                    @JavaType(byte[].class /* or boolean[].class */) StaticObject array, BytecodeNode bytecodeNode) {
         byte maybeMaskedValue = getJavaVersion().java9OrLater() && array.getKlass() == getMeta()._boolean_array ? (byte) (value & 1) : value;
-        byte[] underlying = array.<byte[]> unwrap();
+        byte[] underlying = array.<byte[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = maybeMaskedValue;
             return;
@@ -337,12 +342,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayChar(char value, int index, @JavaType(char[].class) StaticObject array) {
-        setArrayChar(value, index, array, null);
+    public void setArrayChar(EspressoLanguage language, char value, int index, @JavaType(char[].class) StaticObject array) {
+        setArrayChar(language, value, index, array, null);
     }
 
-    public void setArrayChar(char value, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        char[] underlying = array.<char[]> unwrap();
+    public void setArrayChar(EspressoLanguage language, char value, int index, @JavaType(char[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        char[] underlying = array.<char[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = value;
             return;
@@ -354,12 +359,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayShort(short value, int index, @JavaType(short[].class) StaticObject array) {
-        setArrayShort(value, index, array, null);
+    public void setArrayShort(EspressoLanguage language, short value, int index, @JavaType(short[].class) StaticObject array) {
+        setArrayShort(language, value, index, array, null);
     }
 
-    public void setArrayShort(short value, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
-        short[] underlying = array.<short[]> unwrap();
+    public void setArrayShort(EspressoLanguage language, short value, int index, @JavaType(short[].class) StaticObject array, BytecodeNode bytecodeNode) {
+        short[] underlying = array.<short[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             underlying[index] = value;
             return;
@@ -371,12 +376,12 @@ public final class InterpreterToVM implements ContextAccess {
         throw meta.throwExceptionWithMessage(meta.java_lang_ArrayIndexOutOfBoundsException, outOfBoundsMessage(index, underlying.length));
     }
 
-    public void setArrayObject(StaticObject value, int index, StaticObject wrapper) {
-        setArrayObject(value, index, wrapper, null);
+    public void setArrayObject(EspressoLanguage language, StaticObject value, int index, StaticObject wrapper) {
+        setArrayObject(language, value, index, wrapper, null);
     }
 
-    public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
-        StaticObject[] underlying = wrapper.<StaticObject[]> unwrap();
+    public void setArrayObject(EspressoLanguage language, StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
+        StaticObject[] underlying = wrapper.<StaticObject[]> unwrap(language);
         if (Integer.compareUnsigned(index, underlying.length) < 0) {
             if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
                 underlying[index] = value;
@@ -667,9 +672,9 @@ public final class InterpreterToVM implements ContextAccess {
         return StaticObject.createNew((ObjectKlass) klass);
     }
 
-    public static int arrayLength(StaticObject arr) {
+    public static int arrayLength(StaticObject arr, EspressoLanguage language) {
         assert arr.isArray();
-        return arr.length();
+        return arr.length(language);
     }
 
     public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {

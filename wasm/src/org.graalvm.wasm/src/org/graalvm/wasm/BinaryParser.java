@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,14 +77,10 @@ import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ExceptionType;
-import org.graalvm.wasm.parser.ir.BlockNode;
 import org.graalvm.wasm.parser.ir.CallNode;
-import org.graalvm.wasm.parser.ir.IfNode;
-import org.graalvm.wasm.parser.ir.LoopNode;
-import org.graalvm.wasm.parser.ir.ParserNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 import org.graalvm.wasm.parser.validation.ValidationErrors;
-import org.graalvm.wasm.parser.validation.ValidationState;
+import org.graalvm.wasm.parser.validation.ParserState;
 
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
@@ -369,14 +365,14 @@ public class BinaryParser extends BinaryStreamParser {
             final ByteArrayList locals = readCodeEntryLocals();
             final int localCount = locals.size() + module.function(numImportedFunctions + entryIndex).numArguments();
             module.limits().checkLocalCount(localCount);
-            codeEntries[entryIndex] = readCodeEntry(numImportedFunctions + entryIndex, locals, numImportedFunctions + entryIndex);
+            codeEntries[entryIndex] = readCodeEntry(numImportedFunctions + entryIndex, locals, startOffset + codeEntrySize);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
         }
         module.setCodeEntries(codeEntries);
     }
 
-    private CodeEntry readCodeEntry(int funcIndex, ByteArrayList locals, int functionIndex) {
-        final WasmFunction function = module.symbolTable().function(funcIndex);
+    private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset) {
+        final WasmFunction function = module.symbolTable().function(functionIndex);
         int numberOfArguments = function.numArguments();
         byte[] localTypes = new byte[function.numArguments() + locals.size()];
         for (int i = 0; i < numberOfArguments; i++) {
@@ -388,13 +384,7 @@ public class BinaryParser extends BinaryStreamParser {
         final byte returnType = function.returnType();
         final int returnTypeLength = function.returnTypeLength();
 
-        ValidationState state = new ValidationState();
-        BlockNode functionBody = readCodeBlock(state, localTypes, returnType, Instructions.BLOCK);
-        final CodeEntry codeEntry = new CodeEntry(functionIndex, functionBody, state.currentProfileCount(), state.maxStackSize(), state.intConstants(), state.branchTables(), localTypes);
-
-        assertIntEqual(state.valueStackSize(), returnTypeLength,
-                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
-        return codeEntry;
+        return readFunction(functionIndex, localTypes, returnType, returnTypeLength, endOffset);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -413,16 +403,13 @@ public class BinaryParser extends BinaryStreamParser {
         return localTypes;
     }
 
-    private BlockNode readCodeBlock(ValidationState state, byte[] locals, byte returnType, int blockOpcode) {
-        final ArrayList<ParserNode> children = new ArrayList<>();
-        final int startOffset = offset;
-        final int initialStackPointer = state.valueStackSize();
-        final int initialIntConstantOffset = state.intConstantSize();
-        final int initialBranchTableOffset = state.branchTableSize();
-        final int initialProfileOffset = state.currentProfileCount();
-        state.enterBlock(blockOpcode, returnType);
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte returnType, int returnTypeLength, int endOffset) {
+        final ParserState state = new ParserState();
+        final ArrayList<CallNode> callNodes = new ArrayList<>();
+        int startOffset = offset;
+        state.enterBlock(returnType);
         int opcode;
-        do {
+        while (offset < endOffset) {
             opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.UNREACHABLE:
@@ -432,50 +419,34 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.BLOCK: {
                     final byte blockReturnType = readBlockType();
-                    BlockNode blockNode = readCodeBlock(state, locals, blockReturnType, opcode);
-                    children.add(blockNode);
+                    state.enterBlock(blockReturnType);
                     break;
                 }
                 case Instructions.LOOP: {
+                    // Jumps are targeting the loop instruction for OSR.
+                    final int loopOffset = offset - 1;
                     final byte loopReturnType = readBlockType();
-                    BlockNode blockNode = readCodeBlock(state, locals, loopReturnType, opcode);
-                    LoopNode loopNode = new LoopNode(blockNode);
-                    children.add(loopNode);
+                    state.enterLoop(loopReturnType, loopOffset);
                     break;
                 }
                 case Instructions.IF: {
-                    int stackSizeBeforeCondition = state.valueStackSize();
                     state.popChecked(I32_TYPE); // condition
                     final byte ifReturnType = readBlockType();
-                    BlockNode thenNode = readCodeBlock(state, locals, ifReturnType, opcode);
-                    BlockNode elseNode = null;
-                    int nextOpcode = read1() & 0xFF;
-                    if (nextOpcode == Instructions.ELSE) {
-                        elseNode = readCodeBlock(state, locals, ifReturnType, nextOpcode);
-                    } else if (ifReturnType != WasmType.VOID_TYPE) {
-                        throw WasmException.format(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
-                    }
-                    IfNode ifNode = new IfNode(stackSizeBeforeCondition, thenNode, elseNode);
-                    children.add(ifNode);
+
+                    state.enterIf(ifReturnType);
                     break;
                 }
                 case Instructions.END: {
+                    state.exit(offset);
                     break;
                 }
                 case Instructions.ELSE: {
-                    // We handle the else instruction in the same way as the end instruction.
-                    // The if instruction handles starting the else block.
-                    Assert.assertTrue(blockOpcode == Instructions.IF, "Expected then branch. Else branch requires preceding then branch.", Failure.TYPE_MISMATCH);
+                    state.enterElse(offset);
                     break;
                 }
                 case Instructions.BR: {
                     final int branchLabel = readTargetOffset();
-                    state.checkLabelExists(branchLabel);
-                    final int targetStackSize = state.getValueStackSize(branchLabel);
-                    state.useIntConstant(targetStackSize);
-                    final byte[] labelTypes = state.getBlock(branchLabel).getLabelTypes();
-                    state.useIntConstant(labelTypes.length);
-                    state.popAll(labelTypes);
+                    state.addUnconditionalBranch(branchLabel);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
@@ -483,62 +454,28 @@ public class BinaryParser extends BinaryStreamParser {
                 }
                 case Instructions.BR_IF: {
                     final int branchLabel = readTargetOffset();
-                    state.checkLabelExists(branchLabel);
-                    final int targetStackSize = state.getValueStackSize(branchLabel);
-                    state.useIntConstant(targetStackSize);
                     state.popChecked(I32_TYPE); // condition
-                    final byte[] labelTypes = state.getBlock(branchLabel).getLabelTypes();
-                    state.useIntConstant(labelTypes.length);
-                    state.popAll(labelTypes);
-                    state.pushAll(labelTypes);
-                    state.incrementProfileCount();
+                    state.addConditionalBranch(branchLabel);
+
                     break;
                 }
                 case Instructions.BR_TABLE: {
                     state.popChecked(I32_TYPE); // index
                     final int length = readLength();
 
-                    // We need to save three tables here, to maintain the mapping target -> state
-                    // mapping:
-                    // - the length of the return type
-                    // - a table containing the branch targets for the instruction
-                    // - a table containing the stack state for each corresponding branch target
-                    // We encode this in a single array
-
-                    final int[] branchTable = new int[2 * (length + 1) + 1];
+                    final int[] branchTable = new int[length + 1];
                     for (int i = 0; i != length + 1; ++i) {
                         final int branchLabel = readTargetOffset();
-                        state.checkLabelExists(branchLabel);
-                        branchTable[1 + 2 * i + 0] = branchLabel;
-                        branchTable[1 + 2 * i + 1] = state.getValueStackSize(branchLabel);
+                        branchTable[i] = branchLabel;
                     }
-
-                    // get last branch label as type checking reference
-                    int branchLabel = branchTable[1 + 2 * length];
-
-                    byte[] branchLabelReturnType = state.getBlock(branchLabel).getLabelTypes();
-                    for (int i = 0; i != length; ++i) {
-                        int otherBranchLabel = branchTable[1 + 2 * i];
-                        // Check return type equality
-                        byte[] otherBranchLabelReturnTypes = state.getBlock(otherBranchLabel).getLabelTypes();
-                        state.checkLabelTypes(branchLabelReturnType, otherBranchLabelReturnTypes);
-
-                        state.pushAll(state.popAll(otherBranchLabelReturnTypes));
-                    }
-                    state.popAll(branchLabelReturnType);
-                    branchTable[0] = branchLabelReturnType.length;
-                    state.saveBranchTable(branchTable);
+                    state.addBranchTable(branchTable);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
                     break;
                 }
                 case Instructions.RETURN: {
-                    byte[] resultTypes = state.getRootBlock().getResultTypes();
-                    assertIntLessOrEqual(resultTypes.length, 1, Failure.INVALID_RESULT_ARITY);
-                    state.checkReturnTypes(state.getRootBlock());
-                    state.useIntConstant(state.controlStackSize());
-                    state.useIntConstant(resultTypes.length);
+                    state.addReturn();
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
@@ -560,7 +497,8 @@ public class BinaryParser extends BinaryStreamParser {
                     if (function.returnTypeLength() == 1) {
                         state.push(function.returnType());
                     }
-                    children.add(new CallNode(callFunctionIndex));
+                    state.addCall(callNodes.size());
+                    callNodes.add(new CallNode(callFunctionIndex));
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
@@ -584,8 +522,8 @@ public class BinaryParser extends BinaryStreamParser {
                     if (returnLength == 1) {
                         state.push(module.functionTypeReturnType(expectedFunctionTypeIndex));
                     }
-                    state.incrementProfileCount();
-                    children.add(new CallNode());
+                    state.addIndirectCall(callNodes.size());
+                    callNodes.add(new CallNode());
                     final int tableIndex = read1();
                     assertIntEqual(tableIndex, CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.ZERO_FLAG_EXPECTED);
                     break;
@@ -710,21 +648,13 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
 
             }
-        } while (opcode != Instructions.END && opcode != Instructions.ELSE);
-
-        state.exitBlock();
-        final int endOffset = offset;
-        final int endIntConstantOffset = state.intConstantSize();
-        final int endBranchTableOffset = state.branchTableSize();
-        final int endProfileOffset = state.currentProfileCount();
-        if (blockOpcode == Instructions.IF) {
-            offset--;
         }
-        return new BlockNode(returnType, startOffset, initialStackPointer, initialIntConstantOffset, initialBranchTableOffset, initialProfileOffset, endOffset, endIntConstantOffset,
-                        endBranchTableOffset, endProfileOffset, children);
+        assertIntEqual(state.valueStackSize(), returnTypeLength,
+                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
+        return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), callNodes, startOffset, endOffset, returnType);
     }
 
-    private void readNumericInstructions(ValidationState state, int opcode) {
+    private void readNumericInstructions(ParserState state, int opcode) {
         switch (opcode) {
             case Instructions.I32_CONST:
                 readSignedInt32();
@@ -1027,7 +957,7 @@ public class BinaryParser extends BinaryStreamParser {
         checkContextOption(wasmContext.getContextOptions().isSignExtensionOps(), "Sign-extension operators are not enabled (opcode: 0x%02x)", opcode);
     }
 
-    private void store(ValidationState state, byte type, int n) {
+    private void store(ParserState state, byte type, int n) {
         assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
 
         // We don't store the `align` literal, as our implementation does not make use
@@ -1039,7 +969,7 @@ public class BinaryParser extends BinaryStreamParser {
         state.popChecked(I32_TYPE); // base address
     }
 
-    private void load(ValidationState state, byte type, int n) {
+    private void load(ParserState state, byte type, int n) {
         assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
 
         // We don't store the `align` literal, as our implementation does not make use

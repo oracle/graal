@@ -31,15 +31,15 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @GenerateUncached
-public abstract class InvokeEspressoNode extends Node {
+public abstract class InvokeEspressoNode extends EspressoNode {
     static final int LIMIT = 4;
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
@@ -56,7 +56,7 @@ public abstract class InvokeEspressoNode extends Node {
          * Espresso and unwrapped when going out)
          */
         if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-            return ((StaticObject) result).rawForeignObject();
+            return ((StaticObject) result).rawForeignObject(getLanguage());
         }
         return result;
     }

@@ -35,7 +35,7 @@ import java.util.ArrayList;
  * {@link ObjectKlass} constructor and invalidates it when a descendant of this class is
  * initialized.
  */
-public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
+public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public void registerNewKlassVersion(ObjectKlass.KlassVersion newVersion) {
         if (newVersion.isConcrete()) {

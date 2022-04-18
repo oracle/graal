@@ -325,7 +325,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> CHA = new OptionKey<>(false);
+    public static final OptionKey<Boolean> CHA = new OptionKey<>(true);
 
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions", new Function<String, JDWPOptions>() {
 

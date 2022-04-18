@@ -29,7 +29,24 @@ package com.oracle.truffle.espresso.runtime;
  * 
  * Makes it harder to access the raw int version: please add new predicates instead.
  */
-public final class JavaVersion {
+public enum JavaVersion {
+
+    JAVA_4(4),
+    JAVA_5(5),
+    JAVA_6(6),
+    JAVA_7(7),
+    JAVA_8(8),
+    JAVA_9(9),
+    JAVA_10(10),
+    JAVA_11(11),
+    JAVA_12(12),
+    JAVA_13(13),
+    JAVA_14(14),
+    JAVA_15(15),
+    JAVA_16(16),
+    JAVA_17(17),
+    JAVA_18(18);
+
     public static final class VersionRange {
         public static final VersionRange VERSION_8_OR_LOWER = lower(8);
         public static final VersionRange VERSION_9_TO_11 = new VersionRange(9, 11);
@@ -68,8 +85,17 @@ public final class JavaVersion {
 
     private final int version;
 
-    public JavaVersion(int version) {
+    JavaVersion(int version) {
         this.version = version;
+    }
+
+    public static JavaVersion forVersion(int version) {
+        int lowest = values()[0].version;
+        return values()[version - lowest];
+    }
+
+    public static JavaVersion latestSupported() {
+        return forVersion(LATEST_SUPPORTED);
     }
 
     public boolean java8OrEarlier() {

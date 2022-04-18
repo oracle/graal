@@ -68,14 +68,16 @@ public class ReflectionMetadata {
         final Object[] enclosingMethodInfo;
         final RecordComponentMetadata[] recordComponents;
         final HostedType[] permittedSubclasses;
+        final int classAccessFlags;
 
-        ClassMetadata(HostedType[] classes, Object[] enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, Annotation[] annotations,
+        ClassMetadata(HostedType[] classes, Object[] enclosingMethodInfo, RecordComponentMetadata[] recordComponents, HostedType[] permittedSubclasses, int classAccessFlags, Annotation[] annotations,
                         TypeAnnotation[] typeAnnotations) {
             super(annotations, typeAnnotations);
             this.classes = classes;
             this.enclosingMethodInfo = enclosingMethodInfo;
             this.recordComponents = recordComponents;
             this.permittedSubclasses = permittedSubclasses;
+            this.classAccessFlags = classAccessFlags;
         }
     }
 

@@ -195,7 +195,7 @@ public final class InnerClassRedefiner {
 
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             while ((readLen = (int) context.getMeta().java_io_InputStream_read.invokeDirect(inputStream, guestBuf, 0, buf.length)) != -1) {
-                byte[] bytes = guestBuf.unwrap();
+                byte[] bytes = guestBuf.unwrap(context.getLanguage());
                 outputStream.write(bytes, 0, readLen);
             }
             return outputStream.toByteArray();

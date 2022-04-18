@@ -1246,25 +1246,7 @@ mx_benchmark.add_bm_suite(ScalaDacapoGargantuanBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
-    'startup.helloworld',
-    'startup.compiler.compiler',
-    # 'startup.compiler.sunflow', # disabled until timeout problem in jdk8 is resolved
-    'startup.compress',
-    'startup.crypto.aes',
-    'startup.crypto.rsa',
-    'startup.crypto.signverify',
-    'startup.mpegaudio',
-    'startup.scimark.fft',
-    'startup.scimark.lu',
-    'startup.scimark.monte_carlo',
-    'startup.scimark.sor',
-    'startup.scimark.sparse',
-    'startup.serial',
-    'startup.sunflow',
-    'startup.xml.transform',
-    'startup.xml.validation',
     'compiler.compiler',
-    # 'compiler.sunflow',
     'compress',
     'crypto.aes',
     'crypto.rsa',
@@ -1286,8 +1268,11 @@ _allSpecJVM2008Benches = [
     'xml.validation'
 ]
 _allSpecJVM2008BenchesJDK9 = list(_allSpecJVM2008Benches)
-_allSpecJVM2008BenchesJDK9.remove('compiler.compiler') # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
-_allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
+if 'compiler.compiler' in _allSpecJVM2008BenchesJDK9:
+    # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9+
+    _allSpecJVM2008BenchesJDK9.remove('compiler.compiler')
+if 'startup.compiler.compiler' in _allSpecJVM2008BenchesJDK9:
+    _allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
 
 
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):

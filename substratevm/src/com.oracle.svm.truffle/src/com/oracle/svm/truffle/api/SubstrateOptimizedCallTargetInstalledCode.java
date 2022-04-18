@@ -61,6 +61,24 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public long getAddress() {
+        return address;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public long getEntryPoint() {
+        return entryPoint;
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
+    public boolean isAlive() {
+        return this.address != 0L;
+    }
+
+    @Override
     public final void invalidate() {
         CodeInfoTable.invalidateInstalledCode(this); // calls clearAddress
         callTarget.onInvalidate(null, null, true);
@@ -148,15 +166,15 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         Object tether = CodeInfoAccess.acquireTether(untetheredInfo);
         try { // Indicates to GC that the code can be freed once there are no activations left
             CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
-            invalidateWithoutDeoptimization1(codeInfo);
+            CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+            logMakeNonEntrant(codeInfo);
         } finally {
             CodeInfoAccess.releaseTether(untetheredInfo, tether);
         }
     }
 
     @Uninterruptible(reason = "Call interruptible code now that the CodeInfo is tethered.", calleeMustBe = false)
-    private static void invalidateWithoutDeoptimization1(CodeInfo codeInfo) {
-        CodeInfoAccess.setState(codeInfo, CodeInfo.STATE_NON_ENTRANT);
+    private static void logMakeNonEntrant(CodeInfo codeInfo) {
         RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
     }
 

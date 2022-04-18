@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
@@ -479,9 +480,17 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
      */
     static class PossibleReplaceCandidatesSubtypeHandler implements BiConsumer<DuringAnalysisAccess, Class<?>> {
 
-        final List<Field> fields = new ArrayList<>();
+        /**
+         * The fields are added serially, from the duringAnalysis phase which is run when the
+         * analysis reaches a local fix point, so no need for synchronization.
+         */
+        List<Field> fields = new ArrayList<>();
         final Class<?> fieldType;
-        int candidateCount;
+        /**
+         * The candidates are counted from a reachability handler, which is run in parallel with the
+         * analysis.
+         */
+        final AtomicInteger candidateCount = new AtomicInteger(0);
 
         PossibleReplaceCandidatesSubtypeHandler(Class<?> fieldType) {
             this.fieldType = fieldType;
@@ -489,7 +498,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
         void addField(DuringAnalysisAccess access, Field field) {
             assert field.getType() == fieldType;
-            if (candidateCount > 1) {
+            if (candidateCount.get() > 1) {
                 /*
                  * Limit already reached no need to remember fields anymore we can directly register
                  * them as unsafe accessed.
@@ -517,13 +526,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             if (Modifier.isAbstract(u.getModifiers())) {
                 return;
             }
-            candidateCount++;
 
-            if (candidateCount > 1) {
+            /* Limit reached, register the fields and clear the list. */
+            if (candidateCount.incrementAndGet() == 2) {
                 for (Field field : fields) {
                     t.registerAsUnsafeAccessed(field);
                 }
-                fields.clear();
+                fields = null;
             }
         }
 

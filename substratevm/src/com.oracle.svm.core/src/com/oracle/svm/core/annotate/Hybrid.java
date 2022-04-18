@@ -29,7 +29,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.HubType;
+import com.oracle.svm.core.hub.LayoutEncoding;
 
 /**
  * Defines that the annotated class should have a Hybrid layout. Hybrid layouts are hybrids between
@@ -39,29 +40,33 @@ import com.oracle.svm.core.hub.DynamicHub;
  *
  * <p>
  * The array length is located directly after the HUB pointer, like in regular array. Then (if
- * present) the type id slots follow. Then the instance fields are placed. Then, with the default
- * GC, there is an optional identity hashcode. At the end of the layout, the array elements are
- * located.
+ * present) the type id slots follow. Then the instance fields are placed. At the end of the layout,
+ * the array elements are located.
  * 
  * <pre>
- *    +--------------------------------+
- *    | pointer to DynamicHub          |
- *    +--------------------------------+
- *    | identity hashcode              |
- *    +--------------------------------+
- *    | array length                   |
- *    +--------------------------------+
- *    | type id slots (optional)       |
- *    |     ...                        |
- *    +--------------------------------+
- *    | instance fields                |
- *    |     ...                        |
- *    +--------------------------------+
- *    | array elements                 |
- *    :     ...                        :
+ *    +--------------------------------------------------+
+ *    | pointer to DynamicHub                            |
+ *    +--------------------------------------------------+
+ *    | identity hashcode                                |
+ *    +--------------------------------------------------+
+ *    | array length                                     |
+ *    +--------------------------------------------------+
+ *    | type id slots (i.e., optional primitive data)    |
+ *    |     ...                                          |
+ *    +--------------------------------------------------+
+ *    | instance fields (i.e., primitive or object data) |
+ *    |     ...                                          |
+ *    +--------------------------------------------------+
+ *    | array elements (i.e., primitive data)            |
+ *    |     ...                                          |
+ *    +--------------------------------------------------+
  * </pre>
- * 
- * Currently only the {@link DynamicHub} class has a hybrid layout.
+ *
+ * <p>
+ * Hybrid objects have {@link HubType#Instance} but a {@link LayoutEncoding} like an array. This is
+ * important to keep in mind because methods such as {@link Class#isArray()} will return
+ * {@code false}, while methods such as {@link LayoutEncoding#isArray} will return {@code true} for
+ * hybrid objects.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
@@ -69,9 +74,9 @@ public @interface Hybrid {
 
     /**
      * If {@code true}, we expect that the data in the hybrid fields can be duplicated between the
-     * hybrid object and a separate object for the array or bitset. For most objects, a duplication
-     * could occur if inlining and constant folding result in the internal reference to a hybrid
-     * field being constant folded to a constant value, which must be written into the image heap
+     * hybrid object and a separate object for the array. For most objects, a duplication could
+     * occur if inlining and constant folding result in the internal reference to a hybrid field
+     * being constant folded to a constant value, which must be written into the image heap
      * separately from the hybrid object.
      * 
      * If {@code false}, we expect that this duplication of the hybrid fields can never happen.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,23 +35,28 @@
 
 namespace __cxxabiv1 {
 
-// special sulong namespace
-namespace ___sulong_import_base64 {
-// we use base64 encoded library names
-// libname base64(libc++abi)
-namespace bGliYysrYWJp {
-static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Exception *unwind_exception);
+static inline __cxa_exception *cxa_exception_from_thrown_object(void *thrown_object) {
+    return static_cast<__cxa_exception *>(thrown_object) - 1;
+}
 
-static void *thrown_object_from_cxa_exception(__cxa_exception *exception_header);
+// Note:  This is never called when exception_header is masquerading as a
+//        __cxa_dependent_exception.
+static inline void *thrown_object_from_cxa_exception(__cxa_exception *exception_header) {
+    return static_cast<void *>(exception_header + 1);
+}
 
-} // namespace bGliYysrYWJp
-} // namespace ___sulong_import_base64
+//  Get the exception object from the unwind pointer.
+//  Relies on the structure layout, where the unwind pointer is right in
+//  front of the user's exception object
+static __cxa_exception *cxa_exception_from_exception_unwind_exception(_Unwind_Exception *unwind_exception) {
+    return cxa_exception_from_thrown_object(unwind_exception + 1);
+}
 
 extern "C" {
 
 unsigned int sulong_eh_canCatch(_Unwind_Exception *unwindHeader, std::type_info *catchType) {
-    __cxa_exception *ex = ___sulong_import_base64::bGliYysrYWJp::cxa_exception_from_exception_unwind_exception(unwindHeader);
-    void *p = ___sulong_import_base64::bGliYysrYWJp::thrown_object_from_cxa_exception(ex);
+    __cxa_exception *ex = cxa_exception_from_exception_unwind_exception(unwindHeader);
+    void *p = thrown_object_from_cxa_exception(ex);
     __shim_type_info *et = dynamic_cast<__shim_type_info *>(ex->exceptionType);
     __shim_type_info *ct = dynamic_cast<__shim_type_info *>(catchType);
     if (et == NULL || ct == NULL) {

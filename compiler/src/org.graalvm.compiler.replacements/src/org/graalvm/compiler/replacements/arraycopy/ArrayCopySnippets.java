@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
@@ -187,14 +188,17 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(length, counters);
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
+        incrementLengthCounter(checkedLength, counters);
 
         elementKindCounter.inc();
-        elementKindCopiedCounter.add(length);
+        elementKindCopiedCounter.add(checkedLength);
 
         // Don't lower until floating guards are fixed.
-        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(src, srcPos, dest, destPos, length, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
+        ArrayCopyWithDelayedLoweringNode.arraycopyNonThrowing(src, checkedSrcPos, dest, checkedDestPos, checkedLength, WorkSnippetID.exactArraycopyWithExpandedLoopSnippet, GuardsStage.FIXED_DEOPTS,
                         elementKind);
     }
 
@@ -207,13 +211,16 @@ public abstract class ArrayCopySnippets implements Snippets {
                     @ConstantParameter JavaKind elementKind, @ConstantParameter LocationIdentity locationIdentity, @ConstantParameter SnippetCounter elementKindCounter,
                     @ConstantParameter SnippetCounter elementKindCopiedCounter, @ConstantParameter Counters counters) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(length, counters);
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
+        incrementLengthCounter(checkedLength, counters);
 
         elementKindCounter.inc();
-        elementKindCopiedCounter.add(length);
+        elementKindCopiedCounter.add(checkedLength);
 
-        doArraycopyExactStubCallSnippet(src, srcPos, dest, destPos, length, elementKind, locationIdentity, counters);
+        doArraycopyExactStubCallSnippet(src, checkedSrcPos, dest, checkedDestPos, checkedLength, elementKind, locationIdentity, counters);
     }
 
     protected void doArraycopyExactStubCallSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity locationIdentity,
@@ -233,11 +240,14 @@ public abstract class ArrayCopySnippets implements Snippets {
     public void delayedCheckcastArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(length, counters);
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
+        incrementLengthCounter(checkedLength, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(src, srcPos, dest, destPos, length, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, checkedSrcPos, dest, checkedDestPos, checkedLength, WorkSnippetID.checkcastArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -251,11 +261,14 @@ public abstract class ArrayCopySnippets implements Snippets {
     public void delayedGenericArraycopySnippet(@NonNullParameter Object src, int srcPos, @NonNullParameter Object dest, int destPos, int length, @ConstantParameter ArrayCopyTypeCheck arrayTypeCheck,
                     @ConstantParameter Counters counters, @ConstantParameter JavaKind elementKind) {
         checkArrayTypes(src, dest, arrayTypeCheck);
-        checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
-        incrementLengthCounter(length, counters);
+        int[] checked = checkLimits(src, srcPos, dest, destPos, length, elementKind, counters);
+        int checkedSrcPos = checked[SRC_IDX];
+        int checkedDestPos = checked[DEST_IDX];
+        int checkedLength = checked[LENGTH_IDX];
+        incrementLengthCounter(checkedLength, counters);
 
         // Don't lower until frame states are assigned to deoptimization points.
-        ArrayCopyWithDelayedLoweringNode.arraycopy(src, srcPos, dest, destPos, length, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
+        ArrayCopyWithDelayedLoweringNode.arraycopy(src, checkedSrcPos, dest, checkedDestPos, checkedLength, WorkSnippetID.genericArraycopySnippet, GuardsStage.AFTER_FSA, elementKind);
     }
 
     /**
@@ -347,31 +360,61 @@ public abstract class ArrayCopySnippets implements Snippets {
         }
     }
 
+    private static final int SRC_IDX = 0;
+    private static final int DEST_IDX = 1;
+    private static final int LENGTH_IDX = 2;
+    private static final int LIMITS_SIZE = 3;
+
     /**
-     * Writing this as individual if statements to avoid a merge without a frame state.
+     * Creates the return value for {@link #checkLimits}.
      */
-    protected void checkLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, Counters counters) {
+    protected static int[] createCheckLimitsResult(int srcPos, int destPos, int length) {
+        int[] values = new int[LIMITS_SIZE];
+        values[SRC_IDX] = srcPos;
+        values[DEST_IDX] = destPos;
+        values[LENGTH_IDX] = length;
+        return values;
+    }
+
+    /**
+     * Checks the limits of {@code srcPost}, {@code destPos}, and {@code length} and return those
+     * values with better stamps.
+     *
+     * Writing this as individual if statements to avoid a merge without a frame state.
+     *
+     * @see #createCheckLimitsResult
+     * @return An integer array holding the {@code srcPos} (at offset {@link #SRC_IDX}),
+     *         {@code destPos} (at offset {@link #DEST_IDX}), and {@code length} parameters (at
+     *         offset {@link #LENGTH_IDX}), but annotated with {@link PiNode#piCastPositive}. This
+     *         an array rather than a dedicated class with proper members to avoid storing
+     *         information about the class in encoded snippets.
+     */
+    protected int[] checkLimits(Object src, int srcPos, Object dest, int destPos, int length, @SuppressWarnings("unused") JavaKind elementKind, Counters counters) {
         if (probability(DEOPT_PROBABILITY, srcPos < 0)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
+        int newSrcPos = PiNode.piCastPositive(srcPos, SnippetAnchorNode.anchor());
         if (probability(DEOPT_PROBABILITY, destPos < 0)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
+        int newDestPos = PiNode.piCastPositive(destPos, SnippetAnchorNode.anchor());
         if (probability(DEOPT_PROBABILITY, length < 0)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
-        if (probability(DEOPT_PROBABILITY, srcPos > ArrayLengthNode.arrayLength(src) - length)) {
+        int newLength = PiNode.piCastPositive(length, SnippetAnchorNode.anchor());
+        if (probability(DEOPT_PROBABILITY, newSrcPos > ArrayLengthNode.arrayLength(src) - newLength)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
-        if (probability(DEOPT_PROBABILITY, destPos > ArrayLengthNode.arrayLength(dest) - length)) {
+        if (probability(DEOPT_PROBABILITY, newDestPos > ArrayLengthNode.arrayLength(dest) - newLength)) {
             counters.checkAIOOBECounter.inc();
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
         counters.checkSuccessCounter.inc();
+        return createCheckLimitsResult(newSrcPos, newDestPos, newLength);
     }
 
     protected void checkArrayTypes(Object nonNullSrc, Object nonNullDest, ArrayCopyTypeCheck arrayTypeCheck) {

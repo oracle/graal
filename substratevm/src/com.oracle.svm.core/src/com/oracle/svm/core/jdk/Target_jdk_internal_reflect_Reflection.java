@@ -40,8 +40,8 @@ final class Target_jdk_internal_reflect_Reflection {
     }
 
     @Substitute
-    private static int getClassAccessFlags(Class<?> cls) {
-        return cls.getModifiers();
+    private static int getClassAccessFlags(DynamicHub cls) {
+        return cls.getClassAccessFlags();
     }
 
     @Substitute

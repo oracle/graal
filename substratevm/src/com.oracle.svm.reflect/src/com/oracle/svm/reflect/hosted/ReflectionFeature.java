@@ -26,7 +26,6 @@ package com.oracle.svm.reflect.hosted;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Map;
@@ -147,9 +146,6 @@ public class ReflectionFeature implements GraalFeature {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
         analysisAccess.registerAsCompiled(aMethod, true);
         return new MethodPointer(aMethod);
-    }
-
-    protected void inspectAccessibleField(@SuppressWarnings("unused") Field field) {
     }
 
     @Override

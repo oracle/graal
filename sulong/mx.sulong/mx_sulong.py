@@ -106,7 +106,7 @@ def runLLVMUnittests(unittest_runner):
 def findBundledLLVMProgram(llvm_program):
     llvm_dist = 'LLVM_TOOLCHAIN'
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
-    return os.path.join(dep.get_output(), 'bin', llvm_program)
+    return os.path.join(dep.get_output(), 'bin', mx.exe_suffix(llvm_program))
 
 
 def truffle_extract_VM_args(args, useDoubleDash=False):
@@ -488,6 +488,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
     truffle_jars=['sulong:SULONG_NATIVE'],
     support_distributions=[
+        'sulong:SULONG_BITCODE_HOME',
         'sulong:SULONG_NATIVE_HOME',
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),

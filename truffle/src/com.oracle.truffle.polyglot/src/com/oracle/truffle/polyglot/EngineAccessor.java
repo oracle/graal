@@ -728,11 +728,15 @@ final class EngineAccessor extends Accessor {
                                 "Use TruffleLanguage.Env.parseInternal(Source) or TruffleInstrument.Env.parse(Source) instead.");
             }
             PolyglotEngineImpl engine = resolveEngine(location, context);
-            Object[] prev = OtherContextGuestObject.enterContext(engine, context, context.parent);
             try {
-                return evalBoundary(source, prev, context, allowInternal);
-            } finally {
-                OtherContextGuestObject.leaveContext(engine, prev, context, context.parent);
+                Object[] prev = engine.enter(context);
+                try {
+                    return evalBoundary(source, prev, context, allowInternal);
+                } finally {
+                    engine.leave(prev, context);
+                }
+            } catch (Throwable t) {
+                throw OtherContextGuestObject.toHostOrInnerContextBoundaryException(context.parent, t, context);
             }
         }
 

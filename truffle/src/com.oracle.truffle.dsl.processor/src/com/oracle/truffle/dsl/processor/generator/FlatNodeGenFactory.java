@@ -3964,7 +3964,11 @@ public class FlatNodeGenFactory {
 
         String boundaryMethodName;
         if (specialization != null) {
-            boundaryMethodName = specialization.getId() + "Boundary";
+            if (generatorMode.equals(GeneratorMode.EXPORTED_MESSAGE)) {
+                boundaryMethodName = String.format("%s_%sBoundary", node.getNodeId(), specialization.getId());
+            } else {
+                boundaryMethodName = String.format("%sBoundary", specialization.getId());
+            }
         } else {
             boundaryMethodName = "specializationBoundary";
         }

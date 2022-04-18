@@ -418,7 +418,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * They are too complex and cannot be reduced to a single invoke or field access.
                  * There is also no need to inline them, because they are not related to any
                  * MethodHandle mechanism.
-                 * 
+                 *
                  * Methods defined in VarHandle itself are fine and not covered by this rule, apart
                  * from well-known methods that are never useful to be inlined. If these methods are
                  * reached, intrinsification will not be possible in any case.
@@ -677,7 +677,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 ValueNode[] tExceptionArguments;
                 if (oGuard.getReason() == DeoptimizationReason.NullCheckException) {
                     tExceptionKind = BytecodeExceptionKind.NULL_POINTER;
-                    tExceptionArguments = new ValueNode[0];
+                    tExceptionArguments = ValueNode.EMPTY_ARRAY;
                 } else if (oGuard.getReason() == DeoptimizationReason.ClassCastException && oGuard.condition().getClass() == InstanceOfNode.class) {
                     /*
                      * Throwing the ClassCastException requires the checked object and the expected

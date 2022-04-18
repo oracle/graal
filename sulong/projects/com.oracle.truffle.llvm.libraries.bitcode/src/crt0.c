@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,9 @@ typedef struct {
 } Elf64_auxv_t;
 #endif
 
+#if !defined(_WIN32)
 extern char **environ;
+#endif
 char *__progname;
 static Elf64_auxv_t *__auxv;
 long *__sulong_start_arguments = NULL;

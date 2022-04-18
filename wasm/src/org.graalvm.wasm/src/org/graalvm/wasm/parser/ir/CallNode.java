@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ package org.graalvm.wasm.parser.ir;
 /**
  * Represents information about a wasm call instruction.
  */
-public class CallNode implements ParserNode {
+public class CallNode {
     private final int functionIndex;
     private final boolean isIndirectCall;
 

@@ -31,8 +31,27 @@ import java.util.function.Supplier;
 
 public class AtomicUtils {
 
+    /**
+     * Atomically sets the value to {@code true} if the current value {@code == false}.
+     * 
+     * @return {@code true} if successful.
+     */
     public static boolean atomicMark(AtomicBoolean flag) {
         return flag.compareAndSet(false, true);
+    }
+
+    /**
+     * Atomically sets the value to {@code true} if the current value {@code == false}. If
+     * successful, execute the task.
+     *
+     * @return {@code true} if successful.
+     */
+    public static boolean atomicMarkAndRun(AtomicBoolean flag, Runnable task) {
+        boolean firstAttempt = flag.compareAndSet(false, true);
+        if (firstAttempt) {
+            task.run();
+        }
+        return firstAttempt;
     }
 
     /**

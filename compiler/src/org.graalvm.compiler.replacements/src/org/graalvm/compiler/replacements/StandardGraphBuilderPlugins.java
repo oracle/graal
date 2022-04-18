@@ -27,6 +27,10 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
+import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.ACQUIRE;
+import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.PLAIN;
+import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
+import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
 import java.lang.reflect.Array;
@@ -510,14 +514,31 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    /**
+     * Gets the suffix of a {@code jdk.internal.misc.Unsafe} method implementing the memory access
+     * semantics defined by {@code memoryOrder}.
+     */
+    private static String memoryOrderModeToMethodSuffix(MemoryOrderMode memoryOrder) {
+        switch (memoryOrder) {
+            case VOLATILE:
+                return "";
+            case ACQUIRE:
+                return "Acquire";
+            case RELEASE:
+                return "Release";
+            case PLAIN:
+                return "Plain";
+        }
+        throw new IllegalArgumentException(memoryOrder.name());
+    }
+
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
         Registration sunMiscUnsafe = new Registration(plugins, "sun.misc.Unsafe");
         registerUnsafePlugins0(sunMiscUnsafe, true, explicitUnsafeNullChecks);
 
         JavaKind[] supportedJavaKinds = {JavaKind.Int, JavaKind.Long, JavaKind.Object};
         registerUnsafeGetAndOpPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", new String[]{""},
-                        supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(sunMiscUnsafe, true, explicitUnsafeNullChecks, "compareAndSwap", supportedJavaKinds, VOLATILE);
 
         Registration jdkInternalMiscUnsafe = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
 
@@ -526,19 +547,19 @@ public class StandardGraphBuilderPlugins {
 
         supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object};
         registerUnsafeGetAndOpPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "weakCompareAndSet", new String[]{"", "Acquire", "Release", "Plain"}, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{"Acquire", "Release"}, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "weakCompareAndSet", supportedJavaKinds, VOLATILE, ACQUIRE, RELEASE, PLAIN);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", supportedJavaKinds, ACQUIRE, RELEASE);
 
         supportedJavaKinds = new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object};
 
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndSet", new String[]{""}, supportedJavaKinds);
-        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", new String[]{""}, supportedJavaKinds);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndSet", supportedJavaKinds, VOLATILE);
+        registerUnsafeAtomicsPlugins(jdkInternalMiscUnsafe, false, explicitUnsafeNullChecks, "compareAndExchange", supportedJavaKinds, VOLATILE);
 
         jdkInternalMiscUnsafe.register(new AllocateUninitializedArrayPlugin("allocateUninitializedArray0", false));
     }
 
-    private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, String[] memoryOrders,
-                    JavaKind[] supportedJavaKinds) {
+    private static void registerUnsafeAtomicsPlugins(Registration r, boolean isSunMiscUnsafe, boolean explicitUnsafeNullChecks, String casPrefix, JavaKind[] supportedJavaKinds,
+                    MemoryOrderMode... memoryOrders) {
         for (JavaKind kind : supportedJavaKinds) {
             Class<?> javaClass = getJavaClass(kind);
             for (String kindName : getKindNames(isSunMiscUnsafe, kind)) {
@@ -548,10 +569,10 @@ public class StandardGraphBuilderPlugins {
                     isLogic = false;
                     returnKind = kind.isNumericInteger() ? kind.getStackKind() : kind;
                 }
-                for (String memoryOrderString : memoryOrders) {
-                    MemoryOrderMode memoryOrder = memoryOrderString.equals("") ? MemoryOrderMode.VOLATILE : MemoryOrderMode.valueOf(memoryOrderString.toUpperCase());
+                for (MemoryOrderMode memoryOrder : memoryOrders) {
+                    String name = casPrefix + kindName + memoryOrderModeToMethodSuffix(memoryOrder);
                     r.register(new UnsafeCompareAndSwapPlugin(returnKind, kind, memoryOrder, isLogic, explicitUnsafeNullChecks,
-                                    casPrefix + kindName + memoryOrderString, Receiver.class, Object.class, long.class, javaClass, javaClass));
+                                    name, Receiver.class, Object.class, long.class, javaClass, javaClass));
                 }
             }
         }

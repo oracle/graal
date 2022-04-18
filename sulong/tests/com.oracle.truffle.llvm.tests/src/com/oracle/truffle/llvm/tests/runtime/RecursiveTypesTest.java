@@ -122,7 +122,7 @@ public class RecursiveTypesTest {
                     new TypeFactory("Packed", StructureType.class, (type) -> StructureType.createUnnamed(true, type), (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
                     new TypeFactory("PackedNamed", StructureType.class, (type) -> StructureType.createNamed(MYSTRUCT, true, type),
                                     (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
-                    new TypeFactory(FunctionType.class, (type) -> new FunctionType(type, 0, false), (ptr, type) -> ((FunctionType) ptr).setReturnType(type))
+                    new TypeFactory(FunctionType.class, (type) -> new FunctionType(type, 0, FunctionType.NOT_VARARGS), (ptr, type) -> ((FunctionType) ptr).setReturnType(type))
     };
 
     private static final Map<Class<? extends Type>, TypeFactory> TYPE_FACTORY_MAP = new HashMap<>();

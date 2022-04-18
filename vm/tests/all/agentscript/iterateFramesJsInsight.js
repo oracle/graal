@@ -1,5 +1,5 @@
 insight.on('enter', (ctx, frames) => {
-  if (ctx.line !== 1 && ctx.line !== 3) return;
+  if (ctx.line !== 3) return;
   let log = `at ${ctx.source.name}:${ctx.line} `;
   ctx.iterateFrames((at, locals) => {
       log += JSON.stringify(locals);

@@ -149,7 +149,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         parameterEnumInfos = adaptParameterTypes(providers, nativeLibraries, kit, parameterTypes, parameterLoadTypes, purpose);
 
-        ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(new ValueNode[0]);
+        ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(ValueNode.EMPTY_ARRAY);
 
         InvokeWithExceptionNode invokePrologue = generatePrologue(providers, kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
         if (invokePrologue != null) {
@@ -268,7 +268,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             }
         }
 
-        ValueNode[] args = kit.loadArguments(method.toParameterTypes()).toArray(new ValueNode[0]);
+        ValueNode[] args = kit.loadArguments(method.toParameterTypes()).toArray(ValueNode.EMPTY_ARRAY);
 
         ValueNode[] builtinArgs = new ValueNode[builtinParamTypes.length];
         if (builtinIsolateIndex != -1) {

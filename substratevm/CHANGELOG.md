@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to GraalVM Native Image.
 
+## Version 22.2.0
+* (GR-20653) Re-enable the usage of all CPU features for JIT compilation on AMD64.
+
 ## Version 22.1.0
 * (GR-36568) Add "Quick build" mode, enabled through option `-Ob`, for quicker native image builds.
 * (GR-35898) Improved handling of static synchronized methods: the lock is no longer stored in the secondary monitor map, but in the mutable DynamicHubCompanion object.

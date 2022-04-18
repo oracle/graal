@@ -568,6 +568,11 @@ public abstract class Node implements NodeInterface, Cloneable {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(getClass().getSimpleName());
+        Class<?> enclosing = getClass().getEnclosingClass();
+        while (enclosing != null) {
+            sb.insert(0, enclosing.getSimpleName() + ".");
+            enclosing = enclosing.getEnclosingClass();
+        }
         Map<String, Object> properties = getDebugProperties();
         boolean hasProperties = false;
         for (Map.Entry<String, Object> entry : properties.entrySet()) {

@@ -126,8 +126,12 @@ public abstract class SLScopedNode extends Node {
      * context lookup via {@link SLContext#getCurrent(Node)}.
      */
     @ExportMessage
-    @TruffleBoundary
     final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
+        return hasRootInstanceSlowPath();
+    }
+
+    @TruffleBoundary
+    private boolean hasRootInstanceSlowPath() {
         // The instance of the current RootNode is a function of the same name.
         return SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getSLRootName(getRootNode())) != null;
     }
@@ -137,8 +141,12 @@ public abstract class SLScopedNode extends Node {
      * context lookup via {@link SLContext#getCurrent(Node)}.
      */
     @ExportMessage
-    @TruffleBoundary
     final Object getRootInstance(@SuppressWarnings("unused") Frame frame) throws UnsupportedMessageException {
+        return getRootInstanceSlowPath();
+    }
+
+    @TruffleBoundary
+    private Object getRootInstanceSlowPath() throws UnsupportedMessageException {
         // The instance of the current RootNode is a function of the same name.
         Object function = SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getSLRootName(getRootNode()));
         if (function != null) {

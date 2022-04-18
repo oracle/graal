@@ -66,13 +66,12 @@ public final class ExecutionSampleEvent {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.ExecutionSample.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ExecutionSample);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putThread(data, isolateThread);
             JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ExecutionSample.getId(), 0));
             JfrNativeEventWriter.putLong(data, JfrThreadState.getId(threadState));
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 

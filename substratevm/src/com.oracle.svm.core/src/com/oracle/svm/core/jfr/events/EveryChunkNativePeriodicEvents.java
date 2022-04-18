@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.jfr.JfrNativeEventWriter;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
+
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
 import jdk.jfr.Period;
-
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 
 @Name("EveryChunkPeriodEvents")
 @Period(value = "everyChunk")
@@ -59,14 +59,13 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.JavaThreadStatistics.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaThreadStatistics);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, activeCount);
             JfrNativeEventWriter.putLong(data, daemonCount);
             JfrNativeEventWriter.putLong(data, accumulatedCount);
             JfrNativeEventWriter.putLong(data, peakCount);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 
@@ -76,12 +75,11 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.PhysicalMemory.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.PhysicalMemory);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, totalSize);
             JfrNativeEventWriter.putLong(data, usedSize);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }

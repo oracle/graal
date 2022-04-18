@@ -70,7 +70,7 @@ public class DebuggingStressTest extends AbstractDebugTest {
     /**
      * Test of close of a session in the middle of the execution.
      */
-    @Test(timeout = 10000)
+    @Test
     public void testSessionClose() throws InterruptedException, ExecutionException {
         ExecutorService evalDoneExec = Executors.newFixedThreadPool(1);
 
@@ -99,7 +99,7 @@ public class DebuggingStressTest extends AbstractDebugTest {
      * Test of close of a session with breakpoints in the middle of the execution. Tests GR-36625,
      * deadlock of Breakpoint and instrumentation synchronization.
      */
-    @Test(timeout = 10000)
+    @Test
     public void testSessionCloseWithBreakpoints() throws InterruptedException {
         int numLines = source.getLineCount();
         Breakpoint[] bp = new Breakpoint[numLines];

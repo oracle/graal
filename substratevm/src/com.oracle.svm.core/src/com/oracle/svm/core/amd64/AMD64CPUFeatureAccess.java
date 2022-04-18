@@ -28,6 +28,9 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateOptions;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -35,14 +38,29 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.CalleeSavedRegisters;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
 
 public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
+
+    private final EnumSet<?> buildtimeCPUFeatures;
+
+    public AMD64CPUFeatureAccess() {
+        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+        var arch = (AMD64) targetDescription.arch;
+        buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
+    }
+
+    @Override
+    public EnumSet<?> buildtimeCPUFeatures() {
+        return buildtimeCPUFeatures;
+    }
 
     /**
      * We include all flags that enable AMD64 CPU instructions as we want best possible performance
@@ -201,21 +219,33 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         }
     }
 
+    /**
+     * Returns {@code true} if the CPU feature set will be updated for JIT compilations. As a
+     * consequence, the size of {@link AMD64#XMM} registers is different AOT vs JIT.
+     *
+     * Updating CPU features in only enabled if {@linkplain SubstrateOptions#SpawnIsolates isolates
+     * are enabled}. There is not a fundamental problem. The only reason for this restriction is
+     * that with isolates we have a {@linkplain ReservedRegisters#getHeapBaseRegister() heap base
+     * register} which makes dynamic CPU feature checks simple because they do not require an
+     * intermediate register for testing the
+     * {@linkplain com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheckImpl cpu feature mask}.
+     */
+    public static boolean canUpdateCPUFeatures() {
+        return SubstrateOptions.SpawnIsolates.getValue();
+    }
+
     @Override
     public void enableFeatures(Architecture runtimeArchitecture) {
-        if (CalleeSavedRegisters.supportedByPlatform()) {
-            /*
-             * The code for saving and restoring callee-saved registers currently only covers the
-             * registers and register bit width for the CPU features used at image build time. To
-             * enable more CPU features for JIT compilation at run time, the new CPU features
-             * computed by this method would need to be taken into account. Until this is
-             * implemented as part of GR-20653, JIT compilation uses the same CPU features as AOT
-             * compilation.
-             */
+        if (!canUpdateCPUFeatures()) {
             return;
         }
+        // update cpu features
         AMD64 architecture = (AMD64) runtimeArchitecture;
         EnumSet<AMD64.CPUFeature> features = determineHostCPUFeatures();
         architecture.getFeatures().addAll(features);
+
+        // update largest storable kind
+        AMD64Kind largestStorableKind = (new AMD64(features, architecture.getFlags())).getLargestStorableKind(AMD64.XMM);
+        JVMCISubstitutions.updateLargestStorableKind(architecture, largestStorableKind);
     }
 }
