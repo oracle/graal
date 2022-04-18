@@ -318,25 +318,13 @@ public final class GraalFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess c) {
-        DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
-        AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
-
-        try {
-            /*
-             * Check early that the classpath is set up correctly. The base class of SubstrateType
-             * is the NodeClass from Truffle. So we require Truffle on the class path for any images
-             * and tests that use Graal at run time.
-             */
-            aMetaAccess.lookupJavaType(SubstrateType.class);
-        } catch (NoClassDefFoundError ex) {
-            throw VMError.shouldNotReachHere("Building a native image with Graal support requires Truffle on the class path. For unit tests run with 'svmtest', add the option '--truffle'.");
-        }
-
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
-
         if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
             ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
         }
+
+        DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
+        AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
         GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class).getProviderObjectReplacements(aMetaAccess);
         objectReplacer = new GraalObjectReplacer(config.getUniverse(), aMetaAccess, providerReplacements);
         config.registerObjectReplacer(objectReplacer);

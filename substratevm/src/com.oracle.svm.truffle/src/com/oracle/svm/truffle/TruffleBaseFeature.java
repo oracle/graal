@@ -80,17 +80,16 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalObjectReplacer;
 import com.oracle.svm.graal.hosted.GraalProviderObjectReplacements;
 import com.oracle.svm.graal.hosted.RuntimeGraalSetup;
 import com.oracle.svm.graal.hosted.SubstrateRuntimeGraalSetup;
-import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
@@ -299,12 +298,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
 
-        FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) access;
-
-        metaAccess = ((FeatureImpl.DuringSetupAccessImpl) access).getMetaAccess();
+        ImageSingletons.add(NodeClassSupport.class, new NodeClassSupport());
         if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
             ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
         }
+
+        DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
+        metaAccess = config.getMetaAccess();
         GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class)
                         .getProviderObjectReplacements(metaAccess);
         graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
@@ -321,11 +321,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private Object replaceNodeFieldAccessor(Class<?> invalidNodeFieldType, Object source) {
         if (source != null && source.getClass() == invalidNodeFieldType) {
             throw VMError.shouldNotReachHere("Cannot have NodeFieldData in image, they must be created lazily");
-        } else if (source instanceof NodeClass && !(source instanceof SubstrateType)) {
-            NodeClass nodeClass = (NodeClass) source;
-            NodeClass replacement = graalObjectReplacer.createType(metaAccess.lookupJavaType(nodeClass.getType()));
-            assert replacement != null;
-            return replacement;
         }
         return source;
     }
@@ -416,6 +411,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         registeredClasses.add(clazz);
 
         NodeClass nodeClass = NodeClass.get(clazz);
+        NodeClassSupport.singleton().nodeClasses.put(clazz, nodeClass);
 
         Field[] fields;
         try {
@@ -941,12 +937,11 @@ final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocat
 
 @TargetClass(className = "com.oracle.truffle.api.nodes.NodeClass", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_nodes_NodeClass {
-
     @Substitute
     public static NodeClass get(Class<?> clazz) {
         CompilerAsserts.neverPartOfCompilation();
 
-        NodeClass nodeClass = (NodeClass) DynamicHub.fromClass(clazz).getMetaType();
+        NodeClass nodeClass = NodeClassSupport.singleton().nodeClasses.get(clazz);
         if (nodeClass == null) {
             throw shouldNotReachHere("Unknown node class: " + clazz.getName());
         }

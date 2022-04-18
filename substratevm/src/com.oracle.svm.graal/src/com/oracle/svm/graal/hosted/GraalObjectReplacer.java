@@ -263,7 +263,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             if (ReadableJavaField.injectFinalForRuntimeCompilation(aField.wrapped)) {
                 modifiers = modifiers | Modifier.FINAL;
             }
-            sField = new SubstrateField(aMetaAccess, aField, modifiers, stringTable);
+            sField = new SubstrateField(aField, modifiers, stringTable);
             fields.put(aField, sField);
 
             sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
