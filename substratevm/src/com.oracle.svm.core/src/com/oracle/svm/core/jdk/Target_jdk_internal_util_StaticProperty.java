@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.KeepOriginal;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
@@ -40,6 +42,9 @@ import com.oracle.svm.core.annotate.TargetElement;
 @TargetClass(className = "jdk.internal.util.StaticProperty")
 @SuppressWarnings("unused")
 final class Target_jdk_internal_util_StaticProperty {
+
+    @Substitute
+    private static final String JDK_SERIAL_FILTER_FACTORY = System.getProperty("jdk.serialFilter");
 
     @Substitute
     private static String javaHome() {
@@ -86,9 +91,6 @@ final class Target_jdk_internal_util_StaticProperty {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilter");
     }
 
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    private static String jdkSerialFilterFactory() {
-        return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilterFactory");
-    }
+    @KeepOriginal
+    native static String jdkSerialFilterFactory();
 }
