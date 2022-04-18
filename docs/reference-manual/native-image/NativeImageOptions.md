@@ -2,40 +2,18 @@
 layout: docs
 toc_group: native-image
 link_title: Native Image Options
-permalink: /reference-manual/native-image/Options/
+permalink: /reference-manual/native-image/overview/NativeImageOptions/
+redirect_from: /$version/reference-manual/native-image/Options/
 ---
-# Native Image Options
+# Image Generation Options
 
-To ahead-of-time compile your Java application into a native executable, provide the classpath for all classes using the `-cp` option followed by a list of directories or JAR files, separated by `:` to the `native-image` builder. 
-The name of the class containing the `main` method should be the last argument, or you can use `-jar` and provide a JAR file that specifies the `main` method in its manifest.
+Depending on the GraalVM edition, the options to the `native-image` builder may differ.
+The following options are supported across both GraalVM Community and Enterprise editions:
 
-The syntax of the `native-image` command is:
-
-- `native-image [options] class [imagename] [options]` to build a native executable for a class in the current working directory. Invoking it executes the native-compiled code of that class.
-
-- `native-image [options] -jar jarfile [imagename] [options]` to build a native executable for a JAR file.
-
-- `native-image [options] --module <module>[/<mainclass>] [options]` to build a native executable for a module. `--module` is equivalent to `-m`.
-
-The options passed to `native-image` are evaluated left-to-right.
-For more information, see [Native Image Build Configuration](BuildConfiguration.md#order-of-arguments-evaluation).
-
-The options fall into several categories: standard, non-standard and macro options.
-Non-standard options are subject to change through a deprecation cycle.
-
-Command-line help is available.
-Run `native-image --help` to get the commands overview, and `native-image --help-extra` to print help on non-standard and macro options.
-
-### Options to Native Image Builder
-
-Run `native-image --help` to get the options overview.
-Depending on the GraalVM edition, the commands to the `native-image` builder may differ.
-
-* `@argument files`: pass one or more argument files containing options
-* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a `:` separated list of directories, JAR archives, and ZIP archives to search for class files
-* `-p <module path>, --module-path <module path>`: a `:` separated list of directories; each directory is a directory of modules
+* `-cp, -classpath, --class-path <class search path of directories and zip/jar files>`: a `:` (`;` on Windows) separated list of directories, JAR archives, and ZIP archives to search for class files
+* `-p <module path>, --module-path <module path>`: a `:` (`;` on Windows) separated list of directories; each directory is a directory of modules
 * `--add-modules <module name>[,<module name>...]`: add root modules to resolve in addition to the initial module. `<module name>` can also be `ALL-DEFAULT`, `ALL-SYSTEM`, `ALL-MODULE-PATH`
-* `-D<name>=<value>`: set a system property
+* `-D<name>=<value>`: set a system property for the image builder
 * `-J<flag>`: pass `<flag>` directly to the JVM running the `native-image` builder
 * `-O<level>`: 0 for no optimizations, or 1 for basic optimizations (default)
 * `--verbose`: enable verbose output

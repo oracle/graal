@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Implementing Native Methods in Java with Native Image
-permalink: /reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
+permalink: /reference-manual/native-image/SharedLibrary/
+redirect_from: /$version/reference-manual/native-image/ImplementingNativeMethodsInJavaWithSVM/
 ---
 # Implementing Native Methods in Java with Native Image
 
@@ -14,7 +15,7 @@ If you are interested in how Native Image supports the common use case, continue
 
 ## Create a Shared Library
 
-First of all one has to use the `native-image` builder to generate a shared library with some JNI-compatible [entry points](README.md#build-a-shared-library).
+First of all one has to use the `native-image` builder to generate a shared library with some JNI-compatible entry points.
 Start with the Java code:
 ```java
 package org.pkg.implnative;

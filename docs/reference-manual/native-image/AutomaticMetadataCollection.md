@@ -1,43 +1,56 @@
 ---
 layout: docs
 toc_group: native-image
-link_title: Tracing Agent
-permalink: /reference-manual/native-image/Agent/
+link_title: Metadata Collection with the Tracing Agent
+permalink: /reference-manual/native-image/AutomaticMetadataCollection/
+redirect_from: /$version/reference-manual/native-image/Agent/
 ---
 
-# Assisted Configuration with Tracing Agent
+# Metadata Collection with the Tracing Agent
 
-Native images are built ahead of runtime and their build relies on a static analysis of which code will be reachable. However, this analysis cannot always completely predict all usages of the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects (`java.lang.reflect.Proxy`), or class path resources (`Class.getResource`). Undetected usages of these dynamic features need to be provided to the `native-image` tool in the form of configuration files.
+Native images are built ahead of runtime and their build relies on a static analysis of which code will be reachable.
+However, this analysis cannot always completely predict all usages of the Java Native Interface (JNI), Java Reflection, Dynamic Proxy objects (`java.lang.reflect.Proxy`), or class path resources (`Class.getResource`).
+Undetected usages of these dynamic features need to be provided to the `native-image` tool in the form of configuration files.
 
-In order to make preparing these configuration files easier and more convenient, GraalVM provides an _agent_ that tracks all usages of dynamic features of an execution on a regular Java VM. It can be enabled on the command line of the GraalVM `java` command:
+In order to make preparing these configuration files easier and more convenient, GraalVM provides an _agent_ that tracks all usages of dynamic features of an execution on a regular Java VM.
+It can be enabled on the command line of the GraalVM `java` command:
 ```shell
 $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/ ...
 ```
 
 Note that `-agentlib` must be specified _before_ a `-jar` option or a class name or any application parameters in the `java` command line.
 
-During execution, the agent interfaces with the Java VM to intercept all calls that look up classes, methods, fields, resources, or request proxy accesses. The agent then generates the files _jni-config.json_, _reflect-config.json_, _proxy-config.json_ and _resource-config.json_ in the specified output directory, which is `/path/to/config-dir/` in the example above. The generated files are standalone configuration files in JSON format which contain all intercepted dynamic accesses.
+During execution, the agent traces calls for which native-image needs additional information, such as calls that look up classes, methods, fields, resources.
+Once the application finishes and the JVM exits, the agent writes metadata files in the specified output directory  (`/path/to/config-dir/` in the example above).
 
-It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses. The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:
+It can be necessary to run the target application more than once with different inputs to trigger separate execution paths for a better coverage of dynamic accesses.
+The agent supports this with the `config-merge-dir` option which adds the intercepted accesses to an existing set of configuration files:
 ```shell
-$JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=/path/to/config-dir/ ...
-                                                              ^^^^^
+$JAVA_HOME/bin/java -agentlib:native-image-agent=config-merge-dir=/path/to/config-dir/ ...                                                              ^^^^^
 ```
 
-If the specified target directory or configuration files in it are missing when using `config-merge-dir`, the agent creates them and prints a warning.
-
-By default the agent will write the configuration files after the JVM process terminates. In addition, the agent provides the following flags to write configuration files on a periodic basis:
-- `config-write-period-secs`: executes a periodic write every number of seconds as specified in this configuration. Supports only integer values greater than zero.
-- `config-write-initial-delay-secs`: the number of seconds before the first write is schedule for execution. Supports only integer values greater or equal to zero. Enabled only if `config-write-period-secs` is greater than zero.
+The agent also provides the following flags to write metadata files on a periodic basis:
+- `config-write-period-secs=n`: writes metadata files every `n` seconds. `n` must be greater than 0.
+- `config-write-initial-delay-secs=n`: waits `n` seconds before the first metadata file write. Defaults to 1.
 
 For example:
 ```shell
 $JAVA_HOME/bin/java -agentlib:native-image-agent=config-output-dir=/path/to/config-dir/,config-write-period-secs=300,config-write-initial-delay-secs=5 ...
 ```
 
-It is advisable to manually review the generated configuration files. Because the agent observes only code that was executed, the resulting configurations can be missing elements that are used in other code paths. It could also make sense to simplify the generated configurations to make any future manual maintenance easier.
+The above agent command string will output metadata files to `/path/to/config-dir/` every 300 seconds after an initial delay of 5 seconds.
+
+It is advisable to manually review the generated configuration files.
+Because the agent observes executed code, the application input should cover as many code paths as possible.
 
 The generated configuration files can be supplied to the `native-image` tool by placing them in a `META-INF/native-image/` directory on the class path, for example, in a JAR file used in the image build. This directory (or any of its subdirectories) is searched for files with the names `jni-config.json`, `reflect-config.json`, `proxy-config.json` and `resource-config.json`, which are then automatically included in the build. Not all of those files must be present. When multiple files with the same name are found, all of them are included.
+
+## Conditional Metadata Collection
+
+The tracing agent can deduce metadata conditions based on their usage in executed code.
+Conditional metadata is mainly aimed towards library maintainers with the goal of reducing overall footprint.
+
+To collect conditional metadata with the agent, see [Conditional Metadata Collection](ExperimentalAgentOptions.md#generating-conditional-configuration-using-the-agent)
 
 ## Build a Native Executable with Java Reflection Example
 

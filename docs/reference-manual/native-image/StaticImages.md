@@ -2,7 +2,7 @@
 layout: docs
 toc_group: native-image
 link_title: Static Native Images
-permalink: /reference-manual/native-image/StaticImages/
+permalink: /reference-manual/native-image/overview/StaticImages/
 ---
 # Static and Mostly Static Images
 

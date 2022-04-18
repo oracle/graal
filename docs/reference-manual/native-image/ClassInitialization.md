@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Class Initialization in Native Image
-permalink: /reference-manual/native-image/ClassInitialization/
+permalink: /reference-manual/native-image/optimizations-and-performance/ClassInitialization/
+redirect_from: /$version/reference-manual/native-image/ClassInitialization/
 ---
 # Class Initialization in Native Image
 

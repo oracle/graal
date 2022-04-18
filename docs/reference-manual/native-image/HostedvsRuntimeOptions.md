@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Native Image Hosted and Runtime Options
-permalink: /reference-manual/native-image/HostedvsRuntimeOptions/
+permalink: /reference-manual/native-image/contributor/HostedvsRuntimeOptions/
+redirect_from: /$version/reference-manual/native-image/HostedvsRuntimeOptions/
 ---
 # Native Image Hosted and Runtime Options
 

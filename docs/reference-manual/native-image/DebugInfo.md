@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Debug Info Feature
-permalink: /reference-manual/native-image/DebugInfo/
+permalink: /reference-manual/native-image/debugging-and-diagnostics/DebugInfo/
+redirect_from: /$version/reference-manual/native-image/debugging-and-diagnostics/DebugInfo/
 ---
 
 # Debug Info Feature

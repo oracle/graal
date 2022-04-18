@@ -4,7 +4,7 @@ toc_group: native-image
 link_title: Native Image Compatibility and Optimization Guide
 permalink: /reference-manual/native-image/Limitations/
 ---
-# Native Image Compatibility and Optimization Guide
+# Limitations
 
 Native Image uses a different way of compiling a Java application than the traditional Java virtual machine (VM).
 It distinguishes between *executable build time* and *executable runtime*.
@@ -17,53 +17,11 @@ This approach relies on a "closed-world assumption" in which all code is known a
 As with most optimizations, not all applications are amenable to this approach.
 If the native image building cis unable to optimize an application, it generates a so-called "fallback file" that requires a Java VM to run.
 
-## Class Metadata Features (Require Configuration)
+## Features Requiring Metadata
 
-To use the closed-world optimization, the following Java features generally require configuration at executable build time.
-This configuration ensures that a native executable uses the minimum amount of space necessary.
-
-If one of the following features is used without suitable configuration at build time, the native image builder produces a fallback file.
-
-### Dynamic Class Loading
-Any class to be accessed by name at executable runtime must be known at executable build time.
-For example, a call to `Class.forName("myClass")` requires `myClass` to be present in a [configuration file](BuildConfiguration.md).
-If a configuration file is present but does not include a class that is required for dynamic class loading, a `ClassNotFoundException` will be thrown at runtime, as if the class was not found on the class path or was inaccessible.
-
-### Reflection
-This category includes the following Java features:
-* listing methods and fields of a class
-* invoking methods and accessing fields reflectively
-* using other classes in the package `java.lang.reflect`.
-
-Individual classes, methods, and fields that should be accessible via reflection must be known to the `native-image` tool at build time.
-Native Image tries to resolve these program elements by using static analysis to detect calls to the Reflection API.
-If the analysis fails, the program elements reflectively accessed at runtime must be specified at build time in a [configuration file](BuildConfiguration.md) or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
-For more details, see the [Reflection support](Reflection.md) guide.
-
-Reflection can be used without restriction at build time, for example, in class initializers.
-
-### Dynamic Proxy
-This category includes the use of dynamic proxy classes and allocating instances of dynamic proxy classes via the `java.lang.reflect.Proxy` API.
-Dynamic class proxies are supported by the closed-world optimization if their bytecodes are generated ahead-of-time, that is, before build time.
-This means that the list of interfaces that define dynamic proxies needs to be known to the `native-image` tool at build time.
-Native Image performs a simple static analysis that intercepts calls to the methods `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])`. From this analysis it determines the list of interfaces.
-If the analysis fails, the list of interfaces can be specified in a [configuration file](BuildConfiguration.md).
-For more details, see the [Dynamic Proxies support](DynamicProxy.md) guide.
-
-### JNI (Java Native Interface)
-Native code may access Java objects, classes, methods and fields by name, in a similar way to using the reflection API in Java code.
-Java artifacts accessed by name via JNI must be specified to the `native-image` tool at build time in a [configuration file](BuildConfiguration.md).
-For more details, read the [JNI Implementation](JNI.md) guide.
-
-As an alternative, and in addition to JNI, Native Image provides its own native interface that is much simpler than JNI and with lower overhead.
-It allows calls between Java and C, and access of C data structures from Java code.
-However, it does not allow access of Java data structures from C code.
-For more details, see the [JavaDoc of the package `org.graalvm.nativeimage.c` and its subpackages](http://www.graalvm.org/sdk/javadoc/).
-
-### Serialization
-Java serialization requires class metadata information and this must be specified to the `native-image` tool at build time in a [configuration file](BuildConfiguration.md).
-However, Java serialization has been a persistent source of security vulnerabilities.
-The Java architects have announced that the existing serialization mechanism will be replaced with a new mechanism avoiding these problems in the near future.
+To use the closed-world optimization, the following Java features generally require metadata at executable build time.
+This metadata ensures that a native executable uses the minimum amount of space necessary.
+See [Reachability Metadata](ReachabilityMetadata.md) to learn more.
 
 ## Features Incompatible with the Closed-World Optimization
 

@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Profile-Guided Optimizations
-permalink: /reference-manual/native-image/PGO/
+permalink: /reference-manual/native-image/optimizations-and-performance/PGO/
+redirect_from: /$version/reference-manual/native-image/PGO/
 ---
 # Profile-Guided Optimizations
 

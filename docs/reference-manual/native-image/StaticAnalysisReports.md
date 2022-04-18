@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Points-to Analysis Reports
-permalink: /reference-manual/native-image/Reports/
+permalink: /reference-manual/native-image/debugging-and-diagnostics/StaticAnalysisReports
+redirect_from: /$version/reference-manual/native-image/Reports/
 ---
 # Points-to Analysis Reports
 

@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Memory Management at Image Run Time
-permalink: /reference-manual/native-image/MemoryManagement/
+permalink: /reference-manual/native-image/optimizations-and-performance/MemoryManagement/
+redirect_from: /$version/reference-manual/native-image/MemoryManagement/
 ---
 # Memory Management at Image Run Time
 

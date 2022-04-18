@@ -2,7 +2,8 @@
 layout: docs
 toc_group: native-image
 link_title: Native Image Inspection Tool
-permalink: /reference-manual/native-image/inspect/
+permalink: /reference-manual/native-image/debugging-and-diagnostics/inspect
+redirect_from: /$version/reference-manual/native-image/inspect/
 ---
 
 # Native Image Inspection Tool
