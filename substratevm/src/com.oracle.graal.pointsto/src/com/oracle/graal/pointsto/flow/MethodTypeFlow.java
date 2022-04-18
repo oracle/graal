@@ -38,6 +38,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -179,7 +180,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public void addNodeFlow(PointsToAnalysis bb, Node node, TypeFlow<?> input) {
         if (bb.strengthenGraalGraphs()) {
-            originalMethodFlows.addNodeFlow(node, input);
+            originalMethodFlows.addNodeFlow(new EncodedNodeReference(node), input);
         } else {
             originalMethodFlows.addMiscEntryFlow(input);
         }

@@ -39,12 +39,13 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.Invoke;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -63,7 +64,7 @@ public class MethodFlowsGraph {
     private FormalParamTypeFlow[] parameters;
     private InitialParamTypeFlow[] initialParameterFlows;
     private List<TypeFlow<?>> miscEntryFlows;
-    private Map<Object, TypeFlow<?>> nodeFlows;
+    private Map<EncodedNodeReference, TypeFlow<?>> nodeFlows;
     /*
      * We keep a bci->flow mapping for instanceof and invoke flows since they are queried by the
      * analysis results builder.
@@ -375,17 +376,17 @@ public class MethodFlowsGraph {
         return initialParameterFlows;
     }
 
-    public void addNodeFlow(Object key, TypeFlow<?> flow) {
+    public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
         assert flow != null && !(flow instanceof AllInstantiatedTypeFlow);
-        Object previous = nodeFlows.put(key, flow);
-        assert previous == null : "Overwriting flow for " + key + ": " + previous + " - " + flow;
+        assert !nodeFlows.keySet().stream().anyMatch(existing -> existing.getNode() == key.getNode()) : "Overwriting flow for " + key.getNode() + ": " + flow;
+        nodeFlows.put(key, flow);
     }
 
     public Collection<TypeFlow<?>> getMiscFlows() {
         return miscEntryFlows;
     }
 
-    public Map<Object, TypeFlow<?>> getNodeFlows() {
+    public Map<EncodedNodeReference, TypeFlow<?>> getNodeFlows() {
         return nodeFlows;
     }
 
