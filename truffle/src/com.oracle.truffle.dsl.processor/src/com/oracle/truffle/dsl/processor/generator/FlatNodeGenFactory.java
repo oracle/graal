@@ -286,6 +286,9 @@ public class FlatNodeGenFactory {
         if (activeStateEndIndex == -1) {
             activeStateEndIndex = stateObjects.size();
         }
+        if (plugs != null) {
+            plugs.setStateObjects(stateObjects);
+        }
         this.multiState = createMultiStateBitset(stateObjects, activeStateStartIndex, activeStateEndIndex, volatileState);
         if (plugs != null) {
             plugs.setMultiState(this.multiState);
@@ -768,6 +771,9 @@ public class FlatNodeGenFactory {
         clazz.getImplements().add(aotProviderType);
 
         CodeExecutableElement prepare = clazz.add(CodeExecutableElement.cloneNoAnnotations(ElementUtils.findMethod(types.GenerateAOT_Provider, "prepareForAOT")));
+        if (plugs != null) {
+            prepare.setSimpleName(CodeNames.of(plugs.transformNodeMethodName(prepare.getSimpleName().toString())));
+        }
         prepare.renameArguments("language", "root");
         GeneratorUtils.addOverride(prepare);
         prepare.getModifiers().remove(ABSTRACT);
@@ -1011,7 +1017,12 @@ public class FlatNodeGenFactory {
             return;
         }
 
-        CodeExecutableElement reset = clazz.add(new CodeExecutableElement(modifiers(PRIVATE), context.getType(void.class), "resetAOT_"));
+        String resetName = "resetAOT_";
+        if (plugs != null) {
+            resetName = plugs.transformNodeMethodName(resetName);
+        }
+
+        CodeExecutableElement reset = clazz.add(new CodeExecutableElement(modifiers(PRIVATE), context.getType(void.class), resetName));
         frameState = FrameState.load(this, NodeExecutionMode.FAST_PATH, reset);
         reset.getModifiers().remove(ABSTRACT);
         builder = reset.createBuilder();
@@ -2142,7 +2153,15 @@ public class FlatNodeGenFactory {
             builder.startIf();
             builder.tree(allMultiState.createContains(frameState, new Object[]{AOT_PREPARED}));
             builder.end().startBlock();
-            builder.startStatement().startCall("this.resetAOT_").end().end();
+            String resetName = "resetAOT_";
+            if (plugs != null) {
+                resetName = plugs.transformNodeMethodName(resetName);
+            }
+            builder.startStatement().startCall("this." + resetName);
+            if (plugs != null) {
+                plugs.addNodeCallParameters(builder, false, false);
+            }
+            builder.end(2);
             builder.end();
         }
 
@@ -2443,6 +2462,10 @@ public class FlatNodeGenFactory {
 
         List<BoxingSplit> boxingSplits = parameterBoxingElimination(originalGroup, sharedExecutes);
 
+        if (plugs != null) {
+            plugs.setBoxingSplits(boxingSplits);
+        }
+
         if (boxingSplits.isEmpty()) {
             builder.tree(executeFastPathGroup(builder, frameState, currentType, originalGroup, sharedExecutes, null));
             addExplodeLoop(builder, originalGroup);
@@ -2453,7 +2476,7 @@ public class FlatNodeGenFactory {
             for (BoxingSplit split : boxingSplits) {
                 elseIf = builder.startIf(elseIf);
                 builder.startGroup();
-                List<SpecializationData> specializations = split.group.collectSpecializations();
+                List<SpecializationData> specializations = split.getGroup().collectSpecializations();
                 CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), allSpecializations.toArray());
                 if (!tree.isEmpty()) {
                     builder.tree(tree);
@@ -2462,8 +2485,8 @@ public class FlatNodeGenFactory {
                 builder.tree(multiState.createIsNotAny(frameState, allSpecializations.toArray()));
                 builder.end();
                 builder.end().startBlock();
-                builder.tree(wrapInAMethod(builder, split.group, originalFrameState, split.getName(),
-                                executeFastPathGroup(builder, frameState.copy(), currentType, split.group, sharedExecutes, specializations)));
+                builder.tree(wrapInAMethod(builder, split.getGroup(), originalFrameState, split.getName(),
+                                executeFastPathGroup(builder, frameState.copy(), currentType, split.getGroup(), sharedExecutes, specializations)));
                 builder.end();
             }
 
@@ -2630,7 +2653,7 @@ public class FlatNodeGenFactory {
 
         Collections.sort(groups, new Comparator<BoxingSplit>() {
             public int compare(BoxingSplit o1, BoxingSplit o2) {
-                return Integer.compare(o2.primitiveSignature.length, o1.primitiveSignature.length);
+                return Integer.compare(o2.getPrimitiveSignature().length, o1.getPrimitiveSignature().length);
             }
         });
 
@@ -6158,7 +6181,7 @@ public class FlatNodeGenFactory {
 
     }
 
-    private static class BoxingSplit {
+    public static class BoxingSplit {
 
         private final SpecializationGroup group;
         private final TypeMirror[] primitiveSignature;
@@ -6171,16 +6194,23 @@ public class FlatNodeGenFactory {
         public String getName() {
             StringBuilder b = new StringBuilder();
             String sep = "";
-            for (TypeMirror typeMirror : primitiveSignature) {
+            for (TypeMirror typeMirror : getPrimitiveSignature()) {
                 b.append(sep).append(firstLetterLowerCase(getSimpleName(typeMirror)));
                 sep = "_";
             }
             return b.toString();
         }
 
+        public TypeMirror[] getPrimitiveSignature() {
+            return primitiveSignature;
+        }
+
+        public SpecializationGroup getGroup() {
+            return group;
+        }
     }
 
-    private enum NodeExecutionMode {
+    public enum NodeExecutionMode {
 
         FAST_PATH,
         SLOW_PATH,

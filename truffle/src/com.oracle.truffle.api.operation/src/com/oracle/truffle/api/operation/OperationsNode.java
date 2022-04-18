@@ -14,6 +14,14 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class OperationsNode extends Node implements InstrumentableNode {
 
+    public static final int FRAME_TYPE_OBJECT = 0;
+    public static final int FRAME_TYPE_LONG = 1;
+    public static final int FRAME_TYPE_INT = 2;
+    public static final int FRAME_TYPE_DOUBLE = 3;
+    public static final int FRAME_TYPE_FLOAT = 4;
+    public static final int FRAME_TYPE_BOOLEAN = 5;
+    public static final int FRAME_TYPE_BYTE = 6;
+
     protected static final int BCI_SLOT = 0;
     protected static final int VALUES_OFFSET = 1;
 
@@ -64,10 +72,10 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
     }
 
     public final Object execute(VirtualFrame frame) {
-        return continueAt(frame, null);
+        return continueAt(frame, 0);
     }
 
-    public abstract Object continueAt(VirtualFrame frame, OperationLabel index);
+    protected abstract Object continueAt(VirtualFrame frame, int index);
 
     public abstract String dump();
 

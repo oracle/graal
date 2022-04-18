@@ -15,11 +15,11 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction.ConstantKind;
 
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
@@ -159,19 +159,8 @@ public abstract class Operation {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
             CodeTree[] arguments = new CodeTree[]{CodeTreeBuilder.singleString("arg0")};
-            for (ConstantKind kind : ConstantKind.values()) {
-                if (kind == ConstantKind.OBJECT) {
-                    b.startElseBlock();
-                } else {
-                    b.startIf(kind.ordinal() > 0);
-                    b.string("arg0 instanceof " + kind.getTypeNameBoxed());
-                    b.end().startBlock();
-                }
 
-                b.tree(instructions[kind.ordinal()].createEmitCode(vars, arguments));
-
-                b.end();
-            }
+            b.tree(instructions[ConstantKind.OBJECT.ordinal()].createEmitCode(vars, arguments));
 
             return b.build();
         }

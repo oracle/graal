@@ -1,7 +1,6 @@
 package com.oracle.truffle.sl.operations;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.Assumption;

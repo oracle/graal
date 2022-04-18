@@ -1,12 +1,15 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
@@ -46,7 +49,7 @@ public class ConditionalBranchInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.declaration(ConditionProfile, "profile", "conditionProfiles[LE_BYTES.getShort(bc, bci + " + getArgumentOffset(1) + ")]");
+        b.declaration(ConditionProfile, "profile", "conditionProfiles[LE_BYTES.getShort(bc, bci + " + getArgumentOffset(2) + ")]");
 
         if (boxed) {
             b.declaration("boolean", "cond", "(boolean) frame.getObject(sp - 1)");
@@ -79,21 +82,37 @@ public class ConditionalBranchInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
-        return null;
-    }
+    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-    @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
+        b.startIf();
+
         if (boxed) {
-            return null;
+            b.string("!");
         }
 
-        return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.commonBranchFalseBoxed.opcodeIdField);
+        b.variable(varBoxed).end().startBlock();
+
+        b.startStatement().startCall("LE_BYTES", "putShort");
+        b.variable(vars.bc);
+        b.variable(vars.bci);
+
+        b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT));
+        if (boxed) {
+            b.variable(ctx.commonBranchFalse.opcodeIdField);
+        } else {
+            b.variable(ctx.commonBranchFalseBoxed.opcodeIdField);
+        }
+        b.end();
+
+        b.end(2);
+
+        b.end();
+        return b.build();
     }
 
     @Override
-    public boolean isInputAlwaysBoxed(int index) {
-        return boxed;
+    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
+        return null;
     }
 }

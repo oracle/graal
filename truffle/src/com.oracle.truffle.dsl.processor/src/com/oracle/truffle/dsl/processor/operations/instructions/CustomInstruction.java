@@ -9,6 +9,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
@@ -20,7 +21,7 @@ public class CustomInstruction extends Instruction {
         BITS,
         CONST,
         CHILD,
-        CONTINUATION
+        CONTINUATION,
     }
 
     private final SingleOperationData data;
@@ -31,6 +32,7 @@ public class CustomInstruction extends Instruction {
     private CodeExecutableElement setResultUnboxedMethod;
     private CodeExecutableElement setInputUnboxedMethod;
     private OperationsBytecodeNodeGeneratorPlugs plugs;
+    private CodeExecutableElement prepareAOTMethod;
 
     public SingleOperationData getData() {
         return data;
@@ -238,35 +240,19 @@ public class CustomInstruction extends Instruction {
         this.setInputUnboxedMethod = setInputUnboxedMethod;
     }
 
+    public void setPrepareAOTMethod(CodeExecutableElement prepareAOTMethod) {
+        this.prepareAOTMethod = prepareAOTMethod;
+    }
+
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
         return CodeTreeBuilder.createBuilder() //
                         .startStatement() //
                         .startStaticCall(setResultUnboxedMethod) //
                         .variable(vars.bc) //
                         .variable(vars.bci) //
+                        .startGroup().string("!").variable(varBoxed).end() //
                         .end(2).build();
-    }
-
-    @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
-        if (data.getMainProperties().isVariadic) {
-            return null;
-        }
-
-        return CodeTreeBuilder.createBuilder() //
-                        .startStatement() //
-                        .startStaticCall(setInputUnboxedMethod) //
-                        .variable(vars.bc) //
-                        .variable(vars.bci) //
-                        .tree(index) //
-                        .end(2).build();
-
-    }
-
-    @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
-        return createSetInputBoxed(vars, CodeTreeBuilder.singleString("" + index));
     }
 
     public OperationsBytecodeNodeGeneratorPlugs getPlugs() {
@@ -277,4 +263,19 @@ public class CustomInstruction extends Instruction {
         this.plugs = plugs;
     }
 
+    @Override
+    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
+        if (prepareAOTMethod == null) {
+            return null;
+        }
+
+        return CodeTreeBuilder.createBuilder().startStatement()//
+                        .startCall("this", prepareAOTMethod) //
+                        .string("null") // frame
+                        .variable(vars.bci) //
+                        .string("-1") // stack pointer
+                        .tree(language) //
+                        .tree(root) //
+                        .end(2).build();
+    }
 }

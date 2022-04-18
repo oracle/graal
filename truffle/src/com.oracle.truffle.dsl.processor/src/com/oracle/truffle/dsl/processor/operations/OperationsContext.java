@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.DiscardInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
@@ -14,7 +15,6 @@ import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationE
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationLeaveInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadArgumentInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction.ConstantKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
@@ -30,6 +30,10 @@ public class OperationsContext {
 
     public Instruction commonBranchFalse;
     public Instruction commonBranchFalseBoxed;
+
+    public LoadArgumentInstruction[] loadArgumentInstructions;
+    public LoadConstantInstruction[] loadConstantInstructions;
+    public LoadLocalInstruction[] loadLocalInstructions;
 
     public final ArrayList<Instruction> instructions = new ArrayList<>();
     public final ArrayList<Operation> operations = new ArrayList<>();
@@ -78,40 +82,31 @@ public class OperationsContext {
     }
 
     private void createLoadStoreLocal() {
-        StoreLocalInstruction slInit = add(new StoreLocalInstruction(instructionId++));
-        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, slInit));
+        add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(instructionId++))));
 
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, add(new LoadLocalInstruction(instructionId++))));
+        loadLocalInstructions = new LoadLocalInstruction[ConstantKind.values().length];
+        for (ConstantKind kind : ConstantKind.values()) {
+            loadLocalInstructions[kind.ordinal()] = add(new LoadLocalInstruction(this, instructionId++, kind));
+        }
+
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, loadLocalInstructions[ConstantKind.OBJECT.ordinal()]));
     }
 
     private void createLoadArgument() {
-        LoadArgumentInstruction ldargInit = add(new LoadArgumentInstruction(instructionId++));
-        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, ldargInit));
+        loadArgumentInstructions = new LoadArgumentInstruction[ConstantKind.values().length];
+        for (ConstantKind kind : ConstantKind.values()) {
+            loadArgumentInstructions[kind.ordinal()] = add(new LoadArgumentInstruction(this, instructionId++, kind));
+        }
+        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, loadArgumentInstructions[ConstantKind.OBJECT.ordinal()]));
     }
 
     private void createLoadConstant() {
-        LoadConstantInstruction loadObject = add(new LoadConstantInstruction(instructionId++, false, ConstantKind.OBJECT, null));
-
-        LoadConstantInstruction[] instrs = new LoadConstantInstruction[ConstantKind.values().length];
-        LoadConstantInstruction[] instrsBoxed = new LoadConstantInstruction[ConstantKind.values().length];
-
+        loadConstantInstructions = new LoadConstantInstruction[ConstantKind.values().length];
         for (ConstantKind kind : ConstantKind.values()) {
-            if (kind.isSingleByte()) {
-                instrsBoxed[kind.ordinal()] = add(new LoadConstantInstruction(instructionId++, true, kind, null));
-            } else {
-                instrsBoxed[kind.ordinal()] = loadObject;
-            }
+            loadConstantInstructions[kind.ordinal()] = add(new LoadConstantInstruction(this, instructionId++, kind));
         }
 
-        for (ConstantKind kind : ConstantKind.values()) {
-            if (kind == ConstantKind.OBJECT) {
-                instrs[kind.ordinal()] = loadObject;
-            } else {
-                instrs[kind.ordinal()] = add(new LoadConstantInstruction(instructionId++, false, kind, instrsBoxed[kind.ordinal()]));
-            }
-        }
-
-        add(new Operation.LoadConstant(this, operationId++, instrs));
+        add(new Operation.LoadConstant(this, operationId++, loadConstantInstructions));
     }
 
     private void createReturn() {

@@ -2,6 +2,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 public class InstrumentationEnterInstruction extends Instruction {
 
@@ -37,12 +38,12 @@ public class InstrumentationEnterInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
         return null;
     }
 
     @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
+    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }
 }

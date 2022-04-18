@@ -33,7 +33,7 @@ public abstract class Instruction {
     }
 
     public static enum InputType {
-        STACK_VALUE(0),
+        STACK_VALUE(1),
         STACK_VALUE_IGNORED(0),
         VARARG_VALUE(2),
         CONST_POOL(2),
@@ -171,6 +171,10 @@ public abstract class Instruction {
                 default:
                     throw new IllegalArgumentException("Unexpected value: " + this);
             }
+        }
+
+        boolean isStackValue() {
+            return this == STACK_VALUE || this == STACK_VALUE_IGNORED;
         }
 
     }
@@ -327,6 +331,21 @@ public abstract class Instruction {
                             .end(2).build();
         }
 
+        if (n < inputs.length && inputs[n] == InputType.STACK_VALUE) {
+            int svIndex = 0;
+            for (int i = 0; i < n; i++) {
+                if (inputs[i].isStackValue())
+                    svIndex++;
+            }
+
+            return CodeTreeBuilder.createBuilder().startStatement().variable(vars.bc) //
+                            .string("[").variable(vars.bci).string(" + " + getArgumentOffset(n)).string("] = ") //
+                            .string("predecessorBcis[" + svIndex + "] < ").variable(vars.bci).string(" - 255") //
+                            .string(" ? 0") //
+                            .string(" : (byte)(").variable(vars.bci).string(" - predecessorBcis[" + svIndex + "])") //
+                            .end().build();
+        }
+
         if (n < inputs.length && inputs[n] == InputType.VARARG_VALUE) {
             value = CodeTreeBuilder.createBuilder().startParantheses().variable(vars.numChildren).string(" - " + numStackValuesExclVarargs()).end().build();
         }
@@ -364,6 +383,21 @@ public abstract class Instruction {
             }
         }
         return res;
+    }
+
+    public int getStackValueArgumentOffset(int index) {
+        int svIndex = 0;
+        for (int i = 0; i < inputs.length; i++) {
+            if (inputs[i].isStackValue()) {
+                if (svIndex == index) {
+                    return getArgumentOffset(i);
+                } else {
+                    svIndex++;
+                }
+            }
+        }
+
+        throw new AssertionError("should not reach here");
     }
 
     public boolean isArgumentInBytecode(int index) {
@@ -410,10 +444,6 @@ public abstract class Instruction {
         return result;
     }
 
-    protected boolean resultIsAlwaysBoxed() {
-        return false;
-    }
-
     public CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
@@ -423,50 +453,12 @@ public abstract class Instruction {
 
         assert numPush == 1 || numPush == 0;
 
-        if (isVariadic()) {
-            // variadic instructions always box everything
-            b.startFor().string("int inputIndex = 0; inputIndex < ").tree(numPop).string("; inputIndex++").end().startBlock();
-            b.startStatement().startCall("doMarkAlwaysBoxedInput");
-            b.tree(numPop);
-            b.string("inputIndex");
-            b.end(2);
-            b.end();
-        } else {
-            int numPopStatic = numPopStatic();
-            for (int i = 0; i < numPopStatic; i++) {
-                if (isInputAlwaysBoxed(i)) {
-                    b.startStatement().startCall("doMarkAlwaysBoxedInput");
-                    b.tree(numPop);
-                    b.string("" + i);
-                    b.end(2);
-                }
-            }
-        }
-
-        if (isVariadic() || numPopStatic() == 0) {
-            b.startStatement();
-        } else {
-            b.startAssign("boolean[] inputsAlwaysBoxed");
-        }
-
+        b.startAssign("int[] predecessorBcis");
         b.startCall("doBeforeEmitInstruction");
         b.variable(vars.bci);
         b.tree(numPop);
         b.string(numPush == 0 ? "false" : "true");
-        b.string("" + resultIsAlwaysBoxed());
         b.end(2);
-
-        if (!isVariadic() && numPopStatic() > 0) {
-            b.startIf().string("inputsAlwaysBoxed != null").end().startBlock();
-            {
-                for (int i = 0; i < numPopStatic(); i++) {
-                    b.startIf().string("inputsAlwaysBoxed[" + i + "]").end().startBlock();
-                    b.tree(createSetInputBoxed(vars.asExecution(), i));
-                    b.end();
-                }
-            }
-            b.end();
-        }
 
         // emit opcode
         b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, opcodeIdField));
@@ -576,45 +568,24 @@ public abstract class Instruction {
         return Arrays.stream(results).anyMatch(x -> x == ResultType.RETURN);
     }
 
-    public abstract CodeTree createSetResultBoxed(ExecutionVariables vars);
+    public abstract CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType);
 
-    public abstract CodeTree createSetInputBoxed(ExecutionVariables vars, int index);
+    public abstract CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root);
 
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, CodeTree index) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        if (numPopStatic() == 0) {
-            b.startAssert().string("false : \"invalid index\"").end();
-            return b.build();
+    public CodeTree getPredecessorOffset(ExecutionVariables vars, int index) {
+        for (int i = 0; i < inputs.length; i++) {
+            if (inputs[i] == InputType.STACK_VALUE || inputs[i] == InputType.STACK_VALUE_IGNORED) {
+                if (index-- == 0) {
+                    return CodeTreeBuilder.createBuilder().startParantheses() //
+                                    .variable(vars.bc) //
+                                    .string("[") //
+                                    .variable(vars.bci).string(" + " + getArgumentOffset(i)) //
+                                    .string("] & 0xff") //
+                                    .end().build();
+                }
+            }
         }
 
-        if (numPopStatic() == 1) {
-            b.startAssert().tree(index).string(" == 0 : \"invalid index\"").end();
-            b.tree(createSetInputBoxed(vars, 0));
-            return b.build();
-        }
-
-        b.startSwitch().tree(index).end().startBlock();
-        for (int i = 0; i < numPopStatic(); i++) {
-            b.startCase().string("" + i).startCaseBlock();
-            b.tree(createSetInputBoxed(vars, i));
-            b.statement("break");
-            b.end();
-        }
-        b.caseDefault().startCaseBlock();
-        b.startAssert().string("false : \"invalid index\"").end();
-        b.end();
-        b.end();
-
-        return b.build();
+        throw new AssertionError("should not reach here");
     }
-
-    @SuppressWarnings("unused")
-    public boolean isInputAlwaysBoxed(int index) {
-        return false;
-    }
-
-    public boolean isResultAlwaysBoxed() {
-        return false;
-    }
-
 }

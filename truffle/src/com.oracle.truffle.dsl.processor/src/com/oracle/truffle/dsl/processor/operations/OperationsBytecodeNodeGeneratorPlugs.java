@@ -1,11 +1,10 @@
 package com.oracle.truffle.dsl.processor.operations;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
@@ -14,9 +13,11 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.BitSet;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.NodeExecutionMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -31,6 +32,7 @@ import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 
@@ -50,25 +52,14 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     private final ProcessorContext context;
     private final TruffleTypes types;
-    private final Object[] inputsBoxedState;
-    private final Object resultBoxedState;
+    private final Object resultUnboxedState;
+    private List<Object> specializationStates;
 
     private MultiStateBitSet multiState;
+    private List<BoxingSplit> boxingSplits;
 
-    private static final boolean DO_LOG_BOXING_ELIM = false;
-
-    private static class InputBoxedState {
-        private final int index;
-
-        InputBoxedState(int index) {
-            this.index = index;
-        }
-
-        @Override
-        public String toString() {
-            return "INPUT-BOXED(" + index + ")";
-        }
-    }
+    private static final boolean DO_LOG_BOXING_ELIM = true;
+    private static final boolean DO_BOXING_ELIM_IN_PE = true;
 
     OperationsBytecodeNodeGeneratorPlugs(CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
                     Set<String> innerTypeNames, List<Object> additionalData,
@@ -90,22 +81,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         this.context = ProcessorContext.getInstance();
         this.types = context.getTypes();
 
-        if (!isVariadic) {
-            inputsBoxedState = new Object[cinstr.numPopStatic()];
-            for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                inputsBoxedState[i] = new InputBoxedState(i);
-            }
-        } else {
-            inputsBoxedState = null;
-        }
-
         if (cinstr.numPush() == 0) {
-            resultBoxedState = null;
+            resultUnboxedState = null;
         } else {
-            resultBoxedState = new Object() {
+            resultUnboxedState = new Object() {
                 @Override
                 public String toString() {
-                    return "RESULT-BOXED";
+                    return "RESULT-UNBOXED";
                 }
             };
         }
@@ -113,14 +95,24 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void addAdditionalStateBits(List<Object> stateObjects) {
-        if (inputsBoxedState != null) {
-            stateObjects.addAll(Arrays.asList(inputsBoxedState));
-        }
-        if (resultBoxedState != null) {
-            stateObjects.add(resultBoxedState);
+        if (resultUnboxedState != null) {
+            stateObjects.add(resultUnboxedState);
         }
     }
 
+    @Override
+    public void setStateObjects(List<Object> stateObjects) {
+        this.specializationStates = stateObjects.stream()//
+                        .filter(x -> x instanceof SpecializationData)//
+                        .collect(Collectors.toUnmodifiableList());
+    }
+
+    @Override
+    public void setBoxingSplits(List<BoxingSplit> boxingSplits) {
+        this.boxingSplits = boxingSplits;
+    }
+
+    @Override
     public void setMultiState(MultiStateBitSet multiState) {
         this.multiState = multiState;
     }
@@ -367,43 +359,30 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             typeName = getFrameName(retType.getKind());
         }
 
-        CodeTree isResultUnboxed = multiState.createNotContains(frameState, new Object[]{resultBoxedState});
+        CodeTree isResultBoxed = multiState.createNotContains(frameState, new Object[]{resultUnboxedState});
 
         if (typeName.equals("Object")) {
-            b.startIf().tree(isResultUnboxed).end().startBlock();
-            {
-                // succ is expecting a primitive, let them know we are sending a boxed value
-
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-                // TODO lock
-
-                b.tree(OperationGeneratorUtils.callSetInputBoxed("$bci"));
-
-                b.lineComment("CheckStyle: stop parameter assignment check");
-                b.tree(multiState.createSet(frameState, new Object[]{resultBoxedState}, true, true));
-                b.lineComment("CheckStyle: resume parameter assignment check");
-            }
-            b.end();
             b.startStatement();
-            b.startCall("$frame", "set" + typeName);
+            b.startCall("$frame", "setObject");
             b.string("$sp - " + destOffset);
             b.tree(value);
             b.end(2);
         } else {
-            b.startIf().tree(isResultUnboxed).end().startBlock();
+            b.declaration(retType, "value", value);
+            b.startIf().tree(isResultBoxed).end().startBlock();
             {
                 b.startStatement();
-                b.startCall("$frame", "set" + typeName);
+                b.startCall("$frame", "setObject");
                 b.string("$sp - " + destOffset);
-                b.tree(value);
+                b.string("value");
                 b.end(2);
             }
             b.end().startElseBlock();
             {
                 b.startStatement();
-                b.startCall("$frame", "setObject");
+                b.startCall("$frame", "set" + typeName);
                 b.string("$sp - " + destOffset);
-                b.tree(value);
+                b.string("value");
                 b.end(2);
             }
             b.end();
@@ -418,6 +397,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (isVariadic || inBoundary)
             return false;
 
+        if (frameState.getMode() == NodeExecutionMode.SLOW_PATH) {
+
+        }
         createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
         return true;
     }
@@ -478,126 +460,83 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         b.tree(targetValue.createDeclaration(null));
 
-        String typeName = getFrameName(targetValue.getTypeMirror().getKind());
-
-        CodeTree childBoxedTree = multiState.createContains(frameState, new Object[]{inputsBoxedState[childIndex]});
-
-        if (typeName.equals("Object")) {
-            b.startIf().tree(childBoxedTree).end();
-            b.startBlock();
+        if (!DO_BOXING_ELIM_IN_PE) {
+            b.startIf().tree(GeneratorUtils.createInCompiledCode()).end().startBlock();
             {
-                // pred is already boxed, there is no need to do any catching
                 b.startAssign(targetValue.getName());
-                b.startCall("$frame", "getObject");
+                b.maybeCast(context.getType(Object.class), targetValue.getTypeMirror());
+                b.startCall("$frame", "getValue");
                 b.string("$sp - " + offset);
-                b.end(3);
+                b.end(2);
             }
             b.end().startElseBlock();
+        }
+
+        ConstantKind typeName = getFrameType(targetValue.getTypeMirror().getKind());
+
+        if (typeName == ConstantKind.OBJECT) {
+            b.startAssign(targetValue.getName());
+            b.startCall("$frame", "getObject");
+            b.string("$sp - " + offset);
+            b.end(2);
+        } else {
+            b.startIf().startCall("$frame", "is" + typeName.getFrameName()).string("$sp - " + offset).end(2).startBlock();
             {
-                // pred may not be boxed, need to do a try-catch. do a bit set ONLY IF the node is
-                // completely uninitialized (to skip the first `executeGeneric` call)
-                b.startTryBlock();
                 b.startAssign(targetValue.getName());
-                b.startCall("$frame", "getObject");
+                b.startCall("$frame", "get" + typeName.getFrameName());
                 b.string("$sp - " + offset);
                 b.end(3);
-
-                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, true, true, "generic");
             }
-            b.end();
-        } else {
-            b.startIf().tree(childBoxedTree).end();
-            b.startBlock();
+            b.startElseIf();
+            b.startCall("$frame", "isObject").string("$sp - " + offset).end();
+            b.string(" && ");
+            b.startCall("$frame", "getObject").string("$sp - " + offset).end().string("instanceof ", typeName.getTypeNameBoxed());
+            b.end().startBlock();
             {
-                // pred is boxed. we need to unbox + catch CCE. CCE plays the role of URE from
-                // before
-                b.startTryBlock();
                 b.startAssign(targetValue.getName());
                 b.cast(targetValue.getTypeMirror());
                 b.startCall("$frame", "getObject");
                 b.string("$sp - " + offset);
                 b.end(3);
-
-                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, true, false, false, "box -> unbox");
             }
             b.end().startElseBlock();
             {
-                // pred is unboxed. FSTE can happen if pred has multiple primitive possible results.
-                // then we need to box all of them (e.g. was producing ints so far, and now produced
-                // a float. both primitive, but different types)
-                b.startTryBlock();
-                b.startAssign(targetValue.getName());
-                b.startCall("$frame", "get" + typeName);
-                b.string("$sp - " + offset);
-                b.end(3);
+                // slow path
+                FrameState slowPathFrameState = frameState.copy();
 
-                createExecuteChildCatch(node, frameState, execution, targetValue, createExecuteAndSpecialize, offset, b, false, true, false, "unbox -> box");
+                CodeTreeBuilder accessBuilder = b.create();
+                accessBuilder.startCall("$frame", "getValue");
+                accessBuilder.string("$sp - " + offset);
+                accessBuilder.end();
+
+                slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(accessBuilder.build()));
+
+                int curOffset = offset;
+                boolean found = false;
+
+                for (NodeExecutionData otherExecution : node.getChildExecutions()) {
+                    if (found) {
+                        LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, context.getType(Object.class));
+                        b.declaration("Object", childEvaluatedValue.getName(), "$frame.getValue($sp - " + (--curOffset) + ")");
+                        slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
+                    } else {
+                        // skip forward already evaluated
+                        found = execution == otherExecution;
+                    }
+                }
+
+                b.tree(createExecuteAndSpecialize.apply(slowPathFrameState));
+
             }
+            b.end();
+
+        }
+
+        if (!DO_BOXING_ELIM_IN_PE) {
             b.end();
         }
 
         return b.build();
-    }
-
-    private void createExecuteChildCatch(NodeData node, FrameState frameState, NodeExecutionData execution, LocalVariable targetValue, Function<FrameState, CodeTree> createExecuteAndSpecialize,
-                    int offset, CodeTreeBuilder b, boolean catchCastException, boolean setBoxedInput, boolean onlyIfUninit, String reason) {
-
-        if (catchCastException) {
-            b.startCatchBlock(context.getType(ClassCastException.class), "ex");
-        } else {
-            b.startCatchBlock(context.getDeclaredType("com.oracle.truffle.api.frame.FrameSlotTypeException"), "ex");
-        }
-
-        if (DO_LOG_BOXING_ELIM) {
-            b.statement("System.out.printf(\" -- frame mispredict " + cinstr.name + "(" + reason + ": %s) @ %04x: %s %n\", $frame.getTag($sp - " + offset + "), $bci, ex)");
-        }
-
-        FrameState slowPathFrameState = frameState.copy();
-
-        if (setBoxedInput) {
-            boolean skipInit = node.needsRewrites(context) && onlyIfUninit;
-            // we cannot "skip init" if node has no rewrites, since there is no init
-
-            if (skipInit) {
-                b.startIf().tree(multiState.createIsEmpty(slowPathFrameState)).end().startBlock();
-            }
-
-            // TODO lock
-            b.lineComment("CheckStyle: stop parameter assignment check");
-            b.tree(multiState.createSet(slowPathFrameState, new Object[]{inputsBoxedState[execution.getIndex()]}, true, true));
-            b.lineComment("CheckStyle: resume parameter assignment check");
-
-            b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci", execution.getIndex()));
-
-            if (skipInit) {
-                b.end();
-            }
-        }
-
-        CodeTreeBuilder accessBuilder = b.create();
-        accessBuilder.startCall("$frame", "getValue");
-        accessBuilder.string("$sp - " + offset);
-        accessBuilder.end();
-
-        slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(accessBuilder.build()));
-
-        int curOffset = offset;
-        boolean found = false;
-
-        for (NodeExecutionData otherExecution : node.getChildExecutions()) {
-            if (found) {
-                LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, context.getType(Object.class));
-                b.declaration("Object", childEvaluatedValue.getName(), "$frame.getValue($sp - " + (--curOffset) + ")");
-                slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
-            } else {
-                // skip forward already evaluated
-                found = execution == otherExecution;
-            }
-        }
-
-        b.tree(createExecuteAndSpecialize.apply(slowPathFrameState));
-
-        b.end();
     }
 
     @Override
@@ -605,45 +544,79 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (isVariadic)
             return;
 
-        List<Integer> referenceArguments = new ArrayList<>();
-        List<Object> inputsBoxedStateList = new ArrayList<>();
-
-        int i = -1;
-        for (TypeMirror arg : specialization.getTypeSignature()) {
-            if (i >= 0 && !isUnboxable(arg.getKind())) {
-                referenceArguments.add(i);
-                inputsBoxedStateList.add(inputsBoxedState[i]);
+        boolean elseIf = false;
+        for (BoxingSplit split : boxingSplits) {
+            List<SpecializationData> specializations = split.getGroup().collectSpecializations();
+            if (!specializations.contains(specialization)) {
+                continue;
             }
 
-            i++;
+            elseIf = b.startIf(elseIf);
+
+            b.startGroup();
+            CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), specializationStates.toArray());
+            if (!tree.isEmpty()) {
+                b.tree(tree);
+                b.string(" && ");
+            }
+            b.tree(multiState.createIsNotAny(frameState, specializationStates.toArray()));
+            b.end();
+            b.end().startBlock();
+
+            for (int i = 0; i < cinstr.numPopStatic(); i++) {
+                b.startBlock();
+                b.declaration("int", "predOffset", "bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff");
+                b.startIf().string("predOffset != 0").end().startBlock();
+                ConstantKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
+                b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci - predOffset", frameType));
+                b.end(2);
+            }
+
+            b.end();
         }
 
-        if (referenceArguments.isEmpty()) {
-            return;
+        if (elseIf) {
+            b.startElseBlock();
+        }
+        for (int i = 0; i < cinstr.numPopStatic(); i++) {
+            b.startBlock();
+            b.declaration("int", "predOffset", "bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff");
+            b.startIf().string("predOffset != 0").end().startBlock();
+            b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci - predOffset", ConstantKind.OBJECT));
+            b.end(2);
         }
 
-        b.startIf().string("!").startParantheses().tree(multiState.createContainsAll(frameState, inputsBoxedStateList.toArray())).end(2).startBlock();
-        {
-            // not all of them are set, set them
-
-            b.lineComment("CheckStyle: stop parameter assignment check");
-            b.tree(multiState.createSet(frameState, inputsBoxedStateList.toArray(), true, true));
-            b.lineComment("CheckStyle: resume parameter assignment check");
-
-            b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci", referenceArguments.toArray(new Integer[0])));
+        if (elseIf) {
+            b.end();
         }
+    }
+
+    private static ConstantKind getFrameType(TypeKind kind) {
+        switch (kind) {
+            case BYTE:
+                return ConstantKind.BYTE;
+            case BOOLEAN:
+                return ConstantKind.BOOLEAN;
+            case INT:
+                return ConstantKind.INT;
+            case FLOAT:
+                return ConstantKind.FLOAT;
+            case LONG:
+                return ConstantKind.LONG;
+            case DOUBLE:
+                return ConstantKind.DOUBLE;
+            default:
+                return ConstantKind.OBJECT;
+        }
+    }
+
+    public CodeTree createSetResultBoxed(CodeVariableElement varUnboxed) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        b.startIf().variable(varUnboxed).end().startBlock();
+        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{resultUnboxedState}, true, true));
+        b.end().startElseBlock();
+        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{resultUnboxedState}, false, true));
         b.end();
-    }
-
-    public CodeTree createSetResultBoxed() {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{resultBoxedState}, true, true));
-        return b.build();
-    }
-
-    public CodeTree createSetInputBoxed(int index) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.tree(multiState.createSet(FrameState.createEmpty(), new Object[]{inputsBoxedState[index]}, true, true));
         return b.build();
     }
 

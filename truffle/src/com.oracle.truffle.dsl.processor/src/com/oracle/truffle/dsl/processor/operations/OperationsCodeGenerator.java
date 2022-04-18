@@ -26,7 +26,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
@@ -392,7 +391,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
             b.string("handlers");
             b.string("condProfiles");
-            b.startCall("createPredecessorIndices").end();
             b.end(2);
 
             if (ENABLE_INSTRUMENTATION) {
@@ -596,49 +594,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         {
-            CodeExecutableElement mMarkAlwaysBoxedResult = GeneratorUtils.overrideImplement(types.OperationsBuilder, "markAlwaysBoxedResult");
-            typBuilderImpl.add(mMarkAlwaysBoxedResult);
-
-            ExecutionVariables exVars = new ExecutionVariables();
-            exVars.bc = fldBc;
-            exVars.bci = (CodeVariableElement) mMarkAlwaysBoxedResult.getParameters().get(0);
-
-            CodeTreeBuilder b = mMarkAlwaysBoxedResult.appendBuilder();
-
-            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, exVars, instr -> instr.createSetResultBoxed(exVars)));
-        }
-
-        {
-            CodeExecutableElement mMarkAlwaysBoxedInput = GeneratorUtils.overrideImplement(types.OperationsBuilder, "markAlwaysBoxedInput");
-            typBuilderImpl.add(mMarkAlwaysBoxedInput);
-
-            ExecutionVariables exVars = new ExecutionVariables();
-            exVars.bc = fldBc;
-            exVars.bci = (CodeVariableElement) mMarkAlwaysBoxedInput.getParameters().get(0);
-
-            VariableElement varIndex = mMarkAlwaysBoxedInput.getParameters().get(1);
-
-            CodeTreeBuilder b = mMarkAlwaysBoxedInput.appendBuilder();
-
-            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, exVars, instr -> instr.createSetInputBoxed(exVars, CodeTreeBuilder.singleVariable(varIndex))));
-
-        }
-
-        {
             CodeExecutableElement mDoSetResultUnboxed = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "doSetResultBoxed");
             builderBytecodeNodeType.add(mDoSetResultUnboxed);
+
+            CodeVariableElement varBoxed = new CodeVariableElement(context.getType(boolean.class), "boxed");
+            mDoSetResultUnboxed.addParameter(varBoxed);
 
             CodeVariableElement varBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
             mDoSetResultUnboxed.addParameter(varBc);
 
-            CodeVariableElement varSuccIndices = new CodeVariableElement(arrayOf(context.getType(short.class)), "successorIndices");
-            mDoSetResultUnboxed.addParameter(varSuccIndices);
-
-            CodeVariableElement varTargetBci = new CodeVariableElement(context.getType(int.class), "targetBci");
+            CodeVariableElement varTargetBci = new CodeVariableElement(context.getType(int.class), "bci");
             mDoSetResultUnboxed.addParameter(varTargetBci);
 
-            CodeVariableElement varIndices = new CodeVariableElement(context.getType(int.class), "...indices");
-            mDoSetResultUnboxed.addParameter(varIndices);
+            CodeVariableElement varTargetType = new CodeVariableElement(context.getType(int.class), "targetType");
+            mDoSetResultUnboxed.addParameter(varTargetType);
 
             vars.bc = varBc;
             vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
@@ -647,112 +616,28 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             b.startStatement().startStaticCall(types.CompilerAsserts, "neverPartOfCompilation").end(2);
 
-            b.declaration("int", vars.bci.getName(), "0");
-            b.declaration("int", "instrIndex", "0");
-
-            b.startWhile().variable(vars.bci).string(" < ").variable(varTargetBci).end();
-            b.startBlock();
-
             b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(varBc, vars.bci)).end();
             b.startBlock();
 
             for (Instruction instr : m.getInstructions()) {
-                b.startCase().variable(instr.opcodeIdField).end();
-                b.startBlock();
 
-                if (instr.numPush() > 0) {
-                    CodeTree tree = instr.createSetResultBoxed(vars.asExecution());
-                    if (tree != null) {
-                        b.startIf().variable(varSuccIndices).string("[instrIndex] == ").variable(varTargetBci).end().startBlock();
-                        b.tree(tree);
-                        b.end();
-                    }
-                    b.statement("instrIndex += 2");
+                CodeTree tree = instr.createSetResultBoxed(vars.asExecution(), varBoxed, varTargetType);
+                if (tree != null) {
+                    b.startCase().variable(instr.opcodeIdField).end();
+                    b.startBlock();
+
+                    b.tree(tree);
+
+                    b.statement("break");
+
+                    b.end();
                 }
-                b.startAssign(vars.bci).variable(vars.bci).string(" + " + instr.length()).end();
-                b.statement("break");
-
-                b.end();
             }
 
             b.end();
-
-            b.end(); // while block
 
             vars.bc = fldBc;
-            vars.bci = null;
-        }
-
-        {
-            CodeExecutableElement mDoSetInputUnboxed = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "doSetInputBoxed");
-            builderBytecodeNodeType.add(mDoSetInputUnboxed);
-
-            CodeVariableElement varBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
-            mDoSetInputUnboxed.addParameter(varBc);
-
-            CodeVariableElement varSuccIndices = new CodeVariableElement(arrayOf(context.getType(short.class)), "successorIndices");
-            mDoSetInputUnboxed.addParameter(varSuccIndices);
-
-            CodeVariableElement varTargetBci = new CodeVariableElement(context.getType(int.class), "targetBci");
-            mDoSetInputUnboxed.addParameter(varTargetBci);
-
-            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
-
-            CodeTreeBuilder b = mDoSetInputUnboxed.createBuilder();
-
-            b.startStatement().startStaticCall(types.CompilerAsserts, "neverPartOfCompilation").end(2);
-
-            b.declaration("int", vars.bci.getName(), "0");
-            b.declaration("int", "instrIndex", "0");
-
-            b.startWhile().variable(vars.bci).string(" < ").variable(varTargetBci).end();
-            b.startBlock();
-
-            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(fldBc, vars.bci)).end();
-            b.startBlock();
-
-            for (Instruction instr : m.getInstructions()) {
-                b.startCase().variable(instr.opcodeIdField).end();
-                b.startCaseBlock();
-
-                b.startAssign(vars.bci).variable(vars.bci).string(" + " + instr.length()).end();
-                if (instr.numPush() > 0) {
-                    b.statement("instrIndex += 2");
-                }
-                b.statement("break");
-
-                b.end();
-            }
-
-            b.end(); // switch block
-
-            b.end(); // while block
-
-            b.startAssert().variable(vars.bci).string(" == ").variable(varTargetBci).end();
-
-            b.startAssign(vars.bci).variable(varSuccIndices).string("[instrIndex]").end();
-
-            b.startIf().variable(vars.bci).string(" == -1").end().startBlock();
-            b.returnStatement();
-            b.end();
-
-            b.declaration("int", "succInput", CodeTreeBuilder.createBuilder().variable(varSuccIndices).string("[instrIndex + 1]").build());
-
-            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(vars.bc, vars.bci)).end();
-            b.startBlock();
-
-            for (Instruction instr : m.getInstructions()) {
-                b.startCase().variable(instr.opcodeIdField).end();
-                b.startCaseBlock();
-
-                b.tree(instr.createSetInputBoxed(vars.asExecution(), CodeTreeBuilder.singleString("succInput")));
-
-                b.statement("break");
-
-                b.end();
-            }
-
-            b.end(); // switch block
+            vars.bci = fldBci;
         }
 
         for (Operation op : m.getOperations()) {
@@ -954,49 +839,19 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             SingleOperationData soData = cinstr.getData();
 
             {
+                CodeVariableElement varUnboxed = new CodeVariableElement(context.getType(boolean.class), "unboxed");
                 CodeExecutableElement metSetResultUnboxed = new CodeExecutableElement(
                                 MOD_PRIVATE_STATIC,
                                 context.getType(void.class), soData.getName() + "_doSetResultUnboxed_",
                                 new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc"),
-                                new CodeVariableElement(context.getType(int.class), "$bci"));
+                                new CodeVariableElement(context.getType(int.class), "$bci"),
+                                varUnboxed);
                 typBuilderImpl.add(metSetResultUnboxed);
                 cinstr.setSetResultUnboxedMethod(metSetResultUnboxed);
 
                 CodeTreeBuilder b = metSetResultUnboxed.createBuilder();
-                b.tree(cinstr.getPlugs().createSetResultBoxed());
+                b.tree(cinstr.getPlugs().createSetResultBoxed(varUnboxed));
                 cinstr.setSetResultUnboxedMethod(metSetResultUnboxed);
-            }
-
-            if (!cinstr.getData().getMainProperties().isVariadic) {
-                CodeExecutableElement metSetInputUnboxed = new CodeExecutableElement(
-                                MOD_PRIVATE_STATIC,
-                                context.getType(void.class), soData.getName() + "_doSetInputUnboxed_",
-                                new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc"),
-                                new CodeVariableElement(context.getType(int.class), "$bci"),
-                                new CodeVariableElement(context.getType(int.class), "index"));
-                typBuilderImpl.add(metSetInputUnboxed);
-                cinstr.setSetInputUnboxedMethod(metSetInputUnboxed);
-
-                CodeTreeBuilder b = metSetInputUnboxed.createBuilder();
-
-                if (cinstr.numPopStatic() == 0) {
-                    b.startAssert().string("false : \"operation has no input\"").end();
-                } else if (cinstr.numPopStatic() == 1) {
-                    b.startAssert().string("index == 0 : \"operation has only one input\"").end();
-                    b.tree(cinstr.getPlugs().createSetInputBoxed(0));
-                } else {
-                    b.startSwitch().string("index").end().startBlock();
-                    for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                        b.startCase().string("" + i).end().startCaseBlock();
-                        b.tree(cinstr.getPlugs().createSetInputBoxed(i));
-                        b.statement("break");
-                        b.end();
-                    }
-                    b.caseDefault().startCaseBlock();
-                    b.tree(GeneratorUtils.createShouldNotReachHere("invalid input index"));
-                    b.end(2);
-                }
-                cinstr.setSetInputUnboxedMethod(metSetInputUnboxed);
             }
         }
     }

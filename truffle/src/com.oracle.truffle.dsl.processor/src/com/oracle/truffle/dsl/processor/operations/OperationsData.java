@@ -86,4 +86,8 @@ public class OperationsData extends Template {
         }
     }
 
+    public boolean isGenerateAOT() {
+        return true;
+    }
+
 }

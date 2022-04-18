@@ -5,6 +5,7 @@ import java.util.function.Consumer;
 import org.junit.Assert;
 
 import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
@@ -14,6 +15,7 @@ import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.source.Source;
 
 @GenerateOperations
+@GenerateAOT
 public class TestOperations {
 
     private static class TestException extends AbstractOperationsTruffleException {
@@ -41,6 +43,7 @@ public class TestOperations {
     }
 
     @Operation
+    @GenerateAOT
     static class AddOperation {
         // @Cached(inline = true) MyOtherNode node;
 
@@ -56,6 +59,7 @@ public class TestOperations {
     }
 
     @Operation
+    @GenerateAOT
     static class LessThanOperation {
         @Specialization
         public static boolean lessThan(long lhs, long rhs) {
@@ -64,6 +68,7 @@ public class TestOperations {
     }
 
     @Operation
+    @GenerateAOT
     static class VeryComplexOperation {
         @Specialization
         public static long bla(long a1, @Variadic Object[] a2) {
@@ -72,6 +77,7 @@ public class TestOperations {
     }
 
     @Operation
+    @GenerateAOT
     static class ThrowOperation {
         @Specialization
         public static Object perform(@Bind("$bci") int bci, @Bind("this") OperationsNode node) {
@@ -80,6 +86,7 @@ public class TestOperations {
     }
 
     @Operation
+    @GenerateAOT
     static class AlwaysBoxOperation {
         @Specialization
         public static Object perform(Object value) {

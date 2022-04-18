@@ -6,6 +6,7 @@ import java.util.function.Function;
 
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
@@ -64,6 +65,8 @@ public interface NodeGeneratorPlugs {
 
     void addAdditionalStateBits(List<Object> stateObjects);
 
+    void setStateObjects(List<Object> stateObjects);
+
     void setMultiState(MultiStateBitSet multiState);
 
     int getRequiredStateBits(TypeSystemData types, Object object);
@@ -71,4 +74,7 @@ public interface NodeGeneratorPlugs {
     void createSpecialize(FrameState frameState, SpecializationData specialization, CodeTreeBuilder builder);
 
     boolean needsRewrites();
+
+    void setBoxingSplits(List<BoxingSplit> boxingSplits);
+
 }

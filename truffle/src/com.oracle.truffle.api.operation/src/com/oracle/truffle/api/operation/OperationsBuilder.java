@@ -1,7 +1,6 @@
 package com.oracle.truffle.api.operation;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -34,7 +33,6 @@ public abstract class OperationsBuilder {
         maxLocals = -1;
         instrumentationId = 0;
 
-        instructionIndex = 0;
         curStack = 0;
         maxStack = 0;
     }
@@ -146,62 +144,21 @@ public abstract class OperationsBuilder {
 
     // ------------------------ stack / successor handling ------------------------
 
-    private int instructionIndex;
-
-    private int[] stackSourceIndices = new int[1024];
     private int[] stackSourceBci = new int[1024];
-    private boolean[] stackAlwaysBoxed = new boolean[1024];
     private int curStack;
     private int maxStack;
 
-    private short[] successorIndices = new short[65535];
-
-    protected void doMarkAlwaysBoxedInput(int numPops, int inputIndex) {
-        int offset = curStack - numPops + inputIndex;
-        if (stackAlwaysBoxed[offset]) {
-            // clear it, so that if two 'always boxed' operations are connected
-            // we don't do anything
-            stackAlwaysBoxed[offset] = false;
-        } else {
-            int bci = stackSourceBci[offset];
-            markAlwaysBoxedResult(bci);
-        }
-    }
-
-    protected abstract void markAlwaysBoxedResult(int bci);
-
-    protected abstract void markAlwaysBoxedInput(int bci, int index);
-
-    protected boolean[] doBeforeEmitInstruction(int bci, int numPops, boolean pushValue, boolean resultAlwaysBoxed) {
-        boolean[] result = null;
+    protected int[] doBeforeEmitInstruction(int bci, int numPops, boolean pushValue) {
+        int[] result = new int[numPops];
 
         for (int i = numPops - 1; i >= 0; i--) {
             curStack--;
-
-            int predIndex = stackSourceIndices[curStack];
-
-            if (stackAlwaysBoxed[curStack]) {
-                if (result == null) {
-                    result = new boolean[numPops];
-                }
-                result[i] = true;
-            }
-            successorIndices[predIndex] = (short) bci;
-            successorIndices[predIndex + 1] = (short) i;
+            int predBci = stackSourceBci[curStack];
+            result[i] = predBci;
         }
 
-        // TODO: we could only record instrs that produce values
-
         if (pushValue) {
-            int index = instructionIndex;
-            instructionIndex += 2;
-
             stackSourceBci[curStack] = bci;
-            stackAlwaysBoxed[curStack] = resultAlwaysBoxed;
-            stackSourceIndices[curStack] = index;
-
-            successorIndices[index] = -1;
-            successorIndices[index + 1] = -1;
 
             curStack++;
 
@@ -211,10 +168,6 @@ public abstract class OperationsBuilder {
         }
 
         return result;
-    }
-
-    protected short[] createPredecessorIndices() {
-        return Arrays.copyOf(successorIndices, instructionIndex);
     }
 
     protected int createMaxStack() {

@@ -7,6 +7,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 
 public class SuperInstruction extends Instruction {
     private static void createResults(Instruction[] instrs, ArrayList<InputType> inputs, ArrayList<ResultType> results) {
@@ -154,12 +155,12 @@ public class SuperInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
+    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
         return null;
     }
 
     @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
+    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }
 }

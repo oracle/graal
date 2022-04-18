@@ -229,10 +229,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             clonedType.setEnclosingElement(proxyType.getEnclosingElement());
         }
 
-        // if (data.getName().equals("SLEvalRootOperation")) {
-        // throw new AssertionError(OperationGeneratorUtils.printCode(clonedType));
-        // }
-
         NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
 
         if (nodeData == null) {

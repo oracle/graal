@@ -1,100 +1,27 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import javax.lang.model.type.TypeKind;
+
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
-import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadConstantInstruction extends Instruction {
-    public enum ConstantKind {
-        BOOLEAN("boolean", "Boolean"),
-        BYTE("byte", "Byte"),
-        INT("int", "Int", "Integer"),
-        FLOAT("float", "Float"),
-        LONG("long", "Long"),
-        DOUBLE("double", "Double"),
-        OBJECT("Object", "Object");
+    private final ConstantKind kind;
+    private final OperationsContext ctx;
 
-        private final String typeName;
-        private final String frameName;
-        private final String typeNameBoxed;
-
-        private ConstantKind(String typeName, String frameName) {
-            this(typeName, frameName, frameName);
-        }
-
-        private ConstantKind(String typeName, String frameName, String typeNameBoxed) {
-            this.typeName = typeName;
-            this.frameName = frameName;
-            this.typeNameBoxed = typeNameBoxed;
-        }
-
-        public boolean isSingleByte() {
-            return this == BOOLEAN || this == BYTE;
-        }
-
-        public boolean isBoxed() {
-            return this == OBJECT;
-        }
-
-        public String getFrameName() {
-            return frameName;
-        }
-
-        public String getTypeName() {
-            return typeName;
-        }
-
-        public String getTypeNameBoxed() {
-            return typeNameBoxed;
-        }
-    }
-
-    private ConstantKind kind;
-    private LoadConstantInstruction boxedVariant;
-
-    public LoadConstantInstruction(int id, boolean boxed, ConstantKind kind, LoadConstantInstruction boxedVariant) {
-        super("load.constant." + kind.toString().toLowerCase() + (boxed ? ".boxed" : ""), id, ResultType.STACK_VALUE, new InputType[0]);
+    public LoadConstantInstruction(OperationsContext ctx, int id, ConstantKind kind) {
+        super("load.constant." + kind.toString().toLowerCase(), id, ResultType.STACK_VALUE, InputType.CONST_POOL);
+        this.ctx = ctx;
         this.kind = kind;
-        this.boxedVariant = boxedVariant == null ? this : boxedVariant;
-    }
-
-    @Override
-    public int getAdditionalStateBytes() {
-        return kind.isSingleByte() ? 1 : 2;
     }
 
     @Override
     public boolean standardPrologue() {
         return false;
-    }
-
-    @Override
-    protected CodeTree createInitializeAdditionalStateBytes(BuilderVariables vars, CodeTree[] arguments) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        if (kind.isSingleByte()) {
-            b.startStatement();
-            b.variable(vars.bc).string("[").variable(vars.bci).string(" + " + lengthWithoutState(), "] = ");
-            if (kind == ConstantKind.BOOLEAN) {
-                b.string("((boolean) ");
-                b.tree(arguments[0]);
-                b.string(") ? (byte) 1 : (byte) 0");
-            } else {
-                b.string("(", kind.getTypeName(), ") ").tree(arguments[0]);
-            }
-            b.end();
-        } else {
-            b.startStatement().startCall("LE_BYTES", "putShort");
-            b.variable(vars.bc);
-            b.startGroup().variable(vars.bci).string(" + " + lengthWithoutState()).end();
-            b.startGroup().string("(short) ");
-            b.startCall(vars.consts, "add");
-            b.tree(arguments[0]);
-            b.end(4);
-        }
-
-        return b.build();
     }
 
     @Override
@@ -115,35 +42,56 @@ public class LoadConstantInstruction extends Instruction {
     private CodeTree createGetArgument(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (kind.isSingleByte()) {
-            b.variable(vars.bc).string("[").variable(vars.bci).string(" + " + lengthWithoutState() + "]");
-            if (kind == ConstantKind.BOOLEAN) {
-                b.string(" != 0");
-            }
-        } else {
-            if (kind != ConstantKind.OBJECT) {
-                b.string("(", kind.getTypeName(), ") ");
-            }
-            b.variable(vars.consts).string("[");
-            b.startCall("LE_BYTES", "getShort");
-            b.variable(vars.bc);
-            b.startGroup().variable(vars.bci).string(" + " + lengthWithoutState()).end();
-            b.end().string("]");
+        if (kind != ConstantKind.OBJECT) {
+            b.string("(", kind.getTypeName(), ") ");
         }
+        b.variable(vars.consts).string("[");
+        b.startCall("LE_BYTES", "getShort");
+        b.variable(vars.bc);
+        b.startGroup().variable(vars.bci).string(" + " + getArgumentOffset(0)).end();
+        b.end().string("]");
         return b.build();
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars) {
-        if (this == boxedVariant) {
-            return null;
+    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (kind == ConstantKind.OBJECT) {
+            b.startIf().string("!").variable(varBoxed).end().startBlock();
+
+            boolean elseIf = false;
+            for (ConstantKind okind : ConstantKind.values()) {
+                if (okind == ConstantKind.OBJECT) {
+                    continue;
+                }
+
+                elseIf = b.startIf(elseIf);
+                b.variable(varTargetType).string(" == FRAME_TYPE_" + okind.getFrameName().toUpperCase()).end().startBlock();
+
+                b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[okind.ordinal()].opcodeIdField));
+
+                b.end();
+            }
+
+            b.end();
+        } else {
+            b.startIf().variable(varBoxed).end().startBlock();
+
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[ConstantKind.OBJECT.ordinal()].opcodeIdField));
+
+            b.end();
         }
 
-        return OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, boxedVariant.opcodeIdField);
+        return b.build();
     }
 
     @Override
-    public CodeTree createSetInputBoxed(ExecutionVariables vars, int index) {
-        return null;
+    public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
+        if (kind == ConstantKind.OBJECT) {
+            return null;
+        }
+
+        return createSetResultBoxed(vars, new CodeVariableElement(new CodeTypeMirror(TypeKind.BOOLEAN), "true"), null);
     }
 }

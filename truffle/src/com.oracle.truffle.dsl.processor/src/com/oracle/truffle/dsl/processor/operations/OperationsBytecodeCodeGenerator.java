@@ -32,7 +32,6 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
 
 public class OperationsBytecodeCodeGenerator {
 
@@ -90,10 +89,6 @@ public class OperationsBytecodeCodeGenerator {
         CodeVariableElement fldConditionBranches = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(ConditionProfile), "conditionProfiles");
         GeneratorUtils.addCompilationFinalAnnotation(fldConditionBranches, 1);
         builderBytecodeNodeType.add(fldConditionBranches);
-
-        CodeVariableElement fldSuccessorIndices = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(short.class)), "successorIndices");
-        GeneratorUtils.addCompilationFinalAnnotation(fldSuccessorIndices, 1);
-        builderBytecodeNodeType.add(fldSuccessorIndices);
 
         CodeVariableElement fldProbeNodes = null;
         if (withInstrumentation) {
@@ -209,12 +204,15 @@ public class OperationsBytecodeCodeGenerator {
                     builderBytecodeNodeType.add(ve);
                 }
 
+                CodeExecutableElement metPrepareForAOT = null;
+
                 for (CodeExecutableElement exToCopy : execs) {
                     boolean isBoundary = exToCopy.getAnnotationMirrors().stream().anyMatch(x -> x.getAnnotationType().equals(types.CompilerDirectives_TruffleBoundary));
 
-                    boolean isExecute = exToCopy.getSimpleName().toString().contains("_execute_");
-                    boolean isExecuteAndSpecialize = exToCopy.getSimpleName().toString().endsWith("_executeAndSpecialize_");
-                    boolean isFallbackGuard = exToCopy.getSimpleName().toString().endsWith("_fallbackGuard__");
+                    String exName = exToCopy.getSimpleName().toString();
+                    boolean isExecute = exName.contains("_execute_");
+                    boolean isExecuteAndSpecialize = exName.endsWith("_executeAndSpecialize_");
+                    boolean isFallbackGuard = exName.endsWith("_fallbackGuard__");
 
                     if (isExecute || isExecuteAndSpecialize || isFallbackGuard) {
                         List<VariableElement> params = exToCopy.getParameters();
@@ -242,12 +240,17 @@ public class OperationsBytecodeCodeGenerator {
                     exToCopy.getModifiers().add(Modifier.PRIVATE);
                     exToCopy.getAnnotationMirrors().removeIf(x -> x.getAnnotationType().equals(context.getType(Override.class)));
                     builderBytecodeNodeType.add(exToCopy);
+
+                    if (exName.equals(plugs.transformNodeMethodName("prepareForAOT"))) {
+                        metPrepareForAOT = exToCopy;
+                    }
                 }
 
                 cinstr.setExecuteMethod(uncExec);
                 cinstr.setDataKinds(additionalDataKinds.toArray(new DataKind[additionalDataKinds.size()]));
                 cinstr.setNumChildNodes(childIndices.size());
                 cinstr.setNumConsts(constIndices.size());
+                cinstr.setPrepareAOTMethod(metPrepareForAOT);
             }
 
         }
@@ -264,10 +267,10 @@ public class OperationsBytecodeCodeGenerator {
 
         {
             CodeVariableElement argFrame = new CodeVariableElement(types.VirtualFrame, "frame");
-            CodeVariableElement argStartIndex = new CodeVariableElement(types.OperationLabel, "startIndex");
+            CodeVariableElement argStartBci = new CodeVariableElement(context.getType(int.class), "startBci");
             CodeExecutableElement mContinueAt = new CodeExecutableElement(
                             Set.of(Modifier.PUBLIC), context.getType(Object.class), "continueAt",
-                            argFrame, argStartIndex);
+                            argFrame, argStartBci);
             builderBytecodeNodeType.add(mContinueAt);
 
             {
@@ -284,7 +287,7 @@ public class OperationsBytecodeCodeGenerator {
             CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(short.class), "curOpcode");
 
             b.declaration("int", varSp.getName(), "maxLocals + VALUES_OFFSET");
-            b.declaration("int", varBci.getName(), "0");
+            b.declaration("int", varBci.getName(), CodeTreeBuilder.singleVariable(argStartBci));
 
             if (m.isTracing()) {
                 b.startStatement().startCall(fldTracer, "startFunction").string("this").end(2);
@@ -415,6 +418,33 @@ public class OperationsBytecodeCodeGenerator {
 
         }
 
+        if (m.isGenerateAOT()) {
+            builderBytecodeNodeType.getImplements().add(types.GenerateAOT_Provider);
+
+            CodeExecutableElement mPrepareForAot = GeneratorUtils.overrideImplement(types.GenerateAOT_Provider, "prepareForAOT");
+            builderBytecodeNodeType.add(mPrepareForAot);
+
+            mPrepareForAot.renameArguments("language", "root");
+
+            CodeTreeBuilder b = mPrepareForAot.createBuilder();
+
+            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
+            b.declaration("int", "bci", "0");
+
+            b.startWhile().variable(vars.bci).string(" < ").variable(vars.bc).string(".length").end().startBlock();
+
+            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, instr -> {
+                CodeTreeBuilder binstr = b.create();
+
+                binstr.tree(instr.createPrepareAOT(vars, CodeTreeBuilder.singleString("language"), CodeTreeBuilder.singleString("root")));
+                binstr.startAssign(vars.bci).variable(vars.bci).string(" + " + instr.length()).end();
+
+                return binstr.build();
+            }));
+
+            b.end();
+        }
+
         {
             CodeExecutableElement mDump = new CodeExecutableElement(Set.of(Modifier.PUBLIC), context.getType(String.class), "dump");
             builderBytecodeNodeType.add(mDump);
@@ -445,13 +475,6 @@ public class OperationsBytecodeCodeGenerator {
                 }
                 b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
-
-                if (op.numPush() == 0) {
-                    b.statement("sb.append(\"            \")");
-                } else {
-                    b.statement("sb.append(String.format(\"[ %04x %2d ] \", successorIndices[instrIndex], successorIndices[instrIndex + 1]))");
-                    b.statement("instrIndex += 2");
-                }
 
                 for (int i = 0; i < 16; i++) {
                     if (i < op.length()) {
@@ -620,41 +643,6 @@ public class OperationsBytecodeCodeGenerator {
         }
 
         return builderBytecodeNodeType;
-    }
-
-    private CodeTree createInputCode(ExecutionVariables vars, Instruction instr, int index, TypeMirror inputType) {
-        switch (instr.inputs[index]) {
-            case ARGUMENT:
-                return CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), inputType).startCall(vars.frame, "getArguments").end() //
-                                .string("[").tree(instr.createReadArgumentCode(index, vars)).string("]") //
-                                .build();
-            case LOCAL:
-                return CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), inputType).startCall(vars.frame, "getValue") //
-                                .startGroup().string("VALUES_OFFSET + ").tree(instr.createReadArgumentCode(index, vars)).end() //
-                                .end().build();
-            case CONST_POOL:
-                return CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), inputType).variable(vars.consts) //
-                                .string("[").tree(instr.createReadArgumentCode(index, vars)).string("]") //
-                                .build();
-            case BRANCH_PROFILE:
-                return CodeTreeBuilder.createBuilder().string("conditionProfiles") //
-                                .string("[").tree(instr.createReadArgumentCode(index, vars)).string("]") //
-                                .build();
-            case INSTRUMENT:
-            case BRANCH_TARGET:
-                return instr.createReadArgumentCode(index, vars);
-            case STACK_VALUE:
-                return CodeTreeBuilder.createBuilder().maybeCast(context.getType(Object.class), inputType).startCall(vars.frame, "getValue") //
-                                .startGroup().string("--").variable(vars.sp).end() //
-                                .end().build();
-            case VARARG_VALUE:
-                return CodeTreeBuilder.createBuilder().startNewArray(
-                                new ArrayCodeTypeMirror(context.getType(Object.class)),
-                                instr.createReadArgumentCode(index, vars)).end().build();
-            default:
-                throw new IllegalArgumentException("Unsupported value: " + instr.inputs[index]);
-
-        }
     }
 
     private CodeTree createReparseCheck() {
