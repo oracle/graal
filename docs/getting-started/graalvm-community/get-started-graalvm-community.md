@@ -43,15 +43,14 @@ GraalVM's `/bin` directory is similar to that of a standard JDK, but includes a 
 Check the versions of the runtimes provided by default:
 ```shell
 java -version
-openjdk version "17.0.2" 2022-01-18
-OpenJDK Runtime Environment GraalVM CE 22.0.0 (build 17.0.2+5-jvmci-22.0-b02)
-OpenJDK 64-Bit Server VM GraalVM CE 22.0.0 (build 17.0.2+5-jvmci-22.0-b02, mixed mode, sharing)
-
+openjdk version "17.0.3" 2022-04-19
+OpenJDK Runtime Environment GraalVM CE 22.1.0 (build 17.0.3+5-jvmci-22.1-b04)
+OpenJDK 64-Bit Server VM GraalVM CE 22.1.0 (build 17.0.3+5-jvmci-22.1-b04, mixed mode, sharing)
 js -version
-GraalVM JavaScript (GraalVM CE Native 22.0.0)
+GraalVM JavaScript (GraalVM CE Native 22.1.0)
 
 lli --version
-LLVM 12.0.1 (GraalVM CE Native 22.0.0)
+LLVM 12.0.1 (GraalVM CE Native 22.1.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -100,7 +99,7 @@ The `node` launcher becomes available in the `<graalvm>/bin` directory.
 
 ```shell
 $JAVA_HOME/bin/node -v
-v14.18.1
+v16.14.2
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
