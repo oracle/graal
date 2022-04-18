@@ -182,7 +182,7 @@ Assuming `JAVA_HOME` points to the GraalVM installation and that the current wor
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp launcher/target/launcher-22.0.0-SNAPSHOT.jar \
+    -cp launcher/target/launcher-22.1.0-SNAPSHOT.jar \
     -Dtruffle.class.path.append=language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
@@ -205,8 +205,8 @@ Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisable
 
 A sample POM using `--upgrade-module-path` to export Language API packages can be found in the [Simple Language POM.xml](https://github.com/graalvm/simplelanguage/blob/master/language/pom.xml#L58) file.
 
-NOTE: Disabling the locator effectively removes all installed languages from the module path as the locator also creates the class loader for the languages.
-To still use the builtin languages add them to the module-path by pointing the module-path to all needed language homes (e.g. $GRAALVM/languages/js).
+> Note: Disabling the locator effectively removes all installed languages from the module path as the locator also creates the class loader for the languages.
+To still use the builtin languages add them to the module-path by pointing the module-path to all needed language homes (for example, `$GRAALVM/languages/js`).
 
 ### Other JVM Implementations
 
@@ -217,6 +217,6 @@ Assuming `JAVA_HOME` points to a stock JDK installation, and that the current wo
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp graal-sdk-22.0.0.jar:truffle-api-22.0.0.jar:launcher/target/launcher-22.0.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp graal-sdk-22.1.0.jar:truffle-api-22.1.0.jar:launcher/target/launcher-22.1.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```

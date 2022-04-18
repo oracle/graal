@@ -6,23 +6,22 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/
 ---
 # Truffle Language Implementation Framework
 
-The Truffle language implementation framework (henceforth "Truffle") is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
-Together with the open source [Graal Compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step
-forward in programming language implementation technology in the current era of dynamic languages.
+The Truffle language implementation framework (Truffle) is an open source library for building tools and programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
+Together with the open source [Graal compiler](https://github.com/oracle/graal/tree/master/compiler), Truffle represents a significant step forward in programming language implementation technology in the current era of dynamic languages.
 
-The Truffle bits are uploaded to [Maven central](https://mvnrepository.com/artifact/org.graalvm.truffle). You can use them from your
-`pom.xml` file as:
+The Truffle bits are uploaded to [Maven central](https://mvnrepository.com/artifact/org.graalvm.truffle). 
+You can use them from your `pom.xml` file as:
 
 ```xml
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>22.0.0</version> <!-- or any later version -->
+    <version>22.1.0</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>22.0.0<</version>
+    <version>22.1.0<</version>
     <scope>provided</scope>
 </dependency>
 ```
