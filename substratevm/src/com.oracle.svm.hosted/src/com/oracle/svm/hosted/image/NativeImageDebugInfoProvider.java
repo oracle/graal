@@ -37,7 +37,7 @@ import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Visitor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
@@ -58,8 +58,12 @@ import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Constant;
@@ -977,21 +981,21 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         LineNumberTable lineNumberTable = method.getLineNumberTable();
         int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
         int slot = 0;
+        ResolvedJavaType ownerType = method.getDeclaringClass();
         if (!method.isStatic()) {
-            ResolvedJavaType ownerType = method.getDeclaringClass();
             JavaKind kind = ownerType.getJavaKind();
-            JavaKind storageKind = isPseudoObjectType(ownerType) ? JavaKind.Long : kind;
+            JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
             assert kind == JavaKind.Object : "must be an object";
             paramInfos.add(new NativeImageDebugLocalValueInfo("this", storageKind, ownerType, slot, line));
             slot += kind.getSlotCount();
         }
         for (int i = 0; i < parameterCount; i++) {
-            JavaType type = signature.getParameterType(i, null);
-            JavaKind kind = type.getJavaKind();
-            JavaKind storageKind = isPseudoObjectType(type) ? JavaKind.Long : kind;
             Local local = (table == null ? null : table.getLocal(slot, 0));
             String name = (local != null ? local.getName() : "__" + i);
-            paramInfos.add(new NativeImageDebugLocalValueInfo(name, storageKind, type.resolve(null), slot, line));
+            ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, null);
+            JavaKind kind = paramType.getJavaKind();
+            JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
+            paramInfos.add(new NativeImageDebugLocalValueInfo(name, storageKind, paramType, slot, line));
             slot += kind.getSlotCount();
         }
         return paramInfos;
@@ -1002,10 +1006,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      * foreign opaque type.
      * 
      * @param type the type to be tested
+     * @param accessingType another type relative to which the first type may need to be resolved
      * @return true if the type is a pseudo object type
      */
-    private boolean isPseudoObjectType(JavaType type) {
-        ResolvedJavaType resolvedJavaType = type.resolve(null);
+    private boolean isPseudoObjectType(JavaType type, ResolvedJavaType accessingType) {
+        ResolvedJavaType resolvedJavaType = type.resolve(accessingType);
         return (wordBaseType.isAssignableFrom(resolvedJavaType));
     }
 
@@ -1107,29 +1112,73 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // NativeImageDebugLocationInfo leaf into which current leaf may be merged
             root.visitChildren(visitor, (Object) null, (Object) null, (Object) null);
             // try to add a location record for offset zero
-            updateInitialLocation(compilation, locationInfos);
+            updateInitialLocation(locationInfos);
             return locationInfos.stream();
         }
 
-        private void updateInitialLocation(CompilationResult compilationResult, List<DebugLocationInfo> locationInfos) {
-            if (locationInfos.isEmpty()) {
-                // no info available anyway so give up
-            }
-            int prologueEnd = -1;
-            for (CompilationResult.CodeMark mark : compilationResult.getMarks()) {
-                if (mark.id.equals(SubstrateBackend.SubstrateMarkId.PROLOGUE_END)) {
-                    prologueEnd = mark.pcOffset;
-                    break;
+        private int findMarkOffset(SubstrateMarkId markId) {
+            for (CompilationResult.CodeMark mark : compilation.getMarks()) {
+                if (mark.id.equals(markId)) {
+                    return mark.pcOffset;
                 }
             }
+            return -1;
+        }
+
+        private void updateInitialLocation(List<DebugLocationInfo> locationInfos) {
+            int prologueEnd = findMarkOffset(SubstrateMarkId.PROLOGUE_END);
             if (prologueEnd < 0) {
                 // this is not a normal compiled method so give up
+                return;
             }
-            NativeImageDebugLocationInfo locationInfo = (NativeImageDebugLocationInfo) locationInfos.get(0);
-            if (locationInfo.lo < 24) {
-                // we can safely wind this record back to offset zero
-                locationInfo.lo = 0;
+            int stackDecrement = findMarkOffset(SubstrateMarkId.PROLOGUE_DECD_RSP);
+            if (stackDecrement < 0) {
+                // this is not a normal compiled method so give up
+                return;
             }
+            // if there are any location info records then the first one will be for
+            // a nop which follows the stack decrement, stack range check and pushes
+            // of arguments into the stack frame.
+            //
+            // We can construct synthetic location info covering the first instruction
+            // based on the method arguments and the calling convention and that will
+            // normally be valid right up to the nop. In exceptional cases a call
+            // might pass arguments on the stack, in which case the stack decrement will
+            // invalidate the original stack locations. Providing location info for that
+            // case requires adding two locations, one for initial instruction that does
+            // the stack decrement and another for the range up to the nop. They will
+            // be essentially the same but the stack locations will be adjusted to account
+            // for the different value of the stack pointer.
+
+            if (locationInfos.isEmpty()) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            NativeImageDebugLocationInfo firstLocation = (NativeImageDebugLocationInfo) locationInfos.get(0);
+            int firstLocationOffset = firstLocation.addressLo();
+
+            if (firstLocationOffset == 0) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            if (firstLocationOffset < prologueEnd) {
+                // this is not a normal compiled method so give up
+                return;
+            }
+            // create a synthetic location record including details of passed arguments
+            ParamLocationProducer locProducer = new ParamLocationProducer(method);
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Add synthetic Location Info : %s (0, %d)", method.getName(), firstLocationOffset - 1);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(method, firstLocationOffset, locProducer);
+            // if the prologue extends beyond the stack extend and uses the stack then the info
+            // needs
+            // splitting at the extend point with the stack offsets adjusted in the new info
+            if (locProducer.usesStack() && firstLocationOffset > stackDecrement) {
+                NativeImageDebugLocationInfo splitLocationInfo = locationInfo.split(stackDecrement, getFrameSize());
+                debugContext.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (%d, %d) (%d, %d)", locationInfo.name(), 0,
+                                locationInfo.addressLo() - 1, locationInfo.addressLo(), locationInfo.addressHi() - 1);
+                locationInfos.add(0, splitLocationInfo);
+            }
+            locationInfos.add(0, locationInfo);
         }
 
         // indices for arguments passed to SingleLevelVisitor::apply
@@ -1301,7 +1350,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             BytecodePosition pos = parentToEmbed.frame;
             int startPos = parentToEmbed.getStartPos();
             int endPos = (firstChild != null ? firstChild.getStartPos() : parentToEmbed.getEndPos() + 1);
-            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(pos, startPos, endPos, callerLocation, true);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(pos, startPos, endPos, callerLocation);
             debugContext.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
                             locationInfo.addressHi() - 1);
             return locationInfo;
@@ -1433,17 +1482,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             List<DebugFrameSizeChange> frameSizeChanges = new LinkedList<>();
             for (CompilationResult.CodeMark mark : compilation.getMarks()) {
                 /* We only need to observe stack increment or decrement points. */
-                if (mark.id.equals(SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP)) {
+                if (mark.id.equals(SubstrateMarkId.PROLOGUE_DECD_RSP)) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
                     frameSizeChanges.add(sizeChange);
                     // } else if (mark.id.equals("PROLOGUE_END")) {
                     // can ignore these
                     // } else if (mark.id.equals("EPILOGUE_START")) {
                     // can ignore these
-                } else if (mark.id.equals(SubstrateBackend.SubstrateMarkId.EPILOGUE_INCD_RSP)) {
+                } else if (mark.id.equals(SubstrateMarkId.EPILOGUE_INCD_RSP)) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
                     frameSizeChanges.add(sizeChange);
-                } else if (mark.id.equals(SubstrateBackend.SubstrateMarkId.EPILOGUE_END) && mark.pcOffset < compilation.getTargetCodeSize()) {
+                } else if (mark.id.equals(SubstrateMarkId.EPILOGUE_END) && mark.pcOffset < compilation.getTargetCodeSize()) {
                     /* There is code after this return point so notify a stack extend again. */
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
                     frameSizeChanges.add(sizeChange);
@@ -1462,25 +1511,57 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private int lo;
         private int hi;
         private DebugLocationInfo callersLocationInfo;
-        private boolean isPrologueEnd;
         private List<DebugLocalValueInfo> localInfoList;
 
         NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo) {
-            this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, frameNode.sourcePos.isMethodStart());
+            this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo);
         }
 
         NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo) {
-            this(bcpos, lo, hi, callersLocationInfo, false);
-        }
-
-        NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo, boolean isPrologueEnd) {
             super(bcpos.getMethod());
             this.bci = bcpos.getBCI();
             this.lo = lo;
             this.hi = hi;
             this.callersLocationInfo = callersLocationInfo;
-            this.isPrologueEnd = isPrologueEnd;
             this.localInfoList = initLocalInfoList(bcpos);
+        }
+
+        // special constructor for synthetic lcoation info added at start of method
+        NativeImageDebugLocationInfo(ResolvedJavaMethod method, int hi, ParamLocationProducer locProducer) {
+            super(method);
+            // bci is always 0 and lo is always 0.
+            this.bci = 0;
+            this.lo = 0;
+            this.hi = hi;
+            // this is always going to be a top-level leaf range.
+            this.callersLocationInfo = null;
+            // location info is synthesized off the method signature
+            this.localInfoList = initSyntheticInfoList(locProducer);
+        }
+
+        NativeImageDebugLocationInfo(NativeImageDebugLocationInfo toSplit, int stackDecrement, int frameSize) {
+            super(toSplit.method);
+            this.lo = stackDecrement;
+            this.hi = toSplit.hi;
+            toSplit.hi = this.lo;
+            this.bci = toSplit.bci;
+            this.callersLocationInfo = toSplit.callersLocationInfo;
+            this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
+            for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
+                if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
+                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(localInfo.stackSlot() - (frameSize - 8));
+                    NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
+                    NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
+                                    value,
+                                    nativeLocalInfo.kind,
+                                    nativeLocalInfo.type,
+                                    nativeLocalInfo.slot,
+                                    nativeLocalInfo.line);
+                    localInfoList.add(newLocalinfo);
+                } else {
+                    localInfoList.add(localInfo);
+                }
+            }
         }
 
         private List<DebugLocalValueInfo> initLocalInfoList(BytecodePosition bcpos) {
@@ -1507,7 +1588,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 if (l != null) {
                     // we have a local with a known name, type and slot
                     String name = l.getName();
-                    ResolvedJavaType type = l.getType().resolve(method.getDeclaringClass());
+                    ResolvedJavaType ownerType = method.getDeclaringClass();
+                    ResolvedJavaType type = l.getType().resolve(ownerType);
                     JavaKind kind = type.getJavaKind();
                     int slot = l.getSlot();
                     debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", i, name, type.getName(), slot);
@@ -1519,12 +1601,50 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     // only add the local if the kinds match
                     if ((storageKind == kind) ||
                                     isIntegralKindPromotion(storageKind, kind) ||
-                                    (isPseudoObjectType(type) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
+                                    (isPseudoObjectType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
                         localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, type, slot, line));
                     } else if (storageKind != JavaKind.Illegal) {
                         debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind().toString());
                     }
                 }
+            }
+            return localInfos;
+        }
+
+        private List<DebugLocalValueInfo> initSyntheticInfoList(ParamLocationProducer locProducer) {
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            ArrayList<DebugLocalValueInfo> localInfos = new ArrayList<>();
+            LocalVariableTable table = method.getLocalVariableTable();
+            LineNumberTable lineNumberTable = method.getLineNumberTable();
+            int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(0) : -1);
+            int slot = 0;
+            int localIdx = 0;
+            ResolvedJavaType ownerType = method.getDeclaringClass();
+            if (!method.isStatic()) {
+                String name = "this";
+                JavaKind kind = ownerType.getJavaKind();
+                JavaKind storageKind = isPseudoObjectType(ownerType, ownerType) ? JavaKind.Long : kind;
+                assert kind == JavaKind.Object : "must be an object";
+                NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value.toString(), storageKind.toString());
+                localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, ownerType, slot, line));
+                slot += storageKind.getSlotCount();
+                localIdx++;
+            }
+            for (int i = 0; i < parameterCount; i++) {
+                Local local = (table == null ? null : table.getLocal(slot, 0));
+                String name = (local != null ? local.getName() : "__" + i);
+                ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, ownerType);
+                JavaKind kind = paramType.getJavaKind();
+                JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
+                NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value.toString(), storageKind.toString());
+                localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, paramType, slot, line));
+                slot += storageKind.getSlotCount();
+                localIdx++;
             }
             return localInfos;
         }
@@ -1564,11 +1684,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public DebugLocationInfo getCaller() {
             return callersLocationInfo;
-        }
-
-        @Override
-        public boolean isPrologueEnd() {
-            return isPrologueEnd;
         }
 
         @Override
@@ -1616,9 +1731,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (method != that.method) {
                 return null;
             }
-            if (this.isPrologueEnd != that.isPrologueEnd) {
-                return null;
-            }
             if (line() != that.line()) {
                 return null;
             }
@@ -1639,12 +1751,161 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
             return this;
         }
+
+        public NativeImageDebugLocationInfo split(int stackDecrement, int frameSize) {
+            // this should be for an initial range extending beyond the stack decrement
+            assert lo == 0 && lo < stackDecrement && stackDecrement < hi : "invalid split request";
+            return new NativeImageDebugLocationInfo(this, stackDecrement, frameSize);
+        }
+
+    }
+
+    static final Register[] AARCH64_GPREG = {
+                    AArch64.r0,
+                    AArch64.r1,
+                    AArch64.r2,
+                    AArch64.r3,
+                    AArch64.r4,
+                    AArch64.r5,
+                    AArch64.r6,
+                    AArch64.r7
+    };
+    static final Register[] AARCH64_FREG = {
+                    AArch64.v0,
+                    AArch64.v1,
+                    AArch64.v2,
+                    AArch64.v3,
+                    AArch64.v4,
+                    AArch64.v5,
+                    AArch64.v6,
+                    AArch64.v7
+    };
+    static final Register[] AMD64_GPREG = {
+                    AMD64.rdi,
+                    AMD64.rsi,
+                    AMD64.rdx,
+                    AMD64.rcx,
+                    AMD64.r8,
+                    AMD64.r9
+    };
+    static final Register[] AMD64_FREG = {
+                    AMD64.xmm0,
+                    AMD64.xmm1,
+                    AMD64.xmm2,
+                    AMD64.xmm3,
+                    AMD64.xmm4,
+                    AMD64.xmm5,
+                    AMD64.xmm6,
+                    AMD64.xmm7
+    };
+
+    class ParamLocationProducer {
+        Register[] gpregs;
+        Register[] fregs;
+        int nextGPRegIdx;
+        int nextFPregIdx;
+        int nextStackIdx;
+        int stackParamCount;
+
+        ParamLocationProducer(ResolvedJavaMethod method) {
+            Architecture arch = ConfigurationValues.getTarget().arch;
+            if (arch instanceof AArch64) {
+                gpregs = AARCH64_GPREG;
+                fregs = AARCH64_FREG;
+            } else {
+                assert arch instanceof AMD64 : "must be";
+                gpregs = AMD64_GPREG;
+                fregs = AMD64_FREG;
+            }
+            nextGPRegIdx = 0;
+            nextFPregIdx = 0;
+            nextStackIdx = 0;
+            stackParamCount = computeStackCount(method);
+        }
+
+        public NativeImageDebugLocalValue nextLocation(JavaKind kind) {
+            switch (kind) {
+                case Float:
+                case Double:
+                    return nextFloatingLocation();
+                case Void:
+                case Illegal:
+                    assert false : "unexpected parameter kind in next location request";
+                    return null;
+                default:
+                    return nextIntegerLocation();
+            }
+        }
+
+        public NativeImageDebugLocalValue nextFloatingLocation() {
+            if (nextFPregIdx < fregs.length) {
+                return new NativeImageDebugRegisterValue(fregs[nextFPregIdx++].number);
+            } else {
+                return nextStackLocation();
+            }
+        }
+
+        public NativeImageDebugLocalValue nextIntegerLocation() {
+            if (nextGPRegIdx < gpregs.length) {
+                return new NativeImageDebugRegisterValue(gpregs[nextGPRegIdx++].number);
+            } else {
+                return nextStackLocation();
+            }
+        }
+
+        public NativeImageDebugLocalValue nextStackLocation() {
+            // offset is computed relative to the undecremented stack pointer and includes
+            // an extra 16 bytes to allow for the stacked return address and alignment
+            assert nextStackIdx < stackParamCount : "encountered too many stack params";
+            int stackIdx = nextStackIdx++;
+            return new NativeImageDebugStackValue((2 + stackIdx) * -8);
+        }
+
+        public boolean usesStack() {
+            return stackParamCount > 0;
+        }
+
+        private int computeStackCount(ResolvedJavaMethod method) {
+            int numIntegerParams = 0;
+            int numFloatingParams = 0;
+            if (!method.isStatic()) {
+                numIntegerParams++;
+            }
+            Signature signature = method.getSignature();
+            int parameterCount = signature.getParameterCount(false);
+            if (!method.isStatic()) {
+                numIntegerParams++;
+            }
+            for (int i = 0; i < parameterCount; i++) {
+                switch (signature.getParameterKind(i)) {
+                    case Float:
+                    case Double:
+                        numFloatingParams++;
+                        break;
+                    case Void:
+                    case Illegal:
+                        assert false : "unexpected parameter kind in method sig";
+                        break;
+                    default:
+                        numIntegerParams++;
+                        break;
+                }
+            }
+            int excessParams = 0;
+            if (numIntegerParams > gpregs.length) {
+                excessParams += (numIntegerParams - gpregs.length);
+            }
+            if (numFloatingParams > fregs.length) {
+                excessParams += (numFloatingParams - fregs.length);
+            }
+            return excessParams;
+        }
     }
 
     public class NativeImageDebugLocalValueInfo implements DebugLocalValueInfo {
         private final String name;
         private ResolvedJavaType type;
-        private final JavaValue value;
+        private final NativeImageDebugLocalValue value;
         private final JavaKind kind;
         private int slot;
         private int line;
@@ -1656,20 +1917,41 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         NativeImageDebugLocalValueInfo(String name, JavaValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
             this.name = name;
-            this.value = value;
             this.kind = kind;
             this.type = type;
             this.slot = slot;
             this.line = line;
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
+                this.value = new NativeImageDebugRegisterValue((RegisterValue) value);
             } else if (value instanceof StackSlot) {
                 this.localKind = LocalKind.STACKSLOT;
+                this.value = new NativeImageDebugStackValue((StackSlot) value);
             } else if (value instanceof Constant) {
                 this.localKind = LocalKind.CONSTANT;
+                this.value = new NativeImageDebugConstantValue((Constant) value);
             } else {
                 this.localKind = LocalKind.UNDEFINED;
+                this.value = null;
             }
+        }
+
+        NativeImageDebugLocalValueInfo(String name, NativeImageDebugLocalValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
+            this.name = name;
+            this.kind = kind;
+            this.type = type;
+            this.slot = slot;
+            this.line = line;
+            if (value == null) {
+                this.localKind = LocalKind.UNDEFINED;
+            } else if (value instanceof NativeImageDebugRegisterValue) {
+                this.localKind = LocalKind.REGISTER;
+            } else if (value instanceof NativeImageDebugStackValue) {
+                this.localKind = LocalKind.STACKSLOT;
+            } else if (value instanceof NativeImageDebugConstantValue) {
+                this.localKind = LocalKind.CONSTANT;
+            }
+            this.value = value;
         }
 
         @Override
@@ -1730,17 +2012,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public int regIndex() {
-            return ((RegisterValue) value).getRegister().number;
+            return ((NativeImageDebugRegisterValue) value).getNumber();
         }
 
         @Override
         public int stackSlot() {
-            return ((StackSlot) value).getRawOffset();
+            return ((NativeImageDebugStackValue) value).getOffset();
         }
 
         @Override
         public Constant constantValue() {
-            return null;
+            return ((NativeImageDebugConstantValue) value).getConstant();
         }
 
         public boolean sameAs(NativeImageDebugLocalValueInfo that) {
@@ -1751,15 +2033,62 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     case STACKSLOT:
                         return stackSlot() != that.stackSlot();
                     case CONSTANT: {
-                        Constant thisValue = (Constant) value;
-                        Constant thatValue = (Constant) that.value;
-                        return thisValue.equals(thatValue);
+                        Constant thisValue = constantValue();
+                        Constant thatValue = that.constantValue();
+                        return (thisValue == thatValue || (thisValue != null && thisValue.equals(thatValue)));
                     }
                     case UNDEFINED:
                         return true;
                 }
             }
             return false;
+        }
+    }
+
+    public class NativeImageDebugLocalValue {
+    }
+
+    public class NativeImageDebugRegisterValue extends NativeImageDebugLocalValue {
+        private int number;
+
+        NativeImageDebugRegisterValue(RegisterValue value) {
+            number = value.getRegister().number;
+        }
+
+        NativeImageDebugRegisterValue(int number) {
+            this.number = number;
+        }
+
+        public int getNumber() {
+            return number;
+        }
+    }
+
+    public class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
+        private int offset;
+
+        NativeImageDebugStackValue(StackSlot value) {
+            offset = value.getRawOffset();
+        }
+
+        NativeImageDebugStackValue(int offset) {
+            this.offset = offset;
+        }
+
+        public int getOffset() {
+            return offset;
+        }
+    }
+
+    public class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
+        private Constant value;
+
+        NativeImageDebugConstantValue(Constant value) {
+            this.value = value;
+        }
+
+        public Constant getConstant() {
+            return value;
         }
     }
 

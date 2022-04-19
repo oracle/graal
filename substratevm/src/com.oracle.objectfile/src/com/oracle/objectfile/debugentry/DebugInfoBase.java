@@ -375,10 +375,9 @@ public abstract class DebugInfoBase {
         final int lo = primaryRange.getLo() + locationInfo.addressLo();
         final int hi = primaryRange.getLo() + locationInfo.addressHi();
         final int line = locationInfo.line();
-        final boolean isPrologueEnd = locationInfo.isPrologueEnd();
         ClassEntry subRangeClassEntry = ensureClassEntry(ownerType);
         MethodEntry subRangeMethodEntry = subRangeClassEntry.ensureMethodEntryForDebugRangeInfo(locationInfo, this, debugContext);
-        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isTopLevel, caller, isPrologueEnd);
+        Range subRange = new Range(stringTable, subRangeMethodEntry, lo, hi, line, primaryRange, isTopLevel, caller);
         classEntry.indexSubRange(subRange);
         subRangeIndex.put(locationInfo, subRange);
         debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",

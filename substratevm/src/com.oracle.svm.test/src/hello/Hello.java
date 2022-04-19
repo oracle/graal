@@ -92,6 +92,8 @@ public class Hello {
         inlineCallChain();
         noInlineThis();
         inlineFrom();
+        noInlineManyArgs(0, 1, 2, 3, 4, 5, 6, 7, 8,
+                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F);
         System.exit(0);
     }
 
@@ -178,4 +180,28 @@ public class Hello {
         }
         inlineTailRecursion(n - 1);
     }
+
+    @NeverInline("For testing purposes")
+    private static void noInlineManyArgs(int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7, int i8,
+                    float f0, float f1, float f2, float f3, float f4, float f5, float f6, float f7, float f8) {
+        System.out.println("i0 = " + i0);
+        System.out.println("i1 = " + i1);
+        System.out.println("i2 = " + i2);
+        System.out.println("i3 = " + i3);
+        System.out.println("i4 = " + i4);
+        System.out.println("i5 = " + i5);
+        System.out.println("i6 = " + i6);
+        System.out.println("i7 = " + i7);
+        System.out.println("i8 = " + i8);
+        System.out.println("f0 = " + f0);
+        System.out.println("f1 = " + f1);
+        System.out.println("f2 = " + f2);
+        System.out.println("f3 = " + f3);
+        System.out.println("f4 = " + f4);
+        System.out.println("f5 = " + f5);
+        System.out.println("f6 = " + f6);
+        System.out.println("f7 = " + f7);
+        System.out.println("f8 = " + f8);
+    }
+
 }

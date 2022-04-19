@@ -332,14 +332,6 @@ public interface DebugInfoProvider {
         DebugLocationInfo getCaller();
 
         /**
-         * Indicates whether the end of this leaf range corresponds to the end of a method prologue
-         * for either a top level of inline method.
-         * 
-         * @return true if this range is a prologue end otherwise false
-         */
-        boolean isPrologueEnd();
-
-        /**
          * @return a stream of {@link DebugLocalValueInfo} objects identifying local or parameter
          *         variables present in the frame of the current range.
          */

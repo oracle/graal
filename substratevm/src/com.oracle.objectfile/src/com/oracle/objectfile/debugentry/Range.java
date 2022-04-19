@@ -74,7 +74,6 @@ public class Range {
     private final int lo;
     private int hi;
     private final int line;
-    private boolean isPrologueEnd;
     private final int depth;
     /**
      * This is null for a primary range. For sub ranges it holds the root of the call tree they
@@ -140,13 +139,13 @@ public class Range {
      * Create a primary range.
      */
     public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line) {
-        this(stringTable, methodEntry, lo, hi, line, null, false, null, false);
+        this(stringTable, methodEntry, lo, hi, line, null, false, null);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isTopLevel, Range caller, boolean isPrologueEnd) {
+    public Range(StringTable stringTable, MethodEntry methodEntry, int lo, int hi, int line, Range primary, boolean isTopLevel, Range caller) {
         assert methodEntry != null;
         if (methodEntry.fileEntry != null) {
             stringTable.uniqueDebugString(methodEntry.fileEntry.getFileName());
@@ -163,7 +162,6 @@ public class Range {
         this.lastCallee = null;
         this.siblingCallee = null;
         this.caller = caller;
-        this.isPrologueEnd = isPrologueEnd;
         if (caller != null) {
             caller.addCallee(this);
         }
@@ -329,11 +327,6 @@ public class Range {
 
     public int getDepth() {
         return depth;
-    }
-
-    @SuppressWarnings("unused")
-    public boolean isPrologueEnd() {
-        return isPrologueEnd;
     }
 
     public void setLocalValueInfo(DebugLocalValueInfo[] localValueInfos) {

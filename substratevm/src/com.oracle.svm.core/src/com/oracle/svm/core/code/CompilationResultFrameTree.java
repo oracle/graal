@@ -114,10 +114,6 @@ public final class CompilationResultFrameTree {
             }
             return 0;
         }
-
-        public boolean isMethodStart() {
-            return false;
-        }
     }
 
     public static final class InfopointSourceWrapper extends SourcePositionSupplier {
@@ -164,11 +160,6 @@ public final class CompilationResultFrameTree {
                 return infopoint.reason.compareTo(other.infopoint.reason);
             }
             return 1; /* make Infopoints go first */
-        }
-
-        @Override
-        public boolean isMethodStart() {
-            return infopoint.reason.equals(InfopointReason.METHOD_START);
         }
     }
 

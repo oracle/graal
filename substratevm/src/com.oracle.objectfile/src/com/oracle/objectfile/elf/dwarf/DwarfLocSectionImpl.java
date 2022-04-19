@@ -449,11 +449,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     private void initDwarfRegMap() {
         if (dwarfSections.elfMachine == ELFMachine.AArch64) {
-            dwarfRegMap = AARCH64_TO_DWARF_REG_MAP;
+            dwarfRegMap = GRAAL_AARCH64_TO_DWARF_REG_MAP;
             dwarfStackRegister = DWARF_REG_AARCH64_SP;
         } else {
             assert dwarfSections.elfMachine == ELFMachine.X86_64 : "must be";
-            dwarfRegMap = X86_64_TO_DWARF_REG_MAP;
+            dwarfRegMap = GRAAL_X86_64_TO_DWARF_REG_MAP;
             dwarfStackRegister = DWARF_REG_X86_64_RSP;
         }
     }
@@ -527,7 +527,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private static final int DWARF_REG_AARCH64_V31 = 95;
 
     // map from compiler register indices to corresponding dwarf register
-    private static final int[] AARCH64_TO_DWARF_REG_MAP = {
+    private static final int[] GRAAL_AARCH64_TO_DWARF_REG_MAP = {
                     DWARF_REG_AARCH64_R0, // 0
                     DWARF_REG_AARCH64_R1, // 1
                     DWARF_REG_AARCH64_R2, // ...
@@ -598,9 +598,9 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     // register numbers used by DWARF for X86_64 registers
     private static final int DWARF_REG_X86_64_RAX = 0;
-    private static final int DWARF_REG_X86_64_RBX = 1;
+    private static final int DWARF_REG_X86_64_RDX = 1;
     private static final int DWARF_REG_X86_64_RCX = 2;
-    private static final int DWARF_REG_X86_64_RDX = 3;
+    private static final int DWARF_REG_X86_64_RBX = 3;
     private static final int DWARF_REG_X86_64_RSI = 4;
     private static final int DWARF_REG_X86_64_RDI = 5;
     private static final int DWARF_REG_X86_64_RBP = 6;
@@ -613,14 +613,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private static final int DWARF_REG_X86_64_R13 = 13;
     private static final int DWARF_REG_X86_64_R14 = 14;
     private static final int DWARF_REG_X86_64_R15 = 15;
-    private static final int DWARF_REG_X86_64_XMM0 = 40;
-    @SuppressWarnings("unused") private static final int DWARF_REG_X86_64_XMM15 = 55;
-    private static final int DWARF_REG_X86_64_XMM16 = 79;
-    @SuppressWarnings("unused") private static final int DWARF_REG_X86_64_XMM31 = 94;
+    private static final int DWARF_REG_X86_64_XMM0 = 17;
 
-    private static final int[] X86_64_TO_DWARF_REG_MAP = {
-                    DWARF_REG_X86_64_RAX,
-                    DWARF_REG_X86_64_RCX,
+    private static final int[] GRAAL_X86_64_TO_DWARF_REG_MAP = {
+                    DWARF_REG_X86_64_RAX, // 0
+                    DWARF_REG_X86_64_RCX, // 1
                     DWARF_REG_X86_64_RDX,
                     DWARF_REG_X86_64_RBX,
                     DWARF_REG_X86_64_RSP,
@@ -634,8 +631,8 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                     DWARF_REG_X86_64_R12,
                     DWARF_REG_X86_64_R13,
                     DWARF_REG_X86_64_R14,
-                    DWARF_REG_X86_64_R15,
-                    DWARF_REG_X86_64_XMM0,
+                    DWARF_REG_X86_64_R15, // 15
+                    DWARF_REG_X86_64_XMM0, // 16
                     DWARF_REG_X86_64_XMM0 + 1,
                     DWARF_REG_X86_64_XMM0 + 2,
                     DWARF_REG_X86_64_XMM0 + 3,
@@ -650,22 +647,6 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                     DWARF_REG_X86_64_XMM0 + 12,
                     DWARF_REG_X86_64_XMM0 + 13,
                     DWARF_REG_X86_64_XMM0 + 14,
-                    DWARF_REG_X86_64_XMM0 + 15,
-                    DWARF_REG_X86_64_XMM16,
-                    DWARF_REG_X86_64_XMM16 + 1,
-                    DWARF_REG_X86_64_XMM16 + 2,
-                    DWARF_REG_X86_64_XMM16 + 3,
-                    DWARF_REG_X86_64_XMM16 + 4,
-                    DWARF_REG_X86_64_XMM16 + 5,
-                    DWARF_REG_X86_64_XMM16 + 6,
-                    DWARF_REG_X86_64_XMM16 + 7,
-                    DWARF_REG_X86_64_XMM16 + 8,
-                    DWARF_REG_X86_64_XMM16 + 9,
-                    DWARF_REG_X86_64_XMM16 + 10,
-                    DWARF_REG_X86_64_XMM16 + 11,
-                    DWARF_REG_X86_64_XMM16 + 12,
-                    DWARF_REG_X86_64_XMM16 + 13,
-                    DWARF_REG_X86_64_XMM16 + 14,
-                    DWARF_REG_X86_64_XMM16 + 15,
+                    DWARF_REG_X86_64_XMM0 + 15
     };
 }
