@@ -174,8 +174,8 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private final ObjectArrayBuffer<QuantifierGuard> quantifierGuards = new ObjectArrayBuffer<>();
     private QuantifierGuard[] quantifierGuardsResult = null;
-    private final TBitSet quantifierGuardsLoop;
-    private final TBitSet quantifierGuardsExited;
+    private final int[] quantifierGuardsLoop;
+    private final int[] quantifierGuardsExited;
 
     protected NFATraversalRegexASTVisitor(RegexAST ast) {
         this.ast = ast;
@@ -186,8 +186,8 @@ public abstract class NFATraversalRegexASTVisitor {
         this.nodeVisitCount = new int[ast.getNumberOfStates()];
         this.captureGroupUpdates = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.captureGroupClears = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
-        this.quantifierGuardsLoop = new TBitSet(ast.getQuantifierCount().getCount());
-        this.quantifierGuardsExited = new TBitSet(ast.getQuantifierCount().getCount());
+        this.quantifierGuardsLoop = new int[ast.getQuantifierCount().getCount()];
+        this.quantifierGuardsExited = new int[ast.getQuantifierCount().getCount()];
     }
 
     public Set<LookBehindAssertion> getTraversableLookBehindAssertions() {
@@ -221,8 +221,8 @@ public abstract class NFATraversalRegexASTVisitor {
         assert nodeVisitsEmpty() : Arrays.toString(nodeVisitCount);
         root = runRoot;
         quantifierGuards.clear();
-        quantifierGuardsLoop.clear();
-        quantifierGuardsExited.clear();
+        Arrays.fill(quantifierGuardsLoop, 0);
+        Arrays.fill(quantifierGuardsExited, 0);
         if (root.isGroup() && !root.getParent().isSubtreeRoot()) {
             Group emptyMatch = root.getParent().getParent().asGroup();
             quantifierGuards.add(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
@@ -326,8 +326,8 @@ public abstract class NFATraversalRegexASTVisitor {
     protected void calcQuantifierGuards() {
         if (quantifierGuardsResult == null) {
             quantifierGuards.clear();
-            quantifierGuardsLoop.clear();
-            quantifierGuardsExited.clear();
+            Arrays.fill(quantifierGuardsLoop, 0);
+            Arrays.fill(quantifierGuardsExited, 0);
             RegexASTNode target = pathGetNode(curPath.peek());
             Group emptyMatch = null;
             if (target.isGroup() && !target.getParent().isSubtreeRoot()) {
@@ -342,23 +342,23 @@ public abstract class NFATraversalRegexASTVisitor {
                         Quantifier quantifier = group.getQuantifier();
                         if (quantifier.hasIndex()) {
                             if (pathIsGroupEnter(element)) {
-                                if (quantifierGuardsLoop.get(quantifier.getIndex()) && !quantifierGuardsExited.get(quantifier.getIndex())) {
+                                if (quantifierGuardsLoop[quantifier.getIndex()] > 0 && quantifierGuardsExited[quantifier.getIndex()] == 0) {
                                     quantifierGuards.add(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
                                 } else {
                                     quantifierGuards.add(QuantifierGuard.createEnter(quantifier));
                                 }
                             } else if (pathIsGroupPassThrough(element)) {
                                 if (quantifier.getMin() > 0) {
-                                    quantifierGuardsExited.set(quantifier.getIndex());
+                                    quantifierGuardsExited[quantifier.getIndex()]++;
                                     quantifierGuards.add(QuantifierGuard.createExit(quantifier));
                                 } else {
                                     quantifierGuards.add(QuantifierGuard.createClear(quantifier));
                                 }
                             } else if (pathIsGroupExit(element)) {
-                                quantifierGuardsLoop.set(quantifier.getIndex());
+                                quantifierGuardsLoop[quantifier.getIndex()]++;
                             } else {
                                 assert pathIsGroupEscape(element);
-                                quantifierGuardsExited.set(quantifier.getIndex());
+                                quantifierGuardsExited[quantifier.getIndex()]++;
                             }
                         }
                         if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
@@ -610,7 +610,7 @@ public abstract class NFATraversalRegexASTVisitor {
         if (group.hasQuantifier()) {
             Quantifier quantifier = group.getQuantifier();
             if (quantifier.hasIndex()) {
-                if (quantifierGuardsLoop.get(quantifier.getIndex()) && !quantifierGuardsExited.get(quantifier.getIndex())) {
+                if (quantifierGuardsLoop[quantifier.getIndex()] > 0 && quantifierGuardsExited[quantifier.getIndex()] == 0) {
                     quantifierGuards.add(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
                 } else {
                     quantifierGuards.add(QuantifierGuard.createEnter(quantifier));
@@ -635,7 +635,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 popQuantifierGuard(QuantifierGuard.createEnterZeroWidth(quantifier));
             }
             if (quantifier.hasIndex()) {
-                if (quantifierGuardsLoop.get(quantifier.getIndex()) && !quantifierGuardsExited.get(quantifier.getIndex())) {
+                if (quantifierGuardsLoop[quantifier.getIndex()] > 0 && quantifierGuardsExited[quantifier.getIndex()] == 0) {
                     popQuantifierGuard(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
                 } else {
                     popQuantifierGuard(QuantifierGuard.createEnter(quantifier));
@@ -654,7 +654,7 @@ public abstract class NFATraversalRegexASTVisitor {
         if (group.hasQuantifier()) {
             Quantifier quantifier = group.getQuantifier();
             if (quantifier.hasIndex()) {
-                quantifierGuardsLoop.set(quantifier.getIndex());
+                quantifierGuardsLoop[quantifier.getIndex()]++;
             }
             if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                 if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || !root.isCharacterClass()) {
@@ -679,8 +679,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
             }
             if (quantifier.hasIndex()) {
-                // TODO: properly undo this set
-                quantifierGuardsLoop.clear(quantifier.getIndex());
+                quantifierGuardsLoop[quantifier.getIndex()]--;
             }
         }
         curPath.pop();
@@ -692,7 +691,7 @@ public abstract class NFATraversalRegexASTVisitor {
             Quantifier quantifier = group.getQuantifier();
             if (quantifier.hasIndex()) {
                 if (quantifier.getMin() > 0) {
-                    quantifierGuardsExited.set(quantifier.getIndex());
+                    quantifierGuardsExited[quantifier.getIndex()]++;
                     quantifierGuards.add(QuantifierGuard.createExit(quantifier));
                 } else {
                     quantifierGuards.add(QuantifierGuard.createClear(quantifier));
@@ -715,8 +714,7 @@ public abstract class NFATraversalRegexASTVisitor {
             if (quantifier.hasIndex()) {
                 if (quantifier.getMin() > 0) {
                     popQuantifierGuard(QuantifierGuard.createExit(quantifier));
-                    // TODO: undo this properly
-                    quantifierGuardsExited.clear(quantifier.getIndex());
+                    quantifierGuardsExited[quantifier.getIndex()]--;
                 } else {
                     popQuantifierGuard(QuantifierGuard.createClear(quantifier));
                 }
@@ -740,7 +738,7 @@ public abstract class NFATraversalRegexASTVisitor {
         if (group.hasQuantifier()) {
             Quantifier quantifier = group.getQuantifier();
             if (quantifier.hasIndex()) {
-                quantifierGuardsExited.set(quantifier.getIndex());
+                quantifierGuardsExited[quantifier.getIndex()]++;
             }
             if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                 quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
@@ -761,8 +759,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 popQuantifierGuard(QuantifierGuard.createEscapeZeroWidth(quantifier));
             }
             if (quantifier.hasIndex()) {
-                // TODO: undo this properly
-                quantifierGuardsExited.clear(quantifier.getIndex());
+                quantifierGuardsExited[quantifier.getIndex()]--;
             }
         }
         curPath.pop();
