@@ -47,7 +47,7 @@ public class JsTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "";
+        return "DumpAutomata=true";
     }
 
     @Test
