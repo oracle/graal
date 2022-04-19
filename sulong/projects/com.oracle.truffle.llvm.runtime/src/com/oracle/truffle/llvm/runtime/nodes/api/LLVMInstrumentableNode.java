@@ -145,9 +145,9 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
                     @CachedLibrary("this") NodeLibrary self) {
         LLVMContext ctx = LLVMContext.get(self);
         if (isLLDebugEnabled(ctx)) {
-            return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame, ctx);
+            return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame != null ? frame.materialize() : null, ctx);
         } else {
-            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, frame, ctx);
+            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, frame != null ? frame.materialize() : null, ctx);
         }
     }
 
