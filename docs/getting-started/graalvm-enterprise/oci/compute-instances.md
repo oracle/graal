@@ -166,7 +166,7 @@ The **graalvm22-ee-17-jdk** package is installed alongside **graalvm22-ee-11-jdk
 
 ### Note on `yum upgrade`
 
-The `yum upgrade` command can be used to update on the same year package line, for example, to upgrade from GraalVM Enterprise 22.0.0 to version 22.0.1 when this RPM package becomes available:
+The `yum upgrade` command can be used to update on the same year package line, for example, to upgrade from GraalVM Enterprise 22.0.0 to version 22.1.0 when this RPM package becomes available:
 
    ```shell
    sudo yum upgrade graalvm22-ee-11-jdk
