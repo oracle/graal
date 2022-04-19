@@ -502,6 +502,7 @@ suite = {
               "bin/llvm-symbolizer*",
               "bin/llvm-tblgen*",
               "bin/llvm-undname*",
+              "bin/llvm-windres*", # symlink to llvm-rc
               "bin/llvm-xray*",
               "bin/obj2yaml*",
               "bin/sancov*",
