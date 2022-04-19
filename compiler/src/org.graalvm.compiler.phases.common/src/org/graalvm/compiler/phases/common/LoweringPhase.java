@@ -27,6 +27,7 @@ package org.graalvm.compiler.phases.common;
 import static org.graalvm.compiler.core.common.GraalOptions.OptEliminateGuards;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
+import static org.graalvm.compiler.nodes.memory.MemoryKill.NO_LOCATION;
 import static org.graalvm.compiler.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER;
 import static org.graalvm.compiler.phases.common.LoweringPhase.ProcessBlockState.ST_ENTER_ALWAYS_REACHED;
 import static org.graalvm.compiler.phases.common.LoweringPhase.ProcessBlockState.ST_LEAVE;
@@ -76,7 +77,6 @@ import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
-import org.graalvm.compiler.nodes.memory.SideEffectFreeWrite;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -315,7 +315,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                         // lowered to a kill verify the original node was a kill
                         if (MemoryKill.isSingleMemoryKill(n)) {
                             SingleMemoryKill singleKill = (SingleMemoryKill) n;
-                            if (!singleKill.getKilledLocationIdentity().equals(SideEffectFreeWrite.NO_LOCATION)) {
+                            if (!singleKill.getKilledLocationIdentity().equals(NO_LOCATION)) {
                                 if (!wasMemoryKillBefore) {
                                     // Kills to ININT_LOCATION are excluded above. We would like to
                                     // perform this check before and only once for both

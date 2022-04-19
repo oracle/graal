@@ -178,6 +178,9 @@ public abstract class LocationIdentity {
      * @since 19.0
      */
     public final boolean overlaps(LocationIdentity other) {
+        if (other == this) {
+            return true;
+        }
         if (other.isImmutable() || this.isImmutable()) {
             return false;
         }

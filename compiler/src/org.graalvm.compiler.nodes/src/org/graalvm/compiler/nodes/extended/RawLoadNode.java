@@ -121,9 +121,9 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
         if (ordersMemoryAccesses()) {
-            return MemoryKill.ANY_LOCATION_MULTI_KILL;
+            return MemoryKill.MULTI_KILL_ANY_LOCATION;
         }
-        return MemoryKill.MULTI_KILL_NO_KILL;
+        return MemoryKill.MULTI_KILL_NO_LOCATION;
     }
 
     @Override

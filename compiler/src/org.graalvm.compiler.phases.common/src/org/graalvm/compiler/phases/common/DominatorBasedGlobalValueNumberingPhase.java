@@ -588,7 +588,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
                     if (useLoop != null) {
                         // we are only safe without proxies if we are included in the def loop,
                         // i.e., the def loop is a parent loop
-                        if (!useLoop.isTransitiveParentOrSelf(defLoop)) {
+                        if (!useLoop.isAncestorOrSelf(defLoop)) {
                             earlyGVNAbort.increment(graph.getDebug());
                             return;
                         }

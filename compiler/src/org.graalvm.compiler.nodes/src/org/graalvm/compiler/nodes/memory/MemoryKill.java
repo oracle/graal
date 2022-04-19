@@ -41,14 +41,32 @@ import org.graalvm.word.LocationIdentity;
 public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
 
     /**
-     * A node is a memory kill if it implements the memory kill API and actually kills a location
-     * identity.
+     * Determine if the given node represents a {@link MemoryKill} in Graal IR. A node is a memory
+     * kill if it implements the memory kill API and actually kills a location identity other than
+     * {@link NoLocation}.
      */
     static boolean isMemoryKill(Node n) {
         // Single memory kills always have to return a killed location identity. Multi-memory kills
         // however can return a zero length array and thus not kill any location. This is handy to
         // implement cases where nodes are only memory kills based on a dynamic property.
-        return isSingleMemoryKill(n) || isMultiMemoryKill(n) && asMultiMemoryKill(n).getKilledLocationIdentities().length > 0;
+        if (isSingleMemoryKill(n)) {
+            LocationIdentity killedLocation = asSingleMemoryKill(n).getKilledLocationIdentity();
+            return !killedLocation.equals(NO_LOCATION);
+        } else if (isMultiMemoryKill(n)) {
+            LocationIdentity[] killedLocations = asMultiMemoryKill(n).getKilledLocationIdentities();
+            if (killedLocations.length == 0) {
+                // no memory kill
+                return false;
+            } else if (killedLocations.length == 1) {
+                // no memory kill
+                return !killedLocations[0].equals(NO_LOCATION);
+            } else {
+                // definitely a memory kill killing multiple locations
+                return true;
+            }
+        }
+
+        return false;
     }
 
     static boolean isSingleMemoryKill(Node n) {
@@ -81,8 +99,43 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
         return getSingleLocationFromMulti(m) != null;
     }
 
-    LocationIdentity[] ANY_LOCATION_MULTI_KILL = new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+    /**
+     * Special {@link LocationIdentity} used to express that this location is never killing
+     * anything, thus it is {@link LocationIdentity#isImmutable()} {@code true} and should only be
+     * used very carefully.
+     */
+    LocationIdentity NO_LOCATION = new NoLocation();
 
-    LocationIdentity[] MULTI_KILL_NO_KILL = new LocationIdentity[]{};
+    class NoLocation extends LocationIdentity {
+        private NoLocation() {
+            // only a single instance of this should ever live
+        }
+
+        @Override
+        public boolean isImmutable() {
+            return true;
+        }
+
+        @Override
+        public String toString() {
+            return "NO_LOCATION";
+        }
+    }
+
+    /**
+     * Special {@link LocationIdentity} used to express that a {@link MultiMemoryKill} actually
+     * represents a {@link SingleMemoryKill} that kills {@link LocationIdentity#ANY_LOCATION}. Using
+     * this location can be handy to express that a memory kill
+     * {@link LocationIdentity#ANY_LOCATION} under certain, parameterized, conditions. Should be
+     * used with caution.
+     */
+    LocationIdentity[] MULTI_KILL_ANY_LOCATION = new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
+
+    /**
+     * Special {@link LocationIdentity} used to express that a {@link MultiMemoryKill} actually does
+     * not kill any location. Using this location can be handy to express that a memory kill only
+     * kills under certain, parameterized, conditions. Should be used with caution.
+     */
+    LocationIdentity[] MULTI_KILL_NO_LOCATION = new LocationIdentity[]{};
 
 }

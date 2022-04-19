@@ -521,9 +521,8 @@ public class EncodedSnippets {
     static class SymbolicResolvedJavaFieldLocationIdentity implements SymbolicJVMCIReference<FieldLocationIdentity> {
         final SymbolicResolvedJavaField inner;
 
-        SymbolicResolvedJavaFieldLocationIdentity(UnresolvedJavaType declaringType, String name,
-                        UnresolvedJavaType signature, boolean isStatic) {
-            this.inner = new SymbolicResolvedJavaField(declaringType, name, signature, isStatic);
+        SymbolicResolvedJavaFieldLocationIdentity(SymbolicResolvedJavaField inner) {
+            this.inner = inner;
         }
 
         @Override

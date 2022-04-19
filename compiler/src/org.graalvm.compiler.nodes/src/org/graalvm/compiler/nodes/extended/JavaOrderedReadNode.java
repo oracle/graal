@@ -59,9 +59,9 @@ public class JavaOrderedReadNode extends JavaReadNode implements MultiMemoryKill
     @Override
     public LocationIdentity[] getKilledLocationIdentities() {
         if (ordersMemoryAccesses()) {
-            return MemoryKill.ANY_LOCATION_MULTI_KILL;
+            return MemoryKill.MULTI_KILL_ANY_LOCATION;
         }
-        return MemoryKill.MULTI_KILL_NO_KILL;
+        return MemoryKill.MULTI_KILL_NO_LOCATION;
     }
 
     @Override

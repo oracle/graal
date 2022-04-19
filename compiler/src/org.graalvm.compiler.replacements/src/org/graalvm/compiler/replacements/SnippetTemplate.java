@@ -2673,7 +2673,7 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
         if (killedLocation != null) {
             return new LocationIdentity[]{killedLocation};
         } else {
-            return MemoryKill.MULTI_KILL_NO_KILL;
+            return MemoryKill.MULTI_KILL_NO_LOCATION;
         }
     }
 }

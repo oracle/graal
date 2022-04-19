@@ -763,15 +763,7 @@ public class SymbolicSnippetEncoder {
         }
 
         private Object filterFieldLocationIdentity(DebugContext debug, HotSpotResolvedJavaField field) {
-            if (!field.getDeclaringClass().getName().startsWith("Ljava/lang/")) {
-                // Might require adjustments in HotSpotSubstrateConstantReflectionProvider
-                throw new InternalError("All other fields must have been resolved: " + field);
-            }
-            UnresolvedJavaType declaringType = (UnresolvedJavaType) filterType(debug, field.getDeclaringClass());
-            String name = field.getName();
-            UnresolvedJavaType signature = (UnresolvedJavaType) filterType(debug, (ResolvedJavaType) field.getType());
-            boolean isStatic = field.isStatic();
-            return new SymbolicResolvedJavaFieldLocationIdentity(declaringType, name, signature, isStatic);
+            return new SymbolicResolvedJavaFieldLocationIdentity((SymbolicResolvedJavaField) filterField(debug, field));
         }
 
         private Object filterField(DebugContext debug, HotSpotResolvedJavaField field) {
