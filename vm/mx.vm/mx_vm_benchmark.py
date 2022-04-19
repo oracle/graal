@@ -733,6 +733,10 @@ class NativeImageVM(GraalVm):
         # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
         hotspot_vm_args += ['-XX:-UseJVMCICompiler']
 
+        # Limit parallelism because the JVMTI operations in the agent sometimes scale badly.
+        if mx.cpu_count() > 8:
+            hotspot_vm_args += ['-XX:ActiveProcessorCount=8']
+
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
 
