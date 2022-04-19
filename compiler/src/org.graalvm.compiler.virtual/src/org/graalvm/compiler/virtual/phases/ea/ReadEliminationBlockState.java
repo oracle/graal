@@ -26,11 +26,12 @@ package org.graalvm.compiler.virtual.phases.ea;
 
 import java.util.Iterator;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.word.LocationIdentity;
+
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This class maintains a set of known values, identified by base object, locations and offset.
@@ -52,20 +53,20 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         public abstract CacheEntry<T> duplicateWithObject(ValueNode newObject);
 
         @Override
-        public int hashCode() {
-            int result = 31 + ((identity == null) ? 0 : identity.hashCode());
-            // we need to use the identity hash code for the object since the node may not yet have
-            // a valid id and thus not have a stable hash code
-            return 31 * result + ((object == null) ? 0 : System.identityHashCode(object));
-        }
-
-        @Override
         public boolean equals(Object obj) {
             if (!(obj instanceof CacheEntry<?>)) {
                 return false;
             }
             CacheEntry<?> other = (CacheEntry<?>) obj;
             return identity.equals(other.identity) && object == other.object;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = 31 + ((identity == null) ? 0 : identity.hashCode());
+            // we need to use the identity hash code for the object since the node may not yet have
+            // a valid id and thus not have a stable hash code
+            return 31 * result + ((object == null) ? 0 : System.identityHashCode(object));
         }
 
         @Override
@@ -82,6 +83,14 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
         public LoadCacheEntry(ValueNode object, LocationIdentity identity) {
             super(object, identity);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof LoadCacheEntry) {
+                return super.equals(obj);
+            }
+            return false;
         }
 
         @Override

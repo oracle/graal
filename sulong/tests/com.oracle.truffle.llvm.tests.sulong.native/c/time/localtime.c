@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,16 +27,15 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <time.h>
 #include <stdio.h>
 
-int globalVar;
+int main() {
+    time_t time = 123456789;
+    struct tm *t = localtime(&time);
 
-__thread int threadLocalGlobalVar;
+    // the output is timezone dependent, but should be fixed in a given system
+    printf("%d\n", t->tm_hour);
 
-void globalFn() {
-}
-
-__attribute__((constructor)) int start() {
-    __builtin_debugtrap();
     return 0;
 }
