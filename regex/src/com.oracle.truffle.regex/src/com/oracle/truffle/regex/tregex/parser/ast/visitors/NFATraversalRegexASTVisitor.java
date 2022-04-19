@@ -526,7 +526,8 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private boolean isGroupExitOnPath(Group group) {
-        return !curPath.isEmpty() && pathIsGroupExit(curPath.peek()) && pathGetNode(curPath.peek()) == group;
+        assert !curPath.isEmpty() && pathIsGroupEnter(curPath.peek()) && pathGetNode(curPath.peek()) == group;
+        return curPath.length() >= 2 && pathIsGroupExit(curPath.get(curPath.length() - 2)) && pathGetNode(curPath.get(curPath.length() - 2)) == group;
     }
 
     private void registerInsideLoop(Group group) {
