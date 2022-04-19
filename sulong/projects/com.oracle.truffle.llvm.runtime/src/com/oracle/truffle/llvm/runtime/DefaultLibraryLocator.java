@@ -73,17 +73,24 @@ public final class DefaultLibraryLocator extends LibraryLocator {
         assert libPath.isAbsolute();
         traceTry(context, libPath);
         TruffleFile file = context.getEnv().getInternalTruffleFile(libPath.toUri());
-        if (file.exists()) {
-            return file;
-        } else {
-            /*
-             * On OSX Big Sur, some system libraries don't exist as a file. These libraries are
-             * native libraries anyway, Sulong can do nothing with these libraries, so we can just
-             * return null here. The NFI will later re-try locating these libraries, and they will
-             * be found via the dlopen cache.
-             */
-            return null;
+        try {
+            if (file.exists()) {
+                return file;
+            }
+        } catch (SecurityException se){
+            PlatformCapability.OS os = context.getLanguage().getCapability(PlatformCapability.class).getOS();
+            if (os != PlatformCapability.OS.Darwin) {
+                throw se;
+            }
+            /* Ignore security exception on macOS, see below. */
         }
+        /*
+         * On OSX Big Sur, some system libraries don't exist as a file. These libraries are
+         * native libraries anyway, Sulong can do nothing with these libraries, so we can just
+         * return null here. The NFI will later re-try locating these libraries, and they will
+         * be found via the dlopen cache.
+         */
+        return null;
     }
 
 }
