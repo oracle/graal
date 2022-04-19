@@ -79,9 +79,9 @@ public final class DefaultLibraryLocator extends LibraryLocator {
             }
         } catch (SecurityException se) {
             /*
-            * Files that aren't allowed to be accessed are treated like they would not exist,
-            * see below for an usecase.
-            */
+             * Files that aren't allowed to be accessed are treated like they would not exist, see
+             * below for an usecase.
+             */
         }
         /*
          * On OSX Big Sur, some system libraries don't exist as a file. These libraries are native
