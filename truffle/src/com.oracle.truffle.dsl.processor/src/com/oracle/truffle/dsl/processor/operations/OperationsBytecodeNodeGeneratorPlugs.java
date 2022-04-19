@@ -58,7 +58,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private MultiStateBitSet multiState;
     private List<BoxingSplit> boxingSplits;
 
-    private static final boolean DO_LOG_BOXING_ELIM = true;
+    private static final boolean DO_LOG_BOXING_ELIM = false;
     private static final boolean DO_BOXING_ELIM_IN_PE = true;
 
     OperationsBytecodeNodeGeneratorPlugs(CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
@@ -490,7 +490,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             b.startElseIf();
             b.startCall("$frame", "isObject").string("$sp - " + offset).end();
             b.string(" && ");
-            b.startCall("$frame", "getObject").string("$sp - " + offset).end().string("instanceof ", typeName.getTypeNameBoxed());
+            b.startCall("$frame", "getObject").string("$sp - " + offset).end().string(" instanceof ", typeName.getTypeNameBoxed());
             b.end().startBlock();
             {
                 b.startAssign(targetValue.getName());
@@ -501,6 +501,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
             b.end().startElseBlock();
             {
+
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+
                 // slow path
                 FrameState slowPathFrameState = frameState.copy();
 
