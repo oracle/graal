@@ -78,11 +78,10 @@ public final class DefaultLibraryLocator extends LibraryLocator {
                 return file;
             }
         } catch (SecurityException se) {
-            PlatformCapability.OS os = context.getLanguage().getCapability(PlatformCapability.class).getOS();
-            if (os != PlatformCapability.OS.Darwin) {
-                throw se;
-            }
-            /* Ignore security exception on macOS, see below. */
+            /*
+            * Files that aren't allowed to be accessed are treated like they would not exist,
+            * see below for an usecase.
+            */
         }
         /*
          * On OSX Big Sur, some system libraries don't exist as a file. These libraries are native
