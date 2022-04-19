@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -155,7 +156,11 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
-        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog());
+        return performSpeculativeGuardMovement(context, graph, loops, null);
+    }
+
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess) {
+        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess);
         spec.run();
         return spec.iterate;
     }
@@ -168,23 +173,27 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
         private final ProfilingInfo profilingInfo;
         private final SpeculationLog speculationLog;
         boolean iterate;
+        private final NodeBitMap toProcess;
 
-        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog) {
+        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess) {
             this.loops = loops;
             this.earliestCache = earliestCache;
             this.graph = graph;
             this.profilingInfo = profilingInfo;
             this.speculationLog = speculationLog;
+            this.toProcess = toProcess;
         }
 
         @Override
         public void run() {
             for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-                Block anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
-                if (exitsLoop(anchorBlock, earliestBlock(guard))) {
-                    iterate = true;
+                if (toProcess == null || toProcess.contains(guard)) {
+                    Block anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
+                    if (exitsLoop(anchorBlock, earliestBlock(guard))) {
+                        iterate = true;
+                    }
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing guard %s", guard);
                 }
-                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing guard %s", guard);
             }
         }
 
