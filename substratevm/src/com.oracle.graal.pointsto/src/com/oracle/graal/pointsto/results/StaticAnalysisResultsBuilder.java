@@ -26,8 +26,6 @@ package com.oracle.graal.pointsto.results;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Map;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -93,14 +91,15 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
             parameterTypeProfiles = paramProfiles.toArray(new JavaTypeProfile[paramProfiles.size()]);
         }
 
-        JavaTypeProfile resultTypeProfile = makeTypeProfile(methodFlow.foldTypeFlow(bb, originalFlows.getResult()));
+        JavaTypeProfile resultTypeProfile = makeTypeProfile(methodFlow.foldTypeFlow(bb, originalFlows.getReturnFlow()));
 
         ArrayList<BytecodeEntry> entries = new ArrayList<>(method.getCodeSize());
 
-        for (Map.Entry<Object, InstanceOfTypeFlow> entry : originalFlows.getInstanceOfFlows()) {
-            if (BytecodeLocation.isValidBci(entry.getKey())) {
-                int bci = (int) entry.getKey();
-                InstanceOfTypeFlow originalInstanceOf = entry.getValue();
+        var instanceOfCursor = originalFlows.getInstanceOfFlows().getEntries();
+        while (instanceOfCursor.advance()) {
+            if (BytecodeLocation.isValidBci(instanceOfCursor.getKey())) {
+                int bci = (int) instanceOfCursor.getKey();
+                InstanceOfTypeFlow originalInstanceOf = instanceOfCursor.getValue();
 
                 if (methodFlow.isSaturated(bb, originalInstanceOf)) {
                     /*
@@ -123,10 +122,11 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
             }
         }
 
-        for (Entry<Object, InvokeTypeFlow> entry : originalFlows.getInvokes()) {
-            if (BytecodeLocation.isValidBci(entry.getKey())) {
-                int bci = (int) entry.getKey();
-                InvokeTypeFlow originalInvoke = entry.getValue();
+        var invokesCursor = originalFlows.getInvokes().getEntries();
+        while (invokesCursor.advance()) {
+            if (BytecodeLocation.isValidBci(invokesCursor.getKey())) {
+                int bci = (int) invokesCursor.getKey();
+                InvokeTypeFlow originalInvoke = invokesCursor.getValue();
 
                 TypeState invokeTypeState = null;
                 /* If the receiver flow is saturated its exact type state doesn't matter. */

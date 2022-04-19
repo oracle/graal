@@ -29,8 +29,6 @@ import static jdk.vm.ci.common.JVMCIError.guarantee;
 import java.util.Collection;
 import java.util.Collections;
 
-import org.graalvm.compiler.nodes.ParameterNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
@@ -176,8 +174,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         }
 
         if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
-            ParameterNode paramNode = calleeFlows.getMethod().getTypeFlow().getReturnedParameter();
-            if (actualReturn != null && paramNode != null && paramNode.index() == 0) {
+            int paramIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
+            if (actualReturn != null && paramIndex == 0) {
                 actualReturn.addState(bb, receiverTypeState);
             }
         }
@@ -214,10 +212,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
         if (actualReturn != null) {
             if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
-                ParameterNode paramNode = calleeFlows.getMethod().getTypeFlow().getReturnedParameter();
-                if (paramNode != null) {
-                    if (isStatic || paramNode.index() != 0) {
-                        TypeFlow<?> actualParam = actualParameters[paramNode.index()];
+                int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
+                if (paramNodeIndex != -1) {
+                    if (isStatic || paramNodeIndex != 0) {
+                        TypeFlow<?> actualParam = actualParameters[paramNodeIndex];
                         actualParam.addUse(bb, actualReturn);
                     }
                     // else {
@@ -229,8 +227,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                      * might throw an exception instead of returning, hence the formal return is
                      * null.
                      */
-                    if (calleeFlows.getResult() != null) {
-                        calleeFlows.getResult().addUse(bb, actualReturn);
+                    if (calleeFlows.getReturnFlow() != null) {
+                        calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                     }
                 }
             } else {
@@ -238,8 +236,8 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                  * The callee may have a return type, hence the actualReturn is non-null, but it
                  * might throw an exception instead of returning, hence the formal return is null.
                  */
-                if (calleeFlows.getResult() != null) {
-                    calleeFlows.getResult().addUse(bb, actualReturn);
+                if (calleeFlows.getReturnFlow() != null) {
+                    calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                 }
             }
         }

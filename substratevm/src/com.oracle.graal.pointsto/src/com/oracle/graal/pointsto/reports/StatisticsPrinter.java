@@ -28,11 +28,10 @@ import java.io.File;
 import java.io.PrintWriter;
 import java.text.NumberFormat;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -191,10 +190,11 @@ public final class StatisticsPrinter {
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
             MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
 
-            for (Map.Entry<Object, InstanceOfTypeFlow> entry : originalFlows.getInstanceOfFlows()) {
-                if (BytecodeLocation.isValidBci(entry.getKey())) {
+            var cursor = originalFlows.getInstanceOfFlows().getEntries();
+            while (cursor.advance()) {
+                if (BytecodeLocation.isValidBci(cursor.getKey())) {
                     totalFilters++;
-                    InstanceOfTypeFlow originalInstanceOf = entry.getValue();
+                    InstanceOfTypeFlow originalInstanceOf = cursor.getValue();
 
                     boolean isSaturated = methodFlow.isSaturated(pointsToAnalysis, originalInstanceOf);
                     TypeState instanceOfTypeState = methodFlow.foldTypeFlow(pointsToAnalysis, originalInstanceOf);

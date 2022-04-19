@@ -25,8 +25,6 @@
 package com.oracle.graal.pointsto.meta;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -108,8 +106,8 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
     }
 
     @Override
-    public Collection<InvokeInfo> getInvokes() {
-        return Collections.unmodifiableCollection(getTypeFlow().getInvokes());
+    public Iterable<? extends InvokeInfo> getInvokes() {
+        return getTypeFlow().getInvokes();
     }
 
     @Override
