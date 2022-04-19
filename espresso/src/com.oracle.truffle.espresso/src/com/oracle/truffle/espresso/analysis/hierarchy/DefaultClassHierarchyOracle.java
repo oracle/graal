@@ -27,8 +27,6 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 
-import java.util.ArrayList;
-
 /**
  * Computes the classes that are effectively final by keeping track of currently loaded classes. To
  * compute currently leaf classes, it creates {@code noConcreteSubclassesAssumption} in the
@@ -106,11 +104,11 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
             Method.MethodVersion m = vTable[i];
             ObjectKlass current = newKlassVersion.getSuperKlass();
             while (current != null) {
-                Method.MethodVersion[] vtable = current.getKlassVersion().getVtable();
-                if (i >= vtable.length) {
+                Method.MethodVersion[] superVTable = current.getKlassVersion().getVtable();
+                if (i >= superVTable.length) {
                     break;
                 }
-                Method.MethodVersion overridden = vtable[i];
+                Method.MethodVersion overridden = superVTable[i];
                 if (overridden != m) {
                     overridden.getMethod().getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
                     if (current.isConcrete()) {
