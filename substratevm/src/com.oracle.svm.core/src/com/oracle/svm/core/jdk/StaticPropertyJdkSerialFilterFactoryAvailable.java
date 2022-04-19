@@ -40,7 +40,7 @@ public class StaticPropertyJdkSerialFilterFactoryAvailable implements BooleanSup
         Method method;
         try {
             method = ReflectionUtil.lookupMethod(true, Class.forName("jdk.internal.util.StaticProperty"),
-                    "jdkSerialFilterFactory");
+                            "jdkSerialFilterFactory");
         } catch (ClassNotFoundException e) {
             return false;
         }
