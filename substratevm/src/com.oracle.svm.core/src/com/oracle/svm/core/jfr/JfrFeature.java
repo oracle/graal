@@ -22,48 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jfr;
+package com.oracle.svm.core.jfr;
 
-import java.lang.reflect.Field;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.jfr.JfrChunkWriter;
-import com.oracle.svm.core.jfr.JfrFrameTypeSerializer;
-import com.oracle.svm.core.jfr.JfrGCNames;
-import com.oracle.svm.core.jfr.JfrGlobalMemory;
-import com.oracle.svm.core.jfr.JfrManager;
-import com.oracle.svm.core.jfr.JfrNativeEventWriter;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
-import com.oracle.svm.core.jfr.JfrRecorderThread;
-import com.oracle.svm.core.jfr.JfrSerializerSupport;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
-import com.oracle.svm.core.jfr.JfrThreadStateSerializer;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
-import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
@@ -74,7 +52,6 @@ import jdk.jfr.Event;
 import jdk.jfr.internal.EventWriter;
 import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.jfc.JFC;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
@@ -82,7 +59,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * There are two different kinds of JFR events:
  * <ul>
- * <li>Java-level events are defined by a Java class that extends {@link jdk.jfr.Event} and that is
+ * <li>Java-level events are defined by a Java class that extends {@link Event} and that is
  * annotated with JFR-specific annotations. Those events are typically triggered by the Java
  * application and a Java {@link EventWriter} object is used when writing the event to a
  * buffer.</li>
@@ -126,6 +103,10 @@ public class JfrFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return isInConfiguration(true);
+    }
+
+    public static boolean isInConfiguration(boolean allowPrinting) {
         boolean systemSupported = osSupported();
         if (HOSTED_ENABLED && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
@@ -133,8 +114,10 @@ public class JfrFeature implements Feature {
         }
         boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
         if (HOSTED_ENABLED && !runtimeEnabled) {
-            System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
-                            "This can affect the measurements because it can can make the image larger and image build time longer.");
+            if (allowPrinting) {
+                System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
+                                "This can affect the measurements because it can can make the image larger and image build time longer.");
+            }
             runtimeEnabled = true;
         }
         return runtimeEnabled && systemSupported;
@@ -166,8 +149,6 @@ public class JfrFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
-        ModuleSupport.exportAndOpenPackageToClass("jdk.jfr", "jdk.jfr.events", false, JfrFeature.class);
-        ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.hotspot", false, JfrEventSubstitution.class);
 
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();
@@ -194,65 +175,10 @@ public class JfrFeature implements Feature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess c) {
-        FeatureImpl.DuringSetupAccessImpl config = (FeatureImpl.DuringSetupAccessImpl) c;
-        MetaAccessProvider metaAccess = config.getMetaAccess().getWrapped();
-
-        for (Class<?> eventSubClass : config.findSubclasses(Event.class)) {
-            RuntimeClassInitialization.initializeAtBuildTime(eventSubClass.getName());
-        }
-        config.registerSubstitutionProcessor(new JfrEventSubstitution(metaAccess));
-    }
-
-    @Override
-    public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
         JfrManager manager = JfrManager.get();
         runtime.addStartupHook(manager.startupHook());
         runtime.addShutdownHook(manager.shutdownHook());
-
-        Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
-        if (eventClass != null) {
-            access.registerSubtypeReachabilityHandler(JfrFeature::eventSubtypeReachable, eventClass);
-        }
-
-    }
-
-    @Override
-    public void beforeCompilation(BeforeCompilationAccess a) {
-        // Reserve slot 0 for error-catcher.
-        int mapSize = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId() + 1;
-
-        // Create trace-ID map with fixed size.
-        ImageSingletons.lookup(JfrTraceIdMap.class).initialize(mapSize);
-
-        // Scan all classes and build sets of packages, modules and class-loaders. Count all items.
-        Collection<? extends SharedType> types = ((FeatureImpl.CompilationAccessImpl) a).getTypes();
-        for (SharedType type : types) {
-            DynamicHub hub = type.getHub();
-            Class<?> clazz = hub.getHostedJavaClass();
-            // Off-set by one for error-catcher
-            JfrTraceId.assign(clazz, hub.getTypeID() + 1);
-        }
-    }
-
-    private static void eventSubtypeReachable(DuringAnalysisAccess a, Class<?> c) {
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        if (c.getCanonicalName().equals("jdk.jfr.Event") ||
-                        c.getCanonicalName().equals("jdk.internal.event.Event") ||
-                        c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
-                        c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
-            return;
-        }
-        try {
-            Field f = c.getDeclaredField("eventHandler");
-            RuntimeReflection.register(f);
-            access.rescanRoot(f);
-            if (!access.concurrentReachabilityHandlers()) {
-                access.requireAnalysisIteration();
-            }
-        } catch (Exception e) {
-            throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
-        }
     }
 }
