@@ -86,7 +86,7 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = StaticPropertySupport.class)
+    @TargetElement(onlyWith = StaticPropertyJdkSerialFilterFactoryAvailable.class)
     private static String jdkSerialFilterFactory() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilterFactory");
     }

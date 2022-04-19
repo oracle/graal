@@ -24,16 +24,26 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.util.ReflectionUtil;
+
+import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
 
-public class StaticPropertySupport implements BooleanSupplier {
+/*
+ * Method jdkSerialFilterFactory is present in the labsjdk11 enterprise edition, but not in the labsjdk11 community edition.
+ * It is always present in the JDK17. We need to check if this method should be substituted by checking if it exists in the
+ * running JDK version.
+ */
+public class StaticPropertyJdkSerialFilterFactoryAvailable implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
+        Method method;
         try {
-            Class.forName("jdk.internal.util.StaticProperty").getDeclaredMethod("jdkSerialFilterFactory");
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            method = ReflectionUtil.lookupMethod(true, Class.forName("jdk.internal.util.StaticProperty"),
+                    "jdkSerialFilterFactory");
+        } catch (ClassNotFoundException e) {
             return false;
         }
-        return true;
+        return method != null;
     }
 }
