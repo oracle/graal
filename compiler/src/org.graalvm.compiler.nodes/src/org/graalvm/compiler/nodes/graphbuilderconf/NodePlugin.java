@@ -26,6 +26,8 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import java.util.function.Supplier;
 
+import org.graalvm.collections.Pair;
+import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -213,6 +215,18 @@ public interface NodePlugin extends GraphBuilderPlugin {
      */
     default boolean handleNewMultiArray(GraphBuilderContext b, ResolvedJavaType type, ValueNode[] dimensions) {
         return false;
+    }
+
+    /**
+     * Converts an invoke dynamic (indy) call into a static call that passes the returned arguments.
+     *
+     * @param b the context
+     * @param m information about the indy's bootstrap method
+     * @return pair with the call target & arguments for the static call, null if the indy cannot be
+     *         converted to a static call
+     */
+    default Pair<ResolvedJavaMethod, ValueNode[]> convertInvokeDynamic(GraphBuilderContext b, BootstrapMethodIntrospection m) {
+        return null;
     }
 
     /**
