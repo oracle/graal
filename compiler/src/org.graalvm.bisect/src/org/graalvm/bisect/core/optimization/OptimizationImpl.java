@@ -24,21 +24,35 @@
  */
 package org.graalvm.bisect.core.optimization;
 
+import java.util.Map;
 import java.util.Objects;
 
 public class OptimizationImpl implements Optimization {
+    private final Integer bci;
+    private final String optimizationName;
+    private final String counterName;
+    private final Map<String, Object> properties;
 
-    public OptimizationImpl(OptimizationKind optimizationKind, Integer bci) {
+    public OptimizationImpl(String optimizationName, String counterName, Integer bci, Map<String, Object> properties) {
+        this.optimizationName = optimizationName;
+        this.counterName = counterName;
         this.bci = bci;
-        this.optimizationKind = optimizationKind;
+        this.properties = properties;
     }
 
-    private final Integer bci;
-    private final OptimizationKind optimizationKind;
+    @Override
+    public String getOptimizationName() {
+        return optimizationName;
+    }
 
     @Override
-    public OptimizationKind getOptimizationKind() {
-        return optimizationKind;
+    public String getCounterName() {
+        return counterName;
+    }
+
+    @Override
+    public Map<String, Object> getProperties() {
+        return properties;
     }
 
     @Override
@@ -48,7 +62,8 @@ public class OptimizationImpl implements Optimization {
 
     @Override
     public int hashCode() {
-        return optimizationKind.hashCode() + Integer.hashCode(bci);
+        return optimizationName.hashCode() + counterName.hashCode() + ((bci == null) ? -1 : bci.hashCode())
+                + ((properties == null) ? -1 : properties.hashCode());
     }
 
     @Override
@@ -57,6 +72,7 @@ public class OptimizationImpl implements Optimization {
             return false;
         }
         OptimizationImpl other = (OptimizationImpl) object;
-        return Objects.equals(bci, other.bci) && optimizationKind == other.optimizationKind;
+        return Objects.equals(bci, other.bci) && optimizationName.equals(other.optimizationName) &&
+                counterName.equals(other.counterName) && Objects.equals(properties, other.properties);
     }
 }

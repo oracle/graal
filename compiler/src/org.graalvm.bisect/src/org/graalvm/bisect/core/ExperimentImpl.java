@@ -35,6 +35,8 @@ public class ExperimentImpl implements Experiment {
     private final ExperimentId experimentId;
     private final long totalPeriod;
     private final int totalProftoolMethods;
+    private final long graalPeriod;
+    private final Map<String, List<ExecutedMethod>> methodsByName;
 
     public ExperimentImpl(
             List<ExecutedMethod> executedMethods,
@@ -47,6 +49,12 @@ public class ExperimentImpl implements Experiment {
         this.experimentId = experimentId;
         this.totalPeriod = totalPeriod;
         this.totalProftoolMethods = totalProftoolMethods;
+        this.graalPeriod = executedMethods.stream().mapToLong(ExecutedMethod::getPeriod).sum();
+        this.methodsByName = new HashMap<>();
+        for (ExecutedMethod method : executedMethods) {
+            List<ExecutedMethod> methods = methodsByName.computeIfAbsent(method.getCompilationMethodName(), k -> new ArrayList<>());
+            methods.add(method);
+        }
     }
 
     @Override
@@ -65,8 +73,8 @@ public class ExperimentImpl implements Experiment {
     }
 
     @Override
-    public long sumGraalPeriod() {
-        return executedMethods.stream().mapToLong(ExecutedMethod::getPeriod).sum();
+    public long getGraalPeriod() {
+        return graalPeriod;
     }
 
     @Override
@@ -87,8 +95,13 @@ public class ExperimentImpl implements Experiment {
     }
 
     @Override
+    public List<ExecutedMethod> getMethodsByName(String compilationMethodName) {
+        return methodsByName.get(compilationMethodName);
+    }
+
+    @Override
     public String createSummary() {
-        String graalExecutionPercent = String.format("%.2f", (double) sumGraalPeriod() / totalPeriod * 100);
+        String graalExecutionPercent = String.format("%.2f", (double) getGraalPeriod() / totalPeriod * 100);
         String graalHotExecutionPercent = String.format("%.2f", (double) countHotGraalPeriod() / totalPeriod * 100);
         return  "Experiment " + experimentId + " with execution ID " + executionId + "\n" +
                 "    Collected optimization logs for " + executedMethods.size() + " methods\n" +

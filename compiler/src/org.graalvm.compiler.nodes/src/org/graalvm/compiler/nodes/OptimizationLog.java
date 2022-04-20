@@ -24,9 +24,12 @@
  */
 package org.graalvm.compiler.nodes;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.json.JSONFormatter;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -39,9 +42,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
- * Collects info about optimizations performed in a single compilation and dumps them to a JSON file.
+ * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about optimizations performed
+ * in a single compilation and dumps them to a JSON file.
  */
 public class OptimizationLog {
 
@@ -51,176 +58,181 @@ public class OptimizationLog {
         public static final OptionKey<Boolean> OptimizationLog = new OptionKey<>(false);
     }
 
-    interface JSONValue {
-        void appendTo(Appendable appendable) throws IOException;
-    }
+    /**
+     * Describes the kind and location of one performed optimization in an optimization log.
+     */
+    public interface OptimizationEntry {
+        /**
+         * Sets an additional property of the performed optimization to be used in the optimization log.
+         * @param key the name of the property
+         * @param valueSupplier the supplier of the value
+         * @return this
+         */
+        OptimizationEntry setProperty(String key, Supplier<Object> valueSupplier);
 
-    static class JSONMap implements JSONValue {
-        private final Map<String, JSONValue> map = new HashMap<>();
-
-        public void addEntry(String name, JSONValue value) {
-            map.put(name, value);
-        }
-
-        @Override
-        public void appendTo(Appendable appendable) throws IOException {
-            appendable.append("{\n");
-            boolean isFirst = true;
-            for (Map.Entry<String, JSONValue> entry : map.entrySet()) {
-                if (!isFirst) {
-                    appendable.append(",\n");
-                }
-                isFirst = false;
-                appendable
-                        .append('"')
-                        .append(entry.getKey())
-                        .append("\": ");
-                entry.getValue().appendTo(appendable);
-
-            }
-            appendable.append("\n}");
-        }
-    }
-
-    static class JSONArray implements JSONValue {
-        private final ArrayList<JSONValue> elements = new ArrayList<>();
-
-        public void add(JSONValue value) {
-            elements.add(value);
-        }
-
-        @Override
-        public void appendTo(Appendable appendable) throws IOException {
-            appendable.append("[\n");
-            boolean isFirst = true;
-            for (JSONValue value : elements) {
-                if (!isFirst) {
-                    appendable.append(",\n");
-                }
-                isFirst = false;
-                value.appendTo(appendable);
-            }
-            appendable.append("\n]");
-        }
-    }
-
-    static class JSONString implements JSONValue {
-        private final String string;
-
-        JSONString(String string) {
-            this.string = string;
-        }
-
-        @Override
-        public void appendTo(Appendable appendable) throws IOException {
-            if (string == null) {
-                appendable.append("null");
-            } else {
-                appendable.append('"').append(string).append('"');
-            }
-        }
-    }
-
-    static class JSONInteger implements JSONValue {
-        private final Integer integer;
-
-        JSONInteger(Integer integer) {
-            this.integer = integer;
-        }
-
-        @Override
-        public void appendTo(Appendable appendable) throws IOException {
-            if (integer == null) {
-                appendable.append("null");
-            } else {
-                appendable.append(integer.toString());
-            }
-        }
+        /**
+         * Sets an additional property of the performed optimization to be used in the optimization log.
+         * @param key the name of the property
+         * @param value the value of the property
+         * @return this
+         */
+        OptimizationEntry setProperty(String key, Object value);
     }
 
     /**
-     * Describes the kind and location of one performed optimization.
+     * Represents one performed optimization stored in the optimization log. Additional properties are stored and
+     * immediately evaluated.
      */
-    static class OptimizationEntry {
-        private final String description;
-        private final ResolvedJavaMethod method;
-        private final Integer bci;
+    private static final class OptimizationEntryImpl implements OptimizationEntry {
+        private final Map<String, Object> map;
 
-        OptimizationEntry(String description, ResolvedJavaMethod method, Integer bci) {
-            this.description = description;
-            this.method = method;
-            this.bci = bci;
+        private OptimizationEntryImpl(String optimizationName, String counterName, Integer bci) {
+            map = new HashMap<>();
+            map.put("optimizationName", optimizationName);
+            map.put("counterName", counterName);
+            map.put("bci", bci);
         }
 
-        public JSONMap asJSONMap() {
-            JSONMap map = new JSONMap();
-            map.addEntry("description", new JSONString(description));
-            map.addEntry("method", new JSONString(method.format("%h")));
-            map.addEntry("bci", new JSONInteger(bci));
+        private Map<String, Object> asJsonMap() {
             return map;
         }
-    }
 
-    private final ArrayList<OptimizationEntry> optimizationEntries = new ArrayList<>();
-    private final CompilationIdentifier compilationIdentifier;
-    private final ResolvedJavaMethod method;
-    private final String compilationId;
-
-    public OptimizationLog(ResolvedJavaMethod method, CompilationIdentifier compilationIdentifier) {
-        this.method = method;
-        this.compilationIdentifier = compilationIdentifier;
-        this.compilationId = parseCompilationId();
-    }
-
-    public void logLoopPartialUnroll(LoopEx loop) {
-        LoopBeginNode loopBegin = loop.loopBegin();
-        Integer bci = null;
-        if (loopBegin.stateAfter != null) {
-            bci = loopBegin.stateAfter.bci;
-        } else if (loopBegin.getNodeSourcePosition() != null) {
-            bci = loopBegin.getNodeSourcePosition().getBCI();
+        @Override
+        public OptimizationEntry setProperty(String key, Supplier<Object> valueSupplier) {
+            return setProperty(key, valueSupplier.get());
         }
-        optimizationEntries.add(new OptimizationEntry("Loop Partial Unroll", loopBegin.graph().method(), bci));
+
+        @Override
+        public OptimizationEntry setProperty(String key, Object value) {
+            map.put(key, value);
+            return this;
+        }
     }
 
     /**
-     * Prints the optimization log of this compilation to {@code optimization_log/execution-id/compilation-id.json}.
-     * Directories are created if they do not exist.
+     * A dummy optimization entry that does not store nor evaluate its properties. Used in case the optimization log is
+     * disabled.
+     */
+    private static final class OptimizationEntryEmpty implements OptimizationEntry {
+        private OptimizationEntryEmpty() { }
+
+        @Override
+        public OptimizationEntry setProperty(String key, Supplier<Object> valueSupplier) {
+            return this;
+        }
+
+        @Override
+        public OptimizationEntry setProperty(String key, Object value) {
+            return this;
+        }
+    }
+
+    private static final OptimizationEntryEmpty OPTIMIZATION_ENTRY_EMPTY = new OptimizationEntryEmpty();
+    private static final AtomicBoolean nodeSourcePositionWarningEmitted = new AtomicBoolean();
+    private final ArrayList<OptimizationEntryImpl> optimizationEntries;
+    private final StructuredGraph graph;
+    private final String compilationId;
+    private final boolean optimizationLogEnabled;
+
+    /**
+     * Constructs an optimization log bound with a given graph.
+     * @param graph the bound graph
+     * @param enableOptimizationLogConditional optimization logging enabled iff this is true
+     *                                         and {@link OptimizationLog.Options#OptimizationLog} is set
+     */
+    public OptimizationLog(StructuredGraph graph, boolean enableOptimizationLogConditional) {
+        this.graph = graph;
+        optimizationLogEnabled = enableOptimizationLogConditional
+                && OptimizationLog.Options.OptimizationLog.getValue(graph.getOptions());
+        if (optimizationLogEnabled) {
+            if (!GraalOptions.TrackNodeSourcePosition.getValue(graph.getOptions()) &&
+                !nodeSourcePositionWarningEmitted.getAndSet(true)) {
+                TTY.println(
+                        "Warning: Optimization log without node source position tracking (-Dgraal.%s) yields inferior results",
+                        GraalOptions.TrackNodeSourcePosition.getName()
+                );
+            }
+            optimizationEntries = new ArrayList<>();
+            compilationId = parseCompilationId();
+        } else {
+            optimizationEntries = null;
+            compilationId = null;
+        }
+    }
+
+    /**
+     * Increments a {@link org.graalvm.compiler.debug.CounterKey counter}, {@link DebugContext#log(String) logs},
+     * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
+     * feature is enabled.
+     * @param optimizationName the name of the optimization (roughly matching the optimization phase)
+     * @param counterName the name of the event that occurred
+     * @param bci the BCI of the most relevant node
+     * @return an optimization entry in the optimization log that can take more properties
+     */
+    public OptimizationEntry logAndIncrementCounter(String optimizationName, String counterName, Integer bci) {
+        if (graph.getDebug().isCountEnabled()) {
+            DebugContext.counter(optimizationName + "_" + counterName).increment(graph.getDebug());
+        }
+        if (graph.getDebug().isLogEnabledForMethod()) {
+            graph.getDebug().log("Performed %s %s at bci %i", optimizationName, counterName, bci);
+        }
+        if (graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL)) {
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, counterName);
+        }
+        if (optimizationLogEnabled) {
+            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, counterName, bci);
+            optimizationEntries.add(optimizationEntry);
+            return optimizationEntry;
+        }
+        return OPTIMIZATION_ENTRY_EMPTY;
+    }
+
+    /**
+     * Increments a {@link org.graalvm.compiler.debug.CounterKey counter}, {@link DebugContext#log(String) logs},
+     * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
+     * feature is enabled.
+     * @param optimizationName the name of the optimization (roughly matching the optimization phase)
+     * @param counterName the name of the event that occurred
+     * @param node the most relevant node
+     * @return an optimization entry in the optimization log that can take more properties
+     */
+    public OptimizationEntry logAndIncrementCounter(String optimizationName, String counterName, Node node) {
+        return logAndIncrementCounter(optimizationName, counterName, OptimizationLogUtil.findBci(node));
+    }
+
+    /**
+     * Prints the optimization log of this compilation to {@code optimization_log/execution-id/compilation-id.json}
+     * if the optimization log is enabled. Directories are created if they do not exist.
      * @throws IOException failed to create a directory or the file
      */
-    public void printToFile() throws IOException {
+    public void printToFileIfEnabled() throws IOException {
+        if (!optimizationLogEnabled) {
+            return;
+        }
         String filename = compilationId + ".json";
         Path path = Path.of("optimization_log", GraalServices.getExecutionID(), filename);
         Files.createDirectories(path.getParent());
+        String json = JSONFormatter.formatJSON(asJsonMap());
         PrintStream stream = new PrintStream(Files.newOutputStream(path));
-        appendTo(stream);
+        stream.print(json);
     }
 
-    private void appendTo(Appendable appendable) throws IOException {
-        JSONMap map = new JSONMap();
-        map.addEntry("executionId", new JSONString(GraalServices.getExecutionID()));
-        map.addEntry("compilationMethodName", new JSONString(compilationIdentifier.toString(CompilationIdentifier.Verbosity.NAME)));
-        map.addEntry("compilationId", new JSONString(compilationId));
-        // TODO do we need this?
-        map.addEntry("resolvedMethodName", new JSONString(method.format("%n")));
-        map.addEntry("optimizations", entriesAsJSONArray());
-        map.appendTo(appendable);
+    private Map<String, Object> asJsonMap() {
+        Map<String, Object> map = new HashMap<>();
+        map.put("executionId", GraalServices.getExecutionID());
+        String compilationMethodName = graph.compilationId().toString(CompilationIdentifier.Verbosity.NAME);
+        map.put("compilationMethodName", compilationMethodName);
+        map.put("compilationId", compilationId);
+        map.put("optimizations", optimizationEntries.stream().map(OptimizationEntryImpl::asJsonMap).collect(Collectors.toList()));
+        return map;
     }
 
     private String parseCompilationId() {
-        String compilationId = compilationIdentifier.toString(CompilationIdentifier.Verbosity.ID);
+        String compilationId = graph.compilationId().toString(CompilationIdentifier.Verbosity.ID);
         int dash = compilationId.indexOf('-');
         if (dash == -1) {
             return compilationId;
         }
         return compilationId.substring(dash + 1);
-    }
-
-    private JSONArray entriesAsJSONArray() {
-        JSONArray array = new JSONArray();
-        for (OptimizationEntry entry : optimizationEntries) {
-            array.add(entry.asJSONMap());
-        }
-        return array;
     }
 }

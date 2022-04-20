@@ -25,8 +25,6 @@
 package org.graalvm.bisect.core;
 
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationKind;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,7 +76,7 @@ public class ExecutedMethodBuilder {
         return new ExecutedMethodImpl(compilationId, compilationMethodName, optimizations, period);
     }
 
-    public void addOptimization(OptimizationKind optimizationKind, Integer bci) {
-        optimizations.add(new OptimizationImpl(optimizationKind, bci));
+    public void addOptimization(Optimization optimization) {
+        optimizations.add(optimization);
     }
 }

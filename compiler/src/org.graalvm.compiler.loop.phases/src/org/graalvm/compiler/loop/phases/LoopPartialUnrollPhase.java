@@ -28,9 +28,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.graph.Graph;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.LoopBeginNode;

@@ -41,7 +41,7 @@ public interface ExecutedMethod {
 
     /**
      * Gets the full signature of the method including parameter types as reported in the optimization log. Multiple
-     * executed methods may share the same compilation method name, because a method may get compiled several times. It\
+     * executed methods may share the same compilation method name, because a method may get compiled several times. It
      * can be used to identify a group of compilations of a single Java method.
      * @return the compilation method name
      */

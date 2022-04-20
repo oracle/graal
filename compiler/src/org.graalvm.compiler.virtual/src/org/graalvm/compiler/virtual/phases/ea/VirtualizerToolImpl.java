@@ -317,7 +317,7 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         }
         state.addObject(id, new ObjectState(entryState, locks, ensureVirtualized));
         closure.addVirtualAlias(virtualObject, virtualObject);
-        PartialEscapeClosure.COUNTER_ALLOCATION_REMOVED.increment(debug);
+        closure.cfg.graph.getOptimizationLog().logAndIncrementCounter("PartialEscapeAnalysis", "AllocationRemoved", virtualObject);
         effects.addVirtualizationDelta(1);
         if (sourcePosition != null) {
             assert virtualObject.getNodeSourcePosition() == null || virtualObject.getNodeSourcePosition() == sourcePosition : "unexpected source pos!";

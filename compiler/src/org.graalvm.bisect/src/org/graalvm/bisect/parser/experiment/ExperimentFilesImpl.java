@@ -25,7 +25,6 @@
 package org.graalvm.bisect.parser.experiment;
 
 import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 
 import java.io.File;
 import java.io.FileNotFoundException;

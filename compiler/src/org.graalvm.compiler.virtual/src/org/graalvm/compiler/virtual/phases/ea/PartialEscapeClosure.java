@@ -93,7 +93,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     public static final CounterKey COUNTER_MATERIALIZATIONS_LOOP_REITERATION = DebugContext.counter("MaterializationsLoopReiteration");
     public static final CounterKey COUNTER_MATERIALIZATIONS_LOOP_END = DebugContext.counter("MaterializationsLoopEnd");
     public static final CounterKey COUNTER_MATERIALIZATIONS_LOOP_EXIT = DebugContext.counter("MaterializationsLoopExit");
-    public static final CounterKey COUNTER_ALLOCATION_REMOVED = DebugContext.counter("AllocationsRemoved");
     public static final CounterKey COUNTER_MEMORYCHECKPOINT = DebugContext.counter("MemoryCheckpoint");
 
     /**

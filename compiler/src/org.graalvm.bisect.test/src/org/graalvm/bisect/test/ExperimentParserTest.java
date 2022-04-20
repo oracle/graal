@@ -28,7 +28,6 @@ import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationKind;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
 import org.graalvm.bisect.parser.experiment.ExperimentParserException;
@@ -38,6 +37,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -88,9 +88,10 @@ public class ExperimentParserTest {
                             "    \"resolvedMethodName\": \"nextNode\",\n" +
                             "    \"optimizations\": [\n" +
                             "        {\n" +
-                            "            \"method\": \"HashMap$HashIterator\",\n" +
-                            "            \"description\": \"Loop Partial Unroll\",\n" +
-                            "            \"bci\": 68\n" +
+                            "            \"optimizationName\": \"LoopTransformation\",\n" +
+                            "            \"counterName\": \"PartialUnroll\",\n" +
+                            "            \"bci\": 68\n," +
+                            "            \"unrollFactor\": 1\n" +
                             "        }\n" +
                             "    ]\n" +
                             "}"),
@@ -101,14 +102,16 @@ public class ExperimentParserTest {
                             "    \"resolvedMethodName\": \"singleByteZero\",\n" +
                             "    \"optimizations\": [\n" +
                             "        {\n" +
-                            "            \"method\": \"CopyBenchmarkSimple\",\n" +
-                            "            \"description\": \"Loop Partial Unroll\",\n" +
-                            "            \"bci\": 2\n" +
+                            "            \"optimizationName\": \"LoopTransformation\",\n" +
+                            "            \"counterName\": \"PartialUnroll\",\n" +
+                            "            \"bci\": 2\n," +
+                            "            \"unrollFactor\": 1\n" +
                             "        },\n" +
                             "        {\n" +
-                            "            \"method\": \"CopyBenchmarkSimple\",\n" +
-                            "            \"description\": \"Loop Partial Unroll\",\n" +
-                            "            \"bci\": 2\n" +
+                            "            \"optimizationName\": \"LoopTransformation\",\n" +
+                            "            \"counterName\": \"PartialUnroll\",\n" +
+                            "            \"bci\": null\n," +
+                            "            \"unrollFactor\": 2\n" +
                             "        }\n" +
                             "    ]\n" +
                             "}\n")
@@ -124,7 +127,7 @@ public class ExperimentParserTest {
         assertEquals("16102", experiment.getExecutionId());
         assertEquals(2, experiment.getExecutedMethods().size());
         assertEquals(263869257616L, experiment.getTotalPeriod());
-        assertEquals(264224374L + 158328120602L, experiment.sumGraalPeriod());
+        assertEquals(264224374L + 158328120602L, experiment.getGraalPeriod());
 
         for (ExecutedMethod executedMethod : experiment.getExecutedMethods()) {
             switch (executedMethod.getCompilationId()) {
@@ -133,7 +136,7 @@ public class ExperimentParserTest {
                             "java.util.HashMap$HashIterator.nextNode()",
                             executedMethod.getCompilationMethodName());
                     assertEquals(
-                            Set.of(new OptimizationImpl(OptimizationKind.LOOP_PARTIAL_UNROLL, 68)),
+                            Set.of(new OptimizationImpl("LoopTransformation", "PartialUnroll", 68, Map.of("unrollFactor", 1))),
                             Set.copyOf(executedMethod.getOptimizations())
                     );
                     break;
@@ -142,7 +145,10 @@ public class ExperimentParserTest {
                             "org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)",
                             executedMethod.getCompilationMethodName());
                     assertEquals(
-                            Set.of(new OptimizationImpl(OptimizationKind.LOOP_PARTIAL_UNROLL, 2)),
+                            Set.of(
+                                    new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
+                                    new OptimizationImpl("LoopTransformation", "PartialUnroll", null, Map.of("unrollFactor", 2))
+                            ),
                             Set.copyOf(executedMethod.getOptimizations())
                     );
                     break;

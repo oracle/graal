@@ -27,13 +27,13 @@ package org.graalvm.bisect.test;
 import static org.junit.Assert.assertEquals;
 
 import java.util.List;
+import java.util.Map;
 
+import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
-import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationKind;
 import org.junit.Test;
 
 
@@ -41,17 +41,19 @@ public class OptimizationMatcherTest {
     @Test
     public void testSetBasedOptimizationMatcher() {
         List<Optimization> optimizations1 = List.of(
-                new OptimizationImpl(OptimizationKind.LOOP_PARTIAL_UNROLL,2),
-                new OptimizationImpl(OptimizationKind.LOOP_PARTIAL_UNROLL,3)
+                new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
+                new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 2)),
+                new OptimizationImpl("LoopTransformation", "PartialUnroll", 3, null),
+                new OptimizationImpl("LoopTransformation", "Peeling", 5, null)
         );
         List<Optimization> optimizations2 = List.of(
-                new OptimizationImpl(OptimizationKind.LOOP_PARTIAL_UNROLL,2),
-                new OptimizationImpl(OptimizationKind.LOOP_PARTIAL_UNROLL,5)
+                new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
+                new OptimizationImpl("LoopTransformation", "PartialUnroll", 5, null)
         );
         OptimizationMatcher matcher = new SetBasedOptimizationMatcher();
         OptimizationMatching matching = matcher.match(optimizations1, optimizations2);
         assertEquals(1, matching.getMatchedOptimizations().size());
         assertEquals(2, matching.getMatchedOptimizations().get(0).getBCI().intValue());
-        assertEquals(2, matching.getExtraOptimizations().size(), 2);
+        assertEquals(2, matching.getExtraOptimizations().size(), 4);
     }
 }

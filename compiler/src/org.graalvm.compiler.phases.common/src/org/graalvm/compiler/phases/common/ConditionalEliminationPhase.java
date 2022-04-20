@@ -166,8 +166,6 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
     }
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("StampsRegistered");
-    private static final CounterKey counterIfsKilled = DebugContext.counter("CE_KilledIfs");
-    private static final CounterKey counterPhiStampsImproved = DebugContext.counter("CE_ImprovedPhis");
     private final boolean fullSchedule;
     private final boolean moveGuards;
 
@@ -530,7 +528,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
                 // Don't kill the other branch immediately, see `processGuard`.
-                counterIfsKilled.increment(debug);
+                graph.getOptimizationLog().logAndIncrementCounter("ConditionalElimination", "KilledIf", node);
                 return true;
             });
         }
@@ -725,8 +723,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                 }
                                 newPhi.addInput(valueAt);
                             }
-                            counterPhiStampsImproved.increment(debug);
                             phi.replaceAtUsagesAndDelete(newPhi);
+                            graph.getOptimizationLog().logAndIncrementCounter("ConditionalElimination", "ImprovedPhi", phi);
                         }
                     }
                 }

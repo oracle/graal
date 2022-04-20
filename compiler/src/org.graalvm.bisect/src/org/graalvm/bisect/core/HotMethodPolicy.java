@@ -53,7 +53,7 @@ public class HotMethodPolicy {
      * @param experiment the experiment which is evaluated for hot methods
      */
     public void markHotMethods(Experiment experiment) {
-        double periodLimit = experiment.sumGraalPeriod() * hotMethodPercentile;
+        double periodLimit = experiment.getGraalPeriod() * hotMethodPercentile;
         List<ExecutedMethod> sortedMethods = experiment.getExecutedMethods().stream()
                 .sorted((ExecutedMethod a, ExecutedMethod b) -> Long.compare(b.getPeriod(), a.getPeriod()))
                 .collect(Collectors.toList());

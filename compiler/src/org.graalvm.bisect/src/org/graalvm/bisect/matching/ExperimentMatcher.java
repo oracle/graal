@@ -24,6 +24,7 @@
  */
 package org.graalvm.bisect.matching;
 
+import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
@@ -32,17 +33,26 @@ import org.graalvm.bisect.matching.method.MethodMatching;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 
-import java.util.Iterator;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Compares two experiments and creates a summary.
  */
 public class ExperimentMatcher {
-    private static final String indent = "    ";
-    private static final String indent2 = makeIndent(2);
-    private static final String indent3 = makeIndent(3);
+    private final String[] indent;
+    private static final int indents = 5;
+
+    public ExperimentMatcher() {
+        indent = new String[indents];
+        indent[0] = "";
+        for (int i = 1; i < indents; i++) {
+            indent[i] = indent[i - 1] + "    ";
+        }
+    }
 
     /**
      * Matches two experiments and creates a summary. Uses a {@link GreedyMethodMatcher} to match hot methods of two
@@ -60,16 +70,9 @@ public class ExperimentMatcher {
         SetBasedOptimizationMatcher optimizationMatcher = new SetBasedOptimizationMatcher();
 
         for (MethodMatching.MatchedMethod matchedMethod : matching.getMatchedMethods()) {
-            sb.append("Method ")
-                    .append(matchedMethod.getCompilationMethodName()).append('\n');
+            appendMethodSummary(sb, matchedMethod.getCompilationMethodName(), experiment1, experiment2);
             for (MethodMatching.MatchedExecutedMethod matchedExecutedMethod : matchedMethod.getMatchedExecutedMethods()) {
-                sb.append(indent).append("Compilation ")
-                        .append(matchedExecutedMethod.getMethod1().getCompilationId())
-                        .append(" in experiment ").append(ExperimentId.ONE)
-                        .append(" vs compilation ")
-                        .append(matchedExecutedMethod.getMethod2().getCompilationId())
-                        .append(" in experiment ").append(ExperimentId.TWO)
-                        .append('\n');
+                appendMatchedMethodSummary(sb, experiment1, experiment2, matchedExecutedMethod);
                 OptimizationMatching optimizationMatching = optimizationMatcher.match(
                         matchedExecutedMethod.getMethod1().getOptimizations(),
                         matchedExecutedMethod.getMethod2().getOptimizations()
@@ -77,11 +80,11 @@ public class ExperimentMatcher {
                 appendOptimizationSummary(sb, optimizationMatching);
             }
             for (MethodMatching.ExtraExecutedMethod extraExecutedMethod : matchedMethod.getExtraExecutedMethods()) {
-                sb.append(indent).append("Compilation ")
+                sb.append(indent[1]).append("Compilation ")
                         .append(extraExecutedMethod.getExecutedMethod().getCompilationId())
                         .append(" only in experiment ").append(extraExecutedMethod.getExperimentId()).append('\n');
                 sb.append("Optimizations in experiment ").append(extraExecutedMethod.getExperimentId()).append('\n');
-                appendOptimizations(sb, extraExecutedMethod.getExecutedMethod().getOptimizations().iterator());
+                appendOptimizations(sb, extraExecutedMethod.getExecutedMethod().getOptimizations().stream());
             }
         }
 
@@ -94,18 +97,35 @@ public class ExperimentMatcher {
         return sb.toString();
     }
 
-    private static void appendOptimizationSummary(StringBuilder sb, OptimizationMatching optimizationMatching) {
+    private void appendMatchedMethodSummary(StringBuilder sb,
+                                            Experiment experiment1,
+                                            Experiment experiment2,
+                                            MethodMatching.MatchedExecutedMethod matchedExecutedMethod) {
+        sb.append(indent[1]).append("Compilation ")
+                .append(matchedExecutedMethod.getMethod1().getCompilationId())
+                .append(" (")
+                .append(createSummaryOfMethodExecution(experiment1, matchedExecutedMethod.getMethod1()))
+                .append(") in experiment ").append(ExperimentId.ONE).append('\n')
+                .append(indent[1]).append("vs compilation ")
+                .append(matchedExecutedMethod.getMethod2().getCompilationId())
+                .append(" (")
+                .append(createSummaryOfMethodExecution(experiment2, matchedExecutedMethod.getMethod2()))
+                .append(") in experiment ").append(ExperimentId.TWO)
+                .append('\n');
+    }
+
+    private void appendOptimizationSummary(StringBuilder sb, OptimizationMatching optimizationMatching) {
         appendOptimizationSummaryForExperiment(sb, ExperimentId.ONE, optimizationMatching);
         appendOptimizationSummaryForExperiment(sb, ExperimentId.TWO, optimizationMatching);
         List<Optimization> optimizations = optimizationMatching.getMatchedOptimizations();
         if (optimizations.isEmpty()) {
             return;
         }
-        sb.append(indent2).append("Optimizations in both experiments");
-        appendOptimizations(sb, optimizations.iterator());
+        sb.append(indent[2]).append("Optimizations in both experiments\n");
+        appendOptimizations(sb, optimizations.stream());
     }
 
-    private static void appendOptimizationSummaryForExperiment(
+    private void appendOptimizationSummaryForExperiment(
             StringBuilder sb,
             ExperimentId experimentId,
             OptimizationMatching optimizationMatching) {
@@ -117,20 +137,69 @@ public class ExperimentMatcher {
         if (optimizations.isEmpty()) {
             return;
         }
-        sb.append(indent2).append("Optimizations only in experiment ").append(experimentId).append('\n');
-        appendOptimizations(sb, optimizations.stream().map(OptimizationMatching.ExtraOptimization::getOptimization).iterator());
+        sb.append(indent[2]).append("Optimizations only in experiment ").append(experimentId).append('\n');
+        appendOptimizations(sb, optimizations.stream().map(OptimizationMatching.ExtraOptimization::getOptimization));
     }
 
-    private static void appendOptimizations(StringBuilder sb, Iterator<Optimization> optimizations) {
-        optimizations.forEachRemaining(optimization ->
-            sb.append(indent3)
-                    .append(optimization.getOptimizationKind())
-                    .append(" at bci ").append(optimization.getBCI()).append('\n')
-        );
+    private void appendOptimizations(StringBuilder sb, Stream<Optimization> optimizations) {
+        optimizations
+                .sorted(Comparator.comparing(Optimization::getBCI, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .iterator()
+                .forEachRemaining(optimization -> {
+                    sb.append(indent[3])
+                            .append(optimization.getOptimizationName())
+                            .append(' ')
+                            .append(optimization.getCounterName())
+                            .append(" at bci ").append(optimization.getBCI()).append('\n');
+                    if (optimization.getProperties() == null) {
+                        return;
+                    }
+                    for (Map.Entry<String, Object> entry : optimization.getProperties().entrySet()) {
+                        sb.append(indent[4])
+                                .append(entry.getKey())
+                                .append(": ")
+                                .append(entry.getValue())
+                                .append('\n');
+                    }
+                });
     }
 
-    private static String makeIndent(int indentLevel) {
-        assert indentLevel >= 0;
-        return indent.repeat(indentLevel);
+    private String createSummaryOfMethodExecution(Experiment experiment, ExecutedMethod executedMethod) {
+        String graalPercent = String.format("%.2f", (double) executedMethod.getPeriod() / experiment.getGraalPeriod() * 100);
+        String totalPercent = String.format("%.2f", (double) executedMethod.getPeriod() / experiment.getTotalPeriod() * 100);
+        return graalPercent + "% of graal execution, " + totalPercent + "% of total";
+    }
+
+    private void appendMethodSummary(StringBuilder sb, String compilationMethodName, Experiment experiment1, Experiment experiment2) {
+        sb.append("Method ")
+                .append(compilationMethodName).append('\n');
+        appendMethodSummaryForExperiment(sb, compilationMethodName, experiment1);
+        appendMethodSummaryForExperiment(sb, compilationMethodName, experiment2);
+    }
+
+    private void appendMethodSummaryForExperiment(StringBuilder sb, String compilationMethodName, Experiment experiment) {
+        sb.append(indent[1]).append("In experiment ").append(experiment.getExperimentId()).append('\n');
+        List<ExecutedMethod> executedMethods = experiment.getMethodsByName(compilationMethodName)
+                .stream()
+                .sorted(Comparator.comparingLong(executedMethod -> -executedMethod.getPeriod()))
+                .collect(Collectors.toList());
+        long hotMethodCount = executedMethods.stream()
+                .filter(ExecutedMethod::isHot)
+                .count();
+        sb.append(indent[2]).append(executedMethods.size()).append(" compilations (")
+                .append(hotMethodCount).append(" of which are hot)\n")
+                .append(indent[2]).append("Compilations\n");
+        for (ExecutedMethod executedMethod : executedMethods) {
+            sb.append(indent[3])
+                    .append(executedMethod.getCompilationId())
+                    .append(" (")
+                    .append(createSummaryOfMethodExecution(experiment, executedMethod))
+                    .append(')');
+            if (executedMethod.isHot()) {
+                sb.append(" *hot*\n");
+            } else {
+                sb.append('\n');
+            }
+        }
     }
 }

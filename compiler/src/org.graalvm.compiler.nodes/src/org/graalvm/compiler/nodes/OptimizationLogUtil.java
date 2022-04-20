@@ -22,11 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core.optimization;
+package org.graalvm.compiler.nodes;
 
-/**
- * Represents the kind of performed optimization.
- */
-public enum OptimizationKind {
-    LOOP_PARTIAL_UNROLL
+import org.graalvm.compiler.graph.Node;
+
+public class OptimizationLogUtil {
+    public static Integer findBci(Node node) {
+        if (node instanceof StateSplit) {
+            StateSplit stateSplit = (StateSplit) node;
+            if (stateSplit.stateAfter() != null) {
+                return stateSplit.stateAfter().bci;
+            }
+        }
+        if (node.getNodeSourcePosition() != null) {
+            return node.getNodeSourcePosition().getBCI();
+        }
+        return null;
+    }
 }

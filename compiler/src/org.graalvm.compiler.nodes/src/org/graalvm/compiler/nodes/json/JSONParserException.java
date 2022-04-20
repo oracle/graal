@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core.optimization;
+package org.graalvm.compiler.nodes.json;
 
-import java.util.Map;
-
-/**
- * Represents an optimization in a compiled method at a particular BCI.
- */
-public interface Optimization {
-    String getOptimizationName();
-    String getCounterName();
-    Map<String, Object> getProperties();
-
-    /**
-     * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. A null value means that no fitting bci could be assigned.
-     * @return the byte code index of this optimization
-     */
-    Integer getBCI();
+@SuppressWarnings("serial")
+final class JSONParserException extends RuntimeException {
+    JSONParserException(final String msg) {
+        super(msg);
+    }
 }

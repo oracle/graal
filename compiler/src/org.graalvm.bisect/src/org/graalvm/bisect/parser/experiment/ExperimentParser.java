@@ -37,7 +37,7 @@ import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.ExecutedMethodBuilder;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentImpl;
-import org.graalvm.bisect.core.optimization.OptimizationKind;
+import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.json.JSONParser;
 
 /**
@@ -90,12 +90,10 @@ public class ExperimentParser {
             }
             ExecutedMethodBuilder builder = methodByCompilationId.get(method.compilationId);
             if (builder == null) {
-                throw new ExperimentParserException(
-                    "compilation ID " + method.compilationId + " not found in optimization log",
-                    experimentFiles.getExperimentId()
-                );
+                System.out.println("Warning: Compilation ID " + method.compilationId + " not found in the optimization log");
+            } else {
+                builder.setPeriod(method.period);
             }
-            builder.setPeriod(method.period);
         }
 
         List<ExecutedMethod> methods = methodByCompilationId.values().stream()
@@ -124,8 +122,13 @@ public class ExperimentParser {
         List<Object> optimizationObjects = expectList(log.get("optimizations"), "root.optimizations");
         for (Object optimizationObject : optimizationObjects) {
             Map<String, Object> optimization = expectMap(optimizationObject, "root.optimizations[]");
-            Number bci = expectLong(optimization.get("bci"), "root.optimizations[].bci");
-            builder.addOptimization(OptimizationKind.LOOP_PARTIAL_UNROLL, bci.intValue());
+            String optimizationName = expectString(optimization.get("optimizationName"), "root.optimizations[].optimizationName");
+            String counterName = expectString(optimization.get("counterName"), "root.optimizations[].counterName");
+            Integer bci = expectIntegerNullable(optimization.get("bci"), "root.optimizations[].bci");
+            optimization.remove("optimizationName");
+            optimization.remove("counterName");
+            optimization.remove("bci");
+            builder.addOptimization(new OptimizationImpl(optimizationName, counterName, bci, optimization));
         }
         return builder;
     }
@@ -152,7 +155,7 @@ public class ExperimentParser {
         for (Object codeObject : codeObjects) {
             Map<String, Object> code = expectMap(codeObject, "root.code[]");
             ProftoolMethod method = new ProftoolMethod();
-            method.compilationId = expectString(code.get("compileId"), "root.code[].compileId");
+            method.compilationId = expectStringNullable(code.get("compileId"), "root.code[].compileId");
             method.period = expectLong(code.get("period"), "root.code[].period");
             method.level = expectIntegerNullable(code.get("level"), "root.code[].level");
             proftoolLog.code.add(method);
@@ -161,10 +164,17 @@ public class ExperimentParser {
     }
 
     private String expectString(Object object, String path) throws ExperimentParserException {
-        if (object instanceof String || object == null) {
+        if (object instanceof String) {
             return (String) object;
         }
         throw new ExperimentParserException("expected " + path + " to be a string", experimentFiles.getExperimentId());
+    }
+
+    private String expectStringNullable(Object object, String path) throws ExperimentParserException {
+        if (object == null) {
+            return null;
+        }
+        return expectString(object, path);
     }
 
     private long expectLong(Object object, String path) throws ExperimentParserException {

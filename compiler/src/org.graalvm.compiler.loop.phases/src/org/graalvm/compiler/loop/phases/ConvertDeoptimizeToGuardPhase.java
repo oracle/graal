@@ -249,7 +249,7 @@ public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<
                             }
                             survivingSuccessor.replaceAtUsages(newGuard, InputType.Guard);
 
-                            graph.getDebug().log("Converting deopt on %-5s branch of %s to guard for remaining branch %s.", negateGuardCondition, ifNode, survivingSuccessor);
+                            graph.getOptimizationLog().logAndIncrementCounter("ConvertDeoptimizeToGuard", "DeoptimizeToGuardConversion", deopt.asNode());
                             FixedNode next = pred.next();
                             pred.setNext(guard);
                             guard.setNext(next);

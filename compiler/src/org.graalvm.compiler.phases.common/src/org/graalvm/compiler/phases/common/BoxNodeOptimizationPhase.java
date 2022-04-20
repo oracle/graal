@@ -110,7 +110,7 @@ public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreP
                                     }
                                 }
                                 box.replaceAtUsages(boxUsageOnBoxedVal);
-                                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After replacing %s with %s", box, boxUsageOnBoxedVal);
+                                graph.getOptimizationLog().logAndIncrementCounter("BoxNodeOptimization", "BoxUsageReplacement", box);
                                 GraphUtil.removeFixedWithUnusedInputs(box);
                                 continue boxLoop;
                             }
