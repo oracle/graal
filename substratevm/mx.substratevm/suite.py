@@ -223,6 +223,9 @@ suite = {
                     "com.sun.jmx.mbeanserver",
                     "sun.management",
                 ],
+                "jdk.management": [
+                    "com.sun.management.internal"
+                ],
                 "jdk.jfr": [
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
