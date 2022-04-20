@@ -919,12 +919,12 @@ final class TStringOps {
         return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
     }
 
-    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid) {
+    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 0, isNative);
         final long stubOffset = stubOffset(array, offset, 0, 0, isNative);
-        if (assumeValid) {
+        if (assumeValid && !Encodings.isUTF8ContinuationByte(readS0(array, offset, length, 0)) && (isAtEnd || !Encodings.isUTF8ContinuationByte(readS0(array, offset, length + 1, length)))) {
             return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
         } else {
             long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);

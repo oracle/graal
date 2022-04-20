@@ -111,7 +111,7 @@ public class RegexASTPostProcessor {
             if (t.isCharacterClass() &&
                             (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
                             ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
-                            (ast.getEncoding() == Encodings.UTF_16_RAW || !t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES))) {
+                            !(ast.getEncoding() == Encodings.UTF_16 && t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES))) {
                 if (literalStart < 0) {
                     literalStart = i;
                 }

@@ -99,6 +99,7 @@ meth public final int byteIndexOfAnyByteUncached(int,int,byte[],com.oracle.truff
 meth public final int byteIndexOfCodePointUncached(int,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteIndexOfStringUncached(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteIndexOfStringUncached(com.oracle.truffle.api.strings.TruffleString$WithMask,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final int byteIndexToCodePointIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteLength(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int byteLengthOfCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int charIndexOfAnyCharUTF16Uncached(int,int,char[])
@@ -246,6 +247,7 @@ innr public abstract static AsTruffleStringNode
 innr public abstract static ByteIndexOfAnyByteNode
 innr public abstract static ByteIndexOfCodePointNode
 innr public abstract static ByteIndexOfStringNode
+innr public abstract static ByteIndexToCodePointIndexNode
 innr public abstract static ByteLengthOfCodePointNode
 innr public abstract static CharIndexOfAnyCharUTF16Node
 innr public abstract static CodePointAtByteIndexNode
@@ -306,6 +308,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString fromByteArrayUnc
 meth public static com.oracle.truffle.api.strings.TruffleString fromCharArrayUTF16Uncached(char[])
 meth public static com.oracle.truffle.api.strings.TruffleString fromCharArrayUTF16Uncached(char[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[])
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromJavaStringUncached(java.lang.String,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -350,6 +353,13 @@ meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleStri
 meth public final int execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$WithMask,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexOfStringNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteIndexToCodePointIndexNode
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexToCodePointIndexNode create()
+meth public static com.oracle.truffle.api.strings.TruffleString$ByteIndexToCodePointIndexNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ByteLengthOfCodePointNode
@@ -614,7 +624,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
+meth public final com.oracle.truffle.api.strings.TruffleString execute(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$FromCodePointNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -890,6 +901,8 @@ meth public static com.oracle.truffle.api.strings.TruffleStringBuilder create(co
 meth public void appendByteUncached(byte)
 meth public void appendCharUTF16Uncached(char)
 meth public void appendCodePointUncached(int)
+meth public void appendCodePointUncached(int,int)
+meth public void appendCodePointUncached(int,int,boolean)
 meth public void appendIntNumberUncached(int)
 meth public void appendJavaStringUTF16Uncached(java.lang.String)
 meth public void appendJavaStringUTF16Uncached(java.lang.String,int,int)
@@ -916,7 +929,9 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringBuilder$AppendCodePointNode
  outer com.oracle.truffle.api.strings.TruffleStringBuilder
-meth public abstract void execute(com.oracle.truffle.api.strings.TruffleStringBuilder,int)
+meth public abstract void execute(com.oracle.truffle.api.strings.TruffleStringBuilder,int,int,boolean)
+meth public final void execute(com.oracle.truffle.api.strings.TruffleStringBuilder,int)
+meth public final void execute(com.oracle.truffle.api.strings.TruffleStringBuilder,int,int)
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilder$AppendCodePointNode create()
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilder$AppendCodePointNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -959,7 +974,8 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleStringBuilder$ToStringNode
  outer com.oracle.truffle.api.strings.TruffleStringBuilder
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.TruffleStringBuilder)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.TruffleStringBuilder,boolean)
+meth public final com.oracle.truffle.api.strings.TruffleString execute(com.oracle.truffle.api.strings.TruffleStringBuilder)
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilder$ToStringNode create()
 meth public static com.oracle.truffle.api.strings.TruffleStringBuilder$ToStringNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
@@ -973,7 +989,7 @@ CLSS public final com.oracle.truffle.api.strings.TruffleStringFactory
 cons public init()
 innr public final static WithMaskFactory
 supr java.lang.Object
-hcls AsManagedNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfStringNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToIndexableNodeGen,ToJavaStringNodeGen
+hcls AsManagedNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfStringNodeGen,ByteIndexToCodePointIndexNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToIndexableNodeGen,ToJavaStringNodeGen
 
 CLSS public final static com.oracle.truffle.api.strings.TruffleStringFactory$WithMaskFactory
  outer com.oracle.truffle.api.strings.TruffleStringFactory

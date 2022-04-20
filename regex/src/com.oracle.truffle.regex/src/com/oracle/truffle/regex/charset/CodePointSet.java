@@ -287,4 +287,20 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         }
         return array;
     }
+
+    public int[] inverseToIntArray(Encoding encoding) {
+        int[] array = new int[inverseValueCount(encoding)];
+        int index = 0;
+        int lastHi = -1;
+        for (int i = 0; i < size(); i++) {
+            for (int j = lastHi + 1; j < getLo(i); j++) {
+                array[index++] = j;
+            }
+            lastHi = getHi(i);
+        }
+        for (int j = lastHi + 1; j <= encoding.getMaxValue(); j++) {
+            array[index++] = j;
+        }
+        return array;
+    }
 }
