@@ -25,6 +25,9 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -39,8 +42,6 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final Object interpreterState;
     @CompilationFinal private boolean seenMaterializedFrame;
 
-    private final boolean usesDeprecatedFrameTransfer;
-
     private final Object entryTagsCache;
 
     BytecodeOSRRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, BytecodeOSRNode bytecodeOSRNode, int target, Object interpreterState, Object entryTagsCache) {
@@ -49,26 +50,13 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
         this.interpreterState = interpreterState;
         this.seenMaterializedFrame = materializeCalled(frameDescriptor);
         this.entryTagsCache = entryTagsCache;
-        this.usesDeprecatedFrameTransfer = usesDeprecatedFrameTransfer(bytecodeOSRNode);
+
+        // Support for deprecated frame transfer: GR-38296
+        this.usesDeprecatedFrameTransfer = checkUsesDeprecatedFrameTransfer(bytecodeOSRNode.getClass());
     }
 
     private static boolean materializeCalled(FrameDescriptor frameDescriptor) {
         return ((GraalTruffleRuntime) Truffle.getRuntime()).getFrameMaterializeCalled(frameDescriptor);
-    }
-
-    /*
-     * Detects usage of deprecated frame transfer, and directs the frame transfer path accordingly
-     * later. When removing the support for this deprecation, constructs used and paths related are
-     * marked with the comment "Support for deprecated frame transfer".
-     */
-    private static boolean usesDeprecatedFrameTransfer(BytecodeOSRNode osrNode) {
-        Class<? extends BytecodeOSRNode> osrNodeClass = osrNode.getClass();
-        try {
-            Method m = osrNodeClass.getMethod("copyIntoOSRFrame", VirtualFrame.class, VirtualFrame.class, int.class);
-            return m.getDeclaringClass() != BytecodeOSRNode.class;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
     }
 
     Object getEntryTagsCache() {
@@ -95,8 +83,7 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             // required to prevent the materialized frame from getting out of sync during OSR.
             return osrNode.executeOSR(parentFrame, target, interpreterState);
         } else {
-            if (usesDeprecatedFrameTransfer) {
-                // Support for deprecated frame transfer
+            if (usesDeprecatedFrameTransfer) { // Support for deprecated frame transfer: GR-38296
                 osrNode.copyIntoOSRFrame(frame, parentFrame, target);
             } else {
                 osrNode.copyIntoOSRFrame(frame, parentFrame, target, entryTagsCache);
@@ -118,4 +105,39 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     public String toString() {
         return loopNode.toString() + "<OSR@" + target + ">";
     }
+
+    // GR-38296
+    /* Deprecated frame transfer handling below */
+
+    private static final Map<Class<?>, Boolean> usesDeprecatedTransferClasses = new ConcurrentHashMap<>();
+
+    private final boolean usesDeprecatedFrameTransfer;
+
+    // Called by truffle feature
+    @SuppressWarnings("unused")
+    private static void initializeClassesUsingDeprecatedFrameTransfer(Set<Class<?>> subTypes) {
+        for (Class<?> subType : subTypes) {
+            // Eagerly initialize result.
+            usesDeprecatedTransferClasses.put(subType, usesDeprecatedFrameTransfer(subType));
+        }
+    }
+
+    /**
+     * Detects usage of deprecated frame transfer, and directs the frame transfer path accordingly
+     * later. When removing the support for this deprecation, constructs used and paths related are
+     * marked with the comment "Support for deprecated frame transfer" and a reference to GR-38296.
+     */
+    private static boolean usesDeprecatedFrameTransfer(Class<?> osrNodeClass) {
+        try {
+            Method m = osrNodeClass.getMethod("copyIntoOSRFrame", VirtualFrame.class, VirtualFrame.class, int.class);
+            return m.getDeclaringClass() != BytecodeOSRNode.class;
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
+    }
+
+    private static boolean checkUsesDeprecatedFrameTransfer(Class<?> osrNodeClass) {
+        return usesDeprecatedTransferClasses.computeIfAbsent(osrNodeClass, BytecodeOSRRootNode::usesDeprecatedFrameTransfer);
+    }
+
 }
