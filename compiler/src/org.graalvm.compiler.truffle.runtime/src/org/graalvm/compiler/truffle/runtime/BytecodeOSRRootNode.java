@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -113,15 +112,6 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     private final boolean usesDeprecatedFrameTransfer;
 
-    // Called by truffle feature
-    @SuppressWarnings("unused")
-    private static void initializeClassesUsingDeprecatedFrameTransfer(Set<Class<?>> subTypes) {
-        for (Class<?> subType : subTypes) {
-            // Eagerly initialize result.
-            usesDeprecatedTransferClasses.put(subType, usesDeprecatedFrameTransfer(subType));
-        }
-    }
-
     /**
      * Detects usage of deprecated frame transfer, and directs the frame transfer path accordingly
      * later. When removing the support for this deprecation, constructs used and paths related are
@@ -138,6 +128,16 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     private static boolean checkUsesDeprecatedFrameTransfer(Class<?> osrNodeClass) {
         return usesDeprecatedTransferClasses.computeIfAbsent(osrNodeClass, BytecodeOSRRootNode::usesDeprecatedFrameTransfer);
+    }
+
+    // Called by truffle feature to initialize the map at build time.
+    @SuppressWarnings("unused")
+    private static void initializeClassUsingDeprecatedFrameTransfer(Class<?> subType) {
+        if (subType.isInterface()) {
+            return;
+        }
+        // Eagerly initialize result.
+        usesDeprecatedTransferClasses.put(subType, usesDeprecatedFrameTransfer(subType));
     }
 
 }

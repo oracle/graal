@@ -119,7 +119,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -375,33 +374,15 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         /* Ensure org.graalvm.polyglot.io.IOHelper.IMPL is initialized. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("org.graalvm.polyglot.io.IOHelper");
 
-    }
-
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        FeatureImpl.AfterAnalysisAccessImpl config = (FeatureImpl.AfterAnalysisAccessImpl) access;
         /* Support for deprecated bytecode osr frame transfer: GR-38296 */
-        deprecatedBytecodeOSRFrameTransferInit(config);
-    }
-
-    private static void deprecatedBytecodeOSRFrameTransferInit(FeatureImpl.AfterAnalysisAccessImpl config) {
-        Optional<AnalysisType> optionalType = config.getMetaAccess().optionalLookupJavaType(BytecodeOSRNode.class);
-        if (optionalType.isEmpty()) {
-            // class is not reachable, nothing to do.
-            return;
-        }
-        AnalysisType bytecodeOsrNodeType = optionalType.get();
-        Set<Class<?>> subclasses = new HashSet<>();
-        for (AnalysisType subtype : bytecodeOsrNodeType.getAllSubtypes()) {
-            subclasses.add(subtype.getJavaClass());
-        }
-
-        /* Pass all known reachable classes to the initializer: it will decide there what to do. */
-        TruffleBaseFeature.invokeStaticMethod(
-                        "org.graalvm.compiler.truffle.runtime.BytecodeOSRRootNode",
-                        "initializeClassesUsingDeprecatedFrameTransfer",
-                        Collections.singleton(Set.class),
-                        subclasses);
+        config.registerSubtypeReachabilityHandler((acc, klass) -> {
+            /* Pass known reachable classes to the initializer: it will decide there what to do. */
+            TruffleBaseFeature.invokeStaticMethod(
+                            "org.graalvm.compiler.truffle.runtime.BytecodeOSRRootNode",
+                            "initializeClassUsingDeprecatedFrameTransfer",
+                            Collections.singleton(Class.class),
+                            klass);
+        }, BytecodeOSRNode.class);
     }
 
     static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
