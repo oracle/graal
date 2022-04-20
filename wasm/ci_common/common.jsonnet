@@ -169,10 +169,8 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   wasm_unittest: {
     environment+: {
-        "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
         "MX_TEST_RESULT_TAGS": "wasm"
-    },
-    logs+: ["*/es-*.json"]
+    }
   },
 
   jdk17_gate_linux_eclipse_jdt              : common.labsjdk17 + self.gate  + self.linux   + self.eclipse + self.jdt,
