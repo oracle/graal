@@ -8,6 +8,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-51385 Added an instrumentation filter to include available source sections only: `SourceSectionFilter.Builder#sourceSectionAvailableOnly(boolean)`
 * GR-51385 Added a debugger filter to suspend in available source sections only: `SuspensionFilter.Builder#sourceSectionAvailableOnly(boolean)`.
 * GR-52443 Removed many deprecated `DynamicObject` APIs, deprecated since 22.2 or earlier (`Shape` methods: `addProperty`, `defineProperty`, `removeProperty`, `replaceProperty`, `newInstance`, `createFactory`, `getObjectType`, `changeType`, `getLayout`, `getMutex`, `getParent`, `allocator`, and related interfaces; `Property.set*`, `*Location` methods: `getInternal`, `setInternal`, `set*`, `getType`, and `ObjectLocation`).
+* GR-38322 Added `--engine.TraceMissingSafepointPollInterval=N` to show Java stacktraces when there are [missing `TruffleSafepoint.poll()` calls](https://github.com/oracle/graal/blob/master/truffle/docs/Safepoints.md#find-missing-safepoint-polls).
 
 ## Version 24.0.0
 

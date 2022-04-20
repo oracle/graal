@@ -112,6 +112,7 @@ These are internal options for debugging language implementations and tools.
 - `--engine.SpecializationStatistics` : Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time. Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter. Do not use in production environments.
 - `--engine.StaticObjectStorageStrategy=default|array-based|field-based` : Set the storage strategy used by the Static Object Model. Accepted values are: ['default', 'array-based', 'field-based']
 - `--engine.TraceCodeSharing` : Enables printing of code sharing related information to the logger. This option is intended to support debugging language implementations.
+- `--engine.TraceMissingSafepointPollInterval=[0, inf)` : Show Java stacktraces for missing polls longer than the supplied number of milliseconds. Implies SafepointALot.
 - `--engine.TraceThreadLocalActions` : Traces thread local events and when they are processed on the individual threads.Prints messages with the [engine] [tl] prefix. 
 - `--engine.TriggerUncaughtExceptionHandlerForCancel` : Propagates cancel execution exception into UncaughtExceptionHandler. For testing purposes only.
 - `--engine.UseConservativeContextReferences` : Enables conservative context references. This allows invalid sharing between contexts. For testing purposes only.
