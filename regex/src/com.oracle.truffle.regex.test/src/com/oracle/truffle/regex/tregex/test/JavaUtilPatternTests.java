@@ -59,6 +59,16 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[Hh]ello [Ww]orld!", 0, "hello World!");
     }
 
+    @Test
+    public void halloWelt() {
+        test("rege(x(es)?|xps?)", 0, "regexes");
+    }
+
+//    @Test
+//    public void helloWorld() {
+//        test("[Hh]ello [Ww]orld!", 0, "hello World!");
+//    }
+
     void test(String pattern, int flags, String input) {
         test(pattern, flags, input, 0);
     }
@@ -77,6 +87,8 @@ public class JavaUtilPatternTests extends RegexTestBase {
             groupBoundaries = EmptyArrays.INT;
         }
         test(pattern, flagsToString(flags), input, fromIndex, isMatch, groupBoundaries);
+
+        // TODO auch an Java-Matcher intern weiterleiten und vergleichen ob beide gleich sind
     }
 
     String flagsToString(int javaUtilPatternFlags) {
@@ -84,6 +96,25 @@ public class JavaUtilPatternTests extends RegexTestBase {
             return "";
         }
         // TODO
+        if((javaUtilPatternFlags & Pattern.UNIX_LINES) != 0) {
+            return "d";
+        }
+        if((javaUtilPatternFlags & Pattern.CASE_INSENSITIVE) != 0) {
+            return "i";
+        }
+        if((javaUtilPatternFlags & Pattern.COMMENTS) != 0) {
+            return "x";
+        }
+        if((javaUtilPatternFlags & Pattern.MULTILINE) != 0) {
+            return "m";
+        }
+        if((javaUtilPatternFlags & Pattern.DOTALL) != 0) {
+            return "s";
+        }
+        if((javaUtilPatternFlags & Pattern.UNICODE_CASE) != 0) {
+            return "u";
+        }
+
         throw new UnsupportedOperationException();
     }
 }

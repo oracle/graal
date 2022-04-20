@@ -41,11 +41,15 @@
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
 import java.math.BigInteger;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -66,8 +70,10 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyCaseFolding;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyRegexParser;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -216,11 +222,56 @@ public final class JavaRegexParser implements RegexParser {
         NotNestedClass
     }
 
+
+    // TODO do we need to do syntax checking purposes?
+    /**
+     * For syntax checking purposes, we need to know if we are inside a lookbehind assertion, where
+     * backreferences are not allowed.
+     */
+    private int lookbehindDepth;
+
     /**
      * The grammatical category of the last term parsed. This is needed to detect improper usage of
      * quantifiers.
      */
     private TermCategory lastTerm;
+
+    /**
+     * The global flags are the flags given when compiling the regular expression.
+     */
+    private final JavaFlags globalFlags;
+    /**
+     * A stack of the locally enabled flags. Ruby enables establishing new flags and modifying flags
+     * within the scope of certain expressions.
+     */
+    private final Deque<JavaFlags> flagsStack;
+
+    /**
+     * For syntax checking purposes, we need to maintain some metadata about the current enclosing
+     * capture groups.
+     */
+    private final Deque<JavaRegexParser.Group> groupStack;
+    /**
+     * A map from names of capture groups to their indices. Is null if the pattern contained no
+     * named capture groups so far.
+     */
+    private Map<String, Integer> namedCaptureGroups;
+    /**
+     * A set of capture groups names which occur repeatedly in the expression. Backreferences to
+     * such capture groups can refer to either of the homonymous capture groups, depending on which
+     * of them matched most recently. Such backreferences are not supported in TRegex.
+     */
+    private Set<String> ambiguousCaptureGroups;
+
+    /**
+     * The number of capture groups encountered in the input pattern so far, i.e. the (zero-based)
+     * index of the next capture group to be processed.
+     */
+    private int groupIndex;
+    /**
+     * The total number of capture groups present in the expression.
+     */
+    private int numberOfCaptureGroups;
 
     private RegexLanguage language;
     private CompilationBuffer compilationBuffer;
@@ -251,6 +302,13 @@ public final class JavaRegexParser implements RegexParser {
         this.compilationBuffer = compilationBuffer;
         this.language = language;
 
+        this.groupStack = new ArrayDeque<>();
+        this.namedCaptureGroups = null;
+        this.groupIndex = 0;
+
+        this.globalFlags = new JavaFlags(inFlags);
+        this.flagsStack = new LinkedList<>();
+
         System.out.println(inPattern);
         System.out.println(this.inFlags);
     }
@@ -263,7 +321,17 @@ public final class JavaRegexParser implements RegexParser {
         this.position = 0;
         this.lastTerm = TermCategory.None;
 
+
+        this.groupStack = new ArrayDeque<>();
+        this.namedCaptureGroups = null;
+        this.groupIndex = 0;
+
+
+        this.globalFlags = new JavaFlags(inFlags);
+        this.flagsStack = new LinkedList<>();
+
         this.astBuilder = astBuilder;
+        this.silent = astBuilder == null;
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
@@ -315,7 +383,7 @@ public final class JavaRegexParser implements RegexParser {
 
     @Override
     public AbstractRegexObject getFlags() {
-        return new JavaFlags();
+        return globalFlags;
     }
 
 //    @Override
@@ -343,7 +411,6 @@ public final class JavaRegexParser implements RegexParser {
      * vertical bars.
      */
     private void disjunction() {
-        System.out.println("Hi");
         while (true) {
             alternative();
 
@@ -363,6 +430,15 @@ public final class JavaRegexParser implements RegexParser {
         while (!atEnd() && curChar() != '|' && curChar() != ')') {
             term();
         }
+    }
+
+    private JavaFlags getLocalFlags() {
+        return flagsStack.peek();
+    }
+
+    private void setLocalFlags(JavaFlags newLocalFlags) {
+        flagsStack.pop();
+        flagsStack.push(newLocalFlags);
     }
 
     /// Input scanning
@@ -577,6 +653,7 @@ public final class JavaRegexParser implements RegexParser {
                     retreat();
                     break stringLoop;
                 default:
+                    System.out.println("B: " + (char) ch);
                     codepointsBuffer.add(ch);
             }
         }
@@ -688,7 +765,7 @@ public final class JavaRegexParser implements RegexParser {
                 lastTerm = TermCategory.Atom;
                 break;
             case '(':
-//                parens();
+                parens();
                 break;
             case '^':
                 // (?:^|(?<=[\n])(?=.))
@@ -717,7 +794,7 @@ public final class JavaRegexParser implements RegexParser {
                 break;
             default:
                 string(ch);
-                lastTerm = TermCategory.Atom;
+//                lastTerm = TermCategory.Atom;
         }
     }
 
@@ -813,6 +890,7 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 default:
                     lowerBound = Optional.of(ch);
+                    System.out.println("lower Bound: " + (char) ch);
             }
             // a hyphen following a nested char class is never interpreted as a range operator
             if (!wasNestedCharClass && match("-")) {
@@ -872,6 +950,7 @@ public final class JavaRegexParser implements RegexParser {
         if (negated) {
             curCharClass.invert(inSource.getEncoding());
         }
+
     }
 
     private void curCharClassClear() {
@@ -1643,6 +1722,210 @@ public final class JavaRegexParser implements RegexParser {
                 }
             default:
                 return false;
+        }
+    }
+
+    /**
+     * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
+     * parenthesis was already parsed. These consist of the following:
+     * <ul>
+     * <li>non-capturing groups (?:...)</li>
+     * <li>comments (?#...)</li>
+     * <li>positive and negative lookbehind assertions, (?<=...) and (?<!...)</li>
+     * <li>positive and negative lookahead assertions (?=...) and (?!...)</li>
+     * <li>named capture groups (?P<name>...)</li>
+     * <li>atomic groups (?>...)</li>
+     * <li>conditional backreferences (?(id/name)yes-pattern|no-pattern)</li>
+     * <li>inline local and global flags, (?aiLmsux-imsx:...) and (?aiLmsux)</li>
+     * <li>regular capture groups (...)</li>
+     * </ul>
+     */
+    private void parens() {
+        if (atEnd()) {
+            throw syntaxErrorAtEnd(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+        }
+        if (match("?")) {
+            final int ch1 = consumeChar();
+            switch (ch1) {
+                case ':':
+//                    group(false);
+                    Token.createNonCaptureGroupBegin();
+                    break;
+
+//                case '#':
+//                    parenComment();
+//                    break;
+
+                case '<': {
+                    final int ch2 = consumeChar();
+                    switch (ch2) {
+                        case '=':
+                            lookbehind(false);
+                            break;
+                        case '!':
+                            lookbehind(true);
+                            break;
+                        default:
+                            retreat();
+                            parseGroupName('>');
+                            group(true);
+                            break;
+                    }
+                    break;
+                }
+
+                case '=':
+//                    lookahead(false);
+                    Token.createLookBehindAssertionBegin(false);
+                    break;
+
+                case '!':
+//                    lookahead(true);
+                    Token.createLookBehindAssertionBegin(true);
+                    break;
+
+                case '>':
+                    if (!inSource.getOptions().isIgnoreAtomicGroups()) {
+                        bailOut("atomic groups are not supported");
+                    }
+                    group(false);
+                    break;
+
+//                case '(':
+//                    conditionalBackreference();
+//                    break;
+                case '-':       // https://www.regular-expressions.info/refmodifiers.html
+                case 'm':
+                case 's':
+                case 'i':
+                case 'x':
+                case 'd':
+                case 'u':
+//                case 'U':
+                    flags(ch1);
+                    break;
+
+                default:
+                    throw syntaxErrorAt(RbErrorMessages.unknownExtension(ch1), position - 1);
+            }
+        } else {
+            group(!containsNamedCaptureGroups());
+        }
+    }
+
+    private boolean containsNamedCaptureGroups() {
+        return namedCaptureGroups != null;
+    }
+
+    /**
+     * Just like {@code #lookahead}, but for lookbehind assertions.
+     */
+    private void lookbehind(boolean negate) {
+        pushLookBehindAssertion(negate);
+        lookbehindDepth++;
+        disjunction();
+        lookbehindDepth--;
+        if (match(")")) {
+            popGroup();
+            lastTerm = JavaRegexParser.TermCategory.LookAroundAssertion;
+        } else {
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
+        }
+    }
+
+    /**
+     * Parses a group name terminated by the given character.
+     *
+     * @return the group name
+     */
+    private String parseGroupName(char terminator) {
+        String groupName = getMany(c -> c != terminator);
+        if (!match(Character.toString(terminator))) {
+            throw syntaxErrorHere(RbErrorMessages.unterminatedName(terminator));
+        }
+        if (groupName.isEmpty()) {
+            throw syntaxErrorHere(RbErrorMessages.MISSING_GROUP_NAME);
+        }
+        return groupName;
+    }
+
+    /**
+     * Parses a local flag block or an inline declaration of a global flags. Assumes that the prefix
+     * '(?' was already parsed, as well as the first flag which is passed as the argument.
+     */
+    private void flags(int ch0) {
+        int ch = ch0;
+        JavaFlags newFlags = getLocalFlags();
+        boolean negative = false;
+        while (ch != ')' && ch != ':') {
+            if (ch == '-') {
+                negative = true;
+            } else if (RubyFlags.isValidFlagChar(ch)) {
+                if (negative) {
+                    if (RubyFlags.isTypeFlag(ch)) {
+                        throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
+                    }
+                    newFlags = newFlags.delFlag(ch);
+                } else {
+                    newFlags = newFlags.addFlag(ch);
+                }
+            } else if (Character.isAlphabetic(ch)) {
+                throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
+            } else {
+                throw syntaxErrorHere(RbErrorMessages.MISSING_DASH_COLON_PAREN);
+            }
+
+            if (atEnd()) {
+                throw syntaxErrorAtEnd(RbErrorMessages.MISSING_FLAG_DASH_COLON_PAREN);
+            }
+            ch = consumeChar();
+        }
+
+        // TOD necessary?
+//        if (ch == ')') {
+//            openEndedLocalFlags(newFlags);
+//        } else {
+            assert ch == ':';
+            localFlags(newFlags);
+//        }
+    }
+
+    /**
+     * Parses a block with local flags, assuming that the opening parenthesis, the flags and the ':'
+     * have been parsed.
+     *
+     * @param newFlags - the new set of flags to be used in the block
+     */
+    private void localFlags(JavaFlags newFlags) {
+        flagsStack.push(newFlags);
+        group(false);
+        flagsStack.pop();
+    }
+
+    /**
+     * Parses a group, assuming that its opening parenthesis has already been parsed. Note that this
+     * is used not only for ordinary capture groups, but also for named capture groups,
+     * non-capturing groups or the contents of a local flags block.
+     *
+     * @param capturing whether or not we should push a capturing group
+     */
+    private void group(boolean capturing) {
+        if (capturing) {
+            groupIndex++;
+            groupStack.push(new Group(groupIndex));
+            pushCaptureGroup();
+        } else {
+            pushGroup();
+        }
+        disjunction();
+        if (match(")")) {
+            popGroup();
+            if (capturing) {
+                groupStack.pop();
+            }
+            lastTerm = JavaRegexParser.TermCategory.Atom;
+        } else {
+            throw syntaxErrorHere(RbErrorMessages.UNTERMINATED_SUBPATTERN);
         }
     }
 }

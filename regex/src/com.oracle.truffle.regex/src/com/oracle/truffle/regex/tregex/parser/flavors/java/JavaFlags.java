@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -57,9 +58,23 @@ public final class JavaFlags extends AbstractConstantKeysObject {
 
     private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray();
 
-    private final int value = 0;
+    private final int value;
 
-    public JavaFlags() {
+    private static final String FLAGS = "idmsux";   // TODO "U" as well? -- YES
+//    private static final String BIT_FLAGS = "mixy";
+//    private static final String COMPILE_TIME_FLAGS = "mix";
+    private static final String TYPE_FLAGS = "du";
+
+    public JavaFlags(String source) {
+        int bits = 0;
+        for (int i = 0; i < source.length(); i++) {
+            bits |= maskForFlag(source.charAt(i));
+        }
+        this.value = bits;
+    }
+
+    public JavaFlags(int bits) {
+        this.value = bits;
     }
 
     @Override
@@ -75,7 +90,54 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     @TruffleBoundary
     @Override
     public String toString() {
-        return "JavaFlags";
+        StringBuilder out = new StringBuilder(FLAGS.length());
+        for (int i = 0; i < FLAGS.length(); i++) {
+            char flag = FLAGS.charAt(i);
+            if (this.hasFlag(flag)) {
+                out.append(flag);
+            }
+        }
+        return out.toString();
+    }
+
+    public boolean hasFlag(int flagChar) {
+        return (this.value & maskForFlag(flagChar)) != 0;
+    }
+
+    public JavaFlags addFlag(int flagChar) {
+        if (isTypeFlag(flagChar)) {
+            return new JavaFlags(this.value);
+        } else {
+            return new JavaFlags(this.value | maskForFlag(flagChar));
+        }
+    }
+
+    public JavaFlags delFlag(int flagChar) {
+        return new JavaFlags(this.value & ~maskForFlag(flagChar));
+    }
+
+    private static int maskForFlag(int flagChar) {
+        return 1 << FLAGS.indexOf(flagChar);
+    }
+
+    public boolean isIgnoreCase() {
+        return hasFlag('i');
+    }
+
+    public boolean isMultiline() {
+        return hasFlag('m');
+    }
+
+    public boolean isExtended() {
+        return hasFlag('x');
+    }
+
+    public static boolean isValidFlagChar(int candidateChar) {
+        return FLAGS.indexOf(candidateChar) >= 0;
+    }
+
+    public static boolean isTypeFlag(int candidateChar) {
+        return TYPE_FLAGS.indexOf(candidateChar) >= 0;
     }
 
     @TruffleBoundary
@@ -93,6 +155,12 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     @Override
     public Object readMemberImpl(String symbol) throws UnknownIdentifierException {
         switch (symbol) {
+            case "EXTENDED":
+                return isExtended();
+            case "IGNORECASE":
+                return isIgnoreCase();
+            case "MULTILINE":
+                return isMultiline();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
