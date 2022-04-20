@@ -290,8 +290,19 @@ public class FloatingReadPhase extends Phase {
 
     }
 
-    public static boolean nodeOfMemoryType(Node node) {
-        return !(MemoryKill.isMemoryKill(node)) || (MemoryKill.isSingleMemoryKill(node) ^ MemoryKill.isMultiMemoryKill(node));
+    public static boolean assertCorrectMemoryClassHierarchy(Node node) {
+        final boolean isMemoryKill = MemoryKill.isMemoryKill(node);
+        final boolean isSingleMemoryKill = MemoryKill.isSingleMemoryKill(node);
+        final boolean isMultiMemoryKill = MemoryKill.isMultiMemoryKill(node);
+        if (!isMemoryKill) {
+            return true;
+        }
+        if (isSingleMemoryKill) {
+            assert !isMultiMemoryKill : "Node cannot be single and multi kill concurrently " + node;
+            return true;
+        }
+        assert isMultiMemoryKill : "Must be single or multi memory kill, was not single, must be multi " + node;
+        return true;
     }
 
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
@@ -345,7 +356,7 @@ public class FloatingReadPhase extends Phase {
             } else if (MemoryKill.isMultiMemoryKill(node)) {
                 processCheckpoint((MultiMemoryKill) node, state);
             }
-            assert nodeOfMemoryType(node) : node;
+            assert assertCorrectMemoryClassHierarchy(node) : node;
 
             if (createMemoryMapNodes && node instanceof MemoryMapControlSinkNode) {
                 ((MemoryMapControlSinkNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));

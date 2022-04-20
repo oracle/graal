@@ -2086,7 +2086,7 @@ public class SnippetTemplate {
                     if (MemoryKill.isSingleMemoryKill(replacee)) {
                         loc = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
                     } else if (MemoryKill.isMultiMemoryKill(replacee)) {
-                        GraalError.shouldNotReachHere("Cannot use placeholder with exception with a multi memory node " + replacee);
+                        GraalError.unimplemented("Cannot use placeholder with exception with a multi memory node " + replacee);
                     }
 
                     WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode(loc));
