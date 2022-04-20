@@ -126,7 +126,14 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         }
                     }
                     loop.loopBegin().disableSafepoint();
-                    onSafepointDisabledLoopBegin(loop);
+                    if (loop.loopBegin().isStripMinedInner()) {
+                        // graal strip mined this loop, trust the heuristics and remove the inner
+                        // loop safepoint
+                        loop.loopBegin().disableGuestSafepoint();
+                    } else {
+                        // let the shape of the loop decide whether a guest safepoint is needed
+                        onSafepointDisabledLoopBegin(loop);
+                    }
                 }
             }
         }
