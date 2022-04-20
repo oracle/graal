@@ -111,9 +111,10 @@ public final class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
                 Method.MethodVersion overridden = superVTable[i];
                 if (overridden != m) {
                     overridden.getMethod().getLeafAssumption(ClassHierarchyAccessor.accessor).invalidate();
-                    if (current.isConcrete()) {
-                        break;
-                    }
+                }
+                if (current.isConcrete()) {
+                    // concrete classes have already been visited by this method.
+                    break;
                 }
                 current = current.getSuperKlass();
             }
