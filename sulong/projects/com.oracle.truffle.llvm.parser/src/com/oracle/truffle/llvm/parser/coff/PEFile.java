@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageDataDirectory;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageOptionHeader;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageOptionNT64Header;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageSectionHeader;
+import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageOptionNT64Header.ImageDataIndex;
 import com.oracle.truffle.llvm.parser.coff.ImageImportData.ImageImportDescriptor;
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -60,10 +61,12 @@ public final class PEFile {
 
     private final CoffFile coffFile;
     private ImageImportData importData = null;
+    private ExportTable exportTable = null;
 
     private PEFile(CoffFile coffFile) {
         this.coffFile = coffFile;
         loadImportData();
+        loadExportData();
     }
 
     public CoffFile getCoffFile() {
@@ -97,34 +100,82 @@ public final class PEFile {
         throw new LLVMParserException(String.format("Unsupported PE File Coff option header: %s.", header.getClass().toString()));
     }
 
-    private ObjectFileReader getImportDataReader() {
+    public static final class ImageDataDirectorySection {
+        final ImageSectionHeader header;
+        final int offset;
+        final int length;
+
+        private ImageDataDirectorySection(ImageSectionHeader header) {
+            this(header, 0, header.virtualSize);
+        }
+
+        private ImageDataDirectorySection(ImageSectionHeader header, int offset, int length) {
+            this.header = header;
+            this.offset = offset;
+            this.length = length;
+        }
+
+        /**
+         * Returns true if the relative virtual address is within the bounds of this image data
+         * directory.
+         */
+        public boolean isRVAInBounds(int rva) {
+            return rva >= header.virtualAddress + offset && rva <= header.virtualAddress + offset + length;
+        }
+
+        public ObjectFileReader getReader(CoffFile file) {
+            ObjectFileReader reader = file.getSectionReader(header);
+            reader.setPosition(offset);
+            return reader;
+        }
+    }
+
+    private ImageDataDirectorySection getImageDataDirectory(ImageDataIndex optionHeaderIndex, String sectionName) {
         // First see if there is an import data directory
         ImageOptionNT64Header header = getOptionHeader();
         if (header != null) {
-            ImageDataDirectory importDirectory = header.getImportDirectory();
+            ImageDataDirectory importDirectory = header.getDirectory(optionHeaderIndex);
             if (importDirectory.getSize() == 0) {
                 // The import directory is empty
                 return null;
             }
 
             if (importDirectory != null) {
-                return coffFile.getReaderAtVirtualAddress(importDirectory.getVirtualAddress());
+                ImageSectionHeader sectionHeader = coffFile.lookupOffset(importDirectory.getVirtualAddress());
+                return new ImageDataDirectorySection(sectionHeader, importDirectory.getVirtualAddress() - sectionHeader.virtualAddress, importDirectory.getSize());
             }
         }
 
         // Otherwise try to load it from the .idata section
-        ImageSectionHeader imageSection = coffFile.getSection(".idata");
+        ImageSectionHeader imageSection = coffFile.getSection(sectionName);
         if (imageSection != null) {
-            return coffFile.getReaderAtVirtualAddress(imageSection.virtualAddress);
+            return new ImageDataDirectorySection(imageSection);
         }
 
-        // Finally, give up
         return null;
+    }
+
+    private ObjectFileReader getImageData(ImageDataIndex optionHeaderIndex, String sectionName) {
+        ImageDataDirectorySection dataDirectorySection = getImageDataDirectory(optionHeaderIndex, sectionName);
+        if (dataDirectorySection != null) {
+            return dataDirectorySection.getReader(coffFile);
+        }
+
+        return null;
+    }
+
+    private ObjectFileReader getImportDataReader() {
+        return getImageData(ImageDataIndex.ImportTable, ".idata");
     }
 
     private void loadImportData() {
         ObjectFileReader reader = getImportDataReader();
         importData = reader == null ? null : ImageImportData.create(coffFile, reader);
+    }
+
+    private void loadExportData() {
+        ImageDataDirectorySection section = getImageDataDirectory(ImageDataIndex.ExportTable, ".edata");
+        exportTable = section == null ? null : ExportTable.create(coffFile, section);
     }
 
     public List<String> getImportLibraries() {
@@ -138,4 +189,9 @@ public final class PEFile {
         }
         return libraries;
     }
+
+    public ExportTable getExportTable() {
+        return exportTable;
+    }
+
 }
