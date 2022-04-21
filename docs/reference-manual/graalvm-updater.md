@@ -131,10 +131,10 @@ The following commands can help you manage a download token:
 
 A download token can be saved in a file on your computer or in the environment variable `$GRAAL_EE_DOWNLOAD_TOKEN`.
 
-To set the environment variable to the download token, run:
+To set the environment variable to the download token when `~/.gu/config` is already the default path, run:
 
 ```shell
-export GRAAL_EE_DOWNLOAD_TOKEN=<path-to /.gu/config>
+export GRAAL_EE_DOWNLOAD_TOKEN=~/.gu/config
 ```
 
 GraalVM Updater then reads the download token from the variable.
