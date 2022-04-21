@@ -61,7 +61,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     private final int value;
 
     private static final String FLAGS = "idmsux";   // TODO "U" as well? -- YES
-//    private static final String BIT_FLAGS = "mixy";
+    //    private static final String BIT_FLAGS = "mixy";
 //    private static final String COMPILE_TIME_FLAGS = "mix";
     private static final String TYPE_FLAGS = "du";
 
@@ -130,6 +130,10 @@ public final class JavaFlags extends AbstractConstantKeysObject {
 
     public boolean isExtended() {
         return hasFlag('x');
+    }
+
+    public boolean isUnicode() {
+        return hasFlag('u');
     }
 
     public static boolean isValidFlagChar(int candidateChar) {
