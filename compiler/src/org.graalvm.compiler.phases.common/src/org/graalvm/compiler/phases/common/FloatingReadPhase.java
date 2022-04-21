@@ -290,21 +290,6 @@ public class FloatingReadPhase extends Phase {
 
     }
 
-    public static boolean assertCorrectMemoryClassHierarchy(Node node) {
-        final boolean isMemoryKill = MemoryKill.isMemoryKill(node);
-        final boolean isSingleMemoryKill = MemoryKill.isSingleMemoryKill(node);
-        final boolean isMultiMemoryKill = MemoryKill.isMultiMemoryKill(node);
-        if (!isMemoryKill) {
-            return true;
-        }
-        if (isSingleMemoryKill) {
-            assert !isMultiMemoryKill : "Node cannot be single and multi kill concurrently " + node;
-            return true;
-        }
-        assert isMultiMemoryKill : "Must be single or multi memory kill, was not single, must be multi " + node;
-        return true;
-    }
-
     private static boolean checkNoImmutableLocations(EconomicSet<LocationIdentity> keys) {
         keys.forEach(t -> {
             assert t.isMutable();
@@ -352,11 +337,13 @@ public class FloatingReadPhase extends Phase {
                 processFloatable((FloatableAccessNode) node, state);
             }
             if (MemoryKill.isSingleMemoryKill(node)) {
+                assert !MemoryKill.isMultiMemoryKill(node) : "Node cannot be single and multi kill concurrently " + node;
                 processCheckpoint((SingleMemoryKill) node, state);
             } else if (MemoryKill.isMultiMemoryKill(node)) {
                 processCheckpoint((MultiMemoryKill) node, state);
+            } else {
+                assert !MemoryKill.isMemoryKill(node) : "Node must be single or multi kill " + node;
             }
-            assert assertCorrectMemoryClassHierarchy(node) : node;
 
             if (createMemoryMapNodes && node instanceof MemoryMapControlSinkNode) {
                 ((MemoryMapControlSinkNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));

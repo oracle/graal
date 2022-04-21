@@ -40,8 +40,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
@@ -61,7 +61,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * performed before the load.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable, MultiMemoryKill {
+public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtualizable, Canonicalizable, SingleMemoryKill {
     public static final NodeClass<RawLoadNode> TYPE = NodeClass.create(RawLoadNode.class);
 
     /**
@@ -119,11 +119,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    public LocationIdentity[] getKilledLocationIdentities() {
+    public LocationIdentity getKilledLocationIdentity() {
         if (ordersMemoryAccesses()) {
-            return MemoryKill.MULTI_KILL_ANY_LOCATION;
+            return LocationIdentity.any();
         }
-        return MemoryKill.MULTI_KILL_NO_LOCATION;
+        return MemoryKill.NO_LOCATION;
     }
 
     @Override

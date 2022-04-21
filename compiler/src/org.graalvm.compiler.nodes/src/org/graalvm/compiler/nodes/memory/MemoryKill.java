@@ -87,18 +87,6 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
         return (MultiMemoryKill) n;
     }
 
-    static LocationIdentity getSingleLocationFromMulti(MultiMemoryKill m) {
-        LocationIdentity[] killedLocations = m.getKilledLocationIdentities();
-        if (killedLocations.length == 1) {
-            return killedLocations[0];
-        }
-        return null;
-    }
-
-    static boolean isFacadeOfSingle(MultiMemoryKill m) {
-        return getSingleLocationFromMulti(m) != null;
-    }
-
     /**
      * Special {@link LocationIdentity} used to express that this location is never killing
      * anything, thus it is {@link LocationIdentity#isImmutable()} {@code true} and should only be
@@ -121,15 +109,6 @@ public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
             return "NO_LOCATION";
         }
     }
-
-    /**
-     * Special {@link LocationIdentity} used to express that a {@link MultiMemoryKill} actually
-     * represents a {@link SingleMemoryKill} that kills {@link LocationIdentity#ANY_LOCATION}. Using
-     * this location can be handy to express that a memory kill
-     * {@link LocationIdentity#ANY_LOCATION} under certain, parameterized, conditions. Should be
-     * used with caution.
-     */
-    LocationIdentity[] MULTI_KILL_ANY_LOCATION = new LocationIdentity[]{LocationIdentity.ANY_LOCATION};
 
     /**
      * Special {@link LocationIdentity} used to express that a {@link MultiMemoryKill} actually does

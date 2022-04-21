@@ -34,14 +34,14 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
 @NodeInfo(nameTemplate = "OrderedJavaRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public class JavaOrderedReadNode extends JavaReadNode implements MultiMemoryKill {
+public class JavaOrderedReadNode extends JavaReadNode implements SingleMemoryKill {
     public static final NodeClass<JavaOrderedReadNode> TYPE = NodeClass.create(JavaOrderedReadNode.class);
     private final MemoryOrderMode memoryOrder;
 
@@ -57,11 +57,11 @@ public class JavaOrderedReadNode extends JavaReadNode implements MultiMemoryKill
     }
 
     @Override
-    public LocationIdentity[] getKilledLocationIdentities() {
+    public LocationIdentity getKilledLocationIdentity() {
         if (ordersMemoryAccesses()) {
-            return MemoryKill.MULTI_KILL_ANY_LOCATION;
+            return LocationIdentity.any();
         }
-        return MemoryKill.MULTI_KILL_NO_LOCATION;
+        return MemoryKill.NO_LOCATION;
     }
 
     @Override
