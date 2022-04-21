@@ -236,7 +236,7 @@ public final class EspressoOptions {
 
     public enum VerifyMode {
         NONE,
-        REMOTE, // Verifies all bytecodes not loaded by the bootstrap class loader.
+        REMOTE, // Verifies all bytecodeSpecComplis not loaded by the bootstrap class loader.
         ALL
     }
 

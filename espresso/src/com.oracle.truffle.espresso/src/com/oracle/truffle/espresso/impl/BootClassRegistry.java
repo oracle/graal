@@ -34,6 +34,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.perf.DebugTimer;
+import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.ClasspathFile;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
@@ -50,8 +51,11 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadLinkedKlassCacheHits = DebugCounter.create("BCL loadLinkedKlassCacheHits");
     private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
-    public BootClassRegistry(long loaderID) {
+    private final Classpath bootClasspath;
+
+    public BootClassRegistry(Classpath cp, long loaderID) {
         super(loaderID);
+        bootClasspath = cp;
     }
 
     @Override
@@ -84,11 +88,11 @@ public final class BootClassRegistry extends ClassRegistry {
 
         ParserKlass parserKlass;
         synchronized (type) {
-            ClasspathFile classpathFile = getClasspathFile(env, type);
+            ClasspathFile classpathFile = getClasspathFile(env, bootClasspath, type);
             if (classpathFile == null) {
                 return null;
             }
-            parserKlass = createParserKlass(env, classpathFile.contents, type, info);
+            parserKlass = parseKlass(env, classpathFile.contents, type, info);
         }
 
         return parserKlass;
@@ -102,7 +106,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
     @Override
     public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type) throws EspressoClassLoadingException {
-        ClasspathFile classpathFile = getClasspathFile(env, type);
+        ClasspathFile classpathFile = getClasspathFile(env, bootClasspath, type);
         if (classpathFile == null) {
             return null;
         }
@@ -132,12 +136,12 @@ public final class BootClassRegistry extends ClassRegistry {
     }
 
     @SuppressWarnings("try")
-    private static ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
+    private static ClasspathFile getClasspathFile(ClassLoadingEnv env, Classpath cp, Symbol<Type> type) {
         if (Types.isPrimitive(type)) {
             return null;
         }
         try (DebugCloseable scope = BOOT_KLASS_READ.scope(env.getTimers())) {
-            ClasspathFile classpathFile = env.getBootClasspath().readClassFile(type);
+            ClasspathFile classpathFile = cp.readClassFile(type);
             return classpathFile;
         }
     }

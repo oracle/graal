@@ -264,7 +264,7 @@ public abstract class ClassRegistry {
         return klasses;
     }
 
-    public ParserKlass createParserKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
+    public ParserKlass parseKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
         if (!env.isLoaderBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
@@ -463,7 +463,7 @@ public abstract class ClassRegistry {
     public ObjectKlass defineKlass(ClassLoadingEnv.InContext env, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
-            parserKlass = createParserKlass(env, bytes, typeOrNull, info);
+            parserKlass = parseKlass(env, bytes, typeOrNull, info);
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 

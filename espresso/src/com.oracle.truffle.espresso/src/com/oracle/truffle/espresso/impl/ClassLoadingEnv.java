@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
-import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -53,10 +52,6 @@ public interface ClassLoadingEnv {
     TruffleLogger getLogger();
 
     JavaVersion getJavaVersion();
-
-    EspressoOptions.SpecComplianceMode getSpecComplianceMode();
-
-    Classpath getBootClasspath();
 
     boolean needsVerify(StaticObject loader);
 
@@ -129,16 +124,6 @@ public interface ClassLoadingEnv {
         }
 
         @Override
-        public EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
-            return getContext().getLanguage().getSpecComplianceMode();
-        }
-
-        @Override
-        public Classpath getBootClasspath() {
-            return getContext().getBootClasspath();
-        }
-
-        @Override
         public boolean needsVerify(StaticObject loader) {
             return MethodVerifier.needsVerify(getLanguage(), loader);
         }
@@ -173,42 +158,8 @@ public interface ClassLoadingEnv {
 
     class WithoutContext extends CommonEnv {
 
-        public static class Options {
-            private final TruffleLogger logger;
-            private final Classpath classpath;
-            private EspressoOptions.SpecComplianceMode specComplianceMode;
-            private boolean needsVerify;
-
-            public Options(Classpath cp) {
-                this(cp, TruffleLogger.getLogger(EspressoLanguage.ID));
-            }
-
-            public Options(Classpath cp, TruffleLogger loggerOverride) {
-                classpath = cp;
-                logger = loggerOverride;
-                specComplianceMode = EspressoOptions.SpecCompliance.getDefaultValue();
-                EspressoOptions.VerifyMode defaultVerifyMode = EspressoOptions.Verify.getDefaultValue();
-                needsVerify = defaultVerifyMode != EspressoOptions.VerifyMode.NONE;
-            }
-
-            public void enableVerify() {
-                this.needsVerify = true;
-            }
-
-            public void complancyModeOverride(EspressoOptions.SpecComplianceMode specCompliancyMode) {
-                this.specComplianceMode = specCompliancyMode;
-            }
-        }
-
-        private final Options options;
-
-        public WithoutContext(EspressoLanguage language, Classpath cp) {
-            this(language, new Options(cp));
-        }
-
-        public WithoutContext(EspressoLanguage language, Options opts) {
+        public WithoutContext(EspressoLanguage language) {
             super(language);
-            options = opts;
         }
 
         @Override
@@ -224,16 +175,6 @@ public interface ClassLoadingEnv {
         @Override
         public JavaVersion getJavaVersion() {
             return getLanguage().getJavaVersion();
-        }
-
-        @Override
-        public EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
-            return options.specComplianceMode;
-        }
-
-        @Override
-        public Classpath getBootClasspath() {
-            return options.classpath;
         }
 
         @Override
