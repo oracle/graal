@@ -31,7 +31,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -41,6 +40,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
+import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import org.graalvm.compiler.nodes.GraphDecoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -96,7 +98,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
     private static final Object GRAPH_CACHE_CLEARED = "cleared by cleanupAfterAnalysis";
 
-    private StructuredGraph analyzedGraph;
+    private EncodedGraph analyzedGraph;
 
     /**
      * All concrete methods that can actually be called when calling this method. This includes all
@@ -185,7 +187,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * @return analysis related invoke information for given method, mainly the possible callees to
      *         traverse the call graph
      */
-    public abstract Collection<InvokeInfo> getInvokes();
+    public abstract Iterable<? extends InvokeInfo> getInvokes();
 
     /**
      * @return the parsing context in which given method was parsed
@@ -710,11 +712,21 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph getAnalyzedGraph() {
-        return analyzedGraph;
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
+        if (analyzedGraph == null) {
+            return null;
+        }
+
+        StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug)
+                        .method(this)
+                        .recordInlinedMethods(false)
+                        .trackNodeSourcePosition(analyzedGraph.trackNodeSourcePosition()).build();
+        GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
+        decoder.decode(analyzedGraph, nodeReferences);
+        return result;
     }
 
-    public void setAnalyzedGraph(StructuredGraph analyzedGraph) {
+    public void setAnalyzedGraph(EncodedGraph analyzedGraph) {
         this.analyzedGraph = analyzedGraph;
     }
 }

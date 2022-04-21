@@ -95,6 +95,32 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
+     * Optimized search for a set of up to 4 {@code int} values.
+     */
+    public static final class LoopOptIndexOfAnyIntNode extends LoopOptIndexOfAnyNode {
+
+        @CompilationFinal(dimensions = 1) private final int[] ints;
+
+        public LoopOptIndexOfAnyIntNode(int[] ints) {
+            this.ints = ints;
+        }
+
+        private LoopOptIndexOfAnyIntNode(LoopOptIndexOfAnyIntNode copy) {
+            this.ints = copy.ints;
+        }
+
+        @Override
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, ints, encoding);
+        }
+
+        @Override
+        LoopOptimizationNode nodeSplitCopy() {
+            return new LoopOptIndexOfAnyIntNode(this);
+        }
+    }
+
+    /**
      * Optimized search for a set of up to 4 {@code char} values.
      */
     public static final class LoopOptIndexOfAnyCharNode extends LoopOptIndexOfAnyNode {

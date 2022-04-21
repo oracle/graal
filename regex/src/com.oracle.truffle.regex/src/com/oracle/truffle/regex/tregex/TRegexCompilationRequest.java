@@ -237,7 +237,8 @@ public final class TRegexCompilationRequest {
         boolean traceFinder = preCalculatedResults != null && preCalculatedResults.length > 0;
         final boolean trackLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
         executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && !traceFinder && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()), trackLastGroup);
-        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && !traceFinder;
+        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions() || ast.getOptions().isMustAdvance()) &&
+                        !traceFinder;
         if (createCaptureGroupTracker) {
             executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, trackLastGroup);
         }
@@ -260,7 +261,7 @@ public final class TRegexCompilationRequest {
         createAST();
         RegexProperties properties = ast.getProperties();
         assert ast.canTransformToDFA();
-        assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
+        assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions() || ast.getOptions().isMustAdvance();
         assert !ast.getRoot().isDead();
         createNFA();
         return createDFAExecutor(nfa, true, true, true, false, ast.getOptions().getFlavor().usesLastGroupResultField());

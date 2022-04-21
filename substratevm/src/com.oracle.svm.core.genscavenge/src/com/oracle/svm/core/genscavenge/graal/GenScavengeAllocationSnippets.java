@@ -65,6 +65,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.thread.Continuation;
 
 final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
@@ -190,7 +191,9 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet", null, receiver);
             formatArray = snippet(GenScavengeAllocationSnippets.class, "formatArraySnippet", null, receiver);
-            allocateStoredContinuationInstance = snippet(GenScavengeAllocationSnippets.class, "allocateStoredContinuationInstance", null, receiver, ALLOCATION_LOCATIONS);
+
+            allocateStoredContinuationInstance = !Continuation.isSupported() ? null
+                            : snippet(GenScavengeAllocationSnippets.class, "allocateStoredContinuationInstance", null, receiver, ALLOCATION_LOCATIONS);
         }
 
         @Override
@@ -203,8 +206,10 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
             FormatArrayLowering formatArrayLowering = new FormatArrayLowering();
             lowerings.put(FormatArrayNode.class, formatArrayLowering);
 
-            NewStoredContinuationLowering newStoredContinuationLowering = new NewStoredContinuationLowering();
-            lowerings.put(NewStoredContinuationNode.class, newStoredContinuationLowering);
+            if (Continuation.isSupported()) {
+                NewStoredContinuationLowering newStoredContinuationLowering = new NewStoredContinuationLowering();
+                lowerings.put(NewStoredContinuationNode.class, newStoredContinuationLowering);
+            }
         }
 
         private class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {

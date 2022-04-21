@@ -192,7 +192,6 @@ public final class EspressoContext {
     public final boolean SplitMethodHandles;
     public final EspressoOptions.LivenessAnalysisMode LivenessAnalysisMode;
     public final int LivenessAnalysisMinimumLocals;
-    public final boolean EnableClassHierarchyAnalysis;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -290,7 +289,6 @@ public final class EspressoContext {
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.LivenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.LivenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
-        this.EnableClassHierarchyAnalysis = env.getOptions().get(EspressoOptions.CHA);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
@@ -329,7 +327,7 @@ public final class EspressoContext {
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
-        if (this.EnableClassHierarchyAnalysis) {
+        if (env.getOptions().get(EspressoOptions.CHA)) {
             this.classHierarchyOracle = new DefaultClassHierarchyOracle();
         } else {
             this.classHierarchyOracle = new NoOpClassHierarchyOracle();

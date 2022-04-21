@@ -16,7 +16,7 @@ Native Image supports a wide range of options to configure the `native-image` to
 ## Embedding a Configuration File
 
 We recommend that you provide the configuration for the `native-image` tool by embedding a _native-image.properties_ file into a project JAR file.
-The Native Image builder will also automatically pick up all configuration options provided in the _META-INF/native-image/_ directory (or any of its subdirectories) and use it to construct `native-image` command line arguments.
+The `native-image` tool will also automatically pick up all configuration options provided in the _META-INF/native-image/_ directory (or any of its subdirectories) and use it to construct `native-image` command line arguments.
 
 To avoid a situation when constituent parts of a project are built with overlapping configurations, we recommended you use subdirectories within _META-INF/native-image_: a JAR file built from multiple maven projects cannot suffer from overlapping `native-image` configurations.
 For example:
@@ -24,7 +24,7 @@ For example:
 * _bar.jar_ has its configurations in _META-INF/native-image/bar_groupID/bar_artifactID_
 
 The JAR file that contains `foo` and `bar` will then contain both configurations without conflict.
-Therefore the recommended layout to store native image configuration in JAR files is as follows:
+Therefore the recommended layout to store configuration data in JAR files is as follows:
 ```
 META-INF/
 └── native-image
@@ -79,20 +79,20 @@ For example, the `native-image-configure-examples/configure-at-runtime-example` 
 
 **JavaArgs**
 
-Sometimes it can be necessary to provide custom options to the Java VM that runs the native image builder.
+Sometimes it can be necessary to provide custom options to the Java VM that runs the `native-image` tool.
 Use the `JavaArgs` property in this case.
 
 **ImageName**
 
 This property specifies a user-defined name for the executable.
 If `ImageName` is not used, a name is automatically chosen:
-* `native-image -jar <name.jar>` has a default executable name `<name>`
-* `native-image -cp ... fully.qualified.MainClass` has a default executable name `fully.qualified.mainclass`
+    * `native-image -jar <name.jar>` has a default executable name `<name>`
+    * `native-image -cp ... fully.qualified.MainClass` has a default executable name `fully.qualified.mainclass`
 
 Note that using `ImageName` does not prevent the user overriding the name via the command line.
 For example, if `foo.bar` contains `ImageName=foo_app`:
-* `native-image -jar foo.bar` generates the executable `foo_app` but
-* `native-image -jar foo.bar application` generates the executable `application`
+    * `native-image -jar foo.bar` generates the executable `foo_app` but
+    * `native-image -jar foo.bar application` generates the executable `application`
 
 ### Order of Arguments Evaluation
 The arguments passed to `native-image` are evaluated from left to right.
@@ -102,8 +102,8 @@ You can override the setting that is contained in the JAR file by using the `-H:
 
 ### Specifying Default Options for Native Image
 If you need to pass the same options every time you build a native executable, for example, to always generate an executable in verbose mode (`--verbose`), you can make use of the `NATIVE_IMAGE_CONFIG_FILE` environment variable.
-If the variable is set to the location of a Java properties file, the Native Image builder will use the default setting defined in there on each invocation.
-<!-- BH: should "export" be in code style? -->
+If the variable is set to the location of a Java properties file, the `native-image` tool will use the default setting defined in there on each invocation.
+
 Write a configuration file and export `NATIVE_IMAGE_CONFIG_FILE=$HOME/.native-image/default.properties` in _~/.bash_profile_.
 Every time `native-image` is run it will implicitly use the arguments specified as `NativeImageArgs`, plus the arguments specified on the command line.
 Here is an example of a configuration file, saved as _~/.native-image/default.properties_:
@@ -124,7 +124,7 @@ export NATIVE_IMAGE_USER_HOME= $HOME/.local/share/native-image
 ## Memory Configuration for Building a Native Executable
 
 The `native-image` tool runs on a Java VM and uses the memory management of the underlying platform.
-The usual Java command-line options for garbage collection apply to the native image builder.
+The usual Java command-line options for garbage collection apply to the `native-image` tool.
 
 During the creation of a native executable, the representation of the whole application is created to determine which classes and methods will be used at runtime.
 It is a computationally intensive process that uses the following default values for memory usage:
@@ -137,22 +137,50 @@ These defaults can be changed by passing `-J + <jvm option for memory>` to the `
 The `-Xmx` value is computed by using 80% of the physical memory size, but no more than 14G per host.
 You can provide a larger value for `-Xmx` on the command line, for example, `-J-Xmx26G`.
 
-By default, the native image builder uses up to 32 threads (but not more than the number of processors available). For custom values, use the option `-H:NumberOfThreads=...`.
+By default, the `native-image` tool uses up to 32 threads (but not more than the number of processors available). For custom values, use the option `-H:NumberOfThreads=...`.
 
-For other related options available to the native image builder see the output from the command `native-image --expert-options-all`.
+For other related options available to the `native-image` tool, see the output from the command `native-image --expert-options-all`.
 
 ## Runtime vs Build-Time Initialization
 
-When you build a native executable, you can decide which elements of your application are run at build time, and which elements are run at executable runtime.
+When you build a native executable, you can decide which elements of your application are run at build time, and which elements are run at executable run time.
 
-By default, all class-initialization code (static initializers and static field initialization) of the application is run at executable runtime.
+By default, all class-initialization code (static initializers and static field initialization) of the application is run at executable run time.
 Sometimes it is beneficial to run class initialization code when the executable is built. For example, for faster startup if some static fields are initialized to values that are runtime-independent.
 This is controlled with the following `native-image` options:
 
 * `--initialize-at-build-time=<comma-separated list of packages and classes>`
 * `--initialize-at-run-time=<comma-separated list of packages and classes>`
 
-In addition to that, arbitrary computations are allowed at build time that can be put into `ImageSingletons` that are accessible at executable runtime. For more information, see [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+In addition to that, arbitrary computations are allowed at build time that can be put into `ImageSingletons` that are accessible at run time. For more information, see [Native Image configuration examples](https://github.com/graalvm/graalvm-demos/tree/master/native-image-configure-examples).
+
+## Specifying Types Required to Be Defined at Build Time
+
+A well-structured library or application should handle linking of Java types (ensuring all reachable Java types are fully defined at build time) when building a native executable by itself.
+The default behavior is to throw linking errors, if they occur, at run time. 
+However, you can prevent unwanted linking errors by specifing which classes are required to be fully linked at build time.
+For that, use the `--link-at-build-time` option. 
+If the option is used in the right context (see below), you can specify required classes to link at build time without explicitly listing classes and packages.
+It is designed in a way that libraries can only configure their own classes, to avoid any side effects on other libraries.
+You can pass the option to the `native-image` tool on the command line, embed it in a `native-image.properties` file on the module-path or the classpath.
+
+Depending on how and where the option is used it behaves differently:
+
+* If you use `--link-at-build-time` without arguments, all classes in the scope are required to be fully defined. If used without arguments on command line, all classes will be treated as "link-at-build-time" classes. If used without arguments embedded in a `native-image.properties` file on the module-path, all classes of the module will be treated as "link-at-build-time" classes. If you use `--link-at-build-time` embedded in a `native-image.properties` file on the classpath, the following error will be thrown:
+    ```shell
+    Error: Using '--link-at-build-time' without args only allowed on module-path. 'META-INF/native-image/org.mylibrary/native-image.properties' in 'file:///home/test/myapp/MyLibrary.jar' not part of module-path.
+    ```
+* If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module-path or classpath (embedded in `native-image.properties` files), only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the classpath need to be listed explicitly. To make this process easy, use the `@<prop-values-file>` syntax to generate a package list (or a class list) in a separate file automatically.
+
+Another handy option is `--link-at-build-time-paths` which allows to specify which classes are required to be fully defined at build time by other means.
+This option variant requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
+
+```shell
+--link-at-build-time-paths <class search path of directories and zip/jar files>
+```
+
+The given entries are searched and all classes inside are registered as `--link-at-build-time` classes.
+This option is only allowed to be used on command line.
 
 # Related Documentation
 * [Class Initialization in Native Image](ClassInitialization.md)

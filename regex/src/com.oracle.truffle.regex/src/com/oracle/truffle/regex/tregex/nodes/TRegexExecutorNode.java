@@ -63,6 +63,18 @@ public abstract class TRegexExecutorNode extends Node {
         return root.getEncoding();
     }
 
+    public boolean isUTF8() {
+        return getEncoding() == Encodings.UTF_8;
+    }
+
+    public boolean isUTF16() {
+        return getEncoding() == Encodings.UTF_16;
+    }
+
+    public boolean isUTF32() {
+        return getEncoding() == Encodings.UTF_32;
+    }
+
     public BranchProfile getBMPProfile() {
         return root.getBMPProfile();
     }
@@ -239,13 +251,13 @@ public abstract class TRegexExecutorNode extends Node {
     }
 
     protected void inputSkipIntl(TRegexExecutorLocals locals, boolean forward) {
-        if (getEncoding() == Encodings.UTF_16) {
+        if (isUTF16()) {
             int c = inputReadRaw(locals, forward);
             inputIncRaw(locals, forward);
             if (UTF16.isHighSurrogate(c, forward) && inputHasNext(locals, forward) && UTF16.isLowSurrogate(inputReadRaw(locals, forward), forward)) {
                 inputIncRaw(locals, forward);
             }
-        } else if (getEncoding() == Encodings.UTF_8) {
+        } else if (isUTF8()) {
             if (forward) {
                 int c = inputReadRaw(locals, true);
                 if (c < 128) {

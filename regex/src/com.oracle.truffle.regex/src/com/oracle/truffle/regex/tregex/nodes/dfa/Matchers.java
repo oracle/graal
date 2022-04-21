@@ -110,7 +110,7 @@ public abstract class Matchers {
 
     @TruffleBoundary
     static String toString(CharMatcher[] matchers, int i) {
-        return matchers == null ? "" : Objects.toString(matchers[i]);
+        return matchers == null || matchers[i] == null ? "" : Objects.toString(matchers[i]);
     }
 
     public static final class SimpleMatchers extends Matchers {
@@ -185,14 +185,14 @@ public abstract class Matchers {
         }
     }
 
-    public static final class UTF16Matchers extends Matchers {
+    public static final class UTF16Or32Matchers extends Matchers {
 
         @CompilationFinal(dimensions = 1) private final CharMatcher[] ascii;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] latin1;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] bmp;
         @CompilationFinal(dimensions = 1) private final CharMatcher[] astral;
 
-        public UTF16Matchers(CharMatcher[] ascii, CharMatcher[] latin1, CharMatcher[] bmp, CharMatcher[] astral, short noMatchSuccessor) {
+        public UTF16Or32Matchers(CharMatcher[] ascii, CharMatcher[] latin1, CharMatcher[] bmp, CharMatcher[] astral, short noMatchSuccessor) {
             super(noMatchSuccessor);
             this.ascii = ascii;
             this.latin1 = latin1;

@@ -5,11 +5,11 @@ permalink: /overview/architecture/
 
 # Oracle GraalVM Enterprise Edition Architecture Overview
 
-Oracle GraalVM Enterprise Edition (GraalVM Enterprise) is a highly productive JDK distribution.
-It is designed to accelerate the execution of applications written in Java and other JVM languages while also providing a high-performance runtime for JavaScript, Ruby, Python, and a number of other popular languages.
+Oracle GraalVM Enterprise Edition (GraalVM Enterprise) is a high performance JDK distribution, built on the global standard for application development.
+It is designed to accelerate the execution of applications written in Java and other JVM languages while also providing runtimes for JavaScript, Python, and a number of other popular languages. 
 GraalVM Enterprise's polyglot capabilities make it possible to mix multiple programming languages in a single application while eliminating any foreign language call costs.
 
-This page provides developers, solution architects, and infrastructure architects with an architectural overview of GraalVM Enterprise, as well as information about runtime modes, supported platforms, available distributions, core and additional functionalities, and support levels for various features.
+This page provides developers, solution architects, and infrastructure architects with an architectural overview of GraalVM Enterprise, as well as information about runtime modes, certified platforms, available distributions, core and additional components, and support levels for various features.
 The conceptual overview and advantages of GraalVM Enterprise are described on the [Solutions Overview](solutions-overview.md) page.
 
 * [GraalVM Enterprise Architecture](#graalvm-enterprise-architecture)
@@ -36,7 +36,7 @@ With Truffle, Java and other supported languages can directly interoperate with 
 
 ## Runtime Modes
 
-GraalVM Enterprise is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java applications can be run on either).
+GraalVM Enterprise is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java application can be run on either).
 
 #### JVM Runtime Mode
 When running programs on the HotSpot JVM, GraalVM defaults to the [Graal compiler](../reference-manual/java/compiler.md) as the top-tier JIT compiler.
@@ -45,8 +45,8 @@ The JVM passes bytecodes for Java or any other JVM-native language to the compil
 Interpreters for supported languages, written on top of the [Truffle framework](../../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
-[Native Image](../reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
-The Java bytecode that is processed during the native image build includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
+[Native Image](../reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone executable or a native shared library.
+The Java bytecode that is processed during the native executable build includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
 A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
 
 #### Java on Truffle
@@ -63,7 +63,7 @@ Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* 
 
 ## Certified Platforms
 
-The following are the certified platforms for GraalVM Enterprise 22:
+The following are the certified platforms for GraalVM Enterprise 22.1:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
@@ -102,7 +102,7 @@ Tools/Utilities:
 Runtimes:
 
 * [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Node.js](../reference-manual/js/README.md) -- the Node.js 14.18.1 runtime for JavaScript
+* [Node.js](../reference-manual/js/README.md) -- the Node.js 16.14.2 runtime for JavaScript
 * [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
 * [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
 * [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
@@ -129,20 +129,20 @@ The development team welcomes feedback on experimental features, but users shoul
 
 For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
-The following table lists supported and experimental features in GraalVM Enterprise Edition 22 by platform.
+The following table lists supported and experimental features in GraalVM Enterprise Edition 22.1 by platform.
 
-| Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
-|--------------------|---------------|---------------|---------------|
-| Native Image | early adopter | early adopter | early adopter | early adopter |
-| LLVM runtime | supported | supported | supported | not available |
-| LLVM toolchain | supported | supported | supported | not available |
-| JavaScript | supported | supported | supported | supported |
-| Node.js  | supported | supported | supported | supported |
-| Java on Truffle | supported | experimental | experimental | experimental |
-| Python | experimental | not available | experimental | not available |
-| Ruby | experimental | experimental | experimental | not available |
-| R | experimental | not available | experimental | not available |
-| WebAssembly | experimental | experimental | experimental | experimental |
+| Feature         | Linux AMD64   | Linux ARM64   | macOS         | Windows       |
+|-----------------|---------------|---------------|---------------|---------------|
+| Native Image    | early adopter | early adopter | early adopter | early adopter |
+| LLVM runtime    | supported     | supported     | supported     | not available |
+| LLVM toolchain  | supported     | supported     | supported     | not available |
+| JavaScript      | supported     | supported     | supported     | supported     |
+| Node.js         | supported     | supported     | supported     | supported     |
+| Java on Truffle | supported     | experimental  | experimental  | experimental  |
+| Python          | experimental  | not available | experimental  | not available |
+| Ruby            | experimental  | experimental  | experimental  | not available |
+| R               | experimental  | not available | experimental  | not available |
+| WebAssembly     | experimental  | experimental  | experimental  | experimental  |
 
 ## What to Read Next
 

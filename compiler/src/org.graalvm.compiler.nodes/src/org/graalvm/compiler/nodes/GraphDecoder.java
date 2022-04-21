@@ -61,6 +61,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeSuccessorList;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.GraphDecoder.MethodScope;
 import org.graalvm.compiler.nodes.GraphDecoder.ProxyPlaceholder;
 import org.graalvm.compiler.nodes.ProfileData.SwitchProbabilityData;
@@ -482,13 +483,31 @@ public class GraphDecoder {
         reusableFloatingNodes = EconomicMap.create(Equivalence.IDENTITY);
     }
 
-    @SuppressWarnings("try")
     public final void decode(EncodedGraph encodedGraph) {
+        decode(encodedGraph, null);
+    }
+
+    @SuppressWarnings("try")
+    public final void decode(EncodedGraph encodedGraph, Iterable<EncodedNodeReference> nodeReferences) {
         try (DebugContext.Scope scope = debug.scope("GraphDecoder", graph)) {
             MethodScope methodScope = new MethodScope(null, graph, encodedGraph, LoopExplosionKind.NONE);
-            decode(createInitialLoopScope(methodScope, null));
+            LoopScope loopScope = createInitialLoopScope(methodScope, null);
+            decode(loopScope);
             cleanupGraph(methodScope);
             assert graph.verify();
+
+            if (nodeReferences != null) {
+                for (var nodeReference : nodeReferences) {
+                    if (nodeReference.orderId < 0) {
+                        throw GraalError.shouldNotReachHere("EncodeNodeReference is not in 'encoded' state");
+                    }
+                    nodeReference.node = loopScope.createdNodes[nodeReference.orderId];
+                    if (nodeReference.node == null || !nodeReference.node.isAlive()) {
+                        throw GraalError.shouldNotReachHere("Could not decode the EncodedNodeReference");
+                    }
+                    nodeReference.orderId = EncodedNodeReference.DECODED;
+                }
+            }
         } catch (Throwable ex) {
             debug.handle(ex);
         }

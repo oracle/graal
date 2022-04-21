@@ -55,25 +55,25 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 
 @RunWith(Parameterized.class)
-public class TStringCodePointIndexToByteIndexTest extends TStringTestBase {
+public class TStringByteIndexToCodePointIndexTest extends TStringTestBase {
 
-    @Parameter public TruffleString.CodePointIndexToByteIndexNode node;
+    @Parameter public TruffleString.ByteIndexToCodePointIndexNode node;
 
     @Parameters(name = "{0}")
-    public static Iterable<TruffleString.CodePointIndexToByteIndexNode> data() {
-        return Arrays.asList(TruffleString.CodePointIndexToByteIndexNode.create(), TruffleString.CodePointIndexToByteIndexNode.getUncached());
+    public static Iterable<TruffleString.ByteIndexToCodePointIndexNode> data() {
+        return Arrays.asList(TruffleString.ByteIndexToCodePointIndexNode.create(), TruffleString.ByteIndexToCodePointIndexNode.getUncached());
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             for (int i = 0; i < codepoints.length; i++) {
-                Assert.assertEquals(byteIndices[i], node.execute(a, 0, i, encoding));
+                Assert.assertEquals(i, node.execute(a, 0, byteIndices[i], encoding));
                 if (i > 0) {
-                    Assert.assertEquals(byteIndices[i] - byteIndices[1], node.execute(a, byteIndices[1], i - 1, encoding));
+                    Assert.assertEquals(i - 1, node.execute(a, byteIndices[1], byteIndices[i] - byteIndices[1], encoding));
                 }
             }
-            Assert.assertEquals(array.length, node.execute(a, 0, codepoints.length, encoding));
+            Assert.assertEquals(codepoints.length, node.execute(a, 0, array.length, encoding));
         });
     }
 
@@ -84,7 +84,6 @@ public class TStringCodePointIndexToByteIndexTest extends TStringTestBase {
 
     @Test
     public void testOutOfBounds() throws Exception {
-        checkOutOfBounds(true, true, (a, i, encoding) -> node.execute(a, i, 0, encoding));
-        checkOutOfBounds(false, true, (a, i, encoding) -> node.execute(a, 0, i, encoding));
+        checkOutOfBoundsRegion(true, (a, fromIndex, length, encoding) -> node.execute(a, fromIndex, length, encoding));
     }
 }

@@ -34,14 +34,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
-import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -65,7 +64,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private volatile boolean typeFlowCreated;
     private InvokeTypeFlow parsingReason;
 
-    private ParameterNode returnedParameter;
+    private int returnedParameterIndex;
 
     public MethodTypeFlow(OptionValues options, PointsToAnalysisMethod method) {
         super(method, null);
@@ -152,7 +151,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     }
 
     public void setResult(FormalReturnTypeFlow result) {
-        originalMethodFlows.setResult(result);
+        originalMethodFlows.setReturnFlow(result);
     }
 
     public void setParameter(int index, FormalParamTypeFlow parameter) {
@@ -179,7 +178,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public void addNodeFlow(PointsToAnalysis bb, Node node, TypeFlow<?> input) {
         if (bb.strengthenGraalGraphs()) {
-            originalMethodFlows.addNodeFlow(node, input);
+            originalMethodFlows.addNodeFlow(new EncodedNodeReference(node), input);
         } else {
             originalMethodFlows.addMiscEntryFlow(input);
         }
@@ -244,45 +243,40 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     // original result
     protected FormalReturnTypeFlow getResultFlow() {
-        return originalMethodFlows.getResult();
+        return originalMethodFlows.getReturnFlow();
     }
 
-    public Collection<InvokeTypeFlow> getInvokes() {
-        return originalMethodFlows.getInvokeFlows();
+    public Iterable<InvokeTypeFlow> getInvokes() {
+        return originalMethodFlows.getInvokes().getValues();
     }
 
-    private static ParameterNode computeReturnedParameter(StructuredGraph graph) {
-
+    private static int computeReturnedParameterIndex(StructuredGraph graph) {
         if (graph == null) {
             // Some methods, e.g., native ones, don't have a graph.
-            return null;
+            return -1;
         }
 
-        ParameterNode retParam = null;
-
-        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            if (param.stamp(NodeView.DEFAULT) instanceof ObjectStamp) {
-                boolean returnsParameter = true;
-                NodeIterable<ReturnNode> retIterable = graph.getNodes(ReturnNode.TYPE);
-                returnsParameter &= retIterable.count() > 0;
-                for (ReturnNode ret : retIterable) {
-                    returnsParameter &= ret.result() == param;
-                }
-                if (returnsParameter) {
-                    retParam = param;
-                }
+        ValueNode singleReturnedValue = null;
+        for (ReturnNode returnNode : graph.getNodes(ReturnNode.TYPE)) {
+            if (singleReturnedValue == null) {
+                singleReturnedValue = returnNode.result();
+            } else if (returnNode.result() != singleReturnedValue) {
+                return -1;
             }
         }
-
-        return retParam;
+        if (singleReturnedValue instanceof ParameterNode) {
+            return ((ParameterNode) singleReturnedValue).index();
+        } else {
+            return -1;
+        }
     }
 
     /**
-     * If the method returns a parameter through all of the return nodes then that ParameterNode is
-     * returned, otherwise null.
+     * Returns the index of the parameter that is the only return value of this method, or -1 if the
+     * method does not always return a parameter.
      */
-    public ParameterNode getReturnedParameter() {
-        return returnedParameter;
+    public int getReturnedParameterIndex() {
+        return returnedParameterIndex;
     }
 
     public void ensureTypeFlowCreated(PointsToAnalysis bb, InvokeTypeFlow reason) {
@@ -323,7 +317,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
             bb.numParsedGraphs.incrementAndGet();
 
-            returnedParameter = computeReturnedParameter(graph);
+            returnedParameterIndex = computeReturnedParameterIndex(graph);
 
             typeFlowCreated = true;
         }

@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfAnyByteNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfAnyCharNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfAnyIntNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAStateNode.LoopOptimizationNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers;
@@ -114,10 +115,10 @@ public final class Encodings {
 
         public abstract DFAStateNode.LoopOptimizationNode extractLoopOptNode(CodePointSet loopCPS);
 
-        public abstract int getNumberOfDecodingSteps();
+        public abstract int getNumberOfCodeRanges();
 
         public Matchers.Builder createMatchersBuilder() {
-            return new Matchers.Builder(getNumberOfDecodingSteps());
+            return new Matchers.Builder(getNumberOfCodeRanges());
         }
 
         public abstract void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer);
@@ -176,23 +177,24 @@ public final class Encodings {
 
             @Override
             public LoopOptimizationNode extractLoopOptNode(CodePointSet cps) {
-                // TODO: not implemented yet
-                return null;
+                return new LoopOptIndexOfAnyIntNode(cps.inverseToIntArray(this));
             }
 
             @Override
-            public int getNumberOfDecodingSteps() {
-                return 1;
+            public int getNumberOfCodeRanges() {
+                return 4;
             }
 
             @Override
             public void createMatcher(Builder matchersBuilder, int i, CodePointSet cps, CompilationBuffer compilationBuffer) {
-                matchersBuilder.getBuffer(0).set(i, CharMatchers.createMatcher(cps, compilationBuffer));
+                matchersBuilder.createSplitMatcher(i, cps, compilationBuffer, Constants.ASCII_RANGE, Constants.BYTE_RANGE, Constants.BMP_WITHOUT_LATIN1_WITHOUT_SURROGATES,
+                                Constants.ASTRAL_SYMBOLS_AND_LONE_SURROGATES);
             }
 
             @Override
             public Matchers toMatchers(Builder matchersBuilder) {
-                return new Matchers.SimpleMatchers(matchersBuilder.materialize(0), matchersBuilder.getNoMatchSuccessor());
+                return new Matchers.UTF16Or32Matchers(matchersBuilder.materialize(0), matchersBuilder.materialize(1), matchersBuilder.materialize(2), matchersBuilder.materialize(3),
+                                matchersBuilder.getNoMatchSuccessor());
             }
         }
 
@@ -302,13 +304,8 @@ public final class Encodings {
             }
 
             @Override
-            public int getNumberOfDecodingSteps() {
-                return 2;
-            }
-
-            @Override
-            public Matchers.Builder createMatchersBuilder() {
-                return new Matchers.Builder(4);
+            public int getNumberOfCodeRanges() {
+                return 4;
             }
 
             @Override
@@ -319,7 +316,7 @@ public final class Encodings {
 
             @Override
             public Matchers toMatchers(Builder matchersBuilder) {
-                return new Matchers.UTF16Matchers(matchersBuilder.materialize(0), matchersBuilder.materialize(1), matchersBuilder.materialize(2), matchersBuilder.materialize(3),
+                return new Matchers.UTF16Or32Matchers(matchersBuilder.materialize(0), matchersBuilder.materialize(1), matchersBuilder.materialize(2), matchersBuilder.materialize(3),
                                 matchersBuilder.getNoMatchSuccessor());
             }
         }
@@ -382,13 +379,8 @@ public final class Encodings {
             }
 
             @Override
-            public int getNumberOfDecodingSteps() {
-                return 1;
-            }
-
-            @Override
-            public Matchers.Builder createMatchersBuilder() {
-                return new Matchers.Builder(3);
+            public int getNumberOfCodeRanges() {
+                return 3;
             }
 
             @Override
@@ -485,7 +477,7 @@ public final class Encodings {
             }
 
             @Override
-            public int getNumberOfDecodingSteps() {
+            public int getNumberOfCodeRanges() {
                 return 4;
             }
 
@@ -553,7 +545,7 @@ public final class Encodings {
             }
 
             @Override
-            public int getNumberOfDecodingSteps() {
+            public int getNumberOfCodeRanges() {
                 return 1;
             }
 
@@ -616,7 +608,7 @@ public final class Encodings {
             }
 
             @Override
-            public int getNumberOfDecodingSteps() {
+            public int getNumberOfCodeRanges() {
                 return 1;
             }
 
