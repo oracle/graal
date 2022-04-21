@@ -132,12 +132,16 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
 
     // Called by truffle feature to initialize the map at build time.
     @SuppressWarnings("unused")
-    private static void initializeClassUsingDeprecatedFrameTransfer(Class<?> subType) {
+    private static boolean initializeClassUsingDeprecatedFrameTransfer(Class<?> subType) {
         if (subType.isInterface()) {
-            return;
+            return false;
+        }
+        if (usesDeprecatedTransferClasses.containsKey(subType)) {
+            return false;
         }
         // Eagerly initialize result.
         usesDeprecatedTransferClasses.put(subType, usesDeprecatedFrameTransfer(subType));
+        return true;
     }
 
 }

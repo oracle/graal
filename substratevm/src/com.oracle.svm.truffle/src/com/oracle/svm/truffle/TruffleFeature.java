@@ -137,6 +137,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
@@ -376,12 +377,18 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
         /* Support for deprecated bytecode osr frame transfer: GR-38296 */
         config.registerSubtypeReachabilityHandler((acc, klass) -> {
+            DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
             /* Pass known reachable classes to the initializer: it will decide there what to do. */
-            TruffleBaseFeature.invokeStaticMethod(
+            Boolean modified = TruffleBaseFeature.invokeStaticMethod(
                             "org.graalvm.compiler.truffle.runtime.BytecodeOSRRootNode",
                             "initializeClassUsingDeprecatedFrameTransfer",
                             Collections.singleton(Class.class),
                             klass);
+            if (modified != null && modified) {
+                if (!impl.concurrentReachabilityHandlers()) {
+                    impl.requireAnalysisIteration();
+                }
+            }
         }, BytecodeOSRNode.class);
     }
 
