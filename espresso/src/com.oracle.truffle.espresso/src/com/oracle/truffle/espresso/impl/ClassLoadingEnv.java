@@ -56,7 +56,7 @@ public interface ClassLoadingEnv {
 
     EspressoOptions.SpecComplianceMode getSpecComplianceMode();
 
-    Classpath getClasspath();
+    Classpath getBootClasspath();
 
     boolean needsVerify(StaticObject loader);
 
@@ -134,7 +134,7 @@ public interface ClassLoadingEnv {
         }
 
         @Override
-        public Classpath getClasspath() {
+        public Classpath getBootClasspath() {
             return getContext().getBootClasspath();
         }
 
@@ -175,17 +175,15 @@ public interface ClassLoadingEnv {
 
         public static class Options {
             private final TruffleLogger logger;
-            private final JavaVersion javaVersion;
             private final Classpath classpath;
             private EspressoOptions.SpecComplianceMode specComplianceMode;
             private boolean needsVerify;
 
-            public Options(JavaVersion version, Classpath cp) {
-                this(version, cp, TruffleLogger.getLogger(EspressoLanguage.ID));
+            public Options(Classpath cp) {
+                this(cp, TruffleLogger.getLogger(EspressoLanguage.ID));
             }
 
-            public Options(JavaVersion version, Classpath cp, TruffleLogger loggerOverride) {
-                javaVersion = version;
+            public Options(Classpath cp, TruffleLogger loggerOverride) {
                 classpath = cp;
                 logger = loggerOverride;
                 specComplianceMode = EspressoOptions.SpecCompliance.getDefaultValue();
@@ -204,8 +202,8 @@ public interface ClassLoadingEnv {
 
         private final Options options;
 
-        public WithoutContext(EspressoLanguage language, JavaVersion version, Classpath cp) {
-            this(language, new Options(version, cp));
+        public WithoutContext(EspressoLanguage language, Classpath cp) {
+            this(language, new Options(cp));
         }
 
         public WithoutContext(EspressoLanguage language, Options opts) {
@@ -225,7 +223,7 @@ public interface ClassLoadingEnv {
 
         @Override
         public JavaVersion getJavaVersion() {
-            return options.javaVersion;
+            return getLanguage().getJavaVersion();
         }
 
         @Override
@@ -234,7 +232,7 @@ public interface ClassLoadingEnv {
         }
 
         @Override
-        public Classpath getClasspath() {
+        public Classpath getBootClasspath() {
             return options.classpath;
         }
 

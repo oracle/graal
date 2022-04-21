@@ -137,7 +137,7 @@ public final class BootClassRegistry extends ClassRegistry {
             return null;
         }
         try (DebugCloseable scope = BOOT_KLASS_READ.scope(env.getTimers())) {
-            ClasspathFile classpathFile = env.getClasspath().readClassFile(type);
+            ClasspathFile classpathFile = env.getBootClasspath().readClassFile(type);
             return classpathFile;
         }
     }
