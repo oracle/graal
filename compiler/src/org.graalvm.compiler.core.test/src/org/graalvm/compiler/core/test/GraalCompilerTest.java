@@ -1082,6 +1082,15 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     /**
+     * Compiles a Java method.
+     *
+     * @param methodName the name of the method in {@code this.getClass()} to be compiled
+     */
+    protected final CompilationResult compile(String methodName) {
+        return compile(getResolvedJavaMethod(methodName), null);
+    }
+
+    /**
      * Compiles a given method.
      *
      * @param installedCodeOwner the method the compiled code will be associated with when installed

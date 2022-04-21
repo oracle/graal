@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.loop.phases;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.Loop;
@@ -31,7 +33,10 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -65,6 +70,7 @@ import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 
@@ -114,22 +120,49 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
         return 2.0f;
     }
 
+    /**
+     * Maximum iterations for speculative guard movement. Certain guard patterns may require
+     * speculative guard movement to first move guard a to make guard b also loop
+     * invariant/participate in an induction variable. This may trigger with pi nodes and guards.
+     */
+    private static final int MAX_ITERATIONS = 3;
+
     @Override
+    @SuppressWarnings("try")
     protected void run(StructuredGraph graph, MidTierContext context) {
         try {
             if (!graph.getGuardsStage().allowsFloatingGuards()) {
                 return;
             }
-            LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-            loops.detectedCountedLoops();
-            performSpeculativeGuardMovement(context, graph, loops);
+            EconomicSetNodeEventListener change = new EconomicSetNodeEventListener(EnumSet.of(Graph.NodeEvent.INPUT_CHANGED));
+            for (int i = 0; i < MAX_ITERATIONS; i++) {
+                boolean iterate = false;
+                try (NodeEventScope news = graph.trackNodeEvents(change)) {
+                    if (graph.getDebug().isCountEnabled()) {
+                        DebugContext.counter("SpeculativeGuardMovement_Iteration" + i).increment(graph.getDebug());
+                    }
+                    LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
+                    loops.detectCountedLoops();
+                    iterate = performSpeculativeGuardMovement(context, graph, loops);
+                }
+                if (change.getNodes().isEmpty() || !iterate) {
+                    break;
+                }
+                change.getNodes().clear();
+            }
         } finally {
             graph.setAfterStage(StageFlag.GUARD_MOVEMENT);
         }
     }
 
-    protected static void performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
-        new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog()).run();
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
+        return performSpeculativeGuardMovement(context, graph, loops, null);
+    }
+
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess) {
+        SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess);
+        spec.run();
+        return spec.iterate;
     }
 
     private static class SpeculativeGuardMovement implements Runnable {
@@ -139,21 +172,36 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
         private final StructuredGraph graph;
         private final ProfilingInfo profilingInfo;
         private final SpeculationLog speculationLog;
+        boolean iterate;
+        private final NodeBitMap toProcess;
 
-        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog) {
+        SpeculativeGuardMovement(LoopsData loops, NodeMap<Block> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess) {
             this.loops = loops;
             this.earliestCache = earliestCache;
             this.graph = graph;
             this.profilingInfo = profilingInfo;
             this.speculationLog = speculationLog;
+            this.toProcess = toProcess;
         }
 
         @Override
         public void run() {
             for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-                earliestBlock(guard);
-                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing guard %s", guard);
+                if (toProcess == null || toProcess.contains(guard)) {
+                    Block anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
+                    if (exitsLoop(anchorBlock, earliestBlock(guard))) {
+                        iterate = true;
+                    }
+                    graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After processing guard %s", guard);
+                }
             }
+        }
+
+        private static boolean exitsLoop(Block earliestOld, Block earliestNew) {
+            if (earliestOld == null) {
+                return false;
+            }
+            return earliestOld.getLoopDepth() > earliestNew.getLoopDepth();
         }
 
         /**

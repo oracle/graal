@@ -1947,7 +1947,7 @@ public final class MethodVerifier implements ContextAccess {
         return Name._init_.equals(calledMethodName);
     }
 
-    private Operand popSignatureGetReturnOP(OperandStack stack, MethodRefConstant mrc) {
+    private Operand popSignatureGetReturnOp(OperandStack stack, MethodRefConstant mrc) {
         Symbol<Signature> calledMethodSignature = mrc.getSignature(pool);
         Operand[] parsedSig = getOperandSig(calledMethodSignature);
 
@@ -2025,7 +2025,7 @@ public final class MethodVerifier implements ContextAccess {
         // Only INVOKESPECIAL can call <init>
         verifyGuarantee(!isInstanceInit(calledMethodName), "Invocation of instance initializer with opcode other than INVOKESPECIAL");
 
-        Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Operand returnOp = popSignatureGetReturnOp(stack, mrc);
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
 
         if (!(returnOp == Void)) {
@@ -2046,7 +2046,7 @@ public final class MethodVerifier implements ContextAccess {
         // Check guest is not invoking <clinit>
         verifyGuarantee(!isClassInit(calledMethodName), "Invocation of class initializer!");
 
-        Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Operand returnOp = popSignatureGetReturnOp(stack, mrc);
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));
@@ -2109,7 +2109,7 @@ public final class MethodVerifier implements ContextAccess {
         // Only INVOKESPECIAL can call <init>
         verifyGuarantee(!isInstanceInit(calledMethodName), "Invocation of instance initializer with opcode other than INVOKESPECIAL");
 
-        Operand returnOp = popSignatureGetReturnOP(stack, mrc);
+        Operand returnOp = popSignatureGetReturnOp(stack, mrc);
 
         assert Validation.validClassNameEntry(mrc.getHolderKlassName(pool));
         Symbol<Type> methodHolder = getTypes().fromName(mrc.getHolderKlassName(pool));

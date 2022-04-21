@@ -136,7 +136,7 @@ public class LoopFragmentInside extends LoopFragment {
 
     @SuppressWarnings("unused")
     public void appendInside(LoopEx loop) {
-        // TODO (gd)
+        GraalError.unimplemented();
     }
 
     @Override

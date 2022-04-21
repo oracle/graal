@@ -255,7 +255,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                  * properties by checking of the receiver is an instance of the single implementor.
                  */
                 StructuredGraph graph = insertionPoint.graph();
-                AnchoringNode anchor = BeginNode.prevBegin(insertionPoint);
+                // only anchor the instanceof if the profile is not null
+                AnchoringNode anchor = profile != null ? BeginNode.prevBegin(insertionPoint) : null;
                 LogicNode condition = graph.addOrUniqueWithInputs(InstanceOfNode.create(speculatedType, receiver, profile, anchor));
                 FixedGuardNode guard = graph.add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph.addBeforeFixed(insertionPoint, guard);

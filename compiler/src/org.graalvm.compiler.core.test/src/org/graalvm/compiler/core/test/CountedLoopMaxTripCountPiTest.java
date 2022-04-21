@@ -103,7 +103,7 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
      * nodes are eliminated by FixReads.
      */
     void checkGraph(StructuredGraph graph, LoopsData loops) {
-        loops.detectedCountedLoops();
+        loops.detectCountedLoops();
         for (LoopEx loop : loops.loops()) {
             Assert.assertTrue("expect all loops to be counted", loop.isCounted());
             ValueNode maxTripCountNode = loop.counted().maxTripCountNode();

@@ -64,6 +64,8 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
     protected boolean stripMinedOuter;
     protected boolean stripMinedInner;
     protected boolean rotated;
+    protected int stripMinedLimit = -1;
+
     /**
      * Flag to indicate that this loop must not be detected as a counted loop.
      */
@@ -158,6 +160,14 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             }
         }
         disableCounted = disableCountedBasedOnSpeculation;
+    }
+
+    public void setStripMinedLimit(int stripMinedLimit) {
+        this.stripMinedLimit = stripMinedLimit;
+    }
+
+    public int getStripMinedLimit() {
+        return stripMinedLimit;
     }
 
     public boolean canEndsSafepoint() {
@@ -321,7 +331,7 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return (forwardEndCount() == 1);
     }
 
-    public AbstractEndNode forwardEnd() {
+    public EndNode forwardEnd() {
         assert forwardEndCount() == 1;
         return forwardEndAt(0);
     }
