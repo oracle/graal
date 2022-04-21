@@ -37,7 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.graalvm.nativebridge.processor.AbstractBridgeGenerator.CodeBuilder.Parameter;
+import org.graalvm.nativebridge.processor.CodeBuilder.Parameter;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.MarshallerData;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.MethodData;

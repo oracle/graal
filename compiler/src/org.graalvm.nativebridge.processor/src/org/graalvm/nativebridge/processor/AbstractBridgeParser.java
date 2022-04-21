@@ -92,8 +92,6 @@ abstract class AbstractBridgeParser {
                         typeCache.rawReference, typeCache.receiverMethod);
     }
 
-    abstract List<TypeMirror> getExceptionHandlerTypes();
-
     abstract AbstractBridgeGenerator getGenerator();
 
     DefinitionData createDefinitionData(DeclaredType annotatedType, @SuppressWarnings("unused") AnnotationMirror annotation,
