@@ -4,14 +4,14 @@ toc_group: truffle
 link_title: Host Optimization for interpreter code
 permalink: /graalvm-as-a-platform/language-implementation-framework/HostOptimization
 ---
-# Host Optimization for Interpreter Java code
+# Host Compilation for Interpreter Java code
 
-For the following document, we disambiguate between host and guest optimization.
+For the following document, we disambiguate between host and guest compilation.
 
-* Host optimization is applied to the Java implementation of the interpreter. If the interpreter runs on HotSpot, this kind of optimization is applied when Truffle interpreters are compiled as Java applications. This optimization would be applied ahead of time for AOT compiled interpreters during native image compilation.
-* Guest optimization is applied to guest language code. This kind of optimization uses Partial Evaluation and Futamura projections to derive optimized code from Truffle ASTs and bytecodes.
+* Host compilation is applied to the Java implementation of the interpreter. If the interpreter runs on HotSpot, this kind of compilation is applied when Truffle interpreters are JIT compiled (or dynamically compiled) as Java applications. This compilation is applied ahead of time during native image generation.
+* Guest compilation is applied to guest language code. This kind of compilation uses Partial Evaluation and Futamura projections to derive optimized code from Truffle ASTs and bytecodes.
 
-This section discusses domain-specific host optimizations applied to Truffle AST and bytecode interpreters.
+This section discusses domain-specific host compilations applied to Truffle AST and bytecode interpreters.
 
 ## Host Inlining
 
@@ -24,17 +24,17 @@ Runtime compilable code, also often referred to as partial evaluatable code, has
 * The boundaries of partially evaluatable code are reliably defined by methods annotated with `@TruffleBoundary`, blocks dominated by a call to `CompilerDirectives.transferToInterpreter()` or a  block protected by a call to `CompilerDirectives.inInterpreter()`.
 
 Truffle host inlining leverages these properties and forces inlining during host compilation for runtime compilable code paths as much as possible.
-The general assumption is that code used for runtime compilation is important for interpreter execution performance and performance after runtime compilation.
+The general assumption is that code important for runtime compilation is also important for interpreter execution.
 Whenever a PE boundary is detected, the host inlining phase no longer makes any inlining decisions and defers them to later inlining phases better suited for regular Java code.
 
 The source code for this phase can be found in [TruffleHostInliningPhase](https://github.com/oracle/graal/blob/master/compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/TruffleHostInliningPhase.java).
 
-The inlining heuristic is automatically applied to all methods annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
-The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` on SVM and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
+Truffle host inlining is applied when compiling a method annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
+The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
 
-SubstrateVM, during closed world analysis, computes all methods that are reachable for runtime compilation.
-Any potentially reachable method from `RootNode.execute(...)` directly or indirectly is determined as runtime compilable.
-On SVM, in addition to bytecode interpreter switches, all runtime compilable methods are optimized using Truffle host inlining.
+Native image, during closed world analysis, computes all methods that are reachable for runtime compilation.
+Any potentially reachable method from `RootNode.execute(...)` is determined as runtime compilable.
+For native images, in addition to bytecode interpreter switches, all runtime compilable methods are optimized using Truffle host inlining.
 The maximum node cost of such an inlining pass can be configured with `-H:TruffleHostInliningBaseBudget=5000`. 
 On HotSpot the set of runtime compilable methods is unknown.
 Therefore, we can only rely on regular Java method inlining for methods not annotated as bytecode interpreter switch on HotSpot.
@@ -46,7 +46,7 @@ For the vast majority of runtime compilable methods, this limit will not be reac
 If there are methods that exceed the budget limit, then the recommendation is to optimize such nodes by adding more PE boundaries.
 If a method exceeds the limit, it is likely that the same code also has a high cost for runtime compilation.
 
-The inlining decisions performed by this phase is best debugged with `-H:Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on SVM or  `-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
+The inlining decisions performed by this phase is best debugged with `-H:Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` for native images or  `-Dgraal.Log=TruffleHostInliningPhase,~CanonicalizerPhase,~GraphBuilderPhase` on HotSpot.
 
 Consider the following example, which shows previously described common patterns of partial evaluatable code in Truffle interpreters:
 
@@ -180,7 +180,7 @@ This prints:
           CUTOFF com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere()                                                               [inlined   -1, monomorphic false, deopt false, inInterpreter false, propDeopt  true, subTreeInvokes    0, subTreeCost   98, incomplete false,  reason propagates transferToInterpreter]
 ```
 
-Note that we have also used the `-Dgraal.Dump=:3 ` optino, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
+Note that we have also used the `-Dgraal.Dump=:3 ` option, which sends the graphs to any running `IdealGraphVisualizer` instance for further inspection.
 To debug CUTOFF decisions for incomplete exploration (entries with `incomplete  true`) use the `-Dgraal.TruffleHostInliningPrintExplored=true` option to see all incomplete subtrees in the log.
 
 

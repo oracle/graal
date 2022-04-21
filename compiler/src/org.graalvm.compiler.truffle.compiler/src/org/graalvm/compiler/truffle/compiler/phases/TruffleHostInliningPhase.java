@@ -86,12 +86,12 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Domain specific inlining phase for Truffle interpreters during host compilation.
  *
  * For more details on this phase see the <a href=
- * "https://github.com/oracle/graal/blob/master/truffle/docs/HostOptimization.md">documentation</a>
+ * "https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md">documentation</a>
  */
 public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     public static class Options {
-        @Option(help = "Whether Truffle host inlinign is enabled")//
+        @Option(help = "Whether Truffle host inlining is enabled.")//
         public static final OptionKey<Boolean> TruffleHostInlining = new OptionKey<>(true);
 
         @Option(help = "Maximum budget for Truffle host inlining for runtime compiled methods.")//
@@ -108,6 +108,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * Max exploration limit to avoid stack overflow errors in notorious cases.
      */
     static final int MAX_EXPLORATION_DEPTH = 1000;
+
+    static final String INDENT = "  ";
 
     protected final CanonicalizerPhase canonicalizer;
 
@@ -155,10 +157,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return;
         }
 
-        runImpl(new InliningContext(highTierContext, graph, createGraphCache(), TruffleCompilerRuntime.getRuntimeIfAvailable()));
+        runImpl(new InliningPhaseContext(highTierContext, graph, createGraphCache(), TruffleCompilerRuntime.getRuntimeIfAvailable()));
     }
 
-    private void runImpl(InliningContext context) {
+    private void runImpl(InliningPhaseContext context) {
         int sizeLimit;
         final ResolvedJavaMethod rootMethod = context.graph.method();
 
@@ -228,7 +230,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         /*
                          * This may happen if certain invokes became dead code due to inlining of
                          * other invokes. A bit surprisingly this may happen even if no
-                         * canonicalization is happening in between inlines.
+                         * canonicalization is happening in between inlines. E.g. if the CFG was
+                         * killed, see InliningUtil.finishInlining.
                          */
                         continue;
                     }
@@ -294,7 +297,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * The same applies to calls protected by {@link CompilerDirectives#inInterpreter()} or methods
      * annotated by {@link TruffleBoundary}.
      */
-    private List<CallTree> exploreGraph(InliningContext context, CallTree root, CallTree caller, StructuredGraph graph,
+    private List<CallTree> exploreGraph(InliningPhaseContext context, CallTree root, CallTree caller, StructuredGraph graph,
                     int exploreRound, int exploreBudget, int depth) {
 
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, false, true, false);
@@ -450,6 +453,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return children;
     }
 
+    /**
+     * Returns <code>true</code> if the current block or one of its dominators is contained in the
+     * blocks set. The blocks set contains begin nodes of each block to check. For example, this
+     * phase traces which blocks are containing calls to transferToInterpreter. This method is used
+     * to check whether the current block is deoptimized itself or one of the current blocks
+     * dominators is.
+     */
     private static boolean isBlockOrDominatorContainedIn(Block currentBlock, EconomicSet<AbstractBeginNode> blocks) {
         if (blocks.isEmpty()) {
             return false;
@@ -464,7 +474,13 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return false;
     }
 
-    private List<CallTree> exploreInlinableCall(InliningContext context, CallTree exploreRoot, CallTree callee, int exploreRound, int exploreBudget, int depth) {
+    /**
+     * Explores an already {@link #shouldInline(InliningPhaseContext, CallTree) inlinable} call
+     * recursively. Determines whether the budget is exceeded when recursively exploring the call
+     * tree. So the outcome of this method may also be that the exploration was
+     * {@link CallTree#explorationIncomplete incomplete}.
+     */
+    private List<CallTree> exploreInlinableCall(InliningPhaseContext context, CallTree exploreRoot, CallTree callee, int exploreRound, int exploreBudget, int depth) {
         StructuredGraph calleeGraph;
         ResolvedJavaMethod targetMethod;
         if (callee.invoke.getInvokeKind().isDirect()) {
@@ -479,7 +495,24 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         int graphSize = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
 
-        if (exploreRoot.subTreeSize + graphSize > exploreBudget || depth > MAX_EXPLORATION_DEPTH) {
+        if (shouldContinueExploring(exploreRoot, exploreBudget, graphSize, depth)) {
+            /*
+             * We propagate the subTreeSize to all callers until we reach the exploreRoot.
+             */
+            CallTree current = callee;
+            while (current != null) {
+                current.subTreeSize += graphSize;
+                if (current == exploreRoot) {
+                    break;
+                }
+                current = current.parent;
+            }
+            try {
+                return exploreGraph(context, exploreRoot, callee, calleeGraph, exploreRound, exploreBudget, depth + 1);
+            } finally {
+                callee.exploredIndex = exploreRound;
+            }
+        } else {
             /*
              * We reached the limits of what we want to explore. This means this call is unlikely to
              * ever get inlined. From now on we should finish the recursive exploration as soon as
@@ -488,23 +521,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             exploreRoot.explorationIncomplete = true;
             return Collections.emptyList();
         }
+    }
 
-        /*
-         * We propagate the subTreeSize to all callers until we reach the exploreRoot.
-         */
-        CallTree current = callee;
-        while (current != null) {
-            current.subTreeSize += graphSize;
-            if (current == exploreRoot) {
-                break;
-            }
-            current = current.parent;
-        }
-        try {
-            return exploreGraph(context, exploreRoot, callee, calleeGraph, exploreRound, exploreBudget, depth + 1);
-        } finally {
-            callee.exploredIndex = exploreRound;
-        }
+    private static boolean shouldContinueExploring(CallTree exploreRoot, int exploreBudget, int graphSize, int depth) {
+        return exploreRoot.subTreeSize + graphSize <= exploreBudget && depth < MAX_EXPLORATION_DEPTH;
     }
 
     /**
@@ -512,7 +532,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * This method does not yet make determine wheter the call site is in budget. See
      * {@link #isInBudget(CallTree, int, int)} for that.
      */
-    private boolean shouldInline(InliningContext context, CallTree call) {
+    private boolean shouldInline(InliningPhaseContext context, CallTree call) {
         if (call.parent == null) {
             // root always inlinable
             return true;
@@ -633,7 +653,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return true;
     }
 
-    private static boolean shouldInlineTarget(InliningContext context, CallTree call, ResolvedJavaMethod targetMethod) {
+    private static boolean shouldInlineTarget(InliningPhaseContext context, CallTree call, ResolvedJavaMethod targetMethod) {
         if (targetMethod == null) {
             call.reason = "target method is not resolved";
             return false;
@@ -666,7 +686,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
      * Invoked for each round after the first round to explore and decide inlining decisions for
      * inlinable subtrees which are not yet inlined.
      */
-    private void exploreAndQueueInlinableCalls(InliningContext context, CallTree call, Collection<CallTree> toProcess, int round, int exploreBudget) {
+    private void exploreAndQueueInlinableCalls(InliningPhaseContext context, CallTree call, Collection<CallTree> toProcess, int round, int exploreBudget) {
         if (call.isInlined()) {
             for (CallTree callee : call.children) {
                 exploreAndQueueInlinableCalls(context, callee, toProcess, round, exploreBudget);
@@ -674,6 +694,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         } else {
             if (shouldInline(context, call)) {
                 if (call.exploredIndex == -1) {
+                    /*
+                     * If a call is not yet explored but shouldInline returns true, this means it
+                     * just became inlinable through canonicalization. So we need to explore before
+                     * we can make a decision on it.
+                     */
                     call.subTreeInvokes = 0;
                     call.subTreeSize = 0;
                     call.children = exploreInlinableCall(context, call, call, round, exploreBudget, 1);
@@ -683,7 +708,12 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static boolean shouldInlineMonomorphic(InliningContext context, CallTree call, ResolvedJavaMethod targetMethod) {
+    /**
+     * Returns <code>true</code> if the a non direct call should be inlined using type checked
+     * inlining, else <code>false</code>. This depends on whether type profiling is available and
+     * whether this kind of speculation is enabled.
+     */
+    private static boolean shouldInlineMonomorphic(InliningPhaseContext context, CallTree call, ResolvedJavaMethod targetMethod) {
         Invoke invoke = call.invoke;
         JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getTypeProfile();
         if (typeProfile == null) {
@@ -735,7 +765,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return true;
     }
 
-    private void inlineSubTree(InliningContext context, EconomicSet<Node> canonicalizableNodes, CallTree call, int inlineIndex) {
+    private void inlineSubTree(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call, int inlineIndex) {
         assert call.invoke.asFixedNode().graph() == context.graph : "invalid graph";
         assert call.children != null : "Call not yet explored or marked incomplete.";
         assert shouldInline(context, call) : "Call should be inlined.";
@@ -758,7 +788,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static UnmodifiableEconomicMap<Node, Node> inline(InliningContext context, EconomicSet<Node> canonicalizableNodes, CallTree call) {
+    private static UnmodifiableEconomicMap<Node, Node> inline(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call) {
         Invoke invoke = call.invoke;
         ResolvedJavaMethod targetMethod;
         if (invoke.getInvokeKind().isDirect()) {
@@ -782,16 +812,14 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return duplicates.get();
     }
 
-    private String printCallTree(InliningContext context, CallTree root) {
+    private String printCallTree(InliningPhaseContext context, CallTree root) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         PrintStream writer = new PrintStream(out, true);
         printTree(context, writer, INDENT, root, maxLabelWidth(context, root, 0, 1));
         return new String(out.toByteArray());
     }
 
-    static final String INDENT = "  ";
-
-    private int maxLabelWidth(InliningContext context, CallTree tree, int maxLabelWidth, int depth) {
+    private int maxLabelWidth(InliningPhaseContext context, CallTree tree, int maxLabelWidth, int depth) {
         int maxLabel = 0;
         if (tree.parent == null) {
             // we do not care about the root label length, it does not print any properties
@@ -809,7 +837,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         return maxLabel;
     }
 
-    private void printTree(InliningContext context, PrintStream out, String indent, CallTree tree, int maxLabelWidth) {
+    private void printTree(InliningPhaseContext context, PrintStream out, String indent, CallTree tree, int maxLabelWidth) {
         out.printf("%s%n", tree.toString(indent, maxLabelWidth));
         if (tree.children != null) {
             if (Options.TruffleHostInliningPrintExplored.getValue(context.options) || tree.inlinedIndex != -1 || tree.parent == null) {
@@ -868,13 +896,19 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     }
 
+    /**
+     * Created through {@link TruffleHostInliningPhase#createGraphCache()}. Interface that allows to
+     * customize graph caching in subclasses. For example, on SVM all graphs are readily available
+     * do not need any caching. On HotSpot we need to parse the bytecodes, which is expensive and
+     * should not need to be repeated if a method is inlined multiple times per phase application.
+     */
     public interface InliningGraphCache {
 
         StructuredGraph lookup(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method);
 
     }
 
-    static final class InliningContext {
+    static final class InliningPhaseContext {
 
         final HighTierContext highTierContext;
         final StructuredGraph graph;
@@ -882,7 +916,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         final OptionValues options;
         final TruffleCompilerRuntime truffle;
 
-        InliningContext(HighTierContext context, StructuredGraph graph, InliningGraphCache graphCache, TruffleCompilerRuntime truffle) {
+        InliningPhaseContext(HighTierContext context, StructuredGraph graph, InliningGraphCache graphCache, TruffleCompilerRuntime truffle) {
             this.highTierContext = context;
             this.graph = graph;
             this.options = graph.getOptions();
@@ -896,6 +930,11 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     }
 
+    /**
+     * The tree of all explored and inlined invokes of a graph. This graph is kept intact even if
+     * invokes are inlined so represent the original call stack. This allows to detect recursions
+     * and capture information determined during exploration.
+     */
     static final class CallTree implements Comparable<CallTree> {
 
         /**
@@ -945,7 +984,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         ResolvedJavaMethod cachedTargetMethod;
 
         /**
-         * Set if a monomorphic call site was resolved. We remember the decision from shouldInline
+         * Set if a monomorphic call site was resolved. We remember the decision from
+         * {@link TruffleHostInliningPhase#shouldInlineMonomorphic(InliningPhaseContext, CallTree, ResolvedJavaMethod)}
          * to speed up later exploration.
          */
         ResolvedJavaMethod monomorphicTargetMethod;
@@ -1066,7 +1106,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     }
 
-    /*
+    /**
      * This cache only lives for a single run of this phase. While caching longer term would be
      * possible it would be quite complicated to do because Graal graphs age rather quickly on
      * HotSpot.

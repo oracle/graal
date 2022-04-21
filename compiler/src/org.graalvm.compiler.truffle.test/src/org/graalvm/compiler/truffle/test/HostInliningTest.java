@@ -32,6 +32,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -47,6 +48,10 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -59,9 +64,23 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * Please keep this test in sync with SubstrateTruffleHostInliningTest.
  */
+@RunWith(Parameterized.class)
 public class HostInliningTest extends GraalCompilerTest {
 
     static final int NODE_COST_LIMIT = 500;
+
+    public enum TestRun {
+        WITH_CONVERT_TO_GUARD,
+        DEFAULT,
+    }
+
+    @Parameter // first data value (0) is default
+    public /* NOT private */ TestRun run;
+
+    @Parameters(name = "{0}")
+    public static List<TestRun> data() {
+        return Arrays.asList(TestRun.values());
+    }
 
     @Test
     public void test() {
@@ -102,7 +121,9 @@ public class HostInliningTest extends GraalCompilerTest {
         }
 
         try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
-            new ConvertDeoptimizeToGuardPhase().apply(graph, getDefaultHighTierContext());
+            if (run == TestRun.WITH_CONVERT_TO_GUARD) {
+                new ConvertDeoptimizeToGuardPhase().apply(graph, getDefaultHighTierContext());
+            }
             new TruffleHostInliningPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);

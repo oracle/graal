@@ -786,10 +786,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         }
     }
 
+    /**
+     * Keep this method in sync with
+     * {@link SubstrateTruffleHostInliningPhase#isTruffleBoundary(ResolvedJavaMethod)}.
+     */
     private boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
-        /*
-         * Keep this method in sync with SubstrateHostInliningPhase.isTruffleBoundary.
-         */
         if (runtimeCompiledMethods != null && !runtimeCompiledMethods.contains(caller)) {
             /*
              * Make sure we do not make any decisions for non-runtime compiled methods.

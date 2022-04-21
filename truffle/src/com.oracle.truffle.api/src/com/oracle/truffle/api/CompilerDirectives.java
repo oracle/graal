@@ -75,7 +75,7 @@ public final class CompilerDirectives {
      */
     public static void transferToInterpreter() {
         /*
-         * We unconditionally call into the runtime as the runtime need to know where these
+         * We unconditionally call into the runtime as the runtime needs to know where these
          * transferToInterpreter calls happen e.g. for analysis during host compilation.
          */
         Truffle.getRuntime().notifyTransferToInterpreter();
@@ -89,7 +89,7 @@ public final class CompilerDirectives {
      */
     public static void transferToInterpreterAndInvalidate() {
         /*
-         * We unconditionally call into the runtime as the runtime need to know where these
+         * We unconditionally call into the runtime as the runtime needs to know where these
          * transferToInterpreter calls happen e.g. for analysis during host compilation.
          */
         Truffle.getRuntime().notifyTransferToInterpreter();
