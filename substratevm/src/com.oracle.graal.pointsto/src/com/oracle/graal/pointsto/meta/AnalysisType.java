@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -86,6 +87,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> INTERCEPTORS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "interceptors");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> subtypeReachableNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "subtypeReachableNotifications");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideReachableNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "overrideReachableNotifications");
 
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
@@ -168,14 +175,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Contains reachability handlers that are notified when any of the subtypes are marked as
      * reachable. Each handler is notified only once per subtype.
      */
-    private final Set<SubtypeReachableNotification> subtypeReachableNotifications = ConcurrentHashMap.newKeySet();
+    @SuppressWarnings("unused") private volatile Object subtypeReachableNotifications;
 
     /**
      * Contains reachability handlers that are notified when any of the method override becomes
      * reachable *and* the declaring class of the override (or any subtype) is instantiated. Each
      * handler is notified only once per method override.
      */
-    private final Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrideReachableNotifications = new ConcurrentHashMap<>();
+    @SuppressWarnings("unused") private volatile Object overrideReachableNotifications;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -476,7 +483,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         forAllSuperTypes(superType -> {
             AtomicUtils.atomicMark(superType.isAnySubtypeInstantiated);
             seenSubtypes.add(superType);
-            for (var entry : superType.overrideReachableNotifications.entrySet()) {
+            Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrides = ConcurrentLightHashMap.getEntries(superType, overrideReachableNotificationsUpdater);
+            for (var entry : overrides.entrySet()) {
                 AnalysisMethod baseMethod = entry.getKey();
                 Set<MethodOverrideReachableNotification> overrideNotifications = entry.getValue();
                 for (AnalysisType subType : seenSubtypes) {
@@ -517,7 +525,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     protected void onReachable() {
         notifyReachabilityCallbacks(universe);
-        forAllSuperTypes(type -> type.subtypeReachableNotifications.forEach(n -> n.notifyCallback(universe, this)));
+        forAllSuperTypes(type -> ConcurrentLightHashSet.forEach(type, subtypeReachableNotificationsUpdater,
+                        (SubtypeReachableNotification n) -> n.notifyCallback(universe, this)));
         universe.notifyReachableType();
         universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {
@@ -533,16 +542,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
-        subtypeReachableNotifications.add(notification);
+        ConcurrentLightHashSet.addElement(this, subtypeReachableNotificationsUpdater, notification);
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
         assert declaredMethod.getDeclaringClass() == this;
-        overrideReachableNotifications.computeIfAbsent(declaredMethod, m -> ConcurrentHashMap.newKeySet()).add(notification);
+        Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
+                        overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
+        overrideNotifications.add(notification);
     }
 
     public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
-        return overrideReachableNotifications.getOrDefault(method, Collections.emptySet());
+        return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
     /**
