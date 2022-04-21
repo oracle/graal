@@ -1065,6 +1065,13 @@ public abstract class Accessor {
         public abstract void onOSRNodeReplaced(BytecodeOSRNode osrNode, Node oldNode, Node newNode, CharSequence reason);
 
         /**
+         * Same as {@link #transferOSRFrame(BytecodeOSRNode, Frame, Frame, int, Object)}, but
+         * fetches the target metadata.
+         */
+        // Support for deprecated frame transfer: GR-38296
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget);
+
+        /**
          * Transfers state from the {@code source} frame into the {@code target} frame. This method
          * should only be used inside OSR code. The frames must have the same layout as the frame
          * passed when executing the {@code osrNode}.
@@ -1074,7 +1081,7 @@ public abstract class Accessor {
          * @param target the frame to transfer state into
          * @param bytecodeTarget the target location OSR executes from (e.g., bytecode index).
          */
-        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object entryMetadata);
+        public abstract void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object targetMetadata);
 
         /**
          * Restores state from the {@code source} frame into the {@code target} frame. This method

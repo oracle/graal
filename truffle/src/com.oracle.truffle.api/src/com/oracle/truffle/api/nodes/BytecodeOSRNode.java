@@ -141,13 +141,17 @@ public interface BytecodeOSRNode extends NodeInterface {
     void setOSRMetadata(Object osrMetadata);
 
     /**
+     * Note that if this method is implemented, the
+     * {@link #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object) preferred one} will not be
+     * used.
+     * 
      * @since 21.3
      * @deprecated since 22.2
      * @see #copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)
      */
     @Deprecated(since = "22.2")
     default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, null);
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target);
     }
 
     /**
@@ -161,11 +165,12 @@ public interface BytecodeOSRNode extends NodeInterface {
      * @param osrFrame the frame to use for OSR.
      * @param parentFrame the frame used before performing OSR.
      * @param target the target location OSR will execute from (e.g., bytecode index).
-     * @param entryMetadata Additional metadata for the default frame transfer behavior.
+     * @param targetMetadata Additional metadata associated with this {@code target} for the default
+     *            frame transfer behavior.
      * @since 22.2
      */
-    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object entryMetadata) {
-        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, entryMetadata);
+    default void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
+        NodeAccessor.RUNTIME.transferOSRFrame(this, parentFrame, osrFrame, target, targetMetadata);
     }
 
     /**

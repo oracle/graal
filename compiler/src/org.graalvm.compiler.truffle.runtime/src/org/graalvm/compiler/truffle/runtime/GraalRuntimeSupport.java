@@ -158,10 +158,18 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         }
     }
 
+    // Support for deprecated frame transfer: GR-38296
     @Override
-    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object entryMetadata) {
+    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget) {
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, entryMetadata);
+        BytecodeOSRMetadata.OsrEntryDescription targetMetadata = osrMetadata.getLazyState().get(bytecodeTarget);
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
+    }
+
+    @Override
+    public void transferOSRFrame(BytecodeOSRNode osrNode, Frame source, Frame target, int bytecodeTarget, Object targetMetadata) {
+        BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+        osrMetadata.transferFrame((FrameWithoutBoxing) source, (FrameWithoutBoxing) target, bytecodeTarget, targetMetadata);
     }
 
     @Override

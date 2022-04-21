@@ -100,7 +100,7 @@ public final class BytecodeOSRMetadata {
 
     @CompilationFinal private volatile LazyState lazyState;
 
-    private LazyState getLazyState() {
+    LazyState getLazyState() {
         LazyState currentLazyState = lazyState;
         if (currentLazyState == null) {
             return getLazyStateBoundary();
@@ -236,24 +236,23 @@ public final class BytecodeOSRMetadata {
      * Transfer state from {@code source} to {@code target}. Can be used to transfer state into an
      * OSR frame.
      */
-    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target, int bytecodeTarget, Object entryMetadata) {
+    public void transferFrame(FrameWithoutBoxing source, FrameWithoutBoxing target, int bytecodeTarget, Object targetMetadata) {
         LazyState state = getLazyState();
         CompilerAsserts.partialEvaluationConstant(state);
         // The frames should use the same descriptor.
         validateDescriptors(source, target, state);
 
-        OsrEntryDescription description;
-        if (!(entryMetadata instanceof OsrEntryDescription)) {
-            // Support for deprecated frame transfer: GR-38296
-            description = state.get(bytecodeTarget);
-        } else {
-            description = (OsrEntryDescription) entryMetadata;
-        }
-
-        if (description == null) {
+        if (targetMetadata == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Transferring frame for OSR from an uninitialized bytecode target.");
         }
+        if (!(targetMetadata instanceof OsrEntryDescription)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalArgumentException("Wrong usage of targetMetadata during OSR frame transfer.");
+        }
+        assert targetMetadata == state.get(bytecodeTarget); // GR-38296
+
+        OsrEntryDescription description = (OsrEntryDescription) targetMetadata;
         CompilerAsserts.partialEvaluationConstant(description);
 
         // The frame version could have changed; if so, deoptimize and update the slots+tags.
