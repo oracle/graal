@@ -84,10 +84,12 @@ suite = {
 
     "LIBFFI_SOURCES" : {
       "resource" : True,
-      "version" : "3.3",
-      # original: https://sourceware.org/pub/libffi/libffi-{version}.tar.gz
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz"],
-      "sha1" : "8df6cb570c8d6596a67d1c0773bf00650154f7aa",
+      "version" : "3.4.2",
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
+        "https://github.com/libffi/libffi/releases/download/v{version}/libffi-{version}.tar.gz",
+      ],
+      "sha1" : "460882cfdb52a2bd13fc08edc540b242ae421033",
     },
 
     "ANTLR4": {
