@@ -30,6 +30,7 @@ import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Objects;
 
 /**
  * This is a wrapper for ByteBuffer which provides assembler-style operations to read and write
@@ -280,13 +281,9 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
             }
 
             // grow and replace
-            ByteBuffer nbuf = ByteBuffer.allocate(newCap);
-            nbuf.order(ByteOrder.nativeOrder());
-            byte[] old = new byte[pos];
-            buf.rewind();
-            buf.get(old);
-            nbuf.put(old);
-            buf = nbuf;
+            buf = ByteBuffer.wrap(Arrays.copyOf(buf.array(), newCap));
+            buf.order(ByteOrder.nativeOrder());
+            buf.position(pos);
         }
     }
 
