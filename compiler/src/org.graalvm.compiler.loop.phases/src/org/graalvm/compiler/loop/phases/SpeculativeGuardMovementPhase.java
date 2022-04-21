@@ -125,7 +125,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
      * speculative guard movement to first move guard a to make guard b also loop
      * invariant/participate in an induction variable. This may trigger with pi nodes and guards.
      */
-    private static final int MAX_ITERATIONS = 5;
+    private static final int MAX_ITERATIONS = 3;
 
     @Override
     @SuppressWarnings("try")
