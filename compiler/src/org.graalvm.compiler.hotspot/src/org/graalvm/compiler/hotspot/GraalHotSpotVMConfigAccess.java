@@ -286,7 +286,7 @@ public class GraalHotSpotVMConfigAccess {
      * @return {@code expect}
      */
     public <T> T verifyConstant(String name, Class<T> type, T expect) {
-        if (isPresent(name, vmConstants, false)) {
+        if (vmConstants.containsKey(name)) {
             T value = access.getConstant(name, type, expect);
             if (value != expect) {
                 recordError(name, unexpected, String.valueOf(value));
