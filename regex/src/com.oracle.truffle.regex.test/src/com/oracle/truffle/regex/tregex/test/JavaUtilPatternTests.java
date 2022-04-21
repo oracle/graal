@@ -59,10 +59,95 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[Hh]ello [Ww]orld!", 0, "hello World!");
     }
 
+//    @Test
+//    public void halloWelt() {
+//        test("rege(x(es)?|xps?)", 0, "regexes");
+//    }
+
     @Test
-    public void halloWelt() {
-        test("rege(x(es)?|xps?)", 0, "regexes");
+    public void dotTest() {
+        test(".", 0, "x");
     }
+
+    @Test
+    public void alternationTest() {
+        test("abc|def|xyz", 0, "abc");
+        test("abc|def|xyz", 0, "def");
+        test("abc|def|xyz", 0, "xyz");
+    }
+
+    @Test
+    public void alternationEagerTest() {
+        test("a|ab", 0, "ab");
+    }
+
+    @Test
+    public void backslashEscapeCC() {
+        test("[\\^\\]]", 0, "^");
+        test("[\\^\\]]", 0, "]");
+    }
+
+    @Test
+    public void rangeCC() {
+        test("[a-zA-Z0-9]", 0, "abcABC012");
+    }
+
+    @Test
+    public void negatedCC() {
+        test("[^a-d]", 0, "x");
+    }
+
+    @Test
+    public void literalBracketCC() {
+        test("[ab[cd]ef]", 0, "aef]");
+        test("[ab[cd]ef]", 0, "bef]");
+        test("[ab[cd]ef]", 0, "[ef]");
+        test("[ab[cd]ef]", 0, "cef]");
+        test("[ab[cd]ef]", 0, "def]");
+    }
+
+    @Test
+    public void nestedCC() {    // TODO: nested classes do not work yet
+        test("[ab[cd]ef]", 0, "a");
+        test("[ab[cd]ef]", 0, "b");
+        test("[ab[cd]ef]", 0, "c");
+        test("[ab[cd]ef]", 0, "d");
+        test("[ab[cd]ef]", 0, "e");
+        test("[ab[cd]ef]", 0, "f");
+    }
+
+    @Test
+    public void cC() {
+        test("[ab[cd]ef]", 0, "[");
+        test("[ab[cd]ef]", 0, "]");
+    }
+
+    @Test
+    public void int1CC() {
+        test("[a-z&&[^aeiuo]]", 0, "bcd");
+    }
+
+    @Test
+    public void int2CC() {  // TODO should throw an error
+        test("[a-z&&[^aeiuo]]", 0, "ae");
+    }
+
+    @Test
+    public void int3CC() {
+        test("[a-z&&1]", 0, "bcd1");
+    }
+
+    @Test
+    public void int4CC() {  // TODO should throw an error
+        test("[a-z&&1]", 0, "2");
+    }
+
+    @Test
+    public void posixCC() {  // TODO should throw an error
+        test("[\\p{Digit}\\p{Lower}]", 0, "2");
+    }
+
+
 
 //    @Test
 //    public void helloWorld() {
@@ -96,22 +181,22 @@ public class JavaUtilPatternTests extends RegexTestBase {
             return "";
         }
         // TODO
-        if((javaUtilPatternFlags & Pattern.UNIX_LINES) != 0) {
+        if ((javaUtilPatternFlags & Pattern.UNIX_LINES) != 0) {
             return "d";
         }
-        if((javaUtilPatternFlags & Pattern.CASE_INSENSITIVE) != 0) {
+        if ((javaUtilPatternFlags & Pattern.CASE_INSENSITIVE) != 0) {
             return "i";
         }
-        if((javaUtilPatternFlags & Pattern.COMMENTS) != 0) {
+        if ((javaUtilPatternFlags & Pattern.COMMENTS) != 0) {
             return "x";
         }
-        if((javaUtilPatternFlags & Pattern.MULTILINE) != 0) {
+        if ((javaUtilPatternFlags & Pattern.MULTILINE) != 0) {
             return "m";
         }
-        if((javaUtilPatternFlags & Pattern.DOTALL) != 0) {
+        if ((javaUtilPatternFlags & Pattern.DOTALL) != 0) {
             return "s";
         }
-        if((javaUtilPatternFlags & Pattern.UNICODE_CASE) != 0) {
+        if ((javaUtilPatternFlags & Pattern.UNICODE_CASE) != 0) {
             return "u";
         }
 
