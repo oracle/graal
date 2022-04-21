@@ -202,9 +202,10 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
-        }
+        ///assert owns mutex || pargc thread ?
+//        if (SubstrateOptions.MultiThreaded.getValue()) {
+//            VMThreads.guaranteeOwnsThreadMutex("Trying to append an aligned heap chunk but no mutual exclusion.");
+//        }
         appendAlignedHeapChunkUninterruptibly(aChunk);
         accounting.noteAlignedHeapChunk();
     }
@@ -255,9 +256,10 @@ public final class Space {
          * This method is used from {@link PosixJavaThreads#detachThread(VMThread)}, so it can not
          * guarantee that it is inside a VMOperation, only that there is some mutual exclusion.
          */
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
-        }
+        ///assert owns mutex || pargc thread ?
+//        if (SubstrateOptions.MultiThreaded.getValue()) {
+//            VMThreads.guaranteeOwnsThreadMutex("Trying to append an unaligned chunk but no mutual exclusion.");
+//        }
         appendUnalignedHeapChunkUninterruptibly(uChunk);
         accounting.noteUnalignedHeapChunk(uChunk);
     }

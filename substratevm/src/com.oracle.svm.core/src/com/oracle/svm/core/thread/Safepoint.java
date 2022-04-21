@@ -767,6 +767,8 @@ public final class Safepoint {
                         notAtSafepoint++;
                     } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
                         ignoreSafepoints++;
+                    } else if (VMThreads.ParallelGCSupport.isParallelGCThread(vmThread)) {
+                        ignoreSafepoints++;
                     } else {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         switch (status) {
@@ -863,38 +865,6 @@ public final class Safepoint {
                         trace.string("  vmThread status: ").string(StatusSupport.getStatusString(vmThread));
                     }
 
-                    restoreSafepointRequestedValue(vmThread);
-
-                    /*
-                     * Release the thread back to native code. Most threads will transition from
-                     * safepoint to native; but some threads will already be in native code if they
-                     * returned from native code, found the safepoint in progress and blocked on the
-                     * mutex putting themselves back in native code again.
-                     */
-                    StatusSupport.setStatusNative(vmThread);
-                    Statistics.incReleased();
-                    if (trace.isEnabled()) {
-                        trace.string("  ->  ").string(StatusSupport.getStatusString(vmThread)).newline();
-                    }
-                }
-            }
-            trace.string("]").newline();
-        }
-
-        /** Release each thread at a safepoint. */
-        public void releaseParallelGCSafepoints() {
-            final Log trace = Log.log().string("[Safepoint.Master.release||safepoints").newline();
-            VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
-            // Set PGC thread statuses that are at safepoint back to being in native code.
-            for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
-                if (VMThreads.ParallelGCSupport.isParallelGCThread(vmThread)) {
-                    if (trace.isEnabled()) {
-                        trace.string("  || vmThread status: ").string(StatusSupport.getStatusString(vmThread));
-                    }
-
-                    if (VMThreads.StatusSupport.getStatusVolatile(vmThread) != STATUS_IN_SAFEPOINT) {
-                        continue;
-                    }
                     restoreSafepointRequestedValue(vmThread);
 
                     /*

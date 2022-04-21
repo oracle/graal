@@ -3,7 +3,6 @@ package com.oracle.svm.core.heap;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.Safepoint;
 
 public abstract class ParallelGC {
     protected final VMMutex mutex = new VMMutex("pargc");
@@ -37,9 +36,5 @@ public abstract class ParallelGC {
         } finally {
             mutex.unlock();
         }
-    }
-
-    public static void thawWorkerThreads() {
-        Safepoint.Master.singleton().releaseParallelGCSafepoints();
     }
 }

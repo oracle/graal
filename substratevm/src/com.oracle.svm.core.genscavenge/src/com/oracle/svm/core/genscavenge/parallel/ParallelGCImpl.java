@@ -12,8 +12,11 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.UnsignedWord;
 
 public class ParallelGCImpl extends ParallelGC {
+
+    public final TaskQueue QUEUE = new TaskQueue("pargc");
 
     @Override
     public void startWorkerThreads() {
@@ -25,17 +28,15 @@ public class ParallelGCImpl extends ParallelGC {
                 VMThreads.ParallelGCSupport.setParallelGCThread();
                 try {
                     while (!stopped) {
-                        waitForNotification(true);
-                        trace.string("  doing work on ").string(Thread.currentThread().getName()).newline();
-                        HeapImpl.getHeapImpl().getOldGeneration().scanGreyObjects();
-                        signal(true);
+                        UnsignedWord token = QUEUE.get();
+                        trace.string("  got token ").unsigned(token).string(" on ").string(Thread.currentThread().getName()).newline();
                     }
                 } catch (Throwable e) {
                     VMError.shouldNotReachHere(e.getClass().getName());
                 }
             }
         };
-        t.setName("ParallelGC-noop");
+        t.setName("ParallelGC");
         t.setDaemon(true);
         t.start();
     }
@@ -43,6 +44,7 @@ public class ParallelGCImpl extends ParallelGC {
 
 @AutomaticFeature
 class ParallelGCFeature implements Feature {
+///
 //    @Override
 //    public boolean isInConfiguration(IsInConfigurationAccess access) {
 //        return SubstrateOptions.UseSerialGC.getValue();

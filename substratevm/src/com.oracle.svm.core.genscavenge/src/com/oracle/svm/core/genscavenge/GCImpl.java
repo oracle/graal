@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.heap.ParallelGC;
@@ -681,9 +682,6 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                ParallelGC.thawWorkerThreads();
-                parallelScanGreyObjects(false);
-
                 /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
 
@@ -701,17 +699,6 @@ public final class GCImpl implements GC {
             }
         } finally {
             cheneyScanFromRootsTimer.close();
-        }
-    }
-
-    private void parallelScanGreyObjects(boolean isIncremental) {
-        Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
-        try {
-            ParallelGC pgc = ImageSingletons.lookup(ParallelGC.class);
-            pgc.signal(false);
-            pgc.waitForNotification(false);
-        } finally {
-            scanGreyObjectsTimer.close();
         }
     }
 
@@ -786,8 +773,8 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                ParallelGC.thawWorkerThreads();
-                ImageSingletons.lookup(ParallelGC.class).signal();
+                ParallelGCImpl pargc = (ParallelGCImpl) ImageSingletons.lookup(ParallelGC.class);
+                pargc.QUEUE.put(getCollectionEpoch());
 
                 /* Visit all the Objects promoted since the snapshot, transitively. */
                 scanGreyObjects(true);

@@ -106,7 +106,7 @@ public final class OldGeneration extends Generation {
         toGreyObjectsWalker.setScanStart(getToSpace());
     }
 
-    public boolean scanGreyObjects() {
+    boolean scanGreyObjects() {
         if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }
