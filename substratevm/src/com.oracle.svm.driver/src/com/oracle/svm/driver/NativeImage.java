@@ -1731,7 +1731,7 @@ public class NativeImage {
 
     protected String getXmxValue(int maxInstances) {
         Long memMax = Long.divideUnsigned(Long.divideUnsigned(getPhysicalMemorySize(), 10) * 8, maxInstances);
-        String maxXmx = "14g";
+        String maxXmx = "15g";
         if (Long.compareUnsigned(memMax, SubstrateOptionsParser.parseLong(maxXmx)) >= 0) {
             return maxXmx;
         }
