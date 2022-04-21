@@ -105,7 +105,7 @@ public final class SulongEngineOption {
     @Option(name = "llvm.OSR",
             category = OptionCategory.EXPERT,
             help = "Mode to use for on-stack-replacement of loops.")
-    public static final OptionKey<OSRMode> OSR_MODE = new OptionKey<>(OSRMode.CFG);
+    public static final OptionKey<OSRMode> OSR_MODE = new OptionKey<>(OSRMode.BYTECODE);
 
     public enum OSRMode {
         CFG,

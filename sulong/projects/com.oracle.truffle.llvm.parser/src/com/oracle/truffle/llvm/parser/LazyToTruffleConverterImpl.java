@@ -221,7 +221,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         info.setBlocks(blockNodes);
 
         int loopSuccessorSlot = -1;
-        if (options.get(SulongEngineOption.OSR_MODE) == SulongEngineOption.OSRMode.CFG && !options.get(SulongEngineOption.AOTCacheStore)) {
+        if (nodeFactory.isCfgOsrEnabled() && !options.get(SulongEngineOption.AOTCacheStore)) {
             LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
             cfg.build();
 

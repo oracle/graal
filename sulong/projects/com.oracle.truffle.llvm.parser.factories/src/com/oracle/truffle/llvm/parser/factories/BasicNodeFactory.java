@@ -346,6 +346,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -370,17 +371,27 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
+
 public class BasicNodeFactory implements NodeFactory {
+
     protected final LLVMLanguage language;
     protected DataLayout dataLayout;
 
     protected final Type vaListType;
 
-    public BasicNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
+    protected final CommonLanguageOptions engineOptions;
+
+    public BasicNodeFactory(LLVMLanguage language, DataLayout dataLayout, CommonLanguageOptions engineOptions) {
         this.language = language;
         this.dataLayout = dataLayout;
-
         this.vaListType = language.getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
+        this.engineOptions = engineOptions;
+    }
+
+    @Override
+    public boolean isCfgOsrEnabled() {
+        return engineOptions.osrMode == SulongEngineOption.OSRMode.CFG;
     }
 
     @Override
@@ -1133,7 +1144,7 @@ public class BasicNodeFactory implements NodeFactory {
                     LLVMSourceLocation location, LLVMFunction rootFunction) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = uniquesRegion.isEmpty() ? null
                         : LLVMUniquesRegionAllocNodeGen.create(createAlloca(uniquesRegion.getSize(), uniquesRegion.getAlignment()));
-        LLVMDispatchBasicBlockNode body = LLVMDispatchBasicBlockNodeGen.create(exceptionValueSlot, allFunctionNodes, loopSuccessorSlot, debugInfo);
+        LLVMDispatchBasicBlockNode body = LLVMDispatchBasicBlockNodeGen.create(exceptionValueSlot, allFunctionNodes, loopSuccessorSlot, debugInfo, engineOptions.osrMode);
         body.setSourceLocation(LLVMSourceLocation.orDefault(location));
         LLVMStackAccess stackAccess = createStackAccess();
         LLVMFunctionRootNode functionRoot = LLVMFunctionRootNodeGen.create(uniquesRegionAllocNode, stackAccess, copyArgumentsToFrame, body, frameDescriptor);
