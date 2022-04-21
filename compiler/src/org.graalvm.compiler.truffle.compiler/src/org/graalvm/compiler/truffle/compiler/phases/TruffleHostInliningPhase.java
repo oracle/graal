@@ -41,26 +41,20 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
-import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -82,14 +76,11 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 /**
  * Domain specific inlining phase for Truffle interpreters during host compilation.
@@ -779,8 +770,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             SpeculationLog.SpeculationReason speculationReason = InliningUtil.createSpeculation(invoke, typeProfile);
             SpeculationLog speculationLog = context.graph.getSpeculationLog();
             ResolvedJavaType resolvedType = typeProfile.getTypes()[0].getType();
-            insertTypeGuard(context, invoke, resolvedType, speculationLog.speculate(speculationReason));
-            devirtualizeInvoke(context, invoke, targetMethod);
+            InliningUtil.insertTypeGuard(context.highTierContext, invoke, resolvedType, speculationLog.speculate(speculationReason));
+            InliningUtil.replaceInvokeCallTarget(invoke, context.graph, InvokeKind.Special, targetMethod);
         }
         StructuredGraph inlineGraph = context.lookupGraph(targetMethod);
         AtomicReference<UnmodifiableEconomicMap<Node, Node>> duplicates = new AtomicReference<>();
@@ -789,33 +780,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         "Truffle Host Inlining",
                         "Truffle Host Inlining"));
         return duplicates.get();
-    }
-
-    private static void devirtualizeInvoke(InliningContext context, Invoke invoke, ResolvedJavaMethod newTarget) {
-        MethodCallTargetNode oldCallTarget = (MethodCallTargetNode) invoke.callTarget();
-        MethodCallTargetNode newCallTarget = context.graph.add(new MethodCallTargetNode(InvokeKind.Special, newTarget, oldCallTarget.arguments().toArray(ValueNode.EMPTY_ARRAY),
-                        oldCallTarget.returnStamp(), oldCallTarget.getTypeProfile()));
-        invoke.asNode().replaceFirstInput(oldCallTarget, newCallTarget);
-    }
-
-    @SuppressWarnings("try")
-    private static void insertTypeGuard(InliningContext context, Invoke invoke, ResolvedJavaType type, Speculation speculation) {
-        try (DebugCloseable debug = invoke.asNode().withNodeSourcePosition()) {
-            StructuredGraph graph = context.graph;
-            ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-            LoadHubNode receiverHub = graph.unique(new LoadHubNode(context.highTierContext.getStampProvider(), nonNullReceiver));
-            ConstantNode typeHub = ConstantNode.forConstant(receiverHub.stamp(NodeView.DEFAULT),
-                            context.highTierContext.getConstantReflection().asObjectHub(type), context.highTierContext.getMetaAccess(), graph);
-
-            LogicNode typeCheck = CompareNode.createCompareNode(graph, CanonicalCondition.EQ, receiverHub, typeHub, context.highTierContext.getConstantReflection(), NodeView.DEFAULT);
-            FixedGuardNode guard = graph.add(new FixedGuardNode(typeCheck, DeoptimizationReason.TypeCheckedInliningViolated, DeoptimizationAction.InvalidateReprofile, speculation, false));
-            assert invoke.predecessor() != null;
-
-            ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);
-            invoke.callTarget().replaceFirstInput(nonNullReceiver, anchoredReceiver);
-
-            graph.addBeforeFixed(invoke.asFixedNode(), guard);
-        }
     }
 
     private String printCallTree(InliningContext context, CallTree root) {
