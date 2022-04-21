@@ -8,8 +8,9 @@ permalink: /reference-manual/native-image/BuildConfiguration/
 
 * [Embedding a Configuration File](#embedding-a-configuration-file)
 * [Configuration File Format](#configuration-file-format)
-* [Memory Configuration for Native Image Build](#memory-configuration-for-building-a-native-executable)
+* [Memory Configuration for Building a Native Executable](#memory-configuration-for-building-a-native-executable)
 * [Runtime vs Build Time Initialization](#runtime-vs-build-time-initialization)
+* [Specifying Types Required to Be Defined at Build Time](#specifying-types-required-to-be-defined-at-build-time)
 
 Native Image supports a wide range of options to configure the `native-image` tool.
 
@@ -173,7 +174,7 @@ Depending on how and where the option is used it behaves differently:
 * If you use the  `--link-at-build-time` option with arguments, for example, `--link-at-build-time=foo.bar.Foobar,demo.myLibrary.Name,...`, the arguments should be fully qualified class names or package names. When used on the module-path or classpath (embedded in `native-image.properties` files), only classes and packages defined in the same JAR file can be specified. Packages for libraries used on the classpath need to be listed explicitly. To make this process easy, use the `@<prop-values-file>` syntax to generate a package list (or a class list) in a separate file automatically.
 
 Another handy option is `--link-at-build-time-paths` which allows to specify which classes are required to be fully defined at build time by other means.
-This option variant requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
+This variant requires arguments that are of the same type as the arguments passed via `-p` (`--module-path`) or `-cp` (`--class-path`):
 
 ```shell
 --link-at-build-time-paths <class search path of directories and zip/jar files>
