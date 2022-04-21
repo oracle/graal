@@ -46,7 +46,9 @@ local jdks = common_json.jdks;
 
   mx_cmd_base_no_env: ['mx'],
 
-  check_graalvm_base_build: {},
+  check_graalvm_base_build: {
+    run_checks(size=null):: []
+  },
 
   check_graalvm_complete_build: [],
 

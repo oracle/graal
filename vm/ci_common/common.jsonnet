@@ -484,7 +484,7 @@ local devkits = common_json.devkits;
   ],
 
   deploy_graalvm_linux_amd64: vm.check_graalvm_base_build + {
-    run+: [
+    run: [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -492,7 +492,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + [
+    ] + vm.check_graalvm_base_build.run_checks() + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -508,7 +508,7 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_linux_aarch64: vm.check_graalvm_base_build + {
-    run+: [
+    run: [
       ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
@@ -517,7 +517,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + [
+    ] + vm.check_graalvm_base_build.run_checks() + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
@@ -532,13 +532,13 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_darwin_amd64: vm.check_graalvm_base_build + {
-    run+: [
+    run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
     ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + [
+    ] + vm.check_graalvm_base_build.run_checks("1434") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -565,14 +565,14 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_darwin_aarch64: vm.check_graalvm_base_build + {
-    run+: [
+    run: [
       # GR-34811: `ce-darwin-aarch64` can be removed once svml builds
       ['set-export', 'VM_ENV', '${VM_ENV}-darwin-aarch64'],
     ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + [
+    ] + vm.check_graalvm_base_build.run_checks("1434") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -599,13 +599,13 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_base_windows_amd64: vm.check_graalvm_base_build + {
-    run+: [
+    run: [
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
     ] + vm.collect_profiles() + [
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + [
+    ] + vm.check_graalvm_base_build.run_checks("857") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -632,12 +632,12 @@ local devkits = common_json.devkits;
   },
 
   deploy_graalvm_ruby: vm.check_graalvm_base_build + {
-    run+: vm.collect_profiles() + [
+    run: vm.collect_profiles() + [
       ['set-export', 'VM_ENV', "${VM_ENV}-ruby"],
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + [
+    ] + vm.check_graalvm_base_build.run_checks("1039") + [
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
