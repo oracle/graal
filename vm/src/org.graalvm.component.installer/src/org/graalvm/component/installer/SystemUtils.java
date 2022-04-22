@@ -64,8 +64,6 @@ import org.graalvm.component.installer.model.ComponentRegistry;
 import java.net.URLEncoder;
 import java.util.Collection;
 import java.util.Locale;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  *
