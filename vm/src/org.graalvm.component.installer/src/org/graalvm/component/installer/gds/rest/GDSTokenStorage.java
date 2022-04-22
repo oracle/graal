@@ -62,8 +62,8 @@ public class GDSTokenStorage {
         propertiesPath = Path.of(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GU, PATH_GDS_CONFIG);
     }
 
-    public String getPropertiesPath() {
-        return propertiesPath.toString();
+    Path getPropertiesPath() {
+        return propertiesPath;
     }
 
     public Source getConfSource() {
@@ -74,19 +74,19 @@ public class GDSTokenStorage {
         if (properties != null) {
             return properties;
         }
-        return properties = load(propertiesPath, feedback);
+        return properties = load(getPropertiesPath());
     }
 
-    private static Properties load(Path propertiesPath, Feedback feedback) {
-        Properties properties = new Properties();
-        if (Files.exists(propertiesPath)) {
-            try (InputStream is = Files.newInputStream(propertiesPath)) {
-                properties.load(is);
-            } catch (IOException ex) {
-                feedback.error("ERR_CouldNotLoadToken", ex, propertiesPath, ex.getLocalizedMessage());
+    private Properties load(Path propsPath) {
+        Properties props = new Properties();
+        if (Files.exists(propsPath)) {
+            try (InputStream is = Files.newInputStream(propsPath)) {
+                props.load(is);
+            } catch (IllegalArgumentException | IOException ex) {
+                feedback.error("ERR_CouldNotLoadToken", ex, propsPath, ex.getLocalizedMessage());
             }
         }
-        return properties;
+        return props;
     }
 
     public String getToken() {
@@ -114,7 +114,7 @@ public class GDSTokenStorage {
         if (!SystemUtils.nonBlankString(userFile)) {
             return null;
         }
-        return load(SystemUtils.fromUserString(userFile), feedback).getProperty(GRAAL_EE_DOWNLOAD_TOKEN);
+        return load(SystemUtils.fromUserString(userFile)).getProperty(GRAAL_EE_DOWNLOAD_TOKEN);
     }
 
     private String getCmdFile() {
@@ -142,10 +142,11 @@ public class GDSTokenStorage {
     }
 
     public void save() throws IOException {
-        if (!changed || properties == null || propertiesPath == null) {
+        Path propsPath = getPropertiesPath();
+        if (!changed || properties == null || propsPath == null) {
             return;
         }
-        Path parent = propertiesPath.getParent();
+        Path parent = propsPath.getParent();
         if (parent == null) {
             // cannot happen, but Spotbugs keeps yelling
             return;
@@ -164,7 +165,7 @@ public class GDSTokenStorage {
                             PosixFilePermission.OWNER_WRITE,
                             PosixFilePermission.OWNER_EXECUTE));
         }
-        try (OutputStream os = Files.newOutputStream(propertiesPath)) {
+        try (OutputStream os = Files.newOutputStream(propsPath)) {
             properties.store(os, null);
         }
         if (SystemUtils.isWindows()) {
@@ -175,33 +176,35 @@ public class GDSTokenStorage {
             file.setReadable(true);
             file.setWritable(true);
         } else {
-            Files.setPosixFilePermissions(propertiesPath,
+            Files.setPosixFilePermissions(propsPath,
                             Set.of(PosixFilePermission.OWNER_READ,
                                             PosixFilePermission.OWNER_WRITE));
         }
     }
 
     public static void printToken(Feedback feedback, CommandInput input) {
-        GDSTokenStorage storage = new GDSTokenStorage(feedback, input);
-        Feedback fb = storage.feedback;
-        String token = storage.getToken();
-        String msg = storage.tokenSource == Source.NON ? "MSG_EmptyToken" : "MSG_PrintToken";
+        new GDSTokenStorage(feedback, input).printToken();
+    }
+
+    public void printToken() {
+        String token = getToken();
+        String msg = tokenSource == Source.NON ? "MSG_EmptyToken" : "MSG_PrintToken";
         String source = "";
-        switch (storage.tokenSource) {
+        switch (tokenSource) {
             case ENV:
-                source = fb.l10n("MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
+                source = feedback.l10n("MSG_PrintTokenEnv", GRAAL_EE_DOWNLOAD_TOKEN);
                 break;
             case CMD:
-                source = fb.l10n("MSG_PrintTokenCmdFile", storage.getCmdFile());
+                source = feedback.l10n("MSG_PrintTokenCmdFile", getCmdFile());
                 break;
             case FIL:
-                source = fb.l10n("MSG_PrintTokenFile", storage.propertiesPath);
+                source = feedback.l10n("MSG_PrintTokenFile", getPropertiesPath().toString());
                 break;
             default:
                 // NOOP
                 break;
         }
-        fb.output(msg, token, source);
+        feedback.output(msg, token, source);
     }
 
     public enum Source {
