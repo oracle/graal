@@ -28,9 +28,11 @@ import java.lang.reflect.Executable;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -41,20 +43,24 @@ public abstract class AnalysisElement {
      * Contains reachability handlers that are notified when the element is marked as reachable.
      * Each handler is notified only once, and then it is removed from the set.
      */
-    private final Set<ElementReachableNotification> elementReachableNotifications = ConcurrentHashMap.newKeySet();
+
+    private static final AtomicReferenceFieldUpdater<AnalysisElement, Object> reachableNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisElement.class, Object.class, "elementReachableNotifications");
+
+    @SuppressWarnings("unused") private volatile Object elementReachableNotifications;
 
     public void registerReachabilityNotification(ElementReachableNotification notification) {
-        elementReachableNotifications.add(notification);
+        ConcurrentLightHashSet.addElement(this, reachableNotificationsUpdater, notification);
     }
 
     public void notifyReachabilityCallback(AnalysisUniverse universe, ElementReachableNotification notification) {
         notification.notifyCallback(universe, this);
-        elementReachableNotifications.remove(notification);
+        ConcurrentLightHashSet.removeElement(this, reachableNotificationsUpdater, notification);
     }
 
     protected void notifyReachabilityCallbacks(AnalysisUniverse universe) {
-        elementReachableNotifications.forEach(c -> c.notifyCallback(universe, this));
-        elementReachableNotifications.removeIf(ElementReachableNotification::isNotified);
+        ConcurrentLightHashSet.forEach(this, reachableNotificationsUpdater, (ElementReachableNotification c) -> c.notifyCallback(universe, this));
+        ConcurrentLightHashSet.removeElementIf(this, reachableNotificationsUpdater, ElementReachableNotification::isNotified);
     }
 
     public abstract boolean isReachable();

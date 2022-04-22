@@ -33,7 +33,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -74,6 +74,24 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class AnalysisMethod extends AnalysisElement implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
 
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isVirtualRootMethodUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isVirtualRootMethod");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isDirectRootMethodUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isDirectRootMethod");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isInvokedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isInvoked");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isImplementationInvokedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isImplementationInvoked");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isIntrinsicMethodUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isIntrinsicMethod");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisMethod> isInlinedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisMethod.class, "isInlined");
+
     public final ResolvedJavaMethod wrapped;
 
     private final int id;
@@ -85,14 +103,14 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     private final AnalysisType declaringClass;
 
     /** Virtually invoked method registered as root. */
-    private final AtomicBoolean isVirtualRootMethod = new AtomicBoolean();
+    @SuppressWarnings("unused") private volatile int isVirtualRootMethod;
     /** Direct (special or static) invoked method registered as root. */
-    private final AtomicBoolean isDirectRootMethod = new AtomicBoolean();
+    @SuppressWarnings("unused") private volatile int isDirectRootMethod;
     private Object entryPointData;
-    private final AtomicBoolean isInvoked = new AtomicBoolean();
-    private final AtomicBoolean isImplementationInvoked = new AtomicBoolean();
-    private final AtomicBoolean isIntrinsicMethod = new AtomicBoolean();
-    private final AtomicBoolean isInlined = new AtomicBoolean();
+    @SuppressWarnings("unused") private volatile int isInvoked;
+    @SuppressWarnings("unused") private volatile int isImplementationInvoked;
+    @SuppressWarnings("unused") private volatile int isIntrinsicMethod;
+    @SuppressWarnings("unused") private volatile int isInlined;
 
     private final AtomicReference<Object> parsedGraphCacheState = new AtomicReference<>(GRAPH_CACHE_UNPARSED);
     private static final Object GRAPH_CACHE_UNPARSED = "unparsed";
@@ -204,7 +222,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * resolution must be able to find the method (otherwise the intrinsification would not work).
      */
     public void registerAsIntrinsicMethod() {
-        AtomicUtils.atomicMarkAndRun(isIntrinsicMethod, this::onReachable);
+        AtomicUtils.atomicMarkAndRun(this, isIntrinsicMethodUpdater, this::onReachable);
     }
 
     public void registerAsEntryPoint(Object newEntryPointData) {
@@ -218,7 +236,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public boolean registerAsInvoked() {
-        return AtomicUtils.atomicMark(isInvoked);
+        return AtomicUtils.atomicMark(this, isInvokedUpdater);
     }
 
     public boolean registerAsImplementationInvoked() {
@@ -233,11 +251,11 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * return before the class gets marked as reachable.
          */
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMarkAndRun(isImplementationInvoked, this::onReachable);
+        return AtomicUtils.atomicMarkAndRun(this, isImplementationInvokedUpdater, this::onReachable);
     }
 
     public void registerAsInlined() {
-        AtomicUtils.atomicMarkAndRun(isInlined, this::onReachable);
+        AtomicUtils.atomicMarkAndRun(this, isInlinedUpdater, this::onReachable);
     }
 
     /** Get the set of all callers for this method, as inferred by the static analysis. */
@@ -257,7 +275,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     }
 
     public boolean isIntrinsicMethod() {
-        return isIntrinsicMethod.get();
+        return AtomicUtils.isSet(this, isIntrinsicMethodUpdater);
     }
 
     /**
@@ -271,7 +289,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public boolean registerAsVirtualRootMethod() {
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMark(isVirtualRootMethod);
+        return AtomicUtils.atomicMark(this, isVirtualRootMethodUpdater);
     }
 
     /**
@@ -279,7 +297,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public boolean registerAsDirectRootMethod() {
         getDeclaringClass().registerAsReachable();
-        return AtomicUtils.atomicMark(isDirectRootMethod);
+        return AtomicUtils.atomicMark(this, isDirectRootMethodUpdater);
     }
 
     /**
@@ -288,7 +306,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * receiver types.
      */
     public boolean isVirtualRootMethod() {
-        return isVirtualRootMethod.get();
+        return AtomicUtils.isSet(this, isVirtualRootMethodUpdater);
     }
 
     /**
@@ -298,22 +316,22 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * implementation-invoked too.
      */
     public boolean isDirectRootMethod() {
-        return isDirectRootMethod.get();
+        return AtomicUtils.isSet(this, isDirectRootMethodUpdater);
     }
 
     public boolean isSimplyInvoked() {
-        return isInvoked.get();
+        return AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
     public boolean isSimplyImplementationInvoked() {
-        return isImplementationInvoked.get();
+        return AtomicUtils.isSet(this, isImplementationInvokedUpdater);
     }
 
     /**
      * Returns true if this method is ever used as the target of a call site.
      */
     public boolean isInvoked() {
-        return isIntrinsicMethod.get() || isVirtualRootMethod() || isDirectRootMethod() || isInvoked.get();
+        return isIntrinsicMethod() || isVirtualRootMethod() || isDirectRootMethod() || AtomicUtils.isSet(this, isInvokedUpdater);
     }
 
     /**
@@ -321,12 +339,12 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * registered as implementation invoked when they are linked.
      */
     public boolean isImplementationInvoked() {
-        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod.get() || isImplementationInvoked.get());
+        return !Modifier.isAbstract(getModifiers()) && (isIntrinsicMethod() || AtomicUtils.isSet(this, isImplementationInvokedUpdater));
     }
 
     @Override
     public boolean isReachable() {
-        return isImplementationInvoked() || isInlined.get();
+        return isImplementationInvoked() || AtomicUtils.isSet(this, isInlinedUpdater);
     }
 
     @Override
