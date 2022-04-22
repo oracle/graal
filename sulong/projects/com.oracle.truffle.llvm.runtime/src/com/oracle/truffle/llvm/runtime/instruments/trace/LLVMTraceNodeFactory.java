@@ -92,7 +92,7 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         }
 
         @TruffleBoundary
-        final void trace(String message) {
+        static void trace(String message) {
             LLVMContext.traceIRLog(String.format("(Thread #%d) %s", Thread.currentThread().getId(), message));
         }
     }
