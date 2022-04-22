@@ -151,6 +151,8 @@ public class FileSystemsTest {
     private static final String CONDITIONAL_IO_READ_ONLY_PART = "Conditional IO - read only part";
     private static final String CONDITIONAL_IO_PRIVATE_PART = "Conditional IO - private part";
     private static final String MEMORY_FILE_SYSTEM = "Memory FileSystem";
+    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES = "Memory FileSystem With Language Homes";
+    private static final String MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE = "Memory FileSystem With Language Homes - internal file";
     private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME = "Context pre-initialization filesystem build time";
     private static final String CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME = "Context pre-initialization filesystem execution time";
 
@@ -173,6 +175,8 @@ public class FileSystemsTest {
                         CONDITIONAL_IO_READ_ONLY_PART,
                         CONDITIONAL_IO_PRIVATE_PART,
                         MEMORY_FILE_SYSTEM,
+                        MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES,
+                        MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
                         CONTEXT_PRE_INITIALIZATION_FILESYSTEM_BUILD_TIME,
                         CONTEXT_PRE_INITIALIZATION_FILESYSTEM_EXECUTION_TIME);
     }
@@ -245,6 +249,24 @@ public class FileSystemsTest {
         createContent(memDir, fileSystem);
         ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
         cfgs.put(MEMORY_FILE_SYSTEM, new Configuration(MEMORY_FILE_SYSTEM, ctx, memDir, fileSystem, false, true, true, true));
+
+        // Memory with language home
+        fileSystem = FileSystem.allowLanguageHomeAccess(new MemoryFileSystem());
+        memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(memDir);
+        createContent(memDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        cfgs.put(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES, new Configuration(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES, ctx, memDir, fileSystem, false, true, true, true));
+
+        // Memory with language home - in language home
+        fileSystem = FileSystem.allowLanguageHomeAccess(new MemoryFileSystem());
+        memDir = mkdirs(fileSystem.toAbsolutePath(fileSystem.parsePath("work")), fileSystem);
+        fileSystem.setCurrentWorkingDirectory(memDir);
+        privateDir = createContent(memDir, fileSystem);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(fileSystem).build();
+        setCwd(ctx, privateDir, privateDir);
+        cfgs.put(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE,
+                        new Configuration(MEMORY_FILE_SYSTEM_WITH_LANGUAGE_HOMES_INTERNAL_FILE, ctx, privateDir, privateDir, fileSystem, false, true, true, true));
 
         // PreInitializeContextFileSystem in image build time
         fileSystem = createPreInitializeContextFileSystem();

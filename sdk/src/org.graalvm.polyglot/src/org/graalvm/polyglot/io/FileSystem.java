@@ -485,4 +485,20 @@ public interface FileSystem {
     static FileSystem newDefaultFileSystem() {
         return IOHelper.IMPL.newDefaultFileSystem();
     }
+
+    /**
+     * Decorates given {@code fileSystem} by an implementation that forwards access to files in the
+     * language home to the default file system. The method is intended to be used by custom
+     * filesystem implementations with non default storage to allow guest languages to access files
+     * in the languages homes. As the returned filesystem uses a default file system to access files
+     * in the language home, the {@code fileSystem} has to use the same {@link Path} type as the
+     * {@link #newDefaultFileSystem() default filesystem}.
+     *
+     * @throws IllegalArgumentException when {@code fileSystem} does not use the same {@link Path}
+     *             type as the {@link #newDefaultFileSystem() default file system}.
+     * @since 22.2
+     */
+    static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        return IOHelper.IMPL.allowLanguageHomeAccess(fileSystem);
+    }
 }

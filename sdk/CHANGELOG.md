@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 22.2.0
+* (GR-38351) Added [FileSystem#allowLanguageHomeAccess](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#allowLanguageHomeAccess-org.graalvm.polyglot.io.FileSystem-) returning a `FileSystem` that forwards access to files in the language home to the default file system.
+
 ## Version 22.1.0
 * Changed the default [`Object` target type mapping (`Value.as(Object.class)`)](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-) for values that have both array elements and members from `Map` to `List`.
   Note: This is an incompatible change. Embedders relying on the dynamic type `Map` after a `Object` target type coercion will have to migrate their code.

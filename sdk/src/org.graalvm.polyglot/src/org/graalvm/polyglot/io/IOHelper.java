@@ -78,8 +78,14 @@ final class IOHelper {
         if (source.equals(target)) {
             return;
         }
-        final Path sourceReal = sourceFileSystem.toRealPath(source, LinkOption.NOFOLLOW_LINKS);
-        final Path targetReal = targetFileSystem.toRealPath(target, LinkOption.NOFOLLOW_LINKS);
+        Path sourceReal = sourceFileSystem.toRealPath(source, LinkOption.NOFOLLOW_LINKS);
+        Path targetReal;
+        try {
+            targetReal = targetFileSystem.toRealPath(target, LinkOption.NOFOLLOW_LINKS);
+        } catch (IOException doesNotExist) {
+            // Target does not exist
+            targetReal = target;
+        }
         if (sourceReal.equals(targetReal)) {
             return;
         }

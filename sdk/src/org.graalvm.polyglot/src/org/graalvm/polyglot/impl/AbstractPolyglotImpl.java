@@ -1090,6 +1090,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultFileSystem();
     }
 
+    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        return getNext().allowLanguageHomeAccess(fileSystem);
+    }
+
     public ProcessHandler newDefaultProcessHandler() {
         return getNext().newDefaultProcessHandler();
     }

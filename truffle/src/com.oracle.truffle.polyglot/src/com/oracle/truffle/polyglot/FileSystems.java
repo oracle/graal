@@ -104,37 +104,29 @@ final class FileSystems {
         return newFileSystem(findDefaultFileSystemProvider(), userDir);
     }
 
+    static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        return new LanguageHomeFileSystem(newDefaultFileSystem(), fileSystem);
+    }
+
     static FileSystem newNoIOFileSystem() {
         return new DeniedIOFileSystem();
     }
 
     static FileSystem newLanguageHomeFileSystem() {
-        return new LanguageHomeFileSystem();
+        FileSystem defaultFS = newDefaultFileSystem();
+        return new LanguageHomeFileSystem(new ReadOnlyFileSystem(defaultFS), new PathOperationsOnlyFileSystem(defaultFS));
     }
 
     static boolean hasAllAccess(FileSystem fileSystem) {
-        return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasAllAccess();
+        return fileSystem instanceof PolyglotFileSystem && ((PolyglotFileSystem) fileSystem).hasAllAccess();
     }
 
     static boolean hasNoAccess(FileSystem fileSystem) {
-        return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasNoAccess();
+        return fileSystem instanceof PolyglotFileSystem && ((PolyglotFileSystem) fileSystem).hasNoAccess();
     }
 
     static boolean isInternal(FileSystem fileSystem) {
-        return fileSystem instanceof InternalFileSystem;
-    }
-
-    static boolean hasNoIOFileSystem(TruffleFile file) {
-        FileSystem fileSystem = EngineAccessor.LANGUAGE.getFileSystem(file);
-        if (fileSystem.getClass() == DeniedIOFileSystem.class) {
-            return true;
-        }
-        if (fileSystem.getClass() == LanguageHomeFileSystem.class) {
-            Path path = EngineAccessor.LANGUAGE.getPath(file);
-            LanguageHomeFileSystem lhfs = (LanguageHomeFileSystem) fileSystem;
-            return !lhfs.inLanguageHome(lhfs.toNormalizedAbsolutePath(path));
-        }
-        return false;
+        return fileSystem instanceof PolyglotFileSystem && ((PolyglotFileSystem) fileSystem).isInternal();
     }
 
     static Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> newFileTypeDetectorsSupplier(Iterable<LanguageCache> languageCaches) {
@@ -229,7 +221,7 @@ final class FileSystems {
         return true;
     }
 
-    static final class PreInitializeContextFileSystem implements InternalFileSystem {
+    static final class PreInitializeContextFileSystem implements PolyglotFileSystem {
 
         private FileSystem delegate; // effectively final after patch context
         private Function<Path, PreInitializePath> factory;
@@ -284,13 +276,18 @@ final class FileSystems {
         }
 
         @Override
+        public boolean isInternal() {
+            return delegate instanceof PolyglotFileSystem && ((PolyglotFileSystem) delegate).isInternal();
+        }
+
+        @Override
         public boolean hasAllAccess() {
-            return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasAllAccess();
+            return delegate instanceof PolyglotFileSystem && ((PolyglotFileSystem) delegate).hasAllAccess();
         }
 
         @Override
         public boolean hasNoAccess() {
-            return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasNoAccess();
+            return delegate instanceof PolyglotFileSystem && ((PolyglotFileSystem) delegate).hasNoAccess();
         }
 
         @Override
@@ -710,7 +707,7 @@ final class FileSystems {
         }
     }
 
-    private static final class NIOFileSystem implements InternalFileSystem {
+    private static final class NIOFileSystem implements PolyglotFileSystem {
 
         private final FileSystemProvider hostfs;
         private final boolean explicitUserDir;
@@ -730,6 +727,11 @@ final class FileSystems {
             this.hostfs = fileSystemProvider;
             this.explicitUserDir = explicitUserDir;
             this.userDir = userDir;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
         }
 
         @Override
@@ -866,13 +868,14 @@ final class FileSystems {
             if (!currentWorkingDirectory.isAbsolute()) {
                 throw new IllegalArgumentException("Current working directory must be absolute.");
             }
-            boolean isDirectory;
+            boolean nonDirectory;
             try {
-                isDirectory = Boolean.TRUE.equals(hostfs.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
+                nonDirectory = Boolean.FALSE.equals(hostfs.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
             } catch (IOException ioe) {
-                isDirectory = false;
+                // Support non-existent working directory.
+                nonDirectory = false;
             }
-            if (!isDirectory) {
+            if (nonDirectory) {
                 throw new IllegalArgumentException("Current working directory must be directory.");
             }
             if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
@@ -909,7 +912,7 @@ final class FileSystems {
             } else {
                 // The FileSystemProvider.isSameFile always resolves symlinks
                 // we need to use the default implementation comparing the canonical paths
-                return InternalFileSystem.super.isSameFile(path1, path2, options);
+                return PolyglotFileSystem.super.isSameFile(path1, path2, options);
             }
         }
 
@@ -960,9 +963,14 @@ final class FileSystems {
         }
     }
 
-    private static class DeniedIOFileSystem implements InternalFileSystem {
+    private static class DeniedIOFileSystem implements PolyglotFileSystem {
 
         DeniedIOFileSystem() {
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
         }
 
         @Override
@@ -1074,70 +1082,232 @@ final class FileSystems {
         }
     }
 
-    private static class LanguageHomeFileSystem extends DeniedIOFileSystem {
+    private static final class LanguageHomeFileSystem implements PolyglotFileSystem {
 
-        private final FileSystem fullIO;
+        private final FileSystem languageHomeFileSystem;
+        private final FileSystem customFileSystem;
         private volatile Set<Path> languageHomes;
 
-        LanguageHomeFileSystem() {
-            this.fullIO = newDefaultFileSystem();
+        LanguageHomeFileSystem(FileSystem languageHomeFileSystem, FileSystem customFileSystem) {
+            this.languageHomeFileSystem = languageHomeFileSystem;
+            this.customFileSystem = customFileSystem;
+            Class<? extends Path> languageHomeFileSystemPathType = this.languageHomeFileSystem.parsePath("").getClass();
+            Class<? extends Path> customFileSystemPathType = customFileSystem.parsePath("").getClass();
+            if (languageHomeFileSystemPathType != customFileSystemPathType) {
+                throw new IllegalArgumentException("Given FileSystem must have the same Path type as the default FileSystem.");
+            }
+            if (!languageHomeFileSystem.getSeparator().equals(customFileSystem.getSeparator())) {
+                throw new IllegalArgumentException("Given FileSystem must use the same separator character as the default FileSystem.");
+            }
+            if (!languageHomeFileSystem.getPathSeparator().equals(customFileSystem.getPathSeparator())) {
+                throw new IllegalArgumentException("Given FileSystem must use the same path separator character as the default FileSystem.");
+            }
+        }
+
+        @Override
+        public boolean isInternal() {
+            return (customFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) customFileSystem).isInternal();
+        }
+
+        @Override
+        public boolean hasAllAccess() {
+            return (customFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) customFileSystem).hasAllAccess();
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return (customFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) customFileSystem).hasNoAccess();
+        }
+
+        @Override
+        public Path parsePath(URI uri) {
+            return customFileSystem.parsePath(uri);
+        }
+
+        @Override
+        public Path parsePath(String path) {
+            return customFileSystem.parsePath(path);
         }
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             Path absolutePath = toNormalizedAbsolutePath(path);
             if (inLanguageHome(absolutePath)) {
-                if (modes.contains(AccessMode.WRITE)) {
-                    throw new IOException("Read-only file");
-                }
-                fullIO.checkAccess(absolutePath, modes, linkOptions);
-                return;
+                languageHomeFileSystem.checkAccess(absolutePath, modes, linkOptions);
+            } else {
+                customFileSystem.checkAccess(path, modes, linkOptions);
             }
-            super.checkAccess(path, modes, linkOptions);
         }
 
         @Override
-        public SeekableByteChannel newByteChannel(Path inPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            boolean read = options.contains(StandardOpenOption.READ);
-            boolean write = options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.DELETE_ON_CLOSE);
-            if (!read && !write) {
-                if (options.contains(StandardOpenOption.APPEND)) {
-                    write = true;
-                } else {
-                    read = true;
-                }
+        public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
+            Path absolutePath = toNormalizedAbsolutePath(dir);
+            if (inLanguageHome(absolutePath)) {
+                languageHomeFileSystem.createDirectory(absolutePath, attrs);
+            } else {
+                customFileSystem.createDirectory(dir, attrs);
             }
-            if (!write) {
-                assert read;
-                Path absolutePath = toNormalizedAbsolutePath(inPath);
-                if (inLanguageHome(absolutePath)) {
-                    return fullIO.newByteChannel(absolutePath, options, attrs);
-                }
+        }
+
+        @Override
+        public void delete(Path path) throws IOException {
+            Path absolutePath = toNormalizedAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                languageHomeFileSystem.delete(absolutePath);
+            } else {
+                customFileSystem.delete(path);
             }
-            return super.newByteChannel(inPath, options, attrs);
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            Path absolutePath = toNormalizedAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                return languageHomeFileSystem.newByteChannel(absolutePath, options, attrs);
+            } else {
+                return customFileSystem.newByteChannel(path, options, attrs);
+            }
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            Path absoluteDir = toNormalizedAbsolutePath(dir);
-            if (inLanguageHome(absoluteDir)) {
-                return fullIO.newDirectoryStream(absoluteDir, filter);
+            Path absolutePath = toNormalizedAbsolutePath(dir);
+            if (inLanguageHome(absolutePath)) {
+                return languageHomeFileSystem.newDirectoryStream(absolutePath, filter);
+            } else {
+                return customFileSystem.newDirectoryStream(dir, filter);
             }
-            return super.newDirectoryStream(dir, filter);
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            return customFileSystem.toAbsolutePath(path);
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            Path absolutePath = toNormalizedAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                return languageHomeFileSystem.toRealPath(path);
+            } else {
+                return customFileSystem.toRealPath(path);
+            }
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
             Path absolutePath = toNormalizedAbsolutePath(path);
             if (inLanguageHome(absolutePath)) {
-                return fullIO.readAttributes(absolutePath, attributes, options);
+                return languageHomeFileSystem.readAttributes(absolutePath, attributes, options);
+            } else {
+                return customFileSystem.readAttributes(path, attributes, options);
             }
-            return super.readAttributes(path, attributes, options);
         }
 
         @Override
-        public Path toAbsolutePath(Path path) {
-            return fullIO.toAbsolutePath(path);
+        public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
+            Path absolutePath = toNormalizedAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                languageHomeFileSystem.setAttribute(absolutePath, attribute, value, options);
+            } else {
+                customFileSystem.setAttribute(path, attribute, value, options);
+            }
+        }
+
+        @Override
+        public void createLink(Path link, Path existing) throws IOException {
+            Path absoluteLink = toNormalizedAbsolutePath(link);
+            Path absoluteExisting = toNormalizedAbsolutePath(existing);
+            boolean linkInHome = inLanguageHome(absoluteLink);
+            boolean existingInHome = inLanguageHome(absoluteExisting);
+            if (linkInHome && existingInHome) {
+                languageHomeFileSystem.createLink(absoluteLink, absoluteExisting);
+            } else if (!linkInHome && !existingInHome) {
+                customFileSystem.createLink(link, existing);
+            } else {
+                throw new IOException("Cross file system linking is not supported.");
+            }
+        }
+
+        @Override
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+            Path absoluteLink = toNormalizedAbsolutePath(link);
+            Path absoluteTarget = toNormalizedAbsolutePath(target);
+            boolean linkInHome = inLanguageHome(absoluteLink);
+            boolean targetInHome = inLanguageHome(absoluteTarget);
+            if (linkInHome && targetInHome) {
+                languageHomeFileSystem.createSymbolicLink(absoluteLink, target);
+            } else if (!linkInHome && !targetInHome) {
+                customFileSystem.createSymbolicLink(link, target);
+            } else {
+                throw new IOException("Cross file system linking is not supported.");
+            }
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) throws IOException {
+            Path absolutePath = toNormalizedAbsolutePath(link);
+            if (inLanguageHome(absolutePath)) {
+                return languageHomeFileSystem.readSymbolicLink(absolutePath);
+            } else {
+                return customFileSystem.readSymbolicLink(link);
+            }
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            languageHomeFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
+            customFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
+
+        @Override
+        public String getSeparator() {
+            return customFileSystem.getSeparator();
+        }
+
+        @Override
+        public String getPathSeparator() {
+            return customFileSystem.getPathSeparator();
+        }
+
+        @Override
+        public String getMimeType(Path path) {
+            Path absolutePath = toNormalizedAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                return languageHomeFileSystem.getMimeType(absolutePath);
+            } else {
+                return customFileSystem.getMimeType(path);
+            }
+        }
+
+        @Override
+        public Charset getEncoding(Path path) {
+            Path absolutePath = toNormalizedAbsolutePath(path);
+            if (inLanguageHome(absolutePath)) {
+                return languageHomeFileSystem.getEncoding(absolutePath);
+            } else {
+                return customFileSystem.getEncoding(path);
+            }
+        }
+
+        @Override
+        public Path getTempDirectory() {
+            return customFileSystem.getTempDirectory();
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            Path absolutePath1 = toNormalizedAbsolutePath(path1);
+            Path absolutePath2 = toNormalizedAbsolutePath(path2);
+            boolean path1InHome = inLanguageHome(absolutePath1);
+            boolean path2InHome = inLanguageHome(absolutePath2);
+            if (path1InHome && path2InHome) {
+                return languageHomeFileSystem.isSameFile(absolutePath1, absolutePath2);
+            } else if (!path1InHome && !path2InHome) {
+                return customFileSystem.isSameFile(path1, path2);
+            } else {
+                return false;
+            }
         }
 
         private Path toNormalizedAbsolutePath(Path path) {
@@ -1145,26 +1315,18 @@ final class FileSystems {
                 return path;
             }
             boolean needsToNormalize = !isNormalized(path);
-            Path absolutePath = fullIO.toAbsolutePath(path);
+            Path absolutePath = languageHomeFileSystem.toAbsolutePath(path);
             return needsToNormalize ? absolutePath.normalize() : absolutePath;
         }
 
-        @Override
-        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
-            if (inLanguageHome(currentWorkingDirectory)) {
-                fullIO.setCurrentWorkingDirectory(currentWorkingDirectory);
+        private static boolean isNormalized(Path path) {
+            for (Path name : path) {
+                String strName = name.toString();
+                if (".".equals(strName) || "..".equals(strName)) {
+                    return false;
+                }
             }
-            super.setCurrentWorkingDirectory(currentWorkingDirectory);
-        }
-
-        @Override
-        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            return fullIO.toRealPath(path, linkOptions);
-        }
-
-        @Override
-        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
-            return fullIO.isSameFile(path1, path2, options);
+            return true;
         }
 
         private boolean inLanguageHome(final Path path) {
@@ -1195,19 +1357,144 @@ final class FileSystems {
             }
             return res;
         }
+    }
 
-        private static boolean isNormalized(Path path) {
-            for (Path name : path) {
-                String strName = name.toString();
-                if (".".equals(strName) || "..".equals(strName)) {
-                    return false;
+    /**
+     * FileSystem implementation allowing only a read access. The write operations throw
+     * {@link SecurityException}.
+     */
+    private static class ReadOnlyFileSystem extends DeniedIOFileSystem {
+
+        private final FileSystem delegate;
+
+        ReadOnlyFileSystem(FileSystem fileSystem) {
+            this.delegate = fileSystem;
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return false;
+        }
+
+        @Override
+        public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
+            if (modes.contains(AccessMode.WRITE)) {
+                throw new IOException("Read-only file");
+            } else {
+                delegate.checkAccess(path, modes, linkOptions);
+            }
+        }
+
+        @Override
+        public SeekableByteChannel newByteChannel(Path inPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
+            boolean read = options.contains(StandardOpenOption.READ);
+            boolean write = options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.DELETE_ON_CLOSE);
+            if (!read && !write) {
+                if (options.contains(StandardOpenOption.APPEND)) {
+                    write = true;
+                } else {
+                    read = true;
                 }
             }
-            return true;
+            if (write) {
+                return super.newByteChannel(inPath, options, attrs);
+            } else {
+                return delegate.newByteChannel(inPath, options, attrs);
+            }
+        }
+
+        @Override
+        public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
+            return delegate.newDirectoryStream(dir, filter);
+        }
+
+        @Override
+        public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
+            return delegate.readAttributes(path, attributes, options);
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            return delegate.toAbsolutePath(path);
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) throws IOException {
+            return delegate.toAbsolutePath(link);
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+            super.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            return delegate.toRealPath(path, linkOptions);
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            return delegate.isSameFile(path1, path2, options);
+        }
+
+        @Override
+        public String getMimeType(Path path) {
+            return delegate.getMimeType(path);
+        }
+
+        @Override
+        public Charset getEncoding(Path path) {
+            return delegate.getEncoding(path);
         }
     }
 
-    private static final class InvalidFileSystem implements InternalFileSystem {
+    /**
+     * FileSystem implementation allowing only path resolution and comparison. The read ot write
+     * operations throw {@link SecurityException}.
+     */
+    private static final class PathOperationsOnlyFileSystem extends DeniedIOFileSystem {
+
+        private final FileSystem delegate;
+
+        PathOperationsOnlyFileSystem(FileSystem delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return false;
+        }
+
+        @Override
+        public Path toAbsolutePath(Path path) {
+            return delegate.toAbsolutePath(path);
+        }
+
+        @Override
+        public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
+            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+            super.setCurrentWorkingDirectory(currentWorkingDirectory);
+        }
+
+        @Override
+        public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
+            return delegate.toRealPath(path, linkOptions);
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            return delegate.isSameFile(path1, path2, options);
+        }
+    }
+
+    private static final class InvalidFileSystem implements PolyglotFileSystem {
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
 
         @Override
         public boolean hasAllAccess() {
@@ -1335,7 +1622,10 @@ final class FileSystems {
         }
     }
 
-    private interface InternalFileSystem extends FileSystem {
+    private interface PolyglotFileSystem extends FileSystem {
+
+        boolean isInternal();
+
         boolean hasAllAccess();
 
         boolean hasNoAccess();
