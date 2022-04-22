@@ -14,12 +14,19 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
+import java.util.stream.IntStream;
+
 public class ParallelGCImpl extends ParallelGC {
 
-    public final TaskQueue QUEUE = new TaskQueue("pargc");
+    public static final int WORKERS_COUNT = 2;
+    public static final TaskQueue QUEUE = new TaskQueue("pargc");
 
     @Override
     public void startWorkerThreads() {
+        IntStream.range(0, WORKERS_COUNT).forEach(this::startWorkerThread);
+    }
+
+    public void startWorkerThread(int n) {
         Log trace = Log.log();
         Thread t = new Thread() {
             @Override
@@ -29,14 +36,14 @@ public class ParallelGCImpl extends ParallelGC {
                 try {
                     while (!stopped) {
                         UnsignedWord token = QUEUE.get();
-                        trace.string("  got token ").unsigned(token).string(" on ").string(Thread.currentThread().getName()).newline();
+                        trace.string("  got token ").unsigned(token).string(" on PGCWorker-").unsigned(n).newline();
                     }
                 } catch (Throwable e) {
                     VMError.shouldNotReachHere(e.getClass().getName());
                 }
             }
         };
-        t.setName("ParallelGC");
+        t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
         t.start();
     }

@@ -773,8 +773,7 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                ParallelGCImpl pargc = (ParallelGCImpl) ImageSingletons.lookup(ParallelGC.class);
-                pargc.QUEUE.put(getCollectionEpoch());
+                ParallelGCImpl.QUEUE.put(getCollectionEpoch());
 
                 /* Visit all the Objects promoted since the snapshot, transitively. */
                 scanGreyObjects(true);
