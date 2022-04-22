@@ -71,17 +71,14 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
         builder.append(sourceSection.getSource().getName());
 
-        if (sourceSection.getStartLine() > 0) {
+        if (sourceSection.hasLines()) {
             builder.append(':');
             builder.append(sourceSection.getStartLine());
-
-            if (sourceSection.getStartColumn() > 0) {
-                builder.append(':');
-                builder.append(sourceSection.getStartColumn());
-            }
+        } else {
+            builder.append(":?");
         }
 
-        if (includeText && sourceSection.getCharLength() > 0) {
+        if (includeText && sourceSection.hasCharIndex() && sourceSection.getCharLength() > 0) {
             builder.append(" -> ");
             builder.append(sourceSection.getCharacters());
         }
