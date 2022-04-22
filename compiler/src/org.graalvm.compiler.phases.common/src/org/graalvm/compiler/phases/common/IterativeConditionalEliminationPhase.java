@@ -75,7 +75,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer);
+        return Objects.hash(this.getClass(), fullSchedule, canonicalizer);
     }
 
     @Override
@@ -90,6 +90,6 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
         IterativeConditionalEliminationPhase phase = (IterativeConditionalEliminationPhase) obj;
 
-        return this.getClass().getName().equals(phase.getClass().getName()) && this.fullSchedule == phase.fullSchedule && this.canonicalizer.equals(phase.canonicalizer);
+        return this.getClass().equals(phase.getClass()) && this.fullSchedule == phase.fullSchedule && this.canonicalizer.equals(phase.canonicalizer);
     }
 }

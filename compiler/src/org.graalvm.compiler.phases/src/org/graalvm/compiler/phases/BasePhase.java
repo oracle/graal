@@ -436,7 +436,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     @Override
     public int hashCode() {
-        return this.getClass().getName().hashCode();
+        return this.getClass().hashCode();
     }
 
     @Override
@@ -445,11 +445,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             return true;
         }
 
-        if (!(obj instanceof BasePhase)) {
-            return false;
-        }
-
-        return this.getClass().getName().equals(((BasePhase<?>) obj).getClass().getName());
+        return getClass().equals(obj.getClass());
     }
 
 }
