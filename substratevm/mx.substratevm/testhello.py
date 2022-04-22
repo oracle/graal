@@ -465,50 +465,19 @@ def test():
     execute("continue")
 
     exec_string = execute("info args")
-    rexp = [r"this = %s"%(address_pattern),
-            r"%s = %s"%(varname_pattern, address_pattern)]
+    # we canto be sure whether "this" or the argument available
+    # the call to println may get inlined in which case there is no
+    # guarantee that the args won't be optimized away
+    rexp = [r"this = %s"%(wildcard_pattern),
+            r"%s = %s"%(varname_pattern, wildcard_pattern)]
     checker = Checker("info args println", rexp)
     checker.check(exec_string)
 
     exec_string = execute("ptype this");
+    # the debugger shoudl still know the type of "this"
     rexp = [r"type = class java\.io\.PrintStream : public java\.io\.FilterOutputStream {"]
     checker = Checker("ptype this", rexp)
     checker.check(exec_string);
-
-    if can_print_data:
-        # print the java.io.PrintStream instance and check its type
-        exec_string = execute("print /x *this")
-        rexp = [r"%s = {"%(wildcard_pattern),
-                r"%s<java.io.FilterOutputStream> = {"%(spaces_pattern),
-                r"%s<java.io.OutputStream> = {"%(spaces_pattern),
-                r"%s<java.lang.Object> = {"%(spaces_pattern),
-                r"%s<_objhdr> = {"%(spaces_pattern),
-                r"%shub = %s,"%(spaces_pattern, address_pattern),
-                r"%sidHash = %s"%(spaces_pattern, address_pattern),
-                r"%s}, <No data fields>}, <No data fields>},"%(spaces_pattern),
-                r"%smembers of java.io.FilterOutputStream:"%(spaces_pattern),
-                r"%sclosed = 0x0"%(spaces_pattern),
-                r"%sout = %s,"%(spaces_pattern, address_pattern),
-                r"%scloseLock = %s"%(spaces_pattern, address_pattern),
-                r"%s},"%(spaces_pattern),
-                r"%smembers of java.io.PrintStream:"%(spaces_pattern),
-                r"%stextOut = %s,"%(spaces_pattern, address_pattern),
-                r"%scharOut = %s,"%(spaces_pattern, address_pattern),
-                r"%sautoFlush = 0x1,"%(spaces_pattern),
-                r"%sclosing = 0x0"%(spaces_pattern),
-                r"}"]
-
-        checker = Checker("print DefaultGreeterSystem.out", rexp)
-
-        checker.check(exec_string, skip_fails=True)
-
-        # print the hub name field and check it is java.io.PrintStream
-        # n.b. the expected String text is not necessarily null terminated
-        # so we need a wild card before the final quote
-        exec_string = execute("x/s this->hub->name->value->data")
-        checker = Checker("print PrintStream hub name",
-                          r"%s:%s\"java.io.PrintStream.*\""%(address_pattern, spaces_pattern))
-        checker.check(exec_string, skip_fails=False)
 
     ###
     # Tests for inlined methods
