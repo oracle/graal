@@ -35,6 +35,7 @@ import com.oracle.truffle.api.dsl.*;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -138,14 +139,14 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     @ExportMessage
-    public void initialize(Object[] realArgs, int numOfExpArgs, Frame frame,
-                     @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
-        realArguments = realArgs;
-        numberOfExplicitArguments = numOfExpArgs;
+    public void initialize(Object[] realArguments, int numberOfExplicitArguments, Frame frame,
+                     @Cached StackAllocationNode stackAllocationNode) {
+        this.realArguments = realArguments;
+        this.numberOfExplicitArguments = numberOfExplicitArguments;
 
         long stackSize = 0;
-        for (int i = numOfExpArgs; i < realArgs.length; i++) {
-            Object o = realArgs[i];
+        for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {
+            Object o = realArguments[i];
             if (o instanceof LLVMVarArgCompoundValue) {
                 stackSize += alignup(((LLVMVarArgCompoundValue) o).getSize());
             } else {
@@ -155,7 +156,13 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         }
         vaListStackPtr = stackAllocationNode.executeWithTarget(stackSize * Long.BYTES, frame);
 
-        assert numOfExpArgs <= realArguments.length;
+        // re-init
+        managedOffset = 0;
+        nativeSeekOffset = 0;
+        nativeOffset = 0;
+        nativized = false;
+
+        assert numberOfExplicitArguments <= this.realArguments.length;
     }
 
     // TODO: move it to the super class
@@ -480,21 +487,24 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
     @ExportMessage
     public void cleanup(@SuppressWarnings("unused") Frame frame) {
-        managedOffset = 0;
-        nativeOffset = 0;
+        // nop
     }
 
     @ExportMessage
     static class Copy {
 
         @Specialization(guards = {"!source.isNativized()"})
-        static void copyManaged(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, Frame frame,
-                                @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
+        static void copyManaged(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, Frame frame) {
             dest.realArguments = source.realArguments;
             dest.originalArgs = source.originalArgs;
             dest.expansions = source.expansions;
             dest.numberOfExplicitArguments = source.numberOfExplicitArguments;
             dest.vaListStackPtr = source.vaListStackPtr;
+
+            dest.managedOffset = 0;
+            dest.nativeSeekOffset = 0;
+            dest.nativeOffset = 0;
+            dest.nativized = false;
         }
 
         @Specialization(guards = {"source.isNativized()"})
@@ -502,26 +512,22 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         static void copyNative(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, Frame frame,
                                @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                                @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
-            // The source valist is just a holder of the native counterpart and thus the destination
-            // will not be set up as a managed va_list as it would be too complicated to restore the
-            // managed state from the native one.
-            vaListLibrary.copy(wrapperFactory.execute(source.vaListStackPtr), dest, frame);
+            copyManaged(source, dest, frame);
+            // vaListLibrary.copy(wrapperFactory.execute(source.vaListStackPtr), dest, frame);
         }
 
         @Specialization(limit = "1")
         @GenerateAOT.Exclude // TODO: Needed?
         static void copyManagedToMaybeVaPointer(LLVMDarwinAarch64VaListStorage source, LLVMMaybeVaPointer dest, Frame frame,
-                               @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode,
                                @CachedLibrary("dest") LLVMManagedWriteLibrary writeLibrary) {
             LLVMDarwinAarch64VaListStorage vaListDest = new LLVMDarwinAarch64VaListStorage();
-            copyManaged(source, vaListDest, frame, stackAllocationNode);
-            writeLibrary.writePointer(dest, 0, LLVMManagedPointer.create(vaListDest));
+            copyManaged(source, vaListDest, frame);
+            writeLibrary.writeGenericI64(dest, 0, vaListDest);
         }
 
         @Specialization
         @GenerateAOT.Exclude // recursion cut
         static void copyManagedToNative(LLVMDarwinAarch64VaListStorage source, NativeVAListWrapper dest, Frame frame,
-                                        @Cached.Exclusive @Cached StackAllocationNode stackAllocationNode,
                                         @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                                         @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
                                         @Cached.Exclusive @Cached LLVM80BitFloatOffsetStoreNode fp80bitRegSaveAreaStore,
@@ -532,16 +538,12 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
                                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOverflowArgAreaStore,
                                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                                         @Cached.Exclusive @Cached BranchProfile nativizedProfile,
-                                        @Cached NativeProfiledMemMove memMove,
-                                        @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
-            if (!source.isNativized()) {
-                source.toNative(i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                        pointerOverflowArgAreaStore, memMove, nativizedProfile);
+                                        @Cached NativeProfiledMemMove memMove) {
+            source.toNative(i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore,
+                    i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
+                    pointerOverflowArgAreaStore, memMove, nativizedProfile);
 
-            }
-            pointerOffsetStoreNode.executeWithTarget(dest.nativeVAListPtr, 0, LLVMManagedPointer.create(source));
-            boolean hmm = false;
-
+            pointerOffsetStoreNode.executeWithTarget(dest.nativeVAListPtr, 0, source.vaListStackPtr);
         }
 
         /*
@@ -653,43 +655,42 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         public abstract Object execute(Object pointer);
 
-        @Specialization(guards = "isGlobalVAList(p.getObject())")
-        protected Object createGlobalVAList(LLVMManagedPointer p) {
-            LLVMManagedPointer fallback = (LLVMManagedPointer) ((LLVMGlobalContainer) p.getObject()).getFallback();
-            return fallback.getObject();
-        }
-
-        @Specialization
-        protected Object createNativeWrapper(LLVMNativePointer p,
-                                             @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode) {
-            // LLVMPointer value = pointerOffsetLoadNode.executeWithTarget(p, 0);
-            // return new NativeVAListWrapper(value);
-            return new NativeVAListWrapper(p);
-        }
-
-        @Specialization(guards = "!isManagedVAList(p.getObject())")
-        protected Object createManagedWrapper(LLVMManagedPointer p) {
+        @Specialization(guards = "!isManagedPointer(p)")
+        protected Object createNativeWrapper(LLVMPointer p) {
                 return new NativeVAListWrapper(p);
         }
 
-        @Specialization(guards = "isManagedVAList(p.getObject())")
-        protected Object createManagedVAListWrapper(LLVMManagedPointer p) {
-            return p.getObject();
-        }
-
-        static boolean isManagedVAList(Object o) {
-            return o instanceof LLVMMaybeVaPointer;
-        }
-
-        static boolean isGlobalVAList(Object o) {
-            // TODO: should be done with ReadLib?
-            if (o instanceof LLVMGlobalContainer) {
-                LLVMGlobalContainer globalContainer = (LLVMGlobalContainer) o;
-                if (globalContainer.getFallback() instanceof LLVMManagedPointer) {
-                    return ((LLVMManagedPointer) globalContainer.getFallback()).getObject() instanceof LLVMDarwinAarch64VaListStorage;
-                }
+        @Specialization(limit = "3", guards = {"isManagedPointer(p)", "isGlobal(p)"})
+        @GenerateAOT.Exclude
+        protected Object extractFromGlobal(LLVMManagedPointer p,
+                   @Bind("getGlobal(p)") LLVMGlobalContainer global,
+                   @CachedLibrary("global") LLVMManagedReadLibrary readLibrary) {
+            Object ret = readLibrary.readGenericI64(global, 0);
+            if (ret instanceof LLVMDarwinAarch64VaListStorage) {
+                return ret;
             }
-            return false;
+            return new NativeVAListWrapper(p);
+        }
+
+        @Specialization(guards = "isManagedPointer(p)")
+        protected Object extractFromManaged(LLVMManagedPointer p) {
+            Object ret = p.getObject();
+            if (!(ret instanceof LLVMMaybeVaPointer)) {
+                CompilerDirectives.shouldNotReachHere("unhandled case: " + ret);
+            }
+            return ret;
+        }
+
+        static boolean isManagedPointer(Object o) {
+            return LLVMManagedPointer.isInstance(o);
+        }
+
+        static boolean isGlobal(Object o) {
+            return ((LLVMManagedPointer) o).getObject() instanceof LLVMGlobalContainer;
+        }
+
+        static LLVMGlobalContainer getGlobal(Object o) {
+            return (LLVMGlobalContainer) ((LLVMManagedPointer) o).getObject();
         }
     }
 
@@ -706,25 +707,31 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     @ImportStatic(LLVMVaListStorage.class)
     public static final class NativeVAListWrapper {
 
-        final LLVMPointer nativeVAListPtr;
+        LLVMPointer nativeVAListPtr;
         private int offset;
 
         public NativeVAListWrapper(LLVMPointer nativeVAListPtr) {
             this.nativeVAListPtr = nativeVAListPtr;
         }
+
+
         @ExportMessage
         static class Initialize {
 
-            static boolean isManagedPointer(NativeVAListWrapper nativeVAListWrapper) {
+            public static boolean isManagedPointer(NativeVAListWrapper nativeVAListWrapper) {
                 return nativeVAListWrapper.nativeVAListPtr instanceof LLVMManagedPointer;
             }
 
-            // @Specialization(guards = "isManagedPointer(self)")
-            @Specialization
+            public static Object getManagedStorage(NativeVAListWrapper self) {
+                return ((LLVMManagedPointer) self.nativeVAListPtr).getObject();
+            }
+
+            @Specialization(limit = "3", guards = "isManagedPointer(self)")
             @GenerateAOT.Exclude // TODO: Needed?
             static void initializeManaged(NativeVAListWrapper self, Object[] originalArgs,
                                    int numberOfExplicitArguments, Frame frame,
-                                   // @CachedLibrary("((LLVMManagedPointer) self.nativeVAListPtr).getObject()") LLVMManagedWriteLibrary writeLibrary,
+                                   @Bind("getManagedStorage(self)") Object managedStorage,
+                                   @CachedLibrary("managedStorage") LLVMManagedWriteLibrary writeLibrary,
                                    @Cached.Exclusive @Cached StackAllocationNode stackAllocationNode,
                                    @Cached.Exclusive @Cached LLVMI64OffsetStoreNode i64RegSaveAreaStore,
                                    @Cached.Exclusive @Cached LLVMI32OffsetStoreNode i32RegSaveAreaStore,
@@ -746,12 +753,14 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
                 LLVMDarwinAarch64VaListStorage vaListStorage = new LLVMDarwinAarch64VaListStorage();
                 vaListStorage.initialize(realArguments, numberOfExplicitArguments, frame, stackAllocationNode);
-                // writeLibrary.writeGenericI64(self.nativeVAListPtr, 0, vaListStorage);
-                pointerRegSaveAreaStore.executeWithTarget(self.nativeVAListPtr, 0, LLVMManagedPointer.create(vaListStorage));
+                writeLibrary.writeGenericI64(managedStorage, 0, vaListStorage);
 
-                // TODO: execute above already does toNative when storing to memory?
-                vaListStorage.toNative(i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
-                        pointerOverflowArgAreaStore, memMove, nativizedProfile);
+                if (vaListStorage.isNativized()) {
+                    CompilerDirectives.shouldNotReachHere("should not be nativized yet");
+                }
+                // // TODO: execute above already does toNative when storing to memory?
+                // vaListStorage.toNative(i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore, fp80bitOverflowArgAreaStore,
+                //         pointerOverflowArgAreaStore, memMove, nativizedProfile);
             }
 
         }
@@ -764,34 +773,49 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         @ExportMessage
         @ImportStatic({LLVMTypes.class, LLVMDarwinAarch64VaListStorage.class})
         static class Copy {
+            // TODO: how do I do that properly instead of semi copy/pasta?
+            static boolean isManagedPointer(NativeVAListWrapper nativeVAListWrapper) {
+                return Initialize.isManagedPointer(nativeVAListWrapper);
+            }
+
+            static Object getManagedStorage(NativeVAListWrapper self) {
+                return Initialize.getManagedStorage(self);
+            }
 
             @Specialization
             @GenerateAOT.Exclude // recursion cut
             static void copyToManagedObject(NativeVAListWrapper source, LLVMDarwinAarch64VaListStorage dest, Frame frame,
                                             @CachedLibrary("source") LLVMVaListLibrary vaListLibrary) {
-                vaListLibrary.copy(source, new NativeVAListWrapper(dest.vaListStackPtr), frame);
-                dest.nativized = true;
+                // vaListLibrary.copy(source, new NativeVAListWrapper(dest.vaListStackPtr), frame);
+                dest.vaListStackPtr = source.nativeVAListPtr.copy();
+                assert dest.nativized;
             }
 
-            @Specialization(limit = "1")
-            @GenerateAOT.Exclude // TODO: Needed?
+            @Specialization(limit = "3", guards = "isManagedPointer(source)")
+            @GenerateAOT.Exclude
             static void copyToMaybeVAList(NativeVAListWrapper source, LLVMMaybeVaPointer dest, Frame frame,
-                        @Shared("pointerOffsetLoadNode") @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode,
-                        @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode,
+                        @Bind("getManagedStorage(source)") Object managedStorage,
+                        @CachedLibrary("managedStorage") LLVMManagedReadLibrary readLibrary,
                         @CachedLibrary("dest") LLVMManagedWriteLibrary writeLibrary) {
-                LLVMManagedPointer vaListSourcePtr = (LLVMManagedPointer) pointerOffsetLoadNode.executeWithTarget(source.nativeVAListPtr, 0);
-                LLVMDarwinAarch64VaListStorage vaListSource = (LLVMDarwinAarch64VaListStorage) vaListSourcePtr.getObject();
+                Object value = readLibrary.readGenericI64(managedStorage, 0);
 
-                LLVMDarwinAarch64VaListStorage vaListDest = new LLVMDarwinAarch64VaListStorage();
-                LLVMDarwinAarch64VaListStorage.Copy.copyManaged(vaListSource, vaListDest, frame, stackAllocationNode);
-                writeLibrary.writePointer(dest, 0, LLVMManagedPointer.create(vaListDest));
+                if (value instanceof LLVMDarwinAarch64VaListStorage) {
+                    LLVMDarwinAarch64VaListStorage sourceStorage = (LLVMDarwinAarch64VaListStorage) value;
+                    LLVMDarwinAarch64VaListStorage destStorage = new LLVMDarwinAarch64VaListStorage();
+                    LLVMDarwinAarch64VaListStorage.Copy.copyManaged(sourceStorage, destStorage, frame);
+                    writeLibrary.writeGenericI64(dest, 0, destStorage);
+                } else {
+                    CompilerDirectives.shouldNotReachHere("value is: " + value);
+                }
             }
 
             @Specialization
             static void copyToNative(NativeVAListWrapper source, NativeVAListWrapper dest, @SuppressWarnings("unused") Frame frame,
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode) {
-                // TODO: is that enough?
-                pointerOffsetStoreNode.executeWithTarget(dest.nativeVAListPtr, 0, source.nativeVAListPtr);
+
+                dest.nativeVAListPtr = source.nativeVAListPtr.copy();
+                // TODO: is that enough
+                // pointerOffsetStoreNode.executeWithTarget(dest.nativeVAListPtr, 0, source.nativeVAListPtr);
             }
         }
 
