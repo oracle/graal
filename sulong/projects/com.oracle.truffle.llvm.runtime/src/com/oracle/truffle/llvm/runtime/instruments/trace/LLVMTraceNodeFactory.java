@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,10 +44,7 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 
 final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
-    private final TraceContext traceContext;
-
     LLVMTraceNodeFactory() {
-        this.traceContext = new TraceContext();
     }
 
     @Override
@@ -58,10 +55,10 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
             final RootNode rootNode = eventContext.getInstrumentedNode().getRootNode();
             assert rootNode != null;
             final SourceSection sourceSection = rootNode.getSourceSection();
-            return new RootTrace(traceContext, rootNode.getName(), toTraceLine(sourceSection, false));
+            return new RootTrace(rootNode.getName(), toTraceLine(sourceSection, false));
 
         } else if (eventContext.hasTag(StandardTags.StatementTag.class)) {
-            return new StatementTrace(traceContext, toTraceLine(eventContext.getInstrumentedSourceSection(), true));
+            return new StatementTrace(toTraceLine(eventContext.getInstrumentedSourceSection(), true));
 
         } else {
             throw new IllegalStateException("Unknown node for tracing: " + eventContext.getInstrumentedNode());
@@ -92,44 +89,18 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         return builder.toString();
     }
 
-    private static final class TraceContext {
-
-        static final String STACK_DEPTH_INDENT = ">>";
-
-        private int stackDepth = 0;
-
-        private void enterFunction() {
-            stackDepth++;
-        }
-
-        private void exitFunction() {
-            stackDepth--;
-        }
-
-        private int getStackDepth() {
-            return stackDepth;
-        }
-    }
-
     private abstract static class TraceNode extends ExecutionEventNode {
 
-        private final TraceContext context;
-
-        TraceNode(TraceContext context) {
-            this.context = context;
+        TraceNode() {
         }
 
         @TruffleBoundary
-        void trace(String message) {
-            LLVMContext.traceIRLog(String.format("%s %s", TraceContext.STACK_DEPTH_INDENT.repeat(context.getStackDepth()), message));
+        final void trace(String message) {
+            LLVMContext.traceIRLog(String.format("(Thread #%d) %s", Thread.currentThread().getId(), message));
         }
 
         @TruffleBoundary
         void flushTraceBuffer() {
-        }
-
-        TraceContext getTraceContext() {
-            return context;
         }
     }
 
@@ -137,8 +108,7 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
         private final String location;
 
-        private StatementTrace(TraceContext context, String location) {
-            super(context);
+        StatementTrace(String location) {
             this.location = location;
         }
 
@@ -155,9 +125,8 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         private final String exceptionPrefix;
 
         @TruffleBoundary
-        RootTrace(TraceContext context, String functionName, String sourceSection) {
-            super(context);
-            this.enterPrefix = String.format("Entering function %s at %s with arguments:", functionName, sourceSection);
+        RootTrace(String functionName, String sourceSection) {
+            this.enterPrefix = String.format("Entering function %s at %s with arguments: ", functionName, sourceSection);
             this.exitPrefix = "Leaving " + functionName;
             this.exceptionPrefix = "Exceptionally leaving " + functionName;
         }
@@ -169,7 +138,6 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
 
         @Override
         protected void onEnter(VirtualFrame frame) {
-            getTraceContext().enterFunction();
             traceFunctionArgs(frame.getArguments());
             flushTraceBuffer();
         }
@@ -177,14 +145,12 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         @Override
         protected void onReturnValue(VirtualFrame frame, Object result) {
             trace(exitPrefix);
-            getTraceContext().exitFunction();
             flushTraceBuffer();
         }
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             trace(exceptionPrefix);
-            getTraceContext().exitFunction();
             flushTraceBuffer();
         }
     }
