@@ -3494,18 +3494,19 @@ def _force_bash_launchers(launcher):
     launcher = remove_exe_suffix(launcher, require_suffix=False)
     launcher_name = basename(launcher)
 
-    only = _parse_cmd_arg('native_images')
-    if only is not None:
-        if isinstance(only, bool):
-            return not only
-        else:
-            return launcher_name not in only
+    only = _parse_cmd_arg('native_images', default_value=str(has_vm_suite()))
+    if isinstance(only, bool):
+        included = only
     else:
-        forced = _parse_cmd_arg('force_bash_launchers', default_value=str(not has_vm_suite()))
-        if isinstance(forced, bool):
-            return forced
-        else:
-            return launcher_name in forced
+        included = launcher_name in only
+
+    forced = _parse_cmd_arg('force_bash_launchers')
+    if forced is True:
+        included = False
+    elif isinstance(forced, list) and launcher_name in forced:
+        included = False
+
+    return not included
 
 
 def _skip_libraries(library):
@@ -3516,19 +3517,20 @@ def _skip_libraries(library):
         library = library.destination
     library_name = remove_lib_prefix_suffix(basename(library), require_suffix_prefix=False)
 
-    only = _parse_cmd_arg('native_images')
-    if only is not None:
-        if isinstance(only, bool):
-            return not only
-        else:
-            only = [lib[4:] for lib in only if lib.startswith('lib:')]
-            return library_name not in only
+    only = _parse_cmd_arg('native_images', default_value=str(has_vm_suite()))
+    if isinstance(only, bool):
+        included = only
     else:
-        skipped = _parse_cmd_arg('skip_libraries', default_value=str(not has_vm_suite()))
-        if isinstance(skipped, bool):
-            return skipped
-        else:
-            return library_name in skipped
+        only = [lib[4:] for lib in only if lib.startswith('lib:')]
+        included = library_name in only
+
+    skipped = _parse_cmd_arg('skip_libraries')
+    if skipped is True:
+        included = False
+    elif isinstance(skipped, list) and library_name in skipped:
+        included = False
+
+    return not included
 
 
 def _disabled_installables():
