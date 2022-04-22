@@ -58,7 +58,6 @@ public class MethodFlowsGraph {
     // parameters, sources and field loads are the possible data entry
     // points in the method
     private FormalParamTypeFlow[] parameters;
-    private InitialParamTypeFlow[] initialParameterFlows;
     private List<TypeFlow<?>> miscEntryFlows;
     private EconomicMap<EncodedNodeReference, TypeFlow<?>> nodeFlows;
     /*
@@ -98,9 +97,6 @@ public class MethodFlowsGraph {
             method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
         }
 
-        // initial parameter flows
-        initialParameterFlows = new InitialParamTypeFlow[parameterCount];
-
         // lookup the return type so that it is added to the universe even if the method is
         // never linked and parsed
         method.getSignature().getReturnType(method.getDeclaringClass());
@@ -133,8 +129,6 @@ public class MethodFlowsGraph {
                 parameters[i] = lookupCloneOf(bb, originalMethodFlowsGraph.getParameter(i));
             }
         }
-
-        initialParameterFlows = new InitialParamTypeFlow[originalMethodFlowsGraph.initialParameterFlows.length];
 
         nodeFlows = lookupClonesOf(bb, originalMethodFlowsGraph.nodeFlows);
         returnFlow = originalMethodFlowsGraph.getReturnFlow() != null ? lookupCloneOf(bb, originalMethodFlowsGraph.getReturnFlow()) : null;
@@ -211,15 +205,6 @@ public class MethodFlowsGraph {
     public void linkClones(final PointsToAnalysis bb) {
 
         MethodFlowsGraph originalMethodFlowsGraph = method.getTypeFlow().originalMethodFlows;
-
-        /* Link the initial parameter flows to the parameters. */
-        for (int i = 0; i < originalMethodFlowsGraph.initialParameterFlows.length; i++) {
-            InitialParamTypeFlow initialParameterFlow = originalMethodFlowsGraph.getInitialParameterFlow(i);
-            if (initialParameterFlow != null && parameters[i] != null) {
-                initialParameterFlow.addUse(bb, parameters[i]);
-                initialParameterFlows[i] = initialParameterFlow;
-            }
-        }
 
         for (TypeFlow<?> original : originalMethodFlowsGraph.linearizedGraph) {
             TypeFlow<?> clone = lookupCloneOf(bb, original);
@@ -385,20 +370,6 @@ public class MethodFlowsGraph {
 
     public TypeFlow<?>[] getParameters() {
         return parameters;
-    }
-
-    public void setInitialParameterFlow(InitialParamTypeFlow initialParameterFlow, int i) {
-        assert i >= 0 && i < this.initialParameterFlows.length;
-        initialParameterFlows[i] = initialParameterFlow;
-    }
-
-    public InitialParamTypeFlow getInitialParameterFlow(int i) {
-        assert i >= 0 && i < this.initialParameterFlows.length;
-        return initialParameterFlows[i];
-    }
-
-    public TypeFlow<?>[] getInitialParameterFlows() {
-        return initialParameterFlows;
     }
 
     public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
