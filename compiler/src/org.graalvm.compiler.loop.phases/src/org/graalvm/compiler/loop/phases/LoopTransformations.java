@@ -111,7 +111,7 @@ public abstract class LoopTransformations {
         inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
         loop.loopBegin().graph().getOptimizationLog()
-                .logAndIncrementCounter("LoopTransformations", "Peeling", loop.loopBegin())
+                .report("LoopTransformations", "Peeling", loop.loopBegin())
                 .setProperty("peelings", loop.loopBegin().peelings());
         if (mainExit != null) {
             adaptCountedLoopExitProbability(mainExit, frequencyBefore - 1D);
@@ -168,7 +168,7 @@ public abstract class LoopTransformations {
         // Canonicalize with the original canonicalizer to capture all simplifications
         canonicalizer.applyIncremental(graph, context, l.getNodes());
         loop.loopBegin().graph().getOptimizationLog()
-                .logAndIncrementCounter("LoopTransformations", "FullUnroll", loop.loopBegin());
+                .report("LoopTransformations", "FullUnroll", loop.loopBegin());
     }
 
     public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
@@ -181,7 +181,7 @@ public abstract class LoopTransformations {
         }
 
         loop.loopBegin().graph().getOptimizationLog()
-                .logAndIncrementCounter("LoopTransformations", "Unswitch", loop.loopBegin())
+                .report("LoopTransformations", "Unswitch", loop.loopBegin())
                 .setProperty("unswitches", loop.loopBegin().unswitches());
 
         // create new control split out of loop
@@ -233,7 +233,7 @@ public abstract class LoopTransformations {
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
         loop.loopBegin().graph().getOptimizationLog()
-                .logAndIncrementCounter("LoopTransformations", "PartialUnroll", loop.loopBegin())
+                .report("LoopTransformations", "PartialUnroll", loop.loopBegin())
                 .setProperty("unrollFactor", loop.loopBegin().getUnrollFactor());
         adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();

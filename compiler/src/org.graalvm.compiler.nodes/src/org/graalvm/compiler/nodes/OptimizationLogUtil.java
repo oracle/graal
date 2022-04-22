@@ -26,7 +26,16 @@ package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.graph.Node;
 
+/**
+ * Utility class to obtain information about nodes for the purpose of {@link OptimizationLog}.
+ */
 public class OptimizationLogUtil {
+    /**
+     * Returns the BCI of a node. First tries to get it from the {@link FrameState} after the execution of this node,
+     * otherwise returns the node's {@link org.graalvm.compiler.graph.NodeSourcePosition}.
+     * @param node the node whose BCI we want to find
+     * @return the BCI of the node
+     */
     public static Integer findBci(Node node) {
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;

@@ -25,7 +25,6 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -110,7 +109,7 @@ public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreP
                                     }
                                 }
                                 box.replaceAtUsages(boxUsageOnBoxedVal);
-                                graph.getOptimizationLog().logAndIncrementCounter("BoxNodeOptimization", "BoxUsageReplacement", box);
+                                graph.getOptimizationLog().report("BoxNodeOptimization", "BoxUsageReplacement", box);
                                 GraphUtil.removeFixedWithUnusedInputs(box);
                                 continue boxLoop;
                             }

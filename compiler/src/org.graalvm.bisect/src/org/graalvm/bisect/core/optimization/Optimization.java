@@ -30,8 +30,24 @@ import java.util.Map;
  * Represents an optimization in a compiled method at a particular BCI.
  */
 public interface Optimization {
+    /**
+     * Gets the name of this optimization. Roughly corresponds to the name of the compiler phase which performed this
+     * optimization.
+     * @return the name of this optimization
+     */
     String getOptimizationName();
-    String getCounterName();
+
+    /**
+     * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it should return a more
+     * specific description of the optimization.
+     * @return the name of the event that occurred
+     */
+    String getEventName();
+
+    /**
+     * Gets the map of additional properties of this optimization, mapped by the name of the property.
+     * @return the map of additional properties
+     */
     Map<String, Object> getProperties();
 
     /**

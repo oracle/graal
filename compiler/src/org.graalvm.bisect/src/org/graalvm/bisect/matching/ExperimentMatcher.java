@@ -149,7 +149,7 @@ public class ExperimentMatcher {
                     sb.append(indent[3])
                             .append(optimization.getOptimizationName())
                             .append(' ')
-                            .append(optimization.getCounterName())
+                            .append(optimization.getEventName())
                             .append(" at bci ").append(optimization.getBCI()).append('\n');
                     if (optimization.getProperties() == null) {
                         return;

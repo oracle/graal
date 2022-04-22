@@ -123,12 +123,12 @@ public class ExperimentParser {
         for (Object optimizationObject : optimizationObjects) {
             Map<String, Object> optimization = expectMap(optimizationObject, "root.optimizations[]");
             String optimizationName = expectString(optimization.get("optimizationName"), "root.optimizations[].optimizationName");
-            String counterName = expectString(optimization.get("counterName"), "root.optimizations[].counterName");
+            String eventName = expectString(optimization.get("eventName"), "root.optimizations[].eventName");
             Integer bci = expectIntegerNullable(optimization.get("bci"), "root.optimizations[].bci");
             optimization.remove("optimizationName");
-            optimization.remove("counterName");
+            optimization.remove("eventName");
             optimization.remove("bci");
-            builder.addOptimization(new OptimizationImpl(optimizationName, counterName, bci, optimization));
+            builder.addOptimization(new OptimizationImpl(optimizationName, eventName, bci, optimization));
         }
         return builder;
     }

@@ -528,7 +528,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
                 survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
                 // Don't kill the other branch immediately, see `processGuard`.
-                graph.getOptimizationLog().logAndIncrementCounter("ConditionalElimination", "KilledIf", node);
+                graph.getOptimizationLog().report("ConditionalElimination", "KilledIf", node);
                 return true;
             });
         }
@@ -724,7 +724,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                                 newPhi.addInput(valueAt);
                             }
                             phi.replaceAtUsagesAndDelete(newPhi);
-                            graph.getOptimizationLog().logAndIncrementCounter("ConditionalElimination", "ImprovedPhi", phi);
+                            graph.getOptimizationLog().report("ConditionalElimination", "ImprovedPhi", phi);
                         }
                     }
                 }

@@ -89,7 +89,7 @@ public class ExperimentParserTest {
                             "    \"optimizations\": [\n" +
                             "        {\n" +
                             "            \"optimizationName\": \"LoopTransformation\",\n" +
-                            "            \"counterName\": \"PartialUnroll\",\n" +
+                            "            \"eventName\": \"PartialUnroll\",\n" +
                             "            \"bci\": 68\n," +
                             "            \"unrollFactor\": 1\n" +
                             "        }\n" +
@@ -103,13 +103,13 @@ public class ExperimentParserTest {
                             "    \"optimizations\": [\n" +
                             "        {\n" +
                             "            \"optimizationName\": \"LoopTransformation\",\n" +
-                            "            \"counterName\": \"PartialUnroll\",\n" +
+                            "            \"eventName\": \"PartialUnroll\",\n" +
                             "            \"bci\": 2\n," +
                             "            \"unrollFactor\": 1\n" +
                             "        },\n" +
                             "        {\n" +
                             "            \"optimizationName\": \"LoopTransformation\",\n" +
-                            "            \"counterName\": \"PartialUnroll\",\n" +
+                            "            \"eventName\": \"PartialUnroll\",\n" +
                             "            \"bci\": null\n," +
                             "            \"unrollFactor\": 2\n" +
                             "        }\n" +

@@ -24,15 +24,17 @@
  */
 package org.graalvm.compiler.nodes.json;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+
 import java.util.List;
-import java.util.Map;
 
 public class JSONFormatter {
-    public static String formatJSON(Map<String, Object> map) {
+    public static String formatJSON(EconomicMap<String, Object> map) {
         return formatJSON(map, false);
     }
 
-    public static String formatJSON(Map<String, Object> map, boolean indent) {
+    public static String formatJSON(EconomicMap<String, Object> map, boolean indent) {
         StringBuilder sb = new StringBuilder();
         appendTo(sb, map, indent ? "    " : null, "");
         return sb.toString();
@@ -81,8 +83,8 @@ public class JSONFormatter {
     }
 
     static void appendValue(StringBuilder sb, Object value, String indent, String currentIndent) {
-        if (value instanceof Map<?, ?>) {
-            appendTo(sb, (Map<?, ?>) value, indent, currentIndent);
+        if (value instanceof EconomicMap<?, ?>) {
+            appendTo(sb, (EconomicMap<?, ?>) value, indent, currentIndent);
         } else if (value instanceof List<?>) {
             appendTo(sb, (List<?>) value, indent, currentIndent);
         } else if (value instanceof Integer || value instanceof Boolean || value == null) {
@@ -117,7 +119,7 @@ public class JSONFormatter {
         sb.append("]");
     }
 
-    static void appendTo(StringBuilder sb, Map<?, ?> contents, String indent, String currentIndent) {
+    static void appendTo(StringBuilder sb, EconomicMap<?, ?> contents, String indent, String currentIndent) {
         String newIndent = indent + currentIndent;
         if (indent != null) {
             sb.append(currentIndent);
@@ -127,7 +129,8 @@ public class JSONFormatter {
             sb.append('\n');
         }
         boolean comma = false;
-        for (Map.Entry<?, ?> entry : contents.entrySet()) {
+        MapCursor<?, ?> cursor = contents.getEntries();
+        while (cursor.advance()) {
             if (comma) {
                 if (indent != null) {
                     sb.append(",\n");
@@ -138,9 +141,9 @@ public class JSONFormatter {
             if (indent != null) {
                 sb.append(newIndent);
             }
-            sb.append(quote((String) entry.getKey()));
+            sb.append(quote((String) cursor.getKey()));
             sb.append(": ");
-            appendValue(sb, entry.getValue(), indent, newIndent);
+            appendValue(sb, cursor.getValue(), indent, newIndent);
             comma = true;
         }
         if (indent != null) {

@@ -30,12 +30,12 @@ import java.util.Objects;
 public class OptimizationImpl implements Optimization {
     private final Integer bci;
     private final String optimizationName;
-    private final String counterName;
+    private final String eventName;
     private final Map<String, Object> properties;
 
-    public OptimizationImpl(String optimizationName, String counterName, Integer bci, Map<String, Object> properties) {
+    public OptimizationImpl(String optimizationName, String eventName, Integer bci, Map<String, Object> properties) {
         this.optimizationName = optimizationName;
-        this.counterName = counterName;
+        this.eventName = eventName;
         this.bci = bci;
         this.properties = properties;
     }
@@ -46,8 +46,8 @@ public class OptimizationImpl implements Optimization {
     }
 
     @Override
-    public String getCounterName() {
-        return counterName;
+    public String getEventName() {
+        return eventName;
     }
 
     @Override
@@ -62,7 +62,7 @@ public class OptimizationImpl implements Optimization {
 
     @Override
     public int hashCode() {
-        return optimizationName.hashCode() + counterName.hashCode() + ((bci == null) ? -1 : bci.hashCode())
+        return optimizationName.hashCode() + eventName.hashCode() + ((bci == null) ? -1 : bci.hashCode())
                 + ((properties == null) ? -1 : properties.hashCode());
     }
 
@@ -73,6 +73,6 @@ public class OptimizationImpl implements Optimization {
         }
         OptimizationImpl other = (OptimizationImpl) object;
         return Objects.equals(bci, other.bci) && optimizationName.equals(other.optimizationName) &&
-                counterName.equals(other.counterName) && Objects.equals(properties, other.properties);
+                eventName.equals(other.eventName) && Objects.equals(properties, other.properties);
     }
 }

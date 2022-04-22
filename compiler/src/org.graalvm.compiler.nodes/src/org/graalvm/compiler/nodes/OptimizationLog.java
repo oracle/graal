@@ -24,15 +24,13 @@
  */
 package org.graalvm.compiler.nodes;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.json.JSONFormatter;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import java.io.IOException;
@@ -40,8 +38,6 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -51,13 +47,6 @@ import java.util.stream.Collectors;
  * in a single compilation and dumps them to a JSON file.
  */
 public class OptimizationLog {
-
-    public static class Options {
-        @Option(help = "Dump optimization log for each compilation " +
-                "to optimization_log/<execution-id>/<compilation-id>.json.", type = OptionType.Debug)
-        public static final OptionKey<Boolean> OptimizationLog = new OptionKey<>(false);
-    }
-
     /**
      * Describes the kind and location of one performed optimization in an optimization log.
      */
@@ -84,16 +73,16 @@ public class OptimizationLog {
      * immediately evaluated.
      */
     private static final class OptimizationEntryImpl implements OptimizationEntry {
-        private final Map<String, Object> map;
+        private final EconomicMap<String, Object> map;
 
-        private OptimizationEntryImpl(String optimizationName, String counterName, Integer bci) {
-            map = new HashMap<>();
+        private OptimizationEntryImpl(String optimizationName, String eventName, Integer bci) {
+            map = EconomicMap.create();
             map.put("optimizationName", optimizationName);
-            map.put("counterName", counterName);
+            map.put("eventName", eventName);
             map.put("bci", bci);
         }
 
-        private Map<String, Object> asJsonMap() {
+        private EconomicMap<String, Object> asJsonMap() {
             return map;
         }
 
@@ -111,7 +100,7 @@ public class OptimizationLog {
 
     /**
      * A dummy optimization entry that does not store nor evaluate its properties. Used in case the optimization log is
-     * disabled.
+     * disabled. The rationale is that it should not do any work if the log is disabled.
      */
     private static final class OptimizationEntryEmpty implements OptimizationEntry {
         private OptimizationEntryEmpty() { }
@@ -128,22 +117,20 @@ public class OptimizationLog {
     }
 
     private static final OptimizationEntryEmpty OPTIMIZATION_ENTRY_EMPTY = new OptimizationEntryEmpty();
+    private final StructuredGraph graph;
     private static final AtomicBoolean nodeSourcePositionWarningEmitted = new AtomicBoolean();
     private final ArrayList<OptimizationEntryImpl> optimizationEntries;
-    private final StructuredGraph graph;
     private final String compilationId;
     private final boolean optimizationLogEnabled;
 
     /**
-     * Constructs an optimization log bound with a given graph.
+     * Constructs an optimization log bound with a given graph. Optimization {@link OptimizationEntry entries} are stored
+     * iff {@link GraalOptions#OptimizationLog} is enabled.
      * @param graph the bound graph
-     * @param enableOptimizationLogConditional optimization logging enabled iff this is true
-     *                                         and {@link OptimizationLog.Options#OptimizationLog} is set
      */
-    public OptimizationLog(StructuredGraph graph, boolean enableOptimizationLogConditional) {
+    public OptimizationLog(StructuredGraph graph) {
         this.graph = graph;
-        optimizationLogEnabled = enableOptimizationLogConditional
-                && OptimizationLog.Options.OptimizationLog.getValue(graph.getOptions());
+        optimizationLogEnabled = GraalOptions.OptimizationLog.getValue(graph.getOptions());
         if (optimizationLogEnabled) {
             if (!GraalOptions.TrackNodeSourcePosition.getValue(graph.getOptions()) &&
                 !nodeSourcePositionWarningEmitted.getAndSet(true)) {
@@ -165,22 +152,22 @@ public class OptimizationLog {
      * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
      * feature is enabled.
      * @param optimizationName the name of the optimization (roughly matching the optimization phase)
-     * @param counterName the name of the event that occurred
+     * @param eventName the name of the event that occurred
      * @param bci the BCI of the most relevant node
      * @return an optimization entry in the optimization log that can take more properties
      */
-    public OptimizationEntry logAndIncrementCounter(String optimizationName, String counterName, Integer bci) {
+    public OptimizationEntry report(String optimizationName, String eventName, Integer bci) {
         if (graph.getDebug().isCountEnabled()) {
-            DebugContext.counter(optimizationName + "_" + counterName).increment(graph.getDebug());
+            DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
         }
         if (graph.getDebug().isLogEnabledForMethod()) {
-            graph.getDebug().log("Performed %s %s at bci %i", optimizationName, counterName, bci);
+            graph.getDebug().log("Performed %s %s at bci %i", optimizationName, eventName, bci);
         }
         if (graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL)) {
-            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, counterName);
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
         }
         if (optimizationLogEnabled) {
-            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, counterName, bci);
+            OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, bci);
             optimizationEntries.add(optimizationEntry);
             return optimizationEntry;
         }
@@ -192,12 +179,12 @@ public class OptimizationLog {
      * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
      * feature is enabled.
      * @param optimizationName the name of the optimization (roughly matching the optimization phase)
-     * @param counterName the name of the event that occurred
+     * @param eventName the name of the event that occurred
      * @param node the most relevant node
      * @return an optimization entry in the optimization log that can take more properties
      */
-    public OptimizationEntry logAndIncrementCounter(String optimizationName, String counterName, Node node) {
-        return logAndIncrementCounter(optimizationName, counterName, OptimizationLogUtil.findBci(node));
+    public OptimizationEntry report(String optimizationName, String eventName, Node node) {
+        return report(optimizationName, eventName, OptimizationLogUtil.findBci(node));
     }
 
     /**
@@ -217,8 +204,8 @@ public class OptimizationLog {
         stream.print(json);
     }
 
-    private Map<String, Object> asJsonMap() {
-        Map<String, Object> map = new HashMap<>();
+    private EconomicMap<String, Object> asJsonMap() {
+        EconomicMap<String, Object> map = EconomicMap.create();
         map.put("executionId", GraalServices.getExecutionID());
         String compilationMethodName = graph.compilationId().toString(CompilationIdentifier.Verbosity.NAME);
         map.put("compilationMethodName", compilationMethodName);
