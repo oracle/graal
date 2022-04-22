@@ -173,6 +173,9 @@ function(add_sulong_test TEST)
     include("${TEST_OPTIONS_PATH}" OPTIONAL)
 
     if(DEFINED SKIP_TEST)
+      set(SKIP_FILE "${OUTPUT_DIR}/test.skip")
+      file(GENERATE OUTPUT ${SKIP_FILE} CONTENT "")
+      install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${SKIP_FILE}" DESTINATION ${OUTPUT_DIR})
       return()
     endif()
 

@@ -660,9 +660,11 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
             abs_path = mx.join(out_dir_arch, file_path)
             archive_path = file_path if use_relpath else mx.basename(file_path)
 
-            # if the parent folder does not exist, the test has been skipped and should not be included
-            if mx.exists(mx.dirname(abs_path)):
-                yield abs_path, archive_path
+            # if test.skip exists the test should be skipped
+            if mx.exists(mx.join(mx.dirname(abs_path), "test.skip")):
+                continue
+
+            yield abs_path, archive_path
 
 
 class ExternalCMakeTestSuite(ExternalTestSuiteMixin, SulongCMakeTestSuite):  # pylint: disable=too-many-ancestors
