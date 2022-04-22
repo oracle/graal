@@ -51,13 +51,13 @@ public class GDSFileConnector extends GDSRESTConnector {
         return super.obtain("");
     }
 
-    static final String newToken = "newMockToken";
+    static final String MOCK_TOKEN_NEW = "newMockToken";
     String[] verEmInps;
 
     @Override
     public String sendVerificationEmail(String email, String licAddr, String oldToken) {
         verEmInps = new String[]{email, licAddr, oldToken};
-        return oldToken == null ? newToken : oldToken;
+        return oldToken == null ? MOCK_TOKEN_NEW : oldToken;
     }
 
 }
