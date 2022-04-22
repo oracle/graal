@@ -209,7 +209,7 @@ public class LLVMVaListStorage implements TruffleObject {
         return ((ArrayType) type).getElementType();
     }
 
-    protected static DataLayout findDataLayoutFromCurrentFrame() {
+    public static DataLayout findDataLayoutFromCurrentFrame() {
         RootCallTarget callTarget = (RootCallTarget) Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
         return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
@@ -272,7 +272,7 @@ public class LLVMVaListStorage implements TruffleObject {
     protected Object[] realArguments;
     protected int numberOfExplicitArguments;
 
-    protected final LLVMPointer vaListStackPtr;
+    public LLVMPointer vaListStackPtr;
     protected boolean nativized;
 
     protected LLVMVaListStorage(LLVMPointer vaListStackPtr) {

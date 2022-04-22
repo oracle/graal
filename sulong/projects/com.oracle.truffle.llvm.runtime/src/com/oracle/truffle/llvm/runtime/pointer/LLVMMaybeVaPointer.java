@@ -33,6 +33,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
@@ -48,11 +49,18 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin.LLVMDarwinAarch64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAArgNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.StackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 /**
  * On platforms such as on Windows VA lists objects are created by allocating a pointer sized object
@@ -112,11 +120,14 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     void initialize(Object[] realArgs, int numOfExpArgs, Frame frame,
+                    @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                     @Cached StackAllocationNode stackAllocationNode) {
-        LLVMX86_64_WinVaListStorage vaListInstance = new LLVMX86_64_WinVaListStorage();
+        // LLVMX86_64_WinVaListStorage vaListInstance = new LLVMX86_64_WinVaListStorage();
+        LLVMDarwinAarch64VaListStorage vaListInstance = new LLVMDarwinAarch64VaListStorage();
         vaListInstance.initialize(realArgs, numOfExpArgs, frame, stackAllocationNode);
         vaList = LLVMManagedPointer.create(vaListInstance);
         wasVAListPointer = true;
+        pointerOffsetStoreNode.executeWithTarget(address, 0, vaListInstance);
     }
 
     /**
@@ -131,8 +142,17 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
-    static Object shift(@SuppressWarnings("unused") LLVMMaybeVaPointer self, @SuppressWarnings("unused") Type type, @SuppressWarnings("unused") Frame frame) {
-        throw CompilerDirectives.shouldNotReachHere("Should not shift VA directly.");
+    static Object shift(LLVMMaybeVaPointer self, Type type, Frame frame,
+                        @Cached LLVMPointerLoadNode.LLVMPointerOffsetLoadNode loadPtr,
+                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+        if (self.vaList == null) {
+            LLVMPointer vaList = loadPtr.executeWithTarget(self.address, 0);
+            LLVMDarwinAarch64VaListStorage vaListInstance = new LLVMDarwinAarch64VaListStorage(vaList);
+            self.vaList = LLVMManagedPointer.create(vaListInstance);
+            self.wasVAListPointer = true;
+        }
+        assert self.wasVAListPointer;
+        return vaListLibrary.shift(self.vaList.getObject(), type, frame);
     }
 
     @ExportMessage
@@ -409,18 +429,71 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     @ExportMessage
     static class WriteGenericI64 {
 
-        @Specialization(limit = "3", guards = "self.isPointer()")
+        static boolean isVaListStorage(LLVMManagedPointer p) {
+            assert p.getOffset() == 0;
+            Object o = p.getObject();
+            return o instanceof LLVMVaListStorage || o instanceof LLVMX86_64_WinVaListStorage;
+        }
+
+        static boolean helperGuard(LLVMManagedPointer value) {
+            return LLVMManagedPointer.isInstance(value);
+        }
+
+        @Specialization(limit = "1", guards = {"self.isPointer()", "offset == 0", "helperGuard(value)", "isVaListStorage(value)"})
+        @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
+        static void writeVaListStorageManaged(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value,
+                         @Shared("pointerOffsetStoreNode") @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
+                         @CachedLibrary("value.getObject()") LLVMVaListLibrary vaListLibrary) {
+            assert offset == 0;
+            // hack: cleanup will reset the offset. should be copy instead?
+            vaListLibrary.cleanup(value.getObject(), null);
+            self.wasVAListPointer = true;
+            if (self.vaList != null) {
+                CompilerDirectives.shouldNotReachHere("this is bad");
+            }
+            self.vaList = value;
+            pointerOffsetStoreNode.executeWithTarget(self.address, 0, value.getObject());
+        }
+
+        @Specialization(guards = {"self.isPointer()", "offset == 0", "helperGuard(value)"})
+        @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
+        static void writeManaged(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value,
+                        @Shared("pointerOffsetStoreNode") @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode) {
+            self.nativeObjectAccess();
+            pointerOffsetStoreNode.executeWithTarget(self.address, 0, value.getObject());
+        }
+
+        @Specialization(guards = {"self.isPointer()", "offset == 0"})
+        @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
+        static void writeVaListStorageNative(LLVMMaybeVaPointer self, long offset, LLVMNativePointer value,
+                                       @Shared("pointerOffsetStoreNode") @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode) {
+            self.nativeObjectAccess();
+            pointerOffsetStoreNode.executeWithTarget(self.address, 0, value.asNative());
+        }
+
+        @Specialization(limit = "3", guards = {"self.isPointer()"})
         static void writeNative(LLVMMaybeVaPointer self, long offset, Object value,
-                        @CachedLibrary("value") LLVMNativeLibrary toNative) {
+                                @CachedLibrary("value") LLVMNativeLibrary toNative) {
+            if (value instanceof LLVMManagedPointer && ((LLVMManagedPointer) value).getObject() instanceof LLVMVaListStorage) {
+                CompilerDirectives.shouldNotReachHere("other specialization?");
+            }
+            // TODO: this is bad if it happens with a valist object
             self.nativeObjectAccess();
             long ptr = toNative.toNativePointer(value).asNative();
             LLVMLanguage.get(toNative).getLLVMMemory().putI64(toNative, self.getAddress() + offset, ptr);
         }
 
-        @Specialization(guards = {"!self.isPointer()", "offset == 0"})
-        static void writeVAList(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value) {
-            assert offset == 0;
+        @Specialization(limit = "3", guards = {"!self.isPointer()", "offset == 0"})
+        @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
+        static void writeVAList(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value,
+                         @CachedLibrary("value.getObject()") LLVMVaListLibrary vaListLibrary) {
+                assert offset == 0;
             assert value.getObject() == self.vaList.getObject();
+            long vaListNativeOffset = value.getOffset();
+            if (vaListNativeOffset == 0) {
+                CompilerDirectives.shouldNotReachHere("ever reached?");
+            }
+            vaListLibrary.seek(value.getObject(), vaListNativeOffset);
             self.vaList = value;
         }
 
@@ -439,6 +512,12 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     @Override
     @TruffleBoundary
     public String toString() {
-        return String.format("LLVMMaybeVAPointer (address = 0x%x, contents = %s)", address, vaList);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try {
+            return String.format("LLVMMaybeVAPointer (address = 0x%x, contents = %s)", interop.asPointer(address) , vaList);
+        } catch (UnsupportedMessageException e) {
+            e.printStackTrace();
+            return "no string";
+        }
     }
 }

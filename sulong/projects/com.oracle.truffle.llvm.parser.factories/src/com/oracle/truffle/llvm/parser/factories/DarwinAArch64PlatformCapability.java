@@ -36,7 +36,9 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.DarwinSyscall;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin.LLVMDarwinAarch64VaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin.LLVMDarwinAarch64VaListStorageFactory.Aarch64VAListPointerWrapperFactoryNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -76,8 +78,8 @@ final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<Darw
     }
 
     @Override
-    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
-        return new LLVMDarwinAarch64VaListStorage(rootNode, vaListStackPtr);
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
+        return new LLVMMaybeVaPointer(allocaNode, vaListStackPtr);
     }
 
     @Override
@@ -88,5 +90,10 @@ final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<Darw
     @Override
     public LLVMVaListStorage.VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
         return cached ? Aarch64VAListPointerWrapperFactoryNodeGen.create() : Aarch64VAListPointerWrapperFactoryNodeGen.getUncached();
+    }
+
+    @Override
+    public OS getOS() {
+        return OS.Darwin;
     }
 }
