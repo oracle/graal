@@ -19,6 +19,8 @@
     common.jdk17_weekly_bench_linux    + common.espresso_benchmark('jvm-ce-llvm', 'awfy:*'   , guest_jvm_config='array-based-safe', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-jvm-ce-awfy-array-based-safe-jdk17-linux-amd64'},
     common.jdk17_weekly_bench_linux    + common.espresso_benchmark('native-ce-llvm', 'awfy:*'                                     , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-native-ce-awfy-jdk17-linux-amd64'},
     common.jdk17_weekly_bench_linux    + common.espresso_benchmark('native-ce-llvm', 'awfy:*', guest_jvm_config='safe'            , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-native-ce-awfy-safe-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux    + common.espresso_benchmark('native-ce-llvm', 'awfy:*', guest_jvm_config='field-based'     , extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-native-ce-awfy-field-based-jdk17-linux-amd64'},
+    common.jdk17_weekly_bench_linux    + common.espresso_benchmark('native-ce-llvm', 'awfy:*', guest_jvm_config='field-based-safe', extra_args=['--vm.Xmx1g', '--vm.Xms1g'])         + {name: 'weekly-bench-espresso-native-ce-awfy-field-based-safe-jdk17-linux-amd64'},
 
     // AWFY interpreter benchmarks
     common.jdk17_weekly_bench_linux    + common.espresso_interpreter_benchmark('jvm-ce-llvm', 'awfy:*')                                                                              + {name: 'weekly-bench-espresso-jvm-ce-awfy_interpreter-jdk17-linux-amd64'},
