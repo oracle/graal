@@ -28,6 +28,7 @@ package com.oracle.svm.hosted.image;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -817,9 +818,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         protected final List<DebugLocalInfo> paramInfo;
         protected final DebugLocalInfo thisParamInfo;
 
-        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod method) {
-            super(method);
-            this.method = method;
+        NativeImageDebugBaseMethodInfo(ResolvedJavaMethod m) {
+            super(m);
+            // We occasionally see an AnalysisMethod as input to this constructor.
+            // That can happen if the points to analysis builds one into a node
+            // source position when building the initial graph. The global
+            // replacement that is supposed to ensure the compiler sees HostedXXX
+            // types rather than AnalysisXXX types appears to skip translating
+            // method references in node source positions. So, we do the translation
+            // here just to make sure we use a HostedMethod wherever possible.
+            method = promoteAnalysisToHosted(m);
             this.paramInfo = createParamInfo(method);
             // We use the target modifiers to decide where to install any first param
             // even though we may have added it according to whether method is static.
@@ -833,6 +841,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             } else {
                 this.thisParamInfo = paramInfo.remove(0);
             }
+        }
+
+        private ResolvedJavaMethod promoteAnalysisToHosted(ResolvedJavaMethod m) {
+            if (m instanceof AnalysisMethod) {
+                return heap.getUniverse().lookup(m);
+            }
+            if (!(m instanceof HostedMethod)) {
+                debugContext.log(DebugContext.DETAILED_LEVEL, "Method is neither Hosted nor Analysis : %s.%s%s", m.getDeclaringClass().getName(), m.getName(),
+                                m.getSignature().toMethodDescriptor());
+            }
+            return m;
         }
 
         /**
@@ -951,6 +970,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             return method.getModifiers();
         }
+
         @Override
         public boolean isConstructor() {
             return method.isConstructor();
@@ -1035,8 +1055,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @Override
         public int vtableOffset() {
             /*
-             * TODO - provide correct offset, not index. In Graal, the vtable is appended after
-             * the dynamicHub object, so can't just multiply by sizeof(pointer).
+             * TODO - provide correct offset, not index. In Graal, the vtable is appended after the
+             * dynamicHub object, so can't just multiply by sizeof(pointer).
              */
             return hostedMethod.hasVTableIndex() ? hostedMethod.getVTableIndex() : -1;
         }

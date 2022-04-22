@@ -245,8 +245,7 @@ public interface DebugInfoProvider {
         boolean isOverride();
 
         /*
-         * Return the unique type that owns this method.
-         * <p/>
+         * Return the unique type that owns this method. <p/>
          * 
          * @return the unique type that owns this method
          */
