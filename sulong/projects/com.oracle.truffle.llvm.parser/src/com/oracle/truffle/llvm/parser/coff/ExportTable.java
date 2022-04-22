@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.coff;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.llvm.parser.coff.PEFile.ImageDataDirectorySection;
@@ -46,6 +47,7 @@ import org.graalvm.collections.Pair;
  */
 public final class ExportTable {
     private final List<Pair<String, Export>> exports;
+    public static final ExportTable EMPTY = new ExportTable(Collections.emptyList());
 
     private ExportTable(List<Pair<String, Export>> exports) {
         this.exports = exports;

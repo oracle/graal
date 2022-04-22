@@ -175,7 +175,7 @@ public final class PEFile {
 
     private void loadExportData() {
         ImageDataDirectorySection section = getImageDataDirectory(ImageDataIndex.ExportTable, ".edata");
-        exportTable = section == null ? null : ExportTable.create(coffFile, section);
+        exportTable = section == null ? ExportTable.EMPTY : ExportTable.create(coffFile, section);
     }
 
     public List<String> getImportLibraries() {
