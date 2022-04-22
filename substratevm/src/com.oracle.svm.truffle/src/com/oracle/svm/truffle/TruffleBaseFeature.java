@@ -47,7 +47,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.hosted.heap.PodSupport;
+import com.oracle.truffle.api.staticobject.PodBasedStaticShape;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -745,11 +747,56 @@ final class Target_com_oracle_truffle_api_staticobject_StaticShape_Builder {
     }
 }
 
+@TargetClass(className = "com.oracle.truffle.api.staticobject.FieldBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<T> {
+    @Alias //
+    Class<?> storageSuperClass;
+
+    @Alias //
+    Class<T> storageFactoryInterface;
+
+    @Substitute
+    Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
+        Pod.Builder<T> builder;
+        if (parentShape == null) {
+            builder = Pod.Builder.createExtending(storageSuperClass, storageFactoryInterface);
+        } else {
+            if (parentShape instanceof PodBasedStaticShape) {
+                builder = Pod.Builder.createExtending((Pod) ((PodBasedStaticShape<T>) parentShape).pod);
+            } else {
+                throw new RuntimeException("Unexpected parent shape: " + parentShape);
+            }
+        }
+        ArrayList<Pair<Target_com_oracle_truffle_api_staticobject_StaticProperty, Pod.Field>> propertyFields = new ArrayList<>(staticProperties.size());
+        for (var staticProperty : staticProperties.values()) {
+            Pod.Field f = builder.addField(staticProperty.getPropertyType());
+            propertyFields.add(Pair.create(staticProperty, f));
+        }
+        Pod<T> pod = builder.build();
+        for (var entry : propertyFields) {
+            entry.getLeft().initOffset(entry.getRight().getOffset());
+        }
+        return Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape.create(storageSuperClass, pod.getFactory(), safetyChecks, pod);
+    }
+}
+
+@TargetClass(className = "com.oracle.truffle.api.staticobject.PodBasedStaticShape", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
+    @Alias
+    static native <T> Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod);
+}
+
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
     int offset;
+
+    @Alias //
+    native Class<?> getPropertyType();
+
+    @Alias
+    native void initOffset(int o);
 
     public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
         /*
