@@ -48,6 +48,6 @@
 
 #endif
 
-void __sulong_exit(int status);
+extern void __sulong_exit(int status) __attribute__((__noreturn__));
 
 #endif // _EXIT_H_

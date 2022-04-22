@@ -33,12 +33,12 @@
 #include <stdio.h>
 #include <locale.h>
 #include <graalvm/llvm/polyglot.h>
-#ifdef __linux__
-#include <elf.h>
-#else
 
 #include "exit.h"
 
+#ifdef __linux__
+#include <elf.h>
+#else
 #define AT_NULL 0
 #define AT_PLATFORM 15
 #define AT_RANDOM 25
