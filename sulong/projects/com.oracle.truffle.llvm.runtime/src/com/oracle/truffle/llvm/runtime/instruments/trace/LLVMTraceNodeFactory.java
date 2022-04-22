@@ -98,10 +98,6 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         final void trace(String message) {
             LLVMContext.traceIRLog(String.format("(Thread #%d) %s", Thread.currentThread().getId(), message));
         }
-
-        @TruffleBoundary
-        void flushTraceBuffer() {
-        }
     }
 
     private static final class StatementTrace extends TraceNode {
@@ -139,19 +135,16 @@ final class LLVMTraceNodeFactory implements ExecutionEventNodeFactory {
         @Override
         protected void onEnter(VirtualFrame frame) {
             traceFunctionArgs(frame.getArguments());
-            flushTraceBuffer();
         }
 
         @Override
         protected void onReturnValue(VirtualFrame frame, Object result) {
             trace(exitPrefix);
-            flushTraceBuffer();
         }
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
             trace(exceptionPrefix);
-            flushTraceBuffer();
         }
     }
 }
