@@ -43,8 +43,12 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.junit.Assert;
 import org.junit.Test;
@@ -79,7 +83,7 @@ public class HostInliningTest extends GraalCompilerTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
-        return Arrays.asList(TestRun.values());
+        return Arrays.asList(TestRun.DEFAULT);
     }
 
     @Test
@@ -105,14 +109,24 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testInInterpreter10");
         runTest("testInInterpreter11");
         runTest("testInInterpreter12");
+        runTest("testExplorationDepth0");
+        runTest("testExplorationDepth1");
+        runTest("testExplorationDepth2");
+        runTest("testExplorationDepth0Fail");
+        runTest("testExplorationDepth1Fail");
+        runTest("testExplorationDepth2Fail");
     }
 
     @SuppressWarnings("try")
     void runTest(String methodName) {
         ResolvedJavaMethod method = getResolvedJavaMethod(methodName);
-        OptionValues options = createHostInliningOptions(NODE_COST_LIMIT);
+        ExplorationDepth depth = method.getAnnotation(ExplorationDepth.class);
+        int explorationDepth = -1;
+        if (depth != null) {
+            explorationDepth = depth.value();
+        }
+        OptionValues options = createHostInliningOptions(NODE_COST_LIMIT, explorationDepth);
         StructuredGraph graph = parseForCompile(method, options);
-
         try {
             // call it so all method are initialized
             getMethod(methodName).invoke(null, 5);
@@ -121,10 +135,11 @@ public class HostInliningTest extends GraalCompilerTest {
         }
 
         try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
+            HighTierContext context = getEagerHighTierContext();
             if (run == TestRun.WITH_CONVERT_TO_GUARD) {
-                new ConvertDeoptimizeToGuardPhase().apply(graph, getDefaultHighTierContext());
+                new ConvertDeoptimizeToGuardPhase().apply(graph, context);
             }
-            new TruffleHostInliningPhase(createCanonicalizerPhase()).apply(graph, getDefaultHighTierContext());
+            new TruffleHostInliningPhase(createCanonicalizerPhase()).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);
             Set<String> found = new HashSet<>();
@@ -161,11 +176,22 @@ public class HostInliningTest extends GraalCompilerTest {
 
     }
 
-    static OptionValues createHostInliningOptions(int bytecodeInterpreterLimit) {
+    @Override
+    protected InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (method.getDeclaringClass().toJavaName().equals(getClass().getName())) {
+            return InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
+        }
+        return null;
+    }
+
+    static OptionValues createHostInliningOptions(int bytecodeInterpreterLimit, int explorationDepth) {
         EconomicMap<OptionKey<?>, Object> values = EconomicMap.create();
         values.put(TruffleHostInliningPhase.Options.TruffleHostInlining, true);
         values.put(HighTier.Options.Inline, false);
         values.put(TruffleHostInliningPhase.Options.TruffleHostInliningByteCodeInterpreterBudget, bytecodeInterpreterLimit);
+        if (explorationDepth != -1) {
+            values.put(TruffleHostInliningPhase.Options.TruffleHostInliningMaxExplorationDepth, explorationDepth);
+        }
         OptionValues options = new OptionValues(getInitialOptions(), values);
         return options;
     }
@@ -201,11 +227,9 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    @BytecodeParserNeverInline
     static void nonTrivialMethod() {
     }
 
-    @BytecodeParserNeverInline
     static void otherNonTrivalMethod() {
     }
 
@@ -219,12 +243,11 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @TruffleBoundary
-    @BytecodeParserNeverInline
     static void truffleBoundary() {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"nonTrivialMethod", "traceTransferToInterpreter"})
+    @ExpectNotInlined({"propagateDeopt", "nonTrivialMethod"})
     private static int testPropagateDeopt(int value) {
         if (value == 1) {
             propagateDeopt(); // inlined
@@ -238,7 +261,7 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"nonTrivialMethod", "traceTransferToInterpreter"})
+    @ExpectNotInlined({"nonTrivialMethod", "propagateDeoptLevelTwo"})
     private static int testPropagateDeoptTwoLevels(int value) {
         if (value == 1) {
             propagateDeoptLevelTwo(); // inlined
@@ -272,7 +295,6 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    @BytecodeParserNeverInline
     static int notExplorable(int value) {
         new HashMap<>().put(value, value);
         new HashMap<>().put(value, value);
@@ -305,7 +327,6 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    @BytecodeParserNeverInline
     static void becomesDirectAfterInline(A a) {
         a.foo(); // inlined
     }
@@ -316,14 +337,12 @@ public class HostInliningTest extends GraalCompilerTest {
 
     static final class B_extends_A implements A {
         @Override
-        @BytecodeParserNeverInline
         public void foo() {
         }
     }
 
     static final class C_extends_A implements A {
         @Override
-        @BytecodeParserNeverInline
         public void foo() {
         }
     }
@@ -416,7 +435,6 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    @BytecodeParserNeverInline
     static void testInInterpreter7Impl(A a) {
         if (CompilerDirectives.inInterpreter()) {
             a.foo(); // not inlined even if it becomes direct
@@ -444,7 +462,6 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
-    @BytecodeParserNeverInline
     static boolean constant() {
         return true;
     }
@@ -487,10 +504,72 @@ public class HostInliningTest extends GraalCompilerTest {
         return -1;
     }
 
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined("explorationDepth0")
+    @ExplorationDepth(0)
+    static int testExplorationDepth0Fail(int value) {
+        explorationDepth0();
+        return value;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExplorationDepth(1)
+    static int testExplorationDepth0(int value) {
+        explorationDepth0();
+        return value;
+    }
+
+    static void explorationDepth0() {
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined("explorationDepth1")
+    @ExplorationDepth(1)
+    static int testExplorationDepth1Fail(int value) {
+        explorationDepth1();
+        return value;
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExplorationDepth(2)
+    static int testExplorationDepth1(int value) {
+        explorationDepth1();
+        return value;
+    }
+
+    static void explorationDepth1() {
+        explorationDepth0();
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined("explorationDepth2")
+    @ExplorationDepth(2)
+    static int testExplorationDepth2Fail(int value) {
+        explorationDepth2();
+        return value;
+    }
+
+    static void explorationDepth2() {
+        explorationDepth1();
+    }
+
+    @BytecodeInterpreterSwitch
+    @ExplorationDepth(3)
+    static int testExplorationDepth2(int value) {
+        explorationDepth0();
+        return value;
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     @interface ExpectNotInlined {
         String[] value();
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @interface ExplorationDepth {
+        int value();
     }
 
     interface RuntimeCompilable {

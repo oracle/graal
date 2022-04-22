@@ -732,6 +732,15 @@ public abstract class GraalCompilerTest extends GraalTest {
         return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations());
     }
 
+    /**
+     * Returns a custom high tier context with custom {@link GraphBuilderPhase}.
+     */
+    protected final HighTierContext getEagerHighTierContext() {
+        return new HighTierContext(getProviders(),
+                        getEagerGraphBuilderSuite(),
+                        getOptimisticOptimizations());
+    }
+
     protected final MidTierContext getDefaultMidTierContext() {
         return new MidTierContext(getProviders(), getTargetProvider(), getOptimisticOptimizations(), null);
     }

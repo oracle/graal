@@ -60,7 +60,7 @@ public class HostInliningBytecodeInterpreterExampleTest extends GraalCompilerTes
         interpreterSwitch();
 
         ResolvedJavaMethod method = getResolvedJavaMethod(BytecodeNode.class, "execute");
-        OptionValues options = HostInliningTest.createHostInliningOptions(30000);
+        OptionValues options = HostInliningTest.createHostInliningOptions(30000, -1);
 
         StructuredGraph graph = parseForCompile(method, options);
         try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {

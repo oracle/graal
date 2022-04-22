@@ -102,12 +102,10 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         @Option(help = "When logging is activated for this phase enables printing of only explored, but ultimately not inlined call trees.")//
         public static final OptionKey<Boolean> TruffleHostInliningPrintExplored = new OptionKey<>(false);
-    }
 
-    /**
-     * Max exploration limit to avoid stack overflow errors in notorious cases.
-     */
-    static final int MAX_EXPLORATION_DEPTH = 1000;
+        @Option(help = "Determines the maximum call depth for exploration during host inlining.")//
+        public static final OptionKey<Integer> TruffleHostInliningMaxExplorationDepth = new OptionKey<>(1000);
+    }
 
     static final String INDENT = "  ";
 
@@ -380,6 +378,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                     continue;
                 }
 
+                boolean deoptimized = caller.deoptimized || isBlockOrDominatorContainedIn(block, deoptimizedBlocks);
                 if (isTransferToInterpreterMethod(newTargetMethod)) {
                     /*
                      * If we detect a deopt we mark the entire block as a deoptimized block. It is
@@ -396,8 +395,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         caller.propagatesDeopt = true;
                     }
                 }
-
-                boolean deoptimized = caller.deoptimized || isBlockOrDominatorContainedIn(block, deoptimizedBlocks);
                 boolean inInterpreter = guardedByInInterpreter || caller.inInterpreter || isBlockOrDominatorContainedIn(block, inInterpreterBlocks);
 
                 CallTree callee = new CallTree(caller, newInvoke, deoptimized, inInterpreter);
@@ -495,7 +492,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
         int graphSize = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
 
-        if (shouldContinueExploring(exploreRoot, exploreBudget, graphSize, depth)) {
+        if (shouldContinueExploring(context, exploreRoot, exploreBudget, graphSize, depth)) {
             /*
              * We propagate the subTreeSize to all callers until we reach the exploreRoot.
              */
@@ -523,8 +520,8 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static boolean shouldContinueExploring(CallTree exploreRoot, int exploreBudget, int graphSize, int depth) {
-        return exploreRoot.subTreeSize + graphSize <= exploreBudget && depth < MAX_EXPLORATION_DEPTH;
+    private static boolean shouldContinueExploring(InliningPhaseContext context, CallTree exploreRoot, int exploreBudget, int graphSize, int depth) {
+        return exploreRoot.subTreeSize + graphSize <= exploreBudget && depth < Options.TruffleHostInliningMaxExplorationDepth.getValue(context.options);
     }
 
     /**
