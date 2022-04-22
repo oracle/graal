@@ -932,7 +932,7 @@ public class NativeImage {
         }
     }
 
-    private int completeImageBuild(boolean hasCLibraryPath) {
+    private int completeImageBuild() {
         List<String> leftoverArgs = processNativeImageArgs();
 
         config.getBuilderClasspath().forEach(this::addImageBuilderClasspath);
@@ -952,13 +952,11 @@ public class NativeImage {
         completeOptionArgs();
         addTargetArguments();
 
-        if (!hasCLibraryPath) {
-            String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
-            String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
-                    .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
-                    .collect(Collectors.joining(",", oHCLibraryPath, ""));
-            addPlainImageBuilderArg(clibrariesBuilderArg);
-        }
+        String clibrariesPath = (targetPlatform != null) ? targetPlatform : platform;
+        String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
+                        .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
+                        .collect(Collectors.joining(",", oHCLibraryPath, ""));
+        imageBuilderArgs.add(0, clibrariesBuilderArg);
 
         if (printFlagsOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + "=" + printFlagsOptionQuery);
@@ -1379,7 +1377,7 @@ public class NativeImage {
                     throw showError("Requirements for building native images are not fulfilled [cause: " + e.getMessage() + "]", null);
                 }
             }
-            int buildStatus = nativeImage.completeImageBuild(config.getBuildArgs().stream().anyMatch((s) -> s.contains("-H:CLibraryPath")));
+            int buildStatus = nativeImage.completeImageBuild();
             if (buildStatus == 2) {
                 /* Perform fallback build */
                 build(new FallbackBuildConfiguration(nativeImage), nativeImageProvider);
