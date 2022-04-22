@@ -49,24 +49,6 @@ public abstract class WasmFrame {
         // no instances
     }
 
-    /* Stack operations */
-
-    public static void pushLong(VirtualFrame frame, int slot, long value) {
-        frame.setLongStatic(slot, value);
-    }
-
-    public static void pushInt(VirtualFrame frame, int slot, int value) {
-        frame.setIntStatic(slot, value);
-    }
-
-    public static void pushFloat(VirtualFrame frame, int slot, float value) {
-        frame.setFloatStatic(slot, value);
-    }
-
-    public static void pushDouble(VirtualFrame frame, int slot, double value) {
-        frame.setDoubleStatic(slot, value);
-    }
-
     public static void drop(VirtualFrame frame, int slot) {
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
@@ -78,8 +60,8 @@ public abstract class WasmFrame {
         frame.copyPrimitiveStatic(sourceSlot, targetSlot);
     }
 
-    public static long popLong(VirtualFrame frame, int slot) {
-        long result = frame.getLongStatic(slot);
+    public static boolean popBoolean(VirtualFrame frame, int slot) {
+        boolean result = frame.getIntStatic(slot) != 0;
         if (CompilerDirectives.inCompiledCode()) {
             // Needed to avoid keeping track of popped slots in FrameStates.
             frame.clearPrimitiveStatic(slot);
@@ -96,6 +78,23 @@ public abstract class WasmFrame {
         return result;
     }
 
+    public static void pushInt(VirtualFrame frame, int slot, int value) {
+        frame.setIntStatic(slot, value);
+    }
+
+    public static long popLong(VirtualFrame frame, int slot) {
+        long result = frame.getLongStatic(slot);
+        if (CompilerDirectives.inCompiledCode()) {
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.clearPrimitiveStatic(slot);
+        }
+        return result;
+    }
+
+    public static void pushLong(VirtualFrame frame, int slot, long value) {
+        frame.setLongStatic(slot, value);
+    }
+
     public static float popFloat(VirtualFrame frame, int slot) {
         float result = frame.getFloatStatic(slot);
         if (CompilerDirectives.inCompiledCode()) {
@@ -105,6 +104,10 @@ public abstract class WasmFrame {
         return result;
     }
 
+    public static void pushFloat(VirtualFrame frame, int slot, float value) {
+        frame.setFloatStatic(slot, value);
+    }
+
     public static double popDouble(VirtualFrame frame, int slot) {
         double result = frame.getDoubleStatic(slot);
         if (CompilerDirectives.inCompiledCode()) {
@@ -112,5 +115,9 @@ public abstract class WasmFrame {
             frame.clearPrimitiveStatic(slot);
         }
         return result;
+    }
+
+    public static void pushDouble(VirtualFrame frame, int slot, double value) {
+        frame.setDoubleStatic(slot, value);
     }
 }

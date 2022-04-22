@@ -944,7 +944,9 @@ public abstract class Accessor {
 
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
 
-        public abstract int getStaticMode(FrameDescriptor descriptor);
+        public abstract boolean usesAllStaticMode(FrameDescriptor descriptor);
+
+        public abstract boolean usesMixedStaticMode(FrameDescriptor descriptor);
     }
 
     public abstract static class ExceptionSupport extends Support {

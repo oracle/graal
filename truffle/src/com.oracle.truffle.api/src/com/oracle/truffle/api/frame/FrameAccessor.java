@@ -58,8 +58,13 @@ final class FrameAccessor extends Accessor {
         }
 
         @Override
-        public int getStaticMode(FrameDescriptor descriptor) {
-            return descriptor.staticMode;
+        public boolean usesAllStaticMode(FrameDescriptor descriptor) {
+            return descriptor.staticMode == FrameDescriptor.ALL_STATIC_MODE;
+        }
+
+        @Override
+        public boolean usesMixedStaticMode(FrameDescriptor descriptor) {
+            return descriptor.staticMode == FrameDescriptor.MIXED_STATIC_MODE;
         }
     }
 }

@@ -79,15 +79,15 @@ public final class FrameDescriptor implements Cloneable {
     /**
      * @since 22.2
      */
-    public static final int NO_STATIC_MODE = 1;
+    static final int NO_STATIC_MODE = 1;
     /**
      * @since 22.2
      */
-    public static final int ALL_STATIC_MODE = 2;
+    static final int ALL_STATIC_MODE = 2;
     /**
      * @since 22.2
      */
-    public static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
+    static final int MIXED_STATIC_MODE = NO_STATIC_MODE | ALL_STATIC_MODE;
 
     private final Object defaultValue;
     private final ArrayList<FrameSlot> slots = new ArrayList<>();
@@ -1020,7 +1020,7 @@ public final class FrameDescriptor implements Cloneable {
          */
         public FrameDescriptor build() {
             return new FrameDescriptor(defaultValue, Arrays.copyOf(tags, size), names == null ? null : Arrays.copyOf(names, size), infos == null ? null : Arrays.copyOf(infos, size), descriptorInfo,
-                            staticMode != 0 ? staticMode : 1);
+                            staticMode != 0 ? staticMode : NO_STATIC_MODE);
         }
     }
 }

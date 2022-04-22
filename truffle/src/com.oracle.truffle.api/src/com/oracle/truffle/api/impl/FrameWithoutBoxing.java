@@ -135,8 +135,8 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
         final int size = descriptor.getSize();
         final int indexedSize = descriptor.getNumberOfSlots();
         final int auxiliarySize = descriptor.getNumberOfAuxiliarySlots();
-        final int staticMode = DefaultRuntimeAccessor.FRAME.getStaticMode(descriptor);
         Object defaultValue = descriptor.getDefaultValue();
+        final Accessor.FrameSupport frameSupport = DefaultRuntimeAccessor.FRAME;
         final Object[] localsArray;
         final long[] primitiveLocalsArray;
         final byte[] tagsArray;
@@ -167,9 +167,9 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
             }
             indexedPrimitiveLocalsArray = new long[indexedSize];
             indexedTagsArray = new byte[indexedSize];
-            if (staticMode == FrameDescriptor.ALL_STATIC_MODE) {
+            if (frameSupport.usesAllStaticMode(descriptor)) {
                 Arrays.fill(indexedTagsArray, STATIC_TAG);
-            } else if (staticMode == FrameDescriptor.MIXED_STATIC_MODE) {
+            } else if (frameSupport.usesMixedStaticMode(descriptor)) {
                 for (int slot = 0; slot < indexedTagsArray.length; slot++) {
                     if (descriptor.getSlotKind(slot) == FrameSlotKind.Static) {
                         indexedTagsArray[slot] = STATIC_TAG;
@@ -837,7 +837,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setByteStatic(int slot, byte value) {
         assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
-        indexedPrimitiveLocals[slot] = value & INT_MASK;
+        indexedPrimitiveLocals[slot] = extend(value);
     }
 
     @Override
@@ -861,7 +861,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setIntStatic(int slot, int value) {
         assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
-        indexedPrimitiveLocals[slot] = value & INT_MASK;
+        indexedPrimitiveLocals[slot] = extend(value);
     }
 
     @Override
@@ -885,7 +885,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public void setFloatStatic(int slot, float value) {
         assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_WRITE;
-        indexedPrimitiveLocals[slot] = Float.floatToRawIntBits(value) & INT_MASK;
+        indexedPrimitiveLocals[slot] = extend(Float.floatToRawIntBits(value));
     }
 
     @Override
@@ -916,6 +916,7 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     public void clearPrimitiveStatic(int slot) {
         assert indexedTags[slot] == STATIC_TAG : UNEXPECTED_STATIC_CLEAR;
         if (CompilerDirectives.inCompiledCode()) {
+            // Avoids keeping track of cleared frame slots in FrameStates
             indexedPrimitiveLocals[slot] = 0L;
         }
     }
