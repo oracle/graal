@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -91,6 +91,16 @@ public final class LLVMStack {
 
     private boolean isAllocated() {
         return stackPointer != 0;
+    }
+
+    @Override
+    @TruffleBoundary
+    public String toString() {
+        if (!isAllocated()) {
+            return "StackPointer (unallocated)";
+        } else {
+            return String.format("StackPointer (0x%x)", stackPointer);
+        }
     }
 
     /**
