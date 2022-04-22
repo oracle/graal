@@ -54,34 +54,34 @@ Feel free to try this out on your own applications or by following these instruc
 4. Place a line breakpoint on the first line in `runDemo()`.
 5. Setup the Run configurations to run with Java on Truffle and press Debug. You will see:
 
-    ![debug-1](/resources/img/java-on-truffle/debug-1.png)
+    ![](images/debug-1.png)
 
 6. While paused at the breakpoint, extract a method from the body of `runDemo()`:
 
-    ![debug-2](/resources/img/java-on-truffle/debug-2.png)
+    ![](images/debug-2.png)
 
 7. Reload the changes by navigating to Run -> Debugging Actions -> Reload Changed Classes:
 
-    ![debug-3](/resources/img/java-on-truffle/debug-3.png)
+    ![](images/debug-3.png)
 
 8. Verify that the change was applied by noticing the `<obsolete>:-1` current frame in the Debug -> Frames view:
 
-    ![debug-4](/resources/img/java-on-truffle/debug-4.png)
+    ![](images/debug-4.png)
 
 9. Place a breakpoint on the first line of the new extracted method and press Resume Program. The breakpoint will hit:
 
-    ![debug-5](/resources/img/java-on-truffle/debug-5.png)
+    ![](images/debug-5.png)
 
 10. Try to change the access modifiers of `printRandom()` from `private` to `public static`. Reload the changes. Press Resume Program to verify the change was applied:
 
-    ![debug-6](/resources/img/java-on-truffle/debug-6.png)
+    ![](images/debug-6.png)
 
 Watch video version of the enhanced HotSwap capabilities with Java on Truffle demo.
 
 <div class="row">
   <div class="col-sm-12">
     <div class="vlog__video">
-      <img src="/resources/img/java-on-truffle/enhanced-hotswap-capabilities-demo.png" alt="video_1">
+      <img src="images/enhanced-hotswap-capabilities-demo.png" alt="video_1">
           <a href="#" data-video="gfuvvV6mplo" class="btn btn-primary btn-primary--filled js-popup">watch video</a>
     </div>
   </div>
