@@ -30,6 +30,7 @@ import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -288,7 +289,7 @@ public class GraalHotSpotVMConfigAccess {
     public <T> T verifyConstant(String name, Class<T> type, T expect) {
         if (vmConstants.containsKey(name)) {
             T value = access.getConstant(name, type, expect);
-            if (value != expect) {
+            if (!Objects.equals(value, expect)) {
                 recordError(name, unexpected, String.valueOf(value));
             }
         }
