@@ -745,6 +745,9 @@ public abstract class Launcher {
     private boolean parseHelpArg(String arg) {
         // legacy behaviour support
         if ("--help:expert".equals(arg)) {
+            out.println("");
+            out.println("NOTE: The --help:expert option is deprecated and will be removed.");
+            out.println("");
             if (helpArg == null) {
                 helpArg = "";
             }
