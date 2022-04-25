@@ -580,12 +580,9 @@ public class CompilationResultBuilder {
         frameContext.enter(this);
         AbstractBlockBase<?> previousBlock = null;
         Writer dumpBBInfoWriter = null;
-        if (DebugOptions.DumpBBRelativePCAndFreq.getValue(options)) {
+        if (debug.isDumpEnabledForMethod() && DebugOptions.DumpBBRelativePCAndFreq.getValue(options)) {
             try {
-// final String blockDirectory =
-// PathUtilities.createDirectories(PathUtilities.getPath(DebugOptions.DumpPath.getValue(options),
-// "blocks_info"));
-                final String dumpBBInfoPath = PathUtilities.getPath(debug.getDumpPath("", true), "block_info");
+                final String dumpBBInfoPath = PathUtilities.getPath(debug.getDumpPath(".blocks", true), "block_info");
                 dumpBBInfoWriter = new FileWriter(dumpBBInfoPath);
             } catch (IOException e) {
                 throw debug.handle(e);
