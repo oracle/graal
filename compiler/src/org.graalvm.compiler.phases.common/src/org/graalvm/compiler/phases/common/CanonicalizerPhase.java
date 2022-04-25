@@ -29,6 +29,7 @@ import static org.graalvm.compiler.phases.common.CanonicalizerPhase.Canonicalize
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
@@ -233,7 +234,43 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return NodeView.DEFAULT;
     }
 
-    protected class Instance extends Phase {
+    @Override
+    public int hashCode() {
+        if (customSimplification == null) {
+            return Objects.hash(this.getClass().hashCode(), features.toString());
+        }
+
+        return Objects.hash(this.getClass(), features.toString(),
+                        customSimplification.getClass().getName());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof CanonicalizerPhase)) {
+            return false;
+        }
+
+        CanonicalizerPhase phase = (CanonicalizerPhase) obj;
+
+        if (this.customSimplification == null && phase.customSimplification != null) {
+            return false;
+        }
+
+        if (this.customSimplification != null && phase.customSimplification == null) {
+            return false;
+        }
+
+        return this.getClass().equals(phase.getClass()) &&
+                        this.features.equals(phase.features) &&
+                        ((this.customSimplification == null && phase.customSimplification == null) ||
+                                        this.customSimplification.getClass().equals(phase.customSimplification.getClass()));
+    }
+
+    class Instance extends Phase {
 
         private final StructuredGraph initialGraph;
         private final CoreProviders context;
@@ -261,7 +298,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             this(graph, context, workingSet, newNodesMark, false);
         }
 
-        protected Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean isFinalCanonicalization) {
+        Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean isFinalCanonicalization) {
             this.initialGraph = graph;
             this.context = context;
             this.initWorkingSet = workingSet;
