@@ -135,8 +135,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
-import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
-import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -711,7 +709,7 @@ public class CompileQueue {
     private boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
         if (invoke.getInvokeKind().isDirect()) {
             HostedMethod singleCallee = (HostedMethod) invoke.callTarget().targetMethod();
-            if (makeInlineDecision(invoke, singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
+            if (makeInlineDecision(singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
                 if (firstInline) {
                     graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before inlining");
                 }
@@ -724,18 +722,14 @@ public class CompileQueue {
         return false;
     }
 
-    private boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
+    private boolean makeInlineDecision(HostedMethod callee) {
         if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
             return false;
         }
-        if (callee.shouldBeInlined() || callerAnnotatedWith(invoke, AlwaysInlineAllCallees.class)) {
+        if (callee.shouldBeInlined()) {
             return true;
         }
         if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
-            return true;
-        }
-        AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
-        if (selectCallees != null && Arrays.stream(selectCallees.callees()).anyMatch(c -> c.equals(callee.getQualifiedName()))) {
             return true;
         }
         return false;
