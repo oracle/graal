@@ -191,7 +191,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     self.espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='hosted', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']),
 
   espresso_interpreter_benchmark(env, suite, host_jvm=null):
-    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '1']),
+    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '10']),
 
   scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=[]):
     self.espresso_benchmark(
