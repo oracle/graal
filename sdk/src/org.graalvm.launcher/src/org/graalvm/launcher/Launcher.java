@@ -745,6 +745,9 @@ public abstract class Launcher {
     private boolean parseHelpArg(String arg) {
         // legacy behaviour support
         if ("--help:expert".equals(arg)) {
+            if (helpArg == null) {
+                helpArg = "";
+            }
             return true;
         }
         if ("--help:internal".equals(arg)) {
