@@ -531,6 +531,11 @@ public final class GraalFeature implements Feature {
                 parse = true;
                 graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
                                 .method(method)
+                                /*
+                                 * Needed for computation of the list of all runtime compilable
+                                 * methods in TruffleFeature.
+                                 */
+                                .recordInlinedMethods(true)
                                 .build();
             }
 
