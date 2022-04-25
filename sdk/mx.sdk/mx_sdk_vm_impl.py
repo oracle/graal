@@ -3510,14 +3510,15 @@ def _force_bash_launchers(launcher):
     """
     launcher_name = _get_launcher_name(launcher)
 
-    only = _parse_cmd_arg('native_images', default_value=str(has_vm_suite()))
+    forced = _parse_cmd_arg('force_bash_launchers')
+    default = has_vm_suite() or forced is not None # for compatibility with legacy behavior
+    only = _parse_cmd_arg('native_images', default_value=str(default))
     only = _expand_native_images_list(only)
     if isinstance(only, bool):
         included = only
     else:
         included = launcher_name in only
 
-    forced = _parse_cmd_arg('force_bash_launchers')
     if forced is True:
         included = False
     elif isinstance(forced, list) and launcher_name in forced:
@@ -3532,7 +3533,9 @@ def _skip_libraries(library):
     """
     library_name = _get_library_name(library)
 
-    only = _parse_cmd_arg('native_images', default_value=str(has_vm_suite()))
+    skipped = _parse_cmd_arg('skip_libraries')
+    default = has_vm_suite() or skipped is not None # for compatibility with legacy behavior
+    only = _parse_cmd_arg('native_images', default_value=str(default))
     only = _expand_native_images_list(only)
     if isinstance(only, bool):
         included = only
@@ -3540,7 +3543,6 @@ def _skip_libraries(library):
         only = [lib[4:] for lib in only if lib.startswith('lib:')]
         included = library_name in only
 
-    skipped = _parse_cmd_arg('skip_libraries')
     if skipped is True:
         included = False
     elif isinstance(skipped, list) and library_name in skipped:
