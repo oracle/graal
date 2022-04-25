@@ -24,25 +24,23 @@
  */
 package org.graalvm.polybench;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public final class AllocatedBytesMetric extends Metric {
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
-    private double allocatedBefore;
+public final class MaxContextHeapMetric extends Metric {
 
-    private static double readFromPolyglotBindings() {
-        Value value = Context.getCurrent().getPolyglotBindings().getMember("getAllocatedBytes");
-        return value.execute().asLong();
-    }
+    final List<Long> values = new ArrayList<>();
 
     @Override
     public String name() {
-        return "allocated-bytes";
+        return "max-context-heap";
     }
 
     @Override
@@ -59,11 +57,28 @@ public final class AllocatedBytesMetric extends Metric {
 
     @Override
     public void beforeIteration(boolean warmup, int iteration, Config config) {
-        allocatedBefore = readFromPolyglotBindings();
+        Context.getCurrent().getPolyglotBindings().getMember("startContextMemoryTracking").executeVoid();
     }
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return Optional.of(readFromPolyglotBindings() - allocatedBefore);
+        Value result = Context.getCurrent().getPolyglotBindings().getMember("stopContextMemoryTracking").execute();
+        long value = result.getMember("contextHeapMax").asLong();
+        values.add(value);
+        return Optional.of((double) value);
+    }
+
+    @Override
+    public void reset() {
+        values.clear();
+    }
+
+    @Override
+    public Optional<Double> reportAfterAll() {
+        if (values.isEmpty()) {
+            return Optional.empty();
+        }
+        Collections.sort(values);
+        return Optional.of((double) values.get(values.size() / 2));
     }
 }

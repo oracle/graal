@@ -86,8 +86,12 @@ local repo_config = import '../../repo-configuration.libsonnet';
     ],
   },
 
-  vm_bench_polybench_linux_allocated_bytes: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+  vm_bench_polybench_linux_memory: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=max-context-heap'],
+      self.upload,
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=memory-footprint'],
+      self.upload,
       # We run the interprer benchmarks in both interprer and standard mode to compare allocation with and without compilation.
       self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-interpreter', '--metric=allocated-bytes'],
       self.upload,
@@ -184,7 +188,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_allocated_bytes + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-allocated-bytes-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64'},
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java11-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64'},

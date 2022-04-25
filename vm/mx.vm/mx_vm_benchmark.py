@@ -50,7 +50,9 @@ POLYBENCH_METRIC_MAPPING = {
     "compilation-time": "compile-time",
     "partial-evaluation-time": "pe-time",
     "allocated-bytes": "allocated-memory",
-    "peak-time": "time"
+    "peak-time": "time",
+    "max-context-heap": "max-context-heap",
+    "memory-footprint": "memory-footprint"
 }  # Maps some polybench metrics to standardized metric names
 
 
@@ -1113,7 +1115,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
-                    "metric.name": "allocated-memory",
+                    "metric.name": metric_name,
                     "metric.unit": ("<unit>", str),
                     "metric.value": ("<value>", float),
                     "metric.type": "numeric",
@@ -1135,9 +1137,19 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 })
             ]
         rules += [
-            mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
+            mx_benchmark.StdOutRule(r"### load time \(ms\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmarks[0],
                 "metric.name": "context-eval-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": "ms",
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0
+            }),
+            mx_benchmark.StdOutRule(r"### init time \(ms\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmarks[0],
+                "metric.name": "context-init-time",
                 "metric.value": ("<delta>", float),
                 "metric.unit": "ms",
                 "metric.type": "numeric",

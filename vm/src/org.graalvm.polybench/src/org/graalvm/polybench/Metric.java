@@ -86,6 +86,36 @@ public abstract class Metric {
     public void parseBenchSpecificOptions(Value runner) {
     }
 
+    /**
+     * Invoked before the language context is initialized. This is guaranteed to happen before
+     * {@link #afterLoad(Config) loading}.
+     */
+    public void beforeInitialize(Config config) {
+    }
+
+    /**
+     * Invoked after the language context is initialized. This is guaranteed to happen before
+     * {@link #afterLoad(Config) loading}.
+     */
+    public void afterInitialize(Config config) {
+    }
+
+    /**
+     * Invoked before the benchmark is loaded. That means just before source code is parsed or
+     * classes are loaded. This is guaranteed to happen after initialization, but before the first
+     * iteration.
+     */
+    public void beforeLoad(Config config) {
+    }
+
+    /**
+     * Invoked after the benchmark is loaded. That means just before source code is parsed or
+     * classes are loaded. This is guaranteed to happen after initialization, but before the first
+     * iteration.
+     */
+    public void afterLoad(Config config) {
+    }
+
     public void beforeIteration(boolean warmup, int iteration, Config config) {
     }
 
@@ -102,4 +132,5 @@ public abstract class Metric {
 
     public void reset() {
     }
+
 }
