@@ -100,6 +100,8 @@ public abstract class Launcher {
     public static final int LAUNCHER_OPTIONS_INDENT = 45;
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
+    @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_INTERNAL = "--help:internal";
+    @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_EXPERT = "--help:expert";
 
     public enum VMType {
         Native,
@@ -737,42 +739,48 @@ public abstract class Launcher {
             return true;
         }
         if (arg.startsWith("--help")) {
-            return parseHelpArg(arg);
+            parseHelpArg(arg);
+            return true;
         }
         return false;
     }
 
-    private boolean parseHelpArg(String arg) {
-        // legacy behaviour support
-        if ("--help:expert".equals(arg)) {
+    private void parseHelpArg(String arg) {
+        // TODO: GR-38305 Remove legacy behaviour support
+        if (HELP_EXPERT.equals(arg)) {
             out.println("");
-            out.println("NOTE: The --help:expert option is deprecated and will be removed.");
+            out.println("NOTE: The " + HELP_EXPERT + " option is deprecated without replacement and will be removed.");
             out.println("");
             if (helpArg == null) {
                 helpArg = "";
             }
-            return true;
+            return;
         }
-        if ("--help:internal".equals(arg)) {
+        if (HELP_INTERNAL.equals(arg)) {
+            out.println("");
+            out.println("NOTE: The " + HELP_INTERNAL + " option is deprecated and will be removed. Use --help:[id]:internal instead.");
+            out.println("");
+            if (helpArg == null) {
+                helpArg = "";
+            }
             helpInternal = true;
-            return true;
+            return;
         }
         int index = arg.indexOf(':');
         if (index < 0) {
             helpArg = "";
-            return true;
+            return;
         }
         String helpArgCandidate = arg.substring(index + 1);
         index = helpArgCandidate.indexOf(':');
         if (index < 0) {
             helpArg = helpArgCandidate;
-            return true;
+            return;
         }
         helpArg = helpArgCandidate.substring(0, index);
         if (helpArgCandidate.endsWith(":internal")) {
             helpInternal = true;
         }
-        return true;
     }
 
     /**
@@ -882,8 +890,6 @@ public abstract class Launcher {
         }
         options.add("--native");
         options.add("--help");
-        options.add("--help:expert");
-        options.add("--help:internal");
         options.add("--help:vm");
         return options;
     }
