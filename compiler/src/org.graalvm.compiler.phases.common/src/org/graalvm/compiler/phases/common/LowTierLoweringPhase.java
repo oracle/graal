@@ -31,26 +31,17 @@ import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 /**
- * A {@link LoweringPhase} used to lower {@link Lowerable} nodes while being in
+ * A {@link LoweringPhase} used to lower {@link Lowerable} nodes when the graph is in
  * {@link org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage#LOW_TIER} stage.
  */
 public class LowTierLoweringPhase extends LoweringPhase {
 
-    private final CanonicalizerPhase canonicalizer;
-    private final boolean lowerOptimizableMacroNodes;
-
     public LowTierLoweringPhase(CanonicalizerPhase canonicalizer, boolean lowerOptimizableMacroNodes) {
-        this.canonicalizer = canonicalizer;
-        this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
+        super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER, lowerOptimizableMacroNodes);
     }
 
     public LowTierLoweringPhase(CanonicalizerPhase canonicalizer) {
-        this(canonicalizer, false);
-    }
-
-    @Override
-    protected boolean shouldDumpBeforeAtBasicLevel() {
-        return false;
+        super(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER);
     }
 
     @Override
@@ -58,13 +49,4 @@ public class LowTierLoweringPhase extends LoweringPhase {
         super.run(graph, context);
         graph.setAfterStage(StageFlag.LOW_TIER_LOWERING);
     }
-
-    @Override
-    protected void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {
-        IncrementalCanonicalizerPhase<CoreProviders> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
-        incrementalCanonicalizer.appendPhase(new Round(context, mode, graph.getOptions(), LoweringTool.StandardLoweringStage.LOW_TIER, lowerOptimizableMacroNodes));
-        incrementalCanonicalizer.apply(graph, context);
-        assert graph.verify();
-    }
-
 }

@@ -124,18 +124,13 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         private AnchoringNode guardAnchor;
         private FixedWithNextNode lastFixedNode;
         private NodeMap<Block> nodeMap;
-        private final LoweringStage loweringStage;
-        private final boolean lowerOptimizableMacroNodes;
 
-        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, NodeMap<Block> nodeMap, LoweringStage loweringStage,
-                        boolean lowerOptimizableMacroNode) {
+        LoweringToolImpl(CoreProviders context, AnchoringNode guardAnchor, NodeBitMap activeGuards, FixedWithNextNode lastFixedNode, NodeMap<Block> nodeMap) {
             super(context);
             this.guardAnchor = guardAnchor;
             this.activeGuards = activeGuards;
             this.lastFixedNode = lastFixedNode;
             this.nodeMap = nodeMap;
-            this.loweringStage = loweringStage;
-            this.lowerOptimizableMacroNodes = lowerOptimizableMacroNode;
         }
 
         @Override
@@ -200,6 +195,25 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         }
     }
 
+    private final CanonicalizerPhase canonicalizer;
+    private final LoweringTool.LoweringStage loweringStage;
+    private final boolean lowerOptimizableMacroNodes;
+
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes) {
+        this.canonicalizer = canonicalizer;
+        this.loweringStage = loweringStage;
+        this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
+    }
+
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage) {
+        this(canonicalizer, loweringStage, false);
+    }
+
+    @Override
+    protected boolean shouldDumpBeforeAtBasicLevel() {
+        return loweringStage == LoweringTool.StandardLoweringStage.HIGH_TIER;
+    }
+
     /**
      * Checks that second lowering of a given graph did not introduce any new nodes.
      *
@@ -220,7 +234,12 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         assert checkPostLowering(graph, context);
     }
 
-    protected abstract void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode);
+    private void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {
+        IncrementalCanonicalizerPhase<CoreProviders> incrementalCanonicalizer = new IncrementalCanonicalizerPhase<>(canonicalizer);
+        incrementalCanonicalizer.appendPhase(new Round(context, mode, graph.getOptions()));
+        incrementalCanonicalizer.apply(graph, context);
+        assert graph.verify();
+    }
 
     /**
      * Checks that lowering of a given node did not introduce any new {@link Lowerable} nodes that
@@ -295,20 +314,18 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         return true;
     }
 
-    protected enum LoweringMode {
+    private enum LoweringMode {
         LOWERING,
         VERIFY_LOWERING
     }
 
-    protected final class Round extends Phase {
+    private final class Round extends Phase {
 
         private final CoreProviders context;
         private final LoweringMode mode;
         private final SchedulePhase schedulePhase;
-        private final LoweringTool.LoweringStage loweringStage;
-        private final boolean lowerOptimizableMacroNodes;
 
-        protected Round(CoreProviders context, LoweringMode mode, OptionValues options, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes) {
+        private Round(CoreProviders context, LoweringMode mode, OptionValues options) {
             this.context = context;
             this.mode = mode;
 
@@ -320,9 +337,6 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
             boolean immutableSchedule = mode == LoweringMode.VERIFY_LOWERING;
 
             this.schedulePhase = new SchedulePhase(immutableSchedule, options);
-
-            this.loweringStage = loweringStage;
-            this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
         }
 
         @Override
@@ -404,7 +418,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         @SuppressWarnings("try")
         private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
 
-            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap(), loweringStage, lowerOptimizableMacroNodes);
+            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
 
             // Lower the instructions of this block.
             List<Node> nodes = schedule.nodesFor(b);
