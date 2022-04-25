@@ -198,15 +198,17 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     private final CanonicalizerPhase canonicalizer;
     private final LoweringTool.LoweringStage loweringStage;
     private final boolean lowerOptimizableMacroNodes;
+    private final StructuredGraph.StageFlag postRunStage;
 
-    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes) {
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes, StructuredGraph.StageFlag postRunStage) {
         this.canonicalizer = canonicalizer;
         this.loweringStage = loweringStage;
         this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
+        this.postRunStage = postRunStage;
     }
 
-    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage) {
-        this(canonicalizer, loweringStage, false);
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, StructuredGraph.StageFlag postRunStage) {
+        this(canonicalizer, loweringStage, false, postRunStage);
     }
 
     @Override
@@ -232,6 +234,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
+        graph.setAfterStage(postRunStage);
     }
 
     private void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {
