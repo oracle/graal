@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.phases;
+package org.graalvm.compiler.virtual.phases.ea;
 
+import static org.graalvm.compiler.core.common.GraalOptions.EscapeAnalyzeOnly;
+
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
 
-public class EconomyHighTier extends BaseTier<HighTierContext> {
+/**
+ * Performs the final {@link PartialEscapePhase}.
+ */
+public class FinalPartialEscapePhase extends PartialEscapePhase {
 
-    public EconomyHighTier() {
-        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
-        appendPhase(canonicalizer);
-        appendPhase(new HighTierLoweringPhase(canonicalizer, true));
+    public FinalPartialEscapePhase(boolean iterative, CanonicalizerPhase canonicalizer, BasePhase<CoreProviders> cleanupPhase, OptionValues options) {
+        super(iterative, Options.OptEarlyReadElimination.getValue(options), canonicalizer, cleanupPhase, options);
+    }
+
+    @Override
+    protected void run(StructuredGraph graph, CoreProviders context) {
+        if (VirtualUtil.matches(graph, EscapeAnalyzeOnly.getValue(graph.getOptions()))) {
+            graph.setDuringStage(StageFlag.PARTIAL_ESCAPE);
+
+            super.run(graph, context);
+
+            graph.setAfterStage(StageFlag.PARTIAL_ESCAPE);
+        }
     }
 }

@@ -89,7 +89,7 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
 /**
  * Processes all {@link Lowerable} nodes to do their lowering.
  */
-public class LoweringPhase extends BasePhase<CoreProviders> {
+public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
     @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
     static final class DummyGuardHandle extends ValueNode implements GuardedNode {
@@ -198,15 +198,17 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
     private final CanonicalizerPhase canonicalizer;
     private final LoweringTool.LoweringStage loweringStage;
     private final boolean lowerOptimizableMacroNodes;
+    private final StructuredGraph.StageFlag postRunStage;
 
-    public LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes) {
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes, StructuredGraph.StageFlag postRunStage) {
         this.canonicalizer = canonicalizer;
         this.loweringStage = loweringStage;
         this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
+        this.postRunStage = postRunStage;
     }
 
-    public LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage) {
-        this(canonicalizer, loweringStage, false);
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, StructuredGraph.StageFlag postRunStage) {
+        this(canonicalizer, loweringStage, false, postRunStage);
     }
 
     @Override
@@ -232,21 +234,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
-        if (loweringStage instanceof LoweringTool.StandardLoweringStage) {
-            switch ((LoweringTool.StandardLoweringStage) loweringStage) {
-                case HIGH_TIER:
-                    graph.setAfterStage(StageFlag.HIGH_TIER_LOWERING);
-                    break;
-                case MID_TIER:
-                    graph.setAfterStage(StageFlag.MID_TIER_LOWERING);
-                    break;
-                case LOW_TIER:
-                    graph.setAfterStage(StageFlag.LOW_TIER_LOWERING);
-                    break;
-                default:
-                    GraalError.shouldNotReachHere("unexpected lowering stage");
-            }
-        }
+        graph.setAfterStage(postRunStage);
     }
 
     private void lower(StructuredGraph graph, CoreProviders context, LoweringMode mode) {

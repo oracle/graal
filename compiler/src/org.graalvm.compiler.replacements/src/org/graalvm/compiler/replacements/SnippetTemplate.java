@@ -162,9 +162,12 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment;
 import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment.NodeStateAssignment;
@@ -1165,7 +1168,7 @@ public class SnippetTemplate {
             }
             // (2)
             try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_HIGH_TIER", snippetCopy)) {
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(snippetCopy, providers);
+                new HighTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -1178,7 +1181,7 @@ public class SnippetTemplate {
                 new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
-                    new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(snippetCopy, providers);
+                    new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
                     snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
                     snippetCopy.disableFrameStateVerification();
                 } catch (Throwable e) {
@@ -1192,7 +1195,7 @@ public class SnippetTemplate {
                     new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
                     try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
                         // (6)
-                        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(snippetCopy, providers);
+                        new LowTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }

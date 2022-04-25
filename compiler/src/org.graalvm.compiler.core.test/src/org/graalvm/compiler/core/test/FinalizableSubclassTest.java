@@ -37,11 +37,10 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.junit.Assert;
 import org.junit.Test;
@@ -88,7 +87,7 @@ public class FinalizableSubclassTest extends GraalCompilerTest {
             createInliningPhase().apply(graph, context);
             CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             canonicalizer.apply(graph, context);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
 
             return graph;
         } catch (Throwable e) {

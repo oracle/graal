@@ -38,7 +38,6 @@ import org.graalvm.compiler.loop.phases.LoopPeelingPhase;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -48,15 +47,15 @@ import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.DisableOverflownCountedLoopsPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.virtual.phases.ea.FinalPartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
-import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class HighTier extends BaseTier<HighTierContext> {
 
@@ -111,7 +110,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new BoxNodeIdentityPhase());
 
         if (PartialEscapeAnalysis.getValue(options)) {
-            appendPhase(PartialEscapePhase.createFinalPEA(true, canonicalizer, null, options));
+            appendPhase(new FinalPartialEscapePhase(true, canonicalizer, null, options));
         }
 
         if (OptReadElimination.getValue(options)) {
@@ -123,7 +122,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new BoxNodeOptimizationPhase()));
-        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER, true));
+        appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }
 
     @Override

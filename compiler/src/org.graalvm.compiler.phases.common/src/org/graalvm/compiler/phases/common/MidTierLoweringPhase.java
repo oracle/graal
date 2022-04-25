@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,17 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.phases;
+package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 
-public class EconomyHighTier extends BaseTier<HighTierContext> {
+/**
+ * A {@link LoweringPhase} used to lower {@link Lowerable} nodes when the graph is in
+ * {@link org.graalvm.compiler.nodes.spi.LoweringTool.StandardLoweringStage#MID_TIER} stage.
+ */
+public class MidTierLoweringPhase extends LoweringPhase {
 
-    public EconomyHighTier() {
-        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
-        appendPhase(canonicalizer);
-        appendPhase(new HighTierLoweringPhase(canonicalizer, true));
+    public MidTierLoweringPhase(CanonicalizerPhase canonicalizer, boolean lowerOptimizableMacroNodes) {
+        super(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER, lowerOptimizableMacroNodes, StageFlag.MID_TIER_LOWERING);
+    }
+
+    public MidTierLoweringPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER, StageFlag.MID_TIER_LOWERING);
     }
 }
