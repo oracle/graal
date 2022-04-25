@@ -3558,7 +3558,7 @@ def _get_launcher_name(image_config):
     elif isinstance(image_config, str):
         destination = image_config
     else:
-        raise mx.abort('Unknown launcher config type: '.format(type(image_config)))
+        raise mx.abort('Unknown launcher config type: {}'.format(type(image_config)))
 
     return basename(remove_exe_suffix(destination, require_suffix=False))
 
@@ -3572,7 +3572,7 @@ def _get_library_name(image_config):
     elif isinstance(image_config, str):
         destination = image_config
     else:
-        raise mx.abort('Unknown library config type: '.format(type(image_config)))
+        raise mx.abort('Unknown library config type: {}'.format(type(image_config)))
 
     return remove_lib_prefix_suffix(basename(destination), require_suffix_prefix=False)
 
