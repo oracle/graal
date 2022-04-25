@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2233,7 +2233,7 @@ final class HostObject implements TruffleObject {
     static final class IsIdenticalOrUndefined {
         @Specialization
         static TriState doHostObject(HostObject receiver, HostObject other) {
-            return receiver.obj == other.obj ? TriState.TRUE : TriState.FALSE;
+            return TriState.valueOf(receiver.obj == other.obj && receiver.isStaticClass() == other.isStaticClass());
         }
 
         @Fallback
