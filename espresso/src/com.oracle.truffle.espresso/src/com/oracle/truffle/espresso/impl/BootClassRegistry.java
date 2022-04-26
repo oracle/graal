@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -51,11 +52,11 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadLinkedKlassCacheHits = DebugCounter.create("BCL loadLinkedKlassCacheHits");
     private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
-    private final Classpath bootClasspath;
+    @CompilerDirectives.CompilationFinal //
+    private Classpath bootClasspath;
 
-    public BootClassRegistry(Classpath cp, long loaderID) {
+    public BootClassRegistry(long loaderID) {
         super(loaderID);
-        bootClasspath = cp;
     }
 
     @Override
@@ -88,7 +89,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
         ParserKlass parserKlass;
         synchronized (type) {
-            ClasspathFile classpathFile = getClasspathFile(env, bootClasspath, type);
+            ClasspathFile classpathFile = getClasspathFile(env, type);
             if (classpathFile == null) {
                 return null;
             }
@@ -106,7 +107,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
     @Override
     public Klass loadKlassImpl(ClassLoadingEnv.InContext env, Symbol<Type> type) throws EspressoClassLoadingException {
-        ClasspathFile classpathFile = getClasspathFile(env, bootClasspath, type);
+        ClasspathFile classpathFile = getClasspathFile(env, type);
         if (classpathFile == null) {
             return null;
         }
@@ -135,13 +136,18 @@ public final class BootClassRegistry extends ClassRegistry {
         return StaticObject.NULL;
     }
 
+    public void setBootKlassPath(Classpath cp) {
+        this.bootClasspath = cp;
+    }
+
     @SuppressWarnings("try")
-    private static ClasspathFile getClasspathFile(ClassLoadingEnv env, Classpath cp, Symbol<Type> type) {
+    private ClasspathFile getClasspathFile(ClassLoadingEnv env, Symbol<Type> type) {
+        assert bootClasspath != null;
         if (Types.isPrimitive(type)) {
             return null;
         }
         try (DebugCloseable scope = BOOT_KLASS_READ.scope(env.getTimers())) {
-            ClasspathFile classpathFile = cp.readClassFile(type);
+            ClasspathFile classpathFile = bootClasspath.readClassFile(type);
             return classpathFile;
         }
     }
