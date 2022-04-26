@@ -457,7 +457,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     @Override
-    public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal) {
+    public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile) {
         return globalSymbols;
     }
 

@@ -412,7 +412,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
+    public CenteredTextPrinter createBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
         Map<String, Long> codeBreakdown = calculateCodeBreakdown(compilationTasks);
         Map<String, Long> heapBreakdown = calculateHeapBreakdown(heapObjects);
         l().printLineSeparator();
@@ -458,9 +458,8 @@ public class ProgressReporter {
                         .jumpToMiddle()
                         .a("      ... ").a(numHeapBreakdownItems - printedCodeSizeEntries.size()).a(" additional object types").flushln();
 
-        new CenteredTextPrinter().dim()
-                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)")
-                        .reset().flushln();
+        return new CenteredTextPrinter().dim()
+                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)");
     }
 
     private static Map<String, Long> calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {

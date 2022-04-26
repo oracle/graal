@@ -130,6 +130,11 @@ public abstract class NativeImageCodeCache {
         this(compilations, imageHeap, ImageSingletons.lookup(Platform.class));
     }
 
+    public void purge() {
+        compilations.clear();
+        compilationsByStart.clear();
+    }
+
     public NativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform) {
         this.compilations = compilations;
         this.imageHeap = imageHeap;
@@ -508,7 +513,7 @@ public abstract class NativeImageCodeCache {
         return new Path[]{tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix())};
     }
 
-    public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal);
+    public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile);
 
     public Map<HostedMethod, CompilationResult> getCompilations() {
         return compilations;

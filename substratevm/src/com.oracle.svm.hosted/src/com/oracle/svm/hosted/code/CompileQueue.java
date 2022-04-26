@@ -479,6 +479,10 @@ public class CompileQueue {
         return compilations;
     }
 
+    public void purge() {
+        compilations.clear();
+    }
+
     public Collection<CompileTask> getCompilationTasks() {
         return compilations.values();
     }

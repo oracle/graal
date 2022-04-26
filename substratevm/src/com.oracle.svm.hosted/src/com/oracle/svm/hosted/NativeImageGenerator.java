@@ -681,6 +681,13 @@ public class NativeImageGenerator {
                 }
             }
 
+            ProgressReporter.CenteredTextPrinter breakdownsPrinter = SubstrateOptions.BuildOutputBreakdowns.getValue()
+                            ? ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects())
+                            : null;
+            compileQueue.purge();
+
+            int numCompilations = codeCache.getCompilations().size();
+
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 bb.getHeartbeatCallback().run();
                 BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
@@ -703,9 +710,9 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
             reporter.printCreationEnd(image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
-                            codeCache.getCompilations().size(), image.getDebugInfoSize());
-            if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-                ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
+                            numCompilations, image.getDebugInfoSize());
+            if (breakdownsPrinter != null) {
+                breakdownsPrinter.reset().flushln();
             }
         }
     }
