@@ -106,7 +106,7 @@ final class Target_jdk_internal_util_StaticProperty {
             Method method;
             try {
                 method = ReflectionUtil.lookupMethod(true, Class.forName("jdk.internal.util.StaticProperty"),
-                        "jdkSerialFilterFactory");
+                                "jdkSerialFilterFactory");
             } catch (ClassNotFoundException e) {
                 return false;
             }
