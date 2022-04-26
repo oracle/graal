@@ -147,7 +147,157 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("[\\p{Digit}\\p{Lower}]", 0, "2");
     }
 
+    @Test
+    public void posix2CC() {
+        test("\\p{Digit}", 0, "1");
+    }
 
+    @Test
+    public void posix3CC() {
+        test("\\p{IsDigit}", 0, "1");
+    }
+
+    @Test
+    public void shorthand() {
+        test("\\w", 0, "w");
+        test("[\\w]", 0, "w");
+        test("\\W", 0, "*");
+        test("\\d", 0, "1");
+        test("\\s", 0, " ");
+        test("\\v", 0, "\n");     // TODO how to deal with \v and \h
+        test("\\h", 0, "\t");
+    }
+
+    // TODO how to see what matched and what not?
+    // maybe matches found are counted and compared to each other (java and javascript ones)?
+
+    @Test
+    public void stringAnchor() {
+        test("^.", 0, "abc\ndef");
+        test(".$", 0, "abc\ndef");
+        test(".$", 0, "abc\ndef\n");
+        test("\\A\\w", 0, "abc");
+        test("\\w\\z", 0, "abc\ndef");
+        test(".\\Z", 0, "abc\ndef");
+    }
+
+    @Test
+    public void matchAnchor() {
+        test("\\G", 0, "abc def");
+    }
+
+    @Test
+    public void wordBoundary() {
+        test("\\b.", 0, "abc def");
+        test("\\B.", 0, "abc def");
+    }
+
+    @Test
+    public void quantifiers() {
+        test("abc?", 0, "ab");
+        test("abc??", 0, "ab");
+        test("abc?+c", 0, "abcc");
+        test("\".*\"", 0, "abc \"def\" \"ghi\" jkl");
+        test("\".*?\"", 0, "abc \"def\" \"ghi\" jkl");
+        test("\".+?\"", 0, "abc \"def\" \"ghi\" jkl");
+        test("a{3}", 0, "aaa");
+        test("a{2,4}", 0, "aa");
+        test("a{2,}", 0, "aaaaa");
+        test("a{2,4}?", 0, "aa");
+        test("a{2,}?", 0, "aaaaa");
+        test("a{2,4}+a", 0, "aaaaa");
+    }
+
+    @Test(expected = Exception.class)
+    public void quantifiersFail() {
+        test("abc?+c", 0, "abc");
+        test("\".*+\"", 0, "\"abc\"");
+        test("\".++\"", 0, "\"abc\"");
+        test("a{2,4}+a", 0, "aaaa");
+        test("a{2,}+a", 0, "aa");
+    }
+
+    @Test // TODO how to do them effeciently?
+    public void unicodeTests() {
+
+    }
+
+    @Test
+    public void capturingGroup() {
+        test("(abc){3}", 0, "abcabcabc");
+        test("(?:abc){3}", 0, "abcabcabc");
+        test("(?<x>abc){3}", 0, "abcabcabc");
+    }
+
+    @Test
+    public void backReference() {
+        test("(abc|def)=\\1", 0, "abc=abc");    // TODO \1 or \\1
+        test("(abc|def)=\\1", 0, "def=def");
+        test("(?<x>abc|def)=\\k<x>", 0, "def=def");
+
+    }
+
+    @Test(expected = Exception.class)  // TODO needs to fail
+    public void backReferenceFail() {
+        test("(abc|def)=\\1", 0, "abc=def");
+        test("(abc|def)=\\1", 0, "def=abc");
+    }
+
+    @Test
+    public void atomicGroup() {
+        test("a(?>bc|b)c", 0, "abcc");
+    }
+
+    @Test(expected = Exception.class) // TODO needs to fail
+    public void atomicGroupFail() {
+        test("a(?>bc|b)c", 0, "abc");
+    }
+
+    @Test
+    public void lookAhead() {
+        test("t(?=s)", 0, "streets");
+        test("t(?!s)", 0, "streets");
+    }
+
+    @Test
+    public void lookBehind() {
+        test("(?<=s)t", 0, "streets");
+        test("(?<!s)t", 0, "streets");
+        test("(?<=is|e)t", 0, "twisty streets");
+        test("(?<=s\\w{1,7})t", 0, "twisty streets");
+        test("(?<=s\\w+)t", 0, "twisty streets");
+    }
+
+    @Test
+    public void modeModifier() {
+        test("(?i)a", 0, "a");
+        test("(?i)a", 0, "A");
+        test("te(?i)st", 0, "test");
+        test("te(?i)st", 0, "teST");
+        test("te(?i:st)", 0, "test");
+        test("te(?i:st)", 0, "teST");
+        test("(?i)te(?-i)st", 0, "test");
+        test("(?i)te(?-i)st", 0, "teST");
+
+        test("(?x)a#b", 0, "a");
+
+        test("(?s).*", 0, "ab\n\ndef");
+
+        test("(?m).*", 0, "ab\n\ndef");
+
+        test("(?dm)^.", 0, "a\rb\nc");
+    }
+
+    @Test(expected = Exception.class)   // TODO needs to fail
+    public void modeModifierFail() {
+        test("te(?i)st", 0, "TEst");
+        test("te(?i)st", 0, "TEST");
+        test("te(?i:st)", 0, "TEst");
+        test("te(?i:st)", 0, "TEST");
+        test("(?i)te(?-i)st", 0, "TEst");
+        test("(?i)te(?-i)st", 0, "TEST");
+
+    }
 
 //    @Test
 //    public void helloWorld() {

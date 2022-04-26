@@ -50,6 +50,8 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.errors.ErrorMessages;
 import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
@@ -58,7 +60,9 @@ import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
+import com.oracle.truffle.regex.tregex.parser.flavors.RubyRegexParser;
 import com.oracle.truffle.regex.util.TBitSet;
 
 import java.math.BigInteger;
@@ -88,6 +92,8 @@ public final class JavaRegexParser implements RegexParser {
      * Characters that are considered special in ECMAScript regex character classes.
      */
     private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
+
+    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
 
     /**
      * An enumeration of the possible grammatical categories of Ruby regex terms, for use with
@@ -135,6 +141,49 @@ public final class JavaRegexParser implements RegexParser {
 //     * Characters considered as whitespace in Java's regex verbose mode.
 //     */
 //    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\u000b', '\r', ' '); // '\x0B' = '\u000b'
+
+    static {
+        // https://stackoverflow.com/questions/4304928/unicode-equivalents-for-w-and-b-in-java-regular-expressions
+        final String escapes = "[\\u0009-\\u000D\\u0020\\u0085\\u00A0\\u1680\\u180E\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000]";
+//        final CodePointSet escapesSet = CodePointSet.createNoDedup(
+//                0x0009, 0x000d,
+//                0x0020, 0x0020,
+//                0x0085, 0x0085,
+//                0x00a0, 0x00a0,
+//                0x1680, 0x1680,
+//                0x180e, 0x180e,
+//                0x2000, 0x200a,
+//                0x2028, 0x2029,
+//                0x202f, 0x202f,
+//                0x205f, 0x205f,
+//                0x3000, 0x3000,
+//                0xfeff, 0xfeff);
+//        final CodePointSet escapeSSet = CodePointSet.createNoDedup(
+//                0x0000, 0x0008,
+//                0x000e, 0x001f,
+//                0x0021, 0x0084,
+//                0x0086, 0x009f,
+//                0x00a1, 0x167f,
+//                0x1681, 0x180d,
+//                0x180f, 0x1fff,
+//                0x200b, 0x2027,
+//                0x202a, 0x202e,
+//                0x2030, 0x205e,
+//                0x2060, 0x2fff,
+//                0x3001, 0xfefe,
+//                0xff00, 0x10ffff
+//        );
+
+        final String escapev = "[\\u000A-\\u000D\\u0085\\u2028\\u2029]";
+        final String escapeh = "[\\u0009\\u0020\\u00A0\\u1680\\u180E\\u2000-\\u200A\\u202F\\u205F\\u3000]";
+        final String escapew = "[\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]]";
+        final String escapeb = "(?:(?<=[\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]])(?![\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]])|(?<![\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]])(?=[\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]]))";
+        final String escapeB = "(?:(?<=[\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]])(?=[\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]])|(?<![\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]])(?![\\pL\\pM\\p{Nd}\\p{Nl}\\p{Pc}[\\p{InEnclosedAlphanumerics}&&\\p{So}]]))";
+        final String escaped = "\\p{Nd}";
+        final String escapeD = "\\P{Nd}";
+        final String escapeR = "(?:(?>\\u000D\\u000A)|[\\u000A\\u000B\\u000C\\u000D\\u0085\\u2028\\u2029])";
+        final String escapeX = "(?>\\PM\\pM*)";
+    }
 
     /**
      * The source object of the input pattern.
@@ -350,28 +399,6 @@ public final class JavaRegexParser implements RegexParser {
         return ast;
     }
 
-//    private RegexSource toECMAScriptRegex() {
-//        silent = false;
-//        parseInternal();
-//
-//        System.out.println("out: " + outPattern);
-////        return inSource;
-//        return new RegexSource(outPattern.toString(), "", inSource.getOptions(), inSource.getSource());
-//    }
-//
-//    @Override
-//    public RegexAST parse() throws RegexSyntaxException, UnsupportedRegexException {
-//        RegexSource ecmascriptSource = toECMAScriptRegex();
-//        JSRegexParser ecmascriptParser = new JSRegexParser(language, ecmascriptSource, compilationBuffer, inSource);
-//        return ecmascriptParser.parse();
-//
-//    }
-
-//    @Override
-//    public int getNumberOfCaptureGroups() {
-//        return 1;
-//    }
-
     @Override
     public Map<String, Integer> getNamedCaptureGroups() {
         return Collections.emptyMap();
@@ -394,12 +421,20 @@ public final class JavaRegexParser implements RegexParser {
     private void parseInternal() {
         // ...
 
+        flagsStack.push(globalFlags);
+
         disjunction();
+
+        flagsStack.pop();
 
         // ...
 
 
         // check if we are at the end and if not --> SyntaxError
+        if (!atEnd()) {
+            assert curChar() == ')';
+            throw syntaxErrorHere(RbErrorMessages.UNBALANCED_PARENTHESIS);
+        }
     }
 
     /**
@@ -423,7 +458,7 @@ public final class JavaRegexParser implements RegexParser {
      * An alternative is a sequence of Terms.
      */
     private void alternative() {
-        while (!atEnd() && curChar() != '|' && curChar() != ')') {
+        while (!atEnd() && curChar() != '|'/* && curChar() != ')'*/) {
             Token token = term();
             switch (token.kind) {
                 case caret: // TODO java version of it
@@ -469,6 +504,12 @@ public final class JavaRegexParser implements RegexParser {
                     break;
                 case lookBehindAssertionBegin:
                     astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
+                    break;
+                case groupEnd:
+                    if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
+                        throw syntaxErrorHere(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                    }
+                    astBuilder.popGroup(token);
                     break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
@@ -698,7 +739,7 @@ public final class JavaRegexParser implements RegexParser {
 
         switch (ch) {
             case '\\':
-//                escape();
+                return escape();
 //                break;
             case '[':
                 return characterClass();
@@ -723,6 +764,8 @@ public final class JavaRegexParser implements RegexParser {
             case '(':
                 return parens();    // TODO group() does the closing bracket part already, no need for Token.createGroupEnd()
 //                break;
+            case ')':
+                return Token.createGroupEnd();
             case '^':
 //                // (?:^|(?<=[\n])(?=.))
 //                pushGroup(); // (?:
@@ -938,6 +981,12 @@ public final class JavaRegexParser implements RegexParser {
 //        }
     }
 
+    private void curCharClassAddCodePoint(int... codepoints) {
+        for (int codepoint : codepoints) {
+            curCharClassAddCodePoint(codepoint);
+        }
+    }
+
     private void curCharClassAddRange(int lower, int upper) {
         curCharClass.addRange(lower, upper);
 //        if (getLocalFlags().isIgnoreCase()) {
@@ -1051,7 +1100,64 @@ public final class JavaRegexParser implements RegexParser {
      * <li>character escapes</li>
      * </ul>
      */
-    private void escape() {
+    private Token escape() {
+        if (atEnd()) {
+            throw syntaxErrorAtEnd(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
+        }
+        int ch = consumeChar();
+//        if ('1' <= c && c <= '9') {
+//            final int restoreIndex = index;
+//            final int backRefNumber = (c - '0');
+//            if (backRefNumber < numberOfCaptureGroups()) {
+//                return Token.createBackReference(backRefNumber);
+//            } else if (flags.isUnicode()) {
+//                throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+//            }
+//            index = restoreIndex;
+//        }
+        switch (ch) {
+//            case 'k':
+//                if (flags.isUnicode() || hasNamedCaptureGroups()) {
+//                    if (atEnd()) {
+//                        throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
+//                    }
+//                    if (consumeChar() != '<') {
+//                        throw syntaxError(ErrorMessages.MISSING_GROUP_NAME);
+//                    }
+//                    String groupName = parseGroupName();
+//                    // backward reference
+//                    if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
+//                        return Token.createBackReference(namedCaptureGroups.get(groupName));
+//                    }
+//                    // possible forward reference
+//                    Map<String, Integer> allNamedCaptureGroups = getNamedCaptureGroups();
+//                    if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
+//                        return Token.createBackReference(allNamedCaptureGroups.get(groupName));
+//                    }
+//                    throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+//                } else {
+//                    return charClass(c);
+//                }
+//            case 'b':
+//                return Token.createWordBoundary();
+//            case 'B':
+//                return Token.createNonWordBoundary();
+            default:
+                // Here we differentiate the case when parsing one of the six basic pre-defined
+                // character classes (\w, \W, \d, \D, \s, \S) and Unicode character property
+                // escapes. Both result in sets of characters, but in the former case, we can skip
+                // the case-folding step in the `charClass` method and call `Token::createCharClass`
+                // directly.
+                if (isPredefCharClass(ch)) {
+                    return Token.createCharClass(parsePredefCharClass(ch));
+//                } else if (globalFlags.isUnicode() && (ch == 'p' || ch == 'P')) {
+//                    return charClass(parseUnicodeCharacterProperty(ch == 'P'));
+                } else {
+                    return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)));
+                }
+        }
+
+
 //        if (assertionEscape()) {
 //            lastTerm = TermCategory.OtherAssertion;
 //        } else if (categoryEscape(false)) {
@@ -1085,6 +1191,192 @@ public final class JavaRegexParser implements RegexParser {
 //                // NB: string sets lastTerm itself
 //            }
 //        }
+    }
+
+    private static boolean isPredefCharClass(int c) {
+        return PREDEFINED_CHAR_CLASSES.get(c);
+    }
+
+    // Note that the CodePointSet returned by this function has already been
+    // case-folded and negated.
+    private CodePointSet parsePredefCharClass(int c) {
+        switch (c) {
+            case 's':
+                if (inSource.getOptions().isU180EWhitespace()) {
+                    return Constants.LEGACY_WHITE_SPACE;
+                } else {
+                    return Constants.WHITE_SPACE;
+                }
+
+
+//                curCharClassClear();
+//                curCharClassAddRange(0x000A, 0x000D);
+//                curCharClassAddRange(0x2000, 0x200A);
+//                curCharClassAddCodePoint(0x0020, 0x0085, 0x00A0, 0x1680, 0x180E, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000);
+//
+//
+//                System.out.println(curCharClass.toCodePointSet().equals(Constants.WHITE_SPACE) ? "True" : "False");
+//
+//                return curCharClass.toCodePointSet();
+
+            case 'S':
+                if (inSource.getOptions().isU180EWhitespace()) {
+                    return Constants.LEGACY_NON_WHITE_SPACE;
+                } else {
+                    return Constants.NON_WHITE_SPACE;
+                }
+//                curCharClassClear();
+//                curCharClassAddRange(0x000A, 0x000D);
+//                curCharClassAddRange(0x2000, 0x200A);
+//                curCharClassAddCodePoint(0x0020, 0x0085, 0x00A0, 0x1680, 0x180E, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000);
+//                curCharClass.invert(inSource.getEncoding());
+//
+//                return curCharClass.toCodePointSet();
+
+            case 'd':
+                System.out.println(Constants.DIGITS.equals(UnicodeProperties.getProperty("Nd")) ? "True" : "False");
+//                return Constants.DIGITS;
+//            curCharClass.addSet(UnicodeProperties.getProperty("Nd"));
+                CodePointSet cps1 = UnicodeProperties.getProperty("Nd");
+                CodePointSet cps2 = Constants.DIGITS;
+                // TODO which one to use?
+                return UnicodeProperties.getProperty("Nd");
+            case 'D':
+                return Constants.NON_DIGITS;
+            case 'w':
+                if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+                    return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
+                } else {
+                    return Constants.WORD_CHARS;
+                }
+            case 'W':
+                if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+                    return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
+                } else {
+                    return Constants.NON_WORD_CHARS;
+                }
+            case 'v':
+                return CodePointSet.createNoDedup(
+                        0x000a, 0x000d,
+                        0x0085, 0x0085,
+                        0x2028, 0x2029
+                );
+            case 'V':
+                return CodePointSet.createNoDedup(
+                        0x0000, 0x0009,
+                        0x000e, 0x0084,
+                        0x0086, 0x2027,
+                        0x202a, 0x10ffff
+                );
+            case 'h':
+                return CodePointSet.createNoDedup(
+                        0x0009, 0x0009,
+                        0x0020, 0x0020,
+                        0x00a0, 0x00a0,
+                        0x1680, 0x1680,
+                        0x2000, 0x200a,
+                        0x202f, 0x202f,
+                        0x205f, 0x205f,
+                        0x3000, 0x3000
+                );
+            case 'H':
+                return CodePointSet.createNoDedup(
+                        0x0000, 0x0008,
+                        0x000a, 0x001f,
+                        0x0021, 0x009f,
+                        0x00a1, 0x180d,
+                        0x180f, 0x1fff,
+                        0x202b, 0x202e,
+                        0x2030, 0x205e,
+                        0x2060, 0x2fff,
+                        0x3001, 0x10ffff
+                );
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
+        }
+    }
+
+    private int parseEscapeChar(int c, boolean inCharClass) throws RegexSyntaxException {
+        if (inCharClass && c == 'b') {
+            return '\b';
+        }
+        switch (c) {
+            case '0':
+                if (globalFlags.isUnicode() && !atEnd() && isDecDigit(curChar())) {
+                    throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
+                }
+//                if (!globalFlags.isUnicode() && !atEnd() && isOctDigit(curChar())) {
+//                    return parseOctal(0);
+//                }
+                return '\0';
+            case 't':
+                return '\t';
+            case 'n':
+                return '\n';
+            case 'f':
+                return '\f';
+            case 'r':
+                return '\r';
+//            case 's':
+////                CodePointSet cps = CodePointSet.create(0x0020, 0x0085, 0x00A0, 0x1680, 0x180E, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000);
+////                cps.inv
+//
+//                curCharClassClear();
+//                curCharClassAddRange(0x000A, 0x000D);
+//                curCharClassAddRange(0x2000, 0x200A);
+//                curCharClassAddCodePoint(0x0020, 0x0085, 0x00A0, 0x1680, 0x180E, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000);
+//                addCharClass();
+//            case 'c':
+//                if (atEnd()) {
+//                    retreat();
+//                    return escapeCharSyntaxError('\\', ErrorMessages.INVALID_CONTROL_CHAR_ESCAPE);
+//                }
+//                final char controlLetter = curChar();
+//                if (!globalFlags.isUnicode() && (isDecDigit(controlLetter) || controlLetter == '_') && inCharClass) {
+//                    advance();
+//                    return controlLetter % 32;
+//                }
+//                if (!('a' <= controlLetter && controlLetter <= 'z' || 'A' <= controlLetter && controlLetter <= 'Z')) {
+//                    retreat();
+//                    return escapeCharSyntaxError('\\', ErrorMessages.INVALID_CONTROL_CHAR_ESCAPE);
+//                }
+//                advance();
+//                return Character.toUpperCase(controlLetter) - ('A' - 1);
+//            case 'u':
+//                final int unicodeEscape = parseUnicodeEscapeChar();
+//                return unicodeEscape < 0 ? c : unicodeEscape;
+//            case 'x':
+//                final int value = parseHex(2, 2, 0xff, ErrorMessages.INVALID_ESCAPE);
+//                return value < 0 ? c : value;
+//            case '-':
+//                if (!inCharClass) {
+//                    return escapeCharSyntaxError(c, ErrorMessages.INVALID_ESCAPE);
+//                }
+//                return c;
+            default:
+                if (!globalFlags.isUnicode() && isOctDigit(c)) {
+                    return parseOctal(c - '0');
+                }
+                if (!SYNTAX_CHARACTERS.get(c)) {
+                    if (globalFlags.isUnicode()) {
+                        throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
+                    }
+//                    return escapeCharSyntaxError(c, ErrorMessages.INVALID_ESCAPE);
+                }
+                return c;
+        }
+    }
+
+    private int parseOctal(int firstDigit) {
+        int ret = firstDigit;
+        for (int i = 0; !atEnd() && isOctDigit(curChar()) && i < 2; i++) {
+            if (ret * 8 > 255) {
+                return ret;
+            }
+            ret *= 8;
+            ret += consumeChar() - '0';
+        }
+        return ret;
     }
 
     /**
@@ -1768,9 +2060,11 @@ public final class JavaRegexParser implements RegexParser {
                 case 'x':
                 case 'd':
                 case 'u':
-//                case 'U':
+//                case 'U': // TODO help :D, how is it done with the tokens?
                     flags(ch1);
-                    break;
+//                    registerCaptureGroup();
+                    return Token.createGroupEnd();
+//                    break;
 
                 default:
                     throw syntaxErrorAt(RbErrorMessages.unknownExtension(ch1), position - 1);
@@ -1786,11 +2080,11 @@ public final class JavaRegexParser implements RegexParser {
         return namedCaptureGroups != null;
     }
 
-//    private void registerCaptureGroup() {
+    private void registerCaptureGroup() {
 //        if (!identifiedAllGroups) {
 //            nGroups++;
 //        }
-//    }
+    }
 //
 //    private void registerNamedCaptureGroup(String name) {
 //        if (!identifiedAllGroups) {
@@ -1841,16 +2135,19 @@ public final class JavaRegexParser implements RegexParser {
      * Parses a local flag block or an inline declaration of a global flags. Assumes that the prefix
      * '(?' was already parsed, as well as the first flag which is passed as the argument.
      */
+
+    // TODO adjust to the use of tokens instead of the Ruby version of it
     private void flags(int ch0) {
         int ch = ch0;
         JavaFlags newFlags = getLocalFlags();
         boolean negative = false;
         while (ch != ')' && ch != ':') {
+            System.out.println("flag: " + (char) ch + " : " + ch);
             if (ch == '-') {
                 negative = true;
-            } else if (RubyFlags.isValidFlagChar(ch)) {
+            } else if (JavaFlags.isValidFlagChar(ch)) {
                 if (negative) {
-                    if (RubyFlags.isTypeFlag(ch)) {
+                    if (JavaFlags.isTypeFlag(ch)) {
                         throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
                     }
                     newFlags = newFlags.delFlag(ch);
@@ -1870,12 +2167,23 @@ public final class JavaRegexParser implements RegexParser {
         }
 
         // TOD necessary?
-//        if (ch == ')') {
-//            openEndedLocalFlags(newFlags);
-//        } else {
-        assert ch == ':';
-        localFlags(newFlags);
-//        }
+        if (ch == ')') {
+            openEndedLocalFlags(newFlags);
+        } else {
+            assert ch == ':';
+            localFlags(newFlags);
+        }
+    }
+
+    private void openEndedLocalFlags(JavaFlags newFlags) {
+        setLocalFlags(newFlags);
+        lastTerm = TermCategory.None;
+        // Using "open-ended" flag modifiers, e.g. /a(?i)b|c/, makes Java wrap the continuation
+        // of the flag modifier in parentheses, so that the above regex is equivalent to
+        // /a(?i:b|c)/.
+        pushGroup();
+        disjunction();
+        popGroup();
     }
 
     /**
