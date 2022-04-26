@@ -396,7 +396,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         /**
          * Contexts of the resolved method.
          */
-        private ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
+        private ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
 
         BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
@@ -405,7 +405,6 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         private BytecodeSensitiveSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
             super(bb, methodFlows, original);
-            calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
         }
 
         @Override
