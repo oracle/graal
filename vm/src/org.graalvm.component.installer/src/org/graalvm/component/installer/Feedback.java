@@ -139,6 +139,10 @@ public interface Feedback {
 
     boolean isNonInteractive();
 
+    boolean isSilent();
+
+    boolean setSilent(boolean silent);
+
     /**
      * Waits for user input confirmed by ENTER.
      * 

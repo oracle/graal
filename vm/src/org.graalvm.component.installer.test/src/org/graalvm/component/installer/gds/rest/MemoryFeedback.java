@@ -183,9 +183,7 @@ final class MemoryFeedback implements Feedback {
 
     @Override
     public <T> Feedback withBundle(Class<T> clazz) {
-        throw new UnsupportedOperationException("Not supported yet."); // To change body of
-        // generated methods, choose
-        // Tools | Templates.
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
@@ -222,22 +220,26 @@ final class MemoryFeedback implements Feedback {
 
     @Override
     public char[] acceptPassword() {
-        throw new UnsupportedOperationException("Not supported yet."); // To change body of
-        // generated methods, choose
-        // Tools | Templates.
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public void addLocalFileCache(URL location, Path local) {
-        throw new UnsupportedOperationException("Not supported yet."); // To change body of
-        // generated methods, choose
-        // Tools | Templates.
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 
     @Override
     public Path getLocalCache(URL location) {
-        throw new UnsupportedOperationException("Not supported yet."); // To change body of
-        // generated methods, choose
-        // Tools | Templates.
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean isSilent() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean setSilent(boolean silent) {
+        throw new UnsupportedOperationException("Not supported yet.");
     }
 }

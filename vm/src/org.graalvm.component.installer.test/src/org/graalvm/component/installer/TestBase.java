@@ -78,6 +78,16 @@ public class TestBase implements Feedback {
     public TestBase() {
     }
 
+    @Override
+    public boolean isSilent() {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
+    @Override
+    public boolean setSilent(boolean silent) {
+        throw new UnsupportedOperationException("Not supported yet.");
+    }
+
     static class ClassTempFolder extends TemporaryFolder {
         ThreadLocal<File> root = new ThreadLocal<>();
 
@@ -512,6 +522,16 @@ public class TestBase implements Feedback {
         public boolean isNonInteractive() {
             return TestBase.this.isNonInteractive();
         }
+
+        @Override
+        public boolean isSilent() {
+            return TestBase.this.isSilent();
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            return TestBase.this.setSilent(silent);
+        }
     }
 
     public class FeedbackAdapter implements Feedback {
@@ -619,6 +639,16 @@ public class TestBase implements Feedback {
         @Override
         public boolean isNonInteractive() {
             return TestBase.this.isNonInteractive();
+        }
+
+        @Override
+        public boolean isSilent() {
+            return TestBase.this.isSilent();
+        }
+
+        @Override
+        public boolean setSilent(boolean silent) {
+            return TestBase.this.setSilent(silent);
         }
     }
 
