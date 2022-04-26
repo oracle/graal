@@ -49,6 +49,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.Builder;
@@ -234,6 +235,9 @@ final class PodFeature implements PodSupport, Feature {
         for (Method method : factoryInterface.getMethods()) {
             int methodAccess = ACC_PUBLIC | ACC_FINAL | ACC_SYNTHETIC;
             var impl = writer.visitMethod(methodAccess, method.getName(), Type.getMethodDescriptor(method), null, null);
+            if (method.isAnnotationPresent(DeoptTest.class)) {
+                impl.visitAnnotation(Type.getDescriptor(DeoptTest.class), true).visitEnd();
+            }
             impl.visitCode(); // substituted with custom graph
             impl.visitInsn(ACONST_NULL);
             impl.visitInsn(ARETURN);
