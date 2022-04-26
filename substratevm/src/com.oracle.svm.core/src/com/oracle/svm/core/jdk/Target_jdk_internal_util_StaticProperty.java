@@ -27,7 +27,11 @@ package com.oracle.svm.core.jdk;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+
+import java.lang.reflect.Method;
+import java.util.function.BooleanSupplier;
 
 /**
  * This class provides JDK-internal access to values that are also available via system properties.
@@ -90,4 +94,24 @@ final class Target_jdk_internal_util_StaticProperty {
     private static String jdkSerialFilterFactory() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilterFactory");
     }
+
+    /*
+     * Method jdkSerialFilterFactory is present in some versions of the JDK11 and not in the other.
+     * It is always present in the JDK17. We need to check if this method should be substituted by
+     * checking if it exists in the running JDK version.
+     */
+    private static class StaticPropertyJdkSerialFilterFactoryAvailable implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            Method method;
+            try {
+                method = ReflectionUtil.lookupMethod(true, Class.forName("jdk.internal.util.StaticProperty"),
+                        "jdkSerialFilterFactory");
+            } catch (ClassNotFoundException e) {
+                return false;
+            }
+            return method != null;
+        }
+    }
+
 }
