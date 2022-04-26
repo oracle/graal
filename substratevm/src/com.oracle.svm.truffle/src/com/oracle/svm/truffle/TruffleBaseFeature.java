@@ -49,7 +49,6 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.hosted.heap.PodSupport;
-import com.oracle.truffle.api.staticobject.PodBasedStaticShape;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -751,8 +750,8 @@ final class Target_com_oracle_truffle_api_staticobject_StaticShape_Builder {
     }
 }
 
-@TargetClass(className = "com.oracle.truffle.api.staticobject.FieldBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<T> {
+@TargetClass(className = "com.oracle.truffle.api.staticobject.PodBasedShapeGenerator", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_api_staticobject_PodBasedShapeGenerator<T> {
     @Alias //
     Class<?> storageSuperClass;
 
@@ -760,22 +759,18 @@ final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<
     Class<T> storageFactoryInterface;
 
     @Substitute
-    @SuppressWarnings("unused")
-    Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties,
-                    boolean safetyChecks, String storageClassName) {
+    @SuppressWarnings("unchecked")
+    Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> parentShape,
+                    Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties, boolean safetyChecks) {
         Pod.Builder<T> builder;
         if (parentShape == null) {
             builder = Pod.Builder.createExtending(storageSuperClass, storageFactoryInterface);
         } else {
-            if (parentShape instanceof PodBasedStaticShape) {
-                Object pod = ((PodBasedStaticShape<T>) parentShape).pod;
-                if (pod instanceof Pod) {
-                    builder = Pod.Builder.createExtending((Pod<T>) pod);
-                } else {
-                    throw new IllegalArgumentException("Expected pod of type " + Pod.class.getName() + "; got: " + pod);
-                }
+            Object pod = parentShape.pod;
+            if (pod instanceof Pod) {
+                builder = Pod.Builder.createExtending((Pod<T>) pod);
             } else {
-                throw new IllegalArgumentException("Expected parent shape of type " + PodBasedStaticShape.class.getName() + "; got: " + parentShape);
+                throw new IllegalArgumentException("Expected pod of type: '" + Pod.class.getName() + "'; got: " + pod);
             }
         }
         ArrayList<Pair<Target_com_oracle_truffle_api_staticobject_StaticProperty, Pod.Field>> propertyFields = new ArrayList<>(staticProperties.size());
@@ -793,6 +788,9 @@ final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<
 
 @TargetClass(className = "com.oracle.truffle.api.staticobject.PodBasedStaticShape", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> {
+    @Alias //
+    Object pod;
+
     @Alias
     static native <T> Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod);
 }

@@ -40,25 +40,38 @@
  */
 package com.oracle.truffle.api.staticobject;
 
-@SuppressWarnings("unused")
-final class PodBasedStaticShape<T> extends StaticShape<T> {
-    // Aliased by com_oracle_truffle_api_staticobject_PodBasedStaticShape
-    private final Object pod;
+import java.util.Map;
 
-    private PodBasedStaticShape(Class<?> storageClass, boolean safetyChecks, Object pod) {
-        super(storageClass, safetyChecks);
-        this.pod = pod;
+public class PodBasedShapeGenerator<T> extends ShapeGenerator<T> {
+    // Aliased by com_oracle_truffle_api_staticobject_PodBasedShapeGenerator
+    @SuppressWarnings("unused")
+    private final Class<?> storageSuperClass;
+    // Aliased by com_oracle_truffle_api_staticobject_PodBasedShapeGenerator
+    @SuppressWarnings("unused")
+    private final Class<T> storageFactoryInterface;
+
+    private PodBasedShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        this.storageSuperClass = storageSuperClass;
+        this.storageFactoryInterface = storageFactoryInterface;
     }
 
-    // Aliased by com_oracle_truffle_api_staticobject_PodBasedStaticShape
-    static <T> PodBasedStaticShape<T> create(Class<?> generatedStorageClass, T factory, boolean safetyChecks, Object pod) {
-        PodBasedStaticShape<T> shape = new PodBasedStaticShape<>(generatedStorageClass, safetyChecks, pod);
-        shape.setFactory(factory);
-        return shape;
+    @SuppressWarnings("unchecked")
+    static <T> PodBasedShapeGenerator<T> getShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
+        return new PodBasedShapeGenerator<>(storageSuperClass, storageFactoryInterface);
     }
 
     @Override
-    Object getStorage(Object obj, boolean primitive) {
-        return cast(obj, storageClass, true);
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
+        if (parentShape == null || parentShape instanceof PodBasedStaticShape) {
+            return generateShape((PodBasedStaticShape<T>) parentShape, staticProperties, safetyChecks);
+        } else {
+            throw new IllegalArgumentException("Expected parent shape of type '" + PodBasedStaticShape.class.getName() + "'; got: " + parentShape);
+        }
+    }
+
+    // Substituted by com_oracle_truffle_api_staticobject_PodBasedShapeGenerator
+    @SuppressWarnings("unused")
+    private StaticShape<T> generateShape(PodBasedStaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks) {
+        throw new UnsupportedOperationException("This method must be susbtituted by a class in TruffleBaseFeature");
     }
 }
