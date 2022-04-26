@@ -760,6 +760,7 @@ final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<
     Class<T> storageFactoryInterface;
 
     @Substitute
+    @SuppressWarnings("unused")
     Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties,
                     boolean safetyChecks, String storageClassName) {
         Pod.Builder<T> builder;
@@ -767,9 +768,14 @@ final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<
             builder = Pod.Builder.createExtending(storageSuperClass, storageFactoryInterface);
         } else {
             if (parentShape instanceof PodBasedStaticShape) {
-                builder = Pod.Builder.createExtending((Pod) ((PodBasedStaticShape<T>) parentShape).pod);
+                Object pod = ((PodBasedStaticShape<T>) parentShape).pod;
+                if (pod instanceof Pod) {
+                    builder = Pod.Builder.createExtending((Pod<T>) pod);
+                } else {
+                    throw new IllegalArgumentException("Expected pod of type " + Pod.class.getName() + "; got: " + pod);
+                }
             } else {
-                throw new RuntimeException("Unexpected parent shape: " + parentShape);
+                throw new IllegalArgumentException("Expected parent shape of type " + PodBasedStaticShape.class.getName() + "; got: " + parentShape);
             }
         }
         ArrayList<Pair<Target_com_oracle_truffle_api_staticobject_StaticProperty, Pod.Field>> propertyFields = new ArrayList<>(staticProperties.size());
