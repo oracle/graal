@@ -186,6 +186,25 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             }
         }
 
+        /**
+         * Tries to further canonicalize the condition, but only returns the result if it is
+         * constant.
+         *
+         * @see #create
+         */
+        public LogicNode constantOrNull(ValueNode x, ValueNode y, NodeView view) {
+            LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false, view);
+            if (result instanceof LogicConstantNode) {
+                return result;
+            } else {
+                result = findSynonym(x, y, view);
+                if (result instanceof LogicConstantNode) {
+                    return result;
+                }
+                return null;
+            }
+        }
+
         protected LogicNode findSynonym(ValueNode forX, ValueNode forY, NodeView view) {
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
                 return LogicConstantNode.contradiction();
@@ -339,9 +358,9 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             // recreate to original operation of piWithAdd but using newValue instead of value
             ValueNode newWithAdd = AddNode.create(newValue, constant, view);
             if (mirror) {
-                return create(newWithAdd, newValue, view);
+                return constantOrNull(newWithAdd, newValue, view);
             } else {
-                return create(newValue, newWithAdd, view);
+                return constantOrNull(newValue, newWithAdd, view);
             }
         }
 
