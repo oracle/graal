@@ -285,10 +285,8 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     static class ReadI8 {
 
         @Specialization(guards = "!vaList.isNativized()", limit = "1")
-        static byte readManagedI8(LLVMDarwinAarch64VaListStorage vaList, long offset,
-                                  @CachedLibrary("vaList.vaListStackPtr") LLVMManagedReadLibrary readLibrary) {
-            CompilerDirectives.shouldNotReachHere("ohhh");
-            return readLibrary.readI8(vaList.effectiveVaListPtr(), offset);
+        static byte readManagedI8(LLVMDarwinAarch64VaListStorage vaList, long offset) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
 
         @Specialization(guards = "vaList.isNativized()")
@@ -309,10 +307,8 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     static class ReadI32 {
 
         @Specialization(guards = "!vaList.isNativized()", limit = "1")
-        static int readManagedI32(LLVMDarwinAarch64VaListStorage vaList, long offset,
-                                  @CachedLibrary("vaList.vaListStackPtr") LLVMManagedReadLibrary readLibrary) {
-            CompilerDirectives.shouldNotReachHere("ohhh");
-            return readLibrary.readI32(vaList.effectiveVaListPtr(), offset);
+        static int readManagedI32(LLVMDarwinAarch64VaListStorage vaList, long offset) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
 
         @Specialization(guards = "vaList.isNativized()")
@@ -328,8 +324,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = "!vaList.isNativized()")
         static LLVMPointer readManagedPointer(LLVMDarwinAarch64VaListStorage vaList, long offset) {
-            CompilerDirectives.shouldNotReachHere();
-            return null;
+            throw CompilerDirectives.shouldNotReachHere();
         }
 
         @Specialization(guards = "vaList.isNativized()")
@@ -447,7 +442,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         this.nativized = true;
 
-        initNativeAreas(this.realArguments, this.originalArgs, this.expansions, this.numberOfExplicitArguments, effectiveVaListPtr(),
+        initNativeAreas(this.realArguments, this.originalArgs, this.expansions, this.numberOfExplicitArguments, vaListStackPtr,
                         i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, i64OverflowArgAreaStore, i32OverflowArgAreaStore,
                         fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, memMove);
     }
@@ -615,13 +610,15 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             } else if (ret instanceof LLVMVarArgCompoundValue) {
                 CompilerDirectives.shouldNotReachHere("should not reach? aren't they decomposed by LLVM?");
                 LLVMVarArgCompoundValue struct = (LLVMVarArgCompoundValue) ret;
+
+                nativeOffset += struct.getSize() - 8;
                 if (type instanceof PointerType && ((PointerType) type).getPointeeType() instanceof StructureType) {
                     // TODO: better shape check?
                     return struct;
                 } else {
                     CompilerDirectives.shouldNotReachHere("Conv not supported: from LLVMVarArgCompoundValue to " + type);
                 }
-        }
+            }
             CompilerDirectives.shouldNotReachHere("unsupported type: " + ret.getClass());
         }
 
@@ -785,7 +782,6 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             @GenerateAOT.Exclude // recursion cut
             static void copyToManagedObject(NativeVAListWrapper source, LLVMDarwinAarch64VaListStorage dest, Frame frame,
                                             @CachedLibrary("source") LLVMVaListLibrary vaListLibrary) {
-                // vaListLibrary.copy(source, new NativeVAListWrapper(dest.vaListStackPtr), frame);
                 dest.vaListStackPtr = source.nativeVAListPtr.copy();
                 assert dest.nativized;
             }
