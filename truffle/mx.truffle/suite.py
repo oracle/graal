@@ -282,8 +282,7 @@ suite = {
     "com.oracle.truffle.api.operation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
-      "requires" : [""],
-      "dependencies" : ["com.oracle.truffle.api", "com.oracle.truffle.api.library", "com.oracle.truffle.api.interop", "com.oracle.truffle.api.exception", "com.oracle.truffle.api.instrumentation"],
+      "dependencies" : ["com.oracle.truffle.api", "com.oracle.truffle.api.library", "com.oracle.truffle.api.interop", "com.oracle.truffle.api.exception", "com.oracle.truffle.api.instrumentation", "TruffleJSON"],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "javaCompliance" : "11+",

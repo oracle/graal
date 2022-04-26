@@ -105,8 +105,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void setStateObjects(List<Object> stateObjects) {
-        this.specializationStates = stateObjects.stream()//
-                        .filter(x -> x instanceof SpecializationData)//
+        this.specializationStates = stateObjects.stream() //
+                        .filter(x -> x instanceof SpecializationData) //
                         .collect(Collectors.toUnmodifiableList());
     }
 
@@ -134,6 +134,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public String transformNodeInnerTypeName(String name) {
+        if (cinstr instanceof QuickenedInstruction) {
+            return ((QuickenedInstruction) cinstr).getOrig().getUniqueName() + "_" + name;
+        }
         String result = cinstr.getUniqueName() + "_" + name;
         innerTypeNames.add(result);
         return result;
@@ -377,10 +380,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call) {
-        if (isVariadic) {
-            return false;
-        }
-
+        String easName = transformNodeMethodName("executeAndSpecialize");
         if (cinstr instanceof QuickenedInstruction) {
             QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
 
@@ -391,18 +391,25 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                             new CodeVariableElement(context.getType(int.class), "$bci"),
                             qinstr.getOrig().opcodeIdField));
 
-            String parentEASName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
-            builder.startStatement().startCall(parentEASName);
-            addNodeCallParameters(builder, false, false);
-            frameState.addReferencesTo(builder);
-            builder.end(2);
-            builder.returnStatement();
+            easName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
 
-            return true;
         }
 
-        builder.statement(call);
-        builder.returnStatement();
+        if (isVariadic) {
+            builder.startReturn();
+        } else {
+            builder.startStatement();
+        }
+
+        builder.startCall(easName);
+        addNodeCallParameters(builder, false, false);
+        frameState.addReferencesTo(builder);
+        builder.end(2);
+
+        if (!isVariadic) {
+            builder.returnStatement();
+        }
+
         return true;
     }
 

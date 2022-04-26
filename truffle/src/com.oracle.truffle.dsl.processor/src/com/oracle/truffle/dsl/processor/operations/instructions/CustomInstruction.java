@@ -45,6 +45,14 @@ public class CustomInstruction extends Instruction {
         return data.getName();
     }
 
+    public List<String> getSpecializationNames() {
+        List<String> result = new ArrayList<>();
+        for (SpecializationData spec : data.getNodeData().getSpecializations()) {
+            result.add(spec.getId());
+        }
+        return result;
+    }
+
     public void setExecuteMethod(ExecutableElement executeMethod) {
         this.executeMethod = executeMethod;
     }

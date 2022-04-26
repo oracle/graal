@@ -8,6 +8,9 @@ import java.util.Objects;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+
 public class OperationDecisions {
     private final List<Quicken> quicken = new ArrayList<>();
 
@@ -74,68 +77,35 @@ public class OperationDecisions {
             this.specializations = specializations;
         }
 
-        public static Quicken deserialize(XMLStreamReader rd) throws XMLStreamException {
-            assert rd.getName().getLocalPart().equals("Quicken");
-            String operation = rd.getAttributeValue(null, "operation");
+        public static Quicken deserialize(JSONObject o) {
+            String operation = o.getString("operation");
 
-            int state = rd.nextTag();
-            if (state == XMLStreamReader.END_ELEMENT) {
-                return new Quicken(operation, new String[0]);
-            }
-
-            assert state == XMLStreamReader.START_ELEMENT;
-            assert rd.getName().getLocalPart().equals("Specializations");
-
+            JSONArray specs = o.getJSONArray("specializations");
             List<String> specializations = new ArrayList<>();
 
-            state = rd.nextTag();
-            while (state == XMLStreamReader.START_ELEMENT) {
-                assert rd.getName().getLocalPart().equals("Specialization");
-
-                String id = rd.getAttributeValue(null, "id");
-                assert id != null;
-
-                specializations.add(id);
-
-                state = rd.nextTag();
-                if (state != XMLStreamReader.END_ELEMENT) {
-                    throw new AssertionError();
-                }
-
-                state = rd.nextTag();
+            for (int i = 0; i < specs.length(); i++) {
+                specializations.add(specs.getString(i));
             }
-
-            assert state == XMLStreamReader.END_ELEMENT; // end of Specializations
 
             return new Quicken(operation, specializations.toArray(new String[specializations.size()]));
         }
     }
 
-    public static OperationDecisions deserialize(XMLStreamReader rd) throws XMLStreamException {
-        if (!rd.getName().getLocalPart().equals("Decisions")) {
-            throw new AssertionError();
-        }
-
+    public static OperationDecisions deserialize(JSONArray o) {
         OperationDecisions decisions = new OperationDecisions();
 
-        int state = rd.nextTag();
-        while (state == XMLStreamReader.START_ELEMENT) {
-            switch (rd.getLocalName()) {
-                case "Quicken":
-                    Quicken quicken = Quicken.deserialize(rd);
-                    decisions.quicken.add(quicken);
+        for (int i = 0; i < o.length(); i++) {
+            JSONObject decision = o.getJSONObject(i);
 
-                    state = rd.nextTag();
-                    if (!(state == XMLStreamReader.END_ELEMENT && rd.getLocalName().equals("Quicken"))) {
-                        throw new AssertionError(state);
-                    }
+            switch (decision.getString("type")) {
+                case "Quicken":
+                    Quicken q = Quicken.deserialize(decision);
+                    decisions.quicken.add(q);
                     break;
                 default:
                     // TODO error handling
-                    throw new AssertionError("invalid decision: " + rd.getLocalName());
+                    throw new AssertionError("invalid decision type" + decision.getString("type"));
             }
-
-            state = rd.nextTag();
         }
 
         return decisions;

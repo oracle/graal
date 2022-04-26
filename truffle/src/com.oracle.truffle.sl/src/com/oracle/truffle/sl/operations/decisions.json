@@ -1,0 +1,52 @@
+[
+  {
+    "specializations": ["FromLong"],
+    "type": "Quicken",
+    "operation": "SLUnboxOperation"
+  },
+  {
+    "specializations": ["AddLong"],
+    "type": "Quicken",
+    "operation": "SLAddOperation"
+  },
+  {
+    "specializations": ["ReadSLObject0"],
+    "type": "Quicken",
+    "operation": "SLReadPropertyOperation"
+  },
+  {
+    "specializations": ["FromBoolean"],
+    "type": "Quicken",
+    "operation": "SLUnboxOperation"
+  },
+  {
+    "specializations": ["Boolean"],
+    "type": "Quicken",
+    "operation": "SLConvertToBoolean"
+  },
+  {
+    "specializations": ["LessOrEqual0"],
+    "type": "Quicken",
+    "operation": "SLLessOrEqualOperation"
+  },
+  {
+    "specializations": ["Direct"],
+    "type": "Quicken",
+    "operation": "SLInvokeOperation"
+  },
+  {
+    "specializations": ["Perform"],
+    "type": "Quicken",
+    "operation": "SLFunctionLiteralOperation"
+  },
+  {
+    "specializations": ["WriteSLObject0"],
+    "type": "Quicken",
+    "operation": "SLWritePropertyOperation"
+  },
+  {
+    "specializations": ["LessThan0"],
+    "type": "Quicken",
+    "operation": "SLLessThanOperation"
+  }
+]

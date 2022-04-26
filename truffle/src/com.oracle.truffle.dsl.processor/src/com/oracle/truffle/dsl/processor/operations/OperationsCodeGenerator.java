@@ -16,6 +16,7 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -40,6 +41,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private final Set<Modifier> MOD_PRIVATE_FINAL = Set.of(Modifier.PRIVATE, Modifier.FINAL);
     private final Set<Modifier> MOD_PRIVATE_STATIC = Set.of(Modifier.PRIVATE, Modifier.STATIC);
     private final Set<Modifier> MOD_PRIVATE_STATIC_FINAL = Set.of(Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+    private final Set<Modifier> MOD_STATIC = Set.of(Modifier.STATIC);
     private OperationsBytecodeCodeGenerator bytecodeGenerator;
 
     private static final boolean FLAG_NODE_AST_PRINTING = false;
@@ -137,6 +139,39 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         String simpleName = m.getTemplateType().getSimpleName() + "BuilderImpl";
         CodeTypeElement typBuilderImpl = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, typBuilder.asType());
         typBuilderImpl.setEnclosingElement(typBuilder);
+
+        if (m.isTracing()) {
+            String decisionsFilePath = m.getDecisionsFilePath();
+            if (decisionsFilePath != null) {
+                CodeExecutableElement mStaticInit = new CodeExecutableElement(MOD_STATIC, null, "<cinit>");
+                typBuilderImpl.add(mStaticInit);
+
+                CodeTreeBuilder b = mStaticInit.appendBuilder();
+
+                b.startAssign("ExecutionTracer tracer").startStaticCall(types.ExecutionTracer, "get");
+                b.doubleQuote(ElementUtils.getClassQualifiedName(m.getTemplateType()));
+                b.end(2);
+
+                b.startStatement().startCall("tracer", "setOutputPath");
+                b.doubleQuote(decisionsFilePath);
+                b.end(2);
+
+                for (Instruction instr : m.getInstructions()) {
+                    if (!(instr instanceof CustomInstruction)) {
+                        continue;
+                    }
+
+                    CustomInstruction cinstr = (CustomInstruction) instr;
+
+                    b.startStatement().startCall("tracer", "setInstructionSpecializationNames");
+                    b.doubleQuote(cinstr.name);
+                    for (String name : cinstr.getSpecializationNames()) {
+                        b.doubleQuote(name);
+                    }
+                    b.end(2);
+                }
+            }
+        }
 
         CodeVariableElement fldLanguage = new CodeVariableElement(MOD_PRIVATE_FINAL, m.getLanguageType(), "language");
         typBuilderImpl.add(fldLanguage);

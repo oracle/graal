@@ -21,6 +21,9 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONTokener;
 
 public class OperationsParser extends AbstractParser<OperationsData> {
 
@@ -90,8 +93,9 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             return data;
         }
 
-        boolean isTracing = false;
+        data.setDecisionsFilePath(getMainDecisionsFilePath(typeElement, generateOperationsMirror));
 
+        boolean isTracing = false;
         if (!isTracing) {
             OperationDecisions decisions = parseDecisions(typeElement, generateOperationsMirror, data);
             data.setDecisions(decisions);
@@ -108,10 +112,27 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         return data;
     }
 
+    private String getMainDecisionsFilePath(TypeElement element, AnnotationMirror generateOperationsMirror) {
+        String file = (String) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile").getValue();
+        if (file == null || file.isEmpty()) {
+            return null;
+        }
+
+        return getDecisionsFile(element, file).getAbsolutePath();
+    }
+
+    private File getDecisionsFile(TypeElement element, String path) {
+        File file = CompilerFactory.getCompiler(element).getEnclosingFile(processingEnv, element);
+        String parent = file.getParent();
+        File target = new File(parent, path);
+
+        return target;
+    }
+
     @SuppressWarnings("unchecked")
     private OperationDecisions parseDecisions(TypeElement element, AnnotationMirror generateOperationsMirror, OperationsData data) {
         String file = (String) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile").getValue();
-        OperationDecisions mainDecisions = parseDecisions(element, file, data);
+        OperationDecisions mainDecisions = parseDecisions(element, file, data, true);
         if (mainDecisions == null) {
             return null;
         }
@@ -119,7 +140,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         List<String> overrideFiles = (List<String>) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionOverrideFiles").getValue();
 
         for (String overrideFile : overrideFiles) {
-            OperationDecisions overrideDecision = parseDecisions(element, overrideFile, data);
+            OperationDecisions overrideDecision = parseDecisions(element, overrideFile, data, false);
             if (overrideDecision != null) {
                 mainDecisions.merge(overrideDecision);
             }
@@ -128,19 +149,14 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         return mainDecisions;
     }
 
-    private OperationDecisions parseDecisions(TypeElement element, String path, OperationsData data) {
-        File file = CompilerFactory.getCompiler(element).getEnclosingFile(processingEnv, element);
-        String parent = file.getParent();
-        File target = new File(parent, path);
+    private OperationDecisions parseDecisions(TypeElement element, String path, OperationsData data, boolean isMain) {
+        File target = getDecisionsFile(element, path);
         try {
-            XMLStreamReader rd = XMLInputFactory.newDefaultFactory().createXMLStreamReader(new FileInputStream(target));
-            rd.next();
-
-            return OperationDecisions.deserialize(rd);
+            FileInputStream fi = new FileInputStream(target);
+            JSONArray o = new JSONArray(new JSONTokener(fi));
+            return OperationDecisions.deserialize(o);
         } catch (FileNotFoundException ex) {
             data.addError("Decisions file '%s' not found. Build & run with tracing to generate it.", target.toString());
-        } catch (XMLStreamException ex) {
-            data.addError("Exception while reading decisions file: %s", ex);
         }
         return null;
     }

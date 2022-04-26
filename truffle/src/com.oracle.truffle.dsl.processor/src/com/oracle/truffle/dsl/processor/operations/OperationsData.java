@@ -25,6 +25,7 @@ public class OperationsData extends Template {
 
     private boolean tracing;
     private OperationDecisions decisions;
+    private String decisionsFilePath;
 
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
@@ -86,7 +87,10 @@ public class OperationsData extends Template {
         for (SingleOperationData data : operations) {
             context.processOperation(data);
         }
-        context.processDecisions(decisions);
+        if (decisions != null) {
+            assert !tracing;
+            context.processDecisions(decisions);
+        }
     }
 
     public boolean isGenerateAOT() {
@@ -96,4 +100,13 @@ public class OperationsData extends Template {
     public void setDecisions(OperationDecisions decisions) {
         this.decisions = decisions;
     }
+
+    public String getDecisionsFilePath() {
+        return this.decisionsFilePath;
+    }
+
+    public void setDecisionsFilePath(String decisionsFilePath) {
+        this.decisionsFilePath = decisionsFilePath;
+    }
+
 }

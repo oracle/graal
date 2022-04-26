@@ -1,42 +1,40 @@
 package com.oracle.truffle.api.operation.tracing;
 
-import static com.oracle.truffle.api.operation.tracing.XmlUtils.readAttribute;
-import static com.oracle.truffle.api.operation.tracing.XmlUtils.readAttributeInt;
-import static com.oracle.truffle.api.operation.tracing.XmlUtils.readCharactersInt;
-import static com.oracle.truffle.api.operation.tracing.XmlUtils.readCharactersLong;
-import static com.oracle.truffle.api.operation.tracing.XmlUtils.readEndElement;
-import static com.oracle.truffle.api.operation.tracing.XmlUtils.readStartElement;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import javax.xml.stream.FactoryConfigurationError;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLOutputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-import javax.xml.stream.XMLStreamWriter;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.operation.OperationsNode;
+import com.oracle.truffle.tools.utils.json.JSONArray;
+import com.oracle.truffle.tools.utils.json.JSONObject;
+import com.oracle.truffle.tools.utils.json.JSONTokener;
 
 public class ExecutionTracer {
     private static final Map<String, ExecutionTracer> TRACERS = new HashMap<>();
+
+    private static final String KEY_TRACERS = "tracers";
+    private static final String KEY_KEY = "key";
+    private static final String KEY_ACTIVE_SPECIALIZATION_OCCURENCES = "activeSpecializations";
+    private static final String KEY_COUNT = "count";
 
     public static ExecutionTracer get(String key) {
         return TRACERS.computeIfAbsent(key, ExecutionTracer::new);
     }
 
     private final String key;
+    private String outputPath;
+    private Map<String, String[]> specializationNames = new HashMap<>();
 
-    public ExecutionTracer(String key) {
+    private ExecutionTracer(String key) {
         assert TRACERS.get(key) == null;
         this.key = key;
     }
@@ -44,55 +42,53 @@ public class ExecutionTracer {
     static {
 
         // deser
-        String stateFile = "/tmp/state.xml";
+        String stateFile = "/tmp/state.json";
 
         try {
             FileInputStream fi = new FileInputStream(new File(stateFile));
-            XMLStreamReader rd = XMLInputFactory.newDefaultFactory().createXMLStreamReader(fi);
+            JSONTokener tok = new JSONTokener(fi);
+            JSONObject o = new JSONObject(tok);
 
-            readStartElement(rd, "STATE");
+            JSONArray tracers = o.getJSONArray("tracers");
 
-            int state = rd.next();
-            while (state == XMLStreamReader.START_ELEMENT) {
-                assert rd.getName().getLocalPart().equals("T");
-
-                ExecutionTracer tr = ExecutionTracer.deserializeState(rd);
+            for (int i = 0; i < tracers.length(); i++) {
+                JSONObject tracer = tracers.getJSONObject(i);
+                ExecutionTracer tr = ExecutionTracer.deserializeState(tracer);
                 TRACERS.put(tr.key, tr);
-
-                readEndElement(rd, "T");
-
-                state = rd.next();
             }
         } catch (FileNotFoundException ex) {
-            // we ignore FNFE since that is true on the first run
-        } catch (Exception e1) {
-            throw new RuntimeException("error deserializing tracer state", e1);
+            System.err.println("not found");
         }
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            try (OutputStreamWriter fo = new OutputStreamWriter(new FileOutputStream(new File(stateFile)))) {
+                JSONObject result = new JSONObject();
+                JSONArray tracers = new JSONArray();
 
-            // ser
-            try {
-                FileOutputStream fo = new FileOutputStream(new File(stateFile));
-                XMLStreamWriter wr = XMLOutputFactory.newDefaultFactory().createXMLStreamWriter(fo);
-
-                wr.writeStartDocument();
-                wr.writeStartElement("STATE");
                 for (Map.Entry<String, ExecutionTracer> ent : TRACERS.entrySet()) {
                     ExecutionTracer tracer = ent.getValue();
-                    wr.writeStartElement("T");
-                    wr.writeAttribute("key", tracer.key);
-                    tracer.serializeState(wr);
-                    wr.writeEndElement();
-
+                    tracers.put(tracer.serializeState());
                     tracer.dump(new PrintWriter(System.out));
+                    System.out.flush();
                 }
-                wr.writeEndElement();
-                wr.writeEndDocument();
+
+                result.put(KEY_TRACERS, tracers);
+                fo.append(result.toString(2));
 
             } catch (Exception e) {
-                e.printStackTrace();
-                System.err.flush();
+                // failing to write the state is a critical exception
+                throw new RuntimeException(e);
+            }
+
+            for (Map.Entry<String, ExecutionTracer> ent : TRACERS.entrySet()) {
+                ExecutionTracer tracer = ent.getValue();
+                try (OutputStreamWriter fo = new OutputStreamWriter(new FileOutputStream(tracer.outputPath))) {
+                    JSONArray decisions = tracer.createDecisions();
+                    fo.append(decisions.toString(2));
+                } catch (Exception e) {
+                    // failing to write the decisions is not as big of an exception
+                    e.printStackTrace();
+                }
             }
         }));
     }
@@ -213,6 +209,10 @@ public class ExecutionTracer {
         final String instructionId;
         final boolean[] activeSpecializations;
 
+        private static final String KEY_INSTRUCTION_ID = "i";
+        private static final String KEY_ACTIVE_SPECIALIZATIONS = "a";
+        private static final String KEY_LENGTH = "l";
+
         ActiveSpecializationOccurence(String instructionId, boolean... activeSpecializations) {
             this.instructionId = instructionId;
             this.activeSpecializations = activeSpecializations;
@@ -244,44 +244,54 @@ public class ExecutionTracer {
             return "ActiveSpecializationOccurence[instructionId=" + instructionId + ", activeSpecializations=" + Arrays.toString(activeSpecializations) + "]";
         }
 
-        void serializeState(XMLStreamWriter wr) throws XMLStreamException {
-            wr.writeAttribute("i", instructionId);
-            wr.writeAttribute("n", "" + activeSpecializations.length);
+        JSONObject serializeState() {
+            JSONObject result = new JSONObject();
+            result.put(KEY_INSTRUCTION_ID, instructionId);
+            result.put(KEY_LENGTH, activeSpecializations.length);
 
-            wr.writeStartElement("A");
+            JSONArray arr = new JSONArray();
             int i = 0;
             for (boolean act : activeSpecializations) {
                 if (act) {
-                    wr.writeStartElement("a");
-                    wr.writeCharacters("" + i);
-                    wr.writeEndElement();
+                    arr.put(i);
                 }
                 i++;
             }
-            wr.writeEndElement();
+            result.put(KEY_ACTIVE_SPECIALIZATIONS, arr);
+
+            return result;
         }
 
-        static ActiveSpecializationOccurence deserializeState(XMLStreamReader rd) throws XMLStreamException {
-            String instructionId = readAttribute(rd, "i");
-            int count = readAttributeInt(rd, "n");
+        JSONObject createDecision(String[] specNames) {
+            assert specNames.length >= activeSpecializations.length : instructionId + "should have at least" + activeSpecializations.length + " specializations, but has " + specNames.length;
+            JSONObject result = new JSONObject();
+            result.put("type", "Quicken");
+            assert instructionId.startsWith("c.");
+            result.put("operation", instructionId.substring(2)); // drop the `c.` prefix
 
-            boolean[] activeSpecializations = new boolean[count];
-
-            readStartElement(rd, "A");
-
-            int state = rd.next();
-            while (state == XMLStreamReader.START_ELEMENT) {
-                assert rd.getName().getLocalPart().equals("a");
-
-                int index = readCharactersInt(rd);
-                activeSpecializations[index] = true;
-
-                readEndElement(rd, "a");
-                state = rd.next();
+            JSONArray specs = new JSONArray();
+            for (int i = 0; i < activeSpecializations.length; i++) {
+                if (activeSpecializations[i]) {
+                    specs.put(specNames[i]);
+                }
             }
-            // end ASs
 
-            assert state == XMLStreamReader.END_ELEMENT;
+            result.put("specializations", specs);
+
+            return result;
+        }
+
+        static ActiveSpecializationOccurence deserializeState(JSONObject o) {
+            String instructionId = o.getString(KEY_INSTRUCTION_ID);
+            int len = o.getInt(KEY_LENGTH);
+
+            boolean[] activeSpecializations = new boolean[len];
+
+            JSONArray arr = o.getJSONArray(KEY_ACTIVE_SPECIALIZATIONS);
+            for (int i = 0; i < arr.length(); i++) {
+                int idx = arr.getInt(i);
+                activeSpecializations[i] = true;
+            }
 
             return new ActiveSpecializationOccurence(instructionId, activeSpecializations);
         }
@@ -322,8 +332,6 @@ public class ExecutionTracer {
 
     @TruffleBoundary
     public final void traceSpecialization(int bci, String id, int specializationId, Object... arguments) {
-        // System.out.printf(" [TS] %04x %d %d %s%n", bci, id, specializationId,
-        // List.of(arguments));
     }
 
     @SuppressWarnings({"unused", "static-method"})
@@ -362,45 +370,68 @@ public class ExecutionTracer {
         // });
     }
 
-    public void serializeState(XMLStreamWriter wr) throws XMLStreamException {
-        wr.writeStartElement("As");
+    public JSONObject serializeState() {
+        JSONObject result = new JSONObject();
+        result.put(KEY_KEY, key);
 
-        for (Map.Entry<ActiveSpecializationOccurence, Long> ent : activeSpecializationsMap.entrySet()) {
-            wr.writeStartElement("A");
-            wr.writeAttribute("c", "" + ent.getValue());
+        JSONArray arr = new JSONArray();
+        for (Map.Entry<ActiveSpecializationOccurence, Long> entry : activeSpecializationsMap.entrySet()) {
+            ActiveSpecializationOccurence as = entry.getKey();
 
-            ent.getKey().serializeState(wr);
-            wr.writeEndElement();
+            JSONObject o = as.serializeState();
+            o.put(KEY_COUNT, entry.getValue());
+
+            arr.put(o);
         }
 
-        wr.writeEndElement();
+        result.put(KEY_ACTIVE_SPECIALIZATION_OCCURENCES, arr);
+        return result;
     }
 
-    public static ExecutionTracer deserializeState(XMLStreamReader rd) throws XMLStreamException {
-
-        String key = readAttribute(rd, "key");
-
+    public static ExecutionTracer deserializeState(JSONObject tracer) {
+        String key = tracer.getString(KEY_KEY);
         ExecutionTracer result = new ExecutionTracer(key);
 
-        readStartElement(rd, "As");
+        JSONArray arr = tracer.getJSONArray(KEY_ACTIVE_SPECIALIZATION_OCCURENCES);
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject o = arr.getJSONObject(i);
 
-        int state = rd.next();
-        while (state == XMLStreamReader.START_ELEMENT) {
-            assert rd.getName().getLocalPart().equals("A");
+            long count = o.getLong(KEY_COUNT);
+            o.remove(KEY_COUNT);
 
-            long value = XmlUtils.readAttributeLong(rd, "c");
-
-            ActiveSpecializationOccurence k = ActiveSpecializationOccurence.deserializeState(rd);
-
-            result.activeSpecializationsMap.put(k, value);
-
-            readEndElement(rd, "A");
-
-            state = rd.next();
+            ActiveSpecializationOccurence as = ActiveSpecializationOccurence.deserializeState(o);
+            result.activeSpecializationsMap.put(as, count);
         }
-        // end ASOs
-        assert state == XMLStreamReader.END_ELEMENT;
 
         return result;
     }
+
+    public JSONArray createDecisions() {
+        int numQuicken = 10;
+
+        JSONArray result = new JSONArray();
+
+        activeSpecializationsMap.entrySet().stream() //
+                        .sorted((e1, e2) -> Long.compare(e2.getValue(), e1.getValue())) //
+                        .limit(numQuicken) //
+                        .forEachOrdered(e -> {
+                            result.put(e.getKey().createDecision(specializationNames.get(e.getKey().instructionId)));
+                        });
+
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "ExecutionTracer [key=" + key + ", activeSpecializationsMap=" + activeSpecializationsMap + "]";
+    }
+
+    public void setOutputPath(String outputPath) {
+        this.outputPath = outputPath;
+    }
+
+    public void setInstructionSpecializationNames(String instructionName, String... specializationNames) {
+        this.specializationNames.put(instructionName, specializationNames);
+    }
+
 }
