@@ -47,6 +47,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.PrimitiveConstant;
+
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_implicit_value;
+
 /**
  * Section generator for debug_loc section.
  */
@@ -235,6 +241,8 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                     pos = writeStackLocation(context, value.stackSlot(), buffer, pos);
                     break;
                 case CONSTANT:
+                    pos = writeConstantLocation(context, value.constantValue(), buffer, pos);
+                    break;
                 default:
                     assert false : "Should not reach here!";
                     break;
@@ -303,7 +311,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                 // need to pass base reg index as a ULEB operand
                 pos += putULEB(sp, scratch, 0);
             }
-            pos += putSLEB(0L - offset, scratch, 0);
+            pos += putSLEB(offset, scratch, 0);
         } else {
             int patchPos = pos;
             pos = putShort(byteCount, buffer, pos);
@@ -313,7 +321,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                 // need to pass base reg index as a ULEB operand
                 pos = putULEB(sp, buffer, pos);
             }
-            pos = putSLEB(0L - offset, buffer, pos);
+            pos = putSLEB(offset, buffer, pos);
             // now backpatch the byte count
             byteCount = (byte) (pos - zeroPos);
             putShort(byteCount, buffer, patchPos);
@@ -322,6 +330,57 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             } else {
                 verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, stackOp, sp, 0 - offset);
             }
+        }
+        return pos;
+    }
+
+    private int writeConstantLocation(DebugContext context, JavaConstant constant, byte[] buffer, int p) {
+        int pos = p;
+        byte op = DW_OP_implicit_value;
+        JavaKind kind = constant.getJavaKind();
+        int byteCount = (kind == JavaKind.Object ? 8 : kind.getByteCount());
+        assert (kind != JavaKind.Object || constant.isNull()) : "only expecting null object constant!";
+        if (buffer == null) {
+            pos += putByte(op, scratch, 0);
+            pos += putULEB(byteCount, scratch, 0);
+            if (constant.isNull()) {
+                pos += writeAttrData8(0, scratch, 0);
+            } else if (byteCount == 1) {
+                if (kind == JavaKind.Int) {
+                    pos += putByte((byte) constant.asInt(), scratch, 0);
+                } else {
+                    pos += putByte((byte) (constant.asBoolean() ? 1 : 0), scratch, 0);
+                }
+            } else if (byteCount == 2) {
+                pos += putShort((short) constant.asInt(), scratch, 0);
+            } else if (byteCount == 4) {
+                int i = (kind == JavaKind.Int ? constant.asInt() : Float.floatToRawIntBits(constant.asFloat()));
+                pos += putInt(i, scratch, 0);
+            } else {
+                long l = (kind == JavaKind.Long ? constant.asLong() : Double.doubleToRawLongBits(constant.asDouble()));
+                pos += putLong(l, scratch, 0);
+            }
+        } else {
+            pos = putByte(op, buffer, pos);
+            pos = putULEB(byteCount, buffer, pos);
+            if (constant.isNull()) {
+                pos = writeAttrData8(0, buffer, pos);
+            } else if (byteCount == 1) {
+                if (kind == JavaKind.Int) {
+                    pos = putByte((byte) constant.asInt(), buffer, pos);
+                } else {
+                    pos = putByte((byte) (constant.asBoolean() ? 1 : 0), buffer, pos);
+                }
+            } else if (byteCount == 2) {
+                pos = putShort((short) constant.asInt(), buffer, pos);
+            } else if (byteCount == 4) {
+                int i = (kind == JavaKind.Int ? constant.asInt() : Float.floatToRawIntBits(constant.asFloat()));
+                pos = putInt(i, buffer, pos);
+            } else {
+                long l = (kind == JavaKind.Long ? constant.asLong() : Double.doubleToRawLongBits(constant.asDouble()));
+                pos = putLong(l, buffer, pos);
+            }
+            verboseLog(context, "  [0x%08x]     CONSTANT %s", pos, constant.toValueString());
         }
         return pos;
     }
@@ -365,7 +424,14 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                         return false;
                     }
                     break;
-                case CONSTANT: // should not get here
+                case CONSTANT: {
+                    JavaConstant constant = value.constantValue();
+                    JavaConstant otherConstant = otherValue.constantValue();
+                    // we can only handle primitive or null constants for now
+                    assert constant instanceof PrimitiveConstant || constant.isNull();
+                    assert otherConstant instanceof PrimitiveConstant || otherConstant.isNull();
+                    return constant.equals(otherConstant);
+                }
                 case UNDEFINED:
                     assert false : "unexpected local value type";
                     break;
@@ -373,7 +439,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             return true;
         }
 
-        LocalValueExtent maybeMerge(int otherLo, int otherHi, DebugLocalValueInfo otherValue) {
+        private LocalValueExtent maybeMerge(int otherLo, int otherHi, DebugLocalValueInfo otherValue) {
             if (shouldMerge(otherLo, otherHi, otherValue)) {
                 // We can extend the current extent to cover the next one.
                 this.hi = otherHi;

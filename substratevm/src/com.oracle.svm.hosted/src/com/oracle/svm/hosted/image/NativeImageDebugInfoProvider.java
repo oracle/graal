@@ -68,12 +68,14 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.Local;
 import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -1125,7 +1127,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             final List<DebugLocationInfo> locationInfos = new ArrayList<>();
             final boolean omitInline = SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue();
-            final Visitor visitor = (omitInline ? new TopLevelVisitor(locationInfos) : new MultiLevelVisitor(locationInfos));
+            int frameSize = getFrameSize();
+            final Visitor visitor = (omitInline ? new TopLevelVisitor(locationInfos, frameSize) : new MultiLevelVisitor(locationInfos, frameSize));
             // arguments passed by visitor to apply are
             // NativeImageDebugLocationInfo caller location info
             // CallNode nodeToEmbed parent call node to convert to entry code leaf
@@ -1210,9 +1213,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private abstract class SingleLevelVisitor implements Visitor {
 
             protected final List<DebugLocationInfo> locationInfos;
+            protected final int frameSize;
 
-            SingleLevelVisitor(List<DebugLocationInfo> locationInfos) {
+            SingleLevelVisitor(List<DebugLocationInfo> locationInfos, int frameSize) {
                 this.locationInfos = locationInfos;
+                this.frameSize = frameSize;
             }
 
             public NativeImageDebugLocationInfo process(FrameNode node, NativeImageDebugLocationInfo callerInfo) {
@@ -1220,18 +1225,18 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 if (node instanceof CallNode) {
                     // this node represents an inline call range so
                     // add a locationinfo to cover the range of the call
-                    locationInfo = createCallLocationInfo((CallNode) node, callerInfo);
+                    locationInfo = createCallLocationInfo((CallNode) node, callerInfo, frameSize);
                 } else {
                     // this is leaf method code so add details of its range
-                    locationInfo = createLeafLocationInfo(node, callerInfo);
+                    locationInfo = createLeafLocationInfo(node, callerInfo, frameSize);
                 }
                 return locationInfo;
             }
         }
 
         private class TopLevelVisitor extends SingleLevelVisitor {
-            TopLevelVisitor(List<DebugLocationInfo> locationInfos) {
-                super(locationInfos);
+            TopLevelVisitor(List<DebugLocationInfo> locationInfos, int frameSize) {
+                super(locationInfos, frameSize);
             }
 
             @Override
@@ -1256,8 +1261,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         public class MultiLevelVisitor extends SingleLevelVisitor {
-            MultiLevelVisitor(List<DebugLocationInfo> locationInfos) {
-                super(locationInfos);
+            MultiLevelVisitor(List<DebugLocationInfo> locationInfos, int frameSize) {
+                super(locationInfos, frameSize);
             }
 
             @Override
@@ -1274,7 +1279,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                             // parent CallNode
                             // its end range is determined by the start of the first node at this
                             // level
-                            NativeImageDebugLocationInfo embeddedLocationInfo = createEmbeddedParentLocationInfo(nodeToEmbed, node, callerInfo);
+                            NativeImageDebugLocationInfo embeddedLocationInfo = createEmbeddedParentLocationInfo(nodeToEmbed, node, callerInfo, frameSize);
                             locationInfos.add(embeddedLocationInfo);
                             // since this is a leaf node we can merge later leafs into it
                             initMerge(embeddedLocationInfo, args);
@@ -1297,7 +1302,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                             callNode.visitChildren(this, locationInfo, callNode, (Object) null);
                         } else {
                             // we need to embed a leaf node for the whole call range
-                            locationInfo = createEmbeddedParentLocationInfo(callNode, null, locationInfo);
+                            locationInfo = createEmbeddedParentLocationInfo(callNode, null, locationInfo, frameSize);
                             locationInfos.add(locationInfo);
                         }
                     } else {
@@ -1333,9 +1338,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * @param node is a simple FrameNode
          * @return the newly created location info record
          */
-        private NativeImageDebugLocationInfo createLeafLocationInfo(FrameNode node, NativeImageDebugLocationInfo callerInfo) {
+        private NativeImageDebugLocationInfo createLeafLocationInfo(FrameNode node, NativeImageDebugLocationInfo callerInfo, int framesize) {
             assert !(node instanceof CallNode);
-            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(node, callerInfo);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(node, callerInfo, framesize);
             debugContext.log(DebugContext.DETAILED_LEVEL, "Create leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
                             locationInfo.addressHi() - 1);
             return locationInfo;
@@ -1347,9 +1352,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * @param callNode is the top level inlined call frame
          * @return the newly created location info record
          */
-        private NativeImageDebugLocationInfo createCallLocationInfo(CallNode callNode, NativeImageDebugLocationInfo callerInfo) {
+        private NativeImageDebugLocationInfo createCallLocationInfo(CallNode callNode, NativeImageDebugLocationInfo callerInfo, int framesize) {
             BytecodePosition callerPos = realCaller(callNode);
-            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(callerPos, callNode.getStartPos(), callNode.getEndPos() + 1, callerInfo);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(callerPos, callNode.getStartPos(), callNode.getEndPos() + 1, callerInfo, framesize);
             debugContext.log(DebugContext.DETAILED_LEVEL, "Create call Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
                             locationInfo.addressHi() - 1);
             return locationInfo;
@@ -1366,11 +1371,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
          * @param callerLocation the location info created to represent the range for the call
          * @return a location info to be embedded as the first child range of the caller location.
          */
-        private NativeImageDebugLocationInfo createEmbeddedParentLocationInfo(CallNode parentToEmbed, FrameNode firstChild, NativeImageDebugLocationInfo callerLocation) {
+        private NativeImageDebugLocationInfo createEmbeddedParentLocationInfo(CallNode parentToEmbed, FrameNode firstChild, NativeImageDebugLocationInfo callerLocation, int framesize) {
             BytecodePosition pos = parentToEmbed.frame;
             int startPos = parentToEmbed.getStartPos();
             int endPos = (firstChild != null ? firstChild.getStartPos() : parentToEmbed.getEndPos() + 1);
-            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(pos, startPos, endPos, callerLocation);
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(pos, startPos, endPos, callerLocation, framesize);
             debugContext.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
                             locationInfo.addressHi() - 1);
             return locationInfo;
@@ -1533,17 +1538,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private DebugLocationInfo callersLocationInfo;
         private List<DebugLocalValueInfo> localInfoList;
 
-        NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo) {
-            this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo);
+        NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo, int framesize) {
+            this(frameNode.frame, frameNode.getStartPos(), frameNode.getEndPos() + 1, callersLocationInfo, framesize);
         }
 
-        NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo) {
+        NativeImageDebugLocationInfo(BytecodePosition bcpos, int lo, int hi, NativeImageDebugLocationInfo callersLocationInfo, int framesize) {
             super(bcpos.getMethod());
             this.bci = bcpos.getBCI();
             this.lo = lo;
             this.hi = hi;
             this.callersLocationInfo = callersLocationInfo;
-            this.localInfoList = initLocalInfoList(bcpos);
+            this.localInfoList = initLocalInfoList(bcpos, framesize);
         }
 
         // special constructor for synthetic lcoation info added at start of method
@@ -1569,7 +1574,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
             for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
                 if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
-                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(localInfo.stackSlot() - (frameSize - 8));
+                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(localInfo.stackSlot() + (frameSize - 8));
                     NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
                     NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
                                     value,
@@ -1584,7 +1589,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
         }
 
-        private List<DebugLocalValueInfo> initLocalInfoList(BytecodePosition bcpos) {
+        private List<DebugLocalValueInfo> initLocalInfoList(BytecodePosition bcpos, int framesize) {
             if (!(bcpos instanceof BytecodeFrame)) {
                 return null;
             }
@@ -1622,7 +1627,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     if ((storageKind == kind) ||
                                     isIntegralKindPromotion(storageKind, kind) ||
                                     (isPseudoObjectType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
-                        localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, type, slot, line));
+                        localInfos.add(new NativeImageDebugLocalValueInfo(name, value, framesize, storageKind, type, slot, line));
                     } else if (storageKind != JavaKind.Illegal) {
                         debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind().toString());
                     }
@@ -1878,7 +1883,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // an extra 16 bytes to allow for the stacked return address and alignment
             assert nextStackIdx < stackParamCount : "encountered too many stack params";
             int stackIdx = nextStackIdx++;
-            return new NativeImageDebugStackValue((2 + stackIdx) * -8);
+            return new NativeImageDebugStackValue((2 + stackIdx) * 8);
         }
 
         public boolean usesStack() {
@@ -1932,10 +1937,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private LocalKind localKind;
 
         NativeImageDebugLocalValueInfo(String name, JavaKind kind, ResolvedJavaType type, int slot, int line) {
-            this(name, Value.ILLEGAL, kind, type, slot, line);
+            this(name, Value.ILLEGAL, 0, kind, type, slot, line);
         }
 
-        NativeImageDebugLocalValueInfo(String name, JavaValue value, JavaKind kind, ResolvedJavaType type, int slot, int line) {
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType type, int slot, int line) {
             this.name = name;
             this.kind = kind;
             this.type = type;
@@ -1946,10 +1951,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 this.value = new NativeImageDebugRegisterValue((RegisterValue) value);
             } else if (value instanceof StackSlot) {
                 this.localKind = LocalKind.STACKSLOT;
-                this.value = new NativeImageDebugStackValue((StackSlot) value);
-            } else if (value instanceof Constant) {
-                this.localKind = LocalKind.CONSTANT;
-                this.value = new NativeImageDebugConstantValue((Constant) value);
+                this.value = new NativeImageDebugStackValue((StackSlot) value, framesize);
+            } else if (value instanceof JavaConstant) {
+                // for now we can only handle primiitve constants
+                if (value instanceof PrimitiveConstant || ((JavaConstant) value).isNull()) {
+                    this.localKind = LocalKind.CONSTANT;
+                    this.value = new NativeImageDebugConstantValue((JavaConstant) value);
+                } else {
+                    this.localKind = LocalKind.UNDEFINED;
+                    this.value = null;
+                }
             } else {
                 this.localKind = LocalKind.UNDEFINED;
                 this.value = null;
@@ -2041,7 +2052,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Constant constantValue() {
+        public JavaConstant constantValue() {
             return ((NativeImageDebugConstantValue) value).getConstant();
         }
 
@@ -2087,8 +2098,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     public class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
         private int offset;
 
-        NativeImageDebugStackValue(StackSlot value) {
-            offset = value.getRawOffset();
+        NativeImageDebugStackValue(StackSlot value, int framesize) {
+            offset = value.getOffset(framesize);
         }
 
         NativeImageDebugStackValue(int offset) {
@@ -2101,13 +2112,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     public class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
-        private Constant value;
+        private JavaConstant value;
 
-        NativeImageDebugConstantValue(Constant value) {
+        NativeImageDebugConstantValue(JavaConstant value) {
             this.value = value;
         }
 
-        public Constant getConstant() {
+        public JavaConstant getConstant() {
             return value;
         }
     }

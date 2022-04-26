@@ -381,12 +381,11 @@ public class Range {
                 switch (localValueInfo.localKind()) {
                     case REGISTER:
                     case STACKSLOT:
+                    case CONSTANT:
                         List<Range> varRanges = varRangeMap.get(local);
                         assert varRanges != null : "local not present in var to ranges map!";
                         varRanges.add(subRange);
                         break;
-                    case CONSTANT:
-                        // drop through cannot handle constants for now
                     case UNDEFINED:
                         break;
                 }

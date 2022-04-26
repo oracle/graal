@@ -32,6 +32,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.PrimitiveConstant;
+
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
@@ -1418,8 +1421,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                         localValues.add(value);
                         break;
                     case CONSTANT:
-                        // cannot handle constants just yet
+                        JavaConstant constant = value.constantValue();
+                        // can only handle primitive or null constants just now
+                        if (constant instanceof PrimitiveConstant || constant.isNull()) {
+                            localValues.add(value);
+                        }
+                        break;
                     default:
+                        break;
                 }
             }
         }

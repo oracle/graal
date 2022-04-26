@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
@@ -376,7 +376,7 @@ public interface DebugInfoProvider {
 
         int stackSlot();
 
-        Constant constantValue();
+        JavaConstant constantValue();
     }
 
     interface DebugFrameSizeChange {
