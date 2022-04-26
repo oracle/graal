@@ -581,42 +581,20 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
     }
 
     private static final class StaticObjectSupport {
-        private static final Method STORAGE_CLASS_NAME = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "storageClassName");
-
-        private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass(
-                        "com.oracle.truffle.api.staticobject.GeneratorClassLoader");
-        private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil
-                        .lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
-
-        private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass(
-                        "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
-        private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR,
-                        "getShapeGenerator", TruffleLanguage.class, GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
-
-        private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class,
-                        "validateClasses", Class.class, Class.class);
-
-        private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
-        private static BeforeAnalysisAccess beforeAnalysisAccess;
-
-        private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
-
         static void beforeAnalysis(BeforeAnalysisAccess access) {
-            StaticObjectSupport.beforeAnalysisAccess = access;
+            StaticObjectArrayBasedSupport.beforeAnalysis(access);
         }
 
         static void registerInvocationPlugins(Plugins plugins, ParsingReason reason) {
             if (reason == ParsingReason.PointsToAnalysis) {
-                InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(),
-                                StaticShape.Builder.class);
+                InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(), StaticShape.Builder.class);
                 r.register(new RequiredInlineOnlyInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-                                    Receiver receiver, ValueNode arg1, ValueNode arg2) {
-                        Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
+                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                        Class<?> storageSuperClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
-                        generateArrayBasedStorage(superClass, factoryInterface, beforeAnalysisAccess);
-                        registerForFieldBasedStorage(superClass, factoryInterface);
+                        StaticObjectArrayBasedSupport.onBuildInvocation(storageSuperClass, factoryInterface);
+                        StaticObjectPodBasedSupport.onBuildInvocation(storageSuperClass, factoryInterface);
                         return false;
                     }
                 });
@@ -624,96 +602,122 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
         }
 
         static void duringAnalysis(DuringAnalysisAccess access) {
-            boolean requiresIteration = false;
-            /*
-             * We need to register as unsafe-accessed the primitive, object, and shape fields of
-             * generated storage classes. However, these classes do not share a common super type,
-             * and their fields are not annotated. Plus, the invocation plugin does not intercept
-             * calls to `StaticShape.Builder.build()` that happen during the analysis, for example
-             * because of context pre-initialization. Therefore, we inspect the generator cache in
-             * ArrayBasedShapeGenerator, which contains references to all generated storage classes.
-             */
-            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(ARRAY_BASED_SHAPE_GENERATOR, "generatorCache");
-            for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
-                Object shapeGenerator = entry.getValue();
-                if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
-                    registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
-                    requiresIteration = true;
-                    Class<?> storageClass = ReflectionUtil.readField(ARRAY_BASED_SHAPE_GENERATOR, "generatedStorageClass",
-                                    shapeGenerator);
-                    Class<?> factoryClass = ReflectionUtil.readField(ARRAY_BASED_SHAPE_GENERATOR, "generatedFactoryClass",
-                                    shapeGenerator);
-                    for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
-                        RuntimeReflection.register(c);
+            StaticObjectArrayBasedSupport.duringAnalysis(access);
+        }
+
+        private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod, int parameterIndex, ValueNode arg) {
+            SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex, "parameter is not a compile time constant");
+            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
+        }
+
+        private static final class StaticObjectArrayBasedSupport {
+            private static final Method STORAGE_CLASS_NAME = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "storageClassName");
+
+            private static final Class<?> GENERATOR_CLASS_LOADER_CLASS = loadClass("com.oracle.truffle.api.staticobject.GeneratorClassLoader");
+            private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil.lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
+
+            private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+            private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
+                            GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
+
+            private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
+
+            private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
+            private static BeforeAnalysisAccess beforeAnalysisAccess;
+
+            private static final IdentityHashMap<Object, Object> registeredShapeGenerators = new IdentityHashMap<>();
+
+            static void beforeAnalysis(BeforeAnalysisAccess access) {
+                beforeAnalysisAccess = access;
+            }
+
+            static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
+                generateArrayBasedStorage(storageSuperClass, factoryInterface, beforeAnalysisAccess);
+            }
+
+            static void duringAnalysis(DuringAnalysisAccess access) {
+                boolean requiresIteration = false;
+                /*
+                 * We need to register as unsafe-accessed the primitive, object, and shape fields of
+                 * generated storage classes. However, these classes do not share a common super
+                 * type, and their fields are not annotated. Plus, the invocation plugin does not
+                 * intercept calls to `StaticShape.Builder.build()` that happen during the analysis,
+                 * for example because of context pre-initialization. Therefore, we inspect the
+                 * generator cache in ArrayBasedShapeGenerator, which contains references to all
+                 * generated storage classes.
+                 */
+                ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(ARRAY_BASED_SHAPE_GENERATOR, "generatorCache");
+                for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
+                    Object shapeGenerator = entry.getValue();
+                    if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
+                        registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
+                        requiresIteration = true;
+                        Class<?> storageClass = ReflectionUtil.readField(ARRAY_BASED_SHAPE_GENERATOR, "generatedStorageClass", shapeGenerator);
+                        Class<?> factoryClass = ReflectionUtil.readField(ARRAY_BASED_SHAPE_GENERATOR, "generatedFactoryClass", shapeGenerator);
+                        for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
+                            RuntimeReflection.register(c);
+                        }
+                        for (String fieldName : new String[]{"primitive", "object", "shape"}) {
+                            beforeAnalysisAccess.registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
+                        }
                     }
-                    for (String fieldName : new String[]{"primitive", "object", "shape"}) {
-                        beforeAnalysisAccess
-                                        .registerAsUnsafeAccessed(ReflectionUtil.lookupField(storageClass, fieldName));
+                }
+                if (requiresIteration) {
+                    access.requireAnalysisIteration();
+                }
+            }
+
+            @SuppressWarnings("unused")
+            private static void generateArrayBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
+                try {
+                    validateClasses(storageSuperClass, factoryInterface);
+                    ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
+                    getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
+                } catch (ReflectiveOperationException e) {
+                    if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
+                        Target_com_oracle_truffle_api_staticobject_StaticShape_Builder.ExceptionCache.set(storageSuperClass, factoryInterface, (IllegalArgumentException) e.getCause());
+                    } else {
+                        throw VMError.shouldNotReachHere(e);
                     }
                 }
             }
-            if (requiresIteration) {
-                access.requireAnalysisIteration();
+
+            private static void validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
+                VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
             }
-        }
 
-        private static Class<?> getArgumentClass(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-                        int parameterIndex, ValueNode arg) {
-            SubstrateGraphBuilderPlugins.checkParameterUsage(arg.isConstant(), b, targetMethod, parameterIndex,
-                            "parameter is not a compile time constant");
-            return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(),
-                            b.getConstantReflection().asJavaType(arg.asJavaConstant()));
-        }
+            private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
+                ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
+                if (cl == null) {
+                    ClassLoader newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
+                    cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
+                    if (cl == null) {
+                        cl = newCL;
+                    }
+                }
+                return cl;
+            }
 
-        @SuppressWarnings("unused")
-        private static void generateArrayBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface,
-                        BeforeAnalysisAccess access) {
-            try {
-                validateClasses(storageSuperClass, factoryInterface);
-                ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-                getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
-            } catch (ReflectiveOperationException e) {
-                if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
-                    Target_com_oracle_truffle_api_staticobject_StaticShape_Builder.ExceptionCache.set(storageSuperClass, factoryInterface, (IllegalArgumentException) e.getCause());
-                } else {
+            /*
+             * Triggers shape generation.
+             */
+            private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
+                String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
+                GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
+            }
+
+            private static Class<?> loadClass(String name) {
+                try {
+                    return Class.forName(name);
+                } catch (ClassNotFoundException e) {
                     throw VMError.shouldNotReachHere(e);
                 }
             }
         }
 
-        private static void validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
-            VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
-        }
-
-        private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
-            ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
-            if (cl == null) {
-                ClassLoader newCL = (ClassLoader) GENERATOR_CLASS_LOADER_CONSTRUCTOR.newInstance(factoryInterface);
-                cl = CLASS_LOADERS.putIfAbsent(factoryInterface, newCL);
-                if (cl == null) {
-                    cl = newCL;
-                }
-            }
-            return cl;
-        }
-
-        /*
-         * Triggers shape generation.
-         */
-        private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
-            String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
-            GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
-        }
-
-        private static void registerForFieldBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface) {
-            PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
-        }
-
-        private static Class<?> loadClass(String name) {
-            try {
-                return Class.forName(name);
-            } catch (ClassNotFoundException e) {
-                throw VMError.shouldNotReachHere(e);
+        private static final class StaticObjectPodBasedSupport {
+            static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
+                PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
             }
         }
     }
@@ -756,7 +760,8 @@ final class Target_com_oracle_truffle_api_staticobject_FieldBasedShapeGenerator<
     Class<T> storageFactoryInterface;
 
     @Substitute
-    Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
+    Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties,
+                    boolean safetyChecks, String storageClassName) {
         Pod.Builder<T> builder;
         if (parentShape == null) {
             builder = Pod.Builder.createExtending(storageSuperClass, storageFactoryInterface);
