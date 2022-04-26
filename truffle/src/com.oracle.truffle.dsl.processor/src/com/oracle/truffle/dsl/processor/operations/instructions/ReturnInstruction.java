@@ -3,7 +3,6 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 
 public class ReturnInstruction extends Instruction {
 
@@ -36,6 +35,13 @@ public class ReturnInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        return new CodeTree[]{
+                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_OTHER"),
+        };
     }
 
 }

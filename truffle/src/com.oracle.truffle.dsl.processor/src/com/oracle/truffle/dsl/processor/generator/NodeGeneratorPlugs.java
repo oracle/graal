@@ -47,7 +47,7 @@ public interface NodeGeneratorPlugs {
 
     void initializeFrameState(FrameState frameState, CodeTreeBuilder builder);
 
-    boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder builder, boolean inBoundary);
+    boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder builder, boolean inBoundary, CodeTree[] bindings);
 
     boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call);
 
@@ -77,4 +77,7 @@ public interface NodeGeneratorPlugs {
 
     void setBoxingSplits(List<BoxingSplit> boxingSplits);
 
+    List<SpecializationData> filterSpecializations(List<SpecializationData> implementedSpecializations);
+
+    boolean isStateGuaranteed(boolean stateGuaranteed);
 }

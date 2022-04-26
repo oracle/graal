@@ -17,14 +17,20 @@ public class BranchInstruction extends Instruction {
         return false;
     }
 
+    private CodeTree createGetBranchTarget(ExecutionVariables vars) {
+        return CodeTreeBuilder.createBuilder().startCall("LE_BYTES", "getShort")//
+                        .variable(vars.bc) //
+                        .startGroup().variable(vars.bci).string(" + " + getArgumentOffset(0)).end() //
+                        .end().build();
+    }
+
     @Override
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startAssign(vars.bci).startCall("LE_BYTES", "getShort");
-        b.variable(vars.bc);
-        b.startGroup().variable(vars.bci).string(" + " + getArgumentOffset(0)).end();
-        b.end(2);
+        b.startAssign(vars.bci);
+        b.tree(createGetBranchTarget(vars));
+        b.end();
         b.statement("continue loop");
 
         return b.build();
@@ -58,5 +64,13 @@ public class BranchInstruction extends Instruction {
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
+    }
+
+    @Override
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        return new CodeTree[]{
+                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_BRANCH"),
+                        createGetBranchTarget(vars)
+        };
     }
 }

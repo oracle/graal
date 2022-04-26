@@ -8,4 +8,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateOperations {
+    String decisionsFile() default "";
+
+    String[] decisionOverrideFiles() default {};
 }

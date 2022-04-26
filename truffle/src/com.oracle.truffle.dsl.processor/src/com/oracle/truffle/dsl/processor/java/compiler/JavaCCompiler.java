@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
+import java.io.File;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -121,5 +122,10 @@ public class JavaCCompiler extends AbstractCompiler {
         Class<?> symbolClass = Class.forName("com.sun.tools.javac.code.Symbol", false, cl);
         Object elementTree = method(treePath, "getLeaf");
         method(check, "warnDeprecated", new Class<?>[]{diagnosticPositionClass, symbolClass}, elementTree, element);
+    }
+
+    @Override
+    public File getEnclosingFile(ProcessingEnvironment processingEnv, Element element) {
+        throw new UnsupportedOperationException("todo");
     }
 }

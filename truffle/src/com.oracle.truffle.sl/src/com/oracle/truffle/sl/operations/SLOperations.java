@@ -46,7 +46,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-@GenerateOperations
+@GenerateOperations(decisionsFile = "decisions.xml")
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)

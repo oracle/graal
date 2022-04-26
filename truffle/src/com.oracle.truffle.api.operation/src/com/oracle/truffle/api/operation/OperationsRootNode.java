@@ -40,12 +40,6 @@ public class OperationsRootNode extends RootNode {
     }
 
     @Override
-    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
-        int bci = element.getFrame().getInt(OperationsNode.BCI_SLOT);
-        return new OperationsStackTraceElement(element.getTarget().getRootNode(), node.getSourceSectionAtBci(bci));
-    }
-
-    @Override
     public boolean isInstrumentable() {
         return false;
     }

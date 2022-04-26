@@ -19,6 +19,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -32,6 +33,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
+import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 
 public class OperationsBytecodeCodeGenerator {
 
@@ -101,13 +103,15 @@ public class OperationsBytecodeCodeGenerator {
         builderBytecodeNodeType.add(ctor);
 
         CodeVariableElement fldTracer = null;
-        CodeVariableElement fldHitCount = null;
+        CodeVariableElement fldHitCount;
         if (m.isTracing()) {
             fldHitCount = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(int.class)), "hitCount");
             builderBytecodeNodeType.add(fldHitCount);
 
             fldTracer = new CodeVariableElement(types.ExecutionTracer, "tracer");
             builderBytecodeNodeType.add(fldTracer);
+        } else {
+            fldHitCount = null;
         }
 
         {
@@ -119,7 +123,9 @@ public class OperationsBytecodeCodeGenerator {
                                 CodeTreeBuilder.createBuilder().variable(fldBc).string(".length").build());
                 b.end(2);
 
-                b.startAssign(fldTracer).startStaticCall(types.ExecutionTracer, "get").end(2);
+                b.startAssign(fldTracer).startStaticCall(types.ExecutionTracer, "get");
+                b.doubleQuote(ElementUtils.getClassQualifiedName(m.getTemplateType()));
+                b.end(2);
             }
         }
 
@@ -145,9 +151,9 @@ public class OperationsBytecodeCodeGenerator {
                 final List<Object> constIndices = new ArrayList<>();
 
                 OperationsBytecodeNodeGeneratorPlugs plugs = new OperationsBytecodeNodeGeneratorPlugs(
-                                fldBc, fldChildren, constIndices,
+                                m, fldBc, fldChildren, constIndices,
                                 innerTypeNames, additionalData,
-                                methodNames, isVariadic, soData,
+                                methodNames, isVariadic,
                                 additionalDataKinds,
                                 fldConsts, cinstr, childIndices);
                 cinstr.setPlugs(plugs);
@@ -213,6 +219,12 @@ public class OperationsBytecodeCodeGenerator {
                     boolean isExecute = exName.contains("_execute_");
                     boolean isExecuteAndSpecialize = exName.endsWith("_executeAndSpecialize_");
                     boolean isFallbackGuard = exName.endsWith("_fallbackGuard__");
+
+                    if (instr instanceof QuickenedInstruction) {
+                        if (isExecuteAndSpecialize) {
+                            continue;
+                        }
+                    }
 
                     if (isExecute || isExecuteAndSpecialize || isFallbackGuard) {
                         List<VariableElement> params = exToCopy.getParameters();
@@ -336,6 +348,14 @@ public class OperationsBytecodeCodeGenerator {
                 b.startCase().variable(op.opcodeIdField).end();
                 b.startBlock();
 
+                if (m.isTracing()) {
+                    b.startStatement().startCall(fldTracer, "traceInstruction");
+                    b.variable(varBci);
+                    b.doubleQuote(op.name);
+                    b.trees(op.createTracingArguments(vars));
+                    b.end(2);
+                }
+
                 if (op.standardPrologue()) {
                     throw new AssertionError("standard prologue: " + op.name);
                 }
@@ -434,6 +454,10 @@ public class OperationsBytecodeCodeGenerator {
             b.startWhile().variable(vars.bci).string(" < ").variable(vars.bc).string(".length").end().startBlock();
 
             b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, instr -> {
+                if (instr == null) {
+                    return null;
+                }
+
                 CodeTreeBuilder binstr = b.create();
 
                 binstr.tree(instr.createPrepareAOT(vars, CodeTreeBuilder.singleString("language"), CodeTreeBuilder.singleString("root")));
@@ -466,53 +490,46 @@ public class OperationsBytecodeCodeGenerator {
 
             b.statement("sb.append(String.format(\" %04x \", bci))");
 
-            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(fldBc, vars.bci)).end();
-            b.startBlock();
+            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, op -> {
+                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
-            for (Instruction op : m.getInstructions()) {
-                if (op.isInstrumentationOnly() && !withInstrumentation) {
-                    continue;
+                if (op == null) {
+                    builder.statement("sb.append(String.format(\"unknown 0x%02x\", bc[bci++]))");
+                    builder.statement("break");
+                    return builder.build();
                 }
-                b.startCase().variable(op.opcodeIdField).end();
-                b.startBlock();
 
                 for (int i = 0; i < 16; i++) {
                     if (i < op.length()) {
-                        b.statement("sb.append(String.format(\"%02x \", bc[bci + " + i + "]))");
+                        builder.statement("sb.append(String.format(\"%02x \", bc[bci + " + i + "]))");
                     } else {
-                        b.statement("sb.append(\"   \")");
+                        builder.statement("sb.append(\"   \")");
                     }
                 }
 
-                b.statement("sb.append(\"" + op.name + " ".repeat(op.name.length() < 32 ? 32 - op.name.length() : 0) + " \")");
+                builder.statement("sb.append(\"" + op.name + " ".repeat(op.name.length() < 32 ? 32 - op.name.length() : 0) + " \")");
 
                 for (int i = 0; i < op.inputs.length; i++) {
                     if (i != 0) {
-                        b.statement("sb.append(\", \")");
+                        builder.statement("sb.append(\", \")");
                     }
-                    b.tree(op.inputs[i].createDumpCode(i, op, vars));
+                    builder.tree(op.inputs[i].createDumpCode(i, op, vars));
                 }
 
-                b.statement("sb.append(\" -> \")");
+                builder.statement("sb.append(\" -> \")");
 
                 for (int i = 0; i < op.results.length; i++) {
                     if (i != 0) {
-                        b.statement("sb.append(\", \")");
+                        builder.statement("sb.append(\", \")");
                     }
-                    b.tree(op.results[i].createDumpCode(i, op, vars));
+                    builder.tree(op.results[i].createDumpCode(i, op, vars));
                 }
 
-                b.statement("bci += " + op.length());
-                b.statement("break");
+                builder.statement("bci += " + op.length());
+                builder.statement("break");
 
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock();
-            b.statement("sb.append(String.format(\"unknown 0x%02x\", bc[bci++]))");
-            b.statement("break");
-            b.end(); // default case block
-            b.end(); // switch block
+                return builder.build();
+            }));
 
             b.statement("sb.append(\"\\n\")");
 
@@ -558,35 +575,27 @@ public class OperationsBytecodeCodeGenerator {
             b.startWhile().string("bci < bc.length").end();
             b.startBlock(); // while block
 
-            b.startSwitch().string("bc[bci]").end();
-            b.startBlock();
-
-            for (Instruction op : m.getInstructions()) {
-                if (op.isInstrumentationOnly() && !withInstrumentation) {
-                    continue;
+            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, op -> {
+                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+                if (op == null) {
+                    builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Unknown opcode").end(2);
+                    return builder.build();
                 }
-                b.startCase().variable(op.opcodeIdField).end();
-                b.startBlock();
 
-                b.startStatement();
-                b.startCall("insts", "add");
-                b.startNew(types.InstructionTrace);
+                builder.startStatement();
+                builder.startCall("insts", "add");
+                builder.startNew(types.InstructionTrace);
 
-                b.variable(op.opcodeIdField);
-                b.startGroup().variable(fldHitCount).string("[bci]").end();
+                builder.variable(op.opcodeIdField);
+                builder.startGroup().variable(fldHitCount).string("[bci]").end();
 
-                b.end(3);
+                builder.end(3);
 
-                b.statement("bci += " + op.length());
-                b.statement("break");
+                builder.statement("bci += " + op.length());
+                builder.statement("break");
 
-                b.end();
-            }
-
-            b.caseDefault().startCaseBlock();
-            b.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Unknown opcode").end(2);
-            b.end(); // default case block
-            b.end(); // switch block
+                return builder.build();
+            }));
 
             b.end(); // while block
 

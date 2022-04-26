@@ -107,4 +107,12 @@ public class LoadLocalInstruction extends Instruction {
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }
+
+    @Override
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        return new CodeTree[]{
+                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_LOAD_LOCAL"),
+                        CodeTreeBuilder.singleString("LE_BYTES.getShort(bc, bci + " + getArgumentOffset(0) + ")")
+        };
+    }
 }

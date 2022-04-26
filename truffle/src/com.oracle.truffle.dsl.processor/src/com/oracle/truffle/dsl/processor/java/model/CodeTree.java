@@ -42,6 +42,7 @@ package com.oracle.truffle.dsl.processor.java.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javax.lang.model.type.TypeMirror;
 
@@ -119,6 +120,36 @@ public class CodeTree {
 
     public boolean isSingleLine() {
         return !containsKind(CodeTreeKind.NEW_LINE);
+    }
+
+    public boolean isEqualTo(CodeTree other) {
+        if (kind != other.kind) {
+            return false;
+        }
+
+        if (!Objects.equals(string, other.string)) {
+            return false;
+        }
+
+        if (children == null && other.children == null) {
+            return true;
+        }
+
+        if (children == null || other.children == null) {
+            return false;
+        }
+
+        if (children.size() != other.children.size()) {
+            return false;
+        }
+
+        for (int i = 0; i < children.size(); i++) {
+            if (!children.get(i).isEqualTo(other.children.get(i))) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 }

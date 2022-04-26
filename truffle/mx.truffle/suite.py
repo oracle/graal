@@ -282,6 +282,7 @@ suite = {
     "com.oracle.truffle.api.operation" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "requires" : [""],
       "dependencies" : ["com.oracle.truffle.api", "com.oracle.truffle.api.library", "com.oracle.truffle.api.interop", "com.oracle.truffle.api.exception", "com.oracle.truffle.api.instrumentation"],
       "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
@@ -372,10 +373,12 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:ANTLR4"
+        "truffle:ANTLR4",
+        "TruffleJSON",
       ],
       "requires" : [
         "java.compiler",
+        "java.xml",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "11+",
@@ -1027,7 +1030,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
-          "java.sql" # java.sql.date java.sql.Time
+          "java.sql", # java.sql.date java.sql.Time
         ],
         "exports" : [
           # Qualified exports

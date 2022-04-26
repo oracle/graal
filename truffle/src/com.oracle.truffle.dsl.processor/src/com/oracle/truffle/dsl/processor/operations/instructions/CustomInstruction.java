@@ -1,5 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.lang.model.element.ExecutableElement;
@@ -10,6 +11,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
@@ -29,13 +31,18 @@ public class CustomInstruction extends Instruction {
     private DataKind[] dataKinds = null;
     private int numChildNodes;
     private int numConsts;
-    private CodeExecutableElement setResultUnboxedMethod;
-    private CodeExecutableElement setInputUnboxedMethod;
+    private CodeTree setResultUnboxedMethod;
     private OperationsBytecodeNodeGeneratorPlugs plugs;
     private CodeExecutableElement prepareAOTMethod;
+    private CodeExecutableElement getSpecializationBits;
+    private final List<QuickenedInstruction> quickenedVariants = new ArrayList<>();
 
     public SingleOperationData getData() {
         return data;
+    }
+
+    public String getUniqueName() {
+        return data.getName();
     }
 
     public void setExecuteMethod(ExecutableElement executeMethod) {
@@ -221,6 +228,11 @@ public class CustomInstruction extends Instruction {
             sb.append("    ").append(ofs).append(" ").append(kind).append("\n");
         }
 
+        sb.append("  Specializations:\n");
+        for (SpecializationData sd : data.getNodeData().getSpecializations()) {
+            sb.append("    ").append(sd.getId()).append("\n");
+        }
+
         return sb.toString();
     }
 
@@ -232,27 +244,32 @@ public class CustomInstruction extends Instruction {
         this.numConsts = numConsts;
     }
 
-    public void setSetResultUnboxedMethod(CodeExecutableElement setResultUnboxedMethod) {
+    public void setSetResultUnboxedMethod(CodeTree setResultUnboxedMethod) {
         this.setResultUnboxedMethod = setResultUnboxedMethod;
-    }
-
-    public void setSetInputUnboxedMethod(CodeExecutableElement setInputUnboxedMethod) {
-        this.setInputUnboxedMethod = setInputUnboxedMethod;
     }
 
     public void setPrepareAOTMethod(CodeExecutableElement prepareAOTMethod) {
         this.prepareAOTMethod = prepareAOTMethod;
     }
 
+    public void setGetSpecializationBits(CodeExecutableElement getSpecializationBits) {
+        this.getSpecializationBits = getSpecializationBits;
+
+    }
+
     @Override
     public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
-        return CodeTreeBuilder.createBuilder() //
-                        .startStatement() //
-                        .startStaticCall(setResultUnboxedMethod) //
-                        .variable(vars.bc) //
-                        .variable(vars.bci) //
-                        .startGroup().string("!").variable(varBoxed).end() //
-                        .end(2).build();
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        if (!vars.bci.getName().equals("$bci")) {
+            b.declaration("int", "$bci", CodeTreeBuilder.singleVariable(vars.bci));
+        }
+
+        b.declaration("boolean", "unboxed", "!" + varBoxed.getName());
+
+        b.tree(setResultUnboxedMethod);
+
+        return b.build();
     }
 
     public OperationsBytecodeNodeGeneratorPlugs getPlugs() {
@@ -277,5 +294,21 @@ public class CustomInstruction extends Instruction {
                         .tree(language) //
                         .tree(root) //
                         .end(2).build();
+    }
+
+    @Override
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        CodeTree[] result = new CodeTree[2];
+        result[0] = CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_CUSTOM");
+        result[1] = CodeTreeBuilder.createBuilder().startStaticCall(getSpecializationBits).variable(vars.bc).variable(vars.bci).end().build();
+        return result;
+    }
+
+    public void addQuickenedVariant(QuickenedInstruction quick) {
+        quickenedVariants.add(quick);
+    }
+
+    public List<QuickenedInstruction> getQuickenedVariants() {
+        return quickenedVariants;
     }
 }

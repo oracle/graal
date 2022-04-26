@@ -17,7 +17,6 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.NodeExecutionMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -30,11 +29,13 @@ import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
+import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 
 public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final CodeVariableElement fldBc;
@@ -44,7 +45,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private final List<Object> additionalData;
     private final Set<String> methodNames;
     private final boolean isVariadic;
-    private final SingleOperationData soData;
     private final List<DataKind> additionalDataKinds;
     private final CodeVariableElement fldConsts;
     private final CustomInstruction cinstr;
@@ -58,13 +58,14 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private MultiStateBitSet multiState;
     private List<BoxingSplit> boxingSplits;
 
-    private static final boolean DO_LOG_BOXING_ELIM = false;
     private static final boolean DO_BOXING_ELIM_IN_PE = true;
+    private OperationsData m;
 
-    OperationsBytecodeNodeGeneratorPlugs(CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
+    OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
                     Set<String> innerTypeNames, List<Object> additionalData,
-                    Set<String> methodNames, boolean isVariadic, SingleOperationData soData, List<DataKind> additionalDataKinds, CodeVariableElement fldConsts, CustomInstruction cinstr,
+                    Set<String> methodNames, boolean isVariadic, List<DataKind> additionalDataKinds, CodeVariableElement fldConsts, CustomInstruction cinstr,
                     List<Object> childIndices) {
+        this.m = m;
         this.fldBc = fldBc;
         this.fldChildren = fldChildren;
         this.constIndices = constIndices;
@@ -72,7 +73,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         this.additionalData = additionalData;
         this.methodNames = methodNames;
         this.isVariadic = isVariadic;
-        this.soData = soData;
         this.additionalDataKinds = additionalDataKinds;
         this.fldConsts = fldConsts;
         this.cinstr = cinstr;
@@ -95,6 +95,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void addAdditionalStateBits(List<Object> stateObjects) {
+        if (!stateObjects.isEmpty()) {
+            throw new AssertionError("stateObjects must be empty");
+        }
         if (resultUnboxedState != null) {
             stateObjects.add(resultUnboxedState);
         }
@@ -124,14 +127,14 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public String transformNodeMethodName(String name) {
-        String result = soData.getName() + "_" + name + "_";
+        String result = cinstr.getUniqueName() + "_" + name + "_";
         methodNames.add(result);
         return result;
     }
 
     @Override
     public String transformNodeInnerTypeName(String name) {
-        String result = soData.getName() + "_" + name;
+        String result = cinstr.getUniqueName() + "_" + name;
         innerTypeNames.add(result);
         return result;
     }
@@ -268,49 +271,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         throw new UnsupportedOperationException("" + value);
     }
 
-    private static String getFrameName(TypeKind kind) {
-        switch (kind) {
-            case INT:
-                return "Int";
-            case BYTE:
-                return "Byte";
-            case BOOLEAN:
-                return "Boolean";
-            case DOUBLE:
-                return "Double";
-            case FLOAT:
-                return "Float";
-            case LONG:
-                return "Long";
-            case DECLARED:
-            case CHAR:
-            case SHORT:
-                // shorts and chars are handled as reference types, since VirtualFrame does not
-                // support them directly
-                return "Object";
-            default:
-                throw new IllegalArgumentException("Unknown primitive type: " + kind);
-        }
-    }
-
-    private static boolean isUnboxable(TypeKind kind) {
-        switch (kind) {
-            case INT:
-            case BYTE:
-            case BOOLEAN:
-            case DOUBLE:
-            case FLOAT:
-            case LONG:
-                return true;
-            case DECLARED:
-            case CHAR:
-            case SHORT:
-                return false;
-            default:
-                throw new IllegalArgumentException("Unknown primitive type: " + kind);
-        }
-    }
-
     @Override
     public CodeTree createThrowUnsupportedChild(NodeExecutionData execution) {
         return CodeTreeBuilder.singleString("null");
@@ -356,7 +316,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             typeName = "Object";
         } else {
             value = specializationCall;
-            typeName = getFrameName(retType.getKind());
+            typeName = getFrameType(retType.getKind()).getFrameName();
         }
 
         CodeTree isResultBoxed = multiState.createNotContains(frameState, new Object[]{resultUnboxedState});
@@ -393,13 +353,24 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     @Override
-    public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary) {
+    public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary, CodeTree[] bindings) {
         if (isVariadic || inBoundary)
             return false;
 
-        if (frameState.getMode() == NodeExecutionMode.SLOW_PATH) {
-
+        if (m.isTracing()) {
+            b.startStatement().startCall("tracer", "traceSpecialization");
+            b.string("$bci");
+            b.doubleQuote(cinstr.name);
+            b.string("" + specialization.getIntrospectionIndex());
+            for (int i = 0; i < bindings.length; i++) {
+                Parameter parameter = specialization.getParameters().get(i);
+                if (parameter.getSpecification().isSignature()) {
+                    b.tree(bindings[i]);
+                }
+            }
+            b.end(2);
         }
+
         createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
         return true;
     }
@@ -409,6 +380,27 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (isVariadic) {
             return false;
         }
+
+        if (cinstr instanceof QuickenedInstruction) {
+            QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
+
+            // unquicken and call parent EAS
+            builder.statement("System.out.println(\" -- unquicken " + qinstr.getUniqueName() + " -> " + qinstr.getOrig().getUniqueName() + " \")");
+            builder.tree(OperationGeneratorUtils.createWriteOpcode(
+                            fldBc,
+                            new CodeVariableElement(context.getType(int.class), "$bci"),
+                            qinstr.getOrig().opcodeIdField));
+
+            String parentEASName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
+            builder.startStatement().startCall(parentEASName);
+            addNodeCallParameters(builder, false, false);
+            frameState.addReferencesTo(builder);
+            builder.end(2);
+            builder.returnStatement();
+
+            return true;
+        }
+
         builder.statement(call);
         builder.returnStatement();
         return true;
@@ -544,54 +536,68 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void createSpecialize(FrameState frameState, SpecializationData specialization, CodeTreeBuilder b) {
-        if (isVariadic)
-            return;
 
-        boolean elseIf = false;
-        for (BoxingSplit split : boxingSplits) {
-            List<SpecializationData> specializations = split.getGroup().collectSpecializations();
-            if (!specializations.contains(specialization)) {
-                continue;
+        // quickening
+        if (!(cinstr instanceof QuickenedInstruction)) {
+            List<QuickenedInstruction> quickened = cinstr.getQuickenedVariants();
+
+            boolean elseIf = false;
+            for (QuickenedInstruction qinstr : quickened) {
+                if (qinstr.getActiveSpecs().contains(specialization)) {
+                    elseIf = b.startIf(elseIf);
+                    b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
+                    b.end().startBlock();
+                    {
+                        b.statement("System.out.println(\" -- quicken " + cinstr.getUniqueName() + " -> " + qinstr.getUniqueName() + " \")");
+                        b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
+                    }
+                    b.end();
+                }
+            }
+        }
+
+        // boxing elimination
+        if (!isVariadic) {
+            boolean elseIf = false;
+            for (BoxingSplit split : boxingSplits) {
+                List<SpecializationData> specializations = split.getGroup().collectSpecializations();
+                if (!specializations.contains(specialization)) {
+                    continue;
+                }
+
+                elseIf = b.startIf(elseIf);
+
+                b.startGroup();
+                CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), specializationStates.toArray());
+                if (!tree.isEmpty()) {
+                    b.tree(tree);
+                    b.string(" && ");
+                }
+                b.tree(multiState.createIsNotAny(frameState, specializationStates.toArray()));
+                b.end();
+                b.end().startBlock();
+
+                for (int i = 0; i < cinstr.numPopStatic(); i++) {
+                    ConstantKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
+                    b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", frameType));
+                }
+
+                b.end();
             }
 
-            elseIf = b.startIf(elseIf);
-
-            b.startGroup();
-            CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), specializationStates.toArray());
-            if (!tree.isEmpty()) {
-                b.tree(tree);
-                b.string(" && ");
+            if (elseIf) {
+                b.startElseBlock();
             }
-            b.tree(multiState.createIsNotAny(frameState, specializationStates.toArray()));
-            b.end();
-            b.end().startBlock();
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.startBlock();
-                b.declaration("int", "predOffset", "bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff");
-                b.startIf().string("predOffset != 0").end().startBlock();
-                ConstantKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
-                b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci - predOffset", frameType));
-                b.end(2);
+                b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", ConstantKind.OBJECT));
             }
 
-            b.end();
+            if (elseIf) {
+                b.end();
+            }
         }
 
-        if (elseIf) {
-            b.startElseBlock();
-        }
-        for (int i = 0; i < cinstr.numPopStatic(); i++) {
-            b.startBlock();
-            b.declaration("int", "predOffset", "bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff");
-            b.startIf().string("predOffset != 0").end().startBlock();
-            b.tree(OperationGeneratorUtils.callSetResultBoxed("$bci - predOffset", ConstantKind.OBJECT));
-            b.end(2);
-        }
-
-        if (elseIf) {
-            b.end();
-        }
     }
 
     private static ConstantKind getFrameType(TypeKind kind) {
@@ -623,7 +629,50 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return b.build();
     }
 
+    @SuppressWarnings("unchecked")
+    public CodeTree createGetSpecializationBits() {
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        FrameState frame = FrameState.createEmpty();
+
+        b.tree(multiState.createLoad(frame, specializationStates.toArray()));
+
+        b.declaration("boolean[]", "result", "new boolean[" + specializationStates.size() + "]");
+
+        for (int i = 0; i < specializationStates.size(); i++) {
+            b.startAssign("result[" + i + "]");
+            b.tree(multiState.createContains(frame, new Object[]{specializationStates.get(i)}));
+            b.end();
+        }
+
+        b.startReturn().string("result").end();
+
+        return b.build();
+    }
+
     public boolean needsRewrites() {
         return true;
+    }
+
+    @Override
+    public List<SpecializationData> filterSpecializations(List<SpecializationData> implementedSpecializations) {
+        if (!(cinstr instanceof QuickenedInstruction)) {
+            return implementedSpecializations;
+        }
+
+        QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
+        return qinstr.getActiveSpecs();
+    }
+
+    @Override
+    public boolean isStateGuaranteed(boolean stateGuaranteed) {
+        if (stateGuaranteed) {
+            return true;
+        }
+
+        if (cinstr instanceof QuickenedInstruction && ((QuickenedInstruction) cinstr).getActiveSpecs().size() == 1) {
+            return true;
+        }
+
+        return false;
     }
 }

@@ -26,6 +26,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
@@ -603,8 +604,11 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             CodeVariableElement varBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
             mDoSetResultUnboxed.addParameter(varBc);
 
-            CodeVariableElement varTargetBci = new CodeVariableElement(context.getType(int.class), "bci");
-            mDoSetResultUnboxed.addParameter(varTargetBci);
+            CodeVariableElement varStartBci = new CodeVariableElement(context.getType(int.class), "startBci");
+            mDoSetResultUnboxed.addParameter(varStartBci);
+
+            CodeVariableElement varBciOffset = new CodeVariableElement(context.getType(int.class), "bciOffset");
+            mDoSetResultUnboxed.addParameter(varBciOffset);
 
             CodeVariableElement varTargetType = new CodeVariableElement(context.getType(int.class), "targetType");
             mDoSetResultUnboxed.addParameter(varTargetType);
@@ -614,27 +618,31 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mDoSetResultUnboxed.createBuilder();
 
-            b.startStatement().startStaticCall(types.CompilerAsserts, "neverPartOfCompilation").end(2);
+            b.startIf().variable(varBciOffset).string(" == 0").end().startBlock();
+            b.returnStatement();
+            b.end();
 
-            b.startSwitch().tree(OperationGeneratorUtils.createReadOpcode(varBc, vars.bci)).end();
-            b.startBlock();
+            b.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreter").end(2);
 
-            for (Instruction instr : m.getInstructions()) {
+            b.declaration("int", "bci", "startBci - bciOffset");
+
+            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars.asExecution(), instr -> {
+                if (instr == null) {
+                    return null;
+                }
 
                 CodeTree tree = instr.createSetResultBoxed(vars.asExecution(), varBoxed, varTargetType);
-                if (tree != null) {
-                    b.startCase().variable(instr.opcodeIdField).end();
-                    b.startBlock();
-
-                    b.tree(tree);
-
-                    b.statement("break");
-
-                    b.end();
+                if (tree == null) {
+                    return null;
                 }
-            }
 
-            b.end();
+                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+
+                builder.tree(tree);
+                builder.statement("break");
+
+                return builder.build();
+            }));
 
             vars.bc = fldBc;
             vars.bci = fldBci;
@@ -835,23 +843,29 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 continue;
             }
 
+            if (instr instanceof QuickenedInstruction) {
+                continue;
+            }
+
             CustomInstruction cinstr = (CustomInstruction) instr;
             SingleOperationData soData = cinstr.getData();
 
             {
                 CodeVariableElement varUnboxed = new CodeVariableElement(context.getType(boolean.class), "unboxed");
-                CodeExecutableElement metSetResultUnboxed = new CodeExecutableElement(
-                                MOD_PRIVATE_STATIC,
-                                context.getType(void.class), soData.getName() + "_doSetResultUnboxed_",
-                                new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc"),
-                                new CodeVariableElement(context.getType(int.class), "$bci"),
-                                varUnboxed);
-                typBuilderImpl.add(metSetResultUnboxed);
-                cinstr.setSetResultUnboxedMethod(metSetResultUnboxed);
+                cinstr.setSetResultUnboxedMethod(cinstr.getPlugs().createSetResultBoxed(varUnboxed));
+            }
 
-                CodeTreeBuilder b = metSetResultUnboxed.createBuilder();
-                b.tree(cinstr.getPlugs().createSetResultBoxed(varUnboxed));
-                cinstr.setSetResultUnboxedMethod(metSetResultUnboxed);
+            if (m.isTracing()) {
+                CodeExecutableElement metGetStateBits = new CodeExecutableElement(
+                                MOD_PRIVATE_STATIC,
+                                arrayOf(context.getType(boolean.class)), soData.getName() + "_doGetStateBits_",
+                                new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc"),
+                                new CodeVariableElement(context.getType(int.class), "$bci"));
+                typBuilderImpl.add(metGetStateBits);
+                cinstr.setGetSpecializationBits(metGetStateBits);
+
+                CodeTreeBuilder b = metGetStateBits.createBuilder();
+                b.tree(cinstr.getPlugs().createGetSpecializationBits());
             }
         }
     }

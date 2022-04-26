@@ -36,4 +36,11 @@ public class DiscardInstruction extends Instruction {
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
         return null;
     }
+
+    @Override
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        return new CodeTree[]{
+                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_OTHER")
+        };
+    }
 }

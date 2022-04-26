@@ -13,8 +13,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 
 public abstract class Instruction {
 
@@ -130,7 +130,10 @@ public abstract class Instruction {
         public CodeTree createDumpCode(int n, Instruction op, ExecutionVariables vars) {
             switch (this) {
                 case STACK_VALUE:
-                    return CodeTreeBuilder.createBuilder().statement("sb.append(\"x\")").build();
+                    return CodeTreeBuilder.createBuilder().startStatement().startCall("sb", "append").startCall("String", "format") //
+                                    .doubleQuote("pop[-%d]") //
+                                    .startGroup().variable(vars.bc).string("[").variable(vars.bci).string(" + " + op.getArgumentOffset(n) + "]").end() //
+                                    .end(3).build();
                 case STACK_VALUE_IGNORED:
                     return CodeTreeBuilder.createBuilder().statement("sb.append(\"_\")").build();
                 case CONST_POOL:
@@ -573,9 +576,10 @@ public abstract class Instruction {
     public abstract CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root);
 
     public CodeTree getPredecessorOffset(ExecutionVariables vars, int index) {
+        int curIndex = index;
         for (int i = 0; i < inputs.length; i++) {
             if (inputs[i] == InputType.STACK_VALUE || inputs[i] == InputType.STACK_VALUE_IGNORED) {
-                if (index-- == 0) {
+                if (curIndex-- == 0) {
                     return CodeTreeBuilder.createBuilder().startParantheses() //
                                     .variable(vars.bc) //
                                     .string("[") //
@@ -587,5 +591,10 @@ public abstract class Instruction {
         }
 
         throw new AssertionError("should not reach here");
+    }
+
+    @SuppressWarnings("unused")
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        return new CodeTree[0];
     }
 }

@@ -1,6 +1,9 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
@@ -16,6 +19,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationL
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadArgumentInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
 
@@ -29,7 +33,6 @@ public class OperationsContext {
     public Instruction commonBranch;
 
     public Instruction commonBranchFalse;
-    public Instruction commonBranchFalseBoxed;
 
     public LoadArgumentInstruction[] loadArgumentInstructions;
     public LoadConstantInstruction[] loadConstantInstructions;
@@ -37,6 +40,9 @@ public class OperationsContext {
 
     public final ArrayList<Instruction> instructions = new ArrayList<>();
     public final ArrayList<Operation> operations = new ArrayList<>();
+    private final Map<String, CustomInstruction> customInstructionNameMap = new HashMap<>();
+    private final Map<String, SingleOperationData> opDataNameMap = new HashMap<>();
+    private OperationsData data;
 
     public OperationsContext() {
         createCommonInstructions();
@@ -48,8 +54,7 @@ public class OperationsContext {
 
         commonBranch = add(new BranchInstruction(instructionId++));
 
-        commonBranchFalse = add(new ConditionalBranchInstruction(this, instructionId++, false));
-        commonBranchFalseBoxed = add(new ConditionalBranchInstruction(this, instructionId++, true));
+        commonBranchFalse = add(new ConditionalBranchInstruction(instructionId++));
     }
 
     private void createBuiltinOperations() {
@@ -59,9 +64,6 @@ public class OperationsContext {
         add(new Operation.IfThenElse(this, operationId++, true));
         add(new Operation.While(this, operationId++));
         add(new Operation.TryCatch(this, operationId++));
-
-// Instruction iConst;
-// Instruction iStloc;
 
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));
@@ -77,8 +79,6 @@ public class OperationsContext {
                         add(new InstrumentationExitInstruction(instructionId++, true)),
                         add(new InstrumentationLeaveInstruction(instructionId++))));
 
-// Instruction iSuper = add(new SuperInstruction(instructionId++, new Instruction[]{iConst,
-// iStloc}));
     }
 
     private void createLoadStoreLocal() {
@@ -141,12 +141,32 @@ public class OperationsContext {
             return;
         }
 
-        CustomInstruction instr = new CustomInstruction("custom." + opData.getName(), getNextInstructionId(), opData);
+        CustomInstruction instr = new CustomInstruction("c." + opData.getName(), getNextInstructionId(), opData);
         add(instr);
+        customInstructionNameMap.put(opData.getName(), instr);
+        opDataNameMap.put(opData.getName(), opData);
 
         int numChildren = props.isVariadic ? -1 : props.numStackValues;
 
         Operation.Simple op = new Operation.Simple(this, opData.getName(), getNextOperationId(), numChildren, instr);
         add(op);
+    }
+
+    public void processDecisions(OperationDecisions decisions) {
+        for (OperationDecisions.Quicken quicken : decisions.getQuicken()) {
+            CustomInstruction cinstr = customInstructionNameMap.get(quicken.getOperation());
+            if (cinstr == null) {
+                // TODO line number or sth
+                data.addError("Invalid <Quicken> declaration: undefined operation %s.", quicken.getOperation());
+            }
+
+            SingleOperationData opData = opDataNameMap.get(quicken.getOperation());
+
+            add(new QuickenedInstruction(cinstr, instructionId++, opData, List.of(quicken.specializations)));
+        }
+    }
+
+    public void setData(OperationsData data) {
+        this.data = data;
     }
 }

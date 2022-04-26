@@ -24,6 +24,7 @@ public class OperationsData extends Template {
     private ExecutableElement parseMethod;
 
     private boolean tracing;
+    private OperationDecisions decisions;
 
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
@@ -81,13 +82,18 @@ public class OperationsData extends Template {
     }
 
     public void initializeContext() {
+        context.setData(this);
         for (SingleOperationData data : operations) {
             context.processOperation(data);
         }
+        context.processDecisions(decisions);
     }
 
     public boolean isGenerateAOT() {
         return true;
     }
 
+    public void setDecisions(OperationDecisions decisions) {
+        this.decisions = decisions;
+    }
 }

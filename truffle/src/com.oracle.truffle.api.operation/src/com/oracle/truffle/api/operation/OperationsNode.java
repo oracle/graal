@@ -22,14 +22,10 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
     public static final int FRAME_TYPE_BOOLEAN = 5;
     public static final int FRAME_TYPE_BYTE = 6;
 
-    protected static final int BCI_SLOT = 0;
-    protected static final int VALUES_OFFSET = 1;
+    protected static final int VALUES_OFFSET = 0;
 
     private static FrameDescriptor createFrameDescriptor(int maxStack, int numLocals) {
         FrameDescriptor.Builder b = FrameDescriptor.newBuilder(VALUES_OFFSET + maxStack + numLocals);
-
-        int bciSlot = b.addSlot(FrameSlotKind.Int, null, null);
-        assert bciSlot == BCI_SLOT;
 
         b.addSlots(numLocals + maxStack, FrameSlotKind.Illegal);
 

@@ -94,4 +94,12 @@ public class LoadConstantInstruction extends Instruction {
 
         return createSetResultBoxed(vars, new CodeVariableElement(new CodeTypeMirror(TypeKind.BOOLEAN), "true"), null);
     }
+
+    @Override
+    public CodeTree[] createTracingArguments(ExecutionVariables vars) {
+        return new CodeTree[]{
+                        CodeTreeBuilder.singleString("ExecutionTracer.INSTRUCTION_TYPE_LOAD_CONSTANT"),
+                        CodeTreeBuilder.singleString("LE_BYTES.getShort(bc, bci + " + getArgumentOffset(0) + ")")
+        };
+    }
 }

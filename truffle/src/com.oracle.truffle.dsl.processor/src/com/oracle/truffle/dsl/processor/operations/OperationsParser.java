@@ -1,5 +1,8 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -10,27 +13,22 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 
 public class OperationsParser extends AbstractParser<OperationsData> {
-
-    private static AnnotationMirror getAnnotationMirror(List<? extends AnnotationMirror> mirror, DeclaredType type) {
-        for (AnnotationMirror m : mirror) {
-            if (m.getAnnotationType().equals(type)) {
-                return m;
-            }
-        }
-        return null;
-    }
 
     @Override
     protected OperationsData parse(Element element, List<AnnotationMirror> mirror) {
 
         TypeElement typeElement = (TypeElement) element;
-        AnnotationMirror generateOperationsMirror = getAnnotationMirror(mirror, types.GenerateOperations);
+        AnnotationMirror generateOperationsMirror = ElementUtils.findAnnotationMirror(mirror, types.GenerateOperations);
 
         OperationsData data = new OperationsData(ProcessorContext.getInstance(), typeElement, generateOperationsMirror);
         {
@@ -85,7 +83,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             opData.redirectMessagesOnGeneratedElements(data);
-
         }
 
         if (!hasSome) {
@@ -93,7 +90,14 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             return data;
         }
 
-        // data.setTracing(true);
+        boolean isTracing = false;
+
+        if (!isTracing) {
+            OperationDecisions decisions = parseDecisions(typeElement, generateOperationsMirror, data);
+            data.setDecisions(decisions);
+        }
+
+        data.setTracing(isTracing);
 
         if (data.hasErrors()) {
             return data;
@@ -102,6 +106,43 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         data.initializeContext();
 
         return data;
+    }
+
+    @SuppressWarnings("unchecked")
+    private OperationDecisions parseDecisions(TypeElement element, AnnotationMirror generateOperationsMirror, OperationsData data) {
+        String file = (String) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile").getValue();
+        OperationDecisions mainDecisions = parseDecisions(element, file, data);
+        if (mainDecisions == null) {
+            return null;
+        }
+
+        List<String> overrideFiles = (List<String>) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionOverrideFiles").getValue();
+
+        for (String overrideFile : overrideFiles) {
+            OperationDecisions overrideDecision = parseDecisions(element, overrideFile, data);
+            if (overrideDecision != null) {
+                mainDecisions.merge(overrideDecision);
+            }
+        }
+
+        return mainDecisions;
+    }
+
+    private OperationDecisions parseDecisions(TypeElement element, String path, OperationsData data) {
+        File file = CompilerFactory.getCompiler(element).getEnclosingFile(processingEnv, element);
+        String parent = file.getParent();
+        File target = new File(parent, path);
+        try {
+            XMLStreamReader rd = XMLInputFactory.newDefaultFactory().createXMLStreamReader(new FileInputStream(target));
+            rd.next();
+
+            return OperationDecisions.deserialize(rd);
+        } catch (FileNotFoundException ex) {
+            data.addError("Decisions file '%s' not found. Build & run with tracing to generate it.", target.toString());
+        } catch (XMLStreamException ex) {
+            data.addError("Exception while reading decisions file: %s", ex);
+        }
+        return null;
     }
 
     @Override

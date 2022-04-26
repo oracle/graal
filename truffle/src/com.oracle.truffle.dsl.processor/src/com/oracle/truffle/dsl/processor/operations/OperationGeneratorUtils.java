@@ -3,6 +3,8 @@ package com.oracle.truffle.dsl.processor.operations;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 
 import javax.lang.model.element.Element;
@@ -84,6 +86,13 @@ public class OperationGeneratorUtils {
                         CodeTreeBuilder.singleVariable(value));
     }
 
+    public static CodeTree createWriteOpcode(CodeVariableElement bc, String bci, CodeVariableElement value) {
+        return createWriteOpcode(
+                        CodeTreeBuilder.singleVariable(bc),
+                        CodeTreeBuilder.singleString(bci),
+                        CodeTreeBuilder.singleVariable(value));
+    }
+
     public static String printCode(Element el) {
         StringWriter wr = new StringWriter();
         new AbstractCodeWriter() {
@@ -105,52 +114,84 @@ public class OperationGeneratorUtils {
         return createInstructionSwitch(data, vars, true, body);
     }
 
+    private static final CodeTree BREAK_TREE = CodeTreeBuilder.createBuilder().statement("break").build();
+
     public static CodeTree createInstructionSwitch(OperationsData data, ExecutionVariables vars, boolean instrumentation, Function<Instruction, CodeTree> body) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).end().startBlock();
-        for (Instruction instr : data.getInstructions()) {
+        List<CodeTree> trees = new ArrayList<>();
+        List<List<Instruction>> treeInstructions = new ArrayList<>();
+
+        CodeTree defaultTree = body.apply(null);
+        boolean hasDefault;
+
+        if (defaultTree == null) {
+            hasDefault = false;
+        } else {
+            hasDefault = true;
+            trees.add(defaultTree);
+            treeInstructions.add(null);
+        }
+
+        outerLoop: for (Instruction instr : data.getInstructions()) {
             if (instr.isInstrumentationOnly() && !instrumentation) {
                 continue;
             }
 
             CodeTree result = body.apply(instr);
-            if (result != null) {
-                b.startCase().variable(instr.opcodeIdField).end().startBlock();
-                b.tree(result);
-                b.statement("break");
-                b.end();
+            if (result == null) {
+                if (hasDefault) {
+                    // we have to explicitly do nothing for this instruction, since we have default
+                    result = BREAK_TREE;
+                } else {
+                    continue;
+                }
             }
 
+            for (int i = 0; i < trees.size(); i++) {
+                if (result.isEqualTo(trees.get(i))) {
+                    treeInstructions.get(i).add(instr);
+                    continue outerLoop;
+                }
+            }
+
+            trees.add(result);
+
+            List<Instruction> newList = new ArrayList<>(1);
+            newList.add(instr);
+            treeInstructions.add(newList);
+
+        }
+
+        b.startSwitch().tree(createReadOpcode(vars.bc, vars.bci)).end().startBlock();
+        for (int i = 0; i < trees.size(); i++) {
+            if (treeInstructions.get(i) == null) {
+                b.caseDefault();
+            } else {
+                for (Instruction instr : treeInstructions.get(i)) {
+                    b.startCase().variable(instr.opcodeIdField).end();
+                }
+            }
+            b.startBlock();
+            b.tree(trees.get(i));
+            b.end();
         }
         b.end();
 
         return b.build();
     }
 
-    public static CodeTree callSetResultBoxed(String bci, ConstantKind kind) {
+    public static CodeTree callSetResultBoxed(String bciOffset, ConstantKind kind) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().startCall("doSetResultBoxed");
         b.string(kind == ConstantKind.OBJECT ? "true" : "false");
         b.string("bc");
-        b.string(bci);
+        b.string("$bci");
+        b.string(bciOffset);
         b.string("FRAME_TYPE_" + kind.getFrameName().toUpperCase());
         b.end(2);
 
         return b.build();
     }
-
-    public static CodeTree callSetInputBoxed(String bci) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        b.startStatement().startCall("doSetInputBoxed");
-        b.string("bc");
-        b.string("successorIndices");
-        b.string(bci);
-        b.end(2);
-
-        return b.build();
-    }
-
 }

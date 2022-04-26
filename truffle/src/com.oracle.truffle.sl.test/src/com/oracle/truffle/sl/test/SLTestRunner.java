@@ -349,7 +349,6 @@ public class SLTestRunner extends ParentRunner<TestCase> {
             suite.filter(new NameFilter(args[0]));
         }
         Result r = core.run(suite);
-        ExecutionTracer.get().dump();
         if (!r.wasSuccessful()) {
             System.exit(1);
         }

@@ -232,6 +232,9 @@ public class FlatNodeGenFactory {
         this.sharedCaches = sharedCaches;
 
         List<Object> stateObjects = new ArrayList<>();
+        if (plugs != null) {
+            plugs.addAdditionalStateBits(stateObjects);
+        }
         List<SpecializationData> excludeObjects = new ArrayList<>();
         int activeStateStartIndex = -1;
         int activeStateEndIndex = -1;
@@ -279,9 +282,6 @@ public class FlatNodeGenFactory {
                 excludeObjects.add(specialization);
             }
             stateObjects.addAll(implicitCasts);
-        }
-        if (plugs != null) {
-            plugs.addAdditionalStateBits(stateObjects);
         }
         if (activeStateEndIndex == -1) {
             activeStateEndIndex = stateObjects.size();
@@ -1890,6 +1890,10 @@ public class FlatNodeGenFactory {
             implementedSpecializations = compatibleSpecializations;
         }
 
+        if (plugs != null) {
+            implementedSpecializations = plugs.filterSpecializations(implementedSpecializations);
+        }
+
         if (implementedSpecializations.isEmpty()) {
             builder.tree(GeneratorUtils.createShouldNotReachHere("Delegation failed."));
         } else {
@@ -3455,7 +3459,7 @@ public class FlatNodeGenFactory {
             }
 
             CodeTree specializationCall = callMethod(frameState, null, specialization.getMethod(), bindings);
-            if (plugs == null || !plugs.createCallSpecialization(frameState, specialization, specializationCall, builder, inBoundary)) {
+            if (plugs == null || !plugs.createCallSpecialization(frameState, specialization, specializationCall, builder, inBoundary, bindings)) {
                 if (isVoid(specialization.getMethod().getReturnType())) {
                     builder.statement(specializationCall);
                     if (isVoid(forType.getReturnType())) {
@@ -3698,8 +3702,11 @@ public class FlatNodeGenFactory {
         if (mode.isFastPath()) {
 
             BlockState ifCount = BlockState.NONE;
-            final boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
+            boolean stateGuaranteed = group.isLast() && allowedSpecializations != null && allowedSpecializations.size() == 1 &&
                             group.getAllSpecializations().size() == allowedSpecializations.size();
+            if (plugs != null) {
+                stateGuaranteed = plugs.isStateGuaranteed(stateGuaranteed);
+            }
             if (needsRewrites && (!group.isEmpty() || specialization != null)) {
                 CodeTree stateCheck = multiState.createContains(frameState, specializations);
                 CodeTree stateGuard = null;
@@ -5754,7 +5761,7 @@ public class FlatNodeGenFactory {
             return builder.build();
         }
 
-        CodeTree createLoad(FrameState frameState, Object... relevantObjects) {
+        public CodeTree createLoad(FrameState frameState, Object... relevantObjects) {
             return createLoadImpl(getSets(), frameState, relevantObjects);
         }
 
@@ -5831,7 +5838,7 @@ public class FlatNodeGenFactory {
 
     }
 
-    private class StateBitSet extends NodeBitSet {
+    public class StateBitSet extends NodeBitSet {
 
         private final Set<SpecializationData> relevantSpecializations;
 
