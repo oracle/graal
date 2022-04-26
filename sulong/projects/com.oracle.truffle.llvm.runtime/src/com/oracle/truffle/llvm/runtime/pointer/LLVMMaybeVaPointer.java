@@ -116,19 +116,19 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     }
 
     public long getAddress() {
+        // this address should only be accessed if we are not dealing with a va_list
+        assert isPointer();
         return LLVMNativePointer.cast(address).asNative();
     }
 
     @ExportMessage
     void initialize(Object[] realArgs, int numOfExpArgs, Frame frame,
-                    @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                     @Cached StackAllocationNode stackAllocationNode) {
         // LLVMX86_64_WinVaListStorage vaListInstance = new LLVMX86_64_WinVaListStorage();
         LLVMDarwinAarch64VaListStorage vaListInstance = new LLVMDarwinAarch64VaListStorage();
         vaListInstance.initialize(realArgs, numOfExpArgs, frame, stackAllocationNode);
         vaList = LLVMManagedPointer.create(vaListInstance);
         wasVAListPointer = true;
-        pointerOffsetStoreNode.executeWithTarget(address, 0, vaListInstance);
     }
 
     /**
@@ -148,8 +148,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
                         @Cached LLVMVaListStorage.VAListPointerWrapperFactoryDelegate wrapperFactory,
                         @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         if (self.vaList == null) {
-            LLVMPointer vaList = loadPtr.executeWithTarget(self.address, 0);
-            Object vaListInstance = wrapperFactory.execute(vaList);
+            // TODO: specialization
+            LLVMPointer vaListPtr = loadPtr.executeWithTarget(self.address, 0);
+            Object vaListInstance = wrapperFactory.execute(vaListPtr);
             self.vaList = LLVMManagedPointer.create(vaListInstance);
             self.wasVAListPointer = true;
         }
@@ -161,7 +162,6 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     static class Copy {
         @Specialization(guards = "!self.isPointer()")
         static void copyGeneric(LLVMMaybeVaPointer self, Object other, Frame frame,
-                @Cached LLVMVaListStorage.VAListPointerWrapperFactoryDelegate wrapperFactory,
                 @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
             vaListLibrary.copy(self.vaList.getObject(), other, frame);
         }
@@ -448,30 +448,24 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         @Specialization(limit = "1", guards = {"self.isPointer()", "offset == 0"})
         @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
         static void writeVaListStorageManagedObject(LLVMMaybeVaPointer self, long offset, LLVMVaListStorage storage,
-                    @Shared("pointerOffsetStoreNode") @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                     @CachedLibrary("storage") LLVMVaListLibrary vaListLibrary) {
             assert offset == 0;
-            self.wasVAListPointer = true;
             self.vaList = LLVMManagedPointer.create(storage);
-            pointerOffsetStoreNode.executeWithTarget(self.address, 0, storage);
+            self.wasVAListPointer = true;
         }
 
         @Specialization(limit = "1", guards = {"self.isPointer()", "offset == 0", "helperGuard(value)"})
         @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
         static void writeVaListStorageManaged(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value,
-                         @Shared("pointerOffsetStoreNode") @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                          @CachedLibrary("value") LLVMNativeLibrary toNative,
+                         @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                          @CachedLibrary("value.getObject()") LLVMVaListLibrary vaListLibrary) {
             if (helperGuard(value) && isVaListStorage(value)) {
                 assert offset == 0;
                 LLVMDarwinAarch64VaListStorage copy = new LLVMDarwinAarch64VaListStorage();
                 vaListLibrary.copyWithoutFrame(value.getObject(), copy);
-                self.wasVAListPointer = true;
-                if (self.vaList != null) {
-                    CompilerDirectives.shouldNotReachHere("this is bad");
-                }
                 self.vaList = LLVMManagedPointer.create(copy);
-                pointerOffsetStoreNode.executeWithTarget(self.address, 0, copy);
+                self.wasVAListPointer = true;
             } else {
                 // TODO: Make this work with proper guards.
                 self.nativeObjectAccess();
@@ -483,8 +477,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         @Specialization(limit = "3", guards = {"self.isPointer()"})
         static void writeNative(LLVMMaybeVaPointer self, long offset, Object value,
                                 @CachedLibrary("value") LLVMNativeLibrary toNative) {
-            // TODO: this is bad if it happens with a valist object
-            // self.nativeObjectAccess();
+            // Note: No `self.nativeObjectAccess()` needed here, this kind of write can happen on darwin-aarch64.
             long ptr = toNative.toNativePointer(value).asNative();
             LLVMLanguage.get(toNative).getLLVMMemory().putI64(toNative, self.getAddress() + offset, ptr);
         }
@@ -492,14 +485,16 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         @Specialization(limit = "3", guards = {"!self.isPointer()", "offset == 0"})
         @GenerateAOT.Exclude // TODO: why is this needed? DSL bug?
         static void writeVAList(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value,
+                         @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                          @CachedLibrary("value.getObject()") LLVMVaListLibrary vaListLibrary) {
-                assert offset == 0;
+            assert offset == 0;
             assert value.getObject() == self.vaList.getObject();
-            long vaListNativeOffset = value.getOffset();
-            if (vaListNativeOffset == 0) {
-                CompilerDirectives.shouldNotReachHere("ever reached?");
-            }
-            vaListLibrary.seek(value.getObject(), vaListNativeOffset);
+            assert value.getOffset() != 0;
+
+            // this forces a `toNative` transition
+            pointerOffsetStoreNode.executeWithTarget(self.address, 0, value.getObject());
+            // ... because seek only works on nativized lists, as it's dealing with pointer arithmetic
+            vaListLibrary.seek(value.getObject(), value.getOffset());
             self.vaList = value;
         }
 

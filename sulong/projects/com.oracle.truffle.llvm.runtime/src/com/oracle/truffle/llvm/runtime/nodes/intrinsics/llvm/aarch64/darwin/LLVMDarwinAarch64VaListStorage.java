@@ -582,11 +582,10 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         // TODO: specialize regarding nativized
         Object ret = null;
         if (!isNativized()) {
-            if (realArguments == null) {
-                CompilerDirectives.shouldNotReachHere("should not be nativized");
-            }
-            // TODO: compute proper increment
+            assert realArguments != null;
             ret = realArguments[numberOfExplicitArguments + managedOffset++];
+            nativeOffset += 8;
+
             // TODO: do all the conversions.
             if (ret instanceof Integer) {
                 Integer i = (Integer) ret;
@@ -644,7 +643,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         } else {
             CompilerDirectives.shouldNotReachHere("Implement type: " + type);
         }
-        // We'll never see a struct type here? Because va_arg are decomposed.
+        // We'll never see a struct type here? Because va_arg is decomposed for them by LLVM.
         nativeOffset += 8;
 
         return ret;
