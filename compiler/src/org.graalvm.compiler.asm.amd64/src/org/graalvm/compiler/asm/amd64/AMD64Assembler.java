@@ -1918,21 +1918,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    public static final class VexMaskMoveOp extends VexOp {
+    /**
+     * Masked (i.e., conditional) SIMD loads and stores.
+     */
+    public static final class VexMaskedMoveOp extends VexOp {
         // @formatter:off
-        public static final VexMaskMoveOp VMASKMOVPS = new VexMaskMoveOp("VMASKMOVPS", P_66, M_0F38, W0, 0x2C, 0x2E);
-        public static final VexMaskMoveOp VMASKMOVPD = new VexMaskMoveOp("VMASKMOVPD", P_66, M_0F38, W0, 0x2D, 0x2F);
-        public static final VexMaskMoveOp VPMASKMOVD = new VexMaskMoveOp("VPMASKMOVD", P_66, M_0F38, W0, 0x8C, 0x8E, VEXOpAssertion.AVX2);
-        public static final VexMaskMoveOp VPMASKMOVQ = new VexMaskMoveOp("VPMASKMOVQ", P_66, M_0F38, W1, 0x8C, 0x8E, VEXOpAssertion.AVX2);
+        public static final VexMaskedMoveOp VMASKMOVPS = new VexMaskedMoveOp("VMASKMOVPS", P_66, M_0F38, W0, 0x2C, 0x2E);
+        public static final VexMaskedMoveOp VMASKMOVPD = new VexMaskedMoveOp("VMASKMOVPD", P_66, M_0F38, W0, 0x2D, 0x2F);
+        public static final VexMaskedMoveOp VPMASKMOVD = new VexMaskedMoveOp("VPMASKMOVD", P_66, M_0F38, W0, 0x8C, 0x8E, VEXOpAssertion.AVX2);
+        public static final VexMaskedMoveOp VPMASKMOVQ = new VexMaskedMoveOp("VPMASKMOVQ", P_66, M_0F38, W1, 0x8C, 0x8E, VEXOpAssertion.AVX2);
         // @formatter:on
 
         private final int opReverse;
 
-        private VexMaskMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse) {
+        private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse) {
             this(opcode, pp, mmmmm, w, op, opReverse, VEXOpAssertion.AVX1);
         }
 
-        private VexMaskMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
+        private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
             this.opReverse = opReverse;
         }
