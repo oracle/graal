@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test;
 
 import static org.graalvm.compiler.core.test.EarlyGVNTest.NodeCount.count;
+import static org.junit.Assume.assumeTrue;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -49,9 +50,16 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class EarlyGVNTest extends GraalCompilerTest {
+
+    @Before
+    public void checkOptions() {
+        assumeTrue(GraalOptions.EarlyGVN.getValue(getInitialOptions()));
+        assumeTrue(GraalOptions.EarlyLICM.getValue(getInitialOptions()));
+    }
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD})
