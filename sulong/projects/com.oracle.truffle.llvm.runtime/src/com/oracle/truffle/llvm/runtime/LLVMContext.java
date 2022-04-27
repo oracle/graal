@@ -1326,6 +1326,12 @@ public final class LLVMContext {
         stackTraceLogger.log(PRINT_STACKTRACE_LEVEL, message);
     }
 
+    private static final TruffleLogger llvmLogger = TruffleLogger.getLogger("llvm");
+
+    public static TruffleLogger llvmLogger() {
+        return llvmLogger;
+    }
+
     /**
      * Context initialization state.
      */

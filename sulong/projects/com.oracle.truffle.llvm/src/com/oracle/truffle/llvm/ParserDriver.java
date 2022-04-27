@@ -368,6 +368,7 @@ final class ParserDriver {
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
+        binaryParserResult.getExportSymbolsMapper().registerExports(fileScope, publicFileScope);
         createDebugInfo(module, new LLVMSymbolReadResolver(runtime, null, GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
         return result;
     }

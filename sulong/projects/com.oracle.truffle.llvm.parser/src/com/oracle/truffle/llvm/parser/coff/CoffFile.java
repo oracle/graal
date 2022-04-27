@@ -29,7 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.coff;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.oracle.truffle.llvm.parser.filereader.ObjectFileReader;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -58,12 +62,22 @@ public final class CoffFile {
     private final ImageFileHeader header;
     private final ImageOptionHeader optionHeader;
     private final ImageSectionHeader[] sections;
+    private final List<ImageSymbol> symbols;
 
     private CoffFile(ByteSequence bytes, ImageFileHeader header, ImageOptionHeader optionHeader) {
         this.bytes = bytes;
         this.header = header;
         this.optionHeader = optionHeader;
         this.sections = new ImageSectionHeader[header.numberOfSections];
+        this.symbols = new ArrayList<>();
+    }
+
+    /**
+     * Get the section using a one based index number.
+     */
+    public ImageSectionHeader getSectionByNumber(int number) {
+        assert number > 0;
+        return sections[number - 1];
     }
 
     public ImageSectionHeader getSection(String sectionName) {
@@ -82,6 +96,22 @@ public final class CoffFile {
         }
     }
 
+    private void initializeSymbols(ObjectFileReader reader) {
+        reader.setPosition(header.symbolTablePosition);
+        int i = 0;
+        while (i < header.numberOfSymbols) {
+            ImageSymbol symbol = ImageSymbol.read(this, reader);
+            symbols.add(symbol);
+
+            // skip the symbol as well as any auxiliary symbols
+            i += 1 + symbol.numberOfAuxSymbols;
+        }
+    }
+
+    public Iterable<ImageSymbol> getSymbols() {
+        return symbols;
+    }
+
     ImageSectionHeader lookupOffset(int offset) {
         for (int i = 0; i < sections.length; i++) {
             int virtualOffset = offset - sections[i].virtualAddress;
@@ -96,10 +126,15 @@ public final class CoffFile {
         return optionHeader;
     }
 
-    public ObjectFileReader getReaderAtVirtualAddress(int virtualAddress) {
-        ImageSectionHeader section = lookupOffset(virtualAddress);
+    public ObjectFileReader getSectionReader(ImageSectionHeader section) {
         ByteSequence sectionBytes = bytes.subSequence(section.pointerToRawData, section.pointerToRawData + section.sizeOfRawData);
         ObjectFileReader reader = new ObjectFileReader(sectionBytes, true);
+        return reader;
+    }
+
+    public ObjectFileReader getReaderAtVirtualAddress(int virtualAddress) {
+        ImageSectionHeader section = lookupOffset(virtualAddress);
+        ObjectFileReader reader = getSectionReader(section);
         reader.setPosition(virtualAddress - section.virtualAddress);
         return reader;
     }
@@ -113,6 +148,7 @@ public final class CoffFile {
         ImageOptionHeader optionHeader = header.sizeOfOptionalHeader > 0 ? ImageOptionHeader.create(reader) : null;
         CoffFile coffFile = new CoffFile(bytes, header, optionHeader);
         coffFile.initializeSections(reader);
+        coffFile.initializeSymbols(reader);
         return coffFile;
     }
 
@@ -153,13 +189,13 @@ public final class CoffFile {
             checkIdent(machine);
             short numberOfSections = reader.getShort();
             /* int dateTimeStamp = */ reader.getInt();
-            int pointerToSymbolTable = reader.getInt();
+            int symbolTablePosition = reader.getInt();
             int numberOfSymbols = reader.getInt();
             short sizeOfOptionalHeader = reader.getShort();
             /* short characteristics */ reader.getShort();
             int firstSection = headerStartOffset + ImageFileHeader.IMAGE_SIZEOF_FILE_HEADER + Short.toUnsignedInt(sizeOfOptionalHeader);
-            int stringTablePosition = getStringTablePosition(pointerToSymbolTable, numberOfSymbols);
-            return new ImageFileHeader(numberOfSections, firstSection, stringTablePosition, sizeOfOptionalHeader);
+            int stringTablePosition = getStringTablePosition(symbolTablePosition, numberOfSymbols);
+            return new ImageFileHeader(numberOfSections, firstSection, symbolTablePosition, numberOfSymbols, stringTablePosition, sizeOfOptionalHeader);
         }
 
         /**
@@ -184,12 +220,16 @@ public final class CoffFile {
 
         private final short numberOfSections;
         private final int firstSection;
+        private final int symbolTablePosition;
+        private final int numberOfSymbols;
         private final int stringTablePosition;
         private final short sizeOfOptionalHeader;
 
-        ImageFileHeader(short numberOfSections, int firstSection, int stringTablePosition, short sizeOfOptionalHeader) {
+        ImageFileHeader(short numberOfSections, int firstSection, int symbolTablePosition, int numberOfSymbols, int stringTablePosition, short sizeOfOptionalHeader) {
             this.numberOfSections = numberOfSections;
             this.firstSection = firstSection;
+            this.symbolTablePosition = symbolTablePosition;
+            this.numberOfSymbols = numberOfSymbols;
             this.stringTablePosition = stringTablePosition;
             this.sizeOfOptionalHeader = sizeOfOptionalHeader;
         }
@@ -331,6 +371,22 @@ public final class CoffFile {
     public static final class ImageOptionNT64Header extends ImageOptionHeader {
         protected static final short IMAGE_NT_OPTIONAL_HDR64_MAGIC = 0x20b;
 
+        public enum ImageDataIndex {
+            ExportTable(0),
+            ImportTable(1),
+            ImportAddressTable(12);
+
+            private final int index;
+
+            ImageDataIndex(int index) {
+                this.index = index;
+            }
+
+            public int getIndex() {
+                return index;
+            }
+        }
+
         long imageBase;
         int sectionAlignment;
         int fileAlignment;
@@ -386,20 +442,12 @@ public final class CoffFile {
         private ImageOptionNT64Header() {
         }
 
-        private ImageDataDirectory getDirectoryByIndex(int index) {
-            return directories.length > index ? directories[index] : null;
-        }
-
-        public ImageDataDirectory getExportDirectory() {
-            return getDirectoryByIndex(0);
-        }
-
-        public ImageDataDirectory getImportDirectory() {
-            return getDirectoryByIndex(1);
+        public ImageDataDirectory getDirectory(ImageDataIndex index) {
+            return directories.length > index.getIndex() ? directories[index.getIndex()] : null;
         }
 
         public ImageDataDirectory getImportAddressTableDirectory() {
-            return getDirectoryByIndex(12);
+            return getDirectory(ImageDataIndex.ImportAddressTable);
         }
 
     }
@@ -468,6 +516,84 @@ public final class CoffFile {
         }
     }
 
+    /**
+     * Symbol Table.
+     *
+     * <pre>
+     * typedef struct _IMAGE_SYMBOL {
+     *     union {
+     *       BYTE    ShortName[8];
+     *       struct {
+     *           DWORD   Short;     // if 0, use LongName
+     *           DWORD   Long;      // offset into string table
+     *       } Name;
+     *       DWORD   LongName[2];    // PBYTE [2]
+     *   } N;
+     *   DWORD   Value;
+     *   SHORT   SectionNumber;
+     *   WORD    Type;
+     *   BYTE    StorageClass;
+     *   BYTE    NumberOfAuxSymbols;
+     * } IMAGE_SYMBOL;
+     * </pre>
+     *
+     * @see <a href=
+     *      "https://docs.microsoft.com/en-gb/windows/win32/debug/pe-format?redirectedfrom=MSDN#export-directory-table">Export
+     *      Directory Table</a>
+     */
+    public static final class ImageSymbol {
+        private static final int IMAGE_SYMBOL_SIZE = 18;
+        private static final int AUXILIARY_SYMBOL_SIZE = 18;
+
+        private static final int TYPE_FUNCTION_SYMBOL = 0x20;
+
+        String name;
+        int value;
+        short sectionNumber;
+        short type;
+        byte storageClass;
+        byte numberOfAuxSymbols;
+
+        private static ImageSymbol read(CoffFile file, ObjectFileReader reader) {
+            int start = reader.getPosition();
+
+            ImageSymbol symbol = new ImageSymbol();
+            int shortName = reader.getInt();
+            int nameOffset = reader.getInt();
+            symbol.value = reader.getInt();
+            symbol.sectionNumber = reader.getShort();
+            symbol.type = reader.getShort();
+            symbol.storageClass = reader.getByte();
+            symbol.numberOfAuxSymbols = reader.getByte();
+
+            assert reader.getPosition() - start == 18;
+
+            if (shortName == 0) {
+                symbol.name = file.readStringTableOffset(nameOffset, reader);
+            } else {
+                byte[] bytes = new byte[8];
+                ByteBuffer.wrap(bytes).order(ByteOrder.nativeOrder()).putInt(shortName).putInt(nameOffset);
+                symbol.name = CoffFile.nameBytesToString(bytes);
+            }
+
+            reader.setPosition(start + IMAGE_SYMBOL_SIZE + AUXILIARY_SYMBOL_SIZE * symbol.numberOfAuxSymbols);
+
+            return symbol;
+        }
+
+        /**
+         * Returns true if the symbol has a valid section number. Negative and zero section numbers
+         * are special values and return false.
+         */
+        public boolean hasValidSectionNumber() {
+            return sectionNumber > 0;
+        }
+
+        public boolean isFunction() {
+            return type == TYPE_FUNCTION_SYMBOL;
+        }
+    }
+
     private ImageSectionHeader createImageSectionHeader(ObjectFileReader reader) {
         int startOffset = reader.getPosition();
         ImageSectionHeader section = new ImageSectionHeader(startOffset);
@@ -520,7 +646,7 @@ public final class CoffFile {
             // increment position
         }
         int end = reader.getPosition();
-        return reader.getString(start, end, StandardCharsets.UTF_8);
+        return reader.getString(start, end - 1, StandardCharsets.UTF_8);
     }
 
     public String readStringAtVirtualOffset(int offset) {
@@ -534,7 +660,7 @@ public final class CoffFile {
         return new String(bytes.subSequence(virtualOffset, endOffset).toByteArray(), StandardCharsets.UTF_8);
     }
 
-    private static String nameBytesToString(byte[] nameBytes) {
+    public static String nameBytesToString(byte[] nameBytes) {
         // strip trailing '\0's
         int length = 0;
         while (length < nameBytes.length && nameBytes[length] != 0x0) {
