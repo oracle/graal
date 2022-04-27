@@ -417,7 +417,7 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings("try")
-    public int doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+    public void doGraphPE(TruffleTierContext context, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         inlineInvokePlugin
         };
@@ -433,7 +433,6 @@ public abstract class PartialEvaluator {
             decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
         }
         assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
-        return listener.graphSize;
     }
 
     /**
