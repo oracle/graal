@@ -35,6 +35,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import org.graalvm.nativeimage.ImageInfo;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final int target;
@@ -127,7 +128,12 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     }
 
     private static boolean checkUsesDeprecatedFrameTransfer(Class<?> osrNodeClass) {
-        return usesDeprecatedTransferClasses.computeIfAbsent(osrNodeClass, BytecodeOSRRootNode::usesDeprecatedFrameTransfer);
+        if (ImageInfo.inImageRuntimeCode()) {
+            // this must have been pre-computed
+            return usesDeprecatedTransferClasses.get(osrNodeClass);
+        } else {
+            return usesDeprecatedTransferClasses.computeIfAbsent(osrNodeClass, BytecodeOSRRootNode::usesDeprecatedFrameTransfer);
+        }
     }
 
     // Called by truffle feature to initialize the map at build time.
