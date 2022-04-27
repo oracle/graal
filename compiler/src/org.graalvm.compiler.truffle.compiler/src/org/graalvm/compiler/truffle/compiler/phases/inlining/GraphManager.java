@@ -46,6 +46,7 @@ import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PostPartialEvaluationSuite;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -57,12 +58,14 @@ final class GraphManager {
     private final EconomicMap<CompilableTruffleAST, GraphManager.Entry> irCache = EconomicMap.create();
     private final TruffleTierContext rootContext;
     private final PostPartialEvaluationSuite postPartialEvaluationSuite;
+    private final boolean useSize;
 
     GraphManager(PartialEvaluator partialEvaluator, PostPartialEvaluationSuite postPartialEvaluationSuite, TruffleTierContext rootContext) {
         this.partialEvaluator = partialEvaluator;
         this.postPartialEvaluationSuite = postPartialEvaluationSuite;
         this.rootContext = rootContext;
         this.graphCacheForInlining = partialEvaluator.getOrCreateEncodedGraphCache();
+        this.useSize = rootContext.options.get(PolyglotCompilerOptions.InliningUseSize);
     }
 
     Entry pe(CompilableTruffleAST truffleAST) {
@@ -74,7 +77,7 @@ final class GraphManager {
             context.graph.getAssumptions().record(new TruffleAssumption(truffleAST.getNodeRewritingAssumptionConstant()));
             StructuredGraph graphAfterPE = copyGraphForDebugDump(context);
             postPartialEvaluationSuite.apply(context.graph, context);
-            entry = new Entry(context.graph, plugin, graphAfterPE, NodeCostUtil.computeGraphSize(context.graph));
+            entry = new Entry(context.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(context.graph) : -1);
             irCache.put(truffleAST, entry);
         }
         return entry;
@@ -102,7 +105,7 @@ final class GraphManager {
         partialEvaluator.doGraphPE(rootContext, plugin, graphCacheForInlining);
         StructuredGraph graphAfterPE = copyGraphForDebugDump(rootContext);
         postPartialEvaluationSuite.apply(rootContext.graph, rootContext);
-        return new Entry(rootContext.graph, plugin, graphAfterPE, NodeCostUtil.computeGraphSize(rootContext.graph));
+        return new Entry(rootContext.graph, plugin, graphAfterPE, useSize ? NodeCostUtil.computeGraphSize(rootContext.graph) : -1);
     }
 
     UnmodifiableEconomicMap<Node, Node> doInline(Invoke invoke, StructuredGraph ir, CompilableTruffleAST truffleAST, InliningUtil.InlineeReturnAction returnAction) {
@@ -135,6 +138,7 @@ final class GraphManager {
         final boolean trivial;
         // Populated only when debug dump is enabled with debug dump level >= info.
         final StructuredGraph graphAfterPEForDebugDump;
+        // Only populated if PolyglotCompilerOptions.InliningUseSize is true
         final int graphSize;
 
         Entry(StructuredGraph graph, PEAgnosticInlineInvokePlugin plugin, StructuredGraph graphAfterPEForDebugDump, int graphSize) {
