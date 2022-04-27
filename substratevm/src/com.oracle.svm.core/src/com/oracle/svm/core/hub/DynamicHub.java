@@ -323,7 +323,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private AnnotationType annotationType;
 
     @Substitute private static long serialVersionUID;
-    
+
     @Substitute @InjectAccessors(CachedConstructorAccessors.class) //
     private Constructor<?> cachedConstructor;
 
