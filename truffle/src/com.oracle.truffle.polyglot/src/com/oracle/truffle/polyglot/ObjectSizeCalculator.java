@@ -166,7 +166,7 @@ final class ObjectSizeCalculator {
     @CompilerDirectives.TruffleBoundary
     long calculateObjectSize(final Object obj, long stopAtBytes, AtomicBoolean cancelled) {
         if (TruffleOptions.AOT || Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
-            throw new UnsupportedOperationException();
+            throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on this platform.");
         }
         /*
          * Breadth-first traversal instead of naive depth-first with recursive implementation, so we
@@ -477,7 +477,15 @@ final class ObjectSizeCalculator {
         @Override
         public void visit(CalculationState calculationState, Object obj) {
             if (isReference) {
-                Object nextObj = ((Reference<?>) obj).get();
+                Object nextObj = null;
+                try {
+                    nextObj = ((Reference<?>) obj).get();
+                } catch (Exception t) {
+                    /*
+                     * The lookup might throw an exception .e.g UnsupportedOperationException for
+                     * phantom references.
+                     */
+                }
                 if (enqueueOrStop(calculationState, nextObj)) {
                     return;
                 }
