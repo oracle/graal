@@ -13,16 +13,12 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
-import javax.xml.stream.XMLInputFactory;
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 import com.oracle.truffle.tools.utils.json.JSONTokener;
 
 public class OperationsParser extends AbstractParser<OperationsData> {
@@ -132,7 +128,14 @@ public class OperationsParser extends AbstractParser<OperationsData> {
     @SuppressWarnings("unchecked")
     private OperationDecisions parseDecisions(TypeElement element, AnnotationMirror generateOperationsMirror, OperationsData data) {
         String file = (String) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile").getValue();
-        OperationDecisions mainDecisions = parseDecisions(element, file, data, true);
+        OperationDecisions mainDecisions;
+
+        if (file == null || file.isEmpty()) {
+            mainDecisions = new OperationDecisions();
+        } else {
+            mainDecisions = parseDecisions(element, file, data, true);
+        }
+
         if (mainDecisions == null) {
             return null;
         }

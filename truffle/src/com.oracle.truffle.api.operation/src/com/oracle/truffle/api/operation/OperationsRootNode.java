@@ -1,7 +1,6 @@
 package com.oracle.truffle.api.operation;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -44,26 +43,26 @@ public class OperationsRootNode extends RootNode {
         return false;
     }
 
-// private class OperationsWrapperNode extends Node implements WrapperNode {
-// private final ProbeNode probe;
-//
-// OperationsWrapperNode(ProbeNode probe) {
-// this.probe = probe;
-// }
-//
-// public Node getDelegateNode() {
-// return OperationsRootNode.this;
-// }
-//
-// public ProbeNode getProbeNode() {
-// return probe;
-// }
-// }
+    // private class OperationsWrapperNode extends Node implements WrapperNode {
+    // private final ProbeNode probe;
+    //
+    // OperationsWrapperNode(ProbeNode probe) {
+    // this.probe = probe;
+    // }
+    //
+    // public Node getDelegateNode() {
+    // return OperationsRootNode.this;
+    // }
+    //
+    // public ProbeNode getProbeNode() {
+    // return probe;
+    // }
+    // }
 
-// public WrapperNode createWrapper(final ProbeNode probe) {
-// // return new OperationsWrapperNode(probe);
-// return null;
-// }
+    // public WrapperNode createWrapper(final ProbeNode probe) {
+    // // return new OperationsWrapperNode(probe);
+    // return null;
+    // }
 
     @Override
     public String toString() {

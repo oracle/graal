@@ -120,16 +120,6 @@ public abstract class OperationsBuilder {
         return 2;
     }
 
-    protected static class BuilderOperationLabel extends OperationLabel {
-        BuilderOperationData data;
-        boolean hasValue = false;
-        int targetBci = 0;
-
-        public BuilderOperationLabel(BuilderOperationData data) {
-            this.data = data;
-        }
-    }
-
     protected void doEmitLabel(int bci, OperationLabel label) {
         BuilderOperationLabel lbl = (BuilderOperationLabel) label;
         if (lbl.hasValue) {

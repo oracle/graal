@@ -3,6 +3,7 @@ package com.oracle.truffle.api.operation.test.example;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -291,7 +292,7 @@ public class TestOperationsParserTest {
                    + "  (return (local 2)))";
         //@formatter:on
         new Tester(src).test(495000L);
-        ExecutionTracer.get().dump();
+        ExecutionTracer.get("com.oracle.truffle.api.operation.test.example.TestOperations").dump(new PrintWriter(System.out));
     }
 
     @Test
@@ -302,7 +303,7 @@ public class TestOperationsParserTest {
         //@formatter:on
 
         new Tester(src, true).test(3L);
-        ExecutionTracer.get().dump();
+        ExecutionTracer.get("com.oracle.truffle.api.operation.test.example.TestOperations").dump(new PrintWriter(System.out));
     }
 
     @Test

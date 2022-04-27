@@ -41,12 +41,21 @@
 package com.oracle.truffle.dsl.processor.java.compiler;
 
 import java.io.File;
+import java.io.IOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
+
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class JavaCCompiler extends AbstractCompiler {
 
@@ -92,10 +101,25 @@ public class JavaCCompiler extends AbstractCompiler {
         }
     }
 
+    private static Class<?> clsTrees = null;
+
+    private static Object getTrees(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
+        if (clsTrees == null) {
+            clsTrees = Class.forName("com.sun.source.util.Trees", false, element.getClass().getClassLoader());
+        }
+        return staticMethod(clsTrees, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
+    }
+
+    private static Method metTrees_getPath = null;
+
     private static Object getTreePathForElement(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
-        Class<?> treesClass = Class.forName("com.sun.source.util.Trees", false, element.getClass().getClassLoader());
-        Object trees = staticMethod(treesClass, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
-        return method(trees, "getPath", new Class<?>[]{Element.class}, element);
+        Object trees = getTrees(environment, element);
+        // we must lookup the name manually since we need the abstract one on Trees, not the one on
+        // the implementation (which is innaccessible to us due to modules)
+        if (metTrees_getPath == null) {
+            metTrees_getPath = clsTrees.getMethod("getPath", new Class<?>[]{Element.class});
+        }
+        return metTrees_getPath.invoke(trees, element);
     }
 
     private static Object getLog(Object javacContext) throws ReflectiveOperationException {
@@ -124,8 +148,33 @@ public class JavaCCompiler extends AbstractCompiler {
         method(check, "warnDeprecated", new Class<?>[]{diagnosticPositionClass, symbolClass}, elementTree, element);
     }
 
+    private static Class<?> clsTreePath = null;
+    private static Method metTreePath_getCompilationUnit = null;
+    private static Class<?> clsCompilationUnitTree = null;
+    private static Method metCompilationUnitTree_getSourceFile = null;
+
     @Override
     public File getEnclosingFile(ProcessingEnvironment processingEnv, Element element) {
-        throw new UnsupportedOperationException("todo");
+        try {
+            ClassLoader cl = element.getClass().getClassLoader();
+
+            Object treePath = getTreePathForElement(processingEnv, element);
+            if (clsTreePath == null) {
+                clsTreePath = Class.forName("com.sun.source.util.TreePath", false, cl);
+                metTreePath_getCompilationUnit = clsTreePath.getMethod("getCompilationUnit", new Class<?>[0]);
+            }
+
+            Object compilationUnit = metTreePath_getCompilationUnit.invoke(treePath);
+
+            if (clsCompilationUnitTree == null) {
+                clsCompilationUnitTree = Class.forName("com.sun.source.tree.CompilationUnitTree", false, cl);
+                metCompilationUnitTree_getSourceFile = clsCompilationUnitTree.getDeclaredMethod("getSourceFile", new Class<?>[0]);
+            }
+
+            JavaFileObject obj = (JavaFileObject) metCompilationUnitTree_getSourceFile.invoke(compilationUnit);
+            return new File(obj.toUri());
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("should not happen", e);
+        }
     }
 }

@@ -14,7 +14,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 public class OperationDecisions {
     private final List<Quicken> quicken = new ArrayList<>();
 
-    private OperationDecisions() {
+    public OperationDecisions() {
     }
 
     public List<Quicken> getQuicken() {
