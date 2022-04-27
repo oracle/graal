@@ -446,13 +446,14 @@ class ClangVm(GccLikeVm):
 
 
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
-    def __init__(self, config_name, options, host_vm=None):
+    def __init__(self, config_name, options, host_vm=None, cflags=None):
         super(SulongVm, self).__init__(host_vm)
         self._config_name = config_name
         self._options = options
+        self._cflags = cflags
 
     def with_host_vm(self, host_vm):
-        return SulongVm(self._config_name, self._options, host_vm)
+        return SulongVm(self._config_name, self._options, host_vm, cflags=self._cflags)
 
     def config_name(self):
         return self._config_name
@@ -504,6 +505,9 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         # change this if we can properly install components into a graalvm deployment
         env['CC'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CC>'.format(self.toolchain_name()))
         env['CXX'] = mx_subst.path_substitutions.substitute('<toolchainGetToolPath:{},CXX>'.format(self.toolchain_name()))
+        if self._cflags:
+            cflags_string = ' '.join(self._cflags)
+            env['CFLAGS'] = cflags_string
         return env
 
     def out_file(self):
@@ -737,6 +741,10 @@ native_vm_registry.add_vm(ClangVm('O2', ['-O2']), _suite)
 native_vm_registry.add_vm(GccVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(ClangVm('O3', ['-O3']), _suite)
 native_vm_registry.add_vm(SulongVm('default', []), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O0', [], cflags=['-O0']), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O1', [], cflags=['-O1']), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O2', [], cflags=['-O2', '-fno-vectorize', '-fno-slp-vectorize']), _suite, 10)
+native_vm_registry.add_vm(SulongVm('default-O3', [], cflags=['-O3', '-fno-vectorize', '-fno-slp-vectorize']), _suite, 10)
 
 native_polybench_vm_registry = VmRegistry("NativePolybench", known_host_registries=[java_vm_registry])
 native_polybench_vm_registry.add_vm(PolybenchVm('debug-aux-engine-cache',
