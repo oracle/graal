@@ -31,4 +31,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
 
+# Apply no optimization to vtableTest3 to prevent constructor inlining
+set_source_files_properties( interop/vtableTest3.cpp
+                PROPERTIES
+                COMPILE_FLAGS -O0)
+                
 include(SulongTestSuite)
