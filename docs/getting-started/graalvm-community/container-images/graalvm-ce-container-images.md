@@ -24,7 +24,7 @@ There are different images provided depending on the  platforms, the architectur
 GraalVM binaries are built for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit systems.
 The images are multi-arch (`aarch64` or `amd64` will be pulled depending on Docker host architecture), and tagged with the format `ghcr.io/graalvm/IMAGE_NAME:version`.
 The version tag defines the level of specificity.
-It is recommended that the most specific tag be used, e.g., `java17-21.3.1` or `java17-21.3.1-b1`, where the `-b1` means the image required a patch and this specific build will never change.
+It is recommended that the most specific tag be used, e.g., `java17-22.1.0` or `java17-22.1.0-b1`, where the `-b1` means the image required a patch and this specific build will never change.
 See what types of container images are available [here](https://github.com/graalvm/container).
 
 The images are based on Oracle Linux and has GraalVM Community downloaded, unzipped and made available.
@@ -32,25 +32,25 @@ It means that Java, JavaScript, and the LLVM runtime are available out of the bo
 
 You can start a container and enter the `bash` session with the following run command:
 ```shell
-docker run -it --rm ghcr.io/graalvm/jdk:java17-22.0.0 bash
+docker run -it --rm ghcr.io/graalvm/jdk:java17-22.1.0 bash
 ```
 
 Check that `java`, `js` and other commands work as expected.
 ```shell
-→ docker run -it --rm ghcr.io/graalvm/jdk:java17-22.0.0 bash
+→ docker run -it --rm ghcr.io/graalvm/jdk:java17-22.1.0 bash
 bash-4.4# java -version
-openjdk 17.0.2 2022-01-18
-OpenJDK Runtime Environment GraalVM CE 22.0.0 (build 17.0.2+5-jvmci-22.0-b02)
-OpenJDK 64-Bit Server VM GraalVM CE 22.0.0 (build 17.0.2+5-jvmci-22.0-b02, mixed mode, sharing)
+openjdk version "17.0.3" 2022-04-19
+OpenJDK Runtime Environment GraalVM CE 22.1.0 (build 17.0.3+5-jvmci-22.1-b04)
+OpenJDK 64-Bit Server VM GraalVM CE 22.1.0 (build 17.0.3+5-jvmci-22.1-b04, mixed mode, sharing)
 
 bash-4.4# js -version
-GraalVM JavaScript (GraalVM CE Native 22.0.0)
+GraalVM JavaScript (GraalVM CE Native 22.1.0)
 > 1 + 1
 2
 > quit()
 >
 bash-4.4# lli --version
-LLVM 12.0.1 (GraalVM CE Native 22.0.0)
+LLVM 12.0.1 (GraalVM CE Native 22.1.0)
 ```
 
 You have pulled a size compact GraalVM Community container image with the GraalVM JDK pre-installed.
@@ -61,7 +61,7 @@ Check what other configuration types of container images are available [here](ht
 To add the Ruby support, run the following command (the output below is truncated for brevity):
 
 ```shell
-docker run -it --rm ghcr.io/graalvm/jdk:java17-22.0.0 bash
+docker run -it --rm ghcr.io/graalvm/jdk:java17-22.1.0 bash
 bash-4.4# gu install ruby
 Downloading: Component catalog
 Processing component archive: Component ruby
@@ -73,13 +73,13 @@ Downloading: Component ruby
 Here is a sample command that maps the `/absolute/path/to/directory/no/trailing/slash` directory from the host system to the `/path/inside/container` inside the container.
 
 ```shell
-docker run -it --rm -v /absolute/path/to/directory/no/trailing/slash:/path/inside/container ghcr.io/graalvm/jdk:java17-22.0.0 bash
+docker run -it --rm -v /absolute/path/to/directory/no/trailing/slash:/path/inside/container ghcr.io/graalvm/jdk:java17-22.1.0 bash
 ```
 
-If you want to create Docker images that contain GraalVM with Ruby, R, or Python, you can use a Dockerfile like the example below, which uses `ghcr.io/graalvm/jdk:java17-22.0.0` as the base image, installs the Ruby support using the `gu` utility, then creates and runs a sample Ruby program.
+If you want to create Docker images that contain GraalVM with Ruby, R, or Python, you can use a Dockerfile like the example below, which uses `ghcr.io/graalvm/jdk:java17-22.1.0` as the base image, installs the Ruby support using the `gu` utility, then creates and runs a sample Ruby program.
 
 ```shell
-FROM ghcr.io/graalvm/jdk:java17-22.0.0
+FROM ghcr.io/graalvm/jdk:java17-22.1.0
 RUN gu install ruby
 WORKDIR /workdir
 RUN echo 'puts "Hello from Ruby!\nVersion: #{RUBY_DESCRIPTION}"' > app.rb
@@ -93,5 +93,5 @@ docker build -t ruby-demo .
 ...
 docker run -it --rm ruby-demo
 Hello from Ruby!
-Version: truffleruby 22.0.0, like ruby 3.0.2, GraalVM CE Native [x86_64-darwin]
+Version: truffleruby 22.1.0, like ruby 3.0.2, GraalVM CE Native [x86_64-darwin]
 ```

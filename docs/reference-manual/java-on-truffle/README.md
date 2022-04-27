@@ -18,12 +18,14 @@ The Java on Truffle execution mode runs Java via a Java bytecode interpreter, im
 Now Java can be executed by the same principle as other languages in the GraalVM ecosystem (JavaScript, Ruby, Python, R), directly interoperate with those languages, and pass data back and forth in the same memory space.
 Besides complete language interoperability, with Java on Truffle you can:
 
-- run Java bytecodes in a separate context from the host Java VM. It can run either a Java 8, Java 11, Java 17 guest or host JVM. In other words, you can embed a Java 8 context in a Java 11 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html).
+- run Java bytecode in a separate context from the host Java VM.
+- run either a Java 8, Java 11, Java 17 guest JVM, allowing to embed e.g. a Java 8 context in a Java 11 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html)
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
-- run in the context of a native image while still allowing dynamically-loaded bytecodes.
+- run in the context of a native image while still allowing dynamically-loaded bytecode.
+- take advantage of unlimited [HotSwap capabilities](HotSwap.md) during a debugging session.
 
-Java on Trufle is an experimental technology in GraalVM, but already passes the Java Compatibility Kit (JCK or TCK for Java SE).
+Java on Truffle is an experimental technology in GraalVM, but already passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Install Java on Truffle
 
@@ -136,15 +138,15 @@ For exampe, to run the Spring PetClinic project using Intellij IDEA, you need to
 
 1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the folder where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
 
-![](/resources/img/java-on-truffle/add-project-default-sdk.png)
+![](images/add-project-default-sdk.png)
 
 2&#46; Generate sources and update folders for the project. In the Maven sidebar, click on the folder with the spinner icon:
 
-![](/resources/img/java-on-truffle/generate-project-sources.png)
+![](images/generate-project-sources.png)
 
 3&#46; Enable the Java on Truffle execution mode. From the main menu select **Run**, then **Run…**. Click **Edit Configurations** and choose **Environment**. Put the `-truffle -XX:+IgnoreUnrecognizedVMOptions` command in **VM options** and press Apply.
 
-![](/resources/img/java-on-truffle/pass-vmoption.png)
+![](images/pass-vmoption.png)
 
 It is necessary to specify `-XX:+IgnoreUnrecognizedVMOptions` because Intellij automatically adds a `-javaagent` argument which is not supported yet.
 
@@ -157,7 +159,7 @@ For example, starting a debugger session from IntelliJ IDEA is based on the Run 
 To ensure you attach the debugger to your Java application in the same environment, navigate in the main menu to Run -> Debug… -> Edit Configurations, expand Environment, check the JRE value and VM options values.
 It should show GraalVM as project's JRE and VM options should include `-truffle -XX:+IgnoreUnrecognizedVMOptions`: `-truffle` to run Java on Truffle, and `-XX:+IgnoreUnrecognizedVMOptions` as a temporary workaround since the Java on Truffle runtime does not yet support attaching Java agents.
 
-![](/resources/img/debug-configuration.png)
+![](images/debug-configuration.png)
 
 ## What to Read Next
 
