@@ -37,15 +37,21 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
+import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
@@ -89,7 +95,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
     private LLVMPointer address;
-    private LLVMManagedPointer vaList;
+    protected LLVMManagedPointer vaList;
 
     public LLVMMaybeVaPointer(LLVMVAListNode allocaNode, LLVMPointer address) {
         this.allocaNode = allocaNode;
@@ -127,7 +133,10 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         // LLVMX86_64_WinVaListStorage vaListInstance = new LLVMX86_64_WinVaListStorage();
         LLVMDarwinAarch64VaListStorage vaListInstance = new LLVMDarwinAarch64VaListStorage();
         vaListInstance.initialize(realArgs, numOfExpArgs, frame, stackAllocationNode);
-        vaList = LLVMManagedPointer.create(vaListInstance);
+
+        // hack?
+        LLVMInteropType type = LLVMInteropType.ValueKind.I1.type.toArray(vaListInstance.getArraySize());
+        vaList = LLVMManagedPointer.create(vaListInstance).export(type);
         wasVAListPointer = true;
     }
 
@@ -179,11 +188,60 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         return 1;
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean hasArrayElements() {
+        return !isPointer();
+    }
+
+    @ExportMessage
+    public long getArraySize() {
+        // TODO: add specialization for native case?
+        return ((LLVMVaListStorage) vaList.getObject()).getArraySize();
+    }
+
+    @ExportMessage
+    public boolean isArrayElementReadable(long index) {
+        // TODO: add specialization for native case?
+        return ((LLVMVaListStorage) vaList.getObject()).isArrayElementReadable(index);
+    }
+
+    @ExportMessage
+    public Object readArrayElement(long index, @Cached LLVMDataEscapeNode.LLVMPointerDataEscapeNode pointerEscapeNode) {
+        // TODO: add specialization for native case?
+        // TODO: use CachedLibrary?
+        return ((LLVMVaListStorage) vaList.getObject()).readArrayElement(index, pointerEscapeNode);
+    }
+
     @ExportMessage(name = "isReadable")
     @ExportMessage(name = "isWritable")
     @SuppressWarnings("static-method")
     boolean isAccessible() {
         return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean hasMembers() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        // TODO: add specialization for native case?
+        // TODO: use CachedLibrary?
+        return ((LLVMVaListStorage) vaList.getObject()).getMembers(includeInternal);
+    }
+
+    @ExportMessage
+    public boolean isMemberInvocable(String member) {
+        return ((LLVMVaListStorage) vaList.getObject()).isMemberInvocable(member);
+    }
+
+    @ExportMessage
+    public Object invokeMember(String member, Object[] arguments,
+               @Cached LLVMDataEscapeNode.LLVMPointerDataEscapeNode pointerEscapeNode) throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        return ((LLVMVaListStorage) vaList.getObject()).invokeMember(member, arguments, pointerEscapeNode);
     }
 
     @ExportMessage
@@ -507,7 +565,14 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     public static boolean isForeign(@SuppressWarnings("unused") LLVMMaybeVaPointer receiver) {
-        return false;
+        // Hack: LLVMDataEscapeNode should unpack a pointer to MaybeVaPointer
+        return true;
+    }
+
+    @ExportMessage
+    public Object asForeign() {
+        // TODO: only return this if vaList is set, otherwise do whatever Pointer would do?
+        return this;
     }
 
     @Override

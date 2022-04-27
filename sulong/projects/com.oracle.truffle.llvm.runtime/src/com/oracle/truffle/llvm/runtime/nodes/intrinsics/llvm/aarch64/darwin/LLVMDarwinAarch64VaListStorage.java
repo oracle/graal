@@ -32,10 +32,8 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -88,9 +86,6 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
     // va_list is an alias for char*
     public static final PointerType VA_LIST_TYPE = PointerType.I8;
-
-    protected Object[] realArguments;
-    protected int numberOfExplicitArguments;
 
     private Object[] originalArgs;
     private Object[][] expansions;
