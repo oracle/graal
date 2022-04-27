@@ -438,11 +438,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     /**
      * Hashing a phase is used to implement and test phase plan serialization. Hashing a phase
      * should take into account any fields that configure a phase. This will be done properly once a
-     * {@code PhaseInfo} annotation is introduced (c.f. {@link NodeInfo}).
+     * {@code PhaseInfo} annotation is introduced (c.f. {@link NodeInfo}). The hash code returned
+     * needs to be stable across VM executions.
      */
     @Override
     public int hashCode() {
-        return this.getClass().hashCode();
+        return this.getClass().getName().hashCode();
     }
 
     /**

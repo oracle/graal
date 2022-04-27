@@ -75,7 +75,7 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.getClass(), fullSchedule, canonicalizer);
+        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer);
     }
 
     @Override
