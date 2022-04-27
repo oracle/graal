@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -81,6 +78,9 @@ import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 5)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
@@ -89,9 +89,11 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
-    // %struct.__va_list = type { i8*, i8*, i8*, i32, i32 }
+    // %struct.std::__va_list = type { i8*, i8*, i8*, i32, i32 }
 
-    public static final StructureType VA_LIST_TYPE = StructureType.createNamedFromList("struct.__va_list", false,
+    // TODO: the va_list type name may change from version to version, so it may break the backward compatibility.
+    // We should use the type defined in a given BC module instead of this global one.
+    public static final StructureType VA_LIST_TYPE = StructureType.createNamedFromList("struct.std::__va_list", false,
                     new ArrayList<>(Arrays.asList(PointerType.I8, PointerType.I8, PointerType.I8, PrimitiveType.I32, PrimitiveType.I32)));
 
     private Object[] originalArgs;
