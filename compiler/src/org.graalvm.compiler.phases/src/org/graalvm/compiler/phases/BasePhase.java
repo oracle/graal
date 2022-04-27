@@ -442,7 +442,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      */
     @Override
     public int hashCode() {
-        return this.getClass().hashCode();
+        // TODO GR-38409 To implement properly hashCode(), it should use getClass() instead of
+        // getClass().getName(). Remove getClass().getName() once the experiments across VM
+        // executions are over.
+        return this.getClass().getName().hashCode();
     }
 
     /**

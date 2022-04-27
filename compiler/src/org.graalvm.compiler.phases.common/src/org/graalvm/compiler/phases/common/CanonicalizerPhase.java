@@ -236,11 +236,15 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     @Override
     public int hashCode() {
+        // TODO GR-38409 To implement properly hashCode(), it should use getClass() instead of
+        // getClass().getName(). Remove getClass().getName() once the experiments across VM
+        // executions are over.
+
         if (customSimplification == null) {
-            return Objects.hash(this.getClass().hashCode(), features.toString());
+            return Objects.hash(this.getClass().getName(), features.toString());
         }
 
-        return Objects.hash(this.getClass(), features.toString(),
+        return Objects.hash(this.getClass().getName(), features.toString(),
                         customSimplification.getClass().getName());
     }
 
