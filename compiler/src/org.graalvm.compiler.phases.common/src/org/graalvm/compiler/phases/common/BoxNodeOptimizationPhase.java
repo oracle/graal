@@ -109,7 +109,7 @@ public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreP
                                     }
                                 }
                                 box.replaceAtUsages(boxUsageOnBoxedVal);
-                                graph.getOptimizationLog().report("BoxNodeOptimization", "BoxUsageReplacement", box);
+                                graph.getOptimizationLog().report(getClass(), "BoxUsageReplacement", box);
                                 GraphUtil.removeFixedWithUnusedInputs(box);
                                 continue boxLoop;
                             }

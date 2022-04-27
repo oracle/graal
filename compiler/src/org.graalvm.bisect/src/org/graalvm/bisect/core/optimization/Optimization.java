@@ -31,8 +31,8 @@ import java.util.Map;
  */
 public interface Optimization {
     /**
-     * Gets the name of this optimization. Roughly corresponds to the name of the compiler phase which performed this
-     * optimization.
+     * Gets the name of this optimization. Corresponds to the name of the compiler phase or another class which
+     * performed this optimization.
      * @return the name of this optimization
      */
     String getOptimizationName();
@@ -52,8 +52,13 @@ public interface Optimization {
 
     /**
      * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. A null value means that no fitting bci could be assigned.
+     * of a given node or from a FrameState. The value {@link #NO_BCI} means that no fitting bci could be assigned.
      * @return the byte code index of this optimization
      */
-    Integer getBCI();
+    int getBCI();
+
+    /**
+     * A special bci value meaning that no byte code index was found.
+     */
+    int NO_BCI = -1;
 }

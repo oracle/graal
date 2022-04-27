@@ -31,12 +31,13 @@ import org.graalvm.compiler.graph.Node;
  */
 public class OptimizationLogUtil {
     /**
-     * Returns the BCI of a node. First tries to get it from the {@link FrameState} after the execution of this node,
-     * otherwise returns the node's {@link org.graalvm.compiler.graph.NodeSourcePosition}.
-     * @param node the node whose BCI we want to find
-     * @return the BCI of the node
+     * Returns the bci of a node. First, it tries to get from the {@link FrameState} after the execution of this node,
+     * then it tries to use the node's {@link org.graalvm.compiler.graph.NodeSourcePosition}. If everything fails, it
+     * returns {@code OptimizationLog#NO_BCI}.
+     * @param node the node whose bci we want to find
+     * @return the bci of the node ({@code OptimizationLog#NO_BCI} if no fitting bci found)
      */
-    public static Integer findBci(Node node) {
+    public static int findBCI(Node node) {
         if (node instanceof StateSplit) {
             StateSplit stateSplit = (StateSplit) node;
             if (stateSplit.stateAfter() != null) {
@@ -46,6 +47,6 @@ public class OptimizationLogUtil {
         if (node.getNodeSourcePosition() != null) {
             return node.getNodeSourcePosition().getBCI();
         }
-        return null;
+        return OptimizationLog.NO_BCI;
     }
 }

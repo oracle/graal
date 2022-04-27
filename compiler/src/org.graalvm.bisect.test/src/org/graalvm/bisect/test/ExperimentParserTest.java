@@ -110,7 +110,7 @@ public class ExperimentParserTest {
                             "        {\n" +
                             "            \"optimizationName\": \"LoopTransformation\",\n" +
                             "            \"eventName\": \"PartialUnroll\",\n" +
-                            "            \"bci\": null\n," +
+                            "            \"bci\": -1\n," +
                             "            \"unrollFactor\": 2\n" +
                             "        }\n" +
                             "    ]\n" +
@@ -147,7 +147,7 @@ public class ExperimentParserTest {
                     assertEquals(
                             Set.of(
                                     new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
-                                    new OptimizationImpl("LoopTransformation", "PartialUnroll", null, Map.of("unrollFactor", 2))
+                                    new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, Map.of("unrollFactor", 2))
                             ),
                             Set.copyOf(executedMethod.getOptimizations())
                     );

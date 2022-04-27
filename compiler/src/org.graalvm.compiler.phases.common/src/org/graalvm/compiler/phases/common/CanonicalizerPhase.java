@@ -111,7 +111,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     private static final CounterKey COUNTER_STAMP_CHANGED = DebugContext.counter("StampChanged");
     private static final CounterKey COUNTER_SIMPLIFICATION_CONSIDERED_NODES = DebugContext.counter("SimplificationConsideredNodes");
     private static final CounterKey COUNTER_CUSTOM_SIMPLIFICATION_CONSIDERED_NODES = DebugContext.counter("CustomSimplificationConsideredNodes");
-    private static final CounterKey COUNTER_GLOBAL_VALUE_NUMBERING_HITS = DebugContext.counter("GlobalValueNumberingHits");
 
     protected final EnumSet<CanonicalizerFeature> features;
     protected final CustomSimplification customSimplification;
@@ -341,9 +340,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             Constant constant = valueNode.stamp(NodeView.DEFAULT).asConstant();
             if (constant != null && !(node instanceof ConstantNode)) {
                 ConstantNode stampConstant = ConstantNode.forConstant(valueNode.stamp(NodeView.DEFAULT), constant, tool.context.getMetaAccess(), graph);
-                tool.debug.log("Canonicalizer: constant stamp replaces %1s with %1s", valueNode, stampConstant);
                 valueNode.replaceAtUsages(stampConstant, InputType.Value);
                 GraphUtil.tryKillUnused(valueNode);
+                graph.getOptimizationLog().report(CanonicalizerPhase.class, "ConstantStampReplacement", valueNode);
                 return true;
             } else if (improvedStamp) {
                 // the improved stamp may enable additional canonicalization
@@ -366,8 +365,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             if (newNode != null) {
                 assert !(node instanceof FixedNode || newNode instanceof FixedNode);
                 node.replaceAtUsagesAndDelete(newNode);
-                COUNTER_GLOBAL_VALUE_NUMBERING_HITS.increment(tool.debug);
-                tool.debug.log("GVN applied and new node is %1s", newNode);
+                StructuredGraph graph = (StructuredGraph) node.graph();
+                graph.getOptimizationLog().report(CanonicalizerPhase.class, "GlobalValueNumbering", node);
                 return true;
             }
         }
@@ -403,6 +402,16 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     throw new GraalGraphError(e).addContext(node);
                 }
                 if (performReplacement(node, canonical, tool)) {
+                    Node finalCanonical = canonical;
+                    StructuredGraph graph = (StructuredGraph) node.graph();
+                    graph.getOptimizationLog().report(CanonicalizerPhase.class, "CanonicalReplacement", node)
+                                    .setProperty("replacedNodeClass", nodeClass::shortName)
+                                    .setProperty("canonicalNodeClass", () -> {
+                                        if (finalCanonical == null) {
+                                            return null;
+                                        }
+                                        return finalCanonical.getNodeClass().shortName();
+                                    });
                     return true;
                 }
             }
@@ -415,7 +424,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     int modCount = node.graph().getEdgeModificationCount();
                     customSimplification.simplify(node, tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
-                        tool.debug.log("Canonicalizer: customSimplification simplified %s", node);
+                        StructuredGraph graph = (StructuredGraph) node.graph();
+                        graph.getOptimizationLog().report(CanonicalizerPhase.class, "CfgSimplificationCustom", node);
                         return true;
                     }
                 }
@@ -426,7 +436,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     int modCount = node.graph().getEdgeModificationCount();
                     ((Simplifiable) node).simplify(tool);
                     if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
-                        tool.debug.log("Canonicalizer: simplified %s", node);
+                        StructuredGraph graph = (StructuredGraph) node.graph();
+                        graph.getOptimizationLog().report(CanonicalizerPhase.class, "CfgSimplification", node);
                         return true;
                     }
                 }

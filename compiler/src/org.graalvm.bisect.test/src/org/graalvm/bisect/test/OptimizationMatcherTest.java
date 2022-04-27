@@ -53,7 +53,7 @@ public class OptimizationMatcherTest {
         OptimizationMatcher matcher = new SetBasedOptimizationMatcher();
         OptimizationMatching matching = matcher.match(optimizations1, optimizations2);
         assertEquals(1, matching.getMatchedOptimizations().size());
-        assertEquals(2, matching.getMatchedOptimizations().get(0).getBCI().intValue());
+        assertEquals(2, matching.getMatchedOptimizations().get(0).getBCI());
         assertEquals(2, matching.getExtraOptimizations().size(), 4);
     }
 }

@@ -28,12 +28,12 @@ import java.util.Map;
 import java.util.Objects;
 
 public class OptimizationImpl implements Optimization {
-    private final Integer bci;
+    private final int bci;
     private final String optimizationName;
     private final String eventName;
     private final Map<String, Object> properties;
 
-    public OptimizationImpl(String optimizationName, String eventName, Integer bci, Map<String, Object> properties) {
+    public OptimizationImpl(String optimizationName, String eventName, int bci, Map<String, Object> properties) {
         this.optimizationName = optimizationName;
         this.eventName = eventName;
         this.bci = bci;
@@ -56,13 +56,13 @@ public class OptimizationImpl implements Optimization {
     }
 
     @Override
-    public Integer getBCI() {
+    public int getBCI() {
         return bci;
     }
 
     @Override
     public int hashCode() {
-        return optimizationName.hashCode() + eventName.hashCode() + ((bci == null) ? -1 : bci.hashCode())
+        return optimizationName.hashCode() + eventName.hashCode() + Integer.hashCode(bci)
                 + ((properties == null) ? -1 : properties.hashCode());
     }
 
@@ -72,7 +72,7 @@ public class OptimizationImpl implements Optimization {
             return false;
         }
         OptimizationImpl other = (OptimizationImpl) object;
-        return Objects.equals(bci, other.bci) && optimizationName.equals(other.optimizationName) &&
+        return bci == other.bci && optimizationName.equals(other.optimizationName) &&
                 eventName.equals(other.eventName) && Objects.equals(properties, other.properties);
     }
 }

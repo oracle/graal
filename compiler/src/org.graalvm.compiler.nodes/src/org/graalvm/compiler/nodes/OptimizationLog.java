@@ -28,6 +28,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.json.JSONFormatter;
@@ -47,6 +48,11 @@ import java.util.stream.Collectors;
  * in a single compilation and dumps them to a JSON file.
  */
 public class OptimizationLog {
+    /**
+     * A special bci value meaning that no byte code index was found.
+     */
+    public static final int NO_BCI = -1;
+
     /**
      * Describes the kind and location of one performed optimization in an optimization log.
      */
@@ -75,7 +81,7 @@ public class OptimizationLog {
     private static final class OptimizationEntryImpl implements OptimizationEntry {
         private final EconomicMap<String, Object> map;
 
-        private OptimizationEntryImpl(String optimizationName, String eventName, Integer bci) {
+        private OptimizationEntryImpl(String optimizationName, String eventName, int bci) {
             map = EconomicMap.create();
             map.put("optimizationName", optimizationName);
             map.put("eventName", eventName);
@@ -151,19 +157,28 @@ public class OptimizationLog {
      * Increments a {@link org.graalvm.compiler.debug.CounterKey counter}, {@link DebugContext#log(String) logs},
      * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
      * feature is enabled.
-     * @param optimizationName the name of the optimization (roughly matching the optimization phase)
+     * @param optimizationClass the class that performed the optimization
      * @param eventName the name of the event that occurred
-     * @param bci the BCI of the most relevant node
+     * @param bci the bci of the most relevant node (use {@link #NO_BCI} if no bci is appropriate)
      * @return an optimization entry in the optimization log that can take more properties
      */
-    public OptimizationEntry report(String optimizationName, String eventName, Integer bci) {
-        if (graph.getDebug().isCountEnabled()) {
+    public OptimizationEntry report(Class<?> optimizationClass, String eventName, int bci) {
+        boolean isCountEnabled = graph.getDebug().isCountEnabled();
+        boolean isLogEnabled = graph.getDebug().isLogEnabledForMethod();
+        boolean isDumpEnabled = graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL);
+
+        if (!isCountEnabled && !isLogEnabled && !isDumpEnabled && !optimizationLogEnabled) {
+            return OPTIMIZATION_ENTRY_EMPTY;
+        }
+
+        String optimizationName = getOptimizationName(optimizationClass);
+        if (isCountEnabled) {
             DebugContext.counter(optimizationName + "_" + eventName).increment(graph.getDebug());
         }
-        if (graph.getDebug().isLogEnabledForMethod()) {
+        if (isLogEnabled) {
             graph.getDebug().log("Performed %s %s at bci %i", optimizationName, eventName, bci);
         }
-        if (graph.getDebug().isDumpEnabled(DebugContext.DETAILED_LEVEL)) {
+        if (isDumpEnabled) {
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After %s %s", optimizationName, eventName);
         }
         if (optimizationLogEnabled) {
@@ -178,18 +193,33 @@ public class OptimizationLog {
      * Increments a {@link org.graalvm.compiler.debug.CounterKey counter}, {@link DebugContext#log(String) logs},
      * {@link DebugContext#dump(int, Object, String) dumps} and appends to the optimization log if each respective
      * feature is enabled.
-     * @param optimizationName the name of the optimization (roughly matching the optimization phase)
+     * @param optimizationClass the class that performed the optimization
      * @param eventName the name of the event that occurred
      * @param node the most relevant node
      * @return an optimization entry in the optimization log that can take more properties
      */
-    public OptimizationEntry report(String optimizationName, String eventName, Node node) {
-        return report(optimizationName, eventName, OptimizationLogUtil.findBci(node));
+    public OptimizationEntry report(Class<?> optimizationClass, String eventName, Node node) {
+        return report(optimizationClass, eventName, OptimizationLogUtil.findBCI(node));
     }
 
     /**
-     * Prints the optimization log of this compilation to {@code optimization_log/execution-id/compilation-id.json}
-     * if the optimization log is enabled. Directories are created if they do not exist.
+     * Returns the optimization name based on the name of the class that performed an optimization.
+     * @param optimizationClass the class that performed an optimization
+     * @return the name of the optimization
+     */
+    private static String getOptimizationName(Class<?> optimizationClass) {
+        String className = optimizationClass.getName();
+        String phaseSuffix = "Phase";
+        if (className.endsWith(phaseSuffix)) {
+            return className.substring(0, className.length() - phaseSuffix.length());
+        }
+        return className;
+    }
+
+    /**
+     * If the optimization log is enabled, prints the optimization log of this compilation to
+     * {@code optimization_log/compilation-id.json} in the
+     * {@link DebugOptions#getDumpDirectoryName dump directory}. Directories are created if they do not exist.
      * @throws IOException failed to create a directory or the file
      */
     public void printToFileIfEnabled() throws IOException {
@@ -197,7 +227,11 @@ public class OptimizationLog {
             return;
         }
         String filename = compilationId + ".json";
-        Path path = Path.of("optimization_log", GraalServices.getExecutionID(), filename);
+        Path path = Path.of(
+                DebugOptions.getDumpDirectoryName(graph.getOptions()),
+                "optimization_log",
+                filename
+        );
         Files.createDirectories(path.getParent());
         String json = JSONFormatter.formatJSON(asJsonMap());
         PrintStream stream = new PrintStream(Files.newOutputStream(path));

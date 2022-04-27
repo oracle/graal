@@ -143,7 +143,7 @@ public class ExperimentMatcher {
 
     private void appendOptimizations(StringBuilder sb, Stream<Optimization> optimizations) {
         optimizations
-                .sorted(Comparator.comparing(Optimization::getBCI, Comparator.nullsFirst(Comparator.naturalOrder())))
+                .sorted(Comparator.comparing(Optimization::getBCI))
                 .iterator()
                 .forEachRemaining(optimization -> {
                     sb.append(indent[3])

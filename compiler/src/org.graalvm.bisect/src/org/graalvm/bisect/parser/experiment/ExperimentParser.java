@@ -124,7 +124,7 @@ public class ExperimentParser {
             Map<String, Object> optimization = expectMap(optimizationObject, "root.optimizations[]");
             String optimizationName = expectString(optimization.get("optimizationName"), "root.optimizations[].optimizationName");
             String eventName = expectString(optimization.get("eventName"), "root.optimizations[].eventName");
-            Integer bci = expectIntegerNullable(optimization.get("bci"), "root.optimizations[].bci");
+            int bci = expectInt(optimization.get("bci"), "root.optimizations[].bci");
             optimization.remove("optimizationName");
             optimization.remove("eventName");
             optimization.remove("bci");
@@ -184,14 +184,21 @@ public class ExperimentParser {
         throw new ExperimentParserException("expected " + path + " to be a number", experimentFiles.getExperimentId());
     }
 
-    private Integer expectIntegerNullable(Object object, String path) throws ExperimentParserException {
-        if (object instanceof Number || object == null) {
-            return (Integer) object;
+    private int expectInt(Object object, String path) throws ExperimentParserException {
+        if (object instanceof Number) {
+            return ((Number) object).intValue();
         }
         throw new ExperimentParserException(
-                "expected " + path + " to be a number or null",
+                "expected " + path + " to be an int",
                 experimentFiles.getExperimentId()
         );
+    }
+
+    private Integer expectIntegerNullable(Object object, String path) throws ExperimentParserException {
+        if (object == null) {
+            return (Integer) object;
+        }
+        return expectInt(object, path);
     }
 
     @SuppressWarnings("unchecked")
