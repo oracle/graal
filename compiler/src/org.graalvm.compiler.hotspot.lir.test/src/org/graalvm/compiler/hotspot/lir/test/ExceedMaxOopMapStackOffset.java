@@ -30,16 +30,11 @@ import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.jtt.LIRTest;
 import org.graalvm.compiler.lir.jtt.LIRTestSpecification;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.junit.Test;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ExceedMaxOopMapStackOffset extends LIRTest {
 
@@ -80,24 +75,6 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
                 gen.emitBlackhole(gen.emitMove(slots[i]));
             }
         }
-    }
-
-    @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        conf.getPlugins().getInvocationPlugins().register(getClass(), new InvocationPlugin("safepoint") {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new SafepointNode());
-                return true;
-            }
-        });
-        return super.editGraphBuilderConfiguration(conf);
-    }
-
-    /*
-     * Safepoint Snippet
-     */
-    private static void safepoint() {
     }
 
     private static AllocatableValue[] slots;
