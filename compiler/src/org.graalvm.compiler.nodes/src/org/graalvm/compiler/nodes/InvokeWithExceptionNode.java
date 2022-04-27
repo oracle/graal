@@ -39,7 +39,9 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
@@ -263,5 +265,15 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         if (exceptionEdge() instanceof UnreachableBeginNode) {
             replaceWithInvoke();
         }
+    }
+
+    @Override
+    public NodeCycles estimatedNodeCycles() {
+        return InvokeNode.estimatedNodeCycles(callTarget);
+    }
+
+    @Override
+    protected NodeSize dynamicNodeSizeEstimate() {
+        return InvokeNode.estimatedNodeSize(callTarget);
     }
 }

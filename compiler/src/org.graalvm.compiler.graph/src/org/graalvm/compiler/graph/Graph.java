@@ -538,6 +538,26 @@ public class Graph {
     }
 
     /**
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph but its fields have yet to be initialized.
+     */
+    public void beforeDecodingFields(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.BEFORE_DECODING_FIELDS, node);
+        }
+    }
+
+    /**
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph and its fields have now been initialized.
+     */
+    public void afterDecodingFields(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.AFTER_DECODING_FIELDS, node);
+        }
+    }
+
+    /**
      * The type of events sent to a {@link NodeEventListener}.
      */
     public enum NodeEvent {
@@ -559,7 +579,22 @@ public class Graph {
         /**
          * A node was removed from the graph.
          */
-        NODE_REMOVED
+        NODE_REMOVED,
+
+        /**
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered before a "stub" node's fields are decoded and initialized.
+         */
+        BEFORE_DECODING_FIELDS,
+
+        /**
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered after a "stub" node's fields are decoded and populated i.e. when the node is
+         * no longer a stub.
+         */
+        AFTER_DECODING_FIELDS,
     }
 
     /**
@@ -590,6 +625,13 @@ public class Graph {
                 case NODE_REMOVED:
                     nodeRemoved(node);
                     break;
+                case BEFORE_DECODING_FIELDS:
+                    beforeDecodingFields(node);
+                    break;
+
+                case AFTER_DECODING_FIELDS:
+                    afterDecodingFields(node);
+                    break;
             }
             changed(e, node);
         }
@@ -609,6 +651,22 @@ public class Graph {
          * @param node a node who has had one of its inputs changed
          */
         public void inputChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener that the decoding of fields for this node is about to commence.
+         *
+         * @param node a node whose fields are about to be decoded.
+         */
+        public void beforeDecodingFields(Node node) {
+        }
+
+        /**
+         * Notifies this listener that the decoding of fields for this node has finished.
+         *
+         * @param node a node who has had fields decoded.
+         */
+        public void afterDecodingFields(Node node) {
         }
 
         /**

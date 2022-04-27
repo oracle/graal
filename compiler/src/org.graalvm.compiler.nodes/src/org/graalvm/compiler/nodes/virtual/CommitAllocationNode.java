@@ -263,8 +263,11 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
+    protected NodeSize dynamicNodeSizeEstimate() {
         List<VirtualObjectNode> v = getVirtualObjects();
+        if (v == null) {
+            return SIZE_UNKNOWN;
+        }
         int fieldWriteCount = 0;
         for (int i = 0; i < v.size(); i++) {
             VirtualObjectNode node = v.get(i);

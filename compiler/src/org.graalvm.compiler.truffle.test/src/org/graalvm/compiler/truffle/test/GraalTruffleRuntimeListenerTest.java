@@ -185,13 +185,13 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     }
 
     @Test
-    public void testBlockCompilationMaximumGraalNodeCount() {
+    public void testBlockCompilationMaximumGraalGraphSize() {
         int blockSize = 100;
         int nodeCount = 1000;
         setupContext("engine.CompileImmediately", "true",
                         "engine.BackgroundCompilation", "false",
                         "engine.PartialBlockCompilationSize", String.valueOf(blockSize),
-                        "engine.MaximumGraalNodeCount", "20000");
+                        "engine.MaximumGraalGraphSize", "20000");
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         AbstractTestNode[] children = new AbstractTestNode[nodeCount];
         for (int i = 0; i < children.length; i++) {

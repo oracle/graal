@@ -240,6 +240,15 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
 
     @Override
     public NodeCycles estimatedNodeCycles() {
+        return estimatedNodeCycles(callTarget);
+    }
+
+    @Override
+    protected NodeSize dynamicNodeSizeEstimate() {
+        return estimatedNodeSize(callTarget);
+    }
+
+    static NodeCycles estimatedNodeCycles(CallTargetNode callTarget) {
         if (callTarget == null) {
             return CYCLES_UNKNOWN;
         }
@@ -252,12 +261,12 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             case Virtual:
                 return CYCLES_8;
             default:
+                assert false : "Should not reach here";
                 return CYCLES_UNKNOWN;
         }
     }
 
-    @Override
-    public NodeSize estimatedNodeSize() {
+    static NodeSize estimatedNodeSize(CallTargetNode callTarget) {
         if (callTarget == null) {
             return SIZE_UNKNOWN;
         }
@@ -270,6 +279,7 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             case Virtual:
                 return SIZE_8;
             default:
+                assert false : "Should not reach here";
                 return SIZE_UNKNOWN;
         }
     }

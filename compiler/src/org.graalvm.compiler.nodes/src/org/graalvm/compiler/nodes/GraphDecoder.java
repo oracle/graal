@@ -588,222 +588,227 @@ public class GraphDecoder {
         if (node.isDeleted()) {
             return loopScope;
         }
-        if (DUMP_DURING_FIXED_NODE_PROCESSING) {
-            if (node != null) {
-                try {
-                    debug.dump(DebugContext.DETAILED_LEVEL, graph, "Before processing node %s", node);
-                } catch (Throwable t) {
-                    // swallow here, dumping uninitialized nodes can cause problems
-                }
-            }
-        }
-        if ((node instanceof MergeNode ||
-                        (node instanceof LoopBeginNode && (methodScope.loopExplosion.unrollLoops() &&
-                                        !methodScope.loopExplosion.mergeLoops()))) &&
-                        ((AbstractMergeNode) node).forwardEndCount() == 1) {
-            /*
-             * In case node is a loop begin and we are unrolling loops we remove the loop begin
-             * since the loop will be gone after PE.
-             */
-            AbstractMergeNode merge = (AbstractMergeNode) node;
-            EndNode singleEnd = merge.forwardEndAt(0);
-
-            /* Nodes that would use this merge as the guard need to use the previous block. */
-            registerNode(loopScope, nodeOrderId, AbstractBeginNode.prevBegin(singleEnd), true, false);
-
-            FixedNode next = makeStubNode(methodScope, loopScope, nodeOrderId + GraphEncoder.BEGIN_NEXT_ORDER_ID_OFFSET);
-            singleEnd.replaceAtPredecessor(next);
-
-            merge.safeDelete();
-            singleEnd.safeDelete();
-            return loopScope;
-        }
-
-        LoopScope successorAddScope = loopScope;
-        boolean updatePredecessors = true;
-        if (node instanceof LoopExitNode) {
-            if (methodScope.loopExplosion.duplicateLoopExits() || (methodScope.loopExplosion.mergeLoops() && loopScope.loopDepth > 1)) {
-                /*
-                 * We do not want to merge loop exits of inner loops. Instead, we want to keep
-                 * exploding the outer loop separately for every loop exit and then merge the outer
-                 * loop. Therefore, we create a new LoopScope of the outer loop for every loop exit
-                 * of the inner loop.
-                 */
-                LoopScope outerScope = loopScope.outer;
-                int nextIterationNumber = outerScope.nextIterationFromLoopExitDuplication.isEmpty() ? outerScope.loopIteration + 1
-                                : outerScope.nextIterationFromLoopExitDuplication.getLast().loopIteration + 1;
-                Node[] initialCreatedNodes = outerScope.initialCreatedNodes == null ? null
-                                : (methodScope.loopExplosion.mergeLoops()
-                                                ? Arrays.copyOf(outerScope.initialCreatedNodes, outerScope.initialCreatedNodes.length)
-                                                : outerScope.initialCreatedNodes);
-                successorAddScope = new LoopScope(methodScope, outerScope.outer, outerScope.loopDepth, nextIterationNumber, outerScope.loopBeginOrderId, LoopScopeTrigger.LOOP_EXIT_DUPLICATION,
-                                initialCreatedNodes,
-                                Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),
-                                outerScope.nextIterationFromLoopExitDuplication,
-                                outerScope.nextIterationFromLoopEndDuplication,
-                                outerScope.nextIterationsFromUnrolling,
-                                outerScope.iterationStates);
-                checkLoopExplosionIteration(methodScope, successorAddScope);
-
-                /*
-                 * Nodes that are still unprocessed in the outer scope might be merge nodes that are
-                 * also reachable from the new exploded scope. Clearing them ensures that we do not
-                 * merge, but instead keep exploding.
-                 */
-                for (int id = outerScope.nodesToProcess.nextSetBit(0); id >= 0; id = outerScope.nodesToProcess.nextSetBit(id + 1)) {
-                    successorAddScope.createdNodes[id] = null;
-                }
-
-                outerScope.nextIterationFromLoopExitDuplication.addLast(successorAddScope);
-            } else {
-                successorAddScope = loopScope.outer;
-            }
-            updatePredecessors = methodScope.loopExplosion.isNoExplosion();
-        }
-
-        methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
-        int typeId = methodScope.reader.getUVInt();
-        assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId];
-        makeFixedNodeInputs(methodScope, loopScope, node);
-        readProperties(methodScope, node);
-
-        if ((node instanceof IfNode || node instanceof SwitchNode) &&
-                        earlyCanonicalization(methodScope, successorAddScope, nodeOrderId, node)) {
-            return loopScope;
-        }
-
-        makeSuccessorStubs(methodScope, successorAddScope, node, updatePredecessors);
-
-        LoopScope resultScope = loopScope;
-        if (node instanceof LoopBeginNode) {
-            if (methodScope.loopExplosion.useExplosion()) {
-                handleLoopExplosionBegin(methodScope, loopScope, (LoopBeginNode) node);
-            }
-
-        } else if (node instanceof LoopExitNode) {
-            if (methodScope.loopExplosion.useExplosion()) {
-                handleLoopExplosionProxyNodes(methodScope, loopScope, successorAddScope, (LoopExitNode) node, nodeOrderId);
-            } else {
-                handleProxyNodes(methodScope, loopScope, (LoopExitNode) node);
-            }
-
-        } else if (node instanceof MergeNode) {
-            handleMergeNode(((MergeNode) node));
-        } else if (node instanceof AbstractEndNode) {
-            LoopScope phiInputScope = loopScope;
-            LoopScope phiNodeScope = loopScope;
-            int mergeOrderId = readOrderId(methodScope);
-
-            boolean requiresMergeOfOuterLoop = methodScope.loopExplosion.unrollLoops() &&
-                            methodScope.loopExplosion.duplicateLoopExits() &&
-                            (!methodScope.loopExplosion.duplicateLoopEnds()) &&
-                            (!methodScope.loopExplosion.mergeLoops()) &&
-                            node instanceof LoopEndNode &&
-                            loopScope.trigger == LoopScopeTrigger.LOOP_EXIT_DUPLICATION;
-
-            if (requiresMergeOfOuterLoop) {
-                EndNode replacementNode = graph.add(new EndNode());
-                node.replaceAtPredecessor(replacementNode);
-                node.safeDelete();
-                node = replacementNode;
-                /*
-                 * We are in a loop exit duplicated loop scope and see a loop end node, this can
-                 * only happen if we have a loop end to an outer loop. When duplicating over loop
-                 * exits we have to merge outer loops for nested inner loops.
-                 *
-                 * Therefore, we create a correct outer loop iteration and check if there is already
-                 * one, if not we create it else we re-use it.
-                 */
-                if (loopScope.nextIterationsFromUnrolling.isEmpty()) {
-                    // create it
-                    int nextIterationNumber = loopScope.nextIterationsFromUnrolling.isEmpty() ? loopScope.loopIteration + 1 : loopScope.nextIterationsFromUnrolling.getLast().loopIteration + 1;
-                    LoopScope outerLoopMergeScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId,
-                                    LoopScopeTrigger.LOOP_BEGIN_UNROLLING,
-                                    methodScope.loopExplosion.mergeLoops() ? Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length) : loopScope.initialCreatedNodes,
-                                    Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),
-                                    loopScope.nextIterationFromLoopExitDuplication,
-                                    loopScope.nextIterationFromLoopEndDuplication,
-                                    loopScope.nextIterationsFromUnrolling,
-                                    loopScope.iterationStates);
-                    checkLoopExplosionIteration(methodScope, outerLoopMergeScope);
-                    loopScope.nextIterationsFromUnrolling.addLast(outerLoopMergeScope);
-                    registerNode(outerLoopMergeScope, loopScope.loopBeginOrderId, null, true, true);
-                    makeStubNode(methodScope, outerLoopMergeScope, loopScope.loopBeginOrderId);
-                    phiNodeScope = outerLoopMergeScope;
-                } else {
-                    // re-use it
-                    phiNodeScope = loopScope.nextIterationsFromUnrolling.getLast();
-                }
-
-            } else if (methodScope.loopExplosion.useExplosion() && node instanceof LoopEndNode) {
-                EndNode replacementNode = graph.add(new EndNode());
-                node.replaceAtPredecessor(replacementNode);
-                node.safeDelete();
-                node = replacementNode;
-                LoopScopeTrigger trigger = handleLoopExplosionEnd(methodScope, loopScope);
-                Deque<LoopScope> phiScope = loopScope.nextIterationsFromUnrolling;
-                if (trigger == LoopScopeTrigger.LOOP_END_DUPLICATION) {
-                    phiScope = loopScope.nextIterationFromLoopEndDuplication;
-                }
-                phiNodeScope = phiScope.getLast();
-            }
-            AbstractMergeNode merge = (AbstractMergeNode) lookupNode(phiNodeScope, mergeOrderId);
-            if (merge == null) {
-                merge = (AbstractMergeNode) makeStubNode(methodScope, phiNodeScope, mergeOrderId);
-                if (merge instanceof LoopBeginNode) {
-                    /*
-                     * In contrast to the LoopScopeTrigger.START created at the beginning of every
-                     * PE, we see a real loop here and create the first real loop scope associated
-                     * with a loop.
-                     *
-                     * Creation of a loop scope if we reach a loop begin node. We process a loop
-                     * begin node (always before encountering a loop end associated with the loop
-                     * begin) and simply create a normal loop scope. This does not imply an advanced
-                     * unrolling strategy (however it can later if we see duplicate over loop end or
-                     * exits). Therefore, we still use the start marker here, we could also use the
-                     * unrolling marker.
-                     *
-                     * If we unroll loops we will later remove the loop begin node and replace it
-                     * with its forward end (since we do not need to create a loop begin node if we
-                     * unroll the entire loop and it has a constant trip count).
-                     */
-                    assert phiNodeScope == phiInputScope && phiNodeScope == loopScope;
-                    resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId, LoopScopeTrigger.START,
-                                    methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
-                                    methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
-                                    methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null,
-                                    methodScope.loopExplosion.duplicateLoopEnds() ? new ArrayDeque<>(2) : null,
-                                    methodScope.loopExplosion.unrollLoops() ? new ArrayDeque<>(2) : null, //
-                                    methodScope.loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null);
-                    phiInputScope = resultScope;
-                    phiNodeScope = resultScope;
-
-                    if (methodScope.loopExplosion.useExplosion()) {
-                        registerNode(loopScope, mergeOrderId, null, true, true);
+        graph.beforeDecodingFields(node);
+        try {
+            if (DUMP_DURING_FIXED_NODE_PROCESSING) {
+                if (node != null) {
+                    try {
+                        debug.dump(DebugContext.DETAILED_LEVEL, graph, "Before processing node %s", node);
+                    } catch (Throwable t) {
+                        // swallow here, dumping uninitialized nodes can cause problems
                     }
-                    loopScope.nodesToProcess.clear(mergeOrderId);
-                    resultScope.nodesToProcess.set(mergeOrderId);
                 }
             }
-            handlePhiFunctions(methodScope, phiInputScope, phiNodeScope, (AbstractEndNode) node, merge);
-        } else if (node instanceof Invoke) {
-            InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
-            resultScope = handleInvoke(methodScope, loopScope, invokeData);
-        } else if (node instanceof ReturnNode || node instanceof UnwindNode) {
-            methodScope.returnAndUnwindNodes.add((ControlSinkNode) node);
-        } else {
-            handleFixedNode(methodScope, loopScope, nodeOrderId, node);
-        }
-        if (DUMP_DURING_FIXED_NODE_PROCESSING) {
-            if (node != null) {
-                try {
-                    debug.dump(DebugContext.DETAILED_LEVEL, graph, "After processing node %s", node);
-                } catch (Throwable t) {
-                    // swallow here, dumping uninitialized nodes can cause problems
+            if ((node instanceof MergeNode ||
+                            (node instanceof LoopBeginNode && (methodScope.loopExplosion.unrollLoops() &&
+                                            !methodScope.loopExplosion.mergeLoops()))) &&
+                            ((AbstractMergeNode) node).forwardEndCount() == 1) {
+                /*
+                 * In case node is a loop begin and we are unrolling loops we remove the loop begin
+                 * since the loop will be gone after PE.
+                 */
+                AbstractMergeNode merge = (AbstractMergeNode) node;
+                EndNode singleEnd = merge.forwardEndAt(0);
+
+                /* Nodes that would use this merge as the guard need to use the previous block. */
+                registerNode(loopScope, nodeOrderId, AbstractBeginNode.prevBegin(singleEnd), true, false);
+
+                FixedNode next = makeStubNode(methodScope, loopScope, nodeOrderId + GraphEncoder.BEGIN_NEXT_ORDER_ID_OFFSET);
+                singleEnd.replaceAtPredecessor(next);
+
+                merge.safeDelete();
+                singleEnd.safeDelete();
+                return loopScope;
+            }
+
+            LoopScope successorAddScope = loopScope;
+            boolean updatePredecessors = true;
+            if (node instanceof LoopExitNode) {
+                if (methodScope.loopExplosion.duplicateLoopExits() || (methodScope.loopExplosion.mergeLoops() && loopScope.loopDepth > 1)) {
+                    /*
+                     * We do not want to merge loop exits of inner loops. Instead, we want to keep
+                     * exploding the outer loop separately for every loop exit and then merge the
+                     * outer loop. Therefore, we create a new LoopScope of the outer loop for every
+                     * loop exit of the inner loop.
+                     */
+                    LoopScope outerScope = loopScope.outer;
+                    int nextIterationNumber = outerScope.nextIterationFromLoopExitDuplication.isEmpty() ? outerScope.loopIteration + 1
+                                    : outerScope.nextIterationFromLoopExitDuplication.getLast().loopIteration + 1;
+                    Node[] initialCreatedNodes = outerScope.initialCreatedNodes == null ? null
+                                    : (methodScope.loopExplosion.mergeLoops()
+                                                    ? Arrays.copyOf(outerScope.initialCreatedNodes, outerScope.initialCreatedNodes.length)
+                                                    : outerScope.initialCreatedNodes);
+                    successorAddScope = new LoopScope(methodScope, outerScope.outer, outerScope.loopDepth, nextIterationNumber, outerScope.loopBeginOrderId, LoopScopeTrigger.LOOP_EXIT_DUPLICATION,
+                                    initialCreatedNodes,
+                                    Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),
+                                    outerScope.nextIterationFromLoopExitDuplication,
+                                    outerScope.nextIterationFromLoopEndDuplication,
+                                    outerScope.nextIterationsFromUnrolling,
+                                    outerScope.iterationStates);
+                    checkLoopExplosionIteration(methodScope, successorAddScope);
+
+                    /*
+                     * Nodes that are still unprocessed in the outer scope might be merge nodes that
+                     * are also reachable from the new exploded scope. Clearing them ensures that we
+                     * do not merge, but instead keep exploding.
+                     */
+                    for (int id = outerScope.nodesToProcess.nextSetBit(0); id >= 0; id = outerScope.nodesToProcess.nextSetBit(id + 1)) {
+                        successorAddScope.createdNodes[id] = null;
+                    }
+
+                    outerScope.nextIterationFromLoopExitDuplication.addLast(successorAddScope);
+                } else {
+                    successorAddScope = loopScope.outer;
+                }
+                updatePredecessors = methodScope.loopExplosion.isNoExplosion();
+            }
+
+            methodScope.reader.setByteIndex(methodScope.encodedGraph.nodeStartOffsets[nodeOrderId]);
+            int typeId = methodScope.reader.getUVInt();
+            assert node.getNodeClass() == methodScope.encodedGraph.getNodeClasses()[typeId];
+            makeFixedNodeInputs(methodScope, loopScope, node);
+            readProperties(methodScope, node);
+
+            if ((node instanceof IfNode || node instanceof SwitchNode) &&
+                            earlyCanonicalization(methodScope, successorAddScope, nodeOrderId, node)) {
+                return loopScope;
+            }
+
+            makeSuccessorStubs(methodScope, successorAddScope, node, updatePredecessors);
+
+            LoopScope resultScope = loopScope;
+            if (node instanceof LoopBeginNode) {
+                if (methodScope.loopExplosion.useExplosion()) {
+                    handleLoopExplosionBegin(methodScope, loopScope, (LoopBeginNode) node);
+                }
+
+            } else if (node instanceof LoopExitNode) {
+                if (methodScope.loopExplosion.useExplosion()) {
+                    handleLoopExplosionProxyNodes(methodScope, loopScope, successorAddScope, (LoopExitNode) node, nodeOrderId);
+                } else {
+                    handleProxyNodes(methodScope, loopScope, (LoopExitNode) node);
+                }
+
+            } else if (node instanceof MergeNode) {
+                handleMergeNode(((MergeNode) node));
+            } else if (node instanceof AbstractEndNode) {
+                LoopScope phiInputScope = loopScope;
+                LoopScope phiNodeScope = loopScope;
+                int mergeOrderId = readOrderId(methodScope);
+
+                boolean requiresMergeOfOuterLoop = methodScope.loopExplosion.unrollLoops() &&
+                                methodScope.loopExplosion.duplicateLoopExits() &&
+                                (!methodScope.loopExplosion.duplicateLoopEnds()) &&
+                                (!methodScope.loopExplosion.mergeLoops()) &&
+                                node instanceof LoopEndNode &&
+                                loopScope.trigger == LoopScopeTrigger.LOOP_EXIT_DUPLICATION;
+
+                if (requiresMergeOfOuterLoop) {
+                    EndNode replacementNode = graph.add(new EndNode());
+                    node.replaceAtPredecessor(replacementNode);
+                    node.safeDelete();
+                    node = replacementNode;
+                    /*
+                     * We are in a loop exit duplicated loop scope and see a loop end node, this can
+                     * only happen if we have a loop end to an outer loop. When duplicating over
+                     * loop exits we have to merge outer loops for nested inner loops.
+                     *
+                     * Therefore, we create a correct outer loop iteration and check if there is
+                     * already one, if not we create it else we re-use it.
+                     */
+                    if (loopScope.nextIterationsFromUnrolling.isEmpty()) {
+                        // create it
+                        int nextIterationNumber = loopScope.nextIterationsFromUnrolling.isEmpty() ? loopScope.loopIteration + 1 : loopScope.nextIterationsFromUnrolling.getLast().loopIteration + 1;
+                        LoopScope outerLoopMergeScope = new LoopScope(methodScope, loopScope.outer, loopScope.loopDepth, nextIterationNumber, loopScope.loopBeginOrderId,
+                                        LoopScopeTrigger.LOOP_BEGIN_UNROLLING,
+                                        methodScope.loopExplosion.mergeLoops() ? Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length) : loopScope.initialCreatedNodes,
+                                        Arrays.copyOf(loopScope.initialCreatedNodes, loopScope.initialCreatedNodes.length),
+                                        loopScope.nextIterationFromLoopExitDuplication,
+                                        loopScope.nextIterationFromLoopEndDuplication,
+                                        loopScope.nextIterationsFromUnrolling,
+                                        loopScope.iterationStates);
+                        checkLoopExplosionIteration(methodScope, outerLoopMergeScope);
+                        loopScope.nextIterationsFromUnrolling.addLast(outerLoopMergeScope);
+                        registerNode(outerLoopMergeScope, loopScope.loopBeginOrderId, null, true, true);
+                        makeStubNode(methodScope, outerLoopMergeScope, loopScope.loopBeginOrderId);
+                        phiNodeScope = outerLoopMergeScope;
+                    } else {
+                        // re-use it
+                        phiNodeScope = loopScope.nextIterationsFromUnrolling.getLast();
+                    }
+
+                } else if (methodScope.loopExplosion.useExplosion() && node instanceof LoopEndNode) {
+                    EndNode replacementNode = graph.add(new EndNode());
+                    node.replaceAtPredecessor(replacementNode);
+                    node.safeDelete();
+                    node = replacementNode;
+                    LoopScopeTrigger trigger = handleLoopExplosionEnd(methodScope, loopScope);
+                    Deque<LoopScope> phiScope = loopScope.nextIterationsFromUnrolling;
+                    if (trigger == LoopScopeTrigger.LOOP_END_DUPLICATION) {
+                        phiScope = loopScope.nextIterationFromLoopEndDuplication;
+                    }
+                    phiNodeScope = phiScope.getLast();
+                }
+                AbstractMergeNode merge = (AbstractMergeNode) lookupNode(phiNodeScope, mergeOrderId);
+                if (merge == null) {
+                    merge = (AbstractMergeNode) makeStubNode(methodScope, phiNodeScope, mergeOrderId);
+                    if (merge instanceof LoopBeginNode) {
+                        /*
+                         * In contrast to the LoopScopeTrigger.START created at the beginning of
+                         * every PE, we see a real loop here and create the first real loop scope
+                         * associated with a loop.
+                         *
+                         * Creation of a loop scope if we reach a loop begin node. We process a loop
+                         * begin node (always before encountering a loop end associated with the
+                         * loop begin) and simply create a normal loop scope. This does not imply an
+                         * advanced unrolling strategy (however it can later if we see duplicate
+                         * over loop end or exits). Therefore, we still use the start marker here,
+                         * we could also use the unrolling marker.
+                         *
+                         * If we unroll loops we will later remove the loop begin node and replace
+                         * it with its forward end (since we do not need to create a loop begin node
+                         * if we unroll the entire loop and it has a constant trip count).
+                         */
+                        assert phiNodeScope == phiInputScope && phiNodeScope == loopScope;
+                        resultScope = new LoopScope(methodScope, loopScope, loopScope.loopDepth + 1, 0, mergeOrderId, LoopScopeTrigger.START,
+                                        methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : null,
+                                        methodScope.loopExplosion.useExplosion() ? Arrays.copyOf(loopScope.createdNodes, loopScope.createdNodes.length) : loopScope.createdNodes, //
+                                        methodScope.loopExplosion.duplicateLoopExits() || methodScope.loopExplosion.mergeLoops() ? new ArrayDeque<>(2) : null,
+                                        methodScope.loopExplosion.duplicateLoopEnds() ? new ArrayDeque<>(2) : null,
+                                        methodScope.loopExplosion.unrollLoops() ? new ArrayDeque<>(2) : null, //
+                                        methodScope.loopExplosion.mergeLoops() ? EconomicMap.create(Equivalence.DEFAULT) : null);
+                        phiInputScope = resultScope;
+                        phiNodeScope = resultScope;
+
+                        if (methodScope.loopExplosion.useExplosion()) {
+                            registerNode(loopScope, mergeOrderId, null, true, true);
+                        }
+                        loopScope.nodesToProcess.clear(mergeOrderId);
+                        resultScope.nodesToProcess.set(mergeOrderId);
+                    }
+                }
+                handlePhiFunctions(methodScope, phiInputScope, phiNodeScope, (AbstractEndNode) node, merge);
+            } else if (node instanceof Invoke) {
+                InvokeData invokeData = readInvokeData(methodScope, nodeOrderId, (Invoke) node);
+                resultScope = handleInvoke(methodScope, loopScope, invokeData);
+            } else if (node instanceof ReturnNode || node instanceof UnwindNode) {
+                methodScope.returnAndUnwindNodes.add((ControlSinkNode) node);
+            } else {
+                handleFixedNode(methodScope, loopScope, nodeOrderId, node);
+            }
+            if (DUMP_DURING_FIXED_NODE_PROCESSING) {
+                if (node != null) {
+                    try {
+                        debug.dump(DebugContext.DETAILED_LEVEL, graph, "After processing node %s", node);
+                    } catch (Throwable t) {
+                        // swallow here, dumping uninitialized nodes can cause problems
+                    }
                 }
             }
+            return resultScope;
+        } finally {
+            graph.afterDecodingFields(node);
         }
-        return resultScope;
     }
 
     protected InvokeData readInvokeData(MethodScope methodScope, int invokeOrderId, Invoke invoke) {
