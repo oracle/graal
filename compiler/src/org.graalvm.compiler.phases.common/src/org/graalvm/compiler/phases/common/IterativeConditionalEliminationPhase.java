@@ -75,9 +75,6 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
 
     @Override
     public int hashCode() {
-        // TODO GR-38409 To implement properly hashCode(), it should use getClass() instead of
-        // getClass().getName(). Remove getClass().getName() once the experiments across VM
-        // executions are over.
         return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer);
     }
 
