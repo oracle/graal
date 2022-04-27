@@ -64,7 +64,7 @@ local jdks = common_json.jdks;
       JAVA_HOME: jdks['labsjdk-ce-11'],
       EXTRA_JAVA_HOMES: jdks['labsjdk-ce-17'],
     },
-    mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true'],
+    mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build'],
     deploy:: self.mx_cmd_base + ['--suite', 'compiler', '--suite', 'truffle', '--suite', 'sdk', '--suite', 'tools', '--suite', 'regex', '--suite', 'graal-js', '--suite', 'espresso', 'maven-deploy', '--skip', $.maven_11_17_only_native.native_distributions, '--tags=default', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
   },
