@@ -397,9 +397,9 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
   if (_cpuid_info->std_cpuid1_ecx.bits.ssse3 != 0)
     features->fSSSE3 = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.sse4_1 != 0)
-    features->fSSE41 = 1;
+    features->fSSE4_1 = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.sse4_2 != 0)
-    features->fSSE42 = 1;
+    features->fSSE4_2 = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.popcnt != 0)
     features->fPOPCNT = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.avx != 0 &&
@@ -430,17 +430,17 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
       if (_cpuid_info->sef_cpuid7_ebx.bits.avx512vl != 0)
         features->fAVX512VL = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vpopcntdq != 0)
-        features->fAVX512VPOPCNTDQ = 1;
+        features->fAVX512_VPOPCNTDQ = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vpclmulqdq != 0)
-        features->fAVX512VPCLMULQDQ = 1;
+        features->fAVX512_VPCLMULQDQ = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.vaes != 0)
-        features->fAVX512VAES = 1;
+        features->fAVX512_VAES = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vnni != 0)
-        features->fAVX512VNNI = 1;
+        features->fAVX512_VNNI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vbmi != 0)
-        features->fAVX512VBMI = 1;
+        features->fAVX512_VBMI = 1;
       if (_cpuid_info->sef_cpuid7_ecx.bits.avx512_vbmi2 != 0)
-        features->fAVX512VBMI2 = 1;
+        features->fAVX512_VBMI2 = 1;
     }
   }
   if (_cpuid_info->std_cpuid1_ecx.bits.hv != 0)
@@ -450,7 +450,7 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
   if (_cpuid_info->std_cpuid1_edx.bits.tsc != 0)
     features->fTSC = 1;
   if (_cpuid_info->ext_cpuid7_edx.bits.tsc_invariance != 0)
-    features->fTSCINVBIT = 1;
+    features->fTSCINV_BIT = 1;
   if (_cpuid_info->std_cpuid1_ecx.bits.aes != 0)
     features->fAES = 1;
   if (_cpuid_info->sef_cpuid7_ebx.bits.erms != 0)
@@ -475,7 +475,7 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
   {
     if ((_cpuid_info->ext_cpuid1_edx.bits.tdnow != 0) ||
         (_cpuid_info->ext_cpuid1_ecx.bits.prefetchw != 0))
-      features->fAMD3DNOWPREFETCH = 1;
+      features->fAMD_3DNOW_PREFETCH = 1;
     if (_cpuid_info->ext_cpuid1_ecx.bits.lzcnt != 0)
       features->fLZCNT = 1;
     if (_cpuid_info->ext_cpuid1_ecx.bits.sse4a != 0)
@@ -490,7 +490,7 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
     // for Intel, ecx.bits.misalignsse bit (bit 8) indicates support for prefetchw
     if (_cpuid_info->ext_cpuid1_ecx.bits.misalignsse != 0)
     {
-      features->fAMD3DNOWPREFETCH = 1;
+      features->fAMD_3DNOW_PREFETCH = 1;
     }
     if (_cpuid_info->sef_cpuid7_ebx.bits.clwb != 0)
     {
@@ -506,12 +506,12 @@ static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
     // for ZX, ecx.bits.misalignsse bit (bit 8) indicates support for prefetchw
     if (_cpuid_info->ext_cpuid1_ecx.bits.misalignsse != 0)
     {
-      features->fAMD3DNOWPREFETCH = 1;
+      features->fAMD_3DNOW_PREFETCH = 1;
     }
   }
 
   // Composite features.
-  if (features->fTSCINVBIT &&
+  if (features->fTSCINV_BIT &&
       ((is_amd_family(_cpuid_info) && !is_amd_Barcelona(_cpuid_info)) ||
       is_intel_tsc_synched_at_init(_cpuid_info)))
   {

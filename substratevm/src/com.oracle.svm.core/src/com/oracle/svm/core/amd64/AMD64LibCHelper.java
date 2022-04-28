@@ -38,6 +38,7 @@ public class AMD64LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
 
+    // Checkstyle: stop
     @CStruct
     @CContext(AMD64LibCHelperDirectives.class)
     public interface CPUFeatures extends PointerBase {
@@ -64,7 +65,7 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fAMD3DNOWPREFETCH();
+        boolean fAMD_3DNOW_PREFETCH();
 
         @AllowNarrowingCast
         @CField
@@ -88,11 +89,11 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField()
-        boolean fSSE41();
+        boolean fSSE4_1();
 
         @AllowNarrowingCast
         @CField
-        boolean fSSE42();
+        boolean fSSE4_2();
 
         @AllowNarrowingCast
         @CField
@@ -112,7 +113,7 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fTSCINVBIT();
+        boolean fTSCINV_BIT();
 
         @AllowNarrowingCast
         @CField
@@ -192,19 +193,19 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VPOPCNTDQ();
+        boolean fAVX512_VPOPCNTDQ();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VPCLMULQDQ();
+        boolean fAVX512_VPCLMULQDQ();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VAES();
+        boolean fAVX512_VAES();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VNNI();
+        boolean fAVX512_VNNI();
 
         @AllowNarrowingCast
         @CField
@@ -220,15 +221,15 @@ public class AMD64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VBMI2();
+        boolean fAVX512_VBMI2();
 
         @AllowNarrowingCast
         @CField
-        boolean fAVX512VBMI();
+        boolean fAVX512_VBMI();
 
         @AllowNarrowingCast
         @CField
         boolean fHV();
     }
-
+    // Checkstyle: resume
 }

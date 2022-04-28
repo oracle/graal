@@ -91,7 +91,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
             case "MMX":
                 return cpuFeatures.fMMX();
             case "AMD_3DNOW_PREFETCH":
-                return cpuFeatures.fAMD3DNOWPREFETCH();
+                return cpuFeatures.fAMD_3DNOW_PREFETCH();
             case "SSE":
                 return cpuFeatures.fSSE();
             case "SSE2":
@@ -103,9 +103,9 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
             case "SSE4A":
                 return cpuFeatures.fSSE4A();
             case "SSE4_1":
-                return cpuFeatures.fSSE41();
+                return cpuFeatures.fSSE4_1();
             case "SSE4_2":
-                return cpuFeatures.fSSE42();
+                return cpuFeatures.fSSE4_2();
             case "POPCNT":
                 return cpuFeatures.fPOPCNT();
             case "LZCNT":
@@ -115,7 +115,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
             case "TSCINV":
                 return cpuFeatures.fTSCINV();
             case "TSCINV_BIT":
-                return cpuFeatures.fTSCINVBIT();
+                return cpuFeatures.fTSCINV_BIT();
             case "AVX":
                 return cpuFeatures.fAVX();
             case "AVX2":
@@ -155,13 +155,13 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
             case "VZEROUPPER":
                 return cpuFeatures.fVZEROUPPER();
             case "AVX512_VPOPCNTDQ":
-                return cpuFeatures.fAVX512VPOPCNTDQ();
+                return cpuFeatures.fAVX512_VPOPCNTDQ();
             case "AVX512_VPCLMULQDQ":
-                return cpuFeatures.fAVX512VPCLMULQDQ();
+                return cpuFeatures.fAVX512_VPCLMULQDQ();
             case "AVX512_VAES":
-                return cpuFeatures.fAVX512VAES();
+                return cpuFeatures.fAVX512_VAES();
             case "AVX512_VNNI":
-                return cpuFeatures.fAVX512VNNI();
+                return cpuFeatures.fAVX512_VNNI();
             case "FLUSH":
                 return cpuFeatures.fFLUSH();
             case "FLUSHOPT":
@@ -169,9 +169,9 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
             case "CLWB":
                 return cpuFeatures.fCLWB();
             case "AVX512_VBMI2":
-                return cpuFeatures.fAVX512VBMI2();
+                return cpuFeatures.fAVX512_VBMI2();
             case "AVX512_VBMI":
-                return cpuFeatures.fAVX512VBMI();
+                return cpuFeatures.fAVX512_VBMI();
             case "HV":
                 return cpuFeatures.fHV();
             default:
