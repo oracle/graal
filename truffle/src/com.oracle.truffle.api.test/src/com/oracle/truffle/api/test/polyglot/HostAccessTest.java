@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1736,6 +1736,33 @@ public class HostAccessTest {
         assertTrue(c1.asValue(v1).equals(c2.asValue(v1)));
 
         c2.close();
+    }
+
+    @Test
+    public void testInterfaceMethodExports() {
+        setupEnv(HostAccess.EXPLICIT);
+
+        Value point = context.asValue(new Point());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(42, point.invokeMember("y").asInt());
+    }
+
+    public interface PointInterface {
+        @Export
+        int x();
+
+        @Export
+        int y();
+    }
+
+    public static class Point implements PointInterface {
+        public int x() {
+            return 42;
+        }
+
+        public int y() {
+            return 42;
+        }
     }
 
     public static class MyClassLoader extends URLClassLoader {
