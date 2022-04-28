@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -45,19 +45,19 @@ import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMThreadException;
 import com.oracle.truffle.llvm.runtime.pthread.PThreadExitException;
 
-public final class LLVMPThreadThreadIntrinsics {
+public final class LLVMThreadIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "thread")
     @NodeChild(type = LLVMExpressionNode.class, value = "startRoutine")
     @NodeChild(type = LLVMExpressionNode.class, value = "arg")
-    public abstract static class LLVMPThreadCreate extends LLVMBuiltin {
+    public abstract static class LLVMThreadCreate extends LLVMBuiltin {
 
         @Specialization
         @TruffleBoundary
         protected int doIntrinsic(LLVMPointer thread, LLVMPointer startRoutine, LLVMPointer arg,
                         @Cached LLVMI64StoreNode store) {
             LLVMContext context = getContext();
-            LLVMPThreadStart.LLVMPThreadRunnable init = new LLVMPThreadStart.LLVMPThreadRunnable(startRoutine, arg, context);
+            LLVMThreadStart.LLVMThreadRunnable init = new LLVMThreadStart.LLVMThreadRunnable(startRoutine, arg, context);
             final Thread t = context.getpThreadContext().createThread(init);
             if (t == null) {
                 return LLVMAMD64Error.EAGAIN;
@@ -69,7 +69,7 @@ public final class LLVMPThreadThreadIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "retval")
-    public abstract static class LLVMPThreadExit extends LLVMBuiltin {
+    public abstract static class LLVMThreadExit extends LLVMBuiltin {
 
         @Specialization
         protected int doIntrinsic(Object returnValue) {
@@ -83,8 +83,34 @@ public final class LLVMPThreadThreadIntrinsics {
         }
     }
 
+    public abstract static class LLVMThreadYield extends LLVMBuiltin {
+        @Specialization
+        @TruffleBoundary
+        protected Object doYield() {
+            Thread.yield();
+            return null;
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class, value = "millis")
+    @NodeChild(type = LLVMExpressionNode.class, value = "nanos")
+    public abstract static class LLVMThreadSleep extends LLVMBuiltin {
+        @Specialization
+        @TruffleBoundary
+        protected int doSleep(long millis, int nanos) {
+            try {
+                Thread.sleep(millis, nanos);
+            } catch (InterruptedException ex) {
+                return -1;
+            } catch (IllegalArgumentException ex) {
+                return 1;
+            }
+            return 0;
+        }
+    }
+
     @NodeChild(type = LLVMExpressionNode.class, value = "threadId")
-    public abstract static class LLVMPThreadJoin extends LLVMBuiltin {
+    public abstract static class LLVMThreadJoin extends LLVMBuiltin {
 
         @Specialization
         @TruffleBoundary
@@ -107,7 +133,7 @@ public final class LLVMPThreadThreadIntrinsics {
         }
     }
 
-    public abstract static class LLVMPThreadSelf extends LLVMBuiltin {
+    public abstract static class LLVMThreadSelf extends LLVMBuiltin {
 
         @Specialization
         protected long doIntrinsic() {
@@ -122,7 +148,7 @@ public final class LLVMPThreadThreadIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "id")
     @NodeChild(type = LLVMExpressionNode.class, value = "namePointer")
-    public abstract static class LLVMPThreadSetName extends LLVMBuiltin {
+    public abstract static class LLVMThreadSetName extends LLVMBuiltin {
 
         @Specialization
         protected int doIntrinsic(long id, LLVMPointer namePointer,
@@ -149,7 +175,7 @@ public final class LLVMPThreadThreadIntrinsics {
     @NodeChild(type = LLVMExpressionNode.class, value = "threadID")
     @NodeChild(type = LLVMExpressionNode.class, value = "buffer")
     @NodeChild(type = LLVMExpressionNode.class, value = "targetLen")
-    public abstract static class LLVMPThreadGetName extends LLVMBuiltin {
+    public abstract static class LLVMThreadGetName extends LLVMBuiltin {
 
         @Child private LLVMI8OffsetStoreNode write = LLVMI8OffsetStoreNode.create();
 

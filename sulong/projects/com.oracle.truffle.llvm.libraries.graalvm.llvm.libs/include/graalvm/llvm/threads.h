@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,40 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EXIT_H_
-#define _EXIT_H_
+#ifndef SULONG_THREADS_H
+#define SULONG_THREADS_H
 
-#if defined(_WIN32)
-#include <windows.h>
+#include <stdint.h>
 
-#define _EXIT(x) ExitProcess(x)
+enum {
+    sulong_thread_success = 0,
+    sulong_thread_error = 1,
+};
 
-#elif defined(__unix__) || defined(__APPLE__)
+/*
+ * On different platforms, pthread_t and pthread_key_t might be different types
+ * (e.g. on Linux they are long/int, on Darwin they are pointer/long). We do an
+ * indirection here to abstract away the difference. On GraalVM, both are just
+ * implemented as IDs.
+ */
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#ifdef __linux__
-#define _EXIT(x) syscall(SYS_exit_group, x)
-#else
-#define _EXIT(x) syscall(SYS_exit, x)
-#endif
+typedef long __sulong_thread_t;
+typedef int __sulong_key_t;
 
-#endif
+typedef void *(*__sulong_thread_start_t)(void *);
 
-extern void __sulong_exit(int status) __attribute__((__noreturn__));
+int __sulong_thread_create(__sulong_thread_t *thread, __sulong_thread_start_t fn, void *arg);
+void *__sulong_thread_join(long thread);
+__sulong_thread_t __sulong_thread_self();
+int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name);
+int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len);
 
-#endif // _EXIT_H_
+void __sulong_thread_yield();
+int __sulong_thread_sleep(int64_t millis, int32_t nanos);
+
+__sulong_key_t __sulong_thread_key_create(void (*destructor)(void *));
+void __sulong_thread_key_delete(__sulong_key_t key);
+void *__sulong_thread_getspecific(__sulong_key_t key);
+void __sulong_thread_setspecific(__sulong_key_t key, const void *value);
+
+#endif // SULONG_THREADS_H

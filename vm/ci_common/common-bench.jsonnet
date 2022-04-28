@@ -28,11 +28,12 @@ local repo_config = import '../../repo-configuration.libsonnet';
       ] else [],
   },
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
     base_cmd:: ['mx', '--env', env],
-    interpreter_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    compiler_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    warmup_bench_cmd:: self.base_cmd + ['benchmark', '--fork-count-file', 'ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
+    interpreter_bench_cmd:: self.bench_cmd + ['polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    compiler_bench_cmd:: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    warmup_bench_cmd:: self.bench_cmd + ['--fork-count-file', 'ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
 
     downloads+: {
       WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
@@ -100,7 +101,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     timelimit: '4:00:00',
   },
 
-  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common(is_gate=true) + vm.vm_java_17 + {
     interpreter_bench_cmd:: super.interpreter_bench_cmd + ['-w', '1', '-i', '1'],
     compiler_bench_cmd:: super.compiler_bench_cmd + ['-w', '0', '-i', '1'],
     warmup_bench_cmd:: super.warmup_bench_cmd + ['-w', '1', '-i', '1'],

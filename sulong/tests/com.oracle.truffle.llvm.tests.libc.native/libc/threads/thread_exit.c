@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,33 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EXIT_H_
-#define _EXIT_H_
+#include <stdio.h>
+#include <stdlib.h>
+#include <threads.h>
 
-#if defined(_WIN32)
-#include <windows.h>
+int run(void *arg) {
+    thrd_exit(42);
 
-#define _EXIT(x) ExitProcess(x)
+    printf("should not reach here!\n");
+    abort();
+    return 0;
+}
 
-#elif defined(__unix__) || defined(__APPLE__)
+int main() {
+    thrd_t thread;
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#ifdef __linux__
-#define _EXIT(x) syscall(SYS_exit_group, x)
-#else
-#define _EXIT(x) syscall(SYS_exit, x)
-#endif
+    if (thrd_create(&thread, run, NULL) != thrd_success) {
+        abort();
+    }
 
-#endif
+    int res;
+    if (thrd_join(thread, &res) != thrd_success) {
+        abort();
+    }
 
-extern void __sulong_exit(int status) __attribute__((__noreturn__));
+    if (res != 42) {
+        abort();
+    }
 
-#endif // _EXIT_H_
+    return 0;
+}

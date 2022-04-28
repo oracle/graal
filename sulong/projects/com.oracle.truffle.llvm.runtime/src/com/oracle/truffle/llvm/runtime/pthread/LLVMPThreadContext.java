@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadStart;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public final class LLVMPThreadContext {
@@ -88,8 +88,8 @@ public final class LLVMPThreadContext {
         this.pThreadKeyStorage = new ConcurrentHashMap<>();
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
 
-        this.pthreadCallTarget = language.createCachedCallTarget(LLVMPThreadStart.LLVMPThreadFunctionRootNode.class,
-                        l -> LLVMPThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
+        this.pthreadCallTarget = language.createCachedCallTarget(LLVMThreadStart.LLVMPThreadFunctionRootNode.class,
+                        l -> LLVMThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
         this.isCreateThreadAllowed = true;
     }
 

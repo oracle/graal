@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,30 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EXIT_H_
-#define _EXIT_H_
+#include <stdlib.h>
+#include <threads.h>
+#include <time.h>
 
-#if defined(_WIN32)
-#include <windows.h>
+int main() {
+    struct timespec duration = { .tv_sec = 0, .tv_nsec = 100E6 };
+    struct timespec start, end;
 
-#define _EXIT(x) ExitProcess(x)
+    if (timespec_get(&start, TIME_UTC) != 0) {
+        abort();
+    }
 
-#elif defined(__unix__) || defined(__APPLE__)
+    if (thrd_sleep(&duration, &duration) != 0) {
+        abort();
+    }
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#ifdef __linux__
-#define _EXIT(x) syscall(SYS_exit_group, x)
-#else
-#define _EXIT(x) syscall(SYS_exit, x)
-#endif
+    if (timespec_get(&end, TIME_UTC) != 0) {
+        abort();
+    }
 
-#endif
+    // Some time should have elapsed.
+    if (start.tv_sec == end.tv_sec && start.tv_nsec == end.tv_nsec) {
+        abort();
+    }
 
-extern void __sulong_exit(int status) __attribute__((__noreturn__));
-
-#endif // _EXIT_H_
+    return 0;
+}

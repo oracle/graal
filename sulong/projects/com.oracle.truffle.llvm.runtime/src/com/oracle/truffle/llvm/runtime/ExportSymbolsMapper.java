@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,25 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EXIT_H_
-#define _EXIT_H_
+package com.oracle.truffle.llvm.runtime;
 
-#if defined(_WIN32)
-#include <windows.h>
+public abstract class ExportSymbolsMapper {
 
-#define _EXIT(x) ExitProcess(x)
+    /**
+     * The default export symbols mapper does not do anything. Instead it relies on the LLVM bitcode
+     * specify exported functions using llvm flags. See {@link LLVMSymbol#isExported}.
+     */
+    public static final ExportSymbolsMapper DEFAULT = new Default();
 
-#elif defined(__unix__) || defined(__APPLE__)
+    /**
+     * Performs any binary format specific mappings from symbols defined in an image to symbols
+     * exported by that image (made available in the public file scope).
+     */
+    public abstract void registerExports(LLVMScope fileScope, LLVMScope publicFileScope);
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#ifdef __linux__
-#define _EXIT(x) syscall(SYS_exit_group, x)
-#else
-#define _EXIT(x) syscall(SYS_exit, x)
-#endif
-
-#endif
-
-extern void __sulong_exit(int status) __attribute__((__noreturn__));
-
-#endif // _EXIT_H_
+    private static class Default extends ExportSymbolsMapper {
+        @Override
+        public void registerExports(LLVMScope fileScope, LLVMScope publicFileScope) {
+        }
+    }
+}

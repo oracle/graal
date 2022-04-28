@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,41 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EXIT_H_
-#define _EXIT_H_
+#include <sulong-threads.h>
 
-#if defined(_WIN32)
-#include <windows.h>
+int __sulong_thread_create(__sulong_thread_t *thread, void *(*start_routine)(void *), void *arg) {
+    return sulong_thread_error;
+}
 
-#define _EXIT(x) ExitProcess(x)
+void *__sulong_thread_join(long thread) {
+    return nullptr;
+}
 
-#elif defined(__unix__) || defined(__APPLE__)
+__sulong_thread_t __sulong_thread_self() {
+    return -1;
+}
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#ifdef __linux__
-#define _EXIT(x) syscall(SYS_exit_group, x)
-#else
-#define _EXIT(x) syscall(SYS_exit, x)
-#endif
+int __sulong_thread_setname_np(__sulong_thread_t thread, const char *name) {
+    return sulong_thread_error;
+}
 
-#endif
+int __sulong_thread_getname_np(__sulong_thread_t thread, char *name, size_t len) {
+    return sulong_thread_error;
+}
 
-extern void __sulong_exit(int status) __attribute__((__noreturn__));
+void __sulong_thread_yield() {
+}
 
-#endif // _EXIT_H_
+__sulong_key_t __sulong_thread_key_create(void (*destructor)(void *)) {
+    return 0;
+}
+
+void __sulong_thread_key_delete(__sulong_key_t key) {
+}
+
+void *__sulong_thread_getspecific(__sulong_key_t key) {
+    return nullptr;
+}
+
+void __sulong_thread_setspecific(__sulong_key_t key, const void *value) {
+}

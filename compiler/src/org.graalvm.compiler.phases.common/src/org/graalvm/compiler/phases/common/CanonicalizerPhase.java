@@ -237,10 +237,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     @Override
     public int hashCode() {
         if (customSimplification == null) {
-            return Objects.hash(this.getClass().hashCode(), features.toString());
+            return Objects.hash(this.getClass().getName(), features.toString());
         }
 
-        return Objects.hash(this.getClass(), features.toString(),
+        return Objects.hash(this.getClass().getName(), features.toString(),
                         customSimplification.getClass().getName());
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,26 +28,41 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _EXIT_H_
-#define _EXIT_H_
+#include <threads.h>
+#include <stdlib.h>
 
-#if defined(_WIN32)
-#include <windows.h>
+int run(void *arg) {
+    int *out = (int *) arg;
+    int res = *out;
 
-#define _EXIT(x) ExitProcess(x)
+    thrd_yield();
 
-#elif defined(__unix__) || defined(__APPLE__)
+    for (int i = 0; i < 5; i++) {
+        *out += 1;
+    }
 
-#include <unistd.h>
-#include <sys/syscall.h>
-#ifdef __linux__
-#define _EXIT(x) syscall(SYS_exit_group, x)
-#else
-#define _EXIT(x) syscall(SYS_exit, x)
-#endif
+    return res;
+}
 
-#endif
+int main() {
+    int dat[5] = { 0, 1, 2, 3, 4, 5 };
+    thrd_t threads[5] = { 0 };
 
-extern void __sulong_exit(int status) __attribute__((__noreturn__));
+    for (int i = 0; i < 5; i++) {
+        if (thrd_create(&threads[i], run, &dat[i]) != thrd_success) {
+            abort();
+        }
+    }
 
-#endif // _EXIT_H_
+    for (int i = 0; i < 5; i++) {
+        int res;
+        if (thrd_join(threads[i], &res) != thrd_success) {
+            abort();
+        }
+        if (res != i || dat[i] != 5 + i) {
+            abort();
+        }
+    }
+
+    return 0;
+}

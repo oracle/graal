@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,10 +37,10 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-public final class LLVMPThreadKeyIntrinsics {
+public final class LLVMThreadKeyIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "destructor")
-    public abstract static class LLVMPThreadKeyCreate extends LLVMBuiltin {
+    public abstract static class LLVMThreadKeyCreate extends LLVMBuiltin {
 
         @Specialization
         protected int doIntrinsic(LLVMPointer destructor) {
@@ -51,7 +51,7 @@ public final class LLVMPThreadKeyIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
-    public abstract static class LLVMPThreadKeyDelete extends LLVMBuiltin {
+    public abstract static class LLVMThreadKeyDelete extends LLVMBuiltin {
 
         @Specialization
         protected int doIntrinsic(int key) {
@@ -61,7 +61,7 @@ public final class LLVMPThreadKeyIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
-    public abstract static class LLVMPThreadGetSpecific extends LLVMBuiltin {
+    public abstract static class LLVMThreadGetSpecific extends LLVMBuiltin {
 
         @Specialization
         protected LLVMPointer doIntrinsic(int key) {
@@ -72,7 +72,7 @@ public final class LLVMPThreadKeyIntrinsics {
 
     @NodeChild(type = LLVMExpressionNode.class, value = "key")
     @NodeChild(type = LLVMExpressionNode.class, value = "value")
-    public abstract static class LLVMPThreadSetSpecific extends LLVMBuiltin {
+    public abstract static class LLVMThreadSetSpecific extends LLVMBuiltin {
 
         // [EINVAL] if key is not valid
         @Specialization

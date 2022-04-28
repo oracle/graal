@@ -89,6 +89,7 @@
     run+: [
       # blackbox jmh test
       ["mx", "benchmark", "jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS",
+             "--fail-fast",
              "--",
              "-Djmh.ignoreLock=true",
              "--jvm-config=" + jvm_config,
@@ -97,6 +98,7 @@
              ".*TestJMH.*" ],
       # whitebox jmh test
       ["mx", "benchmark", "jmh-whitebox:*",
+             "--fail-fast",
              "--",
              "-Djmh.ignoreLock=true",
              "--jvm-config=" + jvm_config,
