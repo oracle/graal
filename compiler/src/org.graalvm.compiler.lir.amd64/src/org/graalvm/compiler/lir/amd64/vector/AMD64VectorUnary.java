@@ -220,11 +220,7 @@ public class AMD64VectorUnary {
             // Note that we assume only XMM-size instructions are emitted here. Loosening this
             // restriction would require informing AMD64HotSpotReturnOp when emitting vzeroupper.
             if (isRegister(input)) {
-                if (!asRegister(input).equals(asRegister(result))) {
-                    // clear result register to avoid unnecessary dependency
-                    VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
-                }
-                opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
+                opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
             } else {
                 VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                 opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));
