@@ -188,7 +188,6 @@ final class HostClassDesc {
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, Set<Object> visited,
                         Class<?> startType) {
             boolean isPublicType = isClassAccessible(type, hostAccess) && !Proxy.isProxyClass(type);
-            boolean allMethodsPublic = true;
             List<Method> bridgeMethods = null;
             if (isPublicType) {
                 for (Method m : type.getMethods()) {
@@ -197,15 +196,7 @@ final class HostClassDesc {
                         // do not inherit static interface methods
                         continue;
                     } else if (!isClassAccessible(declaringClass, hostAccess)) {
-                        /*
-                         * If a public method is declared in a non-public superclass, there should
-                         * be a public bridge method in this class that provides access to it.
-                         *
-                         * In some more elaborate class hierarchies, or if the method is declared in
-                         * an interface (i.e. a default method), no bridge method is generated, so
-                         * search the whole inheritance hierarchy for accessible methods.
-                         */
-                        allMethodsPublic = false;
+                        // the declaring class and the method itself must be public and accessible
                         continue;
                     } else if (m.isBridge()) {
                         /*
@@ -216,14 +207,13 @@ final class HostClassDesc {
                          * As a workaround, stash away all bridge methods and only consider them at
                          * the end if no equivalent public non-bridge method was found.
                          */
-                        allMethodsPublic = false;
                         if (bridgeMethods == null) {
                             bridgeMethods = new ArrayList<>();
                         }
                         bridgeMethods.add(m);
                         continue;
                     }
-                    if (visited.add(methodInfo(m))) {
+                    if (hostAccess.allowsAccess(m) && visited.add(methodInfo(m))) {
                         putMethod(hostAccess, m, methodMap, staticMethodMap);
                     }
                 }
@@ -236,20 +226,19 @@ final class HostClassDesc {
              * Look for inherited public methods if the class/interface is not public or if we have
              * seen a public method declared in a non-public class (see above).
              */
-            if (!isPublicType || !allMethodsPublic) {
-                if (type.getSuperclass() != null) {
-                    collectPublicMethods(hostAccess, type.getSuperclass(), methodMap, staticMethodMap, visited, startType);
-                }
-                for (Class<?> intf : type.getInterfaces()) {
-                    if (visited.add(intf)) {
-                        collectPublicMethods(hostAccess, intf, methodMap, staticMethodMap, visited, startType);
-                    }
+            if (type.getSuperclass() != null) {
+                collectPublicMethods(hostAccess, type.getSuperclass(), methodMap, staticMethodMap, visited, startType);
+            }
+            for (Class<?> intf : type.getInterfaces()) {
+                if (visited.add(intf)) {
+                    collectPublicMethods(hostAccess, intf, methodMap, staticMethodMap, visited, startType);
                 }
             }
             // Add bridge methods for public methods inherited from non-public superclasses.
+            // See https://bugs.openjdk.java.net/browse/JDK-6342411
             if (bridgeMethods != null && !bridgeMethods.isEmpty()) {
                 for (Method m : bridgeMethods) {
-                    if (visited.add(methodInfo(m))) {
+                    if (hostAccess.allowsAccess(m) && visited.add(methodInfo(m))) {
                         putMethod(hostAccess, m, methodMap, staticMethodMap);
                     }
                 }
@@ -286,9 +275,7 @@ final class HostClassDesc {
         }
 
         private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap) {
-            if (!hostAccess.allowsAccess(m)) {
-                return;
-            }
+            assert hostAccess.allowsAccess(m);
             boolean scoped = hostAccess.methodScoped(m);
             SingleMethod method = SingleMethod.unreflect(m, scoped);
             Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
