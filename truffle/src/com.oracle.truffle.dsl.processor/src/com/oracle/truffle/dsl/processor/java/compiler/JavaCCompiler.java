@@ -41,21 +41,13 @@
 package com.oracle.truffle.dsl.processor.java.compiler;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.StandardLocation;
-import javax.tools.ToolProvider;
-
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 
 public class JavaCCompiler extends AbstractCompiler {
 

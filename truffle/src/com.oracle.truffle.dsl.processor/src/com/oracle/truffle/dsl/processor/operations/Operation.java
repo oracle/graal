@@ -15,7 +15,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
@@ -160,7 +160,7 @@ public abstract class Operation {
 
             CodeTree[] arguments = new CodeTree[]{CodeTreeBuilder.singleString("arg0")};
 
-            b.tree(instructions[ConstantKind.OBJECT.ordinal()].createEmitCode(vars, arguments));
+            b.tree(instructions[FrameKind.OBJECT.ordinal()].createEmitCode(vars, arguments));
 
             return b.build();
         }

@@ -61,8 +61,6 @@ import javax.tools.Diagnostic.Kind;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.tools.utils.json.XML;
-import com.oracle.truffle.tools.utils.json.XMLParserConfiguration;
 
 public class JDTCompiler extends AbstractCompiler {
 

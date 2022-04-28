@@ -23,6 +23,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
@@ -62,15 +63,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         TypeElement te = (TypeElement) element;
 
-        boolean proxyOnParent = proxyType != null;
-
-        if (!proxyOnParent) {
-            AnnotationMirror annOperation = ElementUtils.findAnnotationMirror(mirror, types.Operation);
-            DeclaredType proxyDecl = ElementUtils.getAnnotationValue(DeclaredType.class, annOperation, "proxyNode");
-            if (!proxyDecl.equals(context.getDeclaredType(Void.class))) {
-                proxyType = ((TypeElement) proxyDecl.asElement());
-            }
-        } else {
+        if (proxyType != null) {
             String name = proxyType.getSimpleName().toString();
             if (name.endsWith("Node")) {
                 name = name.substring(0, name.length() - 4);
@@ -90,7 +83,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         SingleOperationData data = new SingleOperationData(context, te, ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), getAnnotationType()), parentData);
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
-        if (!proxyOnParent) {
+        if (proxyType == null) {
             for (Element el : te.getEnclosedElements()) {
                 if (el.getModifiers().contains(Modifier.PRIVATE)) {
                     continue;
@@ -105,9 +98,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     }
                 }
             }
-        }
-
-        if (proxyType != null) {
+        } else {
             CodeTypeElement teClone = te instanceof CodeTypeElement ? (CodeTypeElement) te : CodeTypeElement.cloneShallow(te);
             te = teClone;
 
@@ -236,6 +227,11 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             return data;
         }
 
+        // replace the default node type system with Operations one if we have it
+        if (nodeData.getTypeSystem().isDefault() && parentData.getTypeSystem() != null) {
+            nodeData.setTypeSystem(parentData.getTypeSystem());
+        }
+
         nodeData.redirectMessagesOnGeneratedElements(data);
         data.setNodeData(nodeData);
 
@@ -299,13 +295,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         result.setSuperClass(types.Node);
 
         result.add(createExecuteMethod("Generic", context.getType(Object.class)));
-        result.add(createExecuteMethod("Long", context.getType(long.class)));
-        result.add(createExecuteMethod("Integer", context.getType(int.class)));
-        result.add(createExecuteMethod("Byte", context.getType(byte.class)));
-        result.add(createExecuteMethod("Boolean", context.getType(boolean.class)));
-        result.add(createExecuteMethod("Float", context.getType(float.class)));
-        result.add(createExecuteMethod("Double", context.getType(double.class)));
-        result.add(createExecuteMethod("Void", context.getType(void.class)));
+
+        for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
+            result.add(createExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
+        }
 
         return result;
     }

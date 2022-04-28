@@ -2,22 +2,27 @@ package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
+import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
 public class OperationsData extends Template {
 
     private final List<SingleOperationData> operations = new ArrayList<>();
-    private final OperationsContext context = new OperationsContext();
+    private final OperationsContext context = new OperationsContext(this);
 
     private TypeMirror languageType;
     private TypeMirror parseContextType;
@@ -26,6 +31,9 @@ public class OperationsData extends Template {
     private boolean tracing;
     private OperationDecisions decisions;
     private String decisionsFilePath;
+
+    private TypeSystemData typeSystem;
+    private final Set<TypeKind> boxingEliminatedTypes = new HashSet<>();
 
     public OperationsData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
         super(context, templateType, annotation);
@@ -82,8 +90,16 @@ public class OperationsData extends Template {
         return context.operations;
     }
 
+    public void setTypeSystem(TypeSystemData typeSystem) {
+        this.typeSystem = typeSystem;
+    }
+
+    public TypeSystemData getTypeSystem() {
+        return typeSystem;
+    }
+
     public void initializeContext() {
-        context.setData(this);
+        context.initializeContext();
         for (SingleOperationData data : operations) {
             context.processOperation(data);
         }
@@ -107,6 +123,39 @@ public class OperationsData extends Template {
 
     public void setDecisionsFilePath(String decisionsFilePath) {
         this.decisionsFilePath = decisionsFilePath;
+    }
+
+    public Set<TypeKind> getBoxingEliminatedTypes() {
+        return boxingEliminatedTypes;
+    }
+
+    static FrameKind convertToFrameType(TypeKind kind) {
+        switch (kind) {
+            case BYTE:
+                return FrameKind.BYTE;
+            case BOOLEAN:
+                return FrameKind.BOOLEAN;
+            case INT:
+                return FrameKind.INT;
+            case FLOAT:
+                return FrameKind.FLOAT;
+            case LONG:
+                return FrameKind.LONG;
+            case DOUBLE:
+                return FrameKind.DOUBLE;
+            default:
+                return FrameKind.OBJECT;
+        }
+    }
+
+    public List<FrameKind> getFrameKinds() {
+        List<FrameKind> kinds = new ArrayList<>();
+        kinds.add(FrameKind.OBJECT);
+        for (TypeKind beType : boxingEliminatedTypes) {
+            kinds.add(convertToFrameType(beType));
+        }
+
+        return kinds;
     }
 
 }

@@ -113,6 +113,8 @@ public final class TruffleOptions {
      */
     public static final boolean AOT;
 
+    public static final String OperationDecisionsFile;
+
     private static NodeCost parseNodeInfoKind(String kind) {
         if (kind == null) {
             return null;
@@ -137,6 +139,8 @@ public final class TruffleOptions {
             NodeCost traceRewritesFilterFromCost;
             NodeCost traceRewritesFilterToCost;
 
+            String operationDecisionsFile;
+
             @Override
             public Void run() {
                 aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
@@ -145,6 +149,7 @@ public final class TruffleOptions {
                 traceRewritesFilterClass = System.getProperty("truffle.TraceRewritesFilterClass");
                 traceRewritesFilterFromCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterFromCost"));
                 traceRewritesFilterToCost = parseNodeInfoKind(System.getProperty("truffle.TraceRewritesFilterToCost"));
+                operationDecisionsFile = System.getProperty("truffle.dsl.operation.DecisionsFile");
                 return null;
             }
         }
@@ -157,5 +162,6 @@ public final class TruffleOptions {
         TraceRewritesFilterClass = options.traceRewritesFilterClass;
         TraceRewritesFilterFromCost = options.traceRewritesFilterFromCost;
         TraceRewritesFilterToCost = options.traceRewritesFilterToCost;
+        OperationDecisionsFile = options.operationDecisionsFile;
     }
 }

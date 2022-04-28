@@ -1,6 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
-public enum ConstantKind {
+public enum FrameKind {
     BOOLEAN("boolean", "Boolean"),
     BYTE("byte", "Byte"),
     INT("int", "Int", "Integer"),
@@ -13,11 +13,11 @@ public enum ConstantKind {
     private final String frameName;
     private final String typeNameBoxed;
 
-    private ConstantKind(String typeName, String frameName) {
+    private FrameKind(String typeName, String frameName) {
         this(typeName, frameName, frameName);
     }
 
-    private ConstantKind(String typeName, String frameName, String typeNameBoxed) {
+    private FrameKind(String typeName, String frameName, String typeNameBoxed) {
         this.typeName = typeName;
         this.frameName = frameName;
         this.typeNameBoxed = typeNameBoxed;

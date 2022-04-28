@@ -8,10 +8,10 @@ import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadArgumentInstruction extends Instruction {
 
-    private ConstantKind kind;
+    private FrameKind kind;
     private OperationsContext ctx;
 
-    public LoadArgumentInstruction(OperationsContext ctx, int id, ConstantKind kind) {
+    public LoadArgumentInstruction(OperationsContext ctx, int id, FrameKind kind) {
         super("load.argument." + kind.getTypeName().toLowerCase(), id, ResultType.STACK_VALUE, InputType.ARGUMENT);
         this.ctx = ctx;
         this.kind = kind;
@@ -42,7 +42,7 @@ public class LoadArgumentInstruction extends Instruction {
 
         b.declaration("Object", "value", createGetValue(vars));
 
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
             b.variable(vars.sp);
             b.string("value");
@@ -73,12 +73,12 @@ public class LoadArgumentInstruction extends Instruction {
     @Override
     public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             b.startIf().string("!").variable(varBoxed).end().startBlock();
 
             boolean elseIf = false;
-            for (ConstantKind okind : ConstantKind.values()) {
-                if (okind == ConstantKind.OBJECT)
+            for (FrameKind okind : ctx.getData().getFrameKinds()) {
+                if (okind == FrameKind.OBJECT)
                     continue;
 
                 elseIf = b.startIf(elseIf);
@@ -91,7 +91,7 @@ public class LoadArgumentInstruction extends Instruction {
         } else {
             b.startIf().variable(varBoxed).end().startBlock();
 
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadArgumentInstructions[ConstantKind.OBJECT.ordinal()].opcodeIdField));
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadArgumentInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
 
             b.end();
         }

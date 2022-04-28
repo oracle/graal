@@ -40,12 +40,8 @@
  */
 package com.oracle.truffle.sl.test;
 
-import java.io.PrintWriter;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
 
 @RunWith(SLTestRunner.class)
 @SLTestSuite({"tests"})

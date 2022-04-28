@@ -19,7 +19,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.transform.AbstractCodeWriter;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
-import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 
@@ -181,11 +181,11 @@ public class OperationGeneratorUtils {
         return b.build();
     }
 
-    public static CodeTree callSetResultBoxed(String bciOffset, ConstantKind kind) {
+    public static CodeTree callSetResultBoxed(String bciOffset, FrameKind kind) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().startCall("doSetResultBoxed");
-        b.string(kind == ConstantKind.OBJECT ? "true" : "false");
+        b.string(kind == FrameKind.OBJECT ? "true" : "false");
         b.string("bc");
         b.string("$bci");
         b.string(bciOffset);

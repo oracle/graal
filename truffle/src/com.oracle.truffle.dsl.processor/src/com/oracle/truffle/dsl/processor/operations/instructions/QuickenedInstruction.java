@@ -54,10 +54,32 @@ public class QuickenedInstruction extends CustomInstruction {
         this.activeSpecNames = activeSpecNames;
 
         if (activeSpecNames.isEmpty()) {
-            data.addError("Invalid quickened instruction: no specializations defined.");
+            data.addError("Invalid quickened instruction %s: no specializations defined.", data.getName());
+            activeSpecs = null;
+            return;
         }
 
         activeSpecs = new ArrayList<>(data.getNodeData().getSpecializations());
+
+        // validate specialization names
+
+        boolean hasErrors = false;
+        outer: for (String activeSpec : activeSpecNames) {
+            for (SpecializationData spec : activeSpecs) {
+                if (spec.getId().equals(activeSpec)) {
+                    continue outer;
+                }
+            }
+
+            List<String> realSpecNames = data.getNodeData().getSpecializations().stream().map(x -> x.getId()).toList();
+            data.addError("Invalid specialization id '%s' for operation %s. Expected one of %s.", activeSpec, data.getName(), realSpecNames);
+            hasErrors = true;
+        }
+
+        if (hasErrors) {
+            return;
+        }
+
         activeSpecs.removeIf(spec -> {
             for (String activeSpec : activeSpecNames) {
                 if (spec.getId().equals(activeSpec)) {
@@ -66,12 +88,6 @@ public class QuickenedInstruction extends CustomInstruction {
             }
             return true;
         });
-
-        // TODO we should probably error if one of the active specializations is not found
-
-        if (activeSpecs.isEmpty()) {
-            data.addError("Invalid quickened instruction: no specializations matched defined.");
-        }
 
         orig.addQuickenedVariant(this);
     }

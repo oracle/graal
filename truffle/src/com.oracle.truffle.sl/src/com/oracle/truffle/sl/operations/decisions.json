@@ -1,51 +1,61 @@
 [
   {
     "specializations": ["FromLong"],
+    "id": "q-SLUnboxOperation-FromLong",
     "type": "Quicken",
     "operation": "SLUnboxOperation"
   },
   {
     "specializations": ["AddLong"],
+    "id": "q-SLAddOperation-AddLong",
     "type": "Quicken",
     "operation": "SLAddOperation"
   },
   {
     "specializations": ["ReadSLObject0"],
+    "id": "q-SLReadPropertyOperation-ReadSLObject0",
     "type": "Quicken",
     "operation": "SLReadPropertyOperation"
   },
   {
     "specializations": ["FromBoolean"],
+    "id": "q-SLUnboxOperation-FromBoolean",
     "type": "Quicken",
     "operation": "SLUnboxOperation"
   },
   {
     "specializations": ["Boolean"],
+    "id": "q-SLConvertToBoolean-Boolean",
     "type": "Quicken",
     "operation": "SLConvertToBoolean"
   },
   {
     "specializations": ["LessOrEqual0"],
+    "id": "q-SLLessOrEqualOperation-LessOrEqual0",
     "type": "Quicken",
     "operation": "SLLessOrEqualOperation"
   },
   {
     "specializations": ["Direct"],
+    "id": "q-SLInvokeOperation-Direct",
     "type": "Quicken",
     "operation": "SLInvokeOperation"
   },
   {
-    "specializations": ["Perform"],
+    "specializations": ["SingleContext"],
+    "id": "q-SLFunctionLiteralOperation-SingleContext",
     "type": "Quicken",
     "operation": "SLFunctionLiteralOperation"
   },
   {
     "specializations": ["WriteSLObject0"],
+    "id": "q-SLWritePropertyOperation-WriteSLObject0",
     "type": "Quicken",
     "operation": "SLWritePropertyOperation"
   },
   {
     "specializations": ["LessThan0"],
+    "id": "q-SLLessThanOperation-LessThan0",
     "type": "Quicken",
     "operation": "SLLessThanOperation"
   }

@@ -10,10 +10,10 @@ import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadConstantInstruction extends Instruction {
-    private final ConstantKind kind;
+    private final FrameKind kind;
     private final OperationsContext ctx;
 
-    public LoadConstantInstruction(OperationsContext ctx, int id, ConstantKind kind) {
+    public LoadConstantInstruction(OperationsContext ctx, int id, FrameKind kind) {
         super("load.constant." + kind.toString().toLowerCase(), id, ResultType.STACK_VALUE, InputType.CONST_POOL);
         this.ctx = ctx;
         this.kind = kind;
@@ -42,7 +42,7 @@ public class LoadConstantInstruction extends Instruction {
     private CodeTree createGetArgument(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (kind != ConstantKind.OBJECT) {
+        if (kind != FrameKind.OBJECT) {
             b.string("(", kind.getTypeName(), ") ");
         }
         b.variable(vars.consts).string("[");
@@ -57,12 +57,12 @@ public class LoadConstantInstruction extends Instruction {
     public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             b.startIf().string("!").variable(varBoxed).end().startBlock();
 
             boolean elseIf = false;
-            for (ConstantKind okind : ConstantKind.values()) {
-                if (okind == ConstantKind.OBJECT) {
+            for (FrameKind okind : ctx.getData().getFrameKinds()) {
+                if (okind == FrameKind.OBJECT) {
                     continue;
                 }
 
@@ -78,7 +78,7 @@ public class LoadConstantInstruction extends Instruction {
         } else {
             b.startIf().variable(varBoxed).end().startBlock();
 
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[ConstantKind.OBJECT.ordinal()].opcodeIdField));
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadConstantInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
 
             b.end();
         }
@@ -88,7 +88,7 @@ public class LoadConstantInstruction extends Instruction {
 
     @Override
     public CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root) {
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             return null;
         }
 

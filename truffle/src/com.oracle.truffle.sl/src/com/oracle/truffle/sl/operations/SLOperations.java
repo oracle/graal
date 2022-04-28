@@ -31,6 +31,7 @@ import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNode;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
+import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessThanNode;
 import com.oracle.truffle.sl.nodes.expression.SLLogicalNotNode;
@@ -46,7 +47,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-@GenerateOperations(decisionsFile = "decisions.json")
+@GenerateOperations(decisionsFile = "decisions.json", boxingEliminationTypes = {long.class})
 @TypeSystemReference(SLTypes.class)
 @OperationProxy(SLAddNode.class)
 @OperationProxy(SLDivNode.class)
@@ -59,6 +60,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLSubNode.class)
 @OperationProxy(SLWritePropertyNode.class)
 @OperationProxy(SLUnboxNode.class)
+@OperationProxy(SLFunctionLiteralNode.class)
 public class SLOperations {
 
     public static void parse(SLLanguage language, Source source, SLOperationsBuilder builder) {
@@ -95,24 +97,8 @@ public class SLOperations {
         }
 
         @Fallback
-        public static Object fallback(Object ignored) {
-            throw new RuntimeException("");
-        }
-    }
-
-    @Operation
-    @TypeSystemReference(SLTypes.class)
-    public static class SLFunctionLiteralOperation {
-        @Specialization
-        public static SLFunction perform(
-                        TruffleString functionName,
-                        @Cached("lookupFunction(functionName, this)") SLFunction result) {
-            assert result.getName().equals(functionName) : "functionName should be a compile-time constant";
-            return result;
-        }
-
-        static SLFunction lookupFunction(TruffleString functionName, Node node) {
-            return SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
+        public static Object fallback(Object functions) {
+            throw new RuntimeException("invalid functions: " + functions);
         }
     }
 

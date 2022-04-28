@@ -58,6 +58,8 @@ public class TruffleProcessorOptions {
     private static final String CacheSharingWarningsEnabledOptionName = "cacheSharingWarningsEnabled";
     private static final String StateBitWidth = "StateBitWidth";
 
+    private static final String OperationsEnableTracingOptionName = "operations.EnableTracing";
+
     public static Boolean generateSpecializationStatistics(ProcessingEnvironment env) {
         String value = env.getOptions().get(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
         return value == null ? null : Boolean.parseBoolean(value);
@@ -84,6 +86,11 @@ public class TruffleProcessorOptions {
         }
     }
 
+    public static boolean operationsEnableTracing(ProcessingEnvironment env) {
+        String value = env.getOptions().get(OptionsPrefix + OperationsEnableTracingOptionName);
+        return value == null ? false : Boolean.parseBoolean(value);
+    }
+
     public static Set<String> getSupportedOptions() {
         HashSet<String> result = new HashSet<>();
         result.add(OptionsPrefix + GenerateSpecializationStatisticsOptionName);
@@ -91,6 +98,7 @@ public class TruffleProcessorOptions {
         result.add(OptionsPrefix + GenerateSlowPathOnlyFilterOptionName);
         result.add(OptionsPrefix + CacheSharingWarningsEnabledOptionName);
         result.add(OptionsPrefix + StateBitWidth);
+        result.add(OptionsPrefix + OperationsEnableTracingOptionName);
         return result;
     }
 }

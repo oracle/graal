@@ -5,9 +5,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
-import javax.xml.stream.XMLStreamException;
-import javax.xml.stream.XMLStreamReader;
-
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 

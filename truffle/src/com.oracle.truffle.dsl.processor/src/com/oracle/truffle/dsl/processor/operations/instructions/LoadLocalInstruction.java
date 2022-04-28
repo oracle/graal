@@ -9,9 +9,9 @@ import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 public class LoadLocalInstruction extends Instruction {
 
     private final OperationsContext ctx;
-    private final ConstantKind kind;
+    private final FrameKind kind;
 
-    public LoadLocalInstruction(OperationsContext ctx, int id, ConstantKind kind) {
+    public LoadLocalInstruction(OperationsContext ctx, int id, FrameKind kind) {
         super("load.local." + kind.getTypeName().toLowerCase(), id, ResultType.STACK_VALUE, InputType.LOCAL);
         this.ctx = ctx;
         this.kind = kind;
@@ -26,7 +26,7 @@ public class LoadLocalInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             b.startStatement().startCall(vars.frame, "copy");
         } else {
             b.startAssign("Object value");
@@ -41,13 +41,13 @@ public class LoadLocalInstruction extends Instruction {
         b.string(" + VALUES_OFFSET");
         b.end();
 
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             b.variable(vars.sp);
         }
 
         b.end(2);
 
-        if (kind != ConstantKind.OBJECT) {
+        if (kind != FrameKind.OBJECT) {
             b.startIf().string("value instanceof " + kind.getTypeNameBoxed()).end().startBlock();
             {
                 b.startStatement().startCall(vars.frame, "set" + kind.getFrameName());
@@ -74,12 +74,12 @@ public class LoadLocalInstruction extends Instruction {
     public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (kind == ConstantKind.OBJECT) {
+        if (kind == FrameKind.OBJECT) {
             b.startIf().string("!").variable(varBoxed).end().startBlock();
 
             boolean elseIf = false;
-            for (ConstantKind okind : ConstantKind.values()) {
-                if (okind == ConstantKind.OBJECT) {
+            for (FrameKind okind : ctx.getData().getFrameKinds()) {
+                if (okind == FrameKind.OBJECT) {
                     continue;
                 }
 
@@ -95,7 +95,7 @@ public class LoadLocalInstruction extends Instruction {
         } else {
             b.startIf().variable(varBoxed).end().startBlock();
 
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalInstructions[ConstantKind.OBJECT.ordinal()].opcodeIdField));
+            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadLocalInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
 
             b.end();
         }

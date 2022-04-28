@@ -32,7 +32,7 @@ import com.oracle.truffle.sl.nodes.expression.SLAddNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNodeGen;
-import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen;
@@ -544,7 +544,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         if (frameSlot != null) {
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
-            result = new SLFunctionLiteralNode(name);
+            result = SLFunctionLiteralNodeGen.create(new SLStringLiteralNode(name));
         }
         result.setSourceSection(nameTerm.getSourceCharIndex(), nameTerm.getSourceLength());
         result.addExpressionTag();

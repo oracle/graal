@@ -8,7 +8,7 @@ import java.util.Map;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.DiscardInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
@@ -42,9 +42,17 @@ public class OperationsContext {
     public final ArrayList<Operation> operations = new ArrayList<>();
     private final Map<String, CustomInstruction> customInstructionNameMap = new HashMap<>();
     private final Map<String, SingleOperationData> opDataNameMap = new HashMap<>();
-    private OperationsData data;
+    private final OperationsData data;
 
-    public OperationsContext() {
+    public OperationsContext(OperationsData data) {
+        this.data = data;
+    }
+
+    public OperationsData getData() {
+        return data;
+    }
+
+    public void initializeContext() {
         createCommonInstructions();
         createBuiltinOperations();
     }
@@ -54,7 +62,7 @@ public class OperationsContext {
 
         commonBranch = add(new BranchInstruction(instructionId++));
 
-        commonBranchFalse = add(new ConditionalBranchInstruction(instructionId++));
+        commonBranchFalse = add(new ConditionalBranchInstruction(this, instructionId++));
     }
 
     private void createBuiltinOperations() {
@@ -84,25 +92,25 @@ public class OperationsContext {
     private void createLoadStoreLocal() {
         add(new Operation.Simple(this, "StoreLocal", operationId++, 1, add(new StoreLocalInstruction(instructionId++))));
 
-        loadLocalInstructions = new LoadLocalInstruction[ConstantKind.values().length];
-        for (ConstantKind kind : ConstantKind.values()) {
+        loadLocalInstructions = new LoadLocalInstruction[FrameKind.values().length];
+        for (FrameKind kind : data.getFrameKinds()) {
             loadLocalInstructions[kind.ordinal()] = add(new LoadLocalInstruction(this, instructionId++, kind));
         }
 
-        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, loadLocalInstructions[ConstantKind.OBJECT.ordinal()]));
+        add(new Operation.Simple(this, "LoadLocal", operationId++, 0, loadLocalInstructions[FrameKind.OBJECT.ordinal()]));
     }
 
     private void createLoadArgument() {
-        loadArgumentInstructions = new LoadArgumentInstruction[ConstantKind.values().length];
-        for (ConstantKind kind : ConstantKind.values()) {
+        loadArgumentInstructions = new LoadArgumentInstruction[FrameKind.values().length];
+        for (FrameKind kind : data.getFrameKinds()) {
             loadArgumentInstructions[kind.ordinal()] = add(new LoadArgumentInstruction(this, instructionId++, kind));
         }
-        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, loadArgumentInstructions[ConstantKind.OBJECT.ordinal()]));
+        add(new Operation.Simple(this, "LoadArgument", operationId++, 0, loadArgumentInstructions[FrameKind.OBJECT.ordinal()]));
     }
 
     private void createLoadConstant() {
-        loadConstantInstructions = new LoadConstantInstruction[ConstantKind.values().length];
-        for (ConstantKind kind : ConstantKind.values()) {
+        loadConstantInstructions = new LoadConstantInstruction[FrameKind.values().length];
+        for (FrameKind kind : data.getFrameKinds()) {
             loadConstantInstructions[kind.ordinal()] = add(new LoadConstantInstruction(this, instructionId++, kind));
         }
 
@@ -157,16 +165,13 @@ public class OperationsContext {
             CustomInstruction cinstr = customInstructionNameMap.get(quicken.getOperation());
             if (cinstr == null) {
                 // TODO line number or sth
-                data.addError("Invalid <Quicken> declaration: undefined operation %s.", quicken.getOperation());
+                data.addError("Invalid Quicken decision: undefined operation %s.", quicken.getOperation());
+                continue;
             }
 
             SingleOperationData opData = opDataNameMap.get(quicken.getOperation());
 
             add(new QuickenedInstruction(cinstr, instructionId++, opData, List.of(quicken.specializations)));
         }
-    }
-
-    public void setData(OperationsData data) {
-        this.data = data;
     }
 }

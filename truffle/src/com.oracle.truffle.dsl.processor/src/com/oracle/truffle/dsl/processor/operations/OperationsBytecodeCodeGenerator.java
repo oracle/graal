@@ -462,6 +462,7 @@ public class OperationsBytecodeCodeGenerator {
 
                 binstr.tree(instr.createPrepareAOT(vars, CodeTreeBuilder.singleString("language"), CodeTreeBuilder.singleString("root")));
                 binstr.startAssign(vars.bci).variable(vars.bci).string(" + " + instr.length()).end();
+                binstr.statement("break");
 
                 return binstr.build();
             }));

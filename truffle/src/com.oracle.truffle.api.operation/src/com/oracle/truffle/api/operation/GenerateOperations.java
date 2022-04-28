@@ -11,4 +11,6 @@ public @interface GenerateOperations {
     String decisionsFile() default "";
 
     String[] decisionOverrideFiles() default {};
+
+    Class<?>[] boxingEliminationTypes() default {};
 }

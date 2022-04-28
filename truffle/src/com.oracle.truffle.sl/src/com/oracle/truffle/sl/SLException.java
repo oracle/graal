@@ -43,7 +43,6 @@ package com.oracle.truffle.sl;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;

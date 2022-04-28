@@ -73,6 +73,7 @@ import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
+import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLInvokeNode;
 import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNodeGen;
 import com.oracle.truffle.sl.nodes.expression.SLLessThanNodeGen;
@@ -513,7 +514,7 @@ public class SLNodeFactory {
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new SLFunctionLiteralNode(name);
+            result = SLFunctionLiteralNodeGen.create(new SLStringLiteralNode(name));
         }
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();

@@ -32,7 +32,7 @@ import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-import com.oracle.truffle.dsl.processor.operations.instructions.ConstantKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
@@ -385,7 +385,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
 
             // unquicken and call parent EAS
-            builder.statement("System.out.println(\" -- unquicken " + qinstr.getUniqueName() + " -> " + qinstr.getOrig().getUniqueName() + " \")");
             builder.tree(OperationGeneratorUtils.createWriteOpcode(
                             fldBc,
                             new CodeVariableElement(context.getType(int.class), "$bci"),
@@ -445,6 +444,14 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return true;
     }
 
+    private FrameKind getFrameType(TypeKind type) {
+        if (!m.getBoxingEliminatedTypes().contains(type)) {
+            return FrameKind.OBJECT;
+        }
+
+        return OperationsData.convertToFrameType(type);
+    }
+
     @Override
     public CodeTree createAssignExecuteChild(NodeData node, FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
                     LocalVariable targetValue, Function<FrameState, CodeTree> createExecuteAndSpecialize) {
@@ -471,9 +478,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             b.end().startElseBlock();
         }
 
-        ConstantKind typeName = getFrameType(targetValue.getTypeMirror().getKind());
+        FrameKind typeName = getFrameType(targetValue.getTypeMirror().getKind());
 
-        if (typeName == ConstantKind.OBJECT) {
+        if (typeName == FrameKind.OBJECT) {
             b.startAssign(targetValue.getName());
             b.startCall("$frame", "getObject");
             b.string("$sp - " + offset);
@@ -555,7 +562,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                     b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
                     b.end().startBlock();
                     {
-                        b.statement("System.out.println(\" -- quicken " + cinstr.getUniqueName() + " -> " + qinstr.getUniqueName() + " \")");
                         b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
                     }
                     b.end();
@@ -564,7 +570,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         // boxing elimination
-        if (!isVariadic) {
+        if (!isVariadic && boxingSplits != null) {
             boolean elseIf = false;
             for (BoxingSplit split : boxingSplits) {
                 List<SpecializationData> specializations = split.getGroup().collectSpecializations();
@@ -585,7 +591,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                 b.end().startBlock();
 
                 for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                    ConstantKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
+                    FrameKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
                     b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", frameType));
                 }
 
@@ -597,7 +603,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", ConstantKind.OBJECT));
+                b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", FrameKind.OBJECT));
             }
 
             if (elseIf) {
@@ -605,25 +611,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
         }
 
-    }
-
-    private static ConstantKind getFrameType(TypeKind kind) {
-        switch (kind) {
-            case BYTE:
-                return ConstantKind.BYTE;
-            case BOOLEAN:
-                return ConstantKind.BOOLEAN;
-            case INT:
-                return ConstantKind.INT;
-            case FLOAT:
-                return ConstantKind.FLOAT;
-            case LONG:
-                return ConstantKind.LONG;
-            case DOUBLE:
-                return ConstantKind.DOUBLE;
-            default:
-                return ConstantKind.OBJECT;
-        }
     }
 
     public CodeTree createSetResultBoxed(CodeVariableElement varUnboxed) {
