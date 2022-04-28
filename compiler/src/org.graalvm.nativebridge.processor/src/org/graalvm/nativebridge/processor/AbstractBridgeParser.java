@@ -92,7 +92,7 @@ abstract class AbstractBridgeParser {
                         typeCache.rawReference, typeCache.receiverMethod);
     }
 
-    abstract AbstractBridgeGenerator getGenerator();
+    abstract AbstractBridgeGenerator createGenerator(DefinitionData definitionData);
 
     DefinitionData createDefinitionData(DeclaredType annotatedType, @SuppressWarnings("unused") AnnotationMirror annotation,
                     DeclaredType serviceType, Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
@@ -1166,11 +1166,6 @@ abstract class AbstractBridgeParser {
         boolean hasCustomDispatch() {
             return customDispatchAccessor != null;
         }
-
-        String getTargetClassSimpleName() {
-            return annotatedType.asElement().getSimpleName() + "Gen";
-        }
-
     }
 
     abstract static class AbstractTypeCache {

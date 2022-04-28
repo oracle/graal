@@ -40,18 +40,15 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
     static final String GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION = "org.graalvm.nativebridge.GenerateHotSpotToNativeBridge";
 
-    private final HotSpotToNativeBridgeGenerator generator;
-
     private HotSpotToNativeBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
         super(processor, typeCache,
                         createConfiguration(processor.env().getTypeUtils(), typeCache),
                         NativeToHotSpotBridgeParser.createConfiguration(typeCache));
-        this.generator = new HotSpotToNativeBridgeGenerator(this, typeCache);
     }
 
     @Override
-    AbstractBridgeGenerator getGenerator() {
-        return generator;
+    AbstractBridgeGenerator createGenerator(DefinitionData definitionData) {
+        return new HotSpotToNativeBridgeGenerator(this, (TypeCache) typeCache, definitionData);
     }
 
     @Override

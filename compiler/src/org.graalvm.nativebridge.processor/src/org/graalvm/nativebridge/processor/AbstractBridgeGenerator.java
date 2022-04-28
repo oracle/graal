@@ -27,8 +27,6 @@ package org.graalvm.nativebridge.processor;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
@@ -38,12 +36,8 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.UnionType;
 import javax.lang.model.util.Types;
-import javax.tools.JavaFileObject;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
@@ -61,88 +55,53 @@ abstract class AbstractBridgeGenerator {
     private static final int BYTES_PER_PARAMETER = 256;
 
     final AbstractBridgeParser parser;
+    final DefinitionData definitionData;
     final Types types;
-    private final AbstractTypeCache typeCache;
 
-    AbstractBridgeGenerator(AbstractBridgeParser parser) {
+    AbstractBridgeGenerator(AbstractBridgeParser parser, DefinitionData definitionData) {
         this.parser = parser;
+        this.definitionData = definitionData;
         this.types = parser.types;
-        this.typeCache = parser.typeCache;
     }
 
-    abstract void generate(DefinitionData data) throws IOException;
+    final FactoryMethodInfo resolveFactoryMethod(CharSequence factoryMethodName, CharSequence startPointSimpleName, CodeBuilder.Parameter... additionalRequiredParameters) {
+        List<CodeBuilder.Parameter> parameters = new ArrayList<>(definitionData.annotatedTypeConstructorParams.size() + 1);
+        List<CodeBuilder.Parameter> superParameters = new ArrayList<>(definitionData.annotatedTypeConstructorParams.size());
+        List<CodeBuilder.Parameter> requiredList = new ArrayList<>();
+        Collections.addAll(requiredList, additionalRequiredParameters);
+        for (VariableElement ve : definitionData.annotatedTypeConstructorParams) {
+            TypeMirror parameterType = ve.asType();
+            CodeBuilder.Parameter parameter = CodeBuilder.newParameter(parameterType, ve.getSimpleName());
+            requiredList.removeIf((required) -> types.isSameType(required.type, parameterType));
+            parameters.add(parameter);
+            superParameters.add(parameter);
+        }
+        parameters.addAll(requiredList);
+        return new FactoryMethodInfo(factoryMethodName, startPointSimpleName, parameters, superParameters);
+    }
 
-    abstract MarshallerSnippets marshallerSnippets(DefinitionData data, MarshallerData marshallerData);
+    abstract void generateAPI(CodeBuilder builder, CharSequence targetClassSimpleName);
+
+    abstract void generateImpl(CodeBuilder builder, CharSequence targetClassSimpleName);
+
+    abstract MarshallerSnippets marshallerSnippets(MarshallerData marshallerData);
 
     static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
         int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
         return slots * BYTES_PER_PARAMETER;
     }
 
-    final void writeSourceFile(DefinitionData data, String content) throws IOException {
-        TypeElement originatingElement = (TypeElement) data.annotatedType.asElement();
-        String sourceFileFQN = String.format("%s.%s",
-                        getEnclosingPackageElement(originatingElement).getQualifiedName().toString(), data.getTargetClassSimpleName());
-        JavaFileObject sourceFile = parser.processor.env().getFiler().createSourceFile(sourceFileFQN, originatingElement);
-        try (PrintWriter out = new PrintWriter(sourceFile.openWriter())) {
-            out.print(content);
-        }
-    }
-
-    final FactoryMethodInfo generateStartPointFactory(CodeBuilder builder, DefinitionData data,
-                    Collection<? extends DeclaredType> jniConfigProviderTypes, CharSequence startPointClassName,
-                    CharSequence factoryMethodName, CodeBuilder.Parameter... additionalRequiredParameters) {
-        List<CodeBuilder.Parameter> parameters = new ArrayList<>(data.annotatedTypeConstructorParams.size() + 1);
-        List<CodeBuilder.Parameter> superParameters = new ArrayList<>(data.annotatedTypeConstructorParams.size());
-        CodeBuilder.Parameter jniConfigProvider = null;
-        CodeBuilder.Parameter jniConfig = null;
-        List<CodeBuilder.Parameter> requiredList = new ArrayList<>();
-        Collections.addAll(requiredList, additionalRequiredParameters);
-        for (VariableElement ve : data.annotatedTypeConstructorParams) {
-            TypeMirror parameterType = ve.asType();
-            CodeBuilder.Parameter parameter = CodeBuilder.newParameter(parameterType, ve.getSimpleName());
-            if (isAssignableToAny(parameterType, jniConfigProviderTypes)) {
-                jniConfigProvider = parameter;
-            } else if (types.isSameType(typeCache.jniConfig, parameterType)) {
-                jniConfig = parameter;
-            }
-            requiredList.removeIf((required) -> types.isSameType(required.type, parameterType));
-            parameters.add(parameter);
-            superParameters.add(parameter);
-        }
-        parameters.addAll(requiredList);
-        // `factoryMethodsParameters` differs from `parameters` by missing
-        // `SuppressWarnings("unused")` annotation on `jniConfig`.
-        List<CodeBuilder.Parameter> factoryMethodsParameters = new ArrayList<>(parameters);
-        if (jniConfig == null && jniConfigProvider == null) {
-            CharSequence[] annotations;
-            if (data.getAllCustomMarshallers().isEmpty()) {
-                annotations = new CharSequence[]{new CodeBuilder(builder).annotation(typeCache.suppressWarnings, "unused").build()};
-            } else {
-                annotations = new CharSequence[0];
-            }
-            jniConfig = CodeBuilder.newParameter(typeCache.jniConfig, "config", annotations);
-        }
-        builder.methodStart(EnumSet.of(Modifier.STATIC), factoryMethodName, data.annotatedType,
-                        factoryMethodsParameters, Collections.emptyList());
+    final void generateStartPointFactory(CodeBuilder builder, FactoryMethodInfo factoryMethod) {
+        builder.methodStart(EnumSet.of(Modifier.STATIC), factoryMethod.name, definitionData.annotatedType,
+                        factoryMethod.parameters, Collections.emptyList());
         builder.indent();
-        builder.lineStart("return ").newInstance(startPointClassName, parameterNames(parameters)).lineEnd(";");
+        builder.lineStart("return ").newInstance(factoryMethod.startPointSimpleName, parameterNames(factoryMethod.parameters)).lineEnd(";");
         builder.dedent();
         builder.line("}");
-        return new FactoryMethodInfo(parameters, superParameters, jniConfig, jniConfigProvider, requiredList);
     }
 
-    private boolean isAssignableToAny(TypeMirror type, Collection<? extends DeclaredType> targetTypes) {
-        for (DeclaredType targetType : targetTypes) {
-            if (types.isAssignable(type, targetType)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    final void generateMarshallerLookups(CodeBuilder builder, DefinitionData data) {
-        for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
+    final void generateMarshallerLookups(CodeBuilder builder) {
+        for (MarshallerData marshaller : definitionData.getAllCustomMarshallers()) {
             List<CharSequence> params = new ArrayList<>();
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
                 params.add(new CodeBuilder(builder).classLiteral(marshaller.forType).build());
@@ -157,18 +116,18 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    final CacheSnippets cacheSnippets(DefinitionData data) {
-        if (data.hasCustomDispatch()) {
-            return CacheSnippets.customDispatch(types, typeCache);
+    final CacheSnippets cacheSnippets() {
+        if (definitionData.hasCustomDispatch()) {
+            return CacheSnippets.customDispatch(types, parser.typeCache);
         } else {
-            return CacheSnippets.standardDispatch(types, typeCache);
+            return CacheSnippets.standardDispatch(types, parser.typeCache);
         }
     }
 
-    final CodeBuilder overrideMethod(CodeBuilder builder, DefinitionData data, MethodData methodData) {
+    final CodeBuilder overrideMethod(CodeBuilder builder, MethodData methodData) {
         for (AnnotationMirror mirror : methodData.element.getAnnotationMirrors()) {
-            if (!Utilities.contains(data.ignoreAnnotations, mirror.getAnnotationType(), types) &&
-                            !Utilities.contains(data.marshallerAnnotations, mirror.getAnnotationType(), types)) {
+            if (!Utilities.contains(definitionData.ignoreAnnotations, mirror.getAnnotationType(), types) &&
+                            !Utilities.contains(definitionData.marshallerAnnotations, mirror.getAnnotationType(), types)) {
                 builder.lineStart().annotation(mirror.getAnnotationType(), null).lineEnd("");
             }
         }
@@ -176,7 +135,7 @@ abstract class AbstractBridgeGenerator {
     }
 
     final CodeBuilder overrideMethod(CodeBuilder builder, ExecutableElement methodElement, ExecutableType methodType) {
-        builder.lineStart().annotation(typeCache.override, null).lineEnd("");
+        builder.lineStart().annotation(parser.typeCache.override, null).lineEnd("");
         Set<Modifier> newModifiers = EnumSet.copyOf(methodElement.getModifiers());
         newModifiers.remove(Modifier.ABSTRACT);
         builder.methodStart(newModifiers, methodElement.getSimpleName(),
@@ -257,16 +216,16 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    void generateMarshallerFields(CodeBuilder builder, DefinitionData data, Modifier... modifiers) {
-        for (MarshallerData marshaller : data.getAllCustomMarshallers()) {
+    void generateMarshallerFields(CodeBuilder builder, Modifier... modifiers) {
+        for (MarshallerData marshaller : definitionData.getAllCustomMarshallers()) {
             Set<Modifier> modSet = EnumSet.noneOf(Modifier.class);
             Collections.addAll(modSet, modifiers);
-            builder.lineStart().writeModifiers(modSet).space().parameterizedType(typeCache.binaryMarshaller, marshaller.forType).space().write(marshaller.name).lineEnd(";");
+            builder.lineStart().writeModifiers(modSet).space().parameterizedType(parser.typeCache.binaryMarshaller, marshaller.forType).space().write(marshaller.name).lineEnd(";");
         }
     }
 
-    static void generateCacheFields(CodeBuilder builder, HotSpotToNativeBridgeGenerator.CacheSnippets cacheSnippets, DefinitionData data) {
-        for (AbstractBridgeParser.MethodData methodData : data.toGenerate) {
+    void generateCacheFields(CodeBuilder builder, HotSpotToNativeBridgeGenerator.CacheSnippets cacheSnippets) {
+        for (AbstractBridgeParser.MethodData methodData : definitionData.toGenerate) {
             AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
             if (cacheData != null) {
                 Set<Modifier> modifiers = EnumSet.of(Modifier.PRIVATE);
@@ -276,8 +235,8 @@ abstract class AbstractBridgeGenerator {
         }
     }
 
-    static void generateCacheFieldsInit(CodeBuilder builder, CacheSnippets cacheSnippets, DefinitionData data) {
-        for (AbstractBridgeParser.MethodData methodData : data.toGenerate) {
+    void generateCacheFieldsInit(CodeBuilder builder, CacheSnippets cacheSnippets) {
+        for (AbstractBridgeParser.MethodData methodData : definitionData.toGenerate) {
             AbstractBridgeParser.CacheData cacheData = methodData.cachedData;
             if (cacheData != null) {
                 CharSequence cacheFieldInit = cacheSnippets.initializeCacheField(builder, cacheData);
@@ -300,10 +259,6 @@ abstract class AbstractBridgeGenerator {
             builder.invoke(e.getKey().name, "inferSize", e.getValue());
         }
         builder.lineEnd(";");
-    }
-
-    static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
-        return (PackageElement) typeElement.getEnclosingElement();
     }
 
     static CharSequence[] parameterNames(List<? extends CodeBuilder.Parameter> parameters) {
@@ -606,20 +561,16 @@ abstract class AbstractBridgeGenerator {
 
     static final class FactoryMethodInfo {
 
+        final CharSequence name;
+        final CharSequence startPointSimpleName;
         final List<CodeBuilder.Parameter> parameters;
         final List<CodeBuilder.Parameter> superCallParameters;
-        final CodeBuilder.Parameter jniConfigParameter;
-        final CodeBuilder.Parameter jniConfigProvider;
-        final List<CodeBuilder.Parameter> addedRequiredParameters;
 
-        FactoryMethodInfo(List<CodeBuilder.Parameter> parameters, List<CodeBuilder.Parameter> superCallParameters,
-                        CodeBuilder.Parameter jniConfigParameter, CodeBuilder.Parameter nativeIsolate,
-                        List<CodeBuilder.Parameter> addedRequiredParameters) {
+        FactoryMethodInfo(CharSequence name, CharSequence startPointSimpleName, List<CodeBuilder.Parameter> parameters, List<CodeBuilder.Parameter> superCallParameters) {
+            this.name = name;
+            this.startPointSimpleName = startPointSimpleName;
             this.parameters = parameters;
             this.superCallParameters = superCallParameters;
-            this.jniConfigParameter = jniConfigParameter;
-            this.jniConfigProvider = nativeIsolate;
-            this.addedRequiredParameters = addedRequiredParameters;
         }
     }
 }
