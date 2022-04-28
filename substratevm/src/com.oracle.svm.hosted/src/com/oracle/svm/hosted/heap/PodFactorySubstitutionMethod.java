@@ -29,19 +29,20 @@ import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -50,7 +51,7 @@ import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.graal.nodes.DeoptEntryBeginNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
+import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.Pod.RuntimeSupport.PodFactory;
@@ -108,7 +109,6 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         ResolvedJavaType factoryType = method.getDeclaringClass();
         PodFactory annotation = factoryType.getAnnotation(PodFactory.class);
         ResolvedJavaType podConcreteType = kit.getMetaAccess().lookupJavaType(annotation.podClass());
-        ResolvedJavaType elementType = kit.getMetaAccess().lookupJavaType(byte.class);
         ResolvedJavaMethod targetCtor = null;
         for (ResolvedJavaMethod ctor : podConcreteType.getSuperclass().getDeclaredConstructors()) {
             if (parameterTypesMatch(method, ctor)) {
@@ -125,11 +125,10 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
          */
         int instanceLocal = method.getSignature().getParameterCount(true);
         int nextDeoptIndex = startMethod(kit, isDeoptTarget, 0);
-        instantiatePod(kit, factoryType, podConcreteType, elementType, instanceLocal);
+        instantiatePod(kit, providers, factoryType, podConcreteType, instanceLocal);
         if (isAnnotationPresent(DeoptTest.class)) {
             kit.append(new TestDeoptimizeNode());
         }
-        nextDeoptIndex = initInstanceRefMap(kit, method, isDeoptTarget, nextDeoptIndex, instanceLocal);
         nextDeoptIndex = invokeConstructor(kit, method, isDeoptTarget, nextDeoptIndex, targetCtor, instanceLocal);
 
         kit.createReturn(kit.loadLocal(instanceLocal, JavaKind.Object), JavaKind.Object);
@@ -144,22 +143,19 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         return appendDeoptWithExceptionUnwind(kit, initialState, initialState.bci, nextDeoptIndex);
     }
 
-    private static void instantiatePod(HostedGraphKit kit, ResolvedJavaType factoryType, ResolvedJavaType podConcreteType, ResolvedJavaType elementType, int instanceLocal) {
+    private static void instantiatePod(HostedGraphKit kit, HostedProviders providers, ResolvedJavaType factoryType, ResolvedJavaType podConcreteType, int instanceLocal) {
         ResolvedJavaType podType = kit.getMetaAccess().lookupJavaType(Pod.class);
-        ValueNode pod = loadPod(kit, factoryType);
+        ValueNode receiver = kit.loadLocal(0, JavaKind.Object);
+        ValueNode pod = loadNonNullField(kit, receiver, findField(factoryType, "pod"));
         ValueNode sizeWithoutRefMap = kit.createLoadField(pod, findField(podType, "fieldsSizeWithoutRefMap"));
-        ValueNode refMapArray = kit.createLoadField(pod, findField(podType, "referenceMap"));
-        ValueNode refMapLength = kit.append(new ArrayLengthNode(refMapArray));
-        ValueNode hybridArrayLength = kit.append(AddNode.add(sizeWithoutRefMap, refMapLength));
-        ValueNode instance = kit.append(new SubstrateNewHybridInstanceNode(podConcreteType, elementType, hybridArrayLength));
+        ValueNode refMap = loadNonNullField(kit, pod, findField(podType, "referenceMap"));
+        ConstantNode hub = kit.createConstant(providers.getConstantReflection().asObjectHub(podConcreteType), JavaKind.Object);
+        ValueNode instance = kit.append(new NewPodInstanceNode(podConcreteType, hub, sizeWithoutRefMap, refMap));
         kit.storeLocal(instanceLocal, JavaKind.Object, instance);
     }
 
-    private static int initInstanceRefMap(HostedGraphKit kit, ResolvedJavaMethod method, boolean isDeoptTarget, int nextDeoptIndex, int instanceLocal) {
-        ValueNode instance = kit.loadLocal(instanceLocal, JavaKind.Object);
-        ResolvedJavaMethod initInstanceRefMap = kit.findMethod(Pod.class, "initInstanceRefMap", false);
-        ValueNode pod = loadPod(kit, method.getDeclaringClass());
-        return invokeWithDeoptAndExceptionUnwind(kit, isDeoptTarget, nextDeoptIndex, initInstanceRefMap, InvokeKind.Virtual, pod, instance);
+    private static ValueNode loadNonNullField(HostedGraphKit kit, ValueNode object, ResolvedJavaField field) {
+        return kit.append(PiNode.create(kit.createLoadField(object, field), StampFactory.objectNonNull()));
     }
 
     private static int invokeConstructor(HostedGraphKit kit, ResolvedJavaMethod method, boolean isDeoptTarget, int nextDeoptIndex, ResolvedJavaMethod targetCtor, int instanceLocal) {
@@ -168,11 +164,6 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         ValueNode[] invokeArgs = Arrays.copyOf(originalArgs, originalArgs.length);
         invokeArgs[0] = instance;
         return invokeWithDeoptAndExceptionUnwind(kit, isDeoptTarget, nextDeoptIndex, targetCtor, InvokeKind.Special, invokeArgs);
-    }
-
-    private static ValueNode loadPod(HostedGraphKit kit, ResolvedJavaType declaringClass) {
-        ValueNode receiver = kit.loadLocal(0, JavaKind.Object);
-        return kit.maybeCreateExplicitNullCheck(kit.createLoadField(receiver, findField(declaringClass, "pod")));
     }
 
     /** @see com.oracle.svm.hosted.phases.HostedGraphBuilderPhase */

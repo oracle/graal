@@ -112,7 +112,7 @@ public abstract class AllocationSnippets implements Snippets {
         return callNewMultiArrayStub(hub, rank, dims);
     }
 
-    private UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
+    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
         int alignment = objectAlignment();
         return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
@@ -379,7 +379,7 @@ public abstract class AllocationSnippets implements Snippets {
     }
 
     public static class AllocationProfilingData {
-        final AllocationSnippetCounters snippetCounters;
+        public final AllocationSnippetCounters snippetCounters;
 
         public AllocationProfilingData(AllocationSnippetCounters snippetCounters) {
             this.snippetCounters = snippetCounters;
@@ -395,9 +395,9 @@ public abstract class AllocationSnippets implements Snippets {
             stub = new SnippetCounter(allocations, "stub", "alloc and zeroing via stub");
         }
 
-        final SnippetCounter unrolledInit;
-        final SnippetCounter loopInit;
-        final SnippetCounter bulkInit;
-        final SnippetCounter stub;
+        public final SnippetCounter unrolledInit;
+        public final SnippetCounter loopInit;
+        public final SnippetCounter bulkInit;
+        public final SnippetCounter stub;
     }
 }

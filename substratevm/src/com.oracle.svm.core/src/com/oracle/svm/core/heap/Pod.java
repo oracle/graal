@@ -43,14 +43,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.UnsignedUtils;
 
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -82,27 +80,6 @@ public final class Pod<T> {
 
     public T getFactory() {
         return factory;
-    }
-
-    /**
-     * Used from generated graphs: write {@link #referenceMap} to a newly allocated pod instance.
-     *
-     * {@link JavaMemoryUtil} copying is uninterruptible, so it cannot be inlined here and in our
-     * caller, and reference maps are likely too small to benefit from its optimizations. Instead,
-     * we use a simple interruptible copy loop that is safe because it does not use pointers and
-     * because a reference map decoder will not attempt to make sense of the reference map while the
-     * last two bytes (the first two it reads) remain zero, which is not a problem because all
-     * references are null at this point.
-     */
-    @SuppressWarnings("unused")
-    private void initInstanceRefMap(Object instance) {
-        Unsafe unsafe = Unsafe.getUnsafe();
-        int refMapArrayBase = unsafe.arrayBaseOffset(byte[].class);
-        int podRefMapBase = unsafe.arrayBaseOffset(podInfo.podClass) + fieldsSizeWithoutRefMap;
-        for (int offset = 0; offset < referenceMap.length; offset += 2) {
-            short entry = unsafe.getShort(referenceMap, refMapArrayBase + offset);
-            unsafe.putShort(instance, podRefMapBase + offset, entry);
-        }
     }
 
     /**
