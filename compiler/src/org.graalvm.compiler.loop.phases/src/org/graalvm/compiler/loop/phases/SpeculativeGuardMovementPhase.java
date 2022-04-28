@@ -378,6 +378,8 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                     usage.replaceFirstInput(guard, loopBodyGuard.asNode());
                 }
             }
+
+            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After optimizing compare at %s", guard);
         }
 
         private LogicNode createLoopEnterCheck(CountedLoopInfo countedLoop, LogicNode newCompare) {
@@ -596,6 +598,15 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
 
             if (forcedHoisting != null) {
                 newAnchorEarliest = forcedHoisting.getHeader().getDominator();
+                if (AbstractControlFlowGraph.strictlyDominates(anchorEarliest, newAnchorEarliest)) {
+                    /*
+                     * Special case strip mined inverted loops: if the original guard of a strip
+                     * mined inverted loop is already anchored outside the outer strip mined loop,
+                     * no need to try to use the loop header of the outer strip mined loop as the
+                     * forced hoisting anchor.
+                     */
+                    newAnchorEarliest = anchorEarliest;
+                }
                 outerMostExitedLoop = (LoopBeginNode) forcedHoisting.getHeader().getBeginNode();
                 b = newAnchorEarliest;
             }
