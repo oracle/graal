@@ -280,9 +280,10 @@ public class OperationsBytecodeCodeGenerator {
         {
             CodeVariableElement argFrame = new CodeVariableElement(types.VirtualFrame, "frame");
             CodeVariableElement argStartBci = new CodeVariableElement(context.getType(int.class), "startBci");
+            CodeVariableElement argStartSp = new CodeVariableElement(context.getType(int.class), "startSp");
             CodeExecutableElement mContinueAt = new CodeExecutableElement(
-                            Set.of(Modifier.PUBLIC), context.getType(Object.class), "continueAt",
-                            argFrame, argStartBci);
+                            Set.of(Modifier.PROTECTED), context.getType(Object.class), "continueAt",
+                            argFrame, argStartBci, argStartSp);
             builderBytecodeNodeType.add(mContinueAt);
 
             {
@@ -298,7 +299,7 @@ public class OperationsBytecodeCodeGenerator {
             CodeVariableElement varBci = new CodeVariableElement(context.getType(int.class), "bci");
             CodeVariableElement varCurOpcode = new CodeVariableElement(context.getType(short.class), "curOpcode");
 
-            b.declaration("int", varSp.getName(), "maxLocals + VALUES_OFFSET");
+            b.declaration("int", varSp.getName(), CodeTreeBuilder.singleVariable(argStartSp));
             b.declaration("int", varBci.getName(), CodeTreeBuilder.singleVariable(argStartBci));
 
             if (m.isTracing()) {

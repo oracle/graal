@@ -147,6 +147,13 @@ public class GeneratorUtils {
         return builder.build();
     }
 
+    public static CodeTree createInInterpreter() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startStaticCall(context.getTypes().CompilerDirectives, "inInterpreter").end();
+        return builder.build();
+    }
+
     public static CodeExecutableElement createConstructorUsingFields(Set<Modifier> modifiers, CodeTypeElement clazz) {
         TypeElement superClass = fromTypeMirror(clazz.getSuperclass());
         ExecutableElement constructor = findConstructor(superClass);

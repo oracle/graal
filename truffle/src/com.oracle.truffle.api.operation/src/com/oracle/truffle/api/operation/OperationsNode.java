@@ -1,18 +1,20 @@
 package com.oracle.truffle.api.operation;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.tracing.NodeTrace;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public abstract class OperationsNode extends Node implements InstrumentableNode {
+public abstract class OperationsNode extends Node implements InstrumentableNode, BytecodeOSRNode {
 
     public static final int FRAME_TYPE_OBJECT = 0;
     public static final int FRAME_TYPE_LONG = 1;
@@ -68,10 +70,10 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
     }
 
     public final Object execute(VirtualFrame frame) {
-        return continueAt(frame, 0);
+        return continueAt(frame, 0, maxLocals + VALUES_OFFSET);
     }
 
-    protected abstract Object continueAt(VirtualFrame frame, int index);
+    protected abstract Object continueAt(VirtualFrame frame, int index, int startSp);
 
     public abstract String dump();
 
@@ -149,5 +151,26 @@ public abstract class OperationsNode extends Node implements InstrumentableNode 
         }
 
         return arg;
+    }
+
+    // OSR
+
+    @Override
+    public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+        // we'll need a container object if we ever need to pass more than just the sp
+        // TODO needs workaround for arguments getting null on OSR
+        return continueAt(osrFrame, target, (int) interpreterState);
+    }
+
+    @CompilationFinal private Object osrMetadata;
+
+    @Override
+    public void setOSRMetadata(Object osrMetadata) {
+        this.osrMetadata = osrMetadata;
+    }
+
+    @Override
+    public Object getOSRMetadata() {
+        return osrMetadata;
     }
 }
