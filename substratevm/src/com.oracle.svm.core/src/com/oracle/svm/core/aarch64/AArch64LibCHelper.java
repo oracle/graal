@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 @CLibrary(value = "libchelper", requireStatic = true)
@@ -42,6 +43,14 @@ public class AArch64LibCHelper {
     @Platforms(Platform.AARCH64.class)
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
+
+    @Platforms(Platform.AARCH64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeatures(CCharPointer cCharPointer);
+
+    @Platforms(Platform.AARCH64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeaturesOrExit(CCharPointer buildtimeCPUFeatureMask, CCharPointer errorMessage);
 
     // Checkstyle: stop
     @CStruct

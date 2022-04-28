@@ -24,21 +24,30 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
+import com.oracle.svm.core.amd64.AMD64LibCHelper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+
+import jdk.vm.ci.amd64.AMD64;
 
 @AutomaticFeature
 @Platforms(Platform.AMD64.class)
 public class AMD64CPUFeatureAccessFeature implements Feature {
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(CPUFeatureAccess.class, createAMD64CPUFeatureAccessSingleton());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess arg) {
+        CPUFeatureAccessFeatureHelper.initializeCPUFeatureAccessData(AMD64.CPUFeature.values(), AMD64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
     protected AMD64CPUFeatureAccess createAMD64CPUFeatureAccessSingleton() {

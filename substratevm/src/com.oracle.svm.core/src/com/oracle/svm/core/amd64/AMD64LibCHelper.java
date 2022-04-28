@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.amd64;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
@@ -31,12 +33,22 @@ import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 
 @CLibrary(value = "libchelper", requireStatic = true)
 public class AMD64LibCHelper {
+    @Platforms(Platform.AMD64.class)
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
+
+    @Platforms(Platform.AMD64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeatures(CCharPointer buildtimeCPUFeatureMask);
+
+    @Platforms(Platform.AMD64.class)
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int checkCPUFeaturesOrExit(CCharPointer buildtimeCPUFeatureMask, CCharPointer errorMessage);
 
     // Checkstyle: stop
     @CStruct

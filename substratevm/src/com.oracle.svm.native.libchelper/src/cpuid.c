@@ -23,8 +23,16 @@
  * questions.
  */
 
+#ifndef _WIN64
+#include <alloca.h>
+#else
+#include <malloc.h>
+#define alloca _alloca
+#endif
 
 #if defined(__x86_64__) || defined(_WIN64)
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include "amd64cpufeatures.h"
@@ -728,3 +736,50 @@ void determineCPUFeatures(void* features) {
 }
 
 #endif
+
+int checkCPUFeatures(uint8_t *buildtimeFeaturesPtr)
+{
+  // tri-state: -1=unchecked, 0=check ok, 1=check failed
+  static int checked = -1;
+  if (checked != -1)
+    return checked;
+  // Over-allocate to a multiple of 64 bit
+  const size_t structSizeUint64 = (sizeof(CPUFeatures) + sizeof(uint64_t) - 1) / sizeof(uint64_t);
+  const size_t structSizeBytes = structSizeUint64 * sizeof(uint64_t);
+  CPUFeatures *hostFeatures = (CPUFeatures*) alloca(structSizeBytes);
+  memset(hostFeatures, 0, structSizeBytes);
+  determineCPUFeatures(hostFeatures);
+  uint8_t *hostFeaturesPtr = (uint8_t*) hostFeatures;
+  size_t i;
+  for (i = 0; i < structSizeBytes; i += sizeof(uint64_t))
+  {
+    // Handle 64 bits at once. The memmoves might seem like an overkill,
+    // but they are a clear (and defined) way of tell the C compiler our
+    // intention. Even at O0, the memmove calls are inlined and the 64 bits
+    // are loaded in a single instruction. Starting with O1, no copying
+    // whatsoever happens and the | (or) is performed directly using the
+    // source memory, just as if we would have cast the (CPUFeatures*) to
+    // (uint64_t*), which is unfortunately undefined behavior and leads to
+    // undefined (wrong) results in certain compiler/flag combinations
+    // (i.e., gcc -O2).
+    uint64_t mask;
+    uint64_t host;
+    memmove(&mask, buildtimeFeaturesPtr + i, sizeof(uint64_t));
+    memmove(&host, hostFeaturesPtr + i, sizeof(uint64_t));
+    if ((mask | host) != -1)
+    {
+      checked = 1;
+      return checked;
+    }
+  }
+  checked = 0;
+  return checked;
+}
+
+void checkCPUFeaturesOrExit(uint8_t *buildtimeFeaturesPtr, const char *errorMessage)
+{
+    if (checkCPUFeatures(buildtimeFeaturesPtr)) {
+       puts(errorMessage);
+       exit(1);
+    }
+}

@@ -30,7 +30,11 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
+import com.oracle.svm.core.aarch64.AArch64LibCHelper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+
+import jdk.vm.ci.aarch64.AArch64;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)
@@ -38,6 +42,11 @@ class AArch64CPUFeatureAccessFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(CPUFeatureAccess.class, createAArch64CPUFeatureAccessSingleton());
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess arg) {
+        CPUFeatureAccessFeatureHelper.initializeCPUFeatureAccessData(AArch64.CPUFeature.values(), AArch64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
     protected AArch64CPUFeatureAccess createAArch64CPUFeatureAccessSingleton() {

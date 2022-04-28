@@ -26,10 +26,7 @@ package com.oracle.svm.core.amd64;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 
-import com.oracle.svm.core.ReservedRegisters;
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -37,9 +34,12 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.CPUFeatureAccessImpl;
+import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.util.VMError;
 
@@ -47,7 +47,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Architecture;
 
-public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
+public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     private final EnumSet<?> buildtimeCPUFeatures;
 
@@ -73,113 +73,6 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         return EnumSet.of(AMD64.Flag.UseCountLeadingZerosInstruction, AMD64.Flag.UseCountTrailingZerosInstruction);
     }
 
-    /**
-     * Determines whether a given JVMCI AMD64.CPUFeature is present on the current hardware. Because
-     * the CPUFeatures available vary across different JDK versions, the features are queried via
-     * their name, as opposed to the actual enum.
-     */
-    private static boolean isFeaturePresent(String featureName, AMD64LibCHelper.CPUFeatures cpuFeatures, List<String> unknownFeatures) {
-        switch (featureName) {
-            case "CX8":
-                return cpuFeatures.fCX8();
-            case "CMOV":
-                return cpuFeatures.fCMOV();
-            case "FXSR":
-                return cpuFeatures.fFXSR();
-            case "HT":
-                return cpuFeatures.fHT();
-            case "MMX":
-                return cpuFeatures.fMMX();
-            case "AMD_3DNOW_PREFETCH":
-                return cpuFeatures.fAMD_3DNOW_PREFETCH();
-            case "SSE":
-                return cpuFeatures.fSSE();
-            case "SSE2":
-                return cpuFeatures.fSSE2();
-            case "SSE3":
-                return cpuFeatures.fSSE3();
-            case "SSSE3":
-                return cpuFeatures.fSSSE3();
-            case "SSE4A":
-                return cpuFeatures.fSSE4A();
-            case "SSE4_1":
-                return cpuFeatures.fSSE4_1();
-            case "SSE4_2":
-                return cpuFeatures.fSSE4_2();
-            case "POPCNT":
-                return cpuFeatures.fPOPCNT();
-            case "LZCNT":
-                return cpuFeatures.fLZCNT();
-            case "TSC":
-                return cpuFeatures.fTSC();
-            case "TSCINV":
-                return cpuFeatures.fTSCINV();
-            case "TSCINV_BIT":
-                return cpuFeatures.fTSCINV_BIT();
-            case "AVX":
-                return cpuFeatures.fAVX();
-            case "AVX2":
-                return cpuFeatures.fAVX2();
-            case "AES":
-                return cpuFeatures.fAES();
-            case "ERMS":
-                return cpuFeatures.fERMS();
-            case "CLMUL":
-                return cpuFeatures.fCLMUL();
-            case "BMI1":
-                return cpuFeatures.fBMI1();
-            case "BMI2":
-                return cpuFeatures.fBMI2();
-            case "RTM":
-                return cpuFeatures.fRTM();
-            case "ADX":
-                return cpuFeatures.fADX();
-            case "AVX512F":
-                return cpuFeatures.fAVX512F();
-            case "AVX512DQ":
-                return cpuFeatures.fAVX512DQ();
-            case "AVX512PF":
-                return cpuFeatures.fAVX512PF();
-            case "AVX512ER":
-                return cpuFeatures.fAVX512ER();
-            case "AVX512CD":
-                return cpuFeatures.fAVX512CD();
-            case "AVX512BW":
-                return cpuFeatures.fAVX512BW();
-            case "AVX512VL":
-                return cpuFeatures.fAVX512VL();
-            case "SHA":
-                return cpuFeatures.fSHA();
-            case "FMA":
-                return cpuFeatures.fFMA();
-            case "VZEROUPPER":
-                return cpuFeatures.fVZEROUPPER();
-            case "AVX512_VPOPCNTDQ":
-                return cpuFeatures.fAVX512_VPOPCNTDQ();
-            case "AVX512_VPCLMULQDQ":
-                return cpuFeatures.fAVX512_VPCLMULQDQ();
-            case "AVX512_VAES":
-                return cpuFeatures.fAVX512_VAES();
-            case "AVX512_VNNI":
-                return cpuFeatures.fAVX512_VNNI();
-            case "FLUSH":
-                return cpuFeatures.fFLUSH();
-            case "FLUSHOPT":
-                return cpuFeatures.fFLUSHOPT();
-            case "CLWB":
-                return cpuFeatures.fCLWB();
-            case "AVX512_VBMI2":
-                return cpuFeatures.fAVX512_VBMI2();
-            case "AVX512_VBMI":
-                return cpuFeatures.fAVX512_VBMI();
-            case "HV":
-                return cpuFeatures.fHV();
-            default:
-                unknownFeatures.add(featureName);
-                return false;
-        }
-    }
-
     @Override
     @Platforms(Platform.AMD64.class)
     public EnumSet<AMD64.CPUFeature> determineHostCPUFeatures() {
@@ -193,7 +86,7 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
         ArrayList<String> unknownFeatures = new ArrayList<>();
         for (AMD64.CPUFeature feature : AMD64.CPUFeature.values()) {
-            if (isFeaturePresent(feature.name(), cpuFeatures, unknownFeatures)) {
+            if (isFeaturePresent(feature, (Pointer) cpuFeatures, unknownFeatures)) {
                 features.add(feature);
             }
         }
@@ -203,20 +96,16 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
         return features;
     }
 
+    @Uninterruptible(reason = "Thread state not set up yet.")
     @Override
-    public void verifyHostSupportsArchitecture(Architecture imageArchitecture) {
-        AMD64 architecture = (AMD64) imageArchitecture;
-        EnumSet<AMD64.CPUFeature> features = determineHostCPUFeatures();
+    public int verifyHostSupportsArchitectureEarly() {
+        return AMD64LibCHelper.checkCPUFeatures(BUILDTIME_CPU_FEATURE_MASK.get());
+    }
 
-        if (!features.containsAll(architecture.getFeatures())) {
-            List<AMD64.CPUFeature> missingFeatures = new ArrayList<>();
-            for (AMD64.CPUFeature feature : architecture.getFeatures()) {
-                if (!features.contains(feature)) {
-                    missingFeatures.add(feature);
-                }
-            }
-            throw VMError.shouldNotReachHere("Current target does not support the following CPU features that are required by the image: " + missingFeatures);
-        }
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    @Override
+    public void verifyHostSupportsArchitectureEarlyOrExit() {
+        AMD64LibCHelper.checkCPUFeaturesOrExit(BUILDTIME_CPU_FEATURE_MASK.get(), IMAGE_CPU_FEATURE_ERROR_MSG.get());
     }
 
     /**
