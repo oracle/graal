@@ -93,7 +93,10 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             Set<String> globalHiddenSymbols = CGlobalDataFeature.singleton().getGlobalHiddenSymbols();
             stream = stream.filter(symbol -> symbol.isGlobal() && !globalHiddenSymbols.contains(symbol.getName()));
         }
-        return stream.filter(ObjectFile.Symbol::isDefined).map(this::getSymbolName).collect(Collectors.toList());
+        if (!SubstrateOptions.useLLVMBackend()) {
+            stream = stream.filter(ObjectFile.Symbol::isDefined);
+        }
+        return stream.map(this::getSymbolName).collect(Collectors.toList());
     }
 
     @Override
