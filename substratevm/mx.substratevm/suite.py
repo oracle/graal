@@ -1219,6 +1219,7 @@ suite = {
                     "com.oracle.svm.jvmtiagentbase.jvmti",
                 ],
             },
+            "maven": False,
         },
 
         "LIBRARY_SUPPORT": {
@@ -1306,6 +1307,7 @@ suite = {
                 "SVM",
             ],
             "defaultBuild": False,
+            "maven": False,
         },
 
         #
@@ -1360,6 +1362,7 @@ suite = {
                 "jdk.management",
               ],
             },
+            "maven": False,
         },
 
         "SVM_AGENT": {
@@ -1387,6 +1390,7 @@ suite = {
                 }
             },
             # vm: included as binary, tool descriptor intentionally not copied
+            "maven": False,
         },
 
         "SVM_DIAGNOSTICS_AGENT": {
@@ -1405,6 +1409,7 @@ suite = {
                     "com.oracle.svm.diagnosticsagent",
                 ],
             },
+            "maven": False,
         },
 
         "SVM_CONFIGURE": {
@@ -1424,6 +1429,7 @@ suite = {
                     "com.oracle.svm.configure",
                 ],
             },
+            "maven": False,
         },
 
         "NATIVE_IMAGE_BASE": {
