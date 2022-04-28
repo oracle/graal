@@ -139,7 +139,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
     }
 
     protected NodeLLVMBuilder newNodeLLVMBuilder(StructuredGraph graph, LLVMGenerator generator) {
-        return new NodeLLVMBuilder(graph, generator, getRuntimeConfiguration());
+        return new NodeLLVMBuilder(graph, generator);
     }
 
     private static void generate(NodeLLVMBuilder nodeBuilder, StructuredGraph graph) {

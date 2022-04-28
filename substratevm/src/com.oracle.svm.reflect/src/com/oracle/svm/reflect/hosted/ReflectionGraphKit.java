@@ -25,7 +25,6 @@
 package com.oracle.svm.reflect.hosted;
 
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,6 +42,8 @@ import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -63,7 +64,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.FactoryMethodSupport;
@@ -131,22 +131,21 @@ public class ReflectionGraphKit extends HostedGraphKit {
     /**
      * To reduce machine code size, we want only one call site for each exception class that can be
      * thrown. We also do not want arguments that require phi functions. So we cannot have an error
-     * message that, e.g., prints which exact cast failed. But we have the member that the stub is
-     * for, and the provided argument arrays, which allows a good enough error message.
+     * message that, e.g., prints which exact cast failed.
      */
-    public void emitIllegalArgumentException(Executable member, ValueNode obj, ValueNode args) {
+    public void emitIllegalArgumentException(ValueNode obj, ValueNode args) {
         continueWithMerge(illegalArgumentExceptionPaths);
-        ValueNode memberNode = createConstant(SubstrateObjectConstant.forObject(member), JavaKind.Object);
         ResolvedJavaMethod targetMethod;
         ValueNode[] arguments;
         if (obj == null) {
             targetMethod = findMethod(ReflectionAccessorHolder.class, "throwIllegalArgumentExceptionWithoutReceiver", true);
-            arguments = new ValueNode[]{memberNode, args};
+            arguments = new ValueNode[]{args};
         } else {
             targetMethod = findMethod(ReflectionAccessorHolder.class, "throwIllegalArgumentExceptionWithReceiver", true);
-            arguments = new ValueNode[]{memberNode, obj, args};
+            arguments = new ValueNode[]{obj, args};
         }
-        createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, targetMethod, arguments);
+        InvokeWithExceptionNode invoke = createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, targetMethod, arguments);
+        invoke.setInlineControl(Invoke.InlineControl.Never);
         append(new LoweredDeadEndNode());
     }
 
@@ -157,7 +156,8 @@ public class ReflectionGraphKit extends HostedGraphKit {
         ValueNode exception = createPhi(invocationTargetExceptionPaths, merge);
         ResolvedJavaMethod throwInvocationTargetException = FactoryMethodSupport.singleton().lookup((UniverseMetaAccess) getMetaAccess(),
                         getMetaAccess().lookupJavaMethod(invocationTargetExceptionConstructor), true);
-        createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, throwInvocationTargetException, exception);
+        InvokeWithExceptionNode invoke = createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, throwInvocationTargetException, exception);
+        invoke.setInlineControl(Invoke.InlineControl.Never);
         append(new LoweredDeadEndNode());
     }
 

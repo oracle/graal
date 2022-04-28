@@ -625,8 +625,6 @@ public class NativeImageGenerator {
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtime);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
-            runtime.updateLazyState(hMetaAccess);
-
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
@@ -1247,7 +1245,7 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            TypeSnippets.registerLowerings(runtimeConfig, options, providers, lowerings);
+            TypeSnippets.registerLowerings(options, providers, lowerings);
             ExceptionSnippets.registerLowerings(options, providers, lowerings);
 
             if (hosted) {

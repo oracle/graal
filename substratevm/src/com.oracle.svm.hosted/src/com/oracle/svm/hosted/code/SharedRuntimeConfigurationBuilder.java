@@ -44,7 +44,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -59,19 +58,9 @@ import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.stack.JavaFrameAnchor;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import com.oracle.svm.hosted.c.info.AccessorInfo;
-import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
-import com.oracle.svm.hosted.config.HybridLayout;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.thread.VMThreadMTFeature;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
@@ -99,6 +88,10 @@ public abstract class SharedRuntimeConfigurationBuilder {
         this.nativeLibraries = nativeLibraries;
         this.classInitializationSupport = classInitializationSupport;
         this.originalLoopsDataProvider = originalLoopsDataProvider;
+    }
+
+    public NativeLibraries getNativeLibraries() {
+        return nativeLibraries;
     }
 
     public SharedRuntimeConfigurationBuilder build() {
@@ -181,36 +174,4 @@ public abstract class SharedRuntimeConfigurationBuilder {
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
 
     protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
-
-    public void updateLazyState(HostedMetaAccess hMetaAccess) {
-        HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);
-        int vtableBaseOffset = hubLayout.getArrayBaseOffset();
-        int vtableEntrySize = ConfigurationValues.getObjectLayout().sizeInBytes(hubLayout.getArrayElementStorageKind());
-        int typeIDSlotsOffset = HybridLayout.getTypeIDSlotsFieldOffset(ConfigurationValues.getObjectLayout());
-
-        int componentHubOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(DynamicHub.class, "componentType")).getLocation();
-
-        int javaFrameAnchorLastSPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaSP");
-        int javaFrameAnchorLastIPOffset = findStructOffset(JavaFrameAnchor.class, "getLastJavaIP");
-
-        int vmThreadStatusOffset = -1;
-        if (SubstrateOptions.MultiThreaded.getValue()) {
-            vmThreadStatusOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.StatusSupport.statusTL);
-        }
-
-        int imageCodeInfoCodeStartOffset = hMetaAccess.lookupJavaField(ReflectionUtil.lookupField(ImageCodeInfo.class, "codeStart")).getLocation();
-
-        runtimeConfig.setLazyState(vtableBaseOffset, vtableEntrySize, typeIDSlotsOffset, componentHubOffset,
-                        javaFrameAnchorLastSPOffset, javaFrameAnchorLastIPOffset, vmThreadStatusOffset, imageCodeInfoCodeStartOffset);
-    }
-
-    private int findStructOffset(Class<?> clazz, String accessorName) {
-        try {
-            AccessorInfo accessorInfo = (AccessorInfo) nativeLibraries.findElementInfo(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(accessorName)));
-            StructFieldInfo structFieldInfo = (StructFieldInfo) accessorInfo.getParent();
-            return structFieldInfo.getOffsetInfo().getProperty();
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 }

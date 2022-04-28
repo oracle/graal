@@ -28,33 +28,25 @@ import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.reflect.SubstrateMethodAccessor.MethodInvokeFunctionPointer;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder.MethodInvokeFunctionPointer;
 
 import jdk.internal.reflect.ConstructorAccessor;
 
 @InternalVMMethod
-public final class SubstrateConstructorAccessor implements ConstructorAccessor {
+public final class SubstrateConstructorAccessor extends SubstrateAccessor implements ConstructorAccessor {
 
-    private final Executable member;
-    private final CFunctionPointer newInstanceFunctionPointer;
-
-    public SubstrateConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer) {
-        this.member = member;
-        this.newInstanceFunctionPointer = newInstanceFunctionPointer;
+    public SubstrateConstructorAccessor(Executable member, CFunctionPointer expandSignature, CFunctionPointer directTarget, DynamicHub initializeBeforeInvoke) {
+        super(member, expandSignature, directTarget, initializeBeforeInvoke);
     }
 
     @Override
     public Object newInstance(Object[] args) {
-        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.newInstanceFunctionPointer;
-        if (functionPointer.isNull()) {
-            throw newInstanceError();
+        if (initializeBeforeInvoke != null) {
+            EnsureClassInitializedNode.ensureClassInitialized(DynamicHub.toClass(initializeBeforeInvoke));
         }
-        return functionPointer.invoke(false, null, args);
-    }
-
-    private RuntimeException newInstanceError() {
-        throw VMError.shouldNotReachHere("No SubstrateConstructorAccessor.newInstanceFunctionPointer for " + member);
+        return ((MethodInvokeFunctionPointer) expandSignature).invoke(null, args, directTarget);
     }
 }
