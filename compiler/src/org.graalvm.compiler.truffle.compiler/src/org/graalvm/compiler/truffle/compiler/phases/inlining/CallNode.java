@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil.InlineeReturnAction;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
@@ -82,6 +83,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     // Effectively final, populated only as part of expanded (unless root, root does not have
     // invoke)
     private Invoke invoke;
+    // Only used if PolyglotCompilerOptions.InliningUseSize is true
     private int graphSize;
 
     // Needs to be protected because of the @NodeInfo annotation
@@ -372,8 +374,17 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return trivial;
     }
 
-    public int getGraphSize() {
-        return graphSize;
+    public int getSize() {
+        if (getCallTree().useSize) {
+            return graphSize;
+        }
+        return ir.getNodeCount();
+    }
+
+    public void recalculateSize() {
+        if (getCallTree().useSize) {
+            graphSize = NodeCostUtil.computeGraphSize(ir);
+        }
     }
 
     public Object getPolicyData() {
@@ -432,10 +443,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                 child.collectInlinedTargets(inliningPlan);
             }
         }
-    }
-
-    public void setGraphSize(int computeGraphSize) {
-        graphSize = computeGraphSize;
     }
 
     public enum State {
