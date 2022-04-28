@@ -22,8 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.amd64;
+package com.oracle.svm.hosted;
 
+import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
