@@ -703,7 +703,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 WithExceptionNode replacee = (WithExceptionNode) insertBefore;
                 graph.replaceWithExceptionSplit(replacee, withExceptionNode);
                 AbstractBeginNode next = withExceptionNode.next();
-                if (withExceptionNode instanceof MemoryKill) {
+                if (MemoryKill.isMemoryKill(withExceptionNode)) {
                     /* Insert the correct memory killing begin node at the next edge. */
                     GraalError.guarantee(next instanceof BeginNode, "Not a BeginNode %s", next);
                     AbstractBeginNode beginNode = graph.add(new BeginNode());

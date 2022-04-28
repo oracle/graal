@@ -367,7 +367,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof OSRStartNode) {
             lowerOSRStartNode((OSRStartNode) n);
         } else if (n instanceof BytecodeExceptionNode) {
-            lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+                lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
+            }
         } else if (n instanceof InstanceOfNode) {
             InstanceOfNode instanceOfNode = (InstanceOfNode) n;
             if (graph.getGuardsStage().areDeoptsFixed()) {
@@ -487,9 +489,13 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof HubGetClassNode) {
             lowerHubGetClassNode((HubGetClassNode) n, tool);
         } else if (n instanceof KlassLayoutHelperNode) {
-            lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
+            }
         } else if (n instanceof KlassBeingInitializedCheckNode) {
-            getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
+            }
         } else if (n instanceof FastNotifyNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 objectSnippets.lower(n, tool);

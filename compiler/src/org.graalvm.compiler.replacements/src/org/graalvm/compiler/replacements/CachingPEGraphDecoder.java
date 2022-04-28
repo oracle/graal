@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -52,6 +53,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.Architecture;
@@ -109,6 +111,9 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
          */
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
             new ConvertDeoptimizeToGuardPhase().apply(graphToEncode, providers);
+            if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
+                new DominatorBasedGlobalValueNumberingPhase().apply(graphToEncode, providers);
+            }
         } catch (Throwable t) {
             throw debug.handle(t);
         }

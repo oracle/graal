@@ -101,6 +101,11 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
     @NodeIntrinsic
     public static native Object storeByte(Object object, long offset, byte value, @ConstantNodeParameter JavaKind kind, @ConstantNodeParameter LocationIdentity locationIdentity);
 
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return MemoryOrderMode.ordersMemoryAccesses(getMemoryOrder()) ? LocationIdentity.ANY_LOCATION : getLocationIdentity();
+    }
+
     public boolean needsBarrier() {
         return needsBarrier;
     }
@@ -156,11 +161,4 @@ public class RawStoreNode extends UnsafeAccessNode implements StateSplit, Lowera
         return stateAfter;
     }
 
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        if (ordersMemoryAccesses()) {
-            return LocationIdentity.any();
-        }
-        return getLocationIdentity();
-    }
 }

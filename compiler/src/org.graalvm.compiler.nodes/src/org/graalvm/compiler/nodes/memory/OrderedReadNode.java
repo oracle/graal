@@ -41,7 +41,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(nameTemplate = "OrderedRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public class OrderedReadNode extends ReadNode implements SingleMemoryKill {
+public class OrderedReadNode extends ReadNode {
     public static final NodeClass<OrderedReadNode> TYPE = NodeClass.create(OrderedReadNode.class);
     private final MemoryOrderMode memoryOrder;
 
@@ -67,11 +67,6 @@ public class OrderedReadNode extends ReadNode implements SingleMemoryKill {
     @Override
     public boolean canFloat() {
         return false;
-    }
-
-    @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
     }
 
     @Override

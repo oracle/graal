@@ -85,7 +85,7 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
-    public final LocationIdentity getKilledLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return killedLocationIdentity;
     }
 

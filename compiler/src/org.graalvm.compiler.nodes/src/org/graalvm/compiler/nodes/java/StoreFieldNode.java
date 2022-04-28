@@ -30,8 +30,6 @@ import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -39,10 +37,14 @@ import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -52,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * The {@code StoreFieldNode} represents a write to a static or instance field.
  */
 @NodeInfo(nameTemplate = "StoreField#{p#field/s}")
-public final class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtualizable, Canonicalizable {
+public final class StoreFieldNode extends AccessFieldNode implements StateSplit, Virtualizable, Canonicalizable, SingleMemoryKill {
     public static final NodeClass<StoreFieldNode> TYPE = NodeClass.create(StoreFieldNode.class);
 
     @Input ValueNode value;
@@ -98,6 +100,11 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
         super(TYPE, StampFactory.forVoid(), object, field, memoryOrder);
         this.value = value;
         this.stateAfter = stateAfter;
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return ordersMemoryAccesses() ? LocationIdentity.ANY_LOCATION : getLocationIdentity();
     }
 
     @Override

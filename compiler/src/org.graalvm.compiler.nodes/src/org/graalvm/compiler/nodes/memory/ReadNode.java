@@ -72,7 +72,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess, SingleMemoryKill {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -105,6 +105,14 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             // guard-type usages
             return this;
         }
+    }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        if (ordersMemoryAccesses()) {
+            return LocationIdentity.any();
+        }
+        return MemoryKill.NO_LOCATION;
     }
 
     @SuppressWarnings("try")

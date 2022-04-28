@@ -99,18 +99,39 @@ public class LocationSet {
     }
 
     public boolean contains(LocationIdentity locationIdentity) {
-        assert locationIdentity.isSingle();
-        assert locationIdentity.isMutable();
-        if (LocationIdentity.any().equals(firstLocation)) {
-            return true;
-        }
-        if (locationIdentity.equals(firstLocation)) {
-            return true;
+        if (locationIdentity.isMutable()) {
+            if (LocationIdentity.any().equals(firstLocation)) {
+                return true;
+            }
+            if (locationIdentity.equals(firstLocation)) {
+                return true;
+            }
         }
         if (list != null) {
             for (int i = 0; i < list.size(); ++i) {
                 LocationIdentity value = list.get(i);
                 if (locationIdentity.equals(value)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean containsOrOverlaps(LocationIdentity loc) {
+        if (contains(loc)) {
+            return true;
+        }
+        if (firstLocation == null) {
+            return false;
+        }
+        if (firstLocation.overlaps(loc)) {
+            return true;
+        }
+        if (list != null) {
+            for (int i = 0; i < list.size(); ++i) {
+                LocationIdentity value = list.get(i);
+                if (value.overlaps(loc)) {
                     return true;
                 }
             }
