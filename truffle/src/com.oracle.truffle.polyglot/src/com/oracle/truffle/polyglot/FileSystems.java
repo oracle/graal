@@ -108,6 +108,10 @@ final class FileSystems {
         return new LanguageHomeFileSystem(newDefaultFileSystem(), fileSystem);
     }
 
+    static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+        return new ReadOnlyFileSystem(fileSystem);
+    }
+
     static FileSystem newNoIOFileSystem() {
         return new DeniedIOFileSystem();
     }
@@ -1085,48 +1089,48 @@ final class FileSystems {
     private static final class LanguageHomeFileSystem implements PolyglotFileSystem {
 
         private final FileSystem languageHomeFileSystem;
-        private final FileSystem customFileSystem;
+        private final FileSystem delegateFileSystem;
         private volatile Set<Path> languageHomes;
 
-        LanguageHomeFileSystem(FileSystem languageHomeFileSystem, FileSystem customFileSystem) {
+        LanguageHomeFileSystem(FileSystem languageHomeFileSystem, FileSystem delegateFileSystem) {
             this.languageHomeFileSystem = languageHomeFileSystem;
-            this.customFileSystem = customFileSystem;
+            this.delegateFileSystem = delegateFileSystem;
             Class<? extends Path> languageHomeFileSystemPathType = this.languageHomeFileSystem.parsePath("").getClass();
-            Class<? extends Path> customFileSystemPathType = customFileSystem.parsePath("").getClass();
+            Class<? extends Path> customFileSystemPathType = delegateFileSystem.parsePath("").getClass();
             if (languageHomeFileSystemPathType != customFileSystemPathType) {
                 throw new IllegalArgumentException("Given FileSystem must have the same Path type as the default FileSystem.");
             }
-            if (!languageHomeFileSystem.getSeparator().equals(customFileSystem.getSeparator())) {
+            if (!languageHomeFileSystem.getSeparator().equals(delegateFileSystem.getSeparator())) {
                 throw new IllegalArgumentException("Given FileSystem must use the same separator character as the default FileSystem.");
             }
-            if (!languageHomeFileSystem.getPathSeparator().equals(customFileSystem.getPathSeparator())) {
+            if (!languageHomeFileSystem.getPathSeparator().equals(delegateFileSystem.getPathSeparator())) {
                 throw new IllegalArgumentException("Given FileSystem must use the same path separator character as the default FileSystem.");
             }
         }
 
         @Override
         public boolean isInternal() {
-            return (customFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) customFileSystem).isInternal();
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).isInternal();
         }
 
         @Override
         public boolean hasAllAccess() {
-            return (customFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) customFileSystem).hasAllAccess();
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).hasAllAccess();
         }
 
         @Override
         public boolean hasNoAccess() {
-            return (customFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) customFileSystem).hasNoAccess();
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).hasNoAccess();
         }
 
         @Override
         public Path parsePath(URI uri) {
-            return customFileSystem.parsePath(uri);
+            return delegateFileSystem.parsePath(uri);
         }
 
         @Override
         public Path parsePath(String path) {
-            return customFileSystem.parsePath(path);
+            return delegateFileSystem.parsePath(path);
         }
 
         @Override
@@ -1135,7 +1139,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 languageHomeFileSystem.checkAccess(absolutePath, modes, linkOptions);
             } else {
-                customFileSystem.checkAccess(path, modes, linkOptions);
+                delegateFileSystem.checkAccess(path, modes, linkOptions);
             }
         }
 
@@ -1145,7 +1149,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 languageHomeFileSystem.createDirectory(absolutePath, attrs);
             } else {
-                customFileSystem.createDirectory(dir, attrs);
+                delegateFileSystem.createDirectory(dir, attrs);
             }
         }
 
@@ -1155,7 +1159,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 languageHomeFileSystem.delete(absolutePath);
             } else {
-                customFileSystem.delete(path);
+                delegateFileSystem.delete(path);
             }
         }
 
@@ -1165,7 +1169,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.newByteChannel(absolutePath, options, attrs);
             } else {
-                return customFileSystem.newByteChannel(path, options, attrs);
+                return delegateFileSystem.newByteChannel(path, options, attrs);
             }
         }
 
@@ -1175,13 +1179,13 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.newDirectoryStream(absolutePath, filter);
             } else {
-                return customFileSystem.newDirectoryStream(dir, filter);
+                return delegateFileSystem.newDirectoryStream(dir, filter);
             }
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return customFileSystem.toAbsolutePath(path);
+            return delegateFileSystem.toAbsolutePath(path);
         }
 
         @Override
@@ -1190,7 +1194,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.toRealPath(path);
             } else {
-                return customFileSystem.toRealPath(path);
+                return delegateFileSystem.toRealPath(path);
             }
         }
 
@@ -1200,7 +1204,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.readAttributes(absolutePath, attributes, options);
             } else {
-                return customFileSystem.readAttributes(path, attributes, options);
+                return delegateFileSystem.readAttributes(path, attributes, options);
             }
         }
 
@@ -1210,7 +1214,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 languageHomeFileSystem.setAttribute(absolutePath, attribute, value, options);
             } else {
-                customFileSystem.setAttribute(path, attribute, value, options);
+                delegateFileSystem.setAttribute(path, attribute, value, options);
             }
         }
 
@@ -1223,7 +1227,7 @@ final class FileSystems {
             if (linkInHome && existingInHome) {
                 languageHomeFileSystem.createLink(absoluteLink, absoluteExisting);
             } else if (!linkInHome && !existingInHome) {
-                customFileSystem.createLink(link, existing);
+                delegateFileSystem.createLink(link, existing);
             } else {
                 throw new IOException("Cross file system linking is not supported.");
             }
@@ -1238,7 +1242,7 @@ final class FileSystems {
             if (linkInHome && targetInHome) {
                 languageHomeFileSystem.createSymbolicLink(absoluteLink, target);
             } else if (!linkInHome && !targetInHome) {
-                customFileSystem.createSymbolicLink(link, target);
+                delegateFileSystem.createSymbolicLink(link, target);
             } else {
                 throw new IOException("Cross file system linking is not supported.");
             }
@@ -1250,24 +1254,24 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.readSymbolicLink(absolutePath);
             } else {
-                return customFileSystem.readSymbolicLink(link);
+                return delegateFileSystem.readSymbolicLink(link);
             }
         }
 
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
             languageHomeFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
-            customFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
+            delegateFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
         }
 
         @Override
         public String getSeparator() {
-            return customFileSystem.getSeparator();
+            return delegateFileSystem.getSeparator();
         }
 
         @Override
         public String getPathSeparator() {
-            return customFileSystem.getPathSeparator();
+            return delegateFileSystem.getPathSeparator();
         }
 
         @Override
@@ -1276,7 +1280,7 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.getMimeType(absolutePath);
             } else {
-                return customFileSystem.getMimeType(path);
+                return delegateFileSystem.getMimeType(path);
             }
         }
 
@@ -1286,13 +1290,13 @@ final class FileSystems {
             if (inLanguageHome(absolutePath)) {
                 return languageHomeFileSystem.getEncoding(absolutePath);
             } else {
-                return customFileSystem.getEncoding(path);
+                return delegateFileSystem.getEncoding(path);
             }
         }
 
         @Override
         public Path getTempDirectory() {
-            return customFileSystem.getTempDirectory();
+            return delegateFileSystem.getTempDirectory();
         }
 
         @Override
@@ -1304,7 +1308,7 @@ final class FileSystems {
             if (path1InHome && path2InHome) {
                 return languageHomeFileSystem.isSameFile(absolutePath1, absolutePath2);
             } else if (!path1InHome && !path2InHome) {
-                return customFileSystem.isSameFile(path1, path2);
+                return delegateFileSystem.isSameFile(path1, path2);
             } else {
                 return false;
             }
@@ -1314,11 +1318,22 @@ final class FileSystems {
             if (path.isAbsolute()) {
                 return path;
             }
-            boolean needsToNormalize = !isNormalized(path);
             Path absolutePath = languageHomeFileSystem.toAbsolutePath(path);
-            return needsToNormalize ? absolutePath.normalize() : absolutePath;
+            if (isNormalized(path)) {
+                return absolutePath;
+            } else {
+                return absolutePath.normalize();
+
+            }
         }
 
+        /**
+         * Checks if the {@code path} is normalized. The path is normalized if it does not contain
+         * "." nor ".." path elements. In most cases the path coming from the {@link TruffleFile} is
+         * already normalized. The {@link Path#normalize()} calls are expensive even on normalized
+         * paths. It's faster to check if the normalization is needed and normalize only
+         * non-normalized paths.
+         */
         private static boolean isNormalized(Path path) {
             for (Path name : path) {
                 String strName = name.toString();
@@ -1365,15 +1380,20 @@ final class FileSystems {
      */
     private static class ReadOnlyFileSystem extends DeniedIOFileSystem {
 
-        private final FileSystem delegate;
+        private final FileSystem delegateFileSystem;
 
         ReadOnlyFileSystem(FileSystem fileSystem) {
-            this.delegate = fileSystem;
+            this.delegateFileSystem = fileSystem;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).isInternal();
         }
 
         @Override
         public boolean hasNoAccess() {
-            return false;
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).hasNoAccess();
         }
 
         @Override
@@ -1381,7 +1401,7 @@ final class FileSystems {
             if (modes.contains(AccessMode.WRITE)) {
                 throw new IOException("Read-only file");
             } else {
-                delegate.checkAccess(path, modes, linkOptions);
+                delegateFileSystem.checkAccess(path, modes, linkOptions);
             }
         }
 
@@ -1399,54 +1419,54 @@ final class FileSystems {
             if (write) {
                 return super.newByteChannel(inPath, options, attrs);
             } else {
-                return delegate.newByteChannel(inPath, options, attrs);
+                return delegateFileSystem.newByteChannel(inPath, options, attrs);
             }
         }
 
         @Override
         public DirectoryStream<Path> newDirectoryStream(Path dir, DirectoryStream.Filter<? super Path> filter) throws IOException {
-            return delegate.newDirectoryStream(dir, filter);
+            return delegateFileSystem.newDirectoryStream(dir, filter);
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            return delegate.readAttributes(path, attributes, options);
+            return delegateFileSystem.readAttributes(path, attributes, options);
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return delegate.toAbsolutePath(path);
+            return delegateFileSystem.toAbsolutePath(path);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            return delegate.toAbsolutePath(link);
+            return delegateFileSystem.toAbsolutePath(link);
         }
 
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
-            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+            delegateFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
             super.setCurrentWorkingDirectory(currentWorkingDirectory);
         }
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            return delegate.toRealPath(path, linkOptions);
+            return delegateFileSystem.toRealPath(path, linkOptions);
         }
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
-            return delegate.isSameFile(path1, path2, options);
+            return delegateFileSystem.isSameFile(path1, path2, options);
         }
 
         @Override
         public String getMimeType(Path path) {
-            return delegate.getMimeType(path);
+            return delegateFileSystem.getMimeType(path);
         }
 
         @Override
         public Charset getEncoding(Path path) {
-            return delegate.getEncoding(path);
+            return delegateFileSystem.getEncoding(path);
         }
     }
 
@@ -1456,36 +1476,41 @@ final class FileSystems {
      */
     private static final class PathOperationsOnlyFileSystem extends DeniedIOFileSystem {
 
-        private final FileSystem delegate;
+        private final FileSystem delegateFileSystem;
 
-        PathOperationsOnlyFileSystem(FileSystem delegate) {
-            this.delegate = delegate;
+        PathOperationsOnlyFileSystem(FileSystem fileSystem) {
+            this.delegateFileSystem = fileSystem;
+        }
+
+        @Override
+        public boolean isInternal() {
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).isInternal();
         }
 
         @Override
         public boolean hasNoAccess() {
-            return false;
+            return (delegateFileSystem instanceof PolyglotFileSystem) && ((PolyglotFileSystem) delegateFileSystem).hasNoAccess();
         }
 
         @Override
         public Path toAbsolutePath(Path path) {
-            return delegate.toAbsolutePath(path);
+            return delegateFileSystem.toAbsolutePath(path);
         }
 
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
-            delegate.setCurrentWorkingDirectory(currentWorkingDirectory);
+            delegateFileSystem.setCurrentWorkingDirectory(currentWorkingDirectory);
             super.setCurrentWorkingDirectory(currentWorkingDirectory);
         }
 
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
-            return delegate.toRealPath(path, linkOptions);
+            return delegateFileSystem.toRealPath(path, linkOptions);
         }
 
         @Override
         public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
-            return delegate.isSameFile(path1, path2, options);
+            return delegateFileSystem.isSameFile(path1, path2, options);
         }
     }
 

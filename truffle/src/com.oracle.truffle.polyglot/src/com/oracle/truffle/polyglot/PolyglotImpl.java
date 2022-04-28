@@ -465,6 +465,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+        return FileSystems.newReadOnlyFileSystem(fileSystem);
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
         return ProcessHandlers.newDefaultProcessHandler();
     }

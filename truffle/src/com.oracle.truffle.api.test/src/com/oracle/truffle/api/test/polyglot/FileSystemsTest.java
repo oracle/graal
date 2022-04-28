@@ -147,6 +147,7 @@ public class FileSystemsTest {
     private static final String NO_IO = "No IO";
     private static final String NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE = "No IO under language home - public file";
     private static final String NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE = "No IO under language home - internal file";
+    private static final String READ_ONLY = "Read Only";
     private static final String CONDITIONAL_IO_READ_WRITE_PART = "Conditional IO - read/write part";
     private static final String CONDITIONAL_IO_READ_ONLY_PART = "Conditional IO - read only part";
     private static final String CONDITIONAL_IO_PRIVATE_PART = "Conditional IO - private part";
@@ -171,6 +172,7 @@ public class FileSystemsTest {
                         NO_IO,
                         NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE,
                         NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
+                        READ_ONLY,
                         CONDITIONAL_IO_READ_WRITE_PART,
                         CONDITIONAL_IO_READ_ONLY_PART,
                         CONDITIONAL_IO_PRIVATE_PART,
@@ -212,6 +214,14 @@ public class FileSystemsTest {
         setCwd(ctx, privateDir, privateDir);
         cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,
                         new Configuration(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE, ctx, privateDir, privateDir, fullIO, true, true, false, false, true, (env, p) -> env.getInternalTruffleFile(p)));
+
+        // Read Only
+        accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
+                        fullIO);
+        ctx = Context.newBuilder(LANGUAGE_ID).allowIO(true).fileSystem(FileSystem.newReadOnlyFileSystem(fullIO)).build();
+        setCwd(ctx, accessibleDir, null);
+        cfgs.put(READ_ONLY, new Configuration(READ_ONLY, ctx, accessibleDir, fullIO, true, true, false, true));
+
         // Checked IO
         accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);

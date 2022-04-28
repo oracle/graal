@@ -1018,6 +1018,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public ProcessHandler newDefaultProcessHandler() {
             throw noPolyglotImplementationFound();
         }

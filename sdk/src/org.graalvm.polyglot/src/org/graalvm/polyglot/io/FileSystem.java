@@ -487,18 +487,33 @@ public interface FileSystem {
     }
 
     /**
-     * Decorates given {@code fileSystem} by an implementation that forwards access to files in the
-     * language home to the default file system. The method is intended to be used by custom
+     * Decorates the given {@code fileSystem} by an implementation that forwards access to files in
+     * the language home to the default file system. The method is intended to be used by custom
      * filesystem implementations with non default storage to allow guest languages to access files
      * in the languages homes. As the returned filesystem uses a default file system to access files
-     * in the language home, the {@code fileSystem} has to use the same {@link Path} type as the
+     * in the language home, the {@code fileSystem} has to use the same {@link Path} type,
+     * {@link #getSeparator() separator} and {@link #getPathSeparator() path separator} as the
      * {@link #newDefaultFileSystem() default filesystem}.
      *
-     * @throws IllegalArgumentException when {@code fileSystem} does not use the same {@link Path}
-     *             type as the {@link #newDefaultFileSystem() default file system}.
+     * @throws IllegalArgumentException when the {@code fileSystem} does not use the same
+     *             {@link Path} type or has a different {@link #getSeparator() separator} or
+     *             {@link #getPathSeparator() path separator} as the {@link #newDefaultFileSystem()
+     *             default file system}.
      * @since 22.2
      */
     static FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
         return IOHelper.IMPL.allowLanguageHomeAccess(fileSystem);
+    }
+
+    /**
+     * Decorates the given {@code fileSystem} by an implementation that makes the passed
+     * {@code fileSystem} read-only by forbidding all write operations. This method can be used to
+     * make an existing file system, such as the {@link #newDefaultFileSystem() default filesystem},
+     * read-only.
+     *
+     * @since 22.2
+     */
+    static FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+        return IOHelper.IMPL.newReadOnlyFileSystem(fileSystem);
     }
 }

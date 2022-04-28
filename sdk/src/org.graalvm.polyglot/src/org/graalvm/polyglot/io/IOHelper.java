@@ -82,7 +82,7 @@ final class IOHelper {
         Path targetReal;
         try {
             targetReal = targetFileSystem.toRealPath(target, LinkOption.NOFOLLOW_LINKS);
-        } catch (IOException doesNotExist) {
+        } catch (NoSuchFileException doesNotExist) {
             // Target does not exist
             targetReal = target;
         }
