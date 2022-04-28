@@ -79,6 +79,15 @@ public class JDKInitializationFeature implements Feature {
 
         rci.rerunInitialization("sun.net.PortConfig", "Calls PortConfig.getLower0() and PortConfig.getUpper0()");
 
+        /*
+         * In the cases that java.io.ObjectInputFilter$Config#serialFilter field is needed, this
+         * class needs to be reinitialized. Field is initialized in the static block of the Config
+         * class in runtime, so we need to reinitialize class in runtime. This change also makes us
+         * create substitution for jdkSerialFilterFactory in the
+         * com.oracle.svm.core.jdk.Target_jdk_internal_util_StaticProperty.
+         */
+        rci.rerunInitialization("java.io.ObjectInputFilter$Config", "Field filter have to be initialized at runtime");
+
         rci.rerunInitialization("sun.nio.ch.DevPollArrayWrapper", "Calls IOUtil.fdLimit()");
         rci.rerunInitialization("sun.nio.ch.EPoll", "Calls EPoll.eventSize(), EPoll.eventsOffset() and EPoll.dataOffset()");
         rci.rerunInitialization("sun.nio.ch.EPollSelectorImpl", "Calls IOUtil.fdLimit()");
