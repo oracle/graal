@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.reflect.proxy;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.reflect.serialize.hosted.SerializationFeature;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -113,6 +115,10 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
              * class loader hierarchy.
              */
             PredefinedClassesSupport.registerClass(clazz);
+
+            if (Serializable.class.isAssignableFrom(clazz)) {
+                SerializationFeature.registerProxyClassForSerialization(clazz);
+            }
 
             /*
              * The constructor of the generated dynamic proxy class that takes a

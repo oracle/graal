@@ -109,6 +109,8 @@ public final class AccessAdvisor {
         accessWithoutCallerFilter.addOrGetChildren("[Ljava.lang.String;", ConfigurationFilter.Inclusion.Exclude);
         // ^ String[]: for command-line argument arrays created before Java main method is called
         accessWithoutCallerFilter.removeRedundantNodes();
+        // This is needed for proxy class deserialization
+        internalCallerFilter.addOrGetChildren("java.io.ObjectInputStream", ConfigurationFilter.Inclusion.Include);
     }
 
     /*

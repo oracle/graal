@@ -99,6 +99,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticFeature
 public class SerializationFeature implements Feature {
     static final HashSet<Class<?>> capturingClasses = new HashSet<>();
+    private static final HashSet<Class<?>> proxyClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 
@@ -232,6 +233,10 @@ public class SerializationFeature implements Feature {
             }
         }
 
+        for (Class<?> proxyClass : proxyClasses) {
+            serializationBuilder.registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
+        }
+
         serializationBuilder.flushConditionalConfiguration(access);
         /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
@@ -247,6 +252,10 @@ public class SerializationFeature implements Feature {
         serializationBuilder.afterAnalysis();
     }
 
+    public static void registerProxyClassForSerialization(Class<?> proxyClass) {
+        proxyClasses.add(proxyClass);
+    }
+    
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         if (ImageSingletons.contains(FallbackFeature.class)) {
