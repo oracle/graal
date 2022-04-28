@@ -25,7 +25,6 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
@@ -39,6 +38,7 @@ import com.oracle.truffle.sl.nodes.expression.SLMulNode;
 import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
 import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
+import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.parser.operations.SLOperationsVisitor;
 import com.oracle.truffle.sl.runtime.SLContext;
@@ -61,6 +61,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLWritePropertyNode.class)
 @OperationProxy(SLUnboxNode.class)
 @OperationProxy(SLFunctionLiteralNode.class)
+@OperationProxy(SLToBooleanNode.class)
 public class SLOperations {
 
     public static void parse(SLLanguage language, Source source, SLOperationsBuilder builder) {
@@ -147,20 +148,6 @@ public class SLOperations {
                 /* Execute was not successful. */
                 throw SLUndefinedNameException.undefinedFunction(node, bci, function);
             }
-        }
-    }
-
-    @Operation
-    @TypeSystemReference(SLTypes.class)
-    public static class SLConvertToBoolean {
-        @Specialization
-        public static boolean doBoolean(boolean obj) {
-            return obj;
-        }
-
-        @Fallback
-        public static void fallback(Object obj, @Bind("this") Node node, @Bind("$bci") int bci) {
-            throw SLException.typeError(node, bci, obj);
         }
     }
 }

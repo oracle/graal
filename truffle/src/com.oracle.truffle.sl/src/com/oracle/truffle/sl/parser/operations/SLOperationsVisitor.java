@@ -227,9 +227,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.emitLabel(continueLabel);
         b.beginWhile();
 
-        b.beginSLConvertToBoolean();
+        b.beginSLToBooleanOperation();
         visit(ctx.condition);
-        b.endSLConvertToBoolean();
+        b.endSLToBooleanOperation();
 
         visit(ctx.body);
         b.endWhile();
@@ -250,18 +250,18 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         if (ctx.alt == null) {
             b.beginIfThen();
 
-            b.beginSLConvertToBoolean();
+            b.beginSLToBooleanOperation();
             visit(ctx.condition);
-            b.endSLConvertToBoolean();
+            b.endSLToBooleanOperation();
 
             visit(ctx.then);
             b.endIfThen();
         } else {
             b.beginIfThenElse();
 
-            b.beginSLConvertToBoolean();
+            b.beginSLToBooleanOperation();
             visit(ctx.condition);
-            b.endSLConvertToBoolean();
+            b.endSLToBooleanOperation();
 
             visit(ctx.then);
 
@@ -310,9 +310,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void logicalOrMiddle(int localIdx) {
         b.endStoreLocal();
         b.beginConditional();
-        b.beginSLConvertToBoolean();
+        b.beginSLToBooleanOperation();
         b.emitLoadLocal(localIdx);
-        b.endSLConvertToBoolean();
+        b.endSLToBooleanOperation();
         b.emitLoadLocal(localIdx);
     }
 
@@ -372,9 +372,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void logicalAndMiddle(int localIdx) {
         b.endStoreLocal();
         b.beginConditional();
-        b.beginSLConvertToBoolean();
+        b.beginSLToBooleanOperation();
         b.emitLoadLocal(localIdx);
-        b.endSLConvertToBoolean();
+        b.endSLToBooleanOperation();
     }
 
     private void logicalAndEnd(int localIdx) {

@@ -27,7 +27,7 @@
     "specializations": ["Boolean"],
     "id": "q-SLConvertToBoolean-Boolean",
     "type": "Quicken",
-    "operation": "SLConvertToBoolean"
+    "operation": "SLToBooleanOperation"
   },
   {
     "specializations": ["LessOrEqual0"],
