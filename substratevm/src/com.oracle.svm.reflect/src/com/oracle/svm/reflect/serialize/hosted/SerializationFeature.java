@@ -519,9 +519,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private static void registerMethods(Class<?> serializationTargetClass) {
         RuntimeReflection.register(serializationTargetClass.getDeclaredMethods());
-        // computeDefaultSUID will be reflectively called at runtime to verify class consistency
-        Method computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
-        RuntimeReflection.register(computeDefaultSUID);
+        if (!serializationTargetClass.getName().contains("$Proxy")) {
+            // computeDefaultSUID will be reflectively called at runtime to verify class consistency
+            Method computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
+            RuntimeReflection.register(computeDefaultSUID);
+        }
     }
 
     private static void registerFields(Class<?> serializationTargetClass) {
