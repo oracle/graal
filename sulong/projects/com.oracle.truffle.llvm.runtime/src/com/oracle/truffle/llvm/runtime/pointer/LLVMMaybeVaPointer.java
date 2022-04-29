@@ -50,7 +50,6 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
-import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
@@ -99,10 +98,6 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         this.allocaNode = allocaNode;
         this.allocVAPointerAssumption = allocaNode.getAssumption();
         this.address = address;
-    }
-
-    public LLVMManagedPointer getVaList() {
-        return vaList;
     }
 
     @ExportMessage

@@ -345,7 +345,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     @ExportMessage
     static class Copy {
         @Specialization(guards = {"!source.isNativized()", "dest.realArguments == null"})
-        static void copyToManagedFromNative(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, Frame frame,
+        static void copyToManagedFromNative(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, @SuppressWarnings("unused") Frame frame,
                         @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode) {
             /* @formatter:off
              *
@@ -364,7 +364,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         @Specialization
-        static void copyManaged(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, Frame frame) {
+        static void copyManaged(LLVMDarwinAarch64VaListStorage source, LLVMDarwinAarch64VaListStorage dest, @SuppressWarnings("unused") Frame frame) {
             dest.realArguments = source.realArguments;
             dest.numberOfExplicitArguments = source.numberOfExplicitArguments;
             dest.vaListStackPtr = source.vaListStackPtr;
@@ -374,7 +374,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(limit = "1")
         @GenerateAOT.Exclude // Truffle DSL bug?
-        static void copyManagedToMaybeVaPointer(LLVMDarwinAarch64VaListStorage source, LLVMMaybeVaPointer dest, Frame frame,
+        static void copyManagedToMaybeVaPointer(LLVMDarwinAarch64VaListStorage source, LLVMMaybeVaPointer dest, @SuppressWarnings("unused") Frame frame,
                         @CachedLibrary("dest") LLVMManagedWriteLibrary writeLibrary) {
             writeLibrary.writeGenericI64(dest, 0, source);
         }
