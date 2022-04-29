@@ -284,6 +284,12 @@ public abstract class IntegerLowerThanNode extends CompareNode {
          * {@link PiNode} inputs and {@link AddNode} with a constant, into a pattern with a single
          * {@link PiNode}.
          *
+         * <h1>Semantics</h1>
+         *
+         * The pattern {@code PI1(value) < PI2(value + c)} is replaced by
+         * {@code PI*(value) < PI*(value) + c}, where the stamp of {@code PI*} is {@code PI1(value)}
+         * improved by {@code PI2(value + c) - c}.
+         *
          * <h2>Input Subgraph</h2>
          *
          * <pre>
@@ -341,8 +347,10 @@ public abstract class IntegerLowerThanNode extends CompareNode {
          * @param piWithAdd a node with the pattern {@code }PiNode(AddNode(value, c))}
          * @param mirror {@code true} if the {@link AddNode} is on {@linkplain #getY() RHS} of this
          *            {@link IntegerLowerThanNode}.
+         * @return a {@link LogicConstantNode} or {@code null} if the result cannot be proven
+         *         constant
          */
-        private LogicNode canonicalizePiXLowerPiXPlusC(PiNode piValue, PiNode piWithAdd, boolean mirror, NodeView view) {
+        private LogicConstantNode canonicalizePiXLowerPiXPlusC(PiNode piValue, PiNode piWithAdd, boolean mirror, NodeView view) {
             AddNode originalWithAdd = (AddNode) piWithAdd.getOriginalNode();
             // piValue <- value
             // piWithAdd <- value + c
