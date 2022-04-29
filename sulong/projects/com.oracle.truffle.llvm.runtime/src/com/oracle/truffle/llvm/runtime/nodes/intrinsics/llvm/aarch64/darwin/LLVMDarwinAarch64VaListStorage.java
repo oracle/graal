@@ -391,7 +391,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         public abstract Object execute(Object pointer);
 
-        protected static LLVMDarwinAarch64VaListStorage createWrapper(LLVMPointer p, boolean isGlobal) {
+        protected static LLVMDarwinAarch64VaListStorage createWrapper(LLVMPointer p) {
             LLVMDarwinAarch64VaListStorage storage = new LLVMDarwinAarch64VaListStorage();
             storage.nativized = true;
             storage.vaListStackPtr = p;
@@ -400,7 +400,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = "!isManagedPointer(p)")
         protected Object createNativeWrapper(LLVMPointer p) {
-            return createWrapper(p, true);
+            return createWrapper(p);
         }
 
         @Specialization(limit = "3", guards = {"isManagedPointer(p)", "isGlobal(p)"})
@@ -412,7 +412,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             if (ret instanceof LLVMDarwinAarch64VaListStorage) {
                 return ret;
             }
-            return createWrapper(p, true);
+            return createWrapper(p);
         }
 
         @Specialization(guards = "isManagedPointer(p)")
