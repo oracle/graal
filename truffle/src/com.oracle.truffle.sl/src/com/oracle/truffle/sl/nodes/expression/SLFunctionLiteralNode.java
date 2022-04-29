@@ -65,24 +65,30 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 public abstract class SLFunctionLiteralNode extends SLExpressionNode {
 
     @SuppressWarnings("unused")
-    @Specialization(guards = "lang.isSingleContext()")
-    public static SLFunction doSingleContext(TruffleString functionName,
-                    @Bind("getLanguage(this)") SLLanguage lang,
-                    @Cached("lookupFunction(functionName, this)") SLFunction result) {
-        assert result.getName().equals(functionName) : "functionName should be a compile-time constant";
-        return result;
+    @Specialization
+    public static SLFunction perform(
+                    TruffleString functionName,
+                    @Cached("lookupFunctionCached(functionName, this)") SLFunction result,
+                    @Bind("this") Node node) {
+        if (result == null) {
+            // multi-context case, perform the lookup every time
+            return lookupFunction(functionName, node);
+        } else {
+            // single-context case, make sure the function name does not change
+            assert result.getName().equals(functionName) : "function name should be compilation constant";
+            return result;
+        }
     }
 
-    @Specialization(replaces = "doSingleContext")
-    public static SLFunction doMultiContext(TruffleString functionName, @Bind("this") Node node) {
-        return lookupFunction(functionName, node);
-    }
-
-    public static SLFunction lookupFunction(TruffleString functionName, Node node) {
+    private static SLFunction lookupFunction(TruffleString functionName, Node node) {
         return SLContext.get(node).getFunctionRegistry().lookup(functionName, true);
     }
 
-    public static SLLanguage getLanguage(Node node) {
-        return SLLanguage.get(node);
+    public static SLFunction lookupFunctionCached(TruffleString functionName, Node node) {
+        if (SLLanguage.get(node).isSingleContext()) {
+            return lookupFunction(functionName, node);
+        } else {
+            return null;
+        }
     }
 }

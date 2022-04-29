@@ -42,7 +42,7 @@
     "operation": "SLInvokeOperation"
   },
   {
-    "specializations": ["SingleContext"],
+    "specializations": ["Perform"],
     "id": "q-SLFunctionLiteralOperation-SingleContext",
     "type": "Quicken",
     "operation": "SLFunctionLiteralOperation"
