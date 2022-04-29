@@ -360,7 +360,7 @@ public class JDTCompiler extends AbstractCompiler {
     }
 
     @Override
-    public File getEnclosingFile(ProcessingEnvironment processingEnv, Element element) {
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
 
         boolean isIde = false;
         Class<?> c = processingEnv.getClass();

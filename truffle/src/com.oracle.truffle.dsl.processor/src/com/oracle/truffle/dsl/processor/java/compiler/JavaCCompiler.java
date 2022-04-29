@@ -146,7 +146,7 @@ public class JavaCCompiler extends AbstractCompiler {
     private static Method metCompilationUnitTree_getSourceFile = null;
 
     @Override
-    public File getEnclosingFile(ProcessingEnvironment processingEnv, Element element) {
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
         try {
             ClassLoader cl = element.getClass().getClassLoader();
 

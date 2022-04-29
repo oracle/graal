@@ -90,7 +90,7 @@ public class GeneratedCompiler extends AbstractCompiler {
     }
 
     @Override
-    public File getEnclosingFile(ProcessingEnvironment processingEnv, Element element) {
+    public File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element) {
         throw new UnsupportedOperationException("generated element");
     }
 

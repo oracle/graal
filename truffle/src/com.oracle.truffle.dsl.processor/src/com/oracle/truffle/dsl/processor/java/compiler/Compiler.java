@@ -54,5 +54,5 @@ public interface Compiler {
 
     void emitDeprecationWarning(ProcessingEnvironment environment, Element element);
 
-    File getEnclosingFile(ProcessingEnvironment processingEnv, Element element);
+    File getEnclosingSourceFile(ProcessingEnvironment processingEnv, Element element);
 }

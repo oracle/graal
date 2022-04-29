@@ -166,7 +166,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
     }
 
     private File getDecisionsFile(TypeElement element, String path) {
-        File file = CompilerFactory.getCompiler(element).getEnclosingFile(processingEnv, element);
+        File file = CompilerFactory.getCompiler(element).getEnclosingSourceFile(processingEnv, element);
         String parent = file.getParent();
         File target = new File(parent, path);
 
