@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
