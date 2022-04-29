@@ -75,6 +75,15 @@
       },
       "environment": {
         "ECLIPSE_EXE": "$ECLIPSE/eclipse"
+      },
+
+      "COMMENT.eclipse_org": [
+        "Coordinates for downloading same version as above directly from eclipse.org (used by GitHub actions).",
+        "Template URL: https://archive.eclipse.org/eclipse/downloads/drops4/R-<eclipse_org.version>-<eclipse_org.timestamp>/eclipse-SDK-<eclipse_org.version>-linux-gtk-x86_64.tar.gz"
+      ],
+      "eclipse_org": {
+        "version": "4.14",
+        "timestamp": "201912100610"
       }
     },
     "jdt": {
