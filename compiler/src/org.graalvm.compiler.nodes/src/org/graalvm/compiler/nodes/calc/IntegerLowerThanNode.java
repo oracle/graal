@@ -423,8 +423,18 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             return null;
         }
 
+        /**
+         * Return {@code true} if the {@code a + b} can overflow w.r.t.
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerLessThanNode.LessThanOp signed} or
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerBelowNode.BelowOp unsigned} semantics.
+         */
         protected abstract boolean addCanOverflow(IntegerStamp a, IntegerStamp b);
 
+        /**
+         * Return {@code true} if the {@code a << shift} can overflow w.r.t.
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerLessThanNode.LessThanOp signed} or
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerBelowNode.BelowOp unsigned} semantics.
+         */
         protected abstract boolean leftShiftCanOverflow(IntegerStamp a, long shift);
 
         /**
