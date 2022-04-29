@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorageFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -71,6 +72,11 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
     @Override
     public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
         return new LLVMMaybeVaPointer(allocaNode, vaListStackPtr);
+    }
+
+    @Override
+    public Object createActualVAListStorage() {
+        return new LLVMX86_64_WinVaListStorage();
     }
 
     @Override

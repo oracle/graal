@@ -34,16 +34,9 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
@@ -59,7 +52,7 @@ public abstract class LLVMVAArg extends LLVMExpressionNode {
     }
 
     @Specialization
-    protected Object vaArg(VirtualFrame frame, LLVMPointer targetAddress,
+    protected Object vaArg(VirtualFrame frame, LLVMManagedPointer targetAddress,
                     @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
                     @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         return vaListLibrary.shift(wrapperFactory.execute(targetAddress), type, frame);

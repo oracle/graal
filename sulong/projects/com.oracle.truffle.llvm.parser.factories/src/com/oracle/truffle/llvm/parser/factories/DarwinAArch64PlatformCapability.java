@@ -83,6 +83,11 @@ final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<Darw
     }
 
     @Override
+    public Object createActualVAListStorage() {
+        return new LLVMDarwinAarch64VaListStorage();
+    }
+
+    @Override
     public Type getVAListType() {
         return LLVMDarwinAarch64VaListStorage.VA_LIST_TYPE;
     }

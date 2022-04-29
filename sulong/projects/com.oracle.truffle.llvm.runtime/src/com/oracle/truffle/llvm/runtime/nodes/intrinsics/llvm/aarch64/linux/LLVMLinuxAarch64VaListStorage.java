@@ -58,7 +58,6 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.Aarch64BitVarArgs;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
@@ -351,7 +350,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = {"!vaList.isNativized()"})
         static void initializeManaged(LLVMLinuxAarch64VaListStorage vaList, Object[] args, int numOfExpArgs, Frame frame,
-                        @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander,
+                        @Cached.Exclusive @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             vaList.originalArgs = args;
 
@@ -492,7 +491,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached LLVMPointerOffsetStoreNode gpSaveAreaStore,
                         @Cached LLVMPointerOffsetStoreNode fpSaveAreaStore,
                         @Cached NativeProfiledMemMove memMove,
-                        @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander) {
+                        @Cached.Exclusive @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander) {
 
             initializeManaged(vaList, realArgs, numOfExpArgs, frame, argsExpander, stackAllocationNode);
             initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, gpSaveAreaStore, fpSaveAreaStore, vaList.vaListStackPtr, vaList.gpOffset, vaList.fpOffset,
@@ -891,7 +890,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached NativeProfiledMemMove memMove,
                         @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander) {
 
-                Object[][][] expansionsOutArg = new Object[1][][];
+            Object[][][] expansionsOutArg = new Object[1][][];
 
             Object[] realArguments = argsExpander.expand(originalArgs, expansionsOutArg);
             Object[][] expansions = expansionsOutArg[0];

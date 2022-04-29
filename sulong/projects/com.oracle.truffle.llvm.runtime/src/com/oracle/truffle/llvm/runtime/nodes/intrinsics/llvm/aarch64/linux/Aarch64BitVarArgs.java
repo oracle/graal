@@ -27,9 +27,9 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux;
 
-public class Aarch64BitVarArgs {
+class Aarch64BitVarArgs {
     // see https://static.docs.arm.com/100986/0000/abi_sve_aapcs64_100986_0000_00_en.pdf
 
     public static final int OVERFLOW_ARG_AREA = 0;

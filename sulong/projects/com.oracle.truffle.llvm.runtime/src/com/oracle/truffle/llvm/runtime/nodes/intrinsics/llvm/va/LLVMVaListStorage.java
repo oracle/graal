@@ -211,7 +211,7 @@ public class LLVMVaListStorage implements TruffleObject {
         return ((ArrayType) type).getElementType();
     }
 
-    public static DataLayout findDataLayoutFromCurrentFrame() {
+    protected static DataLayout findDataLayoutFromCurrentFrame() {
         RootCallTarget callTarget = (RootCallTarget) Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
         return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
@@ -274,7 +274,7 @@ public class LLVMVaListStorage implements TruffleObject {
     public Object[] realArguments;
     protected int numberOfExplicitArguments;
 
-    public LLVMPointer vaListStackPtr;
+    protected LLVMPointer vaListStackPtr;
     protected boolean nativized;
 
     protected LLVMVaListStorage(LLVMPointer vaListStackPtr) {
@@ -1205,6 +1205,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
             private static final ArgumentExpander UNCACHED_UNPACK32 = LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(true);
             private static final ArgumentExpander UNCACHED_NO_UNPACK32 = LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(false);
+
             public static ArgumentExpander getUncached(boolean unpack32) {
                 return unpack32 ? UNCACHED_UNPACK32 : UNCACHED_NO_UNPACK32;
             }
