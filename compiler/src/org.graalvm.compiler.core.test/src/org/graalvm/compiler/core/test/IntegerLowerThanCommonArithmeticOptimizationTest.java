@@ -24,28 +24,17 @@
  */
 package org.graalvm.compiler.core.test;
 
-import static java.lang.reflect.Modifier.isStatic;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.junit.Assert;
 import org.junit.Test;
-
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class IntegerLowerThanCommonArithmeticOptimizationTest extends IntegerLowerThanCommonArithmeticTestBase {
 
@@ -64,31 +53,6 @@ public class IntegerLowerThanCommonArithmeticOptimizationTest extends IntegerLow
     private static void assertNotPresent(StructuredGraph graph, Class<? extends Node> nodeClass) {
         if (graph.getNodes().filter(nodeClass).isNotEmpty()) {
             throw new GraalError("found %s: %s", nodeClass, graph.getNodes().filter(nodeClass));
-        }
-    }
-
-    @Override
-    protected void bindArguments(StructuredGraph graph, Object[] argsToBind) {
-        ResolvedJavaMethod m = graph.method();
-        Object receiver = isStatic(m.getModifiers()) ? null : this;
-        Object[] args = argsWithReceiver(receiver, argsToBind);
-        JavaType[] parameterTypes = m.toParameterTypes();
-        assert parameterTypes.length == args.length;
-        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            Object arg = args[param.index()];
-            if (arg == NO_BIND) {
-                // no binding
-            } else if (arg instanceof Stamp) {
-                // insert Pi
-                ValueNode replacement = graph.addOrUnique(PiNode.create(param, (Stamp) arg));
-                if (replacement != param) {
-                    param.replaceAtUsages(replacement, n -> n != replacement);
-                }
-            } else {
-                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), arg);
-                ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
-                param.replaceAtUsages(replacement);
-            }
         }
     }
 
