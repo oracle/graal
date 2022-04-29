@@ -116,17 +116,6 @@ public abstract class LLVMVaListLibrary extends Library {
      */
     public abstract Object shift(Object vaList, Type type, Frame frame);
 
-    /**
-     * Some platforms (darwin-aarch64, windows-amd64 (?)) decompose <code>va_arg(list, struct_type)</code> do other
-     * bitcode instructions, and then writeback the address pointing to the next element.
-     *
-     * @param vaList the va_list instance.
-     * @param nativeOffset offset that needs to be added to the base address.
-     */
-    public void seek(Object vaList, long nativeOffset) {
-        CompilerDirectives.shouldNotReachHere();
-    }
-
     static class NoUncachedAssert extends LLVMVaListLibrary {
 
         @Child private LLVMVaListLibrary delegate;
@@ -169,12 +158,6 @@ public abstract class LLVMVaListLibrary extends Library {
         public Object shift(Object vaList, Type type, Frame frame) {
             assert !isUncachedDelegate;
             return delegate.shift(vaList, type, frame);
-        }
-
-        @Override
-        public void seek(Object vaList, long nativeOffset) {
-            assert !isUncachedDelegate;
-            delegate.seek(vaList, nativeOffset);
         }
     }
 }

@@ -38,6 +38,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -54,6 +55,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
@@ -68,6 +70,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorageFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ByteConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.IntegerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.LongConversionHelperNodeGen;
@@ -270,7 +273,7 @@ public class LLVMVaListStorage implements TruffleObject {
 
     private static final String GET_MEMBER = "get";
 
-    protected Object[] realArguments;
+    public Object[] realArguments;
     protected int numberOfExplicitArguments;
 
     public LLVMPointer vaListStackPtr;
@@ -1132,5 +1135,113 @@ public class LLVMVaListStorage implements TruffleObject {
         public static PointerConversionHelperNode create() {
             return PointerConversionHelperNodeGen.create();
         }
+    }
+
+    public final static boolean UNPACK_32BIT_PRIMITIVES_IN_STRUCTS = true;
+    public final static boolean KEEP_32BIT_PRIMITIVES_IN_STRUCTS = false;
+
+    public static final class ArgumentListExpander extends LLVMNode {
+        private final BranchProfile expansionBranchProfile;
+        private final ConditionProfile noExpansionProfile;
+        private @Child ArgumentExpander expander;
+
+        private static final ArgumentListExpander uncached_unpack32 = new ArgumentListExpander(false, true);
+        private static final ArgumentListExpander uncached_no_unpack32 = new ArgumentListExpander(false, false);
+
+        private ArgumentListExpander(boolean cached, boolean unpack32) {
+            expansionBranchProfile = cached ? BranchProfile.create() : BranchProfile.getUncached();
+            noExpansionProfile = cached ? ConditionProfile.createBinaryProfile() : ConditionProfile.getUncached();
+            expander = cached ? LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(unpack32) : ArgumentExpander.getUncached(unpack32);
+        }
+
+        public static ArgumentListExpander create(boolean unpack32) {
+            return new ArgumentListExpander(true, unpack32);
+        }
+
+        public static ArgumentListExpander getUncached(boolean unpack32) {
+            return unpack32 ? uncached_unpack32 : uncached_no_unpack32;
+        }
+
+        public Object[] expand(Object[] args, Object[][][] expansionsOutArg) {
+            Object[][] expansions = null;
+            int extraSize = 0;
+            for (int i = 0; i < args.length; i++) {
+                Object[] expansion = expander.execute(args[i]);
+                if (expansion != null) {
+                    expansionBranchProfile.enter();
+                    if (expansions == null) {
+                        expansions = new Object[args.length][];
+                    }
+                    expansions[i] = expansion;
+                    extraSize += expansion.length - 1;
+                }
+            }
+            expansionsOutArg[0] = expansions;
+            return noExpansionProfile.profile(expansions == null) ? args : expandArgs(args, expansions, extraSize);
+        }
+
+        static Object[] expandArgs(Object[] args, Object[][] expansions, int extraSize) {
+            Object[] result = new Object[args.length + extraSize];
+            int j = 0;
+            for (int i = 0; i < args.length; i++) {
+                if (expansions[i] == null) {
+                    result[j] = args[i];
+                    j++;
+                } else {
+                    for (int k = 0; k < expansions[i].length; k++) {
+                        result[j] = expansions[i][k];
+                        j++;
+                    }
+                }
+            }
+            return result;
+        }
+
+        @ImportStatic(LLVMVaListStorage.class)
+        public abstract static class ArgumentExpander extends LLVMNode {
+            private final boolean unpack32;
+
+            public ArgumentExpander(boolean unpack32) {
+                this.unpack32 = unpack32;
+            }
+
+            private static final ArgumentExpander UNCACHED_UNPACK32 = LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(true);
+            private static final ArgumentExpander UNCACHED_NO_UNPACK32 = LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(false);
+            public static ArgumentExpander getUncached(boolean unpack32) {
+                return unpack32 ? UNCACHED_UNPACK32 : UNCACHED_NO_UNPACK32;
+            }
+
+            public abstract Object[] execute(Object arg);
+
+            protected boolean doUnpack32() {
+                return unpack32;
+            }
+
+            @Specialization(guards = {"doUnpack32()", "isFloatArrayWithMaxTwoElems(arg.getType()) || isFloatVectorWithMaxTwoElems(arg.getType())"})
+            protected Object[] expandFloatArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
+                return new Object[]{Float.intBitsToFloat(convNode.executeInteger(arg, 0)), Float.intBitsToFloat(convNode.executeInteger(arg, 4))};
+            }
+
+            @Specialization(guards = "isDoubleArrayWithMaxTwoElems(arg.getType()) || isDoubleVectorWithMaxTwoElems(arg.getType())")
+            protected Object[] expandDoubleArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
+                return new Object[]{Double.longBitsToDouble(convNode.executeLong(arg, 0)), Double.longBitsToDouble(convNode.executeLong(arg, 8))};
+            }
+
+            @Specialization(guards = {"doUnpack32()", "isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())"})
+            protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
+                return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
+            }
+
+            @Specialization(guards = "isI64ArrayWithMaxTwoElems(arg.getType()) || isI64VectorWithMaxTwoElems(arg.getType())")
+            protected Object[] expandI64ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
+                return new Object[]{convNode.executeLong(arg, 0), convNode.executeLong(arg, 8)};
+            }
+
+            @Fallback
+            protected Object[] noExpansion(@SuppressWarnings("unused") Object arg) {
+                return null;
+            }
+        }
+
     }
 }

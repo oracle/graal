@@ -36,7 +36,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -58,10 +57,8 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMTypes;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.Aarch64BitVarArgs;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.linux.LLVMLinuxAarch64VaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEnd;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
@@ -170,97 +167,6 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         vaListLibrary.copyWithoutFrame(wrapperFactory.execute(source), this);
-    }
-
-    // TODO: move it to the super class
-    static final class ArgumentListExpander extends LLVMNode {
-        private final BranchProfile expansionBranchProfile;
-        private final ConditionProfile noExpansionProfile;
-        private @Child ArgumentExpander expander;
-
-        private static final ArgumentListExpander uncached = new ArgumentListExpander(false);
-
-        private ArgumentListExpander(boolean cached) {
-            expansionBranchProfile = cached ? BranchProfile.create() : BranchProfile.getUncached();
-            noExpansionProfile = cached ? ConditionProfile.createBinaryProfile() : ConditionProfile.getUncached();
-            expander = cached ? ArgumentExpanderNodeGen.create() : ArgumentExpanderNodeGen.getUncached();
-        }
-
-        public static ArgumentListExpander create() {
-            return new ArgumentListExpander(true);
-        }
-
-        public static ArgumentListExpander getUncached() {
-            return uncached;
-        }
-
-        Object[] expand(Object[] args, Object[][][] expansionsOutArg) {
-            Object[][] expansions = null;
-            int extraSize = 0;
-            for (int i = 0; i < args.length; i++) {
-                Object[] expansion = expander.execute(args[i]);
-                if (expansion != null) {
-                    expansionBranchProfile.enter();
-                    if (expansions == null) {
-                        expansions = new Object[args.length][];
-                    }
-                    expansions[i] = expansion;
-                    extraSize += expansion.length - 1;
-                }
-            }
-            expansionsOutArg[0] = expansions;
-            return noExpansionProfile.profile(expansions == null) ? args : expandArgs(args, expansions, extraSize);
-        }
-
-        static Object[] expandArgs(Object[] args, Object[][] expansions, int extraSize) {
-            Object[] result = new Object[args.length + extraSize];
-            int j = 0;
-            for (int i = 0; i < args.length; i++) {
-                if (expansions[i] == null) {
-                    result[j] = args[i];
-                    j++;
-                } else {
-                    for (int k = 0; k < expansions[i].length; k++) {
-                        result[j] = expansions[i][k];
-                        j++;
-                    }
-                }
-            }
-            return result;
-        }
-
-        @ImportStatic(LLVMVaListStorage.class)
-        @GenerateUncached
-        abstract static class ArgumentExpander extends LLVMNode {
-
-            public abstract Object[] execute(Object arg);
-
-            @Specialization(guards = "isFloatArrayWithMaxTwoElems(arg.getType()) || isFloatVectorWithMaxTwoElems(arg.getType())")
-            protected Object[] expandFloatArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
-                return new Object[]{Float.intBitsToFloat(convNode.executeInteger(arg, 0)), Float.intBitsToFloat(convNode.executeInteger(arg, 4))};
-            }
-
-            @Specialization(guards = "isDoubleArrayWithMaxTwoElems(arg.getType()) || isDoubleVectorWithMaxTwoElems(arg.getType())")
-            protected Object[] expandDoubleArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
-                return new Object[]{Double.longBitsToDouble(convNode.executeLong(arg, 0)), Double.longBitsToDouble(convNode.executeLong(arg, 8))};
-            }
-
-            @Specialization(guards = "isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())")
-            protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
-                return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
-            }
-
-            @Specialization(guards = "isI64ArrayWithMaxTwoElems(arg.getType()) || isI64VectorWithMaxTwoElems(arg.getType())")
-            protected Object[] expandI64ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
-                return new Object[]{convNode.executeLong(arg, 0), convNode.executeLong(arg, 8)};
-            }
-
-            @Fallback
-            protected Object[] noExpansion(@SuppressWarnings("unused") Object arg) {
-                return null;
-            }
-        }
-
     }
 
     // NativeTypeLibrary library
@@ -445,7 +351,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
 
         @Specialization(guards = {"!vaList.isNativized()"})
         static void initializeManaged(LLVMLinuxAarch64VaListStorage vaList, Object[] args, int numOfExpArgs, Frame frame,
-                        @Shared("expander") @Cached ArgumentListExpander argsExpander,
+                        @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander,
                         @Shared("stackAllocationNode") @Cached StackAllocationNode stackAllocationNode) {
             vaList.originalArgs = args;
 
@@ -586,7 +492,7 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Cached LLVMPointerOffsetStoreNode gpSaveAreaStore,
                         @Cached LLVMPointerOffsetStoreNode fpSaveAreaStore,
                         @Cached NativeProfiledMemMove memMove,
-                        @Shared("expander") @Cached ArgumentListExpander argsExpander) {
+                        @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander) {
 
             initializeManaged(vaList, realArgs, numOfExpArgs, frame, argsExpander, stackAllocationNode);
             initNativeVAList(gpOffsetStore, fpOffsetStore, overflowArgAreaStore, gpSaveAreaStore, fpSaveAreaStore, vaList.vaListStackPtr, vaList.gpOffset, vaList.fpOffset,
@@ -983,9 +889,9 @@ public final class LLVMLinuxAarch64VaListStorage extends LLVMVaListStorage {
                         @Shared("gpSaveAreaStore") @Cached LLVMPointerOffsetStoreNode gpSaveAreaStore,
                         @Shared("fpSaveAreaStore") @Cached LLVMPointerOffsetStoreNode fpSaveAreaStore,
                         @Cached NativeProfiledMemMove memMove,
-                        @Cached ArgumentListExpander argsExpander) {
+                        @Cached(parameters = "UNPACK_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander) {
 
-            Object[][][] expansionsOutArg = new Object[1][][];
+                Object[][][] expansionsOutArg = new Object[1][][];
 
             Object[] realArguments = argsExpander.expand(originalArgs, expansionsOutArg);
             Object[][] expansions = expansionsOutArg[0];
