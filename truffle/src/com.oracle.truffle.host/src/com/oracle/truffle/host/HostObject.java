@@ -2251,7 +2251,7 @@ final class HostObject implements TruffleObject {
     public boolean equals(Object o) {
         if (o instanceof HostObject) {
             HostObject other = (HostObject) o;
-            return this.obj == other.obj && this.context == other.context;
+            return this.obj == other.obj && this.extraInfo == other.extraInfo && this.context == other.context;
         }
         return false;
     }
