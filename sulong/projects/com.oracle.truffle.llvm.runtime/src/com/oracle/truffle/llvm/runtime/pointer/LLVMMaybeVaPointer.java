@@ -91,7 +91,6 @@ import static com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaLis
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
-@ImportStatic(LLVMVaListStorage.class)
 public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
@@ -135,16 +134,12 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     void initialize(Object[] realArguments, int numberOfExplicitArguments, Frame frame,
-                        @Cached(parameters = "KEEP_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander,
-                        @Cached StackAllocationNode stackAllocationNode) {
-        // LLVMX86_64_WinVaListStorage vaListInstance = new LLVMX86_64_WinVaListStorage();
-        // vaListInstance.initialize(realArgs, numOfExpArgs, frame, stackAllocationNode);
-
+                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
         assert numberOfExplicitArguments <= realArguments.length;
-        Object[][][] expansionsOutArg = new Object[1][][];
-        Object[] expandedArguments = argsExpander.expand(realArguments, expansionsOutArg);
-        LLVMDarwinAarch64VaListStorage vaListInstance = new LLVMDarwinAarch64VaListStorage();
-        LLVMDarwinAarch64VaListStorage.Initialize.initializeManaged(vaListInstance, expandedArguments, numberOfExplicitArguments, frame, stackAllocationNode);
+        // TODO:
+        // LLVMX86_64_WinVaListStorage vaListInstance = new LLVMX86_64_WinVaListStorage();
+        Object vaListInstance = new LLVMDarwinAarch64VaListStorage();
+        vaListLibrary.initialize(vaListInstance, realArguments, numberOfExplicitArguments, frame);
 
         vaList = LLVMManagedPointer.create(vaListInstance);
         wasVAListPointer = true;

@@ -151,14 +151,16 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         }
         @Specialization(guards = "!isManagedPointer(self)")
         public static void initializeManaged(LLVMDarwinAarch64VaListStorage self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
+                                             @Cached(parameters = "KEEP_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander,
                                              @Cached StackAllocationNode stackAllocationNode) {
-            self.realArguments = realArguments;
+            Object[][][] expansionsOutArg = new Object[1][][];
+            self.realArguments = argsExpander.expand(realArguments, expansionsOutArg);
             self.numberOfExplicitArguments = numberOfExplicitArguments;
-            self.argsArea = new DarwinAArch64ArgsArea(realArguments, numberOfExplicitArguments);
+            self.argsArea = new DarwinAArch64ArgsArea(self.realArguments, numberOfExplicitArguments);
 
             long stackSize = 0;
-            for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {
-                Object o = realArguments[i];
+            for (int i = numberOfExplicitArguments; i < self.realArguments.length; i++) {
+                Object o = self.realArguments[i];
                 if (o instanceof LLVMVarArgCompoundValue) {
                     stackSize += alignup(((LLVMVarArgCompoundValue) o).getSize());
                 } else {
@@ -176,14 +178,16 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             long mask = (8 - 1);  // 64bit
             return ((address + mask) & ~mask);
         }
+
         @Specialization(limit = "3", guards = "isManagedPointer(self)")
         @GenerateAOT.Exclude
         static void initializeGlobal(LLVMDarwinAarch64VaListStorage self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
                                      @Bind("getManagedStorage(self)") Object managedStorage,
                                      @CachedLibrary("managedStorage") LLVMManagedWriteLibrary writeLibrary,
+                                     @Cached(parameters = "KEEP_32BIT_PRIMITIVES_IN_STRUCTS") ArgumentListExpander argsExpander,
                                      @Cached StackAllocationNode stackAllocationNode) {
             // hack for global var storage
-            initializeManaged(self, realArguments, numberOfExplicitArguments, frame, stackAllocationNode);
+            initializeManaged(self, realArguments, numberOfExplicitArguments, frame, argsExpander, stackAllocationNode);
             writeLibrary.writeGenericI64(managedStorage, 0, self);
         }
 
