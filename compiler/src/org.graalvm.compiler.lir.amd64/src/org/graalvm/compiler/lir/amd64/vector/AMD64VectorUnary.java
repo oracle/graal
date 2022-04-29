@@ -34,6 +34,8 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.code.Register.RegisterCategory;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp;
@@ -220,7 +222,12 @@ public class AMD64VectorUnary {
             // Note that we assume only XMM-size instructions are emitted here. Loosening this
             // restriction would require informing AMD64HotSpotReturnOp when emitting vzeroupper.
             if (isRegister(input)) {
-                opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
+                if (AMD64.XMM.equals(asRegister(input).getRegisterCategory())) {
+                    opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
+                } else {
+                    VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
+                    opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
+                }
             } else {
                 VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                 opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), (AMD64Address) crb.asAddress(input));

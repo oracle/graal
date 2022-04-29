@@ -824,6 +824,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitModRM(src, dst);
         }
 
+        @Override
         public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src) {
             assert verify(asm, size, src, null);
             assert isSSEInstruction();
