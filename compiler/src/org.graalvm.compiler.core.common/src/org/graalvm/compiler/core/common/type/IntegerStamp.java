@@ -196,7 +196,7 @@ public final class IntegerStamp extends PrimitiveStamp {
         return createEmptyStamp(getBits());
     }
 
-    private static IntegerStamp createEmptyStamp(int bits) {
+    static IntegerStamp createEmptyStamp(int bits) {
         return new IntegerStamp(bits, CodeUtil.maxValue(bits), CodeUtil.minValue(bits), CodeUtil.mask(bits), 0);
     }
 
