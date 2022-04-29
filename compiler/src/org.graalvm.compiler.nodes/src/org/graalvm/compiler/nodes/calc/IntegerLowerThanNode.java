@@ -374,6 +374,15 @@ public abstract class IntegerLowerThanNode extends CompareNode {
         }
 
         protected LogicNode canonicalizeCommonArithmetic(ValueNode forX, ValueNode forY, NodeView view) {
+            if (isMatchingBitExtendNode(forX) && isMatchingBitExtendNode(forY)) {
+                IntegerConvertNode<?> forX1 = (IntegerConvertNode<?>) forX;
+                IntegerConvertNode<?> forY1 = (IntegerConvertNode<?>) forY;
+                // Extending to 32 bit might be required by the architecture
+                if (forX1.getInputBits() >= 32 && forX1.getResultBits() == forY1.getResultBits() && forX1.getInputBits() == forY1.getInputBits()) {
+                    return create(forX1.getValue(), forY1.getValue(), view);
+                }
+            }
+
             if (forX instanceof AddNode && forY instanceof AddNode) {
                 AddNode addX = (AddNode) forX;
                 AddNode addY = (AddNode) forY;
@@ -431,6 +440,12 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             }
             return null;
         }
+
+        /**
+         * Return {@code true} if the node is an {@link IntegerConvertNode} that does not change the
+         * comparison result.
+         */
+        protected abstract boolean isMatchingBitExtendNode(ValueNode node);
 
         /**
          * Return {@code true} if the {@code a + b} can overflow w.r.t.

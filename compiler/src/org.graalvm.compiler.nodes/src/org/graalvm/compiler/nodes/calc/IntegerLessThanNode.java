@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -231,16 +231,8 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
         }
 
         @Override
-        protected LogicNode canonicalizeCommonArithmetic(ValueNode forX, ValueNode forY, NodeView view) {
-            if (forX instanceof SignExtendNode && forY instanceof SignExtendNode) {
-                SignExtendNode forX1 = (SignExtendNode) forX;
-                SignExtendNode forY1 = (SignExtendNode) forY;
-                // Extending to 32 bit might be required by the architecture
-                if (forX1.getResultBits() > 32 && forX1.getResultBits() == forY1.getResultBits() && forX1.getInputBits() == forY1.getInputBits()) {
-                    return create(((SignExtendNode) forX).getValue(), ((SignExtendNode) forY).getValue(), view);
-                }
-            }
-            return super.canonicalizeCommonArithmetic(forX, forY, view);
+        protected boolean isMatchingBitExtendNode(ValueNode node) {
+            return node instanceof SignExtendNode;
         }
 
         @Override
