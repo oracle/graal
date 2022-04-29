@@ -150,6 +150,10 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
      * {@link AMD64CPUFeatureAccess#enableFeatures}.
      */
     public void emitSave(AMD64MacroAssembler asm, int frameSize, CompilationResultBuilder crb) {
+        if (!SubstrateUtil.HOSTED) {
+            GraalError.shouldNotReachHere();
+            return;
+        }
         for (Register register : calleeSavedRegisters) {
             AMD64Address address = calleeSaveAddress(asm, frameSize, register);
             RegisterCategory category = register.getRegisterCategory();
@@ -169,6 +173,10 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
     }
 
     public void emitRestore(AMD64MacroAssembler asm, int frameSize, Register excludedRegister, CompilationResultBuilder crb) {
+        if (!SubstrateUtil.HOSTED) {
+            GraalError.shouldNotReachHere();
+            return;
+        }
         for (Register register : calleeSavedRegisters) {
             if (register.equals(excludedRegister)) {
                 continue;
@@ -203,127 +211,152 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         RESTORE
     }
 
+    /**
+     * "Control-flow exception" to indicate that a CPU feature is statically available and no
+     * further dynamic feature checks are needed.
+     */
+    private static class StaticFeatureException extends Exception {
+        static final long serialVersionUID = -1;
+    }
+
     private final class XMMSaverRestorer {
 
         private final AMD64MacroAssembler asm;
         private final CompilationResultBuilder crb;
         private final int frameSize;
         private final Mode mode;
+        private final EnumSet<?> hostedCPUFeatures;
 
         XMMSaverRestorer(AMD64MacroAssembler asm, CompilationResultBuilder crb, int frameSize, Mode mode) {
             this.asm = asm;
             this.crb = crb;
             this.frameSize = frameSize;
             this.mode = mode;
+            this.hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
         }
 
         public void emit() {
             assert isRuntimeCompilationEnabled == DeoptimizationSupport.enabled() : "JIT compilation enabled after registering singleton?";
             if (isRuntimeCompilationEnabled && AMD64CPUFeatureAccess.canUpdateCPUFeatures()) {
+                // JIT compilation is enabled -> need dynamic checks
                 Label end = new Label();
                 try {
                     // AVX512
-                    if (emitConditionalSaveRestore(end, CPUFeature.AVX512F)) {
-                        // AVX512 statically available, no further checks needed
-                        return;
-                    }
+                    Label noAVX512 = new Label();
+                    testFeature(CPUFeature.AVX512F, noAVX512);
+                    evmovdqu64();
+                    jumpToEndOrReturn(CPUFeature.AVX512F, end);
+                    asm.bind(noAVX512);
                     // AVX
-                    if (emitConditionalSaveRestore(end, CPUFeature.AVX)) {
-                        // AVX statically available, no further checks needed
-                        return;
-                    }
+                    Label noAVX = new Label();
+                    testFeature(CPUFeature.AVX, noAVX);
+                    vmovdqu();
+                    jumpToEndOrReturn(CPUFeature.AVX, end);
+                    asm.bind(noAVX);
                     // SSE
-                    emitSaveRestore(null);
+                    movdqu();
+                } catch (StaticFeatureException staticFeature) {
+                    // features is statically available -> done
                 } finally {
                     asm.bind(end);
                 }
             } else {
-                var features = ((AMD64) ConfigurationValues.getTarget().arch).getFeatures();
-                final CPUFeature avxVersion;
-                if (features.contains(CPUFeature.AVX512F)) {
-                    avxVersion = CPUFeature.AVX512F;
-                } else if (features.contains(CPUFeature.AVX)) {
-                    avxVersion = CPUFeature.AVX;
+                // no JIT compilation is enabled -> static checks only
+                if (hostedCPUFeatures.contains(CPUFeature.AVX512F)) {
+                    evmovdqu64();
+                } else if (hostedCPUFeatures.contains(CPUFeature.AVX)) {
+                    vmovdqu();
                 } else {
-                    avxVersion = null;
+                    movdqu();
                 }
-                emitSaveRestore(avxVersion);
             }
         }
 
         /**
-         * @return {@code true} if the {@code avxVersion} is statically available (so no further
-         *         checks are needed).
+         * Emits a {@linkplain #emitRuntimeFeatureTest runtime feature check} and
+         * {@linkplain #enterAVX enters an AVX} region if the {@code feature} is not statically
+         * available.
          */
-        private boolean emitConditionalSaveRestore(Label end, CPUFeature avxVersion) {
-            var hostedCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
-            if (hostedCPUFeatures.contains(avxVersion)) {
-                emitSaveRestore(avxVersion);
-                return true;
+        private void testFeature(CPUFeature feature, Label falseLabel) {
+            if (!hostedCPUFeatures.contains(feature)) {
+                emitRuntimeFeatureTest(feature, falseLabel);
+                enterAVX(hostedCPUFeatures, feature);
             }
-            if (SubstrateUtil.HOSTED) {
-                /*
-                 * Only emit dynamic feature checks for compilations at image build time. For
-                 * run-time compilations, use the features available at run time. This is only used
-                 * for the stub calling convention which is hosted-only.
-                 */
-                Label avxVersionNotAvailable = emitRuntimeFeatureTest(avxVersion);
-                // do we need vzeroupper?
-                boolean isAvxSseTransition = !hostedCPUFeatures.contains(CPUFeature.AVX);
-                if (isAvxSseTransition && avxVersion == CPUFeature.AVX512F) {
-                    // we need AVX for vzeroupper
-                    asm.addFeatures(EnumSet.of(CPUFeature.AVX, CPUFeature.AVX512F));
-                } else {
-                    asm.addFeatures(EnumSet.of(avxVersion));
-                }
-                if (isAvxSseTransition && mode == Mode.RESTORE) {
-                    /*
-                     * We are leaving an SSE-only region and are about to restore AVX registers.
-                     * Need vzeroupper.
-                     */
-                    asm.vzeroupper();
-                }
-                try {
-                    emitSaveRestore(avxVersion);
-                } finally {
-                    if (isAvxSseTransition && mode == Mode.SAVE) {
-                        /*
-                         * We are entering an SSE-only region and have saved AVX register . Need
-                         * vzeroupper.
-                         */
-                        asm.vzeroupper();
-                    }
-                    asm.removeFeatures();
-                }
-                asm.jmp(end);
-                asm.bind(avxVersionNotAvailable);
-            }
-            return false;
         }
 
-        private void emitSaveRestore(CPUFeature avxVersion) {
+        /**
+         * {@linkplain #leaveAVX Leaves an AVX region} and emits a jump to {@code end}, or throws an
+         * {@link StaticFeatureException} if the {@code feature} is statically available.
+         */
+        private void jumpToEndOrReturn(CPUFeature feature, Label end) throws StaticFeatureException {
+            if (hostedCPUFeatures.contains(feature)) {
+                throw new StaticFeatureException();
+            }
+            leaveAVX(hostedCPUFeatures);
+            asm.jmp(end);
+        }
+
+        private void enterAVX(EnumSet<? extends Enum<?>> hostedCPUFeatures, CPUFeature avxFeature) {
+            // do we need vzeroupper?
+            boolean isAvxSseTransition = !hostedCPUFeatures.contains(CPUFeature.AVX);
+            // we need AVX for vzeroupper
+            asm.addFeatures(EnumSet.of(CPUFeature.AVX, avxFeature));
+            if (isAvxSseTransition && mode == Mode.RESTORE) {
+                /*
+                 * We are leaving an SSE-only region and are about to restore AVX registers. Need
+                 * vzeroupper.
+                 */
+                asm.vzeroupper();
+            }
+        }
+
+        private void leaveAVX(EnumSet<? extends Enum<?>> hostedCPUFeatures) {
+            // do we need vzeroupper?
+            boolean isAvxSseTransition = !hostedCPUFeatures.contains(CPUFeature.AVX);
+            if (isAvxSseTransition && mode == Mode.SAVE) {
+                /*
+                 * We are entering an SSE-only region and have saved AVX register . Need vzeroupper.
+                 */
+                asm.vzeroupper();
+            }
+            asm.removeFeatures();
+        }
+
+        private void evmovdqu64() {
             for (Register register : calleeSavedXMMRegister) {
                 AMD64Address address = calleeSaveAddress(asm, frameSize, register);
                 RegisterCategory category = register.getRegisterCategory();
                 assert category.equals(AMD64.XMM);
-                if (CPUFeature.AVX512F.equals(avxVersion)) {
-                    if (mode == Mode.SAVE) {
-                        asm.evmovdqu64(address, register);
-                    } else {
-                        asm.evmovdqu64(register, address);
-                    }
-                } else if (CPUFeature.AVX.equals(avxVersion)) {
-                    if (mode == Mode.SAVE) {
-                        asm.vmovdqu(address, register);
-                    } else {
-                        asm.vmovdqu(register, address);
-                    }
+                if (mode == Mode.SAVE) {
+                    asm.evmovdqu64(address, register);
                 } else {
-                    if (mode == Mode.SAVE) {
-                        asm.movdqu(address, register);
-                    } else {
-                        asm.movdqu(register, address);
-                    }
+                    asm.evmovdqu64(register, address);
+                }
+            }
+        }
+
+        private void vmovdqu() {
+            for (Register register : calleeSavedXMMRegister) {
+                AMD64Address address = calleeSaveAddress(asm, frameSize, register);
+                RegisterCategory category = register.getRegisterCategory();
+                assert category.equals(AMD64.XMM);
+                if (mode == Mode.SAVE) {
+                    asm.vmovdqu(address, register);
+                } else {
+                    asm.vmovdqu(register, address);
+                }
+            }
+        }
+
+        private void movdqu() {
+            for (Register register : calleeSavedXMMRegister) {
+                AMD64Address address = calleeSaveAddress(asm, frameSize, register);
+                RegisterCategory category = register.getRegisterCategory();
+                assert category.equals(AMD64.XMM);
+                if (mode == Mode.SAVE) {
+                    asm.movdqu(address, register);
+                } else {
+                    asm.movdqu(register, address);
                 }
             }
         }
@@ -331,17 +364,16 @@ final class AMD64CalleeSavedRegisters extends CalleeSavedRegisters {
         /**
          * Emits the run time feature check.
          * 
-         * @return a new {@link Label} to continue execution of the {@code feature} is <em>not</em>
-         *         available.
+         * @param falseLabel a {@link Label} to continue execution of the {@code feature} is
+         *            <em>not</em> available.
          */
         @Platforms(Platform.HOSTED_ONLY.class)
-        private Label emitRuntimeFeatureTest(CPUFeature feature) {
+        private Label emitRuntimeFeatureTest(CPUFeature feature, Label falseLabel) {
             AMD64Address address = getFeatureMapAddress();
             int mask = RuntimeCPUFeatureCheckImpl.instance().computeFeatureMask(EnumSet.of(feature));
             GraalError.guarantee(mask != 0, "Mask must not be 0 for features %s", feature);
-            Label label = new Label();
-            asm.testAndJcc(getSize(), address, mask, AMD64Assembler.ConditionFlag.NotEqual, label, false, null);
-            return label;
+            asm.testAndJcc(getSize(), address, mask, AMD64Assembler.ConditionFlag.NotEqual, falseLabel, false, null);
+            return falseLabel;
         }
 
         @Platforms(Platform.HOSTED_ONLY.class)
