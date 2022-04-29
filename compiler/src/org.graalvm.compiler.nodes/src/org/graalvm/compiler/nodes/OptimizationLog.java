@@ -208,7 +208,7 @@ public class OptimizationLog {
      * @return the name of the optimization
      */
     private static String getOptimizationName(Class<?> optimizationClass) {
-        String className = optimizationClass.getName();
+        String className = optimizationClass.getSimpleName();
         String phaseSuffix = "Phase";
         if (className.endsWith(phaseSuffix)) {
             return className.substring(0, className.length() - phaseSuffix.length());

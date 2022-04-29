@@ -84,8 +84,9 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
      * {@linkplain LeftShiftNode#getX()} and {@linkplain LeftShiftNode#getY()} inputs represent
      * numeric integers and {@linkplain LeftShiftNode#getY()} is a constant value. The resulting
      * {@linkplain MulNode} replaces the current node in the {@linkplain LeftShiftNode#graph()}.
+     * @return true iff node was replaced
      */
-    public void tryReplaceWithMulNode() {
+    public boolean tryReplaceWithMulNode() {
         if (this.getY().isConstant()) {
             Constant c = getY().asConstant();
             if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
@@ -96,9 +97,11 @@ public final class LeftShiftNode extends ShiftNode<Shl> {
                     long i = ((PrimitiveConstant) c).asLong();
                     long multiplier = (long) Math.pow(2, i);
                     replaceAtUsages(graph().addOrUnique(new MulNode(getX(), ConstantNode.forIntegerStamp(getY().stamp(NodeView.DEFAULT), multiplier, graph()))));
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     private static ValueNode canonical(LeftShiftNode leftShiftNode, ArithmeticOpTable.ShiftOp<Shl> op, Stamp stamp, ValueNode forX, ValueNode forY) {

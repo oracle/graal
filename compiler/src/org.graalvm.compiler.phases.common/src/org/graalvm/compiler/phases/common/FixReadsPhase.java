@@ -95,11 +95,6 @@ import java.util.ListIterator;
 public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("FixReads_StampsRegistered");
-    private static final CounterKey counterIfsKilled = DebugContext.counter("FixReads_KilledIfs");
-    private static final CounterKey counterConditionalsKilled = DebugContext.counter("FixReads_KilledConditionals");
-    private static final CounterKey counterCanonicalizedSwitches = DebugContext.counter("FixReads_CanonicalizedSwitches");
-    private static final CounterKey counterConstantReplacements = DebugContext.counter("FixReads_ConstantReplacement");
-    private static final CounterKey counterConstantInputReplacements = DebugContext.counter("FixReads_ConstantInputReplacement");
     private static final CounterKey counterBetterMergedStamps = DebugContext.counter("FixReads_BetterMergedStamp");
 
     protected final boolean replaceInputsWithConstants;
@@ -243,10 +238,10 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                                         continue;
                                     }
                                 }
-                                counterConstantInputReplacements.increment(node.getDebug());
                                 ConstantNode stampConstant = ConstantNode.forConstant(bestStamp, constant, metaAccess, graph);
                                 assert stampConstant.stamp(NodeView.DEFAULT).isCompatible(valueNode.stamp(NodeView.DEFAULT));
                                 replaceInput(p, node, stampConstant);
+                                graph.getOptimizationLog().report(FixReadsPhase.class, "ConstantInputReplacement", node);
                                 replacements++;
                             }
                         }
@@ -408,9 +403,8 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             Constant constant = newStamp.asConstant();
             if (constant != null && !(node instanceof ConstantNode)) {
                 ConstantNode stampConstant = ConstantNode.forConstant(newStamp, constant, metaAccess, graph);
-                debug.log("RawConditionElimination: constant stamp replaces %1s with %1s", node, stampConstant);
-                counterConstantReplacements.increment(debug);
                 node.replaceAtUsages(stampConstant, InputType.Value);
+                graph.getOptimizationLog().report(FixReadsPhase.class, "ConstantReplacement", node);
                 GraphUtil.tryKillUnused(node);
                 return true;
             }
@@ -439,6 +433,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                         node.replaceAndDelete(newNode);
                         GraphUtil.tryKillUnused(x);
                         GraphUtil.tryKillUnused(y);
+                        graph.getOptimizationLog().report(FixReadsPhase.class, "CanonicalizedBinary", node);
                         return;
                     }
                 }
@@ -450,8 +445,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         protected void processIntegerSwitch(IntegerSwitchNode node) {
             Stamp bestStamp = getBestStamp(node.value());
             if (node.tryRemoveUnreachableKeys(null, bestStamp)) {
-                debug.log("\t Canonicalized integer switch %s for value %s and stamp %s", node, node.value(), bestStamp);
-                counterCanonicalizedSwitches.increment(debug);
+                graph.getOptimizationLog().report(FixReadsPhase.class, "CanonicalizedSwitch", node);
             }
         }
 
@@ -462,7 +456,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 // Don't kill the other branch immediately, see
                 // `ConditionalEliminationPhase.processGuard`.
                 node.setCondition(LogicConstantNode.forBoolean(isTrue, node.graph()));
-                counterIfsKilled.increment(debug);
+                graph.getOptimizationLog().report(FixReadsPhase.class, "KilledIf", node);
             }
         }
 
@@ -470,8 +464,8 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             TriState result = tryProveCondition(node.condition());
             if (result != TriState.UNKNOWN) {
                 boolean isTrue = (result == TriState.TRUE);
-                counterConditionalsKilled.increment(debug);
                 node.replaceAndDelete(isTrue ? node.trueValue() : node.falseValue());
+                graph.getOptimizationLog().report(FixReadsPhase.class, "KilledConditional", node);
             } else {
                 Stamp trueStamp = getBestStamp(node.trueValue());
                 Stamp falseStamp = getBestStamp(node.falseValue());

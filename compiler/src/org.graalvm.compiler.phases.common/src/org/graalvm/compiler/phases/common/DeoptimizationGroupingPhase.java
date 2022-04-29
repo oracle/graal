@@ -114,6 +114,7 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
             for (AbstractDeoptimizeNode obsolete : obsoletes) {
                 obsolete.safeDelete();
             }
+            graph.getOptimizationLog().report(getClass(), "DeoptimizationGrouping", first);
         }
     }
 

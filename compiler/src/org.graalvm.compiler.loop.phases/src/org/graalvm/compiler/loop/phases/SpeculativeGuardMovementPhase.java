@@ -351,7 +351,6 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         }
 
         private void optimizeCompare(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardNode guard) {
-            bound.getDebug().log("optimizeCompare(%s, %s, %s, %b) in %s", compare, iv, bound, mirrored, graph.method());
             CountedLoopInfo countedLoop = iv.getLoop().counted();
             GuardingNode overflowGuard = countedLoop.getOverFlowGuard();
             ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
@@ -405,8 +404,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     usage.replaceFirstInput(guard, loopBodyGuard.asNode());
                 }
             }
-
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After optimizing compare at %s", guard);
+            graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "CompareOptimized", compare);
         }
 
         private LogicNode createLoopEnterCheck(CountedLoopInfo countedLoop, LogicNode newCompare) {
@@ -579,6 +577,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             Loop<Block> hoistAbove = findInstanceOfLoopHoisting(guard, anchorBlock, valueBlock);
             if (hoistAbove != null) {
                 compare.setProfile(compare.profile(), hoistAbove.getHeader().getDominator().getBeginNode());
+                graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "InstanceOfOptimized", compare);
                 return hoistAbove;
             }
             return null;
