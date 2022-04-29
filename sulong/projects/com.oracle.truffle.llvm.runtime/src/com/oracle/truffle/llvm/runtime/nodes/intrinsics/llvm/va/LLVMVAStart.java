@@ -33,19 +33,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.PlatformCapability;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin.LLVMDarwinAarch64VaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactoryDelegate;
-import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 /**
@@ -69,29 +61,6 @@ public abstract class LLVMVAStart extends LLVMExpressionNode {
 
         return newArguments;
     }
-
-    /*
-    static boolean isGlobalVAList(Object o) {
-        return o instanceof LLVMManagedPointer && ((LLVMManagedPointer) o).getObject() instanceof LLVMGlobalContainer;
-    }
-
-    @Specialization(guards = "isGlobalVAList(globalStorage)")
-    protected Object vaStartWithGlobal(VirtualFrame frame, LLVMPointer globalStorage,
-                    @Cached LLVMVaListStorage.StackAllocationNode stackAllocationNode,
-                    @Cached LLVMPointerStoreNode.LLVMPointerOffsetStoreNode pointerStore,
-                    @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
-        // TODO: this should be darwin-aarch64 only
-        // TODO: size
-        LLVMPointer stackStorage = stackAllocationNode.executeWithTarget(4000, frame);
-
-        Object vaListStorage = LLVMLanguage.get(this).getCapability(PlatformCapability.class).createVAListStorage(getRootNode(), stackStorage);
-        pointerStore.executeWithTarget(globalStorage, 0, vaListStorage);
-        Object vaList = wrapperFactory.execute(vaListStorage);
-        vaListLibrary.initialize(vaList, getArgumentsArray(frame), numberOfExplicitArguments, frame);
-        return null;
-    }
-     */
 
     @Specialization
     protected Object vaStart(VirtualFrame frame, LLVMPointer targetAddress,

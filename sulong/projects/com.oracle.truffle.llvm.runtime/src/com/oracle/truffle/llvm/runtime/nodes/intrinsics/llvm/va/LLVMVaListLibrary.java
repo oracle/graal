@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.frame.Frame;
