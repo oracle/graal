@@ -344,7 +344,8 @@ public abstract class IntegerLowerThanNode extends CompareNode {
          */
         private LogicNode canonicalizePiXLowerPiXPlusC(PiNode piValue, PiNode piWithAdd, boolean mirror, NodeView view) {
             AddNode originalWithAdd = (AddNode) piWithAdd.getOriginalNode();
-            // piWithAdd <- value + c, piValue <- value
+            // piValue <- value
+            // piWithAdd <- value + c
             // to
             // newValue <- pi(piValue, stamp(piWithAdd - c))
             // newWithAdd <- newValue + c
