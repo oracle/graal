@@ -122,7 +122,7 @@ suite = {
             ],
             "requires": [
                 "java.logging",
-                 "jdk.management", 
+                "jdk.management", 
             ],
         },
         "org.graalvm.polybench.micro" : {
