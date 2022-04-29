@@ -43,7 +43,6 @@
   # Configures env vars such that `mx unittest` persists results in a json file
   save_as_json:: {
     environment+: {
-      "MX_TEST_RESULTS_PATTERN" : "./es-XXX.json",
       "MX_TEST_RESULT_TAGS": "compiler"
     }
   },

@@ -34,7 +34,6 @@
 
   local regex_unittest = {
     environment+: {
-        "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
         "MX_TEST_RESULT_TAGS": "regex"
     }
   },
