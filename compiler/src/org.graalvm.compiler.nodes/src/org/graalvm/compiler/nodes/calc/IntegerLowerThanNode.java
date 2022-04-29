@@ -192,14 +192,14 @@ public abstract class IntegerLowerThanNode extends CompareNode {
          *
          * @see #create
          */
-        public LogicNode constantOrNull(ValueNode x, ValueNode y, NodeView view) {
+        public LogicConstantNode constantOrNull(ValueNode x, ValueNode y, NodeView view) {
             LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false, view);
             if (result instanceof LogicConstantNode) {
-                return result;
+                return (LogicConstantNode) result;
             } else {
                 result = findSynonym(x, y, view);
                 if (result instanceof LogicConstantNode) {
-                    return result;
+                    return (LogicConstantNode) result;
                 }
                 return null;
             }
