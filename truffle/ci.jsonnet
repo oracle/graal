@@ -1,13 +1,15 @@
 {
+  local common_json = import '../common.json',
   local common = import '../common.jsonnet',
   local bench_hw = (import '../bench-common.libsonnet').bench_hw,
-  local devkits = (import "../common.json").devkits,
+  local composable = (import '../common-utils.libsonnet').composable,
+  local devkits = composable(common_json.devkits),
 
   local darwin_amd64 = common.darwin_amd64,
   local linux_amd64 = common.linux_amd64,
   local windows_amd64 = common.windows_amd64,
 
-  local truffle_common = {
+  local truffle_common = composable(common_json.deps.common) + common.mx + {
     setup+: [
       ["cd", "./truffle"],
     ],
@@ -15,10 +17,9 @@
     timelimit: "30:00",
   },
 
-  local bench_common = {
-    environment: {
+  local bench_common = composable(common_json.deps.common) + common.mx + {
+    environment+: {
       BENCH_RESULTS_FILE_PATH: "bench-results.json",
-      MX_PYTHON: "python3",
     },
     setup: [
       ["cd", "./compiler"],
@@ -119,7 +120,7 @@
     linux_amd64 + common.oraclejdk11 + truffle_gate + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
-    linux_amd64 + common.oraclejdk11 + truffle_common + {
+    truffle_common + linux_amd64 + common.oraclejdk11 {
       name: "gate-truffle-javadoc",
       run: [
         ["mx", "build"],
@@ -127,7 +128,7 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk11 + truffle_common + truffle_unittest {
+    truffle_common + linux_amd64 + common.oraclejdk11 + truffle_unittest {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -138,7 +139,7 @@
       ],
     },
 
-    windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + truffle_common + truffle_unittest {
+    truffle_common + windows_amd64 + common.oraclejdk11 + truffle_unittest + devkits["windows-jdk11"] +{
       name: "gate-truffle-nfi-windows-11",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
@@ -148,7 +149,7 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk11 + truffle_common + common.eclipse + common.jdt + {
+    truffle_common + linux_amd64 + common.oraclejdk11 + common.eclipse + common.jdt + {
       name: "weekly-truffle-coverage-11-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacocout", "html"],

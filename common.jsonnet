@@ -9,7 +9,7 @@
   local downloads = common_json.downloads,
 
   mx:: {
-    packages +: {
+    packages+: {
       mx: mx_version
     }
   },

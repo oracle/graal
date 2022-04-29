@@ -29,6 +29,7 @@
 #
 import argparse
 import os
+import sys
 import subprocess
 from argparse import ArgumentParser
 
@@ -306,7 +307,7 @@ def clangformat(args=None):
             error = True
     if error:
         mx.log_error("found formatting errors!")
-        exit(-1)
+        sys.exit(-1)
 
 
 def checkCFiles(target, reason):

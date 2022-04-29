@@ -1105,7 +1105,7 @@ suite = {
         "<others>": {
           "<others>" : {
             "cmakeConfig" : {
-              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lrt",
+              "CMAKE_EXE_LINKER_FLAGS" : "-lm -lrt -pthread",
             },
           },
         },

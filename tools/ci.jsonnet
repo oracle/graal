@@ -1,8 +1,10 @@
 {
+  local common_json = import '../common.json',
   local common = import '../common.jsonnet',
-  local devkits = (import "../common.json").devkits,
+  local composable = (import '../common-utils.libsonnet').composable,
+  local devkits = composable(common_json.devkits),
 
-  local tools_common = {
+  local tools_common = composable(common_json.deps.common) + common.mx + {
     setup+: [
       ["cd", "./tools"],
     ],
@@ -72,8 +74,8 @@
     common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,
     common.linux_aarch64 + common.labsjdk17   + tools_gate_lite,
 
-    common.windows_amd64 + common.oraclejdk11 + devkits["windows-jdk11"] + tools_gate_lite,
-    common.windows_amd64 + common.oraclejdk17 + devkits["windows-jdk17"] + tools_gate_lite,
+    common.windows_amd64 + common.oraclejdk11 + tools_gate_lite + devkits["windows-jdk11"],
+    common.windows_amd64 + common.oraclejdk17 + tools_gate_lite + devkits["windows-jdk17"],
 
     common.darwin_amd64  + common.oraclejdk11 + tools_gate_lite,
     common.darwin_amd64  + common.oraclejdk17 + tools_gate_lite,

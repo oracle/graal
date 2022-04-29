@@ -348,23 +348,23 @@ def add_run_numbers(out):
             new_result += make_runs_line(first_20_warmup_iters_runs, line)
             first_20_warmup_iters_runs += 1
             continue
-        elif line.startswith("last"):
+        if line.startswith("last"):
             new_result += make_runs_line(last_10_iters_runs, line)
             last_10_iters_runs += 1
             continue
-        elif line.startswith("Pure-startup"):
+        if line.startswith("Pure-startup"):
             new_result += make_runs_line(pure_startup_runs, line)
             pure_startup_runs += 1
             continue
-        elif line.startswith("Startup"):
+        if line.startswith("Startup"):
             new_result += make_runs_line(startup_runs, line)
             startup_runs += 1
             continue
-        elif line.startswith("Early-warmup"):
+        if line.startswith("Early-warmup"):
             new_result += make_runs_line(early_warmup_runs, line)
             early_warmup_runs += 1
             continue
-        elif line.startswith("Late-warmup"):
+        if line.startswith("Late-warmup"):
             new_result += make_runs_line(late_warmup_runs, line)
             late_warmup_runs += 1
             continue

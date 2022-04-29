@@ -14,7 +14,7 @@ local devkits = common_json.devkits;
   },
 
   common_vm: graal_common.build_base + vm.vm_setup + {
-    python_version: 3,
+    python_version: "3",
     logs+: [
       '*/mxbuild/dists/stripped/*.map',
       '**/install.packages.R.log',

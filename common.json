@@ -30,23 +30,18 @@
   ],
 
   "deps": {
-    "COMMENT.common": [
-      "pip:isort is a dependency of pip:pylint. The explicit dependency on the pip package works around",
-      "https://bugzilla.redhat.com/show_bug.cgi?id=1710221 on older Redhat-based systems, and doesn't",
-      "hurt on others."
-    ],
     "common": {
       "timelimit": "30:00",
       "environment": {
-        "MX_PYTHON": "python3"
+        "MX_PYTHON": "python3.8"
       },
       "packages": {
-        "pip:isort": "==4.3.19",
-        "pip:logilab-common": "==1.4.4",
-        "pip:pylint": "==1.9.3",
+        "python3": "==3.8.10",
+        "pip:pylint": "==2.4.4",
         "pip:lazy-object-proxy": "==1.6.0",
         "pip:ninja_syntax": "==1.7.2"
-      }
+      },
+      "python_version": "3"
     },
 
     "linux": {
