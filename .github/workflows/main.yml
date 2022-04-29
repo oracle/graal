@@ -13,7 +13,9 @@ on:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
       - '**.md'
-  workflow_dispatch: []
+  # Enable manual dispatch of the workflow
+  # see https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch:
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
