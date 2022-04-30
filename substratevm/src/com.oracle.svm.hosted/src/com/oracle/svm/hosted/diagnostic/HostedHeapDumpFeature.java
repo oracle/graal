@@ -60,7 +60,10 @@ public class HostedHeapDumpFeature implements Feature {
     enum Phases {
         DuringAnalysis("during-analysis"),
         AfterAnalysis("after-analysis"),
-        BeforeCompilation("before-compilation");
+        BeforeCompilation("before-compilation"),
+        CompileQueueBeforeInlining("compile-queue-before-inlining"),
+        CompileQueueAfterInlining("compile-queue-after-inlining"),
+        CompileQueueAfterCompilation("compile-queue-after-compilation");
 
         final String name;
 
@@ -113,15 +116,29 @@ public class HostedHeapDumpFeature implements Feature {
 
     @Override
     public void onAnalysisExit(OnAnalysisExitAccess access) {
-        if (phases.contains(Phases.AfterAnalysis.getName())) {
-            dumpHeap(Phases.AfterAnalysis.getName());
-        }
+        dumpHeap(Phases.AfterAnalysis);
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (phases.contains(Phases.BeforeCompilation.getName())) {
-            dumpHeap(Phases.BeforeCompilation.getName());
+        dumpHeap(Phases.BeforeCompilation);
+    }
+
+    public void beforeInlining() {
+        dumpHeap(Phases.CompileQueueBeforeInlining);
+    }
+
+    public void afterInlining() {
+        dumpHeap(Phases.CompileQueueAfterInlining);
+    }
+
+    public void compileQueueAfterCompilation() {
+        dumpHeap(Phases.CompileQueueAfterCompilation);
+    }
+
+    private void dumpHeap(Phases phase) {
+        if (phases.contains(phase.getName())) {
+            dumpHeap(phase.getName());
         }
     }
 
