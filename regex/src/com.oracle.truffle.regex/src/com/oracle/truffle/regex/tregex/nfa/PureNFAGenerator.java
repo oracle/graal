@@ -54,8 +54,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 public final class PureNFAGenerator {
 
     private final RegexAST ast;
-    private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(Short.MAX_VALUE, "PureNFA explosion");
-    private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(Short.MAX_VALUE, "NFA transition explosion");
+    private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(Integer.MAX_VALUE, "PureNFA explosion");
+    private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(Integer.MAX_VALUE, "NFA transition explosion");
     private PureNFAState anchoredFinalState;
     private PureNFAState unAnchoredFinalState;
     private final Deque<PureNFAState> expansionQueue = new ArrayDeque<>();
