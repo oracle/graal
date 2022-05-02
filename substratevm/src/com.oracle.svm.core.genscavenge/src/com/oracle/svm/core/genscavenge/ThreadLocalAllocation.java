@@ -53,6 +53,7 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -241,7 +242,8 @@ public final class ThreadLocalAllocation {
              */
             GCImpl.getPolicy().ensureSizeParametersInitialized();
             if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize())) {
-                throw new OutOfMemoryError("Array allocation too large.");
+                OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
+                throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
             }
 
             Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);
