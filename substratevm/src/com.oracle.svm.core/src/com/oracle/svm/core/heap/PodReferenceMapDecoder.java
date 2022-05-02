@@ -24,13 +24,20 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class PodReferenceMapDecoder {
     @AlwaysInline("de-virtualize calls to ObjectReferenceVisitor")
@@ -39,14 +46,14 @@ public final class PodReferenceMapDecoder {
         boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
 
         UnsignedWord refOffset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);
-        UnsignedWord mapOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, ArrayLengthNode.arrayLength(obj) - 1);
+        UnsignedWord mapOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, ArrayLengthNode.arrayLength(obj));
 
         int nrefs;
         int gap;
         do {
-            nrefs = Byte.toUnsignedInt(baseAddress.readByte(mapOffset));
-            gap = Byte.toUnsignedInt(baseAddress.readByte(mapOffset.subtract(1)));
             mapOffset = mapOffset.subtract(2);
+            gap = Byte.toUnsignedInt(baseAddress.readByte(mapOffset));
+            nrefs = Byte.toUnsignedInt(baseAddress.readByte(mapOffset.add(1)));
 
             for (int i = 0; i < nrefs; i++) {
                 if (!visitor.visitObjectReferenceInline(baseAddress.add(refOffset), 0, isCompressed, obj)) {
@@ -58,6 +65,68 @@ public final class PodReferenceMapDecoder {
         } while (gap != 0 || nrefs == 0xff);
 
         return true;
+    }
+
+    /**
+     * Implements the allocation and the copying of the reference map and data stored in the hybrid
+     * array for {@link Object#clone()}.
+     */
+    public static Object clone(Object original, DynamicHub hub, int layoutEncoding) {
+        Class<?> nonNullHub = GraalDirectives.guardingNonNull(DynamicHub.toClass(hub));
+        int length = ArrayLengthNode.arrayLength(original);
+        byte[] referenceMap = extractReferenceMap(original, layoutEncoding, length);
+        Object result = NewPodInstanceNode.newPodInstance(null, nonNullHub, length, referenceMap);
+        copyArray(original, result, layoutEncoding, length);
+        return result;
+    }
+
+    private static byte[] extractReferenceMap(Object obj, int layoutEncoding, int length) {
+        UnsignedWord mapEndOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, length);
+        UnsignedWord mapOffset = mapEndOffset;
+
+        int gap;
+        int nrefs;
+        do {
+            mapOffset = mapOffset.subtract(2);
+            gap = Byte.toUnsignedInt(BarrieredAccess.readByte(obj, mapOffset));
+            nrefs = Byte.toUnsignedInt(BarrieredAccess.readByte(obj, mapOffset.add(1)));
+        } while (gap != 0 || nrefs == 0xff);
+
+        int refMapLength = UnsignedUtils.safeToInt(mapEndOffset.subtract(mapOffset));
+        byte[] refMap = new byte[refMapLength];
+        for (int i = 0; i < refMapLength; i++) {
+            refMap[i] = BarrieredAccess.readByte(obj, mapOffset.add(i));
+        }
+        return refMap;
+    }
+
+    private static void copyArray(Object original, Object copy, int layoutEncoding, int length) {
+        int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+
+        UnsignedWord refOffset = LayoutEncoding.getArrayBaseOffset(layoutEncoding);
+        UnsignedWord mapOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, length);
+
+        UnsignedWord gap;
+        UnsignedWord nrefs;
+        do {
+            mapOffset = mapOffset.subtract(2);
+            gap = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset)));
+            nrefs = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset.add(1))));
+
+            // Copy references separately with the required barriers
+            UnsignedWord refBytes = nrefs.multiply(referenceSize);
+            JavaMemoryUtil.copyReferencesForward(original, refOffset, copy, refOffset, refBytes);
+
+            // Copy primitives in between
+            UnsignedWord primOffset = refOffset.add(refBytes);
+            UnsignedWord primBytes = gap.multiply(referenceSize);
+            JavaMemoryUtil.copyForward(original, primOffset, copy, primOffset, primBytes);
+
+            refOffset = primOffset.add(primBytes);
+        } while (gap.notEqual(0) || nrefs.equal(0xff));
+
+        // The loop above could be optimized for very long sequences of references or primitive
+        // values encoded in multiple reference map entries, but those should be rare in practice.
     }
 
     private PodReferenceMapDecoder() {

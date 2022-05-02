@@ -119,7 +119,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object allocatePod(@NonNullParameter DynamicHub hub, int sizeWithoutRefMap, byte[] referenceMap, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean maybeUnroll,
+    public Object allocatePod(@NonNullParameter DynamicHub hub, int arrayLength, byte[] referenceMap, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean maybeUnroll,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationProfilingData profilingData) {
 
         Word thread = getTLABInfo();
@@ -128,45 +128,45 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding());
-        UnsignedWord allocationSize = arrayAllocationSize(sizeWithoutRefMap, arrayBaseOffset, 0);
+        UnsignedWord allocationSize = arrayAllocationSize(arrayLength, arrayBaseOffset, 0);
         Word newTop = top.add(allocationSize);
 
         Object instance;
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            instance = formatPod(top, hub, sizeWithoutRefMap, referenceMap, false, false, afterArrayLengthOffset(),
+            instance = formatPod(top, hub, arrayLength, referenceMap, false, false, afterArrayLengthOffset(),
                             emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            instance = callSlowNewPodInstance(SLOW_NEW_POD_INSTANCE, encodeAsTLABObjectHeader(hub), sizeWithoutRefMap, afterArrayLengthOffset(), referenceMap);
+            instance = callSlowNewPodInstance(SLOW_NEW_POD_INSTANCE, encodeAsTLABObjectHeader(hub), arrayLength, afterArrayLengthOffset(), referenceMap);
         }
         profileAllocation(profilingData, allocationSize);
-        return piArrayCastToSnippetReplaceeStamp(verifyOop(instance), sizeWithoutRefMap);
+        return piArrayCastToSnippetReplaceeStamp(verifyOop(instance), arrayLength);
     }
 
     @Snippet
-    public Object formatPodSnippet(Word memory, DynamicHub hub, int sizeWithoutRefMap, byte[] referenceMap, boolean rememberedSet, boolean unaligned, int fillStartOffset, boolean emitMemoryBarrier,
+    public Object formatPodSnippet(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, int fillStartOffset, boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
 
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         byte[] refMapNonNull = (byte[]) PiNode.piCastNonNull(referenceMap, SnippetAnchorNode.anchor());
-        return formatPod(memory, hubNonNull, sizeWithoutRefMap, refMapNonNull, rememberedSet, unaligned, fillStartOffset,
+        return formatPod(memory, hubNonNull, arrayLength, refMapNonNull, rememberedSet, unaligned, fillStartOffset,
                         emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
 
-    private Object formatPod(Word memory, DynamicHub hub, int sizeWithoutRefMap, byte[] referenceMap, boolean rememberedSet, boolean unaligned, int fillStartOffset,
+    private Object formatPod(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, int fillStartOffset,
                     boolean emitMemoryBarrier, boolean maybeUnroll, boolean supportsBulkZeroing, boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
 
         int layoutEncoding = hub.getLayoutEncoding();
-        UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, sizeWithoutRefMap);
+        UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, arrayLength);
 
         Word objectHeader = encodeAsObjectHeader(hub, rememberedSet, unaligned);
-        Object instance = formatArray(objectHeader, allocationSize, sizeWithoutRefMap, memory, FillContent.WITH_ZEROES, fillStartOffset,
+        Object instance = formatArray(objectHeader, allocationSize, arrayLength, memory, FillContent.WITH_ZEROES, fillStartOffset,
                         false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
 
         int fromOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
-        int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding) + sizeWithoutRefMap - referenceMap.length;
+        int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding) + arrayLength - referenceMap.length;
         for (int i = 0; i < referenceMap.length; i++) {
             byte b = ObjectAccess.readByte(referenceMap, fromOffset + i, byteArrayIdentity());
             ObjectAccess.writeByte(instance, toOffset + i, b, LocationIdentity.INIT_LOCATION);
@@ -315,10 +315,10 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
                 Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getHub());
-                args.add("sizeWithoutRefMap", node.getSizeWithoutRefMap());
+                args.add("arrayLength", node.getArrayLength());
                 args.add("referenceMap", node.getReferenceMap());
                 args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
-                args.addConst("maybeUnroll", node.getSizeWithoutRefMap().isConstant());
+                args.addConst("maybeUnroll", node.getArrayLength().isConstant());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("profilingData", getProfilingData(node, node.getKnownInstanceType()));
@@ -337,7 +337,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 Arguments args = new Arguments(formatPod, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
-                args.add("sizeWithoutRefMap", node.getSizeWithoutRefMap());
+                args.add("arrayLength", node.getArrayLength());
                 args.add("referenceMap", node.getReferenceMap());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());

@@ -228,8 +228,8 @@ public final class ThreadLocalAllocation {
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static Object slowPathNewPodInstance(Word objectHeader, int sizeWithoutRefMap, int fillStartOffset, byte[] referenceMap) {
-        return slowPathNewArrayImpl(objectHeader, sizeWithoutRefMap, fillStartOffset, referenceMap);
+    private static Object slowPathNewPodInstance(Word objectHeader, int arrayLength, int fillStartOffset, byte[] referenceMap) {
+        return slowPathNewArrayImpl(objectHeader, arrayLength, fillStartOffset, referenceMap);
     }
 
     private static Object slowPathNewArrayImpl(Word objectHeader, int length, int fillStartOffset, byte[] podReferenceMap) {

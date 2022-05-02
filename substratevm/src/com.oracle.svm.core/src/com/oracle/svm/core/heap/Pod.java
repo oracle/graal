@@ -61,11 +61,11 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public final class Pod<T> {
     private final RuntimeSupport.PodInfo podInfo;
-    private final int fieldsSizeWithoutRefMap;
+    private final int arrayLength;
     private final byte[] referenceMap;
     private final T factory;
 
-    private Pod(RuntimeSupport.PodInfo podInfo, int fieldsSize, byte[] referenceMap) {
+    private Pod(RuntimeSupport.PodInfo podInfo, int arrayLength, byte[] referenceMap) {
         this.podInfo = podInfo;
         try {
             @SuppressWarnings("unchecked")
@@ -74,7 +74,7 @@ public final class Pod<T> {
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
-        this.fieldsSizeWithoutRefMap = fieldsSize;
+        this.arrayLength = arrayLength;
         this.referenceMap = referenceMap;
     }
 
@@ -181,8 +181,8 @@ public final class Pod<T> {
             byte[] superRefMap = null;
             UnsignedWord nextOffset = baseOffset;
             if (superPod != null) {
-                nextOffset = nextOffset.add(superPod.fieldsSizeWithoutRefMap);
                 superRefMap = superPod.referenceMap;
+                nextOffset = nextOffset.add(superPod.arrayLength - superRefMap.length);
             }
             ReferenceMapEncoder refMapEncoder = new ReferenceMapEncoder(superRefMap);
             while (!fields.isEmpty()) {
@@ -209,7 +209,8 @@ public final class Pod<T> {
             }
 
             byte[] referenceMap = refMapEncoder.encode();
-            return new Pod<>(podInfo, UnsignedUtils.safeToInt(nextOffset), referenceMap);
+            int arrayLength = UnsignedUtils.safeToInt(nextOffset) + referenceMap.length;
+            return new Pod<>(podInfo, arrayLength, referenceMap);
         }
     }
 

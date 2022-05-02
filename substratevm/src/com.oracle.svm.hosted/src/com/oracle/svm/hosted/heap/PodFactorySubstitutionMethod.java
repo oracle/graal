@@ -147,10 +147,10 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         ResolvedJavaType podType = kit.getMetaAccess().lookupJavaType(Pod.class);
         ValueNode receiver = kit.loadLocal(0, JavaKind.Object);
         ValueNode pod = loadNonNullField(kit, receiver, findField(factoryType, "pod"));
-        ValueNode sizeWithoutRefMap = kit.createLoadField(pod, findField(podType, "fieldsSizeWithoutRefMap"));
+        ValueNode arrayLength = kit.createLoadField(pod, findField(podType, "arrayLength"));
         ValueNode refMap = loadNonNullField(kit, pod, findField(podType, "referenceMap"));
         ConstantNode hub = kit.createConstant(providers.getConstantReflection().asObjectHub(podConcreteType), JavaKind.Object);
-        ValueNode instance = kit.append(new NewPodInstanceNode(podConcreteType, hub, sizeWithoutRefMap, refMap));
+        ValueNode instance = kit.append(new NewPodInstanceNode(podConcreteType, hub, arrayLength, refMap));
         kit.storeLocal(instanceLocal, JavaKind.Object, instance);
     }
 

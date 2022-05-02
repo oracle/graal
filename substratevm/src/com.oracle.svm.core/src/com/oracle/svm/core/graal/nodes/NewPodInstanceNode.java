@@ -39,14 +39,14 @@ public final class NewPodInstanceNode extends AbstractNewObjectNode {
 
     private final ResolvedJavaType knownInstanceType;
     @Input ValueNode hub;
-    @Input ValueNode sizeWithoutRefMap;
+    @Input ValueNode arrayLength;
     @Input ValueNode referenceMap;
 
-    public NewPodInstanceNode(ResolvedJavaType knownInstanceType, ValueNode hub, ValueNode sizeWithoutRefMap, ValueNode referenceMap) {
+    public NewPodInstanceNode(ResolvedJavaType knownInstanceType, ValueNode hub, ValueNode arrayLength, ValueNode referenceMap) {
         super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(knownInstanceType)), true, null);
         this.knownInstanceType = knownInstanceType;
         this.hub = hub;
-        this.sizeWithoutRefMap = sizeWithoutRefMap;
+        this.arrayLength = arrayLength;
         this.referenceMap = referenceMap;
     }
 
@@ -58,11 +58,14 @@ public final class NewPodInstanceNode extends AbstractNewObjectNode {
         return hub;
     }
 
-    public ValueNode getSizeWithoutRefMap() {
-        return sizeWithoutRefMap;
+    public ValueNode getArrayLength() {
+        return arrayLength;
     }
 
     public ValueNode getReferenceMap() {
         return referenceMap;
     }
+
+    @NodeIntrinsic
+    public static native Object newPodInstance(@ConstantNodeParameter Class<?> knownInstanceClass, Class<?> runtimeClass, int arrayLength, byte[] referenceMap);
 }

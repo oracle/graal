@@ -41,19 +41,19 @@ public class FormatPodNode extends FixedWithNextNode implements Lowerable {
 
     @Input protected ValueNode memory;
     @Input protected ValueNode hub;
-    @Input protected ValueNode sizeWithoutRefMap;
+    @Input protected ValueNode arrayLength;
     @Input protected ValueNode referenceMap;
     @Input protected ValueNode rememberedSet;
     @Input protected ValueNode unaligned;
     @Input protected ValueNode fillStartOffset;
     @Input protected ValueNode emitMemoryBarrier;
 
-    public FormatPodNode(ValueNode memory, ValueNode hub, ValueNode sizeWithoutRefMap, ValueNode referenceMap,
+    public FormatPodNode(ValueNode memory, ValueNode hub, ValueNode arrayLength, ValueNode referenceMap,
                     ValueNode rememberedSet, ValueNode unaligned, ValueNode fillStartOffset, ValueNode emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
-        this.sizeWithoutRefMap = sizeWithoutRefMap;
+        this.arrayLength = arrayLength;
         this.referenceMap = referenceMap;
         this.rememberedSet = rememberedSet;
         this.unaligned = unaligned;
@@ -69,8 +69,8 @@ public class FormatPodNode extends FixedWithNextNode implements Lowerable {
         return hub;
     }
 
-    public ValueNode getSizeWithoutRefMap() {
-        return sizeWithoutRefMap;
+    public ValueNode getArrayLength() {
+        return arrayLength;
     }
 
     public ValueNode getReferenceMap() {
@@ -94,6 +94,6 @@ public class FormatPodNode extends FixedWithNextNode implements Lowerable {
     }
 
     @NodeIntrinsic
-    public static native Object formatPod(Pointer memory, Class<?> hub, int sizeWithoutRefMap, byte[] referenceMap,
+    public static native Object formatPod(Pointer memory, Class<?> hub, int arrayLength, byte[] referenceMap,
                     boolean rememberedSet, boolean unaligned, int fillStartOffset, boolean emitMemoryBarrier);
 }
