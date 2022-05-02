@@ -50,7 +50,6 @@ import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
@@ -113,12 +112,6 @@ import org.graalvm.collections.EconomicSet;
  */
 public abstract class NFATraversalRegexASTVisitor {
 
-    /**
-     * Bailout threshold for the number of successors eliminated by de-duplication so far. This is
-     * necessary for expressions with an exponential number of possible paths, like
-     * {@code /(a?|b?|c?|d?|e?|f?|g?)(a?|b?|c?|d?|e?|f?|g?)(a?|b?|c?|d?|e?|f?|g?)/}.
-     */
-    private static final int SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD = Integer.MAX_VALUE;
     protected final RegexAST ast;
     private Term root;
     /**
@@ -167,7 +160,6 @@ public abstract class NFATraversalRegexASTVisitor {
     private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
     private final StateSet<RegexAST, RegexASTNode> dollarsOnPath;
     private final int[] nodeVisitCount;
-    private int deduplicatedTargets = 0;
 
     private final TBitSet captureGroupUpdates;
     private final TBitSet captureGroupClears;
@@ -236,7 +228,6 @@ public abstract class NFATraversalRegexASTVisitor {
             pushQuantifierGuard(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
         }
         targetDeduplicationSet.clear();
-        deduplicatedTargets = 0;
         if (runRoot.isGroup() && runRoot.getParent().isSubtreeRoot()) {
             advanceTo(runRoot);
         } else {
@@ -812,9 +803,6 @@ public abstract class NFATraversalRegexASTVisitor {
         DeduplicationKey key = new DeduplicationKey(cur, index, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
         boolean isDuplicate = !targetDeduplicationSet.add(key);
         if (isDuplicate) {
-            if (++deduplicatedTargets > SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD) {
-                throw new UnsupportedRegexException("NFATraversal explosion");
-            }
             retreat();
             return false;
         }
