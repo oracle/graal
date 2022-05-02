@@ -43,17 +43,20 @@ package com.oracle.truffle.regex.tregex.nodes;
 import java.lang.reflect.Field;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
-
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.util.TRegexGuards;
+
 import sun.misc.Unsafe;
 
 /**
  * This class wraps {@link TRegexExecutorNode} and specializes on the type of the input strings
  * provided to {@link TRegexExecNode}.
  */
+@ImportStatic(TRegexGuards.class)
 public abstract class TRegexExecutorEntryNode extends Node {
 
     private static final sun.misc.Unsafe UNSAFE;
@@ -145,9 +148,5 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     static boolean isCompactString(String str) {
         return UNSAFE != null && UNSAFE.getByte(str, coderFieldOffset) == 0;
-    }
-
-    protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
     }
 }

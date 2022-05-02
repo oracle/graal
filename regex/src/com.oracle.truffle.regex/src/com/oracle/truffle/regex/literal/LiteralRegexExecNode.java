@@ -42,8 +42,8 @@ package com.oracle.truffle.regex.literal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -64,7 +64,9 @@ import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.TRegexGuards;
 
+@ImportStatic(TRegexGuards.class)
 public abstract class LiteralRegexExecNode extends RegexExecNode implements JsonConvertible {
 
     @Child LiteralRegexExecImplNode implNode;
@@ -105,8 +107,8 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         return implNode.execute(input, fromIndex, getEncoding(), true);
     }
 
-    @Specialization
-    RegexResult doTruffleObject(TruffleObject input, int fromIndex,
+    @Specialization(guards = "neitherByteArrayNorString(input)")
+    RegexResult doTruffleObject(Object input, int fromIndex,
                     @Cached("createClassProfile()") ValueProfile inputClassProfile) {
         return implNode.execute(inputClassProfile.profile(input), fromIndex, getEncoding(), false);
     }

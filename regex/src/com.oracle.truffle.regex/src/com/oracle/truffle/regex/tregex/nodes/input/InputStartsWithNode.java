@@ -44,10 +44,13 @@ import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.util.TRegexGuards;
 
+@ImportStatic(TRegexGuards.class)
 public abstract class InputStartsWithNode extends Node {
 
     public static InputStartsWithNode create() {
@@ -144,9 +147,5 @@ public abstract class InputStartsWithNode extends Node {
             }
         }
         return true;
-    }
-
-    protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
     }
 }
