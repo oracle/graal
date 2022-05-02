@@ -224,6 +224,7 @@ public class AMD64VectorUnary {
                 if (AMD64.XMM.equals(asRegister(input).getRegisterCategory())) {
                     opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(input), asRegister(input));
                 } else {
+                    // clear result register to avoid unnecessary dependency
                     VexRVMOp.VXORPD.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(result));
                     opcode.emit(masm, AVXKind.AVXSize.XMM, asRegister(result), asRegister(result), asRegister(input));
                 }

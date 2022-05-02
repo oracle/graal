@@ -625,16 +625,30 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    /**
+     * Denotes the preferred nds register (VEX.vvvv) for VEX-encoding of an SSE instruction.
+     * 
+     * For RM instructions where VEX.vvvv is reserved and must be 1111b, we should use
+     * {@link PreferredNDS#NONE}. For RVM instructions, the default should be
+     * {@link PreferredNDS#DST} to mimic the semantic of {@code dst <- op (dst, src)}. We should
+     * only use {@link PreferredNDS#SRC} for unary instructions, e.g., ROUNDSS. This would help us
+     * avoid an implicit dependency to {@code dst} register.
+     * 
+     * Note that when {@code src} is a memory address, we will choose {@code dst} as {@code nds}
+     * even if {@link PreferredNDS#SRC} is specified, which implies an implicit dependency to
+     * {@code dst}. In {@code org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertOp},
+     * we manually insert an {@code XOR} instruction for {@code dst}.
+     */
     private enum PreferredNDS {
         NONE,
         DST,
         SRC;
 
-        public Register getNds(Register dst) {
+        public Register getNds(Register reg, @SuppressWarnings("unused") AMD64Address address) {
             switch (this) {
                 case DST:
                 case SRC:
-                    return dst;
+                    return reg;
                 default:
                     return Register.None;
             }
@@ -681,7 +695,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
             assert verify(asm, size, dst, src);
             if (isSSEInstruction()) {
-                asm.simdPrefix(dst, preferredNDS.getNds(dst), src, size, prefix1, prefix2, false);
+                asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, false);
                 asm.emitByte(op);
                 asm.emitModRM(dst, src);
             } else {
@@ -694,7 +708,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, int imm) {
             assert verify(asm, size, dst, null);
             if (isSSEInstruction()) {
-                asm.simdPrefix(dst, preferredNDS.getNds(dst), src, size, prefix1, prefix2, false);
+                asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, false);
                 asm.emitByte(op);
             } else {
                 emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
@@ -783,7 +797,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             assert verify(asm, size, dst, null);
             assert isSSEInstruction();
             // MOVSS/SD are not RVM instruction when the dst is an address
-            Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(dst);
+            Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(dst, src);
             asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == QWORD);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
@@ -819,7 +833,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
             assert verify(asm, size, src, dst);
             assert isSSEInstruction();
-            asm.simdPrefix(src, preferredNDS.getNds(dst), dst, size, prefix1, prefix2, size == QWORD);
+            asm.simdPrefix(src, preferredNDS.getNds(dst, src), dst, size, prefix1, prefix2, size == QWORD);
             asm.emitByte(op);
             asm.emitModRM(src, dst);
         }
@@ -829,7 +843,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             assert verify(asm, size, src, null);
             assert isSSEInstruction();
             // MOVSS/SD are not RVM instruction when the dst is an address
-            Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(src);
+            Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(src, dst);
             asm.simdPrefix(src, nds, dst, size, prefix1, prefix2, size == QWORD);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 0);
