@@ -53,7 +53,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.LongArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.QuantifierGuard;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -333,78 +332,7 @@ public abstract class NFATraversalRegexASTVisitor {
             } else {
                 quantifierGuardsResult = quantifierGuards == null ? QuantifierGuard.NO_GUARDS : quantifierGuards.toArray();
             }
-
-            assert Arrays.equals(quantifierGuardsResult, calcQuantifierGuardsOrig());
         }
-    }
-
-    protected QuantifierGuard[] calcQuantifierGuardsOrig() {
-        ObjectArrayBuffer<QuantifierGuard> quantifierGuards = new ObjectArrayBuffer<>();
-        TBitSet quantifierGuardsLoop = new TBitSet(ast.getQuantifierCount().getCount());
-        TBitSet quantifierGuardsExited = new TBitSet(ast.getQuantifierCount().getCount());
-        RegexASTNode target = curPath.isEmpty() ? null : pathGetNode(curPath.peek());
-        if (root.isGroup() && !root.getParent().isSubtreeRoot()) {
-            Group emptyMatch = root.getParent().getParent().asGroup();
-            quantifierGuards.add(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
-        }
-        Group emptyMatch = null;
-        if (target != null && target.isGroup() && !target.getParent().isSubtreeRoot() && target.getParent().getParent().asGroup().hasQuantifier()) {
-            emptyMatch = target.getParent().getParent().asGroup();
-        }
-        for (int i = 0; i < curPath.length(); i++) {
-            long element = curPath.get(i);
-            if (pathIsGroup(element)) {
-                Group group = (Group) pathGetNode(element);
-                if (group.hasQuantifier() && group != emptyMatch) {
-                    Quantifier quantifier = group.getQuantifier();
-                    if (quantifier.hasIndex()) {
-                        if (pathIsGroupEnter(element)) {
-                            if (quantifierGuardsLoop.get(quantifier.getIndex()) && !quantifierGuardsExited.get(quantifier.getIndex())) {
-                                quantifierGuards.add(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
-                            } else {
-                                quantifierGuards.add(QuantifierGuard.createEnter(quantifier));
-                            }
-                        } else if (pathIsGroupPassThrough(element)) {
-                            if (quantifier.getMin() > 0) {
-                                quantifierGuardsExited.set(quantifier.getIndex());
-                                quantifierGuards.add(QuantifierGuard.createExit(quantifier));
-                            } else {
-                                quantifierGuards.add(QuantifierGuard.createClear(quantifier));
-                            }
-                        } else if (pathIsGroupExit(element)) {
-                            quantifierGuardsLoop.set(quantifier.getIndex());
-                        } else {
-                            assert pathIsGroupEscape(element);
-                            quantifierGuardsExited.set(quantifier.getIndex());
-                        }
-                    }
-                    if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
-                        if (pathIsGroupEnter(element)) {
-                            quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
-                        } else if (pathIsGroupExit(element) && ((ast.getOptions().getFlavor().canHaveEmptyLoopIterations()) || !root.isCharacterClass())) {
-                            quantifierGuards.add(QuantifierGuard.createExitZeroWidth(quantifier));
-                        } else if (pathIsGroupEscape(element)) {
-                            quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
-                        }
-                    }
-                }
-                if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
-                    if (pathIsGroupEnter(element)) {
-                        quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
-                    } else if (pathIsGroupPassThrough(element)) {
-                        quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
-                        quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
-                    } else {
-                        assert pathIsGroupExit(element) || pathIsGroupEscape(element);
-                        quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
-                    }
-                }
-            }
-        }
-        if (emptyMatch != null) {
-            quantifierGuards.add(QuantifierGuard.createEnterEmptyMatch(emptyMatch.getQuantifier()));
-        }
-        return quantifierGuards.toArray(QuantifierGuard.NO_GUARDS);
     }
 
     @TruffleBoundary
@@ -893,8 +821,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * of groups referenced in a group-enter path element. <br>
      * Since the same group can appear multiple times on the path, we cannot reuse {@link Group}'s
      * implementation of {@link RegexASTVisitorIterable}. Therefore, every occurrence of a group on
-     * the path has its own index for iterating and back-tracking over its alternatives. <br>
-     * This field's offset <em>must</em> be zero for {@link #pathIncGroupAltIndex(long)} to work!
+     * the path has its own index for iterating and back-tracking over its alternatives.
      */
     private static final int PATH_GROUP_ALT_INDEX_OFFSET = 0;
     /**
@@ -911,12 +838,10 @@ public abstract class NFATraversalRegexASTVisitor {
      * </ul>
      */
     private static final int PATH_GROUP_ACTION_OFFSET = Short.SIZE + Integer.SIZE;
-    private static final long PATH_GROUP_ACTION_CLEAR_MASK = 0x0000ffffffffffffL;
     private static final long PATH_GROUP_ACTION_ENTER = 1L << PATH_GROUP_ACTION_OFFSET;
     private static final long PATH_GROUP_ACTION_EXIT = 1L << PATH_GROUP_ACTION_OFFSET + 1;
     private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
     private static final long PATH_GROUP_ACTION_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
-    private static final long PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_PASS_THROUGH;
     private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_ESCAPE;
 
     /**
@@ -924,14 +849,6 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private static long createPathElement(RegexASTNode node) {
         return (long) node.getId() << PATH_NODE_OFFSET;
-    }
-
-    /**
-     * Create a group-enter path element for the given Group. The group alternation index is
-     * initialized with 1!
-     */
-    private static long createGroupEnterPathElement(Group node) {
-        return ((long) node.getId() << PATH_NODE_OFFSET) | (1 << PATH_GROUP_ALT_INDEX_OFFSET) | PATH_GROUP_ACTION_ENTER;
     }
 
     private static int pathGetNodeId(long pathElement) {
@@ -950,20 +867,6 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private static int pathGetGroupAltIndex(long pathElement) {
         return (short) (pathElement >>> PATH_GROUP_ALT_INDEX_OFFSET);
-    }
-
-    /**
-     * Convert the given path element to a group-enter.
-     */
-    private static long pathToGroupEnter(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_CLEAR_MASK) | PATH_GROUP_ACTION_ENTER;
-    }
-
-    /**
-     * Convert the given path element to a group-escape.
-     */
-    private static long pathToGroupEscape(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_CLEAR_MASK) | PATH_GROUP_ACTION_ESCAPE;
     }
 
     /**
@@ -991,14 +894,6 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     /**
-     * Convert a group enter path element to a group pass-through, and vice versa.
-     */
-    private static long pathSwitchEnterAndPassThrough(long pathElement) {
-        assert (pathIsGroupEnter(pathElement) != pathIsGroupPassThrough(pathElement));
-        return pathElement ^ PATH_GROUP_ACTION_ENTER_OR_PASS_THROUGH;
-    }
-
-    /**
      * Returns {@code true} if the path element's group alternation index is still in bounds.
      */
     private boolean pathGroupHasNext(long pathElement) {
@@ -1011,14 +906,6 @@ public abstract class NFATraversalRegexASTVisitor {
      */
     private Sequence pathGroupGetNext(long pathElement) {
         return ((Group) pathGetNode(pathElement)).getAlternatives().get(pathGetGroupAltIndex(pathElement));
-    }
-
-    /**
-     * Increment the group alternation index. This requires {@link #PATH_GROUP_ALT_INDEX_OFFSET} to
-     * be 0!
-     */
-    private static long pathIncGroupAltIndex(long pathElement) {
-        return pathElement + 1;
     }
 
     private boolean noEmptyGuardGroupEnterOnPath(Group group) {
