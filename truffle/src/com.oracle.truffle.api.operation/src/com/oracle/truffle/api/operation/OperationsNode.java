@@ -16,15 +16,18 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class OperationsNode extends Node implements InstrumentableNode, BytecodeOSRNode {
 
+    // The order of these must be the same as FrameKind in processor
     public static final int FRAME_TYPE_OBJECT = 0;
-    public static final int FRAME_TYPE_LONG = 1;
-    public static final int FRAME_TYPE_INT = 2;
-    public static final int FRAME_TYPE_DOUBLE = 3;
+    public static final int FRAME_TYPE_BYTE = 1;
+    public static final int FRAME_TYPE_BOOLEAN = 2;
+    public static final int FRAME_TYPE_INT = 3;
     public static final int FRAME_TYPE_FLOAT = 4;
-    public static final int FRAME_TYPE_BOOLEAN = 5;
-    public static final int FRAME_TYPE_BYTE = 6;
+    public static final int FRAME_TYPE_LONG = 5;
+    public static final int FRAME_TYPE_DOUBLE = 6;
 
     protected static final int VALUES_OFFSET = 0;
+
+    private static final OperationsBytesSupport LE_BYTES = OperationsBytesSupport.littleEndian();
 
     private static FrameDescriptor createFrameDescriptor(int maxStack, int numLocals) {
         FrameDescriptor.Builder b = FrameDescriptor.newBuilder(VALUES_OFFSET + maxStack + numLocals);
@@ -172,5 +175,24 @@ public abstract class OperationsNode extends Node implements InstrumentableNode,
     @Override
     public Object getOSRMetadata() {
         return osrMetadata;
+    }
+
+    protected static void setResultBoxedImpl(byte[] bc, int bci, int targetType, short[] descriptor) {
+        int op = LE_BYTES.getShort(bc, bci) & 0xffff;
+        short todo = descriptor[op];
+
+        if (todo > 0) {
+            // quicken
+            LE_BYTES.putShort(bc, bci, todo);
+        } else {
+            // set bit
+            int offset = (todo >> 8) & 0x7f;
+            int bit = todo & 0xff;
+            if (targetType == FRAME_TYPE_OBJECT) {
+                bc[bci + offset] &= ~bit;
+            } else {
+                bc[bci + offset] |= bit;
+            }
+        }
     }
 }

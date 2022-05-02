@@ -26,8 +26,8 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 
 public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsData> {
 
@@ -234,13 +234,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement builderBytecodeNodeType;
         CodeTypeElement builderInstrBytecodeNodeType;
         {
-            bytecodeGenerator = new OperationsBytecodeCodeGenerator(this, typBuilderImpl, simpleName + "BytecodeNode", m, false);
+            bytecodeGenerator = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "BytecodeNode", m, false);
             builderBytecodeNodeType = bytecodeGenerator.createBuilderBytecodeNode();
             typBuilderImpl.add(builderBytecodeNodeType);
         }
         if (ENABLE_INSTRUMENTATION) {
-            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(this, typBuilderImpl,
-                            simpleName + "InstrumentableBytecodeNode", m, true);
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "InstrumentableBytecodeNode", m, true);
             builderInstrBytecodeNodeType = bcg.createBuilderBytecodeNode();
             typBuilderImpl.add(builderInstrBytecodeNodeType);
         } else {
@@ -630,11 +629,47 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         }
 
         {
+            CodeVariableElement fldBoxingDescriptors = new CodeVariableElement(MOD_PRIVATE_STATIC_FINAL, arrayOf(arrayOf(context.getType(short.class))), "BOXING_DESCRIPTORS");
+            typBuilderImpl.add(fldBoxingDescriptors);
+
+            CodeTreeBuilder b = fldBoxingDescriptors.createInitBuilder();
+
+            b.string("{").startCommaGroup();
+            for (FrameKind kind : FrameKind.values()) {
+                b.startGroup().newLine();
+                b.lineComment("" + kind);
+                if (m.getFrameKinds().contains(kind)) {
+                    b.string("{").startCommaGroup();
+                    b.string("-1");
+                    for (Instruction instr : m.getInstructions()) {
+                        String value;
+                        switch (instr.boxingEliminationBehaviour()) {
+                            case DO_NOTHING:
+                                value = "0";
+                                break;
+                            case REPLACE:
+                                value = instr.boxingEliminationReplacement(kind).getName();
+                                break;
+                            case SET_BIT:
+                                value = "(short) (0x8000 | (" + instr.boxingEliminationBitOffset() + " << 8) | 0x" + Integer.toHexString(instr.boxingEliminationBitMask()) + ")";
+                                break;
+                            default:
+                                throw new UnsupportedOperationException("unknown boxing behaviour: " + instr.boxingEliminationBehaviour());
+                        }
+                        b.string(value);
+
+                    }
+                    b.end().string("}").end();
+                } else {
+                    b.string("null").end();
+                }
+            }
+            b.end().string("}");
+        }
+
+        {
             CodeExecutableElement mDoSetResultUnboxed = new CodeExecutableElement(MOD_PRIVATE_STATIC, context.getType(void.class), "doSetResultBoxed");
             builderBytecodeNodeType.add(mDoSetResultUnboxed);
-
-            CodeVariableElement varBoxed = new CodeVariableElement(context.getType(boolean.class), "boxed");
-            mDoSetResultUnboxed.addParameter(varBoxed);
 
             CodeVariableElement varBc = new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc");
             mDoSetResultUnboxed.addParameter(varBc);
@@ -648,39 +683,18 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             CodeVariableElement varTargetType = new CodeVariableElement(context.getType(int.class), "targetType");
             mDoSetResultUnboxed.addParameter(varTargetType);
 
-            vars.bc = varBc;
-            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
-
             CodeTreeBuilder b = mDoSetResultUnboxed.createBuilder();
 
-            b.startIf().variable(varBciOffset).string(" == 0").end().startBlock();
-            b.returnStatement();
+            b.startIf().variable(varBciOffset).string(" != 0").end().startBlock();
+            {
+                b.startStatement().startCall("setResultBoxedImpl");
+                b.variable(varBc);
+                b.string("startBci - bciOffset");
+                b.variable(varTargetType);
+                b.startGroup().string("BOXING_DESCRIPTORS[").variable(varTargetType).string("]").end();
+                b.end(2);
+            }
             b.end();
-
-            b.startStatement().startStaticCall(types.CompilerDirectives, "transferToInterpreter").end(2);
-
-            b.declaration("int", "bci", "startBci - bciOffset");
-
-            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars.asExecution(), instr -> {
-                if (instr == null) {
-                    return null;
-                }
-
-                CodeTree tree = instr.createSetResultBoxed(vars.asExecution(), varBoxed, varTargetType);
-                if (tree == null) {
-                    return null;
-                }
-
-                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-
-                builder.tree(tree);
-                builder.statement("break");
-
-                return builder.build();
-            }));
-
-            vars.bc = fldBc;
-            vars.bci = fldBci;
         }
 
         for (Operation op : m.getOperations()) {
@@ -870,39 +884,6 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         return typBuilderImpl;
 
-    }
-
-    void createSetBoxedForInstructions(CodeTypeElement typBuilderImpl) {
-        for (Instruction instr : m.getInstructions()) {
-            if (!(instr instanceof CustomInstruction)) {
-                continue;
-            }
-
-            if (instr instanceof QuickenedInstruction) {
-                continue;
-            }
-
-            CustomInstruction cinstr = (CustomInstruction) instr;
-            SingleOperationData soData = cinstr.getData();
-
-            {
-                CodeVariableElement varUnboxed = new CodeVariableElement(context.getType(boolean.class), "unboxed");
-                cinstr.setSetResultUnboxedMethod(cinstr.getPlugs().createSetResultBoxed(varUnboxed));
-            }
-
-            if (m.isTracing()) {
-                CodeExecutableElement metGetStateBits = new CodeExecutableElement(
-                                MOD_PRIVATE_STATIC,
-                                arrayOf(context.getType(boolean.class)), soData.getName() + "_doGetStateBits_",
-                                new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc"),
-                                new CodeVariableElement(context.getType(int.class), "$bci"));
-                typBuilderImpl.add(metGetStateBits);
-                cinstr.setGetSpecializationBits(metGetStateBits);
-
-                CodeTreeBuilder b = metGetStateBits.createBuilder();
-                b.tree(cinstr.getPlugs().createGetSpecializationBits());
-            }
-        }
     }
 
     private static TypeMirror generic(TypeElement el, TypeMirror... params) {

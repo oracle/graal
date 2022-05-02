@@ -3,7 +3,6 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
 public class LoadArgumentInstruction extends Instruction {
@@ -71,32 +70,21 @@ public class LoadArgumentInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
+        return BoxingEliminationBehaviour.REPLACE;
+    }
+
+    @Override
+    public CodeVariableElement boxingEliminationReplacement(FrameKind targetKind) {
         if (kind == FrameKind.OBJECT) {
-            b.startIf().string("!").variable(varBoxed).end().startBlock();
-
-            boolean elseIf = false;
-            for (FrameKind okind : ctx.getData().getFrameKinds()) {
-                if (okind == FrameKind.OBJECT)
-                    continue;
-
-                elseIf = b.startIf(elseIf);
-                b.variable(varTargetType).string(" == FRAME_TYPE_" + okind.getFrameName().toUpperCase()).end().startBlock();
-                b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadArgumentInstructions[okind.ordinal()].opcodeIdField));
-                b.end();
-            }
-
-            b.end();
+            return ctx.loadArgumentInstructions[targetKind.ordinal()].opcodeIdField;
         } else {
-            b.startIf().variable(varBoxed).end().startBlock();
-
-            b.tree(OperationGeneratorUtils.createWriteOpcode(vars.bc, vars.bci, ctx.loadArgumentInstructions[FrameKind.OBJECT.ordinal()].opcodeIdField));
-
-            b.end();
+            if (targetKind == FrameKind.OBJECT) {
+                return ctx.loadArgumentInstructions[targetKind.ordinal()].opcodeIdField;
+            } else {
+                return opcodeIdField;
+            }
         }
-
-        return b.build();
     }
 
     @Override

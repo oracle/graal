@@ -44,6 +44,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.createReference
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -220,6 +221,7 @@ public class BitSet {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
         builder.tree(createMaskedReference(frameState, maskedElements));
         builder.string(" == ").string(formatMask(createMask(selectedElements)));
+        builder.string("/* ", label("is-exact"), toString(selectedElements, "&&"), " */");
         return builder.build();
     }
 

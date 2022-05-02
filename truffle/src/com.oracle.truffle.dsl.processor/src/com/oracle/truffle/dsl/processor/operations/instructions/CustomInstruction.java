@@ -10,7 +10,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
@@ -31,11 +30,12 @@ public class CustomInstruction extends Instruction {
     private DataKind[] dataKinds = null;
     private int numChildNodes;
     private int numConsts;
-    private CodeTree setResultUnboxedMethod;
     private OperationsBytecodeNodeGeneratorPlugs plugs;
     private CodeExecutableElement prepareAOTMethod;
     private CodeExecutableElement getSpecializationBits;
     private final List<QuickenedInstruction> quickenedVariants = new ArrayList<>();
+    private int boxingEliminationBitOffset;
+    private int boxingEliminationBitMask;
 
     public SingleOperationData getData() {
         return data;
@@ -252,32 +252,33 @@ public class CustomInstruction extends Instruction {
         this.numConsts = numConsts;
     }
 
-    public void setSetResultUnboxedMethod(CodeTree setResultUnboxedMethod) {
-        this.setResultUnboxedMethod = setResultUnboxedMethod;
-    }
-
     public void setPrepareAOTMethod(CodeExecutableElement prepareAOTMethod) {
         this.prepareAOTMethod = prepareAOTMethod;
     }
 
     public void setGetSpecializationBits(CodeExecutableElement getSpecializationBits) {
         this.getSpecializationBits = getSpecializationBits;
+    }
+
+    public void setBoxingEliminationData(int boxingEliminationBitOffset, int boxingEliminationBitMask) {
+        this.boxingEliminationBitOffset = boxingEliminationBitOffset;
+        this.boxingEliminationBitMask = boxingEliminationBitMask;
 
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
+        return BoxingEliminationBehaviour.SET_BIT;
+    }
 
-        if (!vars.bci.getName().equals("$bci")) {
-            b.declaration("int", "$bci", CodeTreeBuilder.singleVariable(vars.bci));
-        }
+    @Override
+    public int boxingEliminationBitOffset() {
+        return boxingEliminationBitOffset;
+    }
 
-        b.declaration("boolean", "unboxed", "!" + varBoxed.getName());
-
-        b.tree(setResultUnboxedMethod);
-
-        return b.build();
+    @Override
+    public int boxingEliminationBitMask() {
+        return boxingEliminationBitMask;
     }
 
     public OperationsBytecodeNodeGeneratorPlugs getPlugs() {

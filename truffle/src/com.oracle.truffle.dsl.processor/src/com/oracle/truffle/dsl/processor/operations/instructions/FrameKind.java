@@ -1,13 +1,13 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
 public enum FrameKind {
-    BOOLEAN("boolean", "Boolean"),
+    OBJECT("Object", "Object"),
     BYTE("byte", "Byte"),
+    BOOLEAN("boolean", "Boolean"),
     INT("int", "Int", "Integer"),
     FLOAT("float", "Float"),
     LONG("long", "Long"),
-    DOUBLE("double", "Double"),
-    OBJECT("Object", "Object");
+    DOUBLE("double", "Double");
 
     private final String typeName;
     private final String frameName;

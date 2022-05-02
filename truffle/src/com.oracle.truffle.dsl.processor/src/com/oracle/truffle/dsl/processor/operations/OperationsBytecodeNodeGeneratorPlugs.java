@@ -1,5 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -17,6 +18,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.StateBitSet;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -170,8 +172,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return new CodeTypeMirror(TypeKind.BYTE);
     }
 
-    @Override
-    public CodeTree createBitSetReference(BitSet bits) {
+    private int bitSetOffset(BitSet bits) {
         int index = additionalData.indexOf(bits);
         if (index == -1) {
             index = additionalData.size();
@@ -179,6 +180,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
             additionalDataKinds.add(DataKind.BITS);
         }
+
+        return index;
+    }
+
+    @Override
+    public CodeTree createBitSetReference(BitSet bits) {
+        int index = bitSetOffset(bits);
 
         return CodeTreeBuilder.createBuilder().variable(fldBc).string("[$bci + " + cinstr.lengthWithoutState() + " + " + index + "]").build();
     }
@@ -384,14 +392,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (cinstr instanceof QuickenedInstruction) {
             QuickenedInstruction qinstr = (QuickenedInstruction) cinstr;
 
-            // unquicken and call parent EAS
-            builder.tree(OperationGeneratorUtils.createWriteOpcode(
-                            fldBc,
-                            new CodeVariableElement(context.getType(int.class), "$bci"),
-                            qinstr.getOrig().opcodeIdField));
-
+            // unquicken call parent EAS
             easName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
-
         }
 
         if (isVariadic) {
@@ -555,15 +557,29 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (!(cinstr instanceof QuickenedInstruction)) {
             List<QuickenedInstruction> quickened = cinstr.getQuickenedVariants();
 
-            boolean elseIf = false;
-            for (QuickenedInstruction qinstr : quickened) {
-                if (qinstr.getActiveSpecs().contains(specialization)) {
-                    elseIf = b.startIf(elseIf);
-                    b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
-                    b.end().startBlock();
-                    {
-                        b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
+            if (!quickened.isEmpty()) {
+                // only quicken/unquicken for instructions that have quickened versions
+                boolean elseIf = false;
+                for (QuickenedInstruction qinstr : quickened) {
+                    if (qinstr.getActiveSpecs().contains(specialization)) {
+                        elseIf = b.startIf(elseIf);
+                        b.tree(multiState.createIs(frameState, qinstr.getActiveSpecs().toArray(), specializationStates.toArray()));
+                        b.end().startBlock();
+                        {
+                            b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", qinstr.opcodeIdField));
+                        }
+                        b.end();
                     }
+                }
+
+                if (elseIf) {
+                    b.startElseBlock();
+                }
+
+                // quicken to generic
+                b.tree(OperationGeneratorUtils.createWriteOpcode(fldBc, "$bci", cinstr.opcodeIdField));
+
+                if (elseIf) {
                     b.end();
                 }
             }
@@ -572,6 +588,11 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         // boxing elimination
         if (!isVariadic && boxingSplits != null) {
             boolean elseIf = false;
+
+            for (int i = 0; i < cinstr.numPopStatic(); i++) {
+                b.declaration("int", "type" + i, (CodeTree) null);
+            }
+
             for (BoxingSplit split : boxingSplits) {
                 List<SpecializationData> specializations = split.getGroup().collectSpecializations();
                 if (!specializations.contains(specialization)) {
@@ -592,7 +613,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
                 for (int i = 0; i < cinstr.numPopStatic(); i++) {
                     FrameKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
-                    b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", frameType));
+                    b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
                 }
 
                 b.end();
@@ -603,11 +624,15 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getStackValueArgumentOffset(i) + "] & 0xff", FrameKind.OBJECT));
+                b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(FrameKind.OBJECT)).end();
             }
 
             if (elseIf) {
                 b.end();
+            }
+
+            for (int i = 0; i < cinstr.numPopStatic(); i++) {
+                b.tree(OperationGeneratorUtils.callSetResultBoxed("bc[$bci + " + cinstr.getArgumentOffset(i) + "]", CodeTreeBuilder.singleString("type" + i)));
             }
         }
 
@@ -668,5 +693,23 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         return false;
+    }
+
+    public void finishUp() {
+        int offset = -1;
+        BitSet targetSet = null;
+        for (StateBitSet set : multiState.getSets()) {
+            if (set.contains(resultUnboxedState)) {
+                targetSet = set;
+                offset = Arrays.asList(set.getObjects()).indexOf(resultUnboxedState);
+                break;
+            }
+        }
+
+        if (offset < 0 || targetSet == null) {
+            throw new AssertionError();
+        }
+
+        cinstr.setBoxingEliminationData(cinstr.lengthWithoutState() + bitSetOffset(targetSet), 1 << offset);
     }
 }

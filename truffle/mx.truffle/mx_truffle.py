@@ -656,8 +656,7 @@ def create_dsl_parser(args=None, out=None):
 
 def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
-    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
-    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser.operations", "SimpleLanguageOperations", COPYRIGHT_HEADER_UPL, ['-visitor'] + args, out)
+    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguageOperations", COPYRIGHT_HEADER_UPL, ['-visitor'] + args, out)
 
 def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None, postprocess=None):
     """create the DSL expression parser using antlr"""

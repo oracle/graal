@@ -240,6 +240,12 @@ public abstract class Instruction {
 
     }
 
+    public enum BoxingEliminationBehaviour {
+        DO_NOTHING,
+        SET_BIT,
+        REPLACE
+    }
+
     public final String name;
     public final int id;
     public final InputType[] inputs;
@@ -571,7 +577,20 @@ public abstract class Instruction {
         return Arrays.stream(results).anyMatch(x -> x == ResultType.RETURN);
     }
 
-    public abstract CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType);
+    public abstract BoxingEliminationBehaviour boxingEliminationBehaviour();
+
+    @SuppressWarnings("unused")
+    public CodeVariableElement boxingEliminationReplacement(FrameKind kind) {
+        throw new AssertionError();
+    }
+
+    public int boxingEliminationBitOffset() {
+        throw new AssertionError();
+    }
+
+    public int boxingEliminationBitMask() {
+        throw new AssertionError();
+    }
 
     public abstract CodeTree createPrepareAOT(ExecutionVariables vars, CodeTree language, CodeTree root);
 

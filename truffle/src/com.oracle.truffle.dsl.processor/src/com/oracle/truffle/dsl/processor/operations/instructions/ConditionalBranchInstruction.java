@@ -9,7 +9,6 @@ import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.operations.OperationsContext;
 
@@ -75,8 +74,8 @@ public class ConditionalBranchInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
-        return null;
+    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
+        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

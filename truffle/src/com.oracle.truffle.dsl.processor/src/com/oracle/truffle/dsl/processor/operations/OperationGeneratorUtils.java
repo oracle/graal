@@ -182,16 +182,23 @@ public class OperationGeneratorUtils {
     }
 
     public static CodeTree callSetResultBoxed(String bciOffset, FrameKind kind) {
+        return callSetResultBoxed(bciOffset, toFrameTypeConstant(kind));
+    }
+
+    public static CodeTree callSetResultBoxed(String bciOffset, CodeTree kind) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         b.startStatement().startCall("doSetResultBoxed");
-        b.string(kind == FrameKind.OBJECT ? "true" : "false");
         b.string("bc");
         b.string("$bci");
         b.string(bciOffset);
-        b.string("FRAME_TYPE_" + kind.getFrameName().toUpperCase());
+        b.tree(kind);
         b.end(2);
 
         return b.build();
+    }
+
+    public static CodeTree toFrameTypeConstant(FrameKind kind) {
+        return CodeTreeBuilder.singleString("FRAME_TYPE_" + kind.getFrameName().toUpperCase());
     }
 }

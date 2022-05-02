@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
-import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 
@@ -93,8 +92,18 @@ public class QuickenedInstruction extends CustomInstruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
-        return orig.createSetResultBoxed(vars, varBoxed, varTargetType);
+    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
+        return BoxingEliminationBehaviour.SET_BIT;
+    }
+
+    @Override
+    public int boxingEliminationBitOffset() {
+        return orig.boxingEliminationBitOffset();
+    }
+
+    @Override
+    public int boxingEliminationBitMask() {
+        return orig.boxingEliminationBitMask();
     }
 
     @Override

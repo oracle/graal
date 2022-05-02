@@ -4724,15 +4724,18 @@ public class FlatNodeGenFactory {
                 builder.end().startBlock();
                 builder.startIf().string("cur == ").string(specializationLocalName).end().startBlock();
                 builder.startIf().string("prev == null").end().startBlock();
-                builder.startStatement().tree(fieldRefWrite).string(" = cur.next_").end();
+                builder.startStatement().tree(fieldRefWrite).string(" = ");
                 if (specializedIsNode) {
-                    builder.statement("this.adoptChildren()");
+                    builder.string("this.insert");
                 }
+                builder.string("(cur.next_)").end();
                 builder.end().startElseBlock();
-                builder.statement("prev.next_ = cur.next_");
+                builder.startStatement().string("prev.next_ = ");
                 if (specializedIsNode) {
-                    builder.statement("prev.adoptChildren()");
+                    builder.string("prev.insertAccessor");
                 }
+                builder.string("(cur.next_)").end();
+
                 builder.end();
                 builder.statement("break");
                 builder.end(); // if block

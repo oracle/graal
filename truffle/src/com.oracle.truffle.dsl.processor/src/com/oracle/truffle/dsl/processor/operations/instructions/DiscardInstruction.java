@@ -3,6 +3,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
+import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.BoxingEliminationBehaviour;
 
 public class DiscardInstruction extends Instruction {
     public DiscardInstruction(String name, int id, InputType input) {
@@ -28,8 +29,8 @@ public class DiscardInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createSetResultBoxed(ExecutionVariables vars, CodeVariableElement varBoxed, CodeVariableElement varTargetType) {
-        return null;
+    public BoxingEliminationBehaviour boxingEliminationBehaviour() {
+        return BoxingEliminationBehaviour.DO_NOTHING;
     }
 
     @Override

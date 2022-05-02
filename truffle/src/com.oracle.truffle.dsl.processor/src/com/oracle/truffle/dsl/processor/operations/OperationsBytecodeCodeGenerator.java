@@ -55,10 +55,8 @@ public class OperationsBytecodeCodeGenerator {
     private final String simpleName;
     private final OperationsData m;
     private final boolean withInstrumentation;
-    private final OperationsCodeGenerator parent;
 
-    public OperationsBytecodeCodeGenerator(OperationsCodeGenerator parent, CodeTypeElement typBuilderImpl, String simpleName, OperationsData m, boolean withInstrumentation) {
-        this.parent = parent;
+    public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, String simpleName, OperationsData m, boolean withInstrumentation) {
         this.typBuilderImpl = typBuilderImpl;
         this.simpleName = simpleName;
         this.m = m;
@@ -165,6 +163,7 @@ public class OperationsBytecodeCodeGenerator {
                 if (resultList.size() != 1) {
                     throw new AssertionError("Node generator did not return exactly one class");
                 }
+                plugs.finishUp();
                 CodeTypeElement result = resultList.get(0);
 
                 CodeExecutableElement uncExec = null;
@@ -266,8 +265,6 @@ public class OperationsBytecodeCodeGenerator {
             }
 
         }
-
-        parent.createSetBoxedForInstructions(typBuilderImpl);
 
         ExecutionVariables vars = new ExecutionVariables();
         // vars.bytecodeNodeType = builderBytecodeNodeType;
