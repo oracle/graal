@@ -159,6 +159,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private final EconomicSet<DeduplicationKey> targetDeduplicationSet = EconomicSet.create();
     private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
     private final StateSet<RegexAST, RegexASTNode> dollarsOnPath;
+    private final StateSet<RegexAST, RegexASTNode> caretsOnPath;
     private final int[] nodeVisitCount;
 
     private final TBitSet captureGroupUpdates;
@@ -175,6 +176,7 @@ public abstract class NFATraversalRegexASTVisitor {
         this.insideEmptyGuardGroup = StateSet.create(ast);
         this.lookAroundsOnPath = StateSet.create(ast);
         this.dollarsOnPath = StateSet.create(ast);
+        this.caretsOnPath = StateSet.create(ast);
         this.nodeVisitCount = new int[ast.getNumberOfStates()];
         this.captureGroupUpdates = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.captureGroupClears = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
@@ -217,6 +219,7 @@ public abstract class NFATraversalRegexASTVisitor {
         assert insideEmptyGuardGroup.isEmpty();
         assert curPath.isEmpty();
         assert dollarsOnPath.isEmpty();
+        assert caretsOnPath.isEmpty();
         assert lookAroundsOnPath.isEmpty();
         assert nodeVisitsEmpty() : Arrays.toString(nodeVisitCount);
         assert Arrays.stream(quantifierGuardsLoop).allMatch(x -> x == 0);
@@ -275,13 +278,7 @@ public abstract class NFATraversalRegexASTVisitor {
     protected abstract void leaveLookAhead(LookAheadAssertion assertion);
 
     protected boolean caretsOnPath() {
-        for (int i = 0; i < curPath.length(); i++) {
-            RegexASTNode node = pathGetNode(curPath.get(i));
-            if (node.isCaret()) {
-                return true;
-            }
-        }
-        return false;
+        return !caretsOnPath.isEmpty();
     }
 
     protected boolean dollarsOnPath() {
@@ -423,6 +420,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 final PositionAssertion assertion = (PositionAssertion) cur;
                 switch (assertion.type) {
                     case CARET:
+                        addToVisitedSet(caretsOnPath);
                         if (canTraverseCaret) {
                             return advanceTerm(assertion);
                         } else {
@@ -785,6 +783,8 @@ public abstract class NFATraversalRegexASTVisitor {
                     removeFromVisitedSet(lastVisited, lookAroundsOnPath);
                 } else if (node.isDollar()) {
                     removeFromVisitedSet(lastVisited, dollarsOnPath);
+                } else if (node.isCaret()) {
+                    removeFromVisitedSet(lastVisited, caretsOnPath);
                 }
             }
         }
