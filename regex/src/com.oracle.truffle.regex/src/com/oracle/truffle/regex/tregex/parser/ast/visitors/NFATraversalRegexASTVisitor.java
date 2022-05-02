@@ -804,7 +804,8 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private boolean deduplicateTarget() {
-        DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
+        int index = !curPath.isEmpty() && (pathIsGroupEnter(curPath.peek()) || pathIsGroupPassThrough(curPath.peek())) ? pathGetGroupAltIndex(curPath.peek()) : 0;
+        DeduplicationKey key = new DeduplicationKey(cur, index, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
         boolean isDuplicate = !targetDeduplicationSet.add(key);
         if (isDuplicate) {
             if (++deduplicatedTargets > SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD) {
@@ -954,11 +955,13 @@ public abstract class NFATraversalRegexASTVisitor {
     private static final class DeduplicationKey {
         private final StateSet<RegexAST, RegexASTNode> nodesInvolved;
         private final QuantifierGuardsLinkedList quantifierGuards;
+        private final int index;
 
-        public DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath, QuantifierGuardsLinkedList quantifierGuards) {
+        public DeduplicationKey(RegexASTNode targetNode, int index, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath, QuantifierGuardsLinkedList quantifierGuards) {
             this.nodesInvolved = lookAroundsOnPath.copy();
             this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
+            this.index = index;
             this.quantifierGuards = quantifierGuards;
         }
 
@@ -968,12 +971,12 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             DeduplicationKey other = (DeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards);
+            return this.nodesInvolved.equals(other.nodesInvolved) && this.index == other.index && Objects.equals(this.quantifierGuards, other.quantifierGuards);
         }
 
         @Override
         public int hashCode() {
-            return nodesInvolved.hashCode() + 31 * Objects.hashCode(quantifierGuards);
+            return nodesInvolved.hashCode() + 31 * (index + 31 * Objects.hashCode(quantifierGuards));
         }
     }
 
