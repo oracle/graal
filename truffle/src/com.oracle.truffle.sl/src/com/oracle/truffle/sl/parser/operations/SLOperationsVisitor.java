@@ -13,7 +13,6 @@ import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationsNode;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
@@ -46,11 +45,16 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
 
-    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source, SLOperationsBuilder builder) {
+    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, SLSource source, SLOperationsBuilder builder) {
         return parseSLImpl(source, new SLOperationsVisitor(language, source, builder));
     }
 
-    private SLOperationsVisitor(SLLanguage language, Source source, SLOperationsBuilder builder) {
+    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, SLSource source) {
+        SLOperationsBuilder.parse(language, source);
+        return source.getFunctions();
+    }
+
+    private SLOperationsVisitor(SLLanguage language, SLSource source, SLOperationsBuilder builder) {
         super(language, source);
         this.b = builder;
     }
@@ -117,7 +121,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         assert scope == null;
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
 
-        b.beginSource(source);
+        b.beginSource(source.getSource());
         b.beginInstrumentation(StandardTags.RootTag.class);
 
         scope = new LexicalScope(null);

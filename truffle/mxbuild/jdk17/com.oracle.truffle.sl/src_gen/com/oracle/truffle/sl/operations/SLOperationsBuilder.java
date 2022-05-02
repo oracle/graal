@@ -65,6 +65,7 @@ import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.operations.SLOperations.SLEvalRootOperation;
 import com.oracle.truffle.sl.operations.SLOperations.SLInvokeOperation;
+import com.oracle.truffle.sl.parser.operations.SLSource;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -184,13 +185,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
     public abstract void endSLInvokeOperation();
 
-    public static OperationsNode[] parse(SLLanguage language, Source context) {
+    public static OperationsNode[] parse(SLLanguage language, SLSource context) {
         SLOperationsBuilderImpl builder = new SLOperationsBuilderImpl(language, context, false, false);
         SLOperations.parse(language, context, builder);
         return builder.collect();
     }
 
-    public static OperationsNode[] parseWithSourceInfo(SLLanguage language, Source context) {
+    public static OperationsNode[] parseWithSourceInfo(SLLanguage language, SLSource context) {
         SLOperationsBuilderImpl builder = new SLOperationsBuilderImpl(language, context, true, true);
         SLOperations.parse(language, context, builder);
         return builder.collect();
@@ -275,7 +276,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         private static final int INSTR_C_SLLESS_THAN_OPERATION_Q_LESS_THAN0 = 43;
 
         private final SLLanguage language;
-        private final Source parseContext;
+        private final SLSource parseContext;
         private final boolean keepSourceInfo;
         private final boolean keepInstrumentation;
         private final BuilderSourceInfo sourceInfoBuilder;
@@ -289,7 +290,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         int nodeNumber = 0;
         OperationsConstantPool constPool = new OperationsConstantPool();
 
-        SLOperationsBuilderImpl(SLLanguage language, Source parseContext, boolean keepSourceInfo, boolean keepInstrumentation) {
+        SLOperationsBuilderImpl(SLLanguage language, SLSource parseContext, boolean keepSourceInfo, boolean keepInstrumentation) {
             this.language = language;
             this.parseContext = parseContext;
             this.keepSourceInfo = keepSourceInfo;
@@ -1388,7 +1389,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             doAfterChild();
         }
 
-        private static OperationsNode reparse(SLLanguage language, Source context, int buildOrder) {
+        private static OperationsNode reparse(SLLanguage language, SLSource context, int buildOrder) {
             SLOperationsBuilderImpl builder = new SLOperationsBuilderImpl(language, context, true, true);
             SLOperations.parse(language, context, builder);
             return builder.collect()[buildOrder];
@@ -6801,7 +6802,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             @Override
             public SourceSection getSourceSection() {
                 if (sourceInfo == null) {
-                    OperationsNode reparsed = SLOperationsBuilderImpl.reparse(getRootNode().getLanguage(SLLanguage.class), (Source) parseContext, buildOrder);
+                    OperationsNode reparsed = SLOperationsBuilderImpl.reparse(getRootNode().getLanguage(SLLanguage.class), (SLSource) parseContext, buildOrder);
                     copyReparsedInfo(reparsed);
                 }
                 return this.getSourceSectionImpl();
@@ -6810,7 +6811,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             @Override
             protected SourceSection getSourceSectionAtBci(int bci) {
                 if (sourceInfo == null) {
-                    OperationsNode reparsed = SLOperationsBuilderImpl.reparse(getRootNode().getLanguage(SLLanguage.class), (Source) parseContext, buildOrder);
+                    OperationsNode reparsed = SLOperationsBuilderImpl.reparse(getRootNode().getLanguage(SLLanguage.class), (SLSource) parseContext, buildOrder);
                     copyReparsedInfo(reparsed);
                 }
                 return this.getSourceSectionAtBciImpl(bci);

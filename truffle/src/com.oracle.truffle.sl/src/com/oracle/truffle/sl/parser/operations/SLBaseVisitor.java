@@ -14,21 +14,22 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.parser.SLParseError;
 import com.oracle.truffle.sl.runtime.SLStrings;
 
 public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<Void> {
 
-    protected static Map<TruffleString, RootCallTarget> parseSLImpl(Source source, SLBaseVisitor visitor) {
-        SimpleLanguageOperationsLexer lexer = new SimpleLanguageOperationsLexer(CharStreams.fromString(source.getCharacters().toString()));
+    protected static Map<TruffleString, RootCallTarget> parseSLImpl(SLSource source, SLBaseVisitor visitor) {
+        SimpleLanguageOperationsLexer lexer = new SimpleLanguageOperationsLexer(CharStreams.fromString(source.getSource().getCharacters().toString()));
         SimpleLanguageOperationsParser parser = new SimpleLanguageOperationsParser(new CommonTokenStream(lexer));
         lexer.removeErrorListeners();
         parser.removeErrorListeners();
-        BailoutErrorListener listener = new BailoutErrorListener(source);
+        BailoutErrorListener listener = new BailoutErrorListener(source.getSource());
         lexer.addErrorListener(listener);
         parser.addErrorListener(listener);
 
         parser.simplelanguage().accept(visitor);
+        
+        source.setFunctions(visitor.functions);
 
         return visitor.functions;
     }
@@ -66,19 +67,19 @@ public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<
     }
 
     protected final SLLanguage language;
-    protected final Source source;
+    protected final SLSource source;
     protected final TruffleString sourceString;
     protected final Map<TruffleString, RootCallTarget> functions = new HashMap<>();
 
-    protected SLBaseVisitor(SLLanguage language, Source source) {
+    protected SLBaseVisitor(SLLanguage language, SLSource source) {
         this.language = language;
         this.source = source;
-        sourceString = SLStrings.fromJavaString(source.getCharacters().toString());
+        sourceString = SLStrings.fromJavaString(source.getSource().getCharacters().toString());
     }
 
     protected void SemErr(Token token, String message) {
         assert token != null;
-        throwParseError(source, token.getLine(), token.getCharPositionInLine(), token, message);
+        throwParseError(source.getSource(), token.getLine(), token.getCharPositionInLine(), token, message);
     }
 
     private static final class BailoutErrorListener extends BaseErrorListener {

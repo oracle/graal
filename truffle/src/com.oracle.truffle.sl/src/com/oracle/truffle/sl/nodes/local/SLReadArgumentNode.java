@@ -43,7 +43,6 @@ package com.oracle.truffle.sl.nodes.local;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.parser.SLNodeFactory;
 import com.oracle.truffle.sl.runtime.SLNull;
 
 /**
