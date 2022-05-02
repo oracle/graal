@@ -1108,7 +1108,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.iteration": ("<iteration>", int),
                 }, startPattern=r"::: Running :::")
             ]
-        elif metric_name == "allocated-memory" or metric_name == "memory-footprint" or metric_name == "max-context-heap":
+        elif metric_name in ("allocated-memory", "memory-footprint", "max-context-heap"):
             rules += [
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
