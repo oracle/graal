@@ -83,9 +83,9 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter.Builder;
 import com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -425,64 +425,61 @@ public final class DebuggerSession implements Closeable {
         if (event != null) {
             throw new IllegalStateException("Suspended already");
         }
-        RootNode nodeRoot = null;
+        RootNode nodeRoot;
         if (node != null) {
             nodeRoot = node.getRootNode();
             if (nodeRoot == null) {
                 throw new IllegalArgumentException(String.format("The node %s does not have a root.", node));
             }
+        } else {
+            nodeRoot = null;
         }
-        FrameInstance frameInstance = Truffle.getRuntime().getCurrentFrame();
-        if (frameInstance == null) {
-            return false;
-        }
-        RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
-        if (!includeInternal) {
-            if (root.isInternal()) {
-                // In an internal code, we need to iterate stack to find non-internal location
-                frameInstance = Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<FrameInstance>() {
-                    int startDepth = 1;
 
-                    @Override
-                    public FrameInstance visitFrame(FrameInstance fi) {
-                        if (startDepth-- > 0) {
-                            return null;
-                        }
-                        if (!((RootCallTarget) fi.getCallTarget()).getRootNode().isInternal()) {
-                            return fi;
-                        }
-                        return null;
-                    }
-                });
-                if (frameInstance == null) {
-                    return false;
-                } else {
-                    root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+        SuspendContextAndFrame result = Truffle.getRuntime().iterateFrames((frameInstance) -> {
+            RootNode root = ((RootCallTarget) frameInstance.getCallTarget()).getRootNode();
+            if (!includeInternal) {
+                if (root.isInternal()) {
+                    return null;
                 }
             }
-        }
-        if (nodeRoot != null && nodeRoot != root) {
-            throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
-        }
-        Node callNode = frameInstance.getCallNode();
-        if (callNode == null) {
-            callNode = node;
-            if (callNode == null) {
-                // We have no idea where in the function we are.
-                callNode = root;
+            if (nodeRoot != null && nodeRoot != root) {
+                throw new IllegalArgumentException(String.format("The node %s belongs to a root %s, which is different from the current root %s.", node, nodeRoot, root));
             }
+            Node callNode = frameInstance.getCallNode();
+            if (callNode == null) {
+                callNode = node;
+                if (callNode == null) {
+                    // We have no idea where in the function we are.
+                    callNode = root;
+                }
+            }
+            if (node != null && node != callNode) {
+                throw new IllegalArgumentException(String.format("The node %s does not match the current known call node %s.", node, callNode));
+            }
+            Node icallNode = InstrumentableNode.findInstrumentableParent(callNode);
+            if (icallNode != null) {
+                callNode = icallNode;
+            }
+            MaterializedFrame frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
+            SuspendedContext context = SuspendedContext.create(callNode, null);
+            return new SuspendContextAndFrame(context, frame);
+        });
+        if (result == null) {
+            return false;
         }
-        if (node != null && node != callNode) {
-            throw new IllegalArgumentException(String.format("The node %s does not match the current known call node %s.", node, callNode));
-        }
-        Node icallNode = InstrumentableNode.findInstrumentableParent(callNode);
-        if (icallNode != null) {
-            callNode = icallNode;
-        }
-        MaterializedFrame frame = frameInstance.getFrame(FrameAccess.READ_WRITE).materialize();
-        SuspendedContext context = SuspendedContext.create(callNode, null);
-        doSuspend(context, SuspendAnchor.BEFORE, frame, null);
+        doSuspend(result.context, SuspendAnchor.BEFORE, result.frame, null);
         return true;
+    }
+
+    static final class SuspendContextAndFrame {
+
+        final SuspendedContext context;
+        final MaterializedFrame frame;
+
+        SuspendContextAndFrame(SuspendedContext context, MaterializedFrame frame) {
+            this.context = context;
+            this.frame = frame;
+        }
     }
 
     /**
@@ -778,7 +775,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.24
      * @deprecated Use {@link #setBreakpointsActive(Breakpoint.Kind, boolean)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public void setBreakpointsActive(boolean active) {
         for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             setBreakpointsActive(kind, active);
@@ -819,7 +816,7 @@ public final class DebuggerSession implements Closeable {
      * @since 0.24
      * @deprecated Use {@link #isBreakpointsActive(Breakpoint.Kind)} instead.
      */
-    @Deprecated
+    @Deprecated(since = "19.0")
     public boolean isBreakpointsActive() {
         for (Breakpoint.Kind kind : Breakpoint.Kind.VALUES) {
             if (isBreakpointsActive(kind)) {

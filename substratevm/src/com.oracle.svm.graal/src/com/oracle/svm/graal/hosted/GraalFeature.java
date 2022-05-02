@@ -471,7 +471,7 @@ public final class GraalFeature implements Feature {
 
         if (!methods.containsKey(aMethod)) {
             methods.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
-            config.registerAsInvoked(aMethod);
+            config.registerAsRoot(aMethod, true);
         }
 
         return sMethod;
@@ -534,7 +534,10 @@ public final class GraalFeature implements Feature {
                     return;
                 }
                 parse = true;
-                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES).method(method).build();
+                graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
+                                .method(method)
+                                .recordInlinedMethods(false)
+                                .build();
             }
 
             try (DebugContext.Scope scope = debug.scope("RuntimeCompile", graph)) {
@@ -577,7 +580,7 @@ public final class GraalFeature implements Feature {
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
             PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
-            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvoke(targetNode.invoke().bci());
+            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvokes().get(targetNode.invoke().bci());
 
             if (invokeFlow == null) {
                 continue;
@@ -675,9 +678,6 @@ public final class GraalFeature implements Feature {
             throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
         }
 
-        HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        runtimeConfigBuilder.updateLazyState(hMetaAccess);
-
         /*
          * Start fresh with a new GraphEncoder, since we are going to optimize all graphs now that
          * the static analysis results are available.
@@ -730,6 +730,9 @@ public final class GraalFeature implements Feature {
         GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.updateDataDuringAnalysis();
+
+        /* All the temporary data structures used during encoding are no longer necessary. */
+        graphEncoder = null;
     }
 
     private static void removeUnreachableInvokes(CallTreeNode node) {

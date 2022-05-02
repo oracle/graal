@@ -413,7 +413,11 @@ public class ValueAPITest {
         return list.toArray(new ByteBuffer[0]);
     }
 
-    private static final ByteBuffer[] BUFFERS = makeTestBuffers();
+    /*
+     * testBuffers field cannot be static, otherwise the test doesn't run on SVM unless ValueAPITest
+     * is initialized at runtime, which we want to avoid.
+     */
+    private final ByteBuffer[] testBuffers = makeTestBuffers();
 
     private static ByteBuffer fillTestBuffer(ByteBuffer buffer) {
         return buffer.put(0, (byte) 1).put(1, (byte) 2).put(2, (byte) 3).put(3, (byte) 4).put(4, (byte) 5).put(5, (byte) 6).put(6, (byte) 7).put(7, (byte) 8);
@@ -427,7 +431,7 @@ public class ValueAPITest {
 
     @Test
     public void testBuffers() {
-        for (final ByteBuffer buffer : BUFFERS) {
+        for (final ByteBuffer buffer : testBuffers) {
             final Value value = context.asValue(buffer);
             assertValueInContexts(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS);
         }
@@ -543,7 +547,7 @@ public class ValueAPITest {
 
     @Test
     public void testBuffersErrors() {
-        for (final ByteBuffer buffer : BUFFERS) {
+        for (final ByteBuffer buffer : testBuffers) {
             final Value value = context.asValue(buffer);
             final String className = buffer.getClass().getName();
             final ByteOrder order = buffer.order();
@@ -1719,6 +1723,9 @@ public class ValueAPITest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface OtherInterface0 {
 
@@ -1726,6 +1733,9 @@ public class ValueAPITest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface OtherInterface1 {
 
@@ -1733,6 +1743,9 @@ public class ValueAPITest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface OtherInterface2 {
 
@@ -1752,19 +1765,21 @@ public class ValueAPITest {
         }
     }
 
+    static class TestExecutable implements ExecutableInterface {
+
+        public String execute(String argument) {
+            return argument;
+        }
+
+        @Override
+        public String toString() {
+            return "testExecutable";
+        }
+    }
+
     @Test
     public void testExecutableErrors() {
-        ExecutableInterface executable = new ExecutableInterface() {
-
-            public String execute(String argument) {
-                return argument;
-            }
-
-            @Override
-            public String toString() {
-                return "testExecutable";
-            }
-        };
+        ExecutableInterface executable = new TestExecutable();
 
         Value v = context.asValue(executable);
 
@@ -1966,6 +1981,9 @@ public class ValueAPITest {
         assertEquals(0, arrayMap.size());
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @Implementable
     public interface EmptyInterface {
 
@@ -1975,6 +1993,9 @@ public class ValueAPITest {
 
     }
 
+    /*
+     * Referenced in proxys.json
+     */
     @FunctionalInterface
     public interface EmptyFunctionalInterface {
 
@@ -2142,7 +2163,7 @@ public class ValueAPITest {
         sharableObjects.addAll(Arrays.asList(BOOLEANS));
         sharableObjects.addAll(Arrays.asList(STRINGS));
         sharableObjects.addAll(Arrays.asList(ARRAYS));
-        sharableObjects.addAll(Arrays.asList(BUFFERS));
+        sharableObjects.addAll(Arrays.asList(testBuffers));
 
         expandObjectVariants(context1, sharableObjects);
         for (Object object : sharableObjects) {

@@ -87,6 +87,8 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
+import org.graalvm.shadowed.org.jline.terminal.Terminal;
+import org.graalvm.shadowed.org.jline.terminal.TerminalBuilder;
 
 public abstract class Launcher {
     private static final boolean STATIC_VERBOSE = Boolean.getBoolean("org.graalvm.launcher.verbose");
@@ -98,6 +100,8 @@ public abstract class Launcher {
     public static final int LAUNCHER_OPTIONS_INDENT = 45;
 
     static final boolean IS_AOT = Boolean.getBoolean("com.oracle.graalvm.isaot");
+    @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_INTERNAL = "--help:internal";
+    @Deprecated(since = "22.2", forRemoval = true) private static final String HELP_EXPERT = "--help:expert";
 
     public enum VMType {
         Native,
@@ -561,8 +565,8 @@ public abstract class Launcher {
     }
 
     /**
-     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin} or
-     * {@code jre/bin} directory.
+     * Returns filename of the binary, depending on OS. Binary will be searched in {@code bin}
+     * directory.
      *
      * @param binaryName binary name, without path.
      * @return OS-dependent binary filename.
@@ -574,14 +578,9 @@ public abstract class Launcher {
             throw abort("Cannot exec to GraalVM binary: could not find GraalVM home");
         }
         for (String executableName : executableNames) {
-            Path[] execPaths = new Path[]{
-                            graalVMHome.resolve("bin").resolve(executableName),
-                            graalVMHome.resolve("jre").resolve("bin").resolve(executableName)
-            };
-            for (Path execPath : execPaths) {
-                if (Files.exists(execPath)) {
-                    return execPath;
-                }
+            Path execPath = graalVMHome.resolve("bin").resolve(executableName);
+            if (Files.exists(execPath)) {
+                return execPath;
             }
         }
         throw abort("Cannot exec to GraalVM binary: could not find a '" + binaryName + "' executable");
@@ -740,36 +739,48 @@ public abstract class Launcher {
             return true;
         }
         if (arg.startsWith("--help")) {
-            return parseHelpArg(arg);
+            parseHelpArg(arg);
+            return true;
         }
         return false;
     }
 
-    private boolean parseHelpArg(String arg) {
-        // legacy behaviour support
-        if ("--help:expert".equals(arg)) {
-            return true;
+    private void parseHelpArg(String arg) {
+        // TODO: GR-38305 Remove legacy behaviour support
+        if (HELP_EXPERT.equals(arg)) {
+            out.println("");
+            out.println("NOTE: The " + HELP_EXPERT + " option is deprecated without replacement and will be removed.");
+            out.println("");
+            if (helpArg == null) {
+                helpArg = "";
+            }
+            return;
         }
-        if ("--help:internal".equals(arg)) {
+        if (HELP_INTERNAL.equals(arg)) {
+            out.println("");
+            out.println("NOTE: The " + HELP_INTERNAL + " option is deprecated and will be removed. Use --help:[id]:internal instead.");
+            out.println("");
+            if (helpArg == null) {
+                helpArg = "";
+            }
             helpInternal = true;
-            return true;
+            return;
         }
         int index = arg.indexOf(':');
         if (index < 0) {
             helpArg = "";
-            return true;
+            return;
         }
         String helpArgCandidate = arg.substring(index + 1);
         index = helpArgCandidate.indexOf(':');
         if (index < 0) {
             helpArg = helpArgCandidate;
-            return true;
+            return;
         }
         helpArg = helpArgCandidate.substring(0, index);
         if (helpArgCandidate.endsWith(":internal")) {
             helpInternal = true;
         }
-        return true;
     }
 
     /**
@@ -847,7 +858,7 @@ public abstract class Launcher {
         try {
             descriptor.getKey().getType().convert(value);
         } catch (IllegalArgumentException e) {
-            throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
+            throw abort(String.format("Invalid argument %s specified. %s", arg, e.getMessage()));
         }
         if (descriptor.isDeprecated()) {
             String messageFormat = "Option '%s' is deprecated and might be removed from future versions.";
@@ -879,8 +890,6 @@ public abstract class Launcher {
         }
         options.add("--native");
         options.add("--help");
-        options.add("--help:expert");
-        options.add("--help:internal");
         options.add("--help:vm");
         return options;
     }
@@ -934,23 +943,66 @@ public abstract class Launcher {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s, String indent) {
-        final int width = 120;
-        StringBuilder sb = new StringBuilder(s);
-        int cursor = 0;
-        while (cursor + width < sb.length()) {
-            int i = sb.lastIndexOf(" ", cursor + width);
-            if (i == -1 || i < cursor) {
-                i = sb.indexOf(" ", cursor + width);
+    @SuppressWarnings("hiding")
+    private String wrap(String s, String indent) {
+        final int terminalWidth = Math.max(getTerminalWidth(), indent.length() + 10);
+        final int width = terminalWidth - indent.length();
+
+        String rest = s.strip();
+        if (rest.length() <= width) {
+            return rest;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        while (rest.length() > width) {
+            // NOTE: may return width, which is fine, we cut just before i
+            int i = rest.lastIndexOf(' ', width);
+
+            if (i == -1) { // Can't find any space in rest[0 < i <= width]
+                // take the next space (will exceed the width)
+                i = rest.indexOf(' ', width);
             }
+
             if (i != -1) {
-                sb.replace(i, i + 1, System.lineSeparator() + indent);
-                cursor = i + indent.length();
+                builder.append(rest, 0, i);
+                builder.append(System.lineSeparator());
+                builder.append(indent);
+                rest = rest.substring(i + 1).stripLeading(); // + 1 to skip the space
             } else {
-                break;
+                break; // No space left in rest
             }
         }
-        return sb.toString();
+        builder.append(rest);
+        return builder.toString();
+    }
+
+    private static final int FALLBACK_TERMINAL_WIDTH = 120;
+    private int terminalWidth = -1;
+
+    int getTerminalWidth() {
+        if (terminalWidth == -1) {
+            int width;
+            if (System.console() != null) {
+                try (Terminal terminal = createSystemTerminal()) {
+                    width = terminal.getWidth();
+                } catch (IOException exception) {
+                    width = FALLBACK_TERMINAL_WIDTH;
+                }
+            } else {
+                width = FALLBACK_TERMINAL_WIDTH;
+            }
+
+            if (width <= 0) { // Dumb terminal
+                width = FALLBACK_TERMINAL_WIDTH;
+            }
+            terminalWidth = width;
+        }
+        return terminalWidth;
+    }
+
+    static Terminal createSystemTerminal() throws IOException {
+        // Create a system Terminal. JNA is not shipped in the SDK JLINE3 jar.
+        return TerminalBuilder.builder().jansi(Launcher.OS.getCurrent() == Launcher.OS.Windows).jna(false).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
@@ -979,11 +1031,13 @@ public abstract class Launcher {
         final String name;
         final String option;
         final String description;
+        final boolean experimental;
 
-        protected PrintableOption(String name, String option, String description) {
+        protected PrintableOption(String name, String option, String description, boolean experimental) {
             this.name = name;
             this.option = option;
             this.description = description;
+            this.experimental = experimental;
         }
 
         @Override
@@ -993,10 +1047,32 @@ public abstract class Launcher {
     }
 
     void printOptions(List<PrintableOption> options, String title, int indentation) {
-        Collections.sort(options);
-        out.println(title);
+        final List<PrintableOption> stableOptions = new ArrayList<>();
+        final List<PrintableOption> experimentalOptions = new ArrayList<>();
         for (PrintableOption option : options) {
-            printOption(option, indentation);
+            if (option.experimental) {
+                experimentalOptions.add(option);
+            } else {
+                stableOptions.add(option);
+            }
+        }
+
+        out.println(spaces(indentation) + title);
+
+        if (!stableOptions.isEmpty()) {
+            out.println(spaces(indentation + 1) + "[Stable]");
+            Collections.sort(stableOptions);
+            for (PrintableOption option : stableOptions) {
+                printOption(option, indentation + 2);
+            }
+        }
+
+        if (!experimentalOptions.isEmpty()) {
+            out.println(spaces(indentation + 1) + "[Experimental]");
+            Collections.sort(experimentalOptions);
+            for (PrintableOption option : experimentalOptions) {
+                printOption(option, indentation + 2);
+            }
         }
     }
 
@@ -1081,7 +1157,7 @@ public abstract class Launcher {
     private static final String CLASSPATH = System.getProperty("org.graalvm.launcher.classpath");
 
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.3")
     protected final void maybeNativeExec(List<String> args, boolean isPolyglotLauncher, Map<String, String> polyglotOptions) {
         maybeNativeExec(args, args, isPolyglotLauncher);
     }
@@ -1207,7 +1283,7 @@ public abstract class Launcher {
     }
 
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.3")
     protected void executeJVM(String classpath, List<String> jvmArgs, List<String> remainingArgs, Map<String, String> polyglotOptions) {
         executeJVM(classpath, jvmArgs, remainingArgs);
     }
@@ -1225,7 +1301,7 @@ public abstract class Launcher {
     }
 
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.3")
     protected void executePolyglot(List<String> mainArgs, Map<String, String> polyglotOptions, boolean forceNative) {
         executePolyglot(mainArgs, forceNative);
     }

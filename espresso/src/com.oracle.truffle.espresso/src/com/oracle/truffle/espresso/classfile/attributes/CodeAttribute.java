@@ -145,7 +145,7 @@ public final class CodeAttribute extends Attribute {
         try {
             new BytecodeStream(code).printBytecode(klass, out);
         } catch (Throwable e) {
-            throw EspressoError.unexpected("Throw during printing. Aborting...", e);
+            throw EspressoError.shouldNotReachHere("Throw during printing. Aborting...", e);
         }
     }
 }

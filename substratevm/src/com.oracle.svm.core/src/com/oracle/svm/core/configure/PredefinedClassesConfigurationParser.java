@@ -27,15 +27,12 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Reader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
-import com.oracle.svm.core.jdk.JavaNetSubstitutions;
-import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public class PredefinedClassesConfigurationParser extends ConfigurationParser {
@@ -48,18 +45,6 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
     public PredefinedClassesConfigurationParser(PredefinedClassesRegistry registry, boolean strictConfiguration) {
         super(strictConfiguration);
         this.registry = registry;
-    }
-
-    @Override
-    public void parseAndRegister(Reader reader) throws IOException {
-        parseAndRegister(reader, null);
-    }
-
-    @Override
-    public void parseAndRegister(URI uri) throws IOException {
-        try (Reader reader = openReader(uri)) {
-            parseAndRegister(reader, resolveBaseUri(uri));
-        }
     }
 
     private static URI resolveBaseUri(URI original) throws IOException {
@@ -86,12 +71,6 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
                 String subdir = entry.substring(0, last + 1) + directory;
                 return new URI(uri.getScheme(), path + "!/" + subdir, uri.getFragment());
             }
-            if (uri.isOpaque() && JavaNetSubstitutions.RESOURCE_PROTOCOL.equals(uri.getScheme())) {
-                // GR-36666: resource URLs are absolute and should have a leading '/'
-                String ssp = uri.getSchemeSpecificPart();
-                uri = new URI(uri.getScheme(), '/' + ssp, uri.getFragment());
-                assert !uri.isOpaque();
-            }
             if (uri.isOpaque()) {
                 throw new URISyntaxException(uri.toString(), "expecting URI with absolute path");
             }
@@ -113,12 +92,11 @@ public class PredefinedClassesConfigurationParser extends ConfigurationParser {
         return baseUri.resolve(fileName);
     }
 
-    private void parseAndRegister(Reader reader, URI baseUri) throws IOException {
-        JSONParser parser = new JSONParser(reader);
-        Object json = parser.parse();
-
-        for (Object origin : asList(json, "first level of document must be an array of predefined class origin objects")) {
-            parseOrigin(baseUri, asMap(origin, "second level of document must be a predefined class origin object"));
+    @Override
+    public void parseAndRegister(Object json, URI origin) throws IOException {
+        URI baseUri = origin == null ? null : resolveBaseUri(origin);
+        for (Object classDataOrigin : asList(json, "first level of document must be an array of predefined class origin objects")) {
+            parseOrigin(baseUri, asMap(classDataOrigin, "second level of document must be a predefined class origin object"));
         }
     }
 

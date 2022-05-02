@@ -3,6 +3,10 @@
 New Features:
 
 * Support exporting native byte buffers. See the new APIs in `graalvm/llvm/polyglot-buffer.h`.
+* Support for Time, Date, TimeZone and Instant polyglot interop. See new APIs in `graalvm/llvm/polyglot-time.h`.
+* Support converting primitive types such as boolean values into polyglot
+  values. See `polyglot_from_*` functions in `graalvm/llvm/polyglot.h`.
+* Support for thread local globals.
 
 Changes:
 
@@ -14,6 +18,8 @@ Changes:
 * Option `--llvm.traceIR` is replaced by `--log.llvm.TraceIR.level=FINER`.
 * Option `--llvm.printAST` is replaced by `--llvm.printASTFilter` and accepts all functions by default. AST printing must be enabled by setting `--log.llvm.AST.level=FINEST`.
 * The function `__sulong_print_stacktrace` now prints stack traces to the `llvm.StackTrace` logs instead of stdout.
+* Introduce `polyglot_value` type to replace `void *` in `graalvm/llvm/polyglot.h`. 
+  The compiler flag `POLYGLOT_STRICT_MODE` can be used to treat `polyglot_value` as a distinct type.
 
 # Version 22.0.0
 

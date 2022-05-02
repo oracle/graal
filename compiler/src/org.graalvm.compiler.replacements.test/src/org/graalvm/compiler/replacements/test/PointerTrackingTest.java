@@ -44,19 +44,30 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
 
     @Test
     public void testTracking() {
-        Result result = executeActual(getResolvedJavaMethod("trackingSnippet"), null, new Object());
+        Result result = executeActual(getResolvedJavaMethod("trackingSnippet"), null);
         assertEquals(new Result("OK", null), result);
     }
 
-    public static String trackingSnippet(Object obj) {
+    public static String trackingSnippet() {
+        for (int i = 0; i < 1000; i++) {
+            // generate a lot of garbage, trying to get a fresh TLAB
+            GraalDirectives.blackhole(new Object());
+        }
+
+        // fresh allocation, this should be in TLAB
+        Object obj = GraalDirectives.opaque(new Object());
+
         long trackedBeforeGC = getTrackedPointer(obj);
         long untrackedBeforeGC = getUntrackedPointer(obj);
 
         int i = 0;
         while (untrackedBeforeGC == getTrackedPointer(obj)) {
+            // allocate something to increase likelyhood of GC moving the object
+            GraalDirectives.blackhole(new Object());
+
             System.gc();
-            if (i++ > 100) {
-                return "Timeout! Object didn't move after 100 GCs.";
+            if (i++ > 1000) {
+                return "Timeout! Object didn't move after 1000 GCs.";
             }
         }
 

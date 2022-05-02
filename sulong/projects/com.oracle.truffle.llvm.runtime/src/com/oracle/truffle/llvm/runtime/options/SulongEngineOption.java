@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,21 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.options;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.List;
-
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 public final class SulongEngineOption {
 
@@ -105,8 +104,14 @@ public final class SulongEngineOption {
 
     @Option(name = "llvm.OSR",
             category = OptionCategory.EXPERT,
-            help = "Enable on-stack-replacement of loops.")
-    public static final OptionKey<Boolean> ENABLE_OSR = new OptionKey<>(true);
+            help = "Mode to use for on-stack-replacement of loops.")
+    public static final OptionKey<OSRMode> OSR_MODE = new OptionKey<>(OSRMode.BYTECODE);
+
+    public enum OSRMode {
+        CFG,
+        BYTECODE,
+        NONE;
+    }
 
     public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
     @Option(name = LAZY_PARSING_NAME,

@@ -118,7 +118,7 @@ public class RegisterAllocationConfig {
             AllocatableRegisters val = categorized.get(key);
             return val;
         }
-        AllocatableRegisters ret = createAllocatableRegisters(registerConfig.filterAllocatableRegisters(kind, getAllocatableRegisters()));
+        AllocatableRegisters ret = createAllocatableRegisters(registerConfig.filterAllocatableRegisters(kind, getAllocatableRegisters()), kind);
         categorized.put(key, ret);
         return ret;
     }
@@ -130,7 +130,7 @@ public class RegisterAllocationConfig {
         return getAllocatableRegisters(kind).allocatableRegisters[0].getRegisterCategory();
     }
 
-    protected AllocatableRegisters createAllocatableRegisters(RegisterArray registers) {
+    protected AllocatableRegisters createAllocatableRegisters(RegisterArray registers, PlatformKind kind) {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         for (Register reg : registers) {
@@ -142,7 +142,8 @@ public class RegisterAllocationConfig {
                 max = number;
             }
         }
-        assert min <= max;
+        // add more context to debug GR-38178
+        assert min <= max : String.format("min=%s, max=%s, kind=%s, registers=%s, getAllocatableRegisters()=%s", min, max, kind, registers, getAllocatableRegisters());
         return new AllocatableRegisters(registers, min, max);
 
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,6 +59,8 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.spi.ProfileProvider;
+import org.graalvm.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -66,12 +68,10 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
-import jdk.vm.ci.meta.DefaultProfilingInfo;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.ProfilingInfo;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.meta.TriState;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
@@ -204,7 +204,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         private ResolvedJavaMethod rootMethod;
         private CompilationIdentifier compilationId = CompilationIdentifier.INVALID_COMPILATION_ID;
         private int entryBCI = JVMCICompiler.INVOCATION_ENTRY_BCI;
-        private boolean useProfilingInfo = true;
+        private ProfileProvider profileProvider = new ResolvedJavaMethodProfileProvider();
         private boolean recordInlinedMethods = true;
         private boolean trackNodeSourcePosition;
         private final OptionValues options;
@@ -247,6 +247,9 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
          */
         public Builder setIsSubstitution(boolean flag) {
             this.isSubstitution = flag;
+            if (isSubstitution) {
+                this.profileProvider = null;
+            }
             return this;
         }
 
@@ -299,12 +302,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
             return this;
         }
 
-        public boolean getUseProfilingInfo() {
-            return useProfilingInfo;
-        }
-
-        public Builder useProfilingInfo(boolean flag) {
-            this.useProfilingInfo = flag;
+        public Builder profileProvider(ProfileProvider provider) {
+            this.profileProvider = provider;
             return this;
         }
 
@@ -337,7 +336,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                             entryBCI,
                             assumptions,
                             speculationLog,
-                            useProfilingInfo,
+                    profileProvider,
                             isSubstitution,
                             inlinedMethods,
                             trackNodeSourcePosition,
@@ -354,12 +353,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private static final AtomicLong uniqueGraphIds = new AtomicLong();
 
     private StartNode start;
-    private ResolvedJavaMethod rootMethod;
+    private final ResolvedJavaMethod rootMethod;
     private final long graphId;
     private final CompilationIdentifier compilationId;
     private final int entryBCI;
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
+    private StageFlag currentStage = null;
     private FrameStateVerification frameStateVerification;
     /** Flag to indicate {@link #clearAllStateAfterForTestingOnly()} was called. */
     private boolean stateAfterClearedForTesting = false;
@@ -432,7 +432,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     }
 
-    private final boolean useProfilingInfo;
+    private final ProfileProvider profileProvider;
+
     private final Cancellable cancellable;
     private final boolean isSubstitution;
 
@@ -476,7 +477,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                     int entryBCI,
                     Assumptions assumptions,
                     SpeculationLog speculationLog,
-                    boolean useProfilingInfo,
+                    ProfileProvider profileProvider,
                     boolean isSubstitution,
                     List<ResolvedJavaMethod> methods,
                     boolean trackNodeSourcePosition,
@@ -494,11 +495,12 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.assumptions = assumptions;
         this.methods = methods;
         this.speculationLog = speculationLog;
-        this.useProfilingInfo = useProfilingInfo;
+        assert !isSubstitution || profileProvider == null;
+        this.profileProvider = profileProvider;
         this.isSubstitution = isSubstitution;
         assert checkIsSubstitutionInvariants(method, isSubstitution);
         this.cancellable = cancellable;
-        this.inliningLog = new InliningLog(rootMethod, GraalOptions.TraceInlining.getValue(options), debug);
+        this.inliningLog = GraalOptions.TraceInlining.getValue(options) ? new InliningLog(rootMethod) : null;
         this.callerContext = context;
         this.frameStateVerification = isSubstitution ? FrameStateVerification.NONE : FrameStateVerification.ALL;
     }
@@ -544,7 +546,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected Object beforeNodeIdChange(Node node) {
-        if (node instanceof Invokable) {
+        if (inliningLog != null && node instanceof Invokable) {
             return inliningLog.removeLeafCallsite((Invokable) node);
         }
         return null;
@@ -552,14 +554,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterNodeIdChange(Node node, Object value) {
-        if (node instanceof Invokable) {
+        if (inliningLog != null && node instanceof Invokable) {
             inliningLog.addLeafCallsite((Invokable) node, (InliningLog.Callsite) value);
         }
     }
 
     @Override
-    public boolean maybeCompress() {
-        if (super.maybeCompress()) {
+    protected boolean compress(boolean minimizeSize) {
+        if (super.compress(minimizeSize)) {
             /*
              * The schedule contains a NodeMap which is unusable after compression.
              */
@@ -651,13 +653,43 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.start = start;
     }
 
+    /**
+     * Gets the inlining log associated with this graph. This will return {@code null} iff
+     * {@link GraalOptions#TraceInlining} is {@code false} in {@link #getOptions()}.
+     */
     public InliningLog getInliningLog() {
         return inliningLog;
     }
 
+    /**
+     * Notifies this graph of an inlining decision for {@code invoke}.
+     *
+     * An inlining decision can be either positive or negative. A positive inlining decision must be
+     * logged after replacing an {@link Invoke} with a graph. In this case, the node replacement map
+     * and the {@link InliningLog} of the inlined graph must be provided.
+     *
+     * @param invoke the invocation to which the inlining decision pertains
+     * @param positive {@code true} if the invocation was inlined, {@code false} otherwise
+     * @param phase name of the phase doing the inlining
+     * @param replacements the node replacement map used by inlining. Must be non-null if
+     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param calleeLog the inlining log of the inlined graph. Must be non-null if
+     *            {@code positive == true}, ignored if {@code positive == false}.
+     * @param reason format string that along with {@code args} provides the reason for decision
+     */
+    public void notifyInliningDecision(Invokable invoke, boolean positive, String phase, EconomicMap<Node, Node> replacements, InliningLog calleeLog, String reason, Object... args) {
+        if (inliningLog != null) {
+            inliningLog.addDecision(invoke, positive, phase, replacements, calleeLog, reason, args);
+        }
+        if (getDebug().hasCompilationListener()) {
+            String message = String.format(reason, args);
+            getDebug().notifyInlining(invoke.getContextMethod(), invoke.getTargetMethod(), positive, message, invoke.bci());
+        }
+    }
+
     public void logInliningTree() {
-        if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            String formattedTree = getInliningLog().formatAsTree(true);
+        if (inliningLog != null) {
+            String formattedTree = inliningLog.formatAsTree(true);
             if (formattedTree != null) {
                 TTY.println(formattedTree);
             }
@@ -705,7 +737,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         entryBCI,
                         assumptions == null ? null : new Assumptions(),
                         speculationLog,
-                        useProfilingInfo,
+                        profileProvider,
                         isSubstitution,
                         methods != null ? new ArrayList<>(methods) : null,
                         trackNodeSourcePositionForCopy,
@@ -717,14 +749,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.hasUnsafeAccess = hasUnsafeAccess;
         copy.setGuardsStage(getGuardsStage());
         copy.stageFlags = EnumSet.copyOf(stageFlags);
+        copy.currentStage = currentStage;
         copy.trackNodeSourcePosition = trackNodeSourcePositionForCopy;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
         replacements.put(start, copy.start);
         UnmodifiableEconomicMap<Node, Node> duplicates;
-        try (InliningLog.UpdateScope scope = copy.getInliningLog().openDefaultUpdateScope()) {
+        InliningLog copyInliningLog = copy.getInliningLog();
+        try (InliningLog.UpdateScope scope = InliningLog.openDefaultUpdateScope(copyInliningLog)) {
             duplicates = copy.addDuplicates(getNodes(), this, this.getNodeCount(), replacements);
             if (scope != null) {
-                copy.getInliningLog().replaceLog(duplicates, this.getInliningLog());
+                copyInliningLog.replaceLog(duplicates, this.getInliningLog());
             }
         }
         if (duplicationMapCallback != null) {
@@ -1012,17 +1046,32 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         this.guardsStage = guardsStage;
     }
 
-    public boolean isAfterStage(StageFlag state) {
-        return stageFlags.contains(state);
+    public boolean isBeforeStage(StageFlag stage) {
+        return !isDuringStage(stage) && !isAfterStage(stage);
     }
 
-    public boolean isBeforeStage(StageFlag state) {
-        return !isAfterStage(state);
+    /**
+     * Phases may set this flag to indicate that a stage is in progress. This is optional:
+     * {@link #isAfterStage(StageFlag)} may become true for a stage even if
+     * {@link #isDuringStage(StageFlag)} was never set for that stage.
+     */
+    public boolean isDuringStage(StageFlag stage) {
+        return currentStage == stage;
     }
 
-    public void setAfterStage(StageFlag state) {
-        assert isBeforeStage(state) : "Cannot set after state " + state + " since the graph is already in that state";
-        stageFlags.add(state);
+    public boolean isAfterStage(StageFlag stage) {
+        return stageFlags.contains(stage);
+    }
+
+    public void setDuringStage(StageFlag stage) {
+        assert isBeforeStage(stage) : "Cannot set during stage " + stage + " since the graph is not before that stage";
+        currentStage = stage;
+    }
+
+    public void setAfterStage(StageFlag stage) {
+        assert !isAfterStage(stage) : "Cannot set after stage " + stage + " since the graph is already after that stage";
+        stageFlags.add(stage);
+        currentStage = null;
     }
 
     public EnumSet<StageFlag> getStageFlags() {
@@ -1030,10 +1079,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     }
 
     /**
-     * Determines if {@link ProfilingInfo} is used during construction of this graph.
+     * Return the {@link ProfileProvider} in use for the graph.
      */
-    public boolean useProfilingInfo() {
-        return useProfilingInfo;
+    public ProfileProvider getProfileProvider() {
+        return profileProvider;
     }
 
     /**
@@ -1054,13 +1103,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * Gets the profiling info for a given method that is or will be part of this graph, taking into
-     * account {@link #useProfilingInfo()}.
+     * account the {@link #getProfileProvider()}.
      */
     public ProfilingInfo getProfilingInfo(ResolvedJavaMethod m) {
-        if (useProfilingInfo && m != null) {
-            return m.getProfilingInfo();
+        if (profileProvider != null && m != null) {
+            return profileProvider.getProfilingInfo(m);
         } else {
-            return DefaultProfilingInfo.get(TriState.UNKNOWN);
+            return null;
         }
     }
 
@@ -1100,7 +1149,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private boolean checkFrameStatesAgainstInlinedMethods() {
         for (FrameState fs : getNodes(FrameState.TYPE)) {
             if (!BytecodeFrame.isPlaceholderBci(fs.bci)) {
-                ResolvedJavaMethod m = fs.code.getMethod();
+                ResolvedJavaMethod m = fs.getCode().getMethod();
                 if (!m.equals(rootMethod) && !methods.contains(m)) {
                     SortedSet<String> haystack = new TreeSet<>();
                     if (!methods.contains(rootMethod)) {
@@ -1260,10 +1309,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     @Override
     protected void afterRegister(Node node) {
         assert !isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
-        if (GraalOptions.TraceInlining.getValue(getOptions())) {
-            if (node instanceof Invokable) {
-                ((Invokable) node).updateInliningLogAfterRegister(this);
-            }
+        if (inliningLog != null && node instanceof Invokable) {
+            ((Invokable) node).updateInliningLogAfterRegister(this);
         }
     }
 

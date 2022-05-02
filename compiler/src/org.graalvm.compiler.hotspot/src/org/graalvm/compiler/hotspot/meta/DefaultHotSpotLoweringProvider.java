@@ -47,10 +47,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -105,20 +109,28 @@ import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoweredCallTargetNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.debug.StringToBytesNode;
 import org.graalvm.compiler.nodes.debug.VerifyHeapNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -192,6 +204,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.SpeculationLog;
 
 /**
  * HotSpot implementation of {@link LoweringProvider}.
@@ -354,7 +367,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof OSRStartNode) {
             lowerOSRStartNode((OSRStartNode) n);
         } else if (n instanceof BytecodeExceptionNode) {
-            lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+                lowerBytecodeExceptionNode((BytecodeExceptionNode) n);
+            }
         } else if (n instanceof InstanceOfNode) {
             InstanceOfNode instanceOfNode = (InstanceOfNode) n;
             if (graph.getGuardsStage().areDeoptsFixed()) {
@@ -467,9 +482,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             if (graph.getGuardsStage().areDeoptsFixed()) {
                 stringToBytesSnippets.lower((StringToBytesNode) n, tool);
             }
-        } else if (n instanceof IntegerDivRemNode) {
-            // Nothing to do for division nodes. The HotSpot signal handler catches divisions by
-            // zero and the MIN_VALUE / -1 cases.
         } else if (n instanceof AbstractDeoptimizeNode || n instanceof UnwindNode || n instanceof RemNode || n instanceof SafepointNode) {
             /* No lowering, we generate LIR directly for these nodes. */
         } else if (n instanceof ClassGetHubNode) {
@@ -477,9 +489,13 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof HubGetClassNode) {
             lowerHubGetClassNode((HubGetClassNode) n, tool);
         } else if (n instanceof KlassLayoutHelperNode) {
-            lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                lowerKlassLayoutHelperNode((KlassLayoutHelperNode) n, tool);
+            }
         } else if (n instanceof KlassBeingInitializedCheckNode) {
-            getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
+            if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
+                getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
+            }
         } else if (n instanceof FastNotifyNode) {
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 objectSnippets.lower(n, tool);
@@ -492,10 +508,101 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
             lowerRegisterFinalizer((RegisterFinalizerNode) n, tool);
         } else if (n instanceof DeadEndNode) {
             lowerDeadEnd((DeadEndNode) n);
+        } else if (n instanceof IntegerDivRemNode) {
+            if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.HIGH_TIER) {
+                lowerIntegerDivRem((IntegerDivRemNode) n, tool);
+            }
         } else {
             return false;
         }
         return true;
+    }
+
+    /**
+     * Lower ({@link FixedNode}) {@link IntegerDivRemNode} nodes to a {@link GuardingNode}
+     * (potentially 2 guards if an overflow is possible) and a floating division
+     * {@link FloatingIntegerDivRemNode}. This enabled global value numbering for non-constant
+     * division operations. Later on in the backend we can combine certain divs again with their
+     * checks to avoid explicit 0 and overflow checks.
+     */
+    protected void lowerIntegerDivRem(IntegerDivRemNode n, LoweringTool tool) {
+        ValueNode dividend = n.getX();
+        ValueNode divisor = n.getY();
+        final IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);
+        final IntegerStamp divisorStamp = (IntegerStamp) divisor.stamp(NodeView.DEFAULT);
+        final StructuredGraph graph = n.graph();
+        if (!(n instanceof SignedDivNode || n instanceof SignedRemNode)) {
+            // Floating integer division is only supported for signed division at the moment
+            return;
+        }
+        if (n.getY().isConstant() && n.getY().asJavaConstant().asLong() == 0) {
+            // always div by zero
+            return;
+        }
+        if (!GraalOptions.FloatingDivNodes.getValue(n.getOptions())) {
+            return;
+        }
+
+        boolean divisionOverflowIsJVMSCompliant = tool.getLowerer().divisionOverflowIsJVMSCompliant();
+        if (!divisionOverflowIsJVMSCompliant) {
+            long minValue = NumUtil.minValue(dividendStamp.getBits());
+            if (dividendStamp.contains(minValue)) {
+                /*
+                 * The dividend may contain NumUtil.minValue(dividendStamp.getBits()) which can lead
+                 * to an overflow of the division. Thus, also check if the divisor contains -1, in
+                 * such case we can only start to float if we actually create 2 guards (one min
+                 * check for the dividend and the 0 check for the divisor), this is only beneficial
+                 * if we actually have at least 2 equivalent divisions. Thus, we do not perform this
+                 * optimization at the moment, this may change in the future.
+                 */
+                if (divisorStamp.contains(-1)) {
+                    return;
+
+                }
+            }
+        }
+
+        GuardingNode guard = null;
+        if (n.getZeroGuard() == null) {
+            LogicNode conditionDivisor = graph.addOrUniqueWithInputs(
+                            CompareNode.createAnyCompareNode(Condition.EQ, n.getY(), ConstantNode.forIntegerBits(divisorStamp.getBits(), 0), tool.getConstantReflection()));
+            if (conditionDivisor instanceof LogicConstantNode) {
+                boolean val = ((LogicConstantNode) conditionDivisor).getValue();
+                if (val) {
+                    // stamp always is zero
+                    return;
+                } else {
+                    // stamp never is zero, let canon later handle it
+                }
+            }
+            guard = tool.createGuard(n, conditionDivisor, DeoptimizationReason.ArithmeticException, DeoptimizationAction.InvalidateReprofile, SpeculationLog.NO_SPECULATION, true, null);
+            IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+            divisor = graph.addOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+        } else {
+            guard = n.getZeroGuard();
+            /*
+             * We have a zero guard but its possible we are still missing a proper pi node for the
+             * guard (which ensures the div never floats to far also based on the value input,
+             * construct one if necessary.
+             */
+            if (divisorStamp.contains(0)) {
+                IntegerStamp stampWithout0 = IntegerStamp.create(divisorStamp.getBits(), divisorStamp.lowerBound(), divisorStamp.upperBound(), divisorStamp.downMask(), divisorStamp.upMask(), false);
+                divisor = graph.addOrUnique(PiNode.create(n.getY(), stampWithout0, guard.asNode()));
+            }
+        }
+        GraalError.guarantee(SignedDivNode.divisionIsJVMSCompliant(dividend, divisor, divisionOverflowIsJVMSCompliant), "Division must be allowed to float at this point. Dividend %s divisor %s",
+                        dividend, divisor);
+        ValueNode divRem = null;
+        if (n instanceof SignedDivNode) {
+            divRem = graph.addOrUnique(SignedFloatingIntegerDivNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
+
+        } else if (n instanceof SignedRemNode) {
+            divRem = graph.addOrUnique(SignedFloatingIntegerRemNode.create(dividend, divisor, NodeView.DEFAULT, guard, divisionOverflowIsJVMSCompliant));
+        } else {
+            throw GraalError.shouldNotReachHere("Unkown division node " + n);
+        }
+        n.replaceAtUsages(divRem);
+        graph.replaceFixedWithFloating(n, divRem);
     }
 
     @Override

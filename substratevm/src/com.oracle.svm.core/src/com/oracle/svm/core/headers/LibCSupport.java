@@ -67,6 +67,9 @@ public interface LibCSupport {
     UnsignedWord strlen(CCharPointer str);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    int strcmp(CCharPointer s1, CCharPointer s2);
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     int isdigit(int c);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

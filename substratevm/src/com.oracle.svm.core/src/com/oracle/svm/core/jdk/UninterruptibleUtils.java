@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -34,7 +33,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not
@@ -47,7 +46,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicInteger {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -91,13 +90,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(int expected, int update) {
-            return UNSAFE.compareAndSwapInt(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetInt(this, VALUE_OFFSET, expected, update);
         }
     }
 
     public static class AtomicLong {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -161,7 +160,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(long expected, long update) {
-            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetLong(this, VALUE_OFFSET, expected, update);
         }
     }
 
@@ -288,7 +287,7 @@ public class UninterruptibleUtils {
 
     public static class AtomicPointer<T extends PointerBase> {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -313,13 +312,13 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSwapLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
+            return UNSAFE.compareAndSetLong(this, VALUE_OFFSET, expected.rawValue(), update.rawValue());
         }
     }
 
     public static class AtomicReference<T> {
 
-        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Unsafe UNSAFE = Unsafe.getUnsafe();
         private static final long VALUE_OFFSET;
 
         static {
@@ -351,7 +350,7 @@ public class UninterruptibleUtils {
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(T expected, T update) {
-            return UNSAFE.compareAndSwapObject(this, VALUE_OFFSET, expected, update);
+            return UNSAFE.compareAndSetObject(this, VALUE_OFFSET, expected, update);
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

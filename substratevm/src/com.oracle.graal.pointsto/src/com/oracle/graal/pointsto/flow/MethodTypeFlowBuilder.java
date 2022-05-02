@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -130,7 +131,6 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -197,17 +197,6 @@ public class MethodTypeFlowBuilder {
 
             // Do it again after canonicalization changed type checks and field accesses.
             registerUsedElements(true);
-
-            /*
-             * When we intend to strengthen Graal graphs, then the graph needs to be preserved. Type
-             * flow nodes references Graal IR nodes directly as their source position.
-             *
-             * When we create separate StaticAnalysisResults objects, then Graal graphs are not
-             * needed after static analysis.
-             */
-            if (bb.strengthenGraalGraphs()) {
-                method.setAnalyzedGraph(graph);
-            }
 
             return true;
         } catch (Throwable ex) {
@@ -328,9 +317,7 @@ public class MethodTypeFlowBuilder {
 
     private static void registerForeignCall(PointsToAnalysis bb, ForeignCallDescriptor foreignCallDescriptor) {
         Optional<AnalysisMethod> targetMethod = bb.getHostVM().handleForeignCall(foreignCallDescriptor, bb.getProviders().getForeignCalls());
-        targetMethod.ifPresent(analysisMethod -> {
-            bb.addRootMethod(analysisMethod);
-        });
+        targetMethod.ifPresent(analysisMethod -> bb.addRootMethod(analysisMethod, true));
     }
 
     protected void apply() {
@@ -461,6 +448,17 @@ public class MethodTypeFlowBuilder {
                 markFieldsUsedInComparison(compareNode.getX());
                 markFieldsUsedInComparison(compareNode.getY());
             }
+        }
+
+        /*
+         * When we intend to strengthen Graal graphs, then the graph needs to be preserved. Type
+         * flow nodes references Graal IR nodes directly as their source position.
+         *
+         * When we create separate StaticAnalysisResults objects, then Graal graphs are not needed
+         * after static analysis.
+         */
+        if (bb.strengthenGraalGraphs()) {
+            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, methodFlow.originalMethodFlows.getNodeFlows().getKeys()));
         }
     }
 
@@ -806,8 +804,6 @@ public class MethodTypeFlowBuilder {
                 DynamicNewInstanceNode node = (DynamicNewInstanceNode) n;
                 ValueNode instanceTypeNode = node.getInstanceType();
 
-                JVMCIError.guarantee(!instanceTypeNode.isConstant(), "DynamicNewInstanceNode.instanceType is constant, should have been canonicalized to NewInstanceNode.");
-
                 TypeFlowBuilder<?> instanceTypeBuilder;
                 AnalysisType instanceType;
                 if (instanceTypeNode instanceof GetClassNode) {
@@ -850,9 +846,6 @@ public class MethodTypeFlowBuilder {
                 processNewArray((NewArrayNode) n, state);
             } else if (n instanceof DynamicNewArrayNode) {
                 DynamicNewArrayNode node = (DynamicNewArrayNode) n;
-                ValueNode elementType = node.getElementType();
-
-                JVMCIError.guarantee(!elementType.isConstant(), "DynamicNewArrayNode.element is constant, should have been canonicalized to NewArrayNode.");
 
                 /*
                  * Without precise type information the dynamic new array node has to generate a
@@ -1313,6 +1306,9 @@ public class MethodTypeFlowBuilder {
                 }
 
                 methodFlow.addInvoke(key, invokeFlow);
+                if (bb.strengthenGraalGraphs()) {
+                    methodFlow.addNodeFlow(bb, invoke, invokeFlow);
+                }
                 return invokeFlow;
             });
 
@@ -1458,10 +1454,6 @@ public class MethodTypeFlowBuilder {
      * BCI would not be unique. In the later case the key is a unique object.
      */
     protected Object uniqueKey(Node node) {
-        if (bb.strengthenGraalGraphs()) {
-            return node;
-        }
-
         NodeSourcePosition position = node.getNodeSourcePosition();
         // If the 'position' has a 'caller' then it is inlined, case in which the BCI is
         // probably not unique.

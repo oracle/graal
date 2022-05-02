@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,13 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * This interface marks nodes that access some memory location, and that have an edge to the last
- * node that kills this location.
+ * This interface marks nodes that access some memory location. Such nodes are either fixed before
+ * floating read nodes or part of the memory graph.
  */
 public interface MemoryAccess extends ValueNodeInterface {
 
@@ -38,16 +39,18 @@ public interface MemoryAccess extends ValueNodeInterface {
     /**
      *
      * @return a {@linkplain MemoryKill} that represents the last memory state in the memory graph
-     *         for the {@linkplain LocationIdentity} returned by
-     *         {@linkplain MemoryAccess#getLocationIdentity()}
+     *         for the {@linkplain LocationIdentity} returned by {@linkplain #getLocationIdentity()}
      */
-    MemoryKill getLastLocationAccess();
+    default MemoryKill getLastLocationAccess() {
+        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
+    }
 
     /**
      * @param lla the {@link MemoryKill} that represents the last kill of the
-     *            {@linkplain LocationIdentity} returned by
-     *            {@linkplain MemoryAccess#getLocationIdentity()}
+     *            {@linkplain LocationIdentity} returned by {@linkplain #getLocationIdentity()}
      */
-    void setLastLocationAccess(MemoryKill lla);
+    default void setLastLocationAccess(MemoryKill lla) {
+        throw GraalError.shouldNotReachHere("Nodes subject to floating reads must override this method. This=" + this);
+    }
 
 }

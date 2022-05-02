@@ -121,17 +121,22 @@ def is_musl_supported():
     return False
 
 
-class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, dynamicimports, disable_libpolyglot, force_bash_launchers, skip_libraries, exclude_components, native_images')):
+def build_native_image_agent(native_image):
+    agentfile = mx_subst.path_substitutions.substitute('<lib:native-image-agent>')
+    agentname = agentfile.rsplit('.', 1)[0]  # remove platform-specific file extension
+    native_image(['--macro:native-image-agent-library', '-H:Name=' + agentname, '-H:Path=' + svmbuild_dir()])
+    return svmbuild_dir() + '/' + agentfile
+
+
+class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, dynamicimports, exclude_components, native_images')):
     @classmethod
-    def build(cls, primary_suite_dir=None, dynamicimports=None, disable_libpolyglot=True, force_bash_launchers=True, skip_libraries=True,
+    def build(cls, primary_suite_dir=None, dynamicimports=None,
               exclude_components=None, native_images=None):
         dynamicimports = list(dynamicimports or [])
         for x, _ in mx.get_dynamic_imports():
             if x not in dynamicimports:
                 dynamicimports.append(x)
-        new_config = cls(primary_suite_dir, tuple(dynamicimports), disable_libpolyglot,
-                         force_bash_launchers if isinstance(force_bash_launchers, bool) else tuple(force_bash_launchers),
-                         skip_libraries if isinstance(skip_libraries, bool) else tuple(skip_libraries),
+        new_config = cls(primary_suite_dir, tuple(dynamicimports),
                          tuple(exclude_components or ()), tuple(native_images or ()))
         return new_config
 
@@ -139,22 +144,12 @@ class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, 
         args = ['--disable-installables=true']
         if self.dynamicimports:
             args += ['--dynamicimports', ','.join(self.dynamicimports)]
-        if self.disable_libpolyglot:
-            args += ['--disable-libpolyglot']
-        if self.force_bash_launchers:
-            if self.force_bash_launchers is True:
-                args += ['--force-bash-launchers=true']
-            else:
-                args += ['--force-bash-launchers=' + ','.join(self.force_bash_launchers)]
-        if self.skip_libraries:
-            if self.skip_libraries is True:
-                args += ['--skip-libraries=true']
-            else:
-                args += ['--skip-libraries=' + ','.join(self.skip_libraries)]
         if self.exclude_components:
             args += ['--exclude-components=' + ','.join(self.exclude_components)]
         if self.native_images:
             args += ['--native-images=' + ','.join(self.native_images)]
+        else:
+            args += ['--native-images=false']
         return args
 
 
@@ -218,7 +213,8 @@ GraalTags = Tags([
     'benchmarktest',
     "nativeimagehelp",
     'muslcbuild',
-    'hellomodule'
+    'hellomodule',
+    'condconfig',
 ])
 
 def vm_native_image_path(config=None):
@@ -380,6 +376,11 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 native_unittests_task()
 
+    with Task('conditional configuration tests', tasks, tags=[GraalTags.condconfig]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                conditional_config_task(native_image)
+
     with Task('native unittests quickbuild', tasks, tags=[GraalTags.test_quickbuild]) as t:
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
@@ -480,6 +481,74 @@ def native_unittests_task(extra_build_args=None):
     native_unittest(['--builder-on-modulepath', '--build-args', _native_unittest_features] + additional_build_args)
 
 
+def conditional_config_task(native_image):
+    agent_path = build_native_image_agent(native_image)
+    conditional_config_filter_path = join(svmbuild_dir(), 'conditional-config-filter.json')
+    with open(conditional_config_filter_path, 'w') as conditional_config_filter:
+        conditional_config_filter.write(
+'''
+{
+   "rules": [
+        {"includeClasses": "com.oracle.svm.configure.test.conditionalconfig.**"}
+   ]
+}
+'''
+        )
+
+    run_agent_conditional_config_test(agent_path, conditional_config_filter_path)
+
+    run_nic_conditional_config_test(agent_path, conditional_config_filter_path)
+
+
+def run_nic_conditional_config_test(agent_path, conditional_config_filter_path):
+    test_cases = [
+        "createConfigPartOne",
+        "createConfigPartTwo",
+        "createConfigPartThree"
+    ]
+    config_directories = []
+    nic_test_dir = join(svmbuild_dir(), 'nic-cond-config-test')
+    if exists(nic_test_dir):
+        mx.rmtree(nic_test_dir)
+    for test_case in test_cases:
+        config_dir = join(nic_test_dir, test_case)
+        config_directories.append(config_dir)
+
+        agent_opts = ['config-output-dir=' + config_dir,
+                      'experimental-conditional-config-part']
+        jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                      '-Dcom.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator.enabled=true',
+                      'com.oracle.svm.configure.test.conditionalconfig.PartialConfigurationGenerator#' + test_case])
+    config_output_dir = join(nic_test_dir, 'config-output')
+    nic_exe = mx.cmd_suffix(join(mx.JDKConfig(home=mx_sdk_vm_impl.graalvm_output()).home, 'bin', 'native-image-configure'))
+    nic_command = [nic_exe, 'create-conditional'] \
+                  + ['--user-code-filter=' + conditional_config_filter_path] \
+                  + ['--input-dir=' + config_dir for config_dir in config_directories] \
+                  + ['--output-dir=' + config_output_dir]
+    mx.run(nic_command)
+    jvm_unittest(
+        ['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_output_dir,
+         "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
+         'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
+
+
+def run_agent_conditional_config_test(agent_path, conditional_config_filter_path):
+    config_dir = join(svmbuild_dir(), 'cond-config-test-config')
+    if exists(config_dir):
+        mx.rmtree(config_dir)
+
+    agent_opts = ['config-output-dir=' + config_dir,
+                  'experimental-conditional-config-filter-file=' + conditional_config_filter_path]
+    # This run generates the configuration from different test cases
+    jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts),
+                  '-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator.enabled=true',
+                  'com.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator'])
+    # This run verifies that the generated configuration matches the expected one
+    jvm_unittest(['-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.configpath=' + config_dir,
+                  "-Dcom.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier.enabled=true",
+                  'com.oracle.svm.configure.test.conditionalconfig.ConfigurationVerifier'])
+
+
 def javac_image_command(javac_path):
     return [join(javac_path, 'javac'), '-proc:none'] + (
         # We need to set java.home as com.sun.tools.javac.file.Locations.<clinit> can't handle `null`.
@@ -570,6 +639,10 @@ def _native_unittest(native_image, cmdline_args):
     unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
     builder_on_modulepath = pargs.builder_on_modulepath
     _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, builder_on_modulepath)
+
+
+def jvm_unittest(args):
+    return mx_unittest.unittest(['--suite', 'substratevm'] + args)
 
 
 def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
@@ -926,7 +999,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 ))
 
 # GR-34811
-if not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64")):
+llvm_supported = not (mx.is_windows() or (mx.is_darwin() and mx.get_arch() == "aarch64"))
+if llvm_supported:
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         suite=suite,
         name='SubstrateVM LLVM',
@@ -1448,6 +1522,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     def __init__(self):
         mx.ArchivableProject.__init__(self, suite, 'svm-compiler-flags-builder', [], None, None)
         self.buildDependencies = list(SubstrateCompilerFlagsBuilder.flags_build_dependencies)
+        if llvm_supported:
+            self.buildDependencies += ['substratevm:SVM_LLVM']
 
     def config_file(self, ver):
         return 'graal-compiler-flags-' + str(ver) + '.config'

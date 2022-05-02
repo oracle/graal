@@ -49,7 +49,6 @@ import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> implements ReplaceObserver {
 
@@ -103,7 +102,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
         if (valid) {
             return Truffle.getRuntime().createAssumption("Always zero block node argument.");
         } else {
-            return NeverValidAssumption.INSTANCE;
+            return Assumption.NEVER_VALID;
         }
     }
 

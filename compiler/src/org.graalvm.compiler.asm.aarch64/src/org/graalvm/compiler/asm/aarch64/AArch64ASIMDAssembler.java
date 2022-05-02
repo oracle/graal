@@ -559,6 +559,7 @@ public abstract class AArch64ASIMDAssembler {
         /* Advanced SIMD copy (C4-356). */
         DUPELEM(0b0000 << 11),
         DUPGEN(0b0001 << 11),
+        INSGEN(0b0011 << 11),
         SMOV(0b0101 << 11),
         UMOV(0b0111 << 11),
 
@@ -600,6 +601,7 @@ public abstract class AArch64ASIMDAssembler {
         ADDV(0b11011 << 12),
         UADDLV(UBit | 0b00011 << 12),
         UMAXV(UBit | 0b01010 << 12),
+        UMINV(UBit | 0b11010 << 12),
 
         /* Advanced SIMD three different (C4-365). */
         SMLAL(0b1000 << 12),
@@ -863,7 +865,6 @@ public abstract class AArch64ASIMDAssembler {
     private void threeSameEncoding(ASIMDInstruction instr, ASIMDSize size, int eSizeEncoding, Register dst, Register src1, Register src2) {
         int baseEncoding = 0b0_0_0_01110_00_1_00000_00000_1_00000_00000;
         emitInt(instr.encoding | baseEncoding | qBit(size) | eSizeEncoding | rd(dst) | rs1(src1) | rs2(src2));
-
     }
 
     private void modifiedImmEncoding(ImmediateOp op, ASIMDSize size, Register dst, long imm) {
@@ -2061,6 +2062,22 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.176 Insert vector element from general-purpose register.<br>
+     *
+     * <code>dst[index] = src</code>
+     *
+     * Note the rest of the dst register is unaltered.
+     *
+     * @param eSize size of value to duplicate.
+     * @param dst SIMD register.
+     * @param index offset of value to duplicate
+     * @param src SIMD register.
+     */
+    public void insXG(ElementSize eSize, Register dst, int index, Register src) {
+        copyEncoding(ASIMDInstruction.INSGEN, true, eSize, dst, src, index);
+    }
+
+    /**
      * C7.2.177 Load multiple single-element structures to one register.<br>
      *
      * This instruction loads multiple single-element structures from memory and writes the result
@@ -2916,6 +2933,25 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.365 Unsigned minimum across vector.<br>
+     *
+     * <code>dst = uint_min(src[0], ..., src[n]).</code>
+     *
+     * @param size register size.
+     * @param elementSize width of each operand.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void uminvSV(ASIMDSize size, ElementSize elementSize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert !(size == ASIMDSize.HalfReg && elementSize == ElementSize.Word) : "Invalid size and lane combination for uminv";
+        assert elementSize != ElementSize.DoubleWord : "Invalid lane width for uminv";
+
+        acrossLanesEncoding(ASIMDInstruction.UMINV, size, elemSizeXX(elementSize), dst, src);
+    }
+
+    /**
      * C7.2.367 Unsigned Multiply-Add Long.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += uint_multiply(src1[i], src2[i])</code>
@@ -3000,7 +3036,7 @@ public abstract class AArch64ASIMDAssembler {
     /**
      * C7.2.391 Unsigned shift left long (immediate).<br>
      * <p>
-     * From the manual: " This instruction reads each vector element in the lower half of the source
+     * From the manual: "This instruction reads each vector element in the lower half of the source
      * SIMD&FP register, shifts the unsigned integer value left by the specified number of bits ...
      * The destination vector elements are twice as long as the source vector elements."
      *
@@ -3022,6 +3058,33 @@ public abstract class AArch64ASIMDAssembler {
         int imm7 = srcESize.nbits + shiftAmt;
 
         shiftByImmEncoding(ASIMDInstruction.USHLL, false, imm7, dst, src);
+    }
+
+    /**
+     * C7.2.391 Unsigned shift left long (immediate).<br>
+     * <p>
+     * From the manual: "This instruction reads each vector element in the upper half of the source
+     * SIMD&FP register, shifts the unsigned integer value left by the specified number of bits ...
+     * The destination vector elements are twice as long as the source vector elements."
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be twice this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift left amount.
+     */
+    public void ushll2VVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        /* Accepted shift range */
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+
+        /* shift = imm7 - srcESize.nbits */
+        int imm7 = srcESize.nbits + shiftAmt;
+
+        shiftByImmEncoding(ASIMDInstruction.USHLL, true, imm7, dst, src);
     }
 
     /**
@@ -3126,7 +3189,8 @@ public abstract class AArch64ASIMDAssembler {
      * C7.2.402 Extract narrow.<br>
      * <p>
      * From the manual: "This instruction reads each vector element from the source SIMD&FP
-     * register, narrows each value to half the original width, and writes the register..."
+     * register, narrows each value to half the original width, and writes into the lower half of
+     * the destination register..."
      *
      * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
      *            element size is twice this width.
@@ -3139,6 +3203,26 @@ public abstract class AArch64ASIMDAssembler {
         assert dstESize != ElementSize.DoubleWord;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
+    }
+
+    /**
+     * C7.2.402 Extract narrow.<br>
+     * <p>
+     * From the manual: "This instruction reads each vector element from the source SIMD&FP
+     * register, narrows each value to half the original width, and writes into the upper half of
+     * the destination register..."
+     *
+     * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
+     *            element size is twice this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void xtn2VV(ElementSize dstESize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert dstESize != ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.XTN, true, elemSizeXX(dstESize), dst, src);
     }
 
     /**

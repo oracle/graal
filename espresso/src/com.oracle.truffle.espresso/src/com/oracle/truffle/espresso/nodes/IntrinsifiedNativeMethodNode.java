@@ -35,7 +35,7 @@ public class IntrinsifiedNativeMethodNode extends EspressoMethodNode {
     public IntrinsifiedNativeMethodNode(CallableFromNative.Factory factory, Method method, Object env) {
         super(method.getMethodVersion());
         assert validParameterCount(factory, method);
-        this.nativeMethod = insert(factory.create(getMeta()));
+        this.nativeMethod = insert(factory.create());
         this.env = env;
     }
 

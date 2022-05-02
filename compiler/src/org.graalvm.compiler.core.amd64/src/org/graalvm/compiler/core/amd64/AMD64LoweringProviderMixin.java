@@ -46,6 +46,12 @@ import jdk.vm.ci.meta.JavaKind;
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
 
     @Override
+    default boolean divisionOverflowIsJVMSCompliant() {
+        // amd64 traps on a division overflow
+        return false;
+    }
+
+    @Override
     default Integer smallestCompareWidth() {
         return 8;
     }
@@ -78,7 +84,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
                 LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
                 ValueNode result = new SubNode(ConstantNode.forIntegerKind(JavaKind.Int, kind.getBitCount() - 1), new BitScanReverseNode(count.getValue()));
                 ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), result, NodeView.DEFAULT);
-                graph.addOrUniqueWithInputs(conditional);
+                conditional = graph.addOrUniqueWithInputs(conditional);
                 count.replaceAndDelete(conditional);
                 return true;
             }
@@ -93,7 +99,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
                 ValueNode zero = ConstantNode.forIntegerKind(kind, 0, graph);
                 LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
                 ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), new BitScanForwardNode(count.getValue()), NodeView.DEFAULT);
-                graph.addOrUniqueWithInputs(conditional);
+                conditional = graph.addOrUniqueWithInputs(conditional);
                 count.replaceAndDelete(conditional);
                 return true;
             }

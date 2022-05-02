@@ -398,7 +398,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             paths.add(path);
             return paths;
         }
-        throw EspressoError.shouldNotReachHere("Cannot find boot class path for java home: ", javaHome());
+        throw EspressoError.shouldNotReachHere("Cannot find boot class path for java home: " + javaHome());
     }
 
     protected static void expandEnvToPath(String envName, List<Path> paths) {
@@ -430,44 +430,6 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             }
         }
         throw EspressoError.shouldNotReachHere("Cannot find GraalVM home from Espresso home. Espresso is not running from within GraalVM.");
-    }
-}
-
-enum OS {
-    Darwin,
-    Linux,
-    Solaris,
-    Windows;
-
-    private static final OS current = findCurrent();
-
-    private static OS findCurrent() {
-        final String name = System.getProperty("os.name");
-        if (name.equals("Linux")) {
-            return OS.Linux;
-        }
-        if (name.equals("SunOS")) {
-            return OS.Solaris;
-        }
-        if (name.equals("Mac OS X") || name.equals("Darwin")) {
-            return OS.Darwin;
-        }
-        if (name.startsWith("Windows")) {
-            return OS.Windows;
-        }
-        throw EspressoError.shouldNotReachHere("unknown OS: " + name);
-    }
-
-    public static OS getCurrent() {
-        return current;
-    }
-
-    public static boolean isWindows() {
-        return getCurrent() == OS.Windows;
-    }
-
-    public static boolean isUnix() {
-        return getCurrent() != OS.Windows;
     }
 }
 

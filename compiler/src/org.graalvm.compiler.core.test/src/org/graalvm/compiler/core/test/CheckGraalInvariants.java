@@ -344,18 +344,21 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.class));
         verifiers.add(new VerifyUsageWithEquals(ArithmeticOpTable.Op.class));
 
+        verifiers.add(new VerifySharedConstantEmptyArray());
         verifiers.add(new VerifyDebugUsage());
         verifiers.add(new VerifyVirtualizableUsage());
         verifiers.add(new VerifyUpdateUsages());
         verifiers.add(new VerifyBailoutUsage());
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());
-        verifiers.add(new VerifyGraphAddUsage());
         verifiers.add(new VerifyGetOptionsUsage());
         verifiers.add(new VerifyUnsafeAccess());
         verifiers.add(new VerifyVariableCasts());
         verifiers.add(new VerifyIterableNodeType());
         verifiers.add(new VerifyArchUsageInPlugins());
+        verifiers.add(new VerifyStatelessPhases());
+        verifiers.add(new VerifyProfileMethodUsage());
+        verifiers.add(new VerifyMemoryKillCheck());
 
         loadVerifiers(verifiers);
 

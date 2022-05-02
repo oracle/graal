@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -69,7 +69,7 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     }
 
     @Override
-    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
@@ -83,4 +83,8 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
         throw CompilerDirectives.shouldNotReachHere();
     }
 
+    @Override
+    public OS getOS() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
 }

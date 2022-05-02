@@ -672,6 +672,21 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
+    public static boolean diagnoseSyncOnValueBasedClasses(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.diagnoseSyncOnValueBasedClasses != 0 && config.jvmAccIsValueBasedClass != 0;
+    }
+
+    @Fold
+    public static int jvmAccIsValueBasedClass(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.jvmAccIsValueBasedClass;
+    }
+
+    @Fold
+    public static long defaultPrototypeMarkWord(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.defaultPrototypeMarkWord();
+    }
+
+    @Fold
     static int uninitializedIdentityHashCodeValue(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.uninitializedIdentityHashCodeValue;
     }

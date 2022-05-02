@@ -72,7 +72,7 @@ public class BasicInductionVariable extends InductionVariable {
         return op;
     }
 
-    public void setOP(BinaryArithmeticNode<?> newOp) {
+    public void setOp(BinaryArithmeticNode<?> newOp) {
         rawStride = newOp.getY();
         op = newOp;
     }

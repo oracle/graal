@@ -900,7 +900,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 if (substitutionField instanceof ComputedValueField) {
                     ComputedValueField computedSubstitutionField = (ComputedValueField) substitutionField;
                     if (computedSubstitutionField.getRecomputeValueKind().equals(kind)) {
-                        reportUnnecessarySubstitution(substitutionField, computedSubstitutionField);
+                        if (computedSubstitutionField.getTargetField().equals(computedSubstitutionField.getJavaField())) {
+                            reportUnnecessarySubstitution(substitutionField, computedSubstitutionField);
+                        }
                         return false;
                     } else if (computedSubstitutionField.getRecomputeValueKind().equals(Kind.None)) {
                         /*
@@ -1086,7 +1088,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     private StructuredGraph getStaticInitializerGraph(ResolvedJavaMethod clinit, OptionValues options, DebugContext debug) {
         assert clinit.hasBytecodes();
 
-        StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(clinit).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, debug)
+                        .method(clinit)
+                        .recordInlinedMethods(false)
+                        .build();
         HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
 

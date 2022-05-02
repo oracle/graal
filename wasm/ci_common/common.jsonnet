@@ -7,8 +7,10 @@ local graal_suite_root = root_ci.graal_suite_root;
 {
   local mx = (import "../../graal-common.json").mx_version,
   local common = (import "../../common.jsonnet"),
+  local common_json = (import "../../common.json"),
+  local utils = (import "../../common-utils.libsonnet"),
 
-  devkits: (import "../../common.json").devkits,
+  devkits: utils.composable(common_json.devkits),
 
   gate: {
     targets+: ['gate'],
@@ -20,12 +22,10 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   common: {
     environment+: {
-      MX_PYTHON: 'python3',
+      MX_PYTHON: common_json.deps.common.environment["MX_PYTHON"],
     },
-    packages+: {
+    packages+: common_json.deps.common.packages + {
       'mx': mx,
-      '00:pip:logilab-common': '==1.4.4',
-      'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
     },
   },
@@ -169,10 +169,8 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   wasm_unittest: {
     environment+: {
-        "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
         "MX_TEST_RESULT_TAGS": "wasm"
-    },
-    logs+: ["*/es-*.json"]
+    }
   },
 
   jdk17_gate_linux_eclipse_jdt              : common.labsjdk17 + self.gate  + self.linux   + self.eclipse + self.jdt,

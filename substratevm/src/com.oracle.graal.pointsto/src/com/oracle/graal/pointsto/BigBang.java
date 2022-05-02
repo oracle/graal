@@ -42,7 +42,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.util.Timer;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
@@ -71,16 +70,6 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
     HostedProviders getProviders();
 
     List<DebugHandlersFactory> getDebugHandlerFactories();
-
-    /**
-     * @return the timer for measuring the overall duration of the analysis
-     */
-    Timer getAnalysisTimer();
-
-    /**
-     * @return the timer for measuring the time spent in features
-     */
-    Timer getProcessFeaturesTimer();
 
     /**
      * Prints all analysis timers.

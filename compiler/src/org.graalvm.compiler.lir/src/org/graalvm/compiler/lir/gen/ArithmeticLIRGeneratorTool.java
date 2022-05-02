@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.ValueKind;
  */
 public interface ArithmeticLIRGeneratorTool {
 
-    Value emitNegate(Value input);
+    Value emitNegate(Value input, boolean setFlags);
 
     Value emitAdd(Value a, Value b, boolean setFlags);
 
@@ -160,6 +160,11 @@ public interface ArithmeticLIRGeneratorTool {
 
     @SuppressWarnings("unused")
     default Value emitRound(Value operand, RoundingMode mode) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitRoundFloatToInteger(Value operand) {
         throw GraalError.unimplemented("No specialized implementation available");
     }
 

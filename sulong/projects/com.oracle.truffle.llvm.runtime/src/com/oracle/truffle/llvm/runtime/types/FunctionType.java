@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,35 +44,36 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class FunctionType extends Type {
+    public static final int NOT_VARARGS = -1;
 
     private Type returnType;
 
     private final Type[] argumentTypes;
-    private final boolean isVarargs;
+    private final int fixedArgs;
 
-    private FunctionType(Type returnType, Type[] argumentTypes, boolean isVarargs) {
+    private FunctionType(Type returnType, Type[] argumentTypes, int fixedArgs) {
         this.returnType = returnType;
         this.argumentTypes = argumentTypes;
-        this.isVarargs = isVarargs;
+        this.fixedArgs = fixedArgs;
     }
 
     /**
      * Creates a function type with a single argument type.
      */
-    public static FunctionType create(Type returnType, Type arg0, boolean isVarargs) {
-        return new FunctionType(returnType, new Type[]{arg0}, isVarargs);
+    public static FunctionType create(Type returnType, Type arg0) {
+        return new FunctionType(returnType, new Type[]{arg0}, NOT_VARARGS);
     }
 
-    public FunctionType(Type returnType, TypeArrayBuilder argumentTypes, boolean isVarargs) {
-        this(returnType, getRawTypeArray(argumentTypes), isVarargs);
+    public FunctionType(Type returnType, TypeArrayBuilder argumentTypes, int fixedArgs) {
+        this(returnType, getRawTypeArray(argumentTypes), fixedArgs);
     }
 
-    public FunctionType(Type returnType, int numArguments, boolean isVarargs) {
-        this(returnType, new Type[numArguments], isVarargs);
+    public FunctionType(Type returnType, int numArguments, int fixedArgs) {
+        this(returnType, new Type[numArguments], fixedArgs);
     }
 
     public static FunctionType copy(FunctionType type) {
-        return new FunctionType(type.returnType, type.argumentTypes.clone(), type.isVarargs);
+        return new FunctionType(type.returnType, type.argumentTypes.clone(), type.fixedArgs);
     }
 
     public void setArgumentType(int idx, Type type) {
@@ -104,7 +105,11 @@ public final class FunctionType extends Type {
     }
 
     public boolean isVarargs() {
-        return isVarargs;
+        return fixedArgs != NOT_VARARGS;
+    }
+
+    public int getFixedArgs() {
+        return fixedArgs;
     }
 
     @Override
@@ -142,13 +147,13 @@ public final class FunctionType extends Type {
             if (i > 0) {
                 sb.append(", ");
             }
+            if (i == fixedArgs) {
+                sb.append("...");
+            }
             sb.append(argumentTypes[i]);
         }
 
-        if (isVarargs) {
-            if (argumentTypes.length > 0) {
-                sb.append(", ");
-            }
+        if (fixedArgs == argumentTypes.length) {
             sb.append("...");
         }
         sb.append(")");
@@ -161,7 +166,7 @@ public final class FunctionType extends Type {
         final int prime = 31;
         int result = 1;
         result = prime * result + Arrays.hashCode(argumentTypes);
-        result = prime * result + (isVarargs ? 1231 : 1237);
+        result = prime * result + Integer.hashCode(fixedArgs);
         result = prime * result + ((getReturnType() == null) ? 0 : getReturnType().hashCode());
         return result;
     }
@@ -181,7 +186,7 @@ public final class FunctionType extends Type {
         if (!Arrays.equals(argumentTypes, other.argumentTypes)) {
             return false;
         }
-        if (isVarargs != other.isVarargs) {
+        if (fixedArgs != other.fixedArgs) {
             return false;
         }
         if (getReturnType() == null) {

@@ -58,12 +58,14 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.Timer;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;
@@ -90,7 +92,6 @@ import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CHeader.Header;
 import com.oracle.svm.core.c.CTypedef;
 import com.oracle.svm.core.c.CUnsigned;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.GraalIsolateHeader;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -467,7 +468,7 @@ public abstract class NativeImage extends AbstractImage {
              * If we constructed debug info give the object file a chance to install it
              */
             if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
-                Timer timer = new Timer(imageName, "dbginfo");
+                Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
                 try (Timer.StopTimer t = timer.start()) {
                     ImageSingletons.add(SourceManager.class, new SourceManager());
                     DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
@@ -991,6 +992,6 @@ final class MethodPointerInvalidHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
     }
 }

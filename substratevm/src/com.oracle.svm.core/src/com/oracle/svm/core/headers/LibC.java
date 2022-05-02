@@ -103,6 +103,11 @@ public class LibC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static int strcmp(CCharPointer s1, CCharPointer s2) {
+        return libc().strcmp(s1, s2);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int isdigit(int c) {
         return libc().isdigit(c);
     }

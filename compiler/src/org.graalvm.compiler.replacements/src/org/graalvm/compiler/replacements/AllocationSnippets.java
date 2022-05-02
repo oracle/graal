@@ -46,7 +46,6 @@ import org.graalvm.word.WordFactory;
  */
 public abstract class AllocationSnippets implements Snippets {
     protected Object allocateInstanceImpl(Word hub,
-                    Word prototypeMarkWord,
                     UnsignedWord size,
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
@@ -60,7 +59,7 @@ public abstract class AllocationSnippets implements Snippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(size, false)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(tlabInfo, newTop);
             emitPrefetchAllocate(newTop, false);
-            result = formatObject(hub, prototypeMarkWord, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
+            result = formatObject(hub, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
             result = callNewInstanceStub(hub);
@@ -70,7 +69,6 @@ public abstract class AllocationSnippets implements Snippets {
     }
 
     protected Object allocateArrayImpl(Word hub,
-                    Word prototypeMarkWord,
                     int length,
                     int arrayBaseOffset,
                     int log2ElementSize,
@@ -95,7 +93,7 @@ public abstract class AllocationSnippets implements Snippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
+            result = formatArray(hub, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling,
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
@@ -262,14 +260,13 @@ public abstract class AllocationSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
     protected Object formatObject(Word hub,
-                    Word prototypeMarkWord,
                     UnsignedWord size,
                     Word memory,
                     FillContent fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
                     AllocationSnippetCounters snippetCounters) {
-        initializeObjectHeader(memory, hub, prototypeMarkWord, false);
+        initializeObjectHeader(memory, hub, false);
         int headerSize = instanceHeaderSize();
         if (fillContents == FillContent.WITH_ZEROES) {
             zeroMemory(memory, headerSize, size, constantSize, false, false, false, snippetCounters);
@@ -284,7 +281,6 @@ public abstract class AllocationSnippets implements Snippets {
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
     protected Object formatArray(Word hub,
-                    Word prototypeMarkWord,
                     UnsignedWord allocationSize,
                     int length,
                     Word memory,
@@ -298,7 +294,7 @@ public abstract class AllocationSnippets implements Snippets {
         memory.writeInt(arrayLengthOffset(), length, LocationIdentity.init());
         // Store hub last as the concurrent garbage collectors assume length is valid if hub field
         // is not null.
-        initializeObjectHeader(memory, hub, prototypeMarkWord, true);
+        initializeObjectHeader(memory, hub, true);
         if (fillContents == FillContent.WITH_ZEROES) {
             zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
@@ -351,7 +347,7 @@ public abstract class AllocationSnippets implements Snippets {
 
     protected abstract int instanceHeaderSize();
 
-    public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
+    public abstract void initializeObjectHeader(Word memory, Word hub, boolean isArray);
 
     protected abstract Object callNewInstanceStub(Word hub);
 

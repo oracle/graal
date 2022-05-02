@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot.meta;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Formatter;
-import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -39,8 +38,6 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import jdk.vm.ci.hotspot.VMField;
 
 /**
  * This class documents unimplemented Graal intrinsics and categorizes them into 3 categories:
@@ -131,90 +128,23 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/Math.max(II)I",
                         "java/lang/Math.min(II)I");
 
-        // These are known to be implemented down stream
-        add(enterprise,
-                        "java/lang/Integer.toString(I)Ljava/lang/String;",
-                        "java/lang/String.<init>(Ljava/lang/String;)V",
-                        "java/lang/StringBuffer.<init>()V",
-                        "java/lang/StringBuffer.<init>(I)V",
-                        "java/lang/StringBuffer.<init>(Ljava/lang/String;)V",
-                        "java/lang/StringBuffer.append(C)Ljava/lang/StringBuffer;",
-                        "java/lang/StringBuffer.append(I)Ljava/lang/StringBuffer;",
-                        "java/lang/StringBuffer.append(Ljava/lang/String;)Ljava/lang/StringBuffer;",
-                        "java/lang/StringBuffer.toString()Ljava/lang/String;",
-                        "java/lang/StringBuilder.<init>()V",
-                        "java/lang/StringBuilder.<init>(I)V",
-                        "java/lang/StringBuilder.<init>(Ljava/lang/String;)V",
-                        "java/lang/StringBuilder.append(C)Ljava/lang/StringBuilder;",
-                        "java/lang/StringBuilder.append(I)Ljava/lang/StringBuilder;",
-                        "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
-                        "java/lang/StringBuilder.toString()Ljava/lang/String;",
-                        "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
-                        "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
-
-        if (arch instanceof AMD64) {
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
-                add(ignore,
-                                "java/lang/Integer.bitCount(I)I",
-                                "java/lang/Long.bitCount(J)I");
-            }
-        }
-
         // Relevant for Java flight recorder
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
         // instrumentation and are of low priority.
         add(ignore,
+                        "jdk/jfr/internal/JVM.counterTime()J",
+                        "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
+                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
+                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;",
                         "oracle/jrockit/jfr/Timing.counterTime()J",
                         "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(ignore,
-                        "jdk/jfr/internal/JVM.counterTime()J",
-                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
-                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
-
-        add(toBeInvestigated,
-                        // Similar to addExact
-                        "java/lang/Math.negateExact(I)I",
-                        // Similar to addExact
-                        "java/lang/Math.negateExact(J)J",
-                        // HotSpot MacroAssembler-based intrinsic
-                        "java/lang/String.indexOf(Ljava/lang/String;)I",
-                        // Can share most implementation parts with with
-                        // Unsafe.allocateUninitializedArray0
-                        "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
-                        // HotSpot MacroAssembler-based intrinsic
-                        "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I",
-                        // We have implemented implCompressMultiBlock0 on JDK9+.
-                        "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I");
-
-        // See JDK-8207146.
-        String oopName = isJDK12OrHigher() ? "Reference" : "Object";
-
-        // Relevant for Java flight recorder
-        add(toBeInvestigated,
-                        "jdk/jfr/internal/JVM.counterTime()J",
-                        "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
-                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
-
-        add(toBeInvestigated,
-                        // Only used as a marker for vectorization?
-                        "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
-                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
-                        "java/util/zip/Adler32.updateByteBuffer(IJII)I",
-                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
-                        "java/util/zip/Adler32.updateBytes(I[BII)I",
-                        // Emits a slow and a fast path and some dispatching logic
-                        "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;",
-
-                        // HotSpot MacroAssembler-based intrinsic
-                        "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
-
-        // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
-        add(toBeInvestigated,
-                        "java/lang/StringCoding.hasNegatives([BII)Z",
-                        "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
-        add(ignore,
+                        // ppc only
+                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
+                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
+                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                         // handled through an intrinsic for String.equals itself
                         "java/lang/StringLatin1.equals([B[B)Z",
 
@@ -235,6 +165,48 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
+        // Only used as a marker for vectorization
+        add(ignore, "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V");
+
+        /*
+         * The intrinsics down here are known to be implemented but they are not always enabled on
+         * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
+         * them if the HotSpot config tells us that they can't be used.
+         */
+        if (arch instanceof AMD64) {
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
+                add(ignore,
+                                "java/lang/Integer.bitCount(I)I",
+                                "java/lang/Long.bitCount(J)I");
+            }
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
+                add(ignore,
+                                "java/lang/Math.max(DD)D",
+                                "java/lang/Math.max(FF)F",
+                                "java/lang/Math.min(DD)D",
+                                "java/lang/Math.min(FF)F");
+            }
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
+                add(ignore,
+                                "java/lang/Math.copySign(DD)D",
+                                "java/lang/Math.copySign(FF)F");
+            }
+        }
+
+        if (!config.inlineNotify()) {
+            add(ignore, "java/lang/Object.notify()V");
+        }
+        if (!config.inlineNotifyAll()) {
+            add(ignore, "java/lang/Object.notifyAll()V");
+        }
+
+        if (config.base64EncodeBlock == 0L) {
+            add(ignore, "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+        }
+        if (config.base64DecodeBlock == 0L) {
+            add(ignore, "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I");
+        }
+
         if (!config.useAESCTRIntrinsics) {
             add(ignore,
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
@@ -248,95 +220,96 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/Math.fma(DDD)D",
                             "java/lang/Math.fma(FFF)F");
         }
-        if (!(arch instanceof AArch64)) {
-            add(toBeInvestigated,
-                            "java/lang/Math.multiplyHigh(JJ)J");
-        }
 
-        if (hasAESElectronicCodebookStubRoutineFields(config)) {
-            add(toBeInvestigated,
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
-        }
-
-        if (arch instanceof AMD64) {
-            add(toBeInvestigated,
-                            "java/lang/Math.abs(I)I",
-                            "java/lang/Math.abs(J)J");
-
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                add(ignore,
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
-            }
-
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
-                add(ignore,
-                                "java/lang/Math.copySign(DD)D",
-                                "java/lang/Math.copySign(FF)F");
-            }
-        }
-        add(toBeInvestigated,
-                        "java/lang/CharacterDataLatin1.isDigit(I)Z",
-                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
-                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
-        if (!config.useBase64Intrinsics()) {
+        // CRC32 intrinsics
+        if (!config.useCRC32Intrinsics) {
             add(ignore,
-                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+                            "java/util/zip/CRC32.update(II)I",
+                            "java/util/zip/CRC32.updateByteBuffer0(IJII)I",
+                            "java/util/zip/CRC32.updateBytes0(I[BII)I");
         }
 
-        if (isJDK13OrHigher()) {
-            if (!(arch instanceof AArch64)) {
-                add(toBeInvestigated,
-                                "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J");
-
-                if (arch instanceof AMD64) {
-                    if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                        add(ignore,
-                                        "java/lang/Math.max(DD)D",
-                                        "java/lang/Math.max(FF)F",
-                                        "java/lang/Math.min(DD)D",
-                                        "java/lang/Math.min(FF)F");
-                    }
-                } else {
-                    add(toBeInvestigated,
-                                    "java/lang/Math.max(DD)D",
-                                    "java/lang/Math.max(FF)F",
-                                    "java/lang/Math.min(DD)D",
-                                    "java/lang/Math.min(FF)F");
-                }
-            }
+        // CRC32C intrinsics
+        if (!config.useCRC32CIntrinsics) {
+            add(ignore,
+                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
+                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
-        if (isJDK14OrHigher()) {
-            add(toBeInvestigated,
-                            "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
-                            "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
+        // AES intrinsics
+        if (!config.useAESIntrinsics) {
+            add(ignore,
+                            "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
+        }
+
+        // BigInteger intrinsics
+        if (!config.useMultiplyToLenIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
+        }
+        if (!config.useMulAddIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMulAdd([I[IIII)I");
+        }
+        if (!config.useMontgomeryMultiplyIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
+        }
+        if (!config.useMontgomerySquareIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
+        }
+        if (!config.useSquareToLenIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
+        }
+        // DigestBase intrinsics
+        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
+                        !(config.md5ImplCompressMultiBlock != 0L || config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics() ||
+                                        config.sha3ImplCompressMultiBlock != 0L)) {
+            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+        }
+        // SHA intrinsics
+        if (!config.useSHA1Intrinsics()) {
+            add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
+        }
+        if (!config.useSHA256Intrinsics()) {
+            add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
+        }
+        if (!config.useSHA512Intrinsics()) {
+            add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
+        }
+        if (config.updateBytesAdler32 == 0L) {
+            add(ignore,
+                            "java/util/zip/Adler32.updateByteBuffer(IJII)I",
+                            "java/util/zip/Adler32.updateBytes(I[BII)I");
+        }
+        if (config.bigIntegerLeftShiftWorker == 0L) {
+            add(ignore, "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V");
+        }
+        if (config.bigIntegerRightShiftWorker == 0L) {
+            add(ignore, "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
+        }
+        if (config.electronicCodeBookEncrypt == 0L) {
+            add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I");
+        }
+        if (config.electronicCodeBookDecrypt == 0L) {
+            add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
+        }
+        if (config.md5ImplCompress == 0L) {
+            add(ignore, "sun/security/provider/MD5.implCompress0([BI)V");
+        }
+        if (config.sha3ImplCompress == 0L) {
+            add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
         }
 
         if (isJDK16OrHigher()) {
             // JDK-8258558
             add(ignore, "java/lang/Object.<blackhole>*");
+        }
 
+        if (isJDK16OrHigher()) {
             add(toBeInvestigated,
-                            // Added by JDK-8173585: Intrinsify StringLatin1.indexOf(char)
-                            // TODO: Enhance StringLatin1IndexOfNode to support this
-                            "java/lang/StringLatin1.indexOfChar([BIII)I",
-
                             // JDK-8254231: Implementation of Foreign Linker API (Incubator)
                             "java/lang/invoke/MethodHandle.linkToNative*",
-
-                            // JDK-8248188: Add IntrinsicCandidate and API for Base64 decoding
-                            "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
-
-                            // JDK-8255150: Add utility methods to check long indexes and ranges
-                            "jdk/internal/util/Preconditions.checkIndex(JJLjava/util/function/BiFunction;)J",
-
                             // JDK-8223347: Integration of Vector API (Incubator)
                             // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Ljava/lang/Object;",
@@ -359,145 +332,103 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.storeWithMap(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$StoreVectorOperationWithMap;)V",
                             "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljava/lang/Object;",
                             "jdk/internal/vm/vector/VectorSupport.test(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Z",
-                            "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;",
+                            "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"
                             // @formatter:on
-
-                            // JDK-8253525: Implement getInstanceSize/sizeOf intrinsics
-                            "sun/instrument/InstrumentationImpl.getObjectSize0(JLjava/lang/Object;)J",
-
-                            // 8252204: AArch64: Implement SHA3 accelerator/intrinsic
-                            "sun/security/provider/MD5.implCompress0([BI)V",
-
-                            "sun/security/provider/SHA3.implCompress0([BI)V");
+            );
         }
 
-        if (!config.inlineNotify()) {
-            add(ignore, "java/lang/Object.notify()V");
-        }
-        if (!config.inlineNotifyAll()) {
-            add(ignore, "java/lang/Object.notifyAll()V");
-        }
-
-        if (!(arch instanceof AMD64)) {
-            // Can we implement these on non-AMD64 platforms? C2 seems to.
+        if (isJDK18OrHigher()) {
             add(toBeInvestigated,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
-                            "java/lang/String.compareTo(Ljava/lang/String;)I",
-                            "java/lang/StringLatin1.indexOf([B[B)I",
-                            "java/lang/StringLatin1.inflate([BI[BII)V",
-                            "java/lang/StringLatin1.inflate([BI[CII)V",
-                            "java/lang/StringUTF16.compress([BI[BII)I",
-                            "java/lang/StringUTF16.compress([CI[BII)I",
-                            "java/lang/StringUTF16.indexOf([BI[BII)I",
-                            "java/lang/StringUTF16.indexOf([B[B)I",
-                            "java/lang/StringUTF16.indexOfChar([BIII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
-                            "sun/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
+                            "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I",
+                            "java/lang/Math.unsignedMultiplyHigh(JJ)J",
+                            "java/lang/StrictMath.max(DD)D",
+                            "java/lang/StrictMath.max(FF)F",
+                            "java/lang/StrictMath.max(II)I",
+                            "java/lang/StrictMath.min(DD)D",
+                            "java/lang/StrictMath.min(FF)F",
+                            "java/lang/StrictMath.min(II)I",
+                            "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I",
+                            "jdk/internal/misc/Unsafe.storeStoreFence()V",
+                            "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$VectorPayload;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$BinaryOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.broadcastCoerced(Ljava/lang/Class;Ljava/lang/Class;IJLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$BroadcastOperation;)" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.broadcastInt(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorMask;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorBroadcastIntOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.compare(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorCompareOp;)Ljdk/internal/vm/vector/VectorSupport$VectorMask;",
+                            "jdk/internal/vm/vector/VectorSupport.load(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjava/lang/Object;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$LoadOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.loadMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorMaskedOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.loadWithMap(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorOperationWithMap;)" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.maskReductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorMaskOp;)J",
+                            "jdk/internal/vm/vector/VectorSupport.maybeRebox(Ljdk/internal/vm/vector/VectorSupport$VectorPayload;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                            "jdk/internal/vm/vector/VectorSupport.rearrangeOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorRearrangeOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.reductionCoerced(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$ReductionOperation;)J",
+                            "jdk/internal/vm/vector/VectorSupport.shuffleToVector(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;I" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$ShuffleToVectorOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.storeMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;ILjdk/internal/vm/vector/VectorSupport$StoreVectorMaskedOperation;)V",
+                            "jdk/internal/vm/vector/VectorSupport.storeWithMap(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$StoreVectorOperationWithMap;)V",
+                            "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                            "jdk/internal/vm/vector/VectorSupport.test(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/util/function/BiFunction;)Z",
+                            "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$UnaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;");
+        }
 
+        if (isJDK19OrHigher()) {
             add(toBeInvestigated,
+                            "jdk/internal/vm/vector/VectorSupport.fromBitsCoerced(Ljava/lang/Class;Ljava/lang/Class;IJILjdk/internal/vm/vector/VectorSupport$VectorSpecies;" +
+                                            "Ljdk/internal/vm/vector/VectorSupport$FromBitsCoercedOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;");
+        }
+
+        if (arch instanceof AArch64) {
+            add(toBeInvestigated,
+                            "java/lang/StringCoding.hasNegatives([BII)Z",
                             "java/lang/Thread.onSpinWait()V",
-                            "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
-            add(toBeInvestigated,
                             "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
         }
 
-        /*
-         * The intrinsics down here are known to be implemented but they are not always enabled on
-         * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
-         * them if the HotSpot config tells us that they can't be used.
-         */
+        // These are known to be implemented down stream
+        add(enterprise,
+                        "java/lang/Integer.toString(I)Ljava/lang/String;",
+                        "java/lang/String.<init>(Ljava/lang/String;)V",
+                        "java/lang/StringBuffer.<init>()V",
+                        "java/lang/StringBuffer.<init>(I)V",
+                        "java/lang/StringBuffer.<init>(Ljava/lang/String;)V",
+                        "java/lang/StringBuffer.append(C)Ljava/lang/StringBuffer;",
+                        "java/lang/StringBuffer.append(I)Ljava/lang/StringBuffer;",
+                        "java/lang/StringBuffer.append(Ljava/lang/String;)Ljava/lang/StringBuffer;",
+                        "java/lang/StringBuffer.toString()Ljava/lang/String;",
+                        "java/lang/StringBuilder.<init>()V",
+                        "java/lang/StringBuilder.<init>(I)V",
+                        "java/lang/StringBuilder.<init>(Ljava/lang/String;)V",
+                        "java/lang/StringBuilder.append(C)Ljava/lang/StringBuilder;",
+                        "java/lang/StringBuilder.append(I)Ljava/lang/StringBuilder;",
+                        "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                        "java/lang/StringBuilder.toString()Ljava/lang/String;",
+                        "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
+                        "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        // CRC32 intrinsics
-        if (!config.useCRC32Intrinsics) {
-            add(ignore, "java/util/zip/CRC32.update(II)I");
-            add(ignore,
-                            "java/util/zip/CRC32.updateByteBuffer0(IJII)I",
-                            "java/util/zip/CRC32.updateBytes0(I[BII)I");
-        }
-
-        // CRC32C intrinsics
-        if (!config.useCRC32CIntrinsics) {
-            add(ignore,
-                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
-                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
-        }
-
-        String cbcEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
-        String cbcDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
-        String aesEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
-        String aesDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
-
-        // AES intrinsics
-        if (!config.useAESIntrinsics) {
-            add(ignore,
-                            "com/sun/crypto/provider/AESCrypt." + aesDecryptName + "([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
-                            "com/sun/crypto/provider/CipherBlockChaining." + cbcDecryptName + "([BII[BI)I",
-                            "com/sun/crypto/provider/CipherBlockChaining." + cbcEncryptName + "([BII[BI)I");
-        }
-
-        // BigInteger intrinsics
-        if (!config.useMultiplyToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
-        }
-        if (!config.useMulAddIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMulAdd([I[IIII)I");
-        }
-        if (!config.useMontgomeryMultiplyIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
-        }
-        if (!config.useMontgomerySquareIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
-        }
-        if (!config.useSquareToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
-        }
-        // DigestBase intrinsics
-        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
-                        !(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
-            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
-        }
-        // SHA intrinsics
-        String shaCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "sun/security/provider/SHA", "implCompress0", "implCompress");
-        if (!config.useSHA1Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA." + shaCompressName + "([BI)V");
-        }
-        if (!config.useSHA256Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA2." + shaCompressName + "([BI)V");
-        }
-        if (!config.useSHA512Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA5." + shaCompressName + "([BI)V");
-        }
-    }
-
-    /**
-     * Determines if the StubRoutines corresponding to JDK-8225625 are potentially available. That
-     * is, are the fields pointing to these routines defined. The routines themselves will only be
-     * generated if the following code in the VM condition is true:
-     * {@code VM_Version::supports_vaes() && VM_Version::supports_avx512vl() && VM_Version::supports_avx512dq()}
-     */
-    private static boolean hasAESElectronicCodebookStubRoutineFields(GraalHotSpotVMConfig config) {
-        HotSpotVMConfigStore store = config.getStore();
-        Map<String, VMField> fields = store.getFields();
-        return fields.containsKey("StubRoutines::_electronicCodeBook_encryptAESCrypt") &&
-                        fields.containsKey("StubRoutines::_electronicCodeBook_decryptAESCrypt");
-    }
-
-    private static boolean isJDK12OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 12;
-    }
-
-    private static boolean isJDK13OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 13;
-    }
-
-    private static boolean isJDK14OrHigher() {
-        return JavaVersionUtil.JAVA_SPEC >= 14;
     }
 
     private static boolean isJDK16OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 16;
+    }
+
+    private static boolean isJDK18OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 18;
+    }
+
+    private static boolean isJDK19OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 19;
     }
 
     /**

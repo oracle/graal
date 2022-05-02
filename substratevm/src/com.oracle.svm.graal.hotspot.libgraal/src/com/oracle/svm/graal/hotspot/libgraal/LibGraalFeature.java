@@ -42,17 +42,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
@@ -106,6 +104,7 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -124,6 +123,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -512,19 +512,41 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
      */
     private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
-        Set<AnalysisMethod> seen = new HashSet<>();
-        universe.getMethods().stream().filter(AnalysisMethod::isRootMethod).forEach(seen::add);
-        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen);
+        Map<AnalysisMethod, Object> seen = new LinkedHashMap<>();
+        for (AnalysisMethod analysisMethod : universe.getMethods()) {
+            if (analysisMethod.isDirectRootMethod() && analysisMethod.isImplementationInvoked()) {
+                seen.put(analysisMethod, "direct root");
+            }
+            if (analysisMethod.isVirtualRootMethod()) {
+                for (AnalysisMethod impl : analysisMethod.getImplementations()) {
+                    VMError.guarantee(impl.isImplementationInvoked());
+                    seen.put(impl, "virtual root");
+                }
+            }
+        }
+        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen.keySet());
         SortedSet<String> disallowedTypes = new TreeSet<>();
         while (!todo.isEmpty()) {
             AnalysisMethod m = todo.removeFirst();
             String className = m.getDeclaringClass().toClassName();
             if (!isAllowedType(className)) {
-                disallowedTypes.add(className);
+                StringBuilder msg = new StringBuilder(className);
+                Object reason = m;
+                while (true) {
+                    msg.append("<-");
+                    if (reason instanceof ResolvedJavaMethod) {
+                        msg.append(((ResolvedJavaMethod) reason).format("%H.%n(%p)"));
+                        reason = seen.get(reason);
+                    } else {
+                        msg.append(reason);
+                        break;
+                    }
+                }
+                disallowedTypes.add(msg.toString());
             }
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
-                    if (seen.add(callee)) {
+                    if (seen.putIfAbsent(callee, m) == null) {
                         todo.add(callee);
                     }
                 }
@@ -645,6 +667,12 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
     // Checkstyle: resume
 
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void startupLibGraal(HotSpotGraalRuntime runtime) {
+        VMRuntime.initialize();
+    }
+
     private static final class InjectedManagementComputer implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
         public RecomputeFieldValue.ValueAvailability valueAvailability() {
@@ -711,6 +739,19 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
     @Substitute
     private static Pointer getBarrierPointer() {
         return LibGraalEntryPoints.LOG_FILE_BARRIER.get();
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
+
+    @Substitute
+    public static long getGlobalTimeStamp() {
+        Pointer timestamp = LibGraalEntryPoints.GLOBAL_TIMESTAMP.get();
+        if (timestamp.readLong(0) == 0) {
+            timestamp.compareAndSwapLong(0, 0, System.currentTimeMillis(), LocationIdentity.ANY_LOCATION);
+        }
+        return timestamp.readLong(0);
     }
 }
 

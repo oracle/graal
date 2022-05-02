@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.jfr.JfrNativeEventWriter;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public class ThreadEndEvent {
 
@@ -43,12 +43,11 @@ public class ThreadEndEvent {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvent.ThreadEnd.getId());
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadEnd);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putThread(data, isolateThread);
-            JfrNativeEventWriter.endEventWrite(data, false);
+            JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 }

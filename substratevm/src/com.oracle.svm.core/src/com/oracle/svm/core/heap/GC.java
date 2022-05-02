@@ -30,4 +30,7 @@ public interface GC {
 
     /** Cause a full collection. */
     void collectCompletely(GCCause cause);
+
+    /** Human-readable name. */
+    String getName();
 }

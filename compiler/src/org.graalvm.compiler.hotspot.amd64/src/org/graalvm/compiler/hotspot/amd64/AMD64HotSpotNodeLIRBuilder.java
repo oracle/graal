@@ -142,7 +142,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             AllocatableValue targetAddressDst = AMD64.rax.asValue(targetAddressSrc.getValueKind());
             gen.emitMove(metaspaceMethodDst, metaspaceMethodSrc);
             gen.emitMove(targetAddressDst, targetAddressSrc);
-            append(new AMD64IndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethodDst, targetAddressDst, callState));
+            append(new AMD64HotSpotIndirectCallOp(callTarget.targetMethod(), result, parameters, temps, metaspaceMethodDst, targetAddressDst, callState));
         } else {
             super.emitIndirectCall(callTarget, result, parameters, temps, callState);
         }
@@ -197,7 +197,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             // Emit assembly for snippet stubs
             return null;
         }
-        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen().getMaxVectorSize());
+        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen().config.maxVectorSize);
         return descriptor == null ? null : lookupForeignCall(descriptor);
     }
 

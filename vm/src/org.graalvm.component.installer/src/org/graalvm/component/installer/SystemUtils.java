@@ -89,7 +89,7 @@ public class SystemUtils {
     public enum OS {
         WINDOWS(OS_TOKEN_WINDOWS),
         LINUX(OS_TOKEN_LINUX),
-        MAC(OS_MACOS_DARWIN),
+        MAC(OS_TOKEN_MACOS),
         UNKNOWN(null);
 
         private final String name;
@@ -178,6 +178,10 @@ public class SystemUtils {
             }
             return UNKNOWN;
         }
+    }
+
+    public static boolean nonBlankString(String string) {
+        return string != null && !string.isBlank();
     }
 
     /**

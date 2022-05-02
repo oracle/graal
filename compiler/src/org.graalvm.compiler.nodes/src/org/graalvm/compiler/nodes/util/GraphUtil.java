@@ -1061,6 +1061,16 @@ public class GraphUtil {
                 return false;
             }
         }
+
+        @Override
+        public boolean divisionOverflowIsJVMSCompliant() {
+            if (getLowerer() != null) {
+                return getLowerer().divisionOverflowIsJVMSCompliant();
+            } else {
+                // prevent accidental floating of divs if we dont know the target arch
+                return false;
+            }
+        }
     }
 
     public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {

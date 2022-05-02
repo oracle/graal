@@ -31,16 +31,23 @@ import static com.oracle.svm.core.thread.JavaThreads.isVirtual;
 import static com.oracle.svm.core.thread.JavaThreads.toTarget;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -59,11 +66,15 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
@@ -79,7 +90,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implements operations on platform threads, which are typical {@link Thread Java threads} which
@@ -92,8 +103,6 @@ public abstract class PlatformThreads {
     public static PlatformThreads singleton() {
         return ImageSingletons.lookup(PlatformThreads.class);
     }
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -216,17 +225,6 @@ public abstract class PlatformThreads {
         }
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean wasStartedByCurrentIsolate(IsolateThread thread) {
-        Thread javaThread = currentThread.get(thread);
-        return wasStartedByCurrentIsolate(javaThread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static boolean wasStartedByCurrentIsolate(Thread thread) {
-        return toTarget(thread).wasStartedByCurrentIsolate;
-    }
-
     /* End of accessor functions. */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -260,9 +258,11 @@ public abstract class PlatformThreads {
     static void cleanupBeforeDetach(IsolateThread thread) {
         VMError.guarantee(thread.equal(CurrentIsolate.getCurrentThread()), "Cleanup must execute in detaching thread");
 
-        Target_java_lang_Thread javaThread = SubstrateUtil.cast(currentThread.get(thread), Target_java_lang_Thread.class);
-        javaThread.exit();
-        ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), currentThread.get(thread));
+        Thread javaThread = currentThread.get(thread);
+        if (javaThread != null) {
+            toTarget(javaThread).exit();
+            ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), javaThread);
+        }
     }
 
     static void join(Thread thread, long millis) throws InterruptedException {
@@ -469,10 +469,12 @@ public abstract class PlatformThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
 
         Thread thread = currentThread.get(vmThread);
-        toTarget(thread).threadData.detach();
-        toTarget(thread).isolateThread = WordFactory.nullPointer();
-        if (!thread.isDaemon()) {
-            nonDaemonThreads.decrementAndGet();
+        if (thread != null) {
+            toTarget(thread).threadData.detach();
+            toTarget(thread).isolateThread = WordFactory.nullPointer();
+            if (!thread.isDaemon()) {
+                nonDaemonThreads.decrementAndGet();
+            }
         }
     }
 
@@ -494,14 +496,56 @@ public abstract class PlatformThreads {
         FetchApplicationThreadsOperation operation = new FetchApplicationThreadsOperation(threads);
         operation.enqueue();
 
+        Set<ExecutorService> pools = Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<ExecutorService> poolsWithNonDaemons = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Thread thread : threads) {
-            if (thread == Thread.currentThread()) {
+            if (thread == null || thread == Thread.currentThread()) {
                 continue;
             }
-            if (thread != null) {
-                Log.noopLog().string("  interrupting: ").string(thread.getName()).newline().flush();
-                thread.interrupt();
+
+            trace.string("  interrupting: ").string(thread.getName()).newline();
+            try {
+                thread.interrupt(); // not final and subclasses can unexpectedly throw
+            } catch (Throwable t) {
+                trace.string(" threw (ignored): ").exception(t);
             }
+            trace.newline().flush();
+
+            /*
+             * Pool worker threads ignore interrupts unless their pool is shutting down. We try to
+             * get their pool and shut it down, but are defensive and do so only for pool classes we
+             * know (shutdown methods can be overridden) and only if all of a pool's threads are
+             * daemons (which is the default for ForkJoinPool; for ThreadPoolExecutor, it depends on
+             * its ThreadFactory). For consistency, we still interrupt each individual thread above,
+             * especially if we end up not shutting down its pool if we find a non-daemon thread.
+             */
+            Set<ExecutorService> set = thread.isDaemon() ? pools : poolsWithNonDaemons;
+            if (thread instanceof ForkJoinWorkerThread) {
+                // read field "pool" directly to bypass getPool(), which is not final
+                ForkJoinPool pool = SubstrateUtil.cast(thread, Target_java_util_concurrent_ForkJoinWorkerThread.class).pool;
+                if (pool != null && pool.getClass() == ForkJoinPool.class) {
+                    set.add(pool);
+                }
+            } else {
+                Runnable target = toTarget(thread).target;
+                if (Target_java_util_concurrent_ThreadPoolExecutor_Worker.class.isInstance(target)) {
+                    ThreadPoolExecutor executor = SubstrateUtil.cast(target, Target_java_util_concurrent_ThreadPoolExecutor_Worker.class).executor;
+                    if (executor != null && (executor.getClass() == ThreadPoolExecutor.class || executor.getClass() == ScheduledThreadPoolExecutor.class)) {
+                        set.add(executor);
+                    }
+                }
+            }
+        }
+
+        pools.removeAll(poolsWithNonDaemons);
+        for (ExecutorService pool : pools) {
+            trace.string("  shutting down: ").object(pool);
+            try {
+                pool.shutdownNow();
+            } catch (Throwable t) {
+                trace.string(" threw (ignored): ").exception(t);
+            }
+            trace.newline().flush();
         }
 
         final boolean result = waitForTearDown();
@@ -555,7 +599,7 @@ public abstract class PlatformThreads {
     }
 
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
-    protected static void exit(Thread thread) {
+    public static void exit(Thread thread) {
         /*
          * First call Thread.exit(). This allows waiters on the thread object to observe that a
          * daemon ThreadGroup is destroyed as well if this thread happens to be the last thread of a
@@ -690,25 +734,16 @@ public abstract class PlatformThreads {
 
     static StackTraceElement[] getStackTrace(Thread thread) {
         assert !isVirtual(thread);
-        StackTraceElement[][] result = new StackTraceElement[1][0];
-        JavaVMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
-            if (thread.isAlive()) {
-                result[0] = getStackTrace(getIsolateThread(thread));
-            } else {
-                result[0] = Target_java_lang_Thread.EMPTY_STACK_TRACE;
-            }
-        });
-        return result[0];
+
+        GetStackTraceOperation vmOp = new GetStackTraceOperation(thread);
+        vmOp.enqueue();
+        return vmOp.result;
     }
 
     static Map<Thread, StackTraceElement[]> getAllStackTraces() {
-        Map<Thread, StackTraceElement[]> result = new HashMap<>();
-        JavaVMOperation.enqueueBlockingSafepoint("getAllStackTraces", () -> {
-            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
-                result.put(PlatformThreads.fromVMThread(cur), getStackTrace(cur));
-            }
-        });
-        return result;
+        GetAllStackTracesOperation vmOp = new GetAllStackTracesOperation();
+        vmOp.enqueue();
+        return vmOp.result;
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -816,7 +851,7 @@ public abstract class PlatformThreads {
          * *before* the interrupted check because if not, the interrupt code will not assign one and
          * the wakeup will be lost.
          */
-        UNSAFE.fullFence();
+        Unsafe.getUnsafe().fullFence();
 
         if (JavaThreads.isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()
@@ -869,6 +904,41 @@ public abstract class PlatformThreads {
         return (ThreadData) toTarget(Thread.currentThread()).threadData;
     }
 
+    private static class GetStackTraceOperation extends JavaVMOperation {
+        private final Thread thread;
+        private StackTraceElement[] result;
+
+        GetStackTraceOperation(Thread thread) {
+            super(VMOperationInfos.get(GetStackTraceOperation.class, "Get stack trace", SystemEffect.SAFEPOINT));
+            this.thread = thread;
+        }
+
+        @Override
+        protected void operate() {
+            if (thread.isAlive()) {
+                result = getStackTrace(getIsolateThread(thread));
+            } else {
+                result = Target_java_lang_Thread.EMPTY_STACK_TRACE;
+            }
+        }
+    }
+
+    private static class GetAllStackTracesOperation extends JavaVMOperation {
+        private final Map<Thread, StackTraceElement[]> result;
+
+        GetAllStackTracesOperation() {
+            super(VMOperationInfos.get(GetAllStackTracesOperation.class, "Get all stack traces", SystemEffect.SAFEPOINT));
+            result = new HashMap<>();
+        }
+
+        @Override
+        protected void operate() {
+            for (IsolateThread cur = VMThreads.firstThread(); cur.isNonNull(); cur = VMThreads.nextThread(cur)) {
+                result.put(PlatformThreads.fromVMThread(cur), getStackTrace(cur));
+            }
+        }
+    }
+
     /**
      * Builds a list of all application threads. This must be done in a VM operation because only
      * there we are allowed to allocate Java memory while holding the {@link VMThreads#THREAD_MUTEX}
@@ -877,7 +947,7 @@ public abstract class PlatformThreads {
         private final List<Thread> list;
 
         FetchApplicationThreadsOperation(List<Thread> list) {
-            super("FetchApplicationThreads", SystemEffect.NONE);
+            super(VMOperationInfos.get(FetchApplicationThreadsOperation.class, "Fetch application threads", SystemEffect.NONE));
             this.list = list;
         }
 
@@ -912,7 +982,7 @@ public abstract class PlatformThreads {
         private boolean readyForTearDown;
 
         CheckReadyForTearDownOperation(Log trace, AtomicBoolean printLaggards) {
-            super("CheckReadyForTearDown", SystemEffect.NONE);
+            super(VMOperationInfos.get(CheckReadyForTearDownOperation.class, "Check ready for teardown", SystemEffect.NONE));
             this.trace = trace;
             this.printLaggards = printLaggards;
         }
@@ -961,4 +1031,16 @@ public abstract class PlatformThreads {
             readyForTearDown = (attachedCount == 1 && unattachedStartedCount == 0);
         }
     }
+}
+
+@TargetClass(value = ThreadPoolExecutor.class, innerClass = "Worker")
+final class Target_java_util_concurrent_ThreadPoolExecutor_Worker {
+    @Alias @TargetElement(name = "this$0") //
+    ThreadPoolExecutor executor;
+}
+
+@TargetClass(ForkJoinWorkerThread.class)
+final class Target_java_util_concurrent_ForkJoinWorkerThread {
+    @Alias //
+    ForkJoinPool pool;
 }

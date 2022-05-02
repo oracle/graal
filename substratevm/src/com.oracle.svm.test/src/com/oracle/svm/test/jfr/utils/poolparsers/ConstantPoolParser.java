@@ -31,7 +31,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.svm.core.jfr.JfrType;
-import com.oracle.svm.test.jfr.utils.JFRFileParser;
+import com.oracle.svm.test.jfr.utils.JfrFileParser;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 import org.junit.Assert;
 
@@ -56,7 +56,7 @@ public abstract class ConstantPoolParser {
     }
 
     protected static void addExpectedId(JfrType typeId, long id) {
-        ConstantPoolParser poolParser = JFRFileParser.getSupportedConstantPools().get(typeId.getId());
+        ConstantPoolParser poolParser = JfrFileParser.getSupportedConstantPools().get(typeId.getId());
         poolParser.expectedIds.add(id);
     }
 

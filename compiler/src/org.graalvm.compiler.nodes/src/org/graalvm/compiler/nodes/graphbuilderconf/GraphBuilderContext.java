@@ -322,7 +322,7 @@ public interface GraphBuilderContext extends GraphBuilderTool {
         }
         ConstantNode zero = ConstantNode.defaultForKind(arrayLength.getStackKind());
         LogicNode condition = append(IntegerLessThanNode.create(getConstantReflection(), getMetaAccess(), getOptions(), null, arrayLength, zero, NodeView.DEFAULT));
-        ValueNode[] arguments = exceptionKind.getNumArguments() == 1 ? new ValueNode[]{arrayLength} : new ValueNode[0];
+        ValueNode[] arguments = exceptionKind.getNumArguments() == 1 ? new ValueNode[]{arrayLength} : ValueNode.EMPTY_ARRAY;
         GuardingNode guardingNode = emitBytecodeExceptionCheck(condition, false, exceptionKind, arguments);
         if (guardingNode == null) {
             return arrayLength;

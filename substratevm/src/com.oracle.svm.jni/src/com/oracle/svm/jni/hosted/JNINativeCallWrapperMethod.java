@@ -94,16 +94,10 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
     }
 
     @Override
-    public boolean isSynthetic() {
-        return true;
-    }
-
-    @Override
     public int getModifiers() {
-        final int synthetic = 0x1000;
         // A synchronized method requires some special handling. Instead, if the wrapped method is
         // declared synchronized, we add graph nodes to lock and unlock accordingly.
-        return (getOriginal().getModifiers() | synthetic) & ~(Modifier.NATIVE | Modifier.SYNCHRONIZED);
+        return getOriginal().getModifiers() & ~Modifier.SYNCHRONIZED;
     }
 
     @Override

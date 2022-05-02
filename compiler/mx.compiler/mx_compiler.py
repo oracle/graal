@@ -99,8 +99,9 @@ jdk = mx.get_jdk(tag='default')
 #: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
 _jdk_jvmci_version = None
 
-if jdk.javaCompliance < '11':
-    mx.abort('Graal requires JDK11 or later, got ' + str(jdk))
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '11':
+    mx.abort('Graal requires JDK11 or later, got ' + str(jdk) +
+             '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
 def _check_jvmci_version(jdk):
     """

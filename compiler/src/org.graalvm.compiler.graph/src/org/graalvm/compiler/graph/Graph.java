@@ -492,17 +492,13 @@ public class Graph {
     }
 
     public <T extends Node> T addOrUnique(T node) {
+        if (node.isAlive()) {
+            return node;
+        }
         if (node.getNodeClass().valueNumberable()) {
             return uniqueHelper(node);
         }
         return add(node);
-    }
-
-    public <T extends Node> T maybeAddOrUnique(T node) {
-        if (node.isAlive()) {
-            return node;
-        }
-        return addOrUnique(node);
     }
 
     public <T extends Node> T addOrUniqueWithInputs(T node) {
@@ -550,6 +546,26 @@ public class Graph {
     }
 
     /**
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph but its fields have yet to be initialized.
+     */
+    public void beforeDecodingFields(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.BEFORE_DECODING_FIELDS, node);
+        }
+    }
+
+    /**
+     * Notifies node event listeners registered with this graph that {@code node} has been created
+     * as part of decoding a graph and its fields have now been initialized.
+     */
+    public void afterDecodingFields(Node node) {
+        if (nodeEventListener != null) {
+            nodeEventListener.event(NodeEvent.AFTER_DECODING_FIELDS, node);
+        }
+    }
+
+    /**
      * The type of events sent to a {@link NodeEventListener}.
      */
     public enum NodeEvent {
@@ -571,7 +587,22 @@ public class Graph {
         /**
          * A node was removed from the graph.
          */
-        NODE_REMOVED
+        NODE_REMOVED,
+
+        /**
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered before a "stub" node's fields are decoded and initialized.
+         */
+        BEFORE_DECODING_FIELDS,
+
+        /**
+         * Graph decoding (partial evaluation) may create nodes adding them to the graph in a "stub"
+         * form before filling any node fields. We want to observe these events as well. This event
+         * is triggered after a "stub" node's fields are decoded and populated i.e. when the node is
+         * no longer a stub.
+         */
+        AFTER_DECODING_FIELDS,
     }
 
     /**
@@ -606,6 +637,12 @@ public class Graph {
                 case NODE_REMOVED:
                     nodeRemoved(node);
                     break;
+                case BEFORE_DECODING_FIELDS:
+                    beforeDecodingFields(node);
+                    break;
+                case AFTER_DECODING_FIELDS:
+                    afterDecodingFields(node);
+                    break;
             }
             changed(e, node);
         }
@@ -625,6 +662,23 @@ public class Graph {
          * @param node a node who has had one of its inputs changed
          */
         public void inputChanged(Node node) {
+        }
+
+        /**
+         * Notifies this listener that the decoding of fields for this node is about to commence.
+         *
+         * @param node a node whose fields are about to be decoded.
+         */
+        public void beforeDecodingFields(Node node) {
+
+        }
+
+        /**
+         * Notifies this listener that the decoding of fields for this node has finished.
+         *
+         * @param node a node who has had fields decoded.
+         */
+        public void afterDecodingFields(Node node) {
         }
 
         /**
@@ -952,15 +1006,31 @@ public class Graph {
      * of nodes is compressed such that all non-null entries precede all null entries while
      * preserving the ordering between the nodes within the list.
      */
-    public boolean maybeCompress() {
-        if (debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod()) {
+    public final boolean maybeCompress() {
+        return compress(false);
+    }
+
+    /**
+     * Minimize the memory occupied by the graph by trimming all node arrays to the minimum size.
+     * Note that this can make subsequent optimization phases run slower, because additions to the
+     * graph must re-allocate larger arrays again. So invoking this method is only beneficial if a
+     * graph is alive for a long time.
+     */
+    public final void minimizeSize() {
+        compress(true);
+    }
+
+    protected boolean compress(boolean minimizeSize) {
+        if (!minimizeSize && (debug.isDumpEnabledForMethod() || debug.isLogEnabledForMethod())) {
             return false;
         }
         int liveNodeCount = getNodeCount();
-        int liveNodePercent = liveNodeCount * 100 / nodesSize;
-        int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
-        if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
-            return false;
+        if (!minimizeSize) {
+            int liveNodePercent = liveNodeCount * 100 / nodesSize;
+            int compressionThreshold = Options.GraphCompressionThreshold.getValue(options);
+            if (compressionThreshold == 0 || liveNodePercent >= compressionThreshold) {
+                return false;
+            }
         }
         GraphCompressions.increment(debug);
         int nextId = 0;
@@ -988,7 +1058,36 @@ public class Graph {
         compressions++;
         nodesDeletedBeforeLastCompression += nodesDeletedSinceLastCompression;
         nodesDeletedSinceLastCompression = 0;
+
+        if (minimizeSize) {
+            /* Trim the array of all alive nodes itself. */
+            nodes = trimArrayToNewSize(nodes, nextId, Node.EMPTY_ARRAY);
+            /* Remove deleted nodes from the linked list of Node.typeCacheNext. */
+            recomputeIterableNodeLists();
+            /* Trim node arrays used within each node. */
+            for (Node node : nodes) {
+                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount, Node.EMPTY_ARRAY);
+                node.getNodeClass().getInputEdges().minimizeSize(node);
+                node.getNodeClass().getSuccessorEdges().minimizeSize(node);
+            }
+        }
         return true;
+    }
+
+    static <T> T[] trimArrayToNewSize(T[] input, int newSize, T[] emptyArray) {
+        assert emptyArray.length == 0;
+        if (input.length == newSize) {
+            return input;
+        }
+        for (int i = newSize; i < input.length; i++) {
+            GraalError.guarantee(input[i] == null, "removing non-null element");
+        }
+
+        if (newSize == 0) {
+            return emptyArray;
+        } else {
+            return Arrays.copyOf(input, newSize);
+        }
     }
 
     /**

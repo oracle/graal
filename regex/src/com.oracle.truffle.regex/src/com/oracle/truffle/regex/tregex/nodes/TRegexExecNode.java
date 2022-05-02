@@ -90,10 +90,10 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         this.numberOfCaptureGroups = ast.getNumberOfCaptureGroups();
         this.nfaNode = new NFARegexSearchNode(createEntryNode(nfaExecutor));
         this.backtrackingMode = nfaExecutor instanceof TRegexBacktrackingNFAExecutorNode;
-        this.regressionTestMode = !backtrackingMode && ast.getSource().getOptions().isRegressionTestMode();
+        this.regressionTestMode = !backtrackingMode && ast.getOptions().isRegressionTestMode();
         this.sticky = ast.getFlags().isSticky();
-        this.runnerNode = nfaNode;
-        if (this.regressionTestMode || ast.getSource().getOptions().isGenerateDFAImmediately()) {
+        this.runnerNode = insert(nfaNode);
+        if (this.regressionTestMode || ast.getOptions().isGenerateDFAImmediately()) {
             switchToLazyDFA();
         }
         if (this.regressionTestMode) {
@@ -188,8 +188,16 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         return true;
     }
 
+    private RegexResult regressionTestRun(RunRegexSearchNode node, Object input, int fromIndex) {
+        RunRegexSearchNode old = runnerNode;
+        runnerNode = insert(node);
+        RegexResult result = runnerNode.run(input, fromIndex, inputLength(input));
+        runnerNode = insert(old);
+        return result;
+    }
+
     private boolean backtrackerProducesSameResult(Object input, int fromIndex, RegexResult result) {
-        RegexResult btResult = regressTestBacktrackingNode.run(input, fromIndex, inputLength(input));
+        RegexResult btResult = regressionTestRun(regressTestBacktrackingNode, input, fromIndex);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -203,7 +211,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             return true;
         }
         assert !(runnerNode instanceof NFARegexSearchNode);
-        RegexResult btResult = nfaNode.run(input, fromIndex, inputLength(input));
+        RegexResult btResult = regressionTestRun(nfaNode, input, fromIndex);
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -217,7 +225,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             return true;
         }
         assert !regressTestNoSimpleCGLazyDFANode.isSimpleCG();
-        RegexResult noSimpleCGResult = regressTestNoSimpleCGLazyDFANode.run(input, fromIndex, inputLength(input));
+        RegexResult noSimpleCGResult = regressionTestRun(regressTestNoSimpleCGLazyDFANode, input, fromIndex);
         if (resultsEqual(result, noSimpleCGResult, getNumberOfCaptureGroups())) {
             return true;
         }
@@ -235,9 +243,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         RegexResult eagerResult;
         if (runnerNode == lazyDFANode) {
             lazyResult = resultOfCurrentSearchNode;
-            eagerResult = eagerDFANode.run(input, fromIndex, inputLength(input));
+            eagerResult = regressionTestRun(eagerDFANode, input, fromIndex);
         } else {
-            lazyResult = lazyDFANode.run(input, fromIndex, inputLength(input));
+            lazyResult = regressionTestRun(lazyDFANode, input, fromIndex);
             eagerResult = resultOfCurrentSearchNode;
         }
         boolean equal = resultsEqual(lazyResult, eagerResult, getNumberOfCaptureGroups());

@@ -37,12 +37,12 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
@@ -67,7 +67,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.Target_java_nio_DirectByteBuffer;
@@ -114,8 +113,8 @@ import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 import com.oracle.svm.jni.nativeapi.JNIVersion;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaUtil;
-import sun.misc.Unsafe;
 
 /**
  * Implementations of the functions defined by the Java Native Interface.
@@ -149,10 +148,8 @@ public final class JNIFunctions {
      * jint GetVersion(JNIEnv *env);
      */
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
         return JNIVersion.JNI_VERSION_10();
@@ -162,8 +159,8 @@ public final class JNIFunctions {
      * jobject NewLocalRef(JNIEnv *env, jobject ref);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewLocalRef(JNIEnvironment env, JNIObjectHandle ref) {
         return JNIObjectHandles.newLocalRef(ref);
     }
@@ -172,8 +169,8 @@ public final class JNIFunctions {
      * void DeleteLocalRef(JNIEnv *env, jobject localRef);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void DeleteLocalRef(JNIEnvironment env, JNIObjectHandle localRef) {
         JNIObjectHandles.deleteLocalRef(localRef);
     }
@@ -182,8 +179,8 @@ public final class JNIFunctions {
      * jint EnsureLocalCapacity(JNIEnv *env, jint capacity);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int EnsureLocalCapacity(JNIEnvironment env, int capacity) {
         if (capacity < 0) {
             return JNIErrors.JNI_ERR();
@@ -196,8 +193,8 @@ public final class JNIFunctions {
      * jint PushLocalFrame(JNIEnv *env, jint capacity);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int PushLocalFrame(JNIEnvironment env, int capacity) {
         if (capacity < 0) {
             return JNIErrors.JNI_ERR();
@@ -210,8 +207,8 @@ public final class JNIFunctions {
      * jobject PopLocalFrame(JNIEnv *env, jobject result);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle PopLocalFrame(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         JNIObjectHandles.popLocalFrame();
@@ -222,8 +219,8 @@ public final class JNIFunctions {
      * jboolean IsSameObject(JNIEnv *env, jobject ref1, jobject ref2);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean IsSameObject(JNIEnvironment env, JNIObjectHandle ref1, JNIObjectHandle ref2) {
         Object obj1 = JNIObjectHandles.getObject(ref1);
         Object obj2 = JNIObjectHandles.getObject(ref2);
@@ -234,8 +231,8 @@ public final class JNIFunctions {
      * jboolean IsInstanceOf(JNIEnv *env, jobject obj, jclass clazz);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean IsInstanceOf(JNIEnvironment env, JNIObjectHandle obj, JNIObjectHandle clazz) {
         Object o = JNIObjectHandles.getObject(obj);
         if (o == null) {
@@ -250,8 +247,8 @@ public final class JNIFunctions {
      * jclass GetObjectClass(JNIEnv *env, jobject obj);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle GetObjectClass(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         Class<?> clazz = obj.getClass();
@@ -262,8 +259,8 @@ public final class JNIFunctions {
      * jclass GetSuperclass(JNIEnv *env, jclass clazz);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle GetSuperclass(JNIEnvironment env, JNIObjectHandle handle) {
         Class<?> clazz = JNIObjectHandles.getObject(handle);
         return JNIObjectHandles.createLocal(clazz.getSuperclass());
@@ -273,8 +270,8 @@ public final class JNIFunctions {
      * jboolean IsAssignableFrom(JNIEnv *env, jclass clazz1, jclass clazz2);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean IsAssignableFrom(JNIEnvironment env, JNIObjectHandle handle1, JNIObjectHandle handle2) {
         Class<?> clazz1 = JNIObjectHandles.getObject(handle1);
         Class<?> clazz2 = JNIObjectHandles.getObject(handle2);
@@ -285,8 +282,8 @@ public final class JNIFunctions {
      * jobject NewGlobalRef(JNIEnv *env, jobject obj);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectHandle NewGlobalRef(JNIEnvironment env, JNIObjectHandle handle) {
         return JNIObjectHandles.newGlobalRef(handle);
     }
@@ -295,8 +292,8 @@ public final class JNIFunctions {
      * void DeleteGlobalRef(JNIEnv *env, jobject globalRef);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void DeleteGlobalRef(JNIEnvironment env, JNIObjectHandle globalRef) {
         JNIObjectHandles.deleteGlobalRef(globalRef);
     }
@@ -305,8 +302,8 @@ public final class JNIFunctions {
      * jweak NewWeakGlobalRef(JNIEnv *env, jobject obj);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewWeakGlobalRef(JNIEnvironment env, JNIObjectHandle handle) {
         return JNIObjectHandles.newWeakGlobalRef(handle);
     }
@@ -315,8 +312,8 @@ public final class JNIFunctions {
      * void DeleteWeakGlobalRef(JNIEnv *env, jweak obj);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void DeleteWeakGlobalRef(JNIEnvironment env, JNIObjectHandle weak) {
         JNIObjectHandles.deleteWeakGlobalRef(weak);
     }
@@ -325,8 +322,8 @@ public final class JNIFunctions {
      * jobjectRefType GetObjectRefType(JNIEnv* env, jobject obj);
      */
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static JNIObjectRefType GetObjectRefType(JNIEnvironment env, JNIObjectHandle handle) {
         try {
             return JNIObjectHandles.getHandleType(handle);
@@ -339,8 +336,8 @@ public final class JNIFunctions {
      * jclass FindClass(JNIEnv *env, const char *name);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle FindClass(JNIEnvironment env, CCharPointer cname) {
         String name = Utf8.utf8ToString(cname);
         if (!name.startsWith("[")) {
@@ -360,8 +357,8 @@ public final class JNIFunctions {
      * nMethods);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int RegisterNatives(JNIEnvironment env, JNIObjectHandle hclazz, JNINativeMethod methods, int nmethods) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         Pointer p = (Pointer) methods;
@@ -394,8 +391,8 @@ public final class JNIFunctions {
      * jint UnregisterNatives(JNIEnv *env, jclass clazz);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int UnregisterNatives(JNIEnvironment env, JNIObjectHandle hclazz) {
         Class<?> clazz = JNIObjectHandles.getObject(hclazz);
         String internalName = MetaUtil.toInternalName(clazz.getName());
@@ -409,14 +406,14 @@ public final class JNIFunctions {
      * jmethodID GetStaticMethodID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIMethodId GetMethodID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
         return Support.getMethodID(hclazz, cname, csig, false);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIMethodId GetStaticMethodID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
         return Support.getMethodID(hclazz, cname, csig, true);
     }
@@ -427,14 +424,14 @@ public final class JNIFunctions {
      * jfieldID GetStaticFieldID(JNIEnv *env, jclass clazz, const char *name, const char *sig);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIFieldId GetFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
         return Support.getFieldID(hclazz, cname, csig, false);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIFieldId GetStaticFieldID(JNIEnvironment env, JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig) {
         return Support.getFieldID(hclazz, cname, csig, true);
     }
@@ -443,16 +440,11 @@ public final class JNIFunctions {
      * jobject AllocObject(JNIEnv *env, jclass clazz);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
-    static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) {
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
+    static JNIObjectHandle AllocObject(JNIEnvironment env, JNIObjectHandle classHandle) throws InstantiationException {
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
-        Object instance;
-        try {
-            instance = UNSAFE.allocateInstance(clazz);
-        } catch (InstantiationException e) {
-            instance = null;
-        }
+        Object instance = Unsafe.getUnsafe().allocateInstance(clazz);
         return JNIObjectHandles.createLocal(instance);
     }
 
@@ -460,8 +452,8 @@ public final class JNIFunctions {
      * jstring NewString(JNIEnv *env, const jchar *unicodeChars, jsize len);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewString(JNIEnvironment env, CShortPointer unicode, int len) {
         String str;
         char[] chars = new char[len];
@@ -477,8 +469,8 @@ public final class JNIFunctions {
      * jstring NewStringUTF(JNIEnv *env, const char *bytes);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewStringUTF(JNIEnvironment env, CCharPointer bytes) {
         return JNIObjectHandles.createLocal(Utf8.utf8ToString(bytes));
     }
@@ -487,8 +479,8 @@ public final class JNIFunctions {
      * jsize GetStringLength(JNIEnv *env, jstring string);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOne.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOne.class)
     static int GetStringLength(JNIEnvironment env, JNIObjectHandle hstr) {
         String str = JNIObjectHandles.getObject(hstr);
         return (str != null) ? str.length() : 0;
@@ -498,8 +490,8 @@ public final class JNIFunctions {
      * jsize GetStringUTFLength(JNIEnv *env, jstring string);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOne.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOne.class)
     static int GetStringUTFLength(JNIEnvironment env, JNIObjectHandle hstr) {
         String str = JNIObjectHandles.getObject(hstr);
         return Utf8.utf8Length(str);
@@ -511,14 +503,14 @@ public final class JNIFunctions {
      * void ReleaseStringChars(JNIEnv *env, jstring string, const jchar *chars);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static CShortPointer GetStringChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
         return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringChars(JNIEnvironment env, JNIObjectHandle hstr, CShortPointer chars) {
         Support.unpinString(chars);
     }
@@ -529,8 +521,8 @@ public final class JNIFunctions {
      * void ReleaseStringUTFChars(JNIEnv *env, jstring string, const char *utf);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static CCharPointer GetStringUTFChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
         String str = JNIObjectHandles.getObject(hstr);
         if (str == null) {
@@ -543,8 +535,8 @@ public final class JNIFunctions {
         return JNIThreadLocalPinnedObjects.pinArrayAndGetAddress(utf);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringUTFChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer chars) {
         JNIThreadLocalPinnedObjects.unpinArrayByAddress(chars);
     }
@@ -555,14 +547,14 @@ public final class JNIFunctions {
      * void ReleaseStringCritical(JNIEnv *env, jstring string, const jchar *carray);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static CShortPointer GetStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer isCopy) {
         return Support.getNulTerminatedStringCharsAndPin(hstr, isCopy);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringCritical(JNIEnvironment env, JNIObjectHandle hstr, CShortPointer carray) {
         Support.unpinString(carray);
     }
@@ -571,8 +563,8 @@ public final class JNIFunctions {
      * void GetStringRegion(JNIEnv *env, jstring str, jsize start, jsize len, jchar *buf);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetStringRegion(JNIEnvironment env, JNIObjectHandle hstr, int start, int len, CShortPointer buf) {
         String str = JNIObjectHandles.getObject(hstr);
         if (start < 0) {
@@ -594,8 +586,8 @@ public final class JNIFunctions {
      * void GetStringUTFRegion(JNIEnv *env, jstring str, jsize start, jsize len, char *buf);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void GetStringUTFRegion(JNIEnvironment env, JNIObjectHandle hstr, int start, int len, CCharPointer buf) {
         String str = JNIObjectHandles.getObject(hstr);
         if (start < 0) {
@@ -617,8 +609,8 @@ public final class JNIFunctions {
      * jobject NewDirectByteBuffer(JNIEnv* env, void* address, jlong capacity);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewDirectByteBuffer(JNIEnvironment env, WordPointer address, long capacity) {
         Target_java_nio_DirectByteBuffer bb = new Target_java_nio_DirectByteBuffer(address.rawValue(), (int) capacity);
         return JNIObjectHandles.createLocal(bb);
@@ -633,8 +625,8 @@ public final class JNIFunctions {
         @Alias long address;
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static WordPointer GetDirectBufferAddress(JNIEnvironment env, JNIObjectHandle handle) {
         WordPointer address = WordFactory.nullPointer();
         Object obj = JNIObjectHandles.getObject(handle);
@@ -649,8 +641,8 @@ public final class JNIFunctions {
      * jlong GetDirectBufferCapacity(JNIEnv* env, jobject buf);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOneLong.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOneLong.class)
     static long GetDirectBufferCapacity(JNIEnvironment env, JNIObjectHandle hbuf) {
         Buffer buffer = JNIObjectHandles.getObject(hbuf);
         return buffer.capacity();
@@ -660,8 +652,8 @@ public final class JNIFunctions {
      * ArrayType New<PrimitiveType>Array(JNIEnv *env, jsize length);
      */
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewBooleanArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -669,8 +661,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new boolean[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewByteArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -678,8 +670,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new byte[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewCharArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -687,8 +679,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new char[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewDoubleArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -696,8 +688,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new double[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewFloatArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -705,8 +697,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new float[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewIntArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -714,8 +706,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new int[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewLongArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -723,8 +715,8 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(new long[length]);
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewShortArray(JNIEnvironment env, int length) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -736,8 +728,8 @@ public final class JNIFunctions {
      * jobjectArray NewObjectArray(JNIEnv *env, jsize length, jclass elementClass, jobject
      * initialElement);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle NewObjectArray(JNIEnvironment env, int length, JNIObjectHandle hElementClass, JNIObjectHandle hInitialElement) {
         if (length < 0) {
             return JNIObjectHandles.nullHandle();
@@ -755,8 +747,8 @@ public final class JNIFunctions {
     /*
      * jobject GetObjectArrayElement(JNIEnv *env, jobjectArray array, jsize index);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle GetObjectArrayElement(JNIEnvironment env, JNIObjectHandle harray, int index) {
         Object[] array = JNIObjectHandles.getObject(harray);
         Object value = array[index];
@@ -766,8 +758,8 @@ public final class JNIFunctions {
     /*
      * void SetObjectArrayElement(JNIEnv *env, jobjectArray array, jsize index, jobject value);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void SetObjectArrayElement(JNIEnvironment env, JNIObjectHandle harray, int index, JNIObjectHandle hvalue) {
         Object[] array = JNIObjectHandles.getObject(harray);
         Object value = JNIObjectHandles.getObject(hvalue);
@@ -777,8 +769,8 @@ public final class JNIFunctions {
     /*
      * jvoid * GetPrimitiveArrayCritical(JNIEnv *env, jarray array, jboolean *isCopy);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static WordPointer GetPrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, CCharPointer isCopy) {
         Object array = JNIObjectHandles.getObject(harray);
         if (array == null) {
@@ -793,8 +785,8 @@ public final class JNIFunctions {
     /*
      * void ReleasePrimitiveArrayCritical(JNIEnv *env, jarray array, void *carray, jint mode);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleasePrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, WordPointer carray, int mode) {
         JNIThreadLocalPinnedObjects.unpinArrayByAddress(carray);
     }
@@ -802,8 +794,8 @@ public final class JNIFunctions {
     /*
      * jsize GetArrayLength(JNIEnv *env, jarray array);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOne.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnMinusOne.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnMinusOne.class)
     static int GetArrayLength(JNIEnvironment env, JNIObjectHandle harray) {
         /*
          * JNI does not specify the behavior for illegal arguments (e.g. null or non-array objects);
@@ -820,14 +812,14 @@ public final class JNIFunctions {
      * jthrowable ExceptionOccurred(JNIEnv *env);
      */
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static boolean ExceptionCheck(JNIEnvironment env) {
         return JNIThreadLocalPendingException.get() != null;
     }
 
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle ExceptionOccurred(JNIEnvironment env) {
         return JNIObjectHandles.createLocal(JNIThreadLocalPendingException.get());
     }
@@ -835,8 +827,8 @@ public final class JNIFunctions {
     /*
      * void ExceptionClear(JNIEnv *env);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ExceptionClear(JNIEnvironment env) {
         JNIThreadLocalPendingException.clear();
     }
@@ -844,8 +836,8 @@ public final class JNIFunctions {
     /*
      * void ExceptionDescribe(JNIEnv *env);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ExceptionDescribe(JNIEnvironment env) {
         Throwable t = JNIThreadLocalPendingException.get();
         JNIThreadLocalPendingException.clear();
@@ -867,8 +859,8 @@ public final class JNIFunctions {
     /*
      * jint Throw(JNIEnv *env, jthrowable obj);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int Throw(JNIEnvironment env, JNIObjectHandle handle) throws Throwable {
         throw (Throwable) JNIObjectHandles.getObject(handle);
     }
@@ -881,8 +873,8 @@ public final class JNIFunctions {
     /*
      * jint ThrowNew(JNIEnv *env, jclass clazz, const char *message);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnZero.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int ThrowNew(JNIEnvironment env, JNIObjectHandle clazzHandle, CCharPointer message) throws Throwable {
         Class<?> clazz = JNIObjectHandles.getObject(clazzHandle);
         JNIMethodId ctor = Support.getMethodID(clazz, "<init>", "(Ljava/lang/String;)V", false);
@@ -903,8 +895,8 @@ public final class JNIFunctions {
     /*
      * void FatalError(JNIEnv *env, const char *msg);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     @NeverInline("Access of caller frame.")
     static void FatalError(JNIEnvironment env, CCharPointer message) {
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
@@ -915,8 +907,8 @@ public final class JNIFunctions {
     /*
      * jint GetJavaVM(JNIEnv *env, JavaVM **vm);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int GetJavaVM(JNIEnvironment env, JNIJavaVMPointer vm) {
         vm.write(JNIFunctionTables.singleton().getGlobalJavaVM());
         return JNIErrors.JNI_OK();
@@ -925,8 +917,8 @@ public final class JNIFunctions {
     /*
      * jfieldID FromReflectedField(JNIEnv *env, jobject field);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIFieldId FromReflectedField(JNIEnvironment env, JNIObjectHandle fieldHandle) {
         JNIFieldId fieldId = WordFactory.zero();
         Field obj = JNIObjectHandles.getObject(fieldHandle);
@@ -940,8 +932,8 @@ public final class JNIFunctions {
     /*
      * jobject ToReflectedField(JNIEnv *env, jclass cls, jfieldID fieldID, jboolean isStatic);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle ToReflectedField(JNIEnvironment env, JNIObjectHandle classHandle, JNIFieldId fieldId) {
         Field field = null;
         Class<?> clazz = JNIObjectHandles.getObject(classHandle);
@@ -961,8 +953,8 @@ public final class JNIFunctions {
     /*
      * jmethodID FromReflectedMethod(JNIEnv *env, jobject method);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullWord.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIMethodId FromReflectedMethod(JNIEnvironment env, JNIObjectHandle methodHandle) {
         JNIMethodId methodId = WordFactory.nullPointer();
         Executable method = JNIObjectHandles.getObject(methodHandle);
@@ -977,8 +969,8 @@ public final class JNIFunctions {
     /*
      * jobject ToReflectedMethod(JNIEnv *env, jclass cls, jmethodID methodID, jboolean isStatic);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullPointer.class)
     static JNIObjectHandle ToReflectedMethod(JNIEnvironment env, JNIObjectHandle classHandle, JNIMethodId methodId, boolean isStatic) {
         Executable result = null;
         JNIAccessibleMethod jniMethod = JNIReflectionDictionary.getMethodByID(methodId);
@@ -1009,8 +1001,8 @@ public final class JNIFunctions {
     /*
      * jint MonitorEnter(JNIEnv *env, jobject obj);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int MonitorEnter(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         if (obj == null) {
@@ -1053,8 +1045,8 @@ public final class JNIFunctions {
     /*
      * jint MonitorExit(JNIEnv *env, jobject obj);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnJniErr.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnEDetached.class)
     static int MonitorExit(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         if (obj == null) {
@@ -1078,8 +1070,8 @@ public final class JNIFunctions {
     /*
      * jobject (JNICALL *GetModule) (JNIEnv* env, jclass clazz);
      */
-    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle GetModule(JNIEnvironment env, JNIObjectHandle handle) {
         Object obj = JNIObjectHandles.getObject(handle);
         if (obj == null) {
@@ -1150,7 +1142,7 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true) != CEntryPointErrors.NO_ERROR) {
+                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true) != CEntryPointErrors.NO_ERROR) {
                     return JNIErrors.JNI_ERR();
                 }
                 return CEntryPointErrors.NO_ERROR;
@@ -1160,7 +1152,7 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false) != CEntryPointErrors.NO_ERROR) {
+                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false) != CEntryPointErrors.NO_ERROR) {
                     return JNIErrors.JNI_ERR();
                 }
                 return CEntryPointErrors.NO_ERROR;
@@ -1219,6 +1211,15 @@ public final class JNIFunctions {
             static int handle(Throwable t) {
                 Support.handleException(t);
                 return JNIErrors.JNI_ERR();
+            }
+        }
+
+        static class JNIExceptionHandlerDetachAndReturnJniErr implements CEntryPoint.ExceptionHandler {
+            @Uninterruptible(reason = "exception handler")
+            static int handle(Throwable t) {
+                int error = (t instanceof OutOfMemoryError) ? JNIErrors.JNI_ENOMEM() : JNIErrors.JNI_ERR();
+                CEntryPointActions.leaveDetachThread();
+                return error;
             }
         }
 
@@ -1335,8 +1336,8 @@ public final class JNIFunctions {
         /**
          * Stub for unimplemented JNI functionality with a JNIEnv argument.
          */
-        @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-        @CEntryPointOptions(prologue = JNIEnvUnimplementedPrologue.class, publishAs = Publish.NotPublished)
+        @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+        @CEntryPointOptions(prologue = JNIEnvUnimplementedPrologue.class)
         static int unimplemented(JNIEnvironment env) {
             /*
              * We do not catch and preserve this exception like we normally would with JNI because
@@ -1352,7 +1353,7 @@ public final class JNIFunctions {
     static class JNIJavaVMUnimplementedPrologue implements CEntryPointOptions.Prologue {
         @Uninterruptible(reason = "prologue")
         static void enter(JNIJavaVM vm) {
-            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), true);
+            int error = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
             if (error != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(error, UNIMPLEMENTED_UNATTACHED_ERROR_MESSAGE.get());
             }
@@ -1363,8 +1364,8 @@ public final class JNIFunctions {
         /**
          * Stub for unimplemented JNI functionality with a JavaVM argument.
          */
-        @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-        @CEntryPointOptions(prologue = JNIJavaVMUnimplementedPrologue.class, publishAs = Publish.NotPublished)
+        @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+        @CEntryPointOptions(prologue = JNIJavaVMUnimplementedPrologue.class)
         static int unimplemented(JNIJavaVM vm) {
             throw VMError.shouldNotReachHere("An unimplemented JNI function was called. Please refer to the stack trace.");
         }

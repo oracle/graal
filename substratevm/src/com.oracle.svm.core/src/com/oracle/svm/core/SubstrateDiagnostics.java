@@ -67,6 +67,7 @@ import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
@@ -130,6 +131,19 @@ public class SubstrateDiagnostics {
                         !VMThreads.printLocationInfo(log, value, allowUnsafeOperations) &&
                         !Heap.getHeap().printLocationInfo(log, value, allowJavaHeapAccess, allowUnsafeOperations)) {
             log.string("is an unknown value");
+        }
+    }
+
+    @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
+    public static void printObjectInfo(Log log, Pointer ptr) {
+        DynamicHub objHub = Heap.getHeap().getObjectHeader().readDynamicHubFromPointer(ptr);
+        if (objHub == DynamicHub.fromClass(DynamicHub.class)) {
+            // The pointer is already a hub, so print some information about the hub.
+            DynamicHub hub = (DynamicHub) ptr.toObject();
+            log.string("is the hub of ").string(hub.getName());
+        } else {
+            // The pointer is an object, so print some information about the object's hub.
+            log.string("is an object of type ").string(objHub.getName());
         }
     }
 

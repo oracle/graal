@@ -100,7 +100,7 @@ public class AArch64Convert {
                     break;
                 case D2F:
                 case F2D:
-                    masm.fcvt(fromSize, result, input);
+                    masm.fcvt(toSize, fromSize, result, input);
                     break;
                 default:
                     throw GraalError.shouldNotReachHere();

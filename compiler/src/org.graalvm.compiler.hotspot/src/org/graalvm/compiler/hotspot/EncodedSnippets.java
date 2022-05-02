@@ -48,6 +48,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
@@ -176,7 +177,9 @@ public class EncodedSnippets {
     ResolvedJavaType lookupSnippetType(Class<?> clazz) {
         SnippetResolvedJavaType type = snippetTypes.get(clazz);
         if (type == null && isGraalClass(clazz)) {
-            throw new GraalError("Missing graal class " + clazz);
+            // During libgraal image building references to Graal classes from snippets are tracked.
+            // If a class isn't found in this path at runtime it means something was missed.
+            throw new GraalError("Missing Graal class " + clazz.getName());
         }
         return type;
     }
@@ -512,6 +515,24 @@ public class EncodedSnippets {
                 }
             }
             throw new NoClassDefFoundError("Can't resolve " + type.getName() + " with " + accessingClass.getName());
+        }
+    }
+
+    static class SymbolicResolvedJavaFieldLocationIdentity implements SymbolicJVMCIReference<FieldLocationIdentity> {
+        final SymbolicResolvedJavaField inner;
+
+        SymbolicResolvedJavaFieldLocationIdentity(SymbolicResolvedJavaField inner) {
+            this.inner = inner;
+        }
+
+        @Override
+        public FieldLocationIdentity resolve(ResolvedJavaType accessingClass) {
+            return new FieldLocationIdentity(inner.resolve(accessingClass));
+        }
+
+        @Override
+        public String toString() {
+            return "SymbolicResolvedJavaFieldLocationIdentity{" + inner.toString() + "}";
         }
     }
 

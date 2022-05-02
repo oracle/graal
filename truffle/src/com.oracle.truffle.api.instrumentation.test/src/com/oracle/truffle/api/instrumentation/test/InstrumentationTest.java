@@ -2279,7 +2279,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
                 @TruffleBoundary
                 private void storeInvokedTarget(MaterializedFrame frame) {
-                    CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
+                    CallTarget callTarget = Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
                     frame.setObject(TARGET_SLOT, callTarget);
                 }
 

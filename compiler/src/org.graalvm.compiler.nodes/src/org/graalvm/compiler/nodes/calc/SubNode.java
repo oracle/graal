@@ -31,12 +31,12 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
@@ -113,6 +113,14 @@ public class SubNode extends BinaryArithmeticNode<Sub> implements NarrowableArit
                 if (y.getX() == forX) {
                     // a - (a - b)
                     return y.getY();
+                }
+            }
+            if (forX instanceof OrNode && forY instanceof XorNode) {
+                // convert (x|y)-(x^y) to x&y
+                OrNode or = (OrNode) forX;
+                XorNode xor = (XorNode) forY;
+                if ((or.getX() == xor.getX() && or.getY() == xor.getY()) || (or.getX() == xor.getY() && or.getY() == xor.getX())) {
+                    return AndNode.create(or.getX(), or.getY(), view);
                 }
             }
         }

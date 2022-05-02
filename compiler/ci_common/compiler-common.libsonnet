@@ -1,7 +1,7 @@
 {
   local common = import "../../common.jsonnet",
   local bench_common = import "../../bench-common.libsonnet",
-  local config = import '../../repo-configuration.libsonnet',
+  local config = import "../../repo-configuration.libsonnet",
   local ci_resources = import "../../ci-resources.libsonnet",
 
   enable_profiling:: {
@@ -9,10 +9,25 @@
       "MX_PROFILER" : "JFR,async"
     },
     logs+: [
-      "*.jfr",
-      "**/*.jfr",
-      "*.svg",
-      "**/*.svg",
+      "*.jfr", "**/*.jfr",
+      "*.svg", "**/*.svg",
+    ]
+  },
+
+  footprint_tracking:: {
+    python_version: 3,
+    packages+: {
+      "pip:psrecord": "==1.2",
+      "pip:matplotlib": "==3.3.4",
+      "pip:psutil": "==5.9.0"
+    },
+    environment+: {
+      "MX_TRACKER" : "psrecord",
+      "MX_PROFILER" : ""
+    },
+    logs+: [
+      "ps_*.png", "**/ps_*.png",
+      "ps_*.txt", "**/ps_*.txt",
     ]
   },
 
@@ -21,27 +36,51 @@
   // Benchmarking building blocks
   // ****************************
   compiler_bench_base:: bench_common.bench_base + {
+    # The extra steps and mx arguments to be applied to build libgraal with PGO
+    local is_libgraal = std.objectHasAll(self, "platform") && std.findSubstr("libgraal", self.platform) != [],
+    local with_profiling = !std.objectHasAll(self, "disable_profiling") || !self.disable_profiling,
+    local libgraal_profiling_only(value) = if is_libgraal && with_profiling then value else [],
+    local collect_libgraal_profile = libgraal_profiling_only(config.compiler.collect_libgraal_profile()),
+    local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
+
     job_prefix:: "bench-compiler",
+    python_version : "3",
     environment+: {
-      MX_PYTHON_VERSION : "3",
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
     },
-    plain_benchmark_cmd:: ["mx", "--kill-with-sigquit", "benchmark", "--fork-count-file=${FORK_COUNT_FILE}", "--extras=${BENCH_SERVER_EXTRAS}", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "--machine-name=${MACHINE_NAME}", "--tracker=rss"],
+    plain_benchmark_cmd::
+      ["mx",
+      "--kill-with-sigquit",
+      "benchmark",
+      "--fork-count-file=${FORK_COUNT_FILE}",
+      "--extras=${BENCH_SERVER_EXTRAS}",
+      "--results-file",
+      "${BENCH_RESULTS_FILE_PATH}",
+      "--machine-name=${MACHINE_NAME}"] +
+      (if std.objectHasAll(self.environment, 'MX_TRACKER') then ["--tracker=" + self.environment['MX_TRACKER']] else ["--tracker=rss"]),
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
     _WarnMissingIntrinsic:: true, # won't be needed after GR-34642
-    extra_vm_args:: ["--profiler=${MX_PROFILER}", "--jvm=${JVM}", "--jvm-config=${JVM_CONFIG}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose"] + (if self._WarnMissingIntrinsic then ["-Dgraal.WarnMissingIntrinsic=true"] else []) + self.min_heap_size + self.max_heap_size,
+    extra_vm_args::
+      ["--profiler=${MX_PROFILER}",
+      "--jvm=${JVM}",
+      "--jvm-config=${JVM_CONFIG}",
+      "-XX:+PrintConcurrentLocks",
+      "-Dgraal.CompilationFailureAction=Diagnose",
+      "-XX:+CITime"] +
+      (if self._WarnMissingIntrinsic then ["-Dgraal.WarnMissingIntrinsic=true"] else []) +
+      self.min_heap_size +
+      self.max_heap_size,
     should_mx_build:: true,
     setup+: [
       ["cd", "./" + config.compiler.compiler_suite],
     ]
-    + if self.should_mx_build then [
+    + if self.should_mx_build then collect_libgraal_profile + [
       ["mx", "hsdis", "||", "true"],
-      ["mx", "build"]
+      ["mx"] + use_libgraal_profile + ["build"]
     ] else [],
-    teardown+: [
-    ]
+    teardown+: []
   },
 
   compiler_benchmarks_notifications:: {
@@ -85,7 +124,7 @@
     platform:: "libgraal",
     environment+: {
       "JVM": "server",
-      "JVM_CONFIG": config.compiler.default_jvm_config + "-libgraal",
+      "JVM_CONFIG": config.compiler.libgraal_jvm_config(true),
       "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
       "MX_ENV_PATH": config.compiler.libgraal_env_file
     }

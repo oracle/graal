@@ -96,17 +96,21 @@ public abstract class LoopTransformations {
 
     public static LoopFragmentInside peel(LoopEx loop) {
         loop.detectCounted();
-        double frequencyBefore = -1D;
-        AbstractBeginNode countedExit = null;
+        double frequencyBefore = loop.localLoopFrequency();
+        AbstractBeginNode mainExit = null;
         if (loop.isCounted()) {
-            frequencyBefore = loop.localLoopFrequency();
-            countedExit = loop.counted().getCountedExit();
+            mainExit = loop.counted().getCountedExit();
+        } else if (loop.loopBegin().loopExits().count() == 1) {
+            mainExit = loop.loopBegin().loopExits().first();
+            if (!(mainExit.predecessor() instanceof IfNode)) {
+                mainExit = null;
+            }
         }
         LoopFragmentInside inside = loop.inside().duplicate();
         inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
-        if (countedExit != null) {
-            adaptCountedLoopExitProbability(countedExit, frequencyBefore - 1D);
+        if (mainExit != null) {
+            adaptCountedLoopExitProbability(mainExit, frequencyBefore - 1D);
         }
         return inside;
     }
@@ -464,15 +468,19 @@ public abstract class LoopTransformations {
         ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(0.01, trueSucc));
     }
 
+    /**
+     * Inject a new frequency for the condition dominating the given loop exit path. This
+     * calculation will act as if the given loop exit is the only exit of the loop.
+     */
     public static void adaptCountedLoopExitProbability(AbstractBeginNode lex, double newFrequency) {
-        double d = Math.abs(1D - newFrequency);
-        if (d <= 1D) {
+        double probability = 1.0D - 1.0D / newFrequency;
+        if (probability <= 0D) {
             setSingleVisitedLoopFrequencySplitProbability(lex);
             return;
         }
         IfNode ifNode = ((IfNode) lex.predecessor());
         boolean trueSucc = ifNode.trueSuccessor() == lex;
-        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected((newFrequency - 1) / newFrequency, trueSucc));
+        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(probability, trueSucc));
     }
 
     public static class PreMainPostResult {

@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.OrderedMemoryAccess;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable, OrderedMemoryAccess {
+public abstract class UnsafeAccessNode extends FixedWithNextNode implements Canonicalizable, OrderedMemoryAccess, MemoryAccess {
 
     public static final NodeClass<UnsafeAccessNode> TYPE = NodeClass.create(UnsafeAccessNode.class);
     @Input ValueNode object;
@@ -76,6 +77,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         this.memoryOrder = memoryOrder;
     }
 
+    @Override
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }

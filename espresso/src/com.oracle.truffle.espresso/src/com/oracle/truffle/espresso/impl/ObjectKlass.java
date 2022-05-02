@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -53,6 +54,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -110,7 +112,11 @@ public final class ObjectKlass extends Klass {
 
     private String genericSignature;
 
-    @CompilationFinal private volatile int initState = LOADED;
+    @CompilationFinal //
+    private volatile EspressoLock initLock;
+
+    @CompilationFinal //
+    private volatile int initState = LOADED;
 
     @CompilationFinal volatile KlassVersion klassVersion;
 
@@ -141,6 +147,13 @@ public final class ObjectKlass extends Klass {
     public static final int INITIALIZED = 6;
 
     private final StaticObject definingClassLoader;
+
+    // Class hierarchy information is managed by ClassHierarchyOracle,
+    // stored in ObjectKlass only for convenience.
+    // region class hierarchy information
+    private final SingleImplementor implementor;
+    private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
+    // endregion
 
     public Attribute getAttribute(Symbol<Name> attrName) {
         return getLinkedKlass().getAttribute(attrName);
@@ -192,6 +205,9 @@ public final class ObjectKlass extends Klass {
         if (!info.addedToRegistry()) {
             initSelfReferenceInPool();
         }
+        this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
+        this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
+        getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -240,7 +256,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private boolean verifyTables() {
-        Method.MethodVersion[] vtable = getKlassVersion().vtable;
+        Method.MethodVersion[] vtable = getKlassVersion().getVtable();
         if (vtable != null) {
             for (int i = 0; i < vtable.length; i++) {
                 if (isInterface()) {
@@ -254,7 +270,7 @@ public final class ObjectKlass extends Klass {
                 }
             }
         }
-        Method.MethodVersion[][] itable = getKlassVersion().itable;
+        Method.MethodVersion[][] itable = getItable();
         if (itable != null) {
             for (Method.MethodVersion[] table : itable) {
                 for (int i = 0; i < table.length; i++) {
@@ -283,6 +299,20 @@ public final class ObjectKlass extends Klass {
 
     // region InitStatus
 
+    private EspressoLock getInitLock() {
+        EspressoLock iLock = initLock;
+        if (iLock == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                iLock = initLock;
+                if (iLock == null) {
+                    iLock = this.initLock = EspressoLock.create(getContext().getBlockingSupport());
+                }
+            }
+        }
+        return iLock;
+    }
+
     public int getState() {
         return initState;
     }
@@ -299,8 +329,11 @@ public final class ObjectKlass extends Klass {
         return initState >= LINKED;
     }
 
-    private boolean isInitializingOrInitialized() {
-        return initState >= INITIALIZING;
+    boolean isInitializingOrInitializedImpl() {
+        return (initState == INITIALIZED) ||
+                        /* Initializing thread */
+                        (initState == INITIALIZING && getInitLock().isHeldByCurrentThread()) ||
+                        (initState == ERRONEOUS);
     }
 
     boolean isInitializedImpl() {
@@ -325,10 +358,11 @@ public final class ObjectKlass extends Klass {
     @ExplodeLoop
     private void actualInit() {
         checkErroneousInitialization();
-        synchronized (this) {
+        getInitLock().lock();
+        try {
             // Double-check under lock
             checkErroneousInitialization();
-            if (isInitializingOrInitialized()) {
+            if (isInitializingOrInitializedImpl()) {
                 return;
             }
             initState = INITIALIZING;
@@ -376,6 +410,8 @@ public final class ObjectKlass extends Klass {
             checkErroneousInitialization();
             initState = INITIALIZED;
             assert isInitialized();
+        } finally {
+            getInitLock().unlock();
         }
     }
 
@@ -385,7 +421,8 @@ public final class ObjectKlass extends Klass {
      * structure.
      */
     private void prepare() {
-        synchronized (this) {
+        getInitLock().lock();
+        try {
             if (!isPrepared()) {
                 checkLoadingConstraints();
                 for (Field f : getInitialStaticFields()) {
@@ -396,11 +433,13 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                        prepareThread = getContext().getCurrentThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }
             }
+        } finally {
+            getInitLock().unlock();
         }
     }
 
@@ -456,6 +495,7 @@ public final class ObjectKlass extends Klass {
                 break;
             }
             default:
+                CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere("invalid constant field kind");
         }
     }
@@ -503,7 +543,8 @@ public final class ObjectKlass extends Klass {
         if (!isLinked()) {
             checkErroneousVerification();
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            synchronized (this) {
+            getInitLock().lock();
+            try {
                 if (!isLinkingOrLinked()) {
                     initState = LINKING;
                     if (getSuperKlass() != null) {
@@ -516,6 +557,8 @@ public final class ObjectKlass extends Klass {
                     verify();
                     initState = LINKED;
                 }
+            } finally {
+                getInitLock().unlock();
             }
             checkErroneousVerification();
         }
@@ -584,7 +627,8 @@ public final class ObjectKlass extends Klass {
     private void verify() {
         if (!isVerified()) {
             checkErroneousVerification();
-            synchronized (this) {
+            getInitLock().lock();
+            try {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setVerificationStatus(VERIFYING);
@@ -596,6 +640,8 @@ public final class ObjectKlass extends Klass {
                     }
                     setVerificationStatus(VERIFIED);
                 }
+            } finally {
+                getInitLock().unlock();
             }
             checkErroneousVerification();
         }
@@ -711,7 +757,7 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Method.MethodVersion[] getDeclaredMethodVersions() {
-        return getKlassVersion().declaredMethods;
+        return getKlassVersion().getDeclaredMethodVersions();
     }
 
     @Override
@@ -893,30 +939,26 @@ public final class ObjectKlass extends Klass {
                 return f;
             }
         }
-        throw EspressoError.shouldNotReachHere("Missing hidden field ", fieldName, " in ", this);
+        throw EspressoError.shouldNotReachHere("Missing hidden field " + fieldName + " in " + this);
     }
 
     // Exposed to LookupVirtualMethodNode
     public Method.MethodVersion[] getVTable() {
         assert !isInterface();
-        return getKlassVersion().vtable;
+        return getKlassVersion().getVtable();
     }
 
     public Method.MethodVersion[] getInterfaceMethodsTable() {
         assert isInterface();
-        return getKlassVersion().vtable;
+        return getKlassVersion().getVtable();
     }
 
-    Method.MethodVersion[][] getItable() {
-        return getKlassVersion().itable;
+    public Method.MethodVersion[][] getItable() {
+        return getKlassVersion().getItable();
     }
 
-    ObjectKlass.KlassVersion[] getiKlassTable() {
-        return getKlassVersion().iKlassTable;
-    }
-
-    KlassVersion[] getVersionIKlassTable() {
-        return getKlassVersion().iKlassTable;
+    public ObjectKlass.KlassVersion[] getiKlassTable() {
+        return getKlassVersion().getiKlassTable();
     }
 
     Method vtableLookupImpl(int vtableIndex) {
@@ -946,7 +988,7 @@ public final class ObjectKlass extends Klass {
         return -1;
     }
 
-    void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
+    public void lookupVirtualMethodOverrides(Method current, Klass subKlass, List<Method.MethodVersion> result) {
         Symbol<Name> methodName = current.getName();
         Symbol<Signature> signature = current.getRawSignature();
         for (Method.MethodVersion m : getVTable()) {
@@ -1364,6 +1406,8 @@ public final class ObjectKlass extends Klass {
             removedField.removeByRedefintion();
         }
 
+        getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
+
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
@@ -1458,6 +1502,7 @@ public final class ObjectKlass extends Klass {
     public void swapKlassVersion(Ids<Object> ids) {
         KlassVersion oldVersion = klassVersion;
         klassVersion = oldVersion.replace(ids);
+        getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
@@ -1501,7 +1546,7 @@ public final class ObjectKlass extends Klass {
      * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between
      * classes and corresponding assumptions.
      *
-     * @see ClassHierarchyOracle#isLeaf(ObjectKlass)
+     * @see ClassHierarchyOracle#isLeafKlass(ObjectKlass)
      * @see ClassHierarchyOracle#hasNoImplementors(ObjectKlass)
      */
     public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
@@ -1539,13 +1584,6 @@ public final class ObjectKlass extends Klass {
 
         @CompilationFinal //
         boolean hasDeclaredDefaultMethods = false;
-
-        // Class hierarchy information is managed by ClassHierarchyOracle,
-        // stored in ObjectKlass only for convenience.
-        // region class hierarchy information
-        private final SingleImplementor implementor;
-        private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
-        // endregion
 
         @CompilationFinal private HierarchyInfo hierarchyInfo;
 
@@ -1591,8 +1629,6 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
-            this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         }
 
         // used to create a redefined version
@@ -1639,6 +1675,28 @@ public final class ObjectKlass extends Klass {
             }
 
             Method.MethodVersion[] methods = newDeclaredMethods.toArray(new Method.MethodVersion[0]);
+            // first replace existing method versions with new versions
+            // to ensure new declared methods are up-to-date
+            Map<Method, ParserMethod> changedMethodBodies = change.getChangedMethodBodies();
+            Map<Method, Method.SharedRedefinitionContent> copyCheckMap = new HashMap<>();
+            for (int i = 0; i < methods.length; i++) {
+                Method declMethod = methods[i].getMethod();
+                if (changedMethodBodies.containsKey(declMethod)) {
+                    ParserMethod newMethod = changedMethodBodies.get(declMethod);
+                    Method.SharedRedefinitionContent redefineContent = declMethod.redefine(this, newMethod, packet.parserKlass, ids);
+                    JDWP.LOGGER.fine(() -> "Redefining method " + declMethod.getDeclaringKlass().getName() + "." + declMethod.getName());
+                    methods[i] = redefineContent.getMethodVersion();
+
+                    int flags = newMethod.getFlags();
+                    if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
+                        copyCheckMap.put(declMethod, redefineContent);
+                    }
+                }
+                if (change.getUnchangedMethods().contains(declMethod)) {
+                    methods[i] = declMethod.swapMethodVersion(this, ids);
+                }
+            }
+            // create new tables
             if (isInterface()) {
                 InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, superInterfaces, methods);
                 vtable = icr.methodtable;
@@ -1653,6 +1711,16 @@ public final class ObjectKlass extends Klass {
                 itable = InterfaceTables.fixTables(this, vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
             }
 
+            // check and replace copied methods too
+            for (Map.Entry<Method, Method.SharedRedefinitionContent> entry : copyCheckMap.entrySet()) {
+                Method key = entry.getKey();
+                Method.SharedRedefinitionContent value = entry.getValue();
+
+                checkCopyMethods(this, key, itable, value, ids);
+                checkCopyMethods(this, key, vtable, value, ids);
+                checkCopyMethods(this, key, mirandaMethods, value, ids);
+            }
+
             // only update subtype lists if class hierarchy changed
             if (packet.classChange == ClassRedefinition.ClassChange.CLASS_HIERARCHY_CHANGED) {
                 if (superKlass != null) {
@@ -1663,30 +1731,7 @@ public final class ObjectKlass extends Klass {
                 }
             }
 
-            // changed methods
-            Map<Method, ParserMethod> changedMethodBodies = change.getChangedMethodBodies();
-            for (Map.Entry<Method, ParserMethod> entry : changedMethodBodies.entrySet()) {
-                Method method = entry.getKey();
-                ParserMethod newMethod = entry.getValue();
-                Method.SharedRedefinitionContent redefineContent = method.redefine(this, newMethod, packet.parserKlass, ids);
-                JDWP.LOGGER.fine(() -> "Redefining method " + method.getDeclaringKlass().getName() + "." + method.getName());
-
-                // look in tables for copied methods that also needs to be invalidated
-                int flags = newMethod.getFlags();
-                if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(newMethod.getName())) {
-                    checkCopyMethods(this, method, itable, redefineContent, ids);
-                    checkCopyMethods(this, method, vtable, redefineContent, ids);
-                    checkCopyMethods(this, method, mirandaMethods, redefineContent, ids);
-                }
-            }
-
-            for (Method unchangedMethod : change.getUnchangedMethods()) {
-                unchangedMethod.swapMethodVersion(this, ids);
-            }
-
             this.declaredMethods = methods;
-            this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
-            this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
         }
 
         public KlassVersion replace(Ids<Object> ids) {
@@ -1702,6 +1747,18 @@ public final class ObjectKlass extends Klass {
 
             ChangePacket packet = new ChangePacket(null, linkedKlass.getParserKlass(), null, detectedChange);
             return new KlassVersion(this, pool, linkedKlass, packet, Collections.emptyList(), ids);
+        }
+
+        public Method.MethodVersion[][] getItable() {
+            return itable;
+        }
+
+        public Method.MethodVersion[] getDeclaredMethodVersions() {
+            return declaredMethods;
+        }
+
+        public KlassVersion[] getiKlassTable() {
+            return iKlassTable;
         }
 
         public Assumption getAssumption() {
@@ -1756,6 +1813,10 @@ public final class ObjectKlass extends Klass {
 
         public int getModifiers() {
             return modifiers;
+        }
+
+        public Method.MethodVersion[] getVtable() {
+            return vtable;
         }
 
         @TruffleBoundary

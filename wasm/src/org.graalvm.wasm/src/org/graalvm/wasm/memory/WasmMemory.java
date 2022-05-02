@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import org.graalvm.wasm.collection.ByteArrayList;
 import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.nodes.WasmNode;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -228,7 +228,7 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @return the read {@code String}
      */
     @CompilerDirectives.TruffleBoundary
-    public String readString(int startOffset, WasmNode node) {
+    public String readString(int startOffset, WasmFunctionNode node) {
         ByteArrayList bytes = new ByteArrayList();
         byte currentByte;
         int offset = startOffset;

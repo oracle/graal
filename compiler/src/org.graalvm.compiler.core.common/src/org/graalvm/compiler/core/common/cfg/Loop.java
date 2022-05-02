@@ -105,6 +105,21 @@ public abstract class Loop<T extends AbstractBlockBase<T>> {
     }
 
     /**
+     * Determine if {@code potentialAncestor} equals {@code this} or an ancestor along the
+     * {@link #getParent()} link.
+     */
+    public boolean isAncestorOrSelf(Loop<?> potentialAncestor) {
+        Loop<?> p = this;
+        while (p != null) {
+            if (p == potentialAncestor) {
+                return true;
+            }
+            p = p.getParent();
+        }
+        return false;
+    }
+
+    /**
      * Returns the loop exits.
      *
      * This might be a conservative set: before framestate assignment it matches the LoopExitNodes

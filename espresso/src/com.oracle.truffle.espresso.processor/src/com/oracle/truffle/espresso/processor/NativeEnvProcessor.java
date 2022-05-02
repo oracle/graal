@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -46,6 +42,10 @@ import javax.lang.model.type.ReferenceType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
+
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 /**
  * Handles the generation of boilerplate code for native interface implementations.
@@ -228,7 +228,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                             headerMessage + " must be annotated with @Inject", element);
         }
 
-        List<TypeElement> allowedTypes = Arrays.asList(meta, substitutionProfiler, espressoContext);
+        List<TypeElement> allowedTypes = Arrays.asList(espressoLanguage, meta, substitutionProfiler, espressoContext);
         boolean unsupportedType = allowedTypes.stream().noneMatch(allowedType -> env().getTypeUtils().isSameType(typeMirror, allowedType.asType()));
         if (unsupportedType) {
             String allowedNames = allowedTypes.stream().map(t -> t.getSimpleName().toString()).collect(Collectors.joining(", "));
@@ -458,6 +458,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                         .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withReturnType("Object") //
                         .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+        if (!h.skipSafepoint) {
+            invoke.addBodyLine(EspressoProcessor.SAFEPOINT_POLL);
+        }
         if (h.needsHandlify || !h.isStatic) {
             invoke.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
         }
@@ -466,6 +469,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
             invoke.addBodyLine(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0));
         }
+        setEspressoContextVar(invoke, helper);
         switch (h.jniNativeSignature[0]) {
             case VOID:
                 invoke.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
@@ -485,6 +489,9 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                             .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
                             .withReturnType("Object") //
                             .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+            if (!h.skipSafepoint) {
+                invokeDirect.addBodyLine(EspressoProcessor.SAFEPOINT_POLL);
+            }
             if (!h.isStatic) {
                 invokeDirect.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
             }
@@ -492,6 +499,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             for (String type : parameterTypes) {
                 invokeDirect.addBodyLine(extractArg(argIndex++, type, false, 0));
             }
+            setEspressoContextVar(invokeDirect, helper);
             if (h.jniNativeSignature[0] == NativeType.VOID) {
                 invokeDirect.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
                 invokeDirect.addBodyLine("return ", STATIC_OBJECT_NULL, ';');
@@ -500,6 +508,13 @@ public final class NativeEnvProcessor extends EspressoProcessor {
             }
             classBuilder.withMethod(invokeDirect);
         }
+
+        MethodBuilder generatedBy = new MethodBuilder("generatedBy") //
+                        .withOverrideAnnotation() //
+                        .withReturnType("String") //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .addBodyLine("return \"", helper.getImplAnnotation().getSimpleName(), "\";");
+        classBuilder.withMethod(generatedBy);
 
         return classBuilder;
     }

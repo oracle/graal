@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ final class HostClassCache {
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
         this.mapAccess = apiAccess.isMapAccessible(hostAccess);
         this.targetMappings = groupMappings(apiAccess, conf);
-        this.unnamedModule = HostAccessor.JDKSERVICES.getUnnamedModule(classLoader);
+        this.unnamedModule = HostContext.getUnnamedModule(classLoader);
     }
 
     Object getUnnamedModule() {

@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +39,7 @@ import java.util.function.Function;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
@@ -123,6 +123,7 @@ public class AnalysisUniverse implements Universe {
     private ImageHeapScanner heapScanner;
     private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
+    private DuringAnalysisAccess concurrentAnalysisAccess;
 
     public JavaKind getWordKind() {
         return wordKind;
@@ -130,8 +131,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
-                    SnippetReflectionProvider originalSnippetReflection,
-                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
+                    SnippetReflectionProvider originalSnippetReflection, SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
@@ -585,26 +585,25 @@ public class AnalysisUniverse implements Universe {
         return destination;
     }
 
+    public static Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
+        return getMethodImplementations(baseMethod, true);
+    }
+
     private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
-            Set<AnalysisMethod> implementations = getMethodImplementations(bb, method, false);
+            Set<AnalysisMethod> implementations = getMethodImplementations(method, false);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
     }
 
-    public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
+    private static Set<AnalysisMethod> getMethodImplementations(AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
             if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
                 implementations.add(method);
             }
         } else {
-            try {
-                collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
-            } catch (UnsupportedFeatureException ex) {
-                String message = String.format("Error while collecting implementations of %s : %s%n", method.format("%H.%n(%p)"), ex.getMessage());
-                bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, null, ex.getCause());
-            }
+            collectMethodImplementations(method, method.getDeclaringClass(), implementations, includeInlinedMethods);
         }
         return implementations;
     }
@@ -619,48 +618,25 @@ public class AnalysisUniverse implements Universe {
             holderOrSubtypeInstantiated |= collectMethodImplementations(method, subClass, implementations, includeInlinedMethods);
         }
 
-        /*
-         * If the holder and all subtypes are not instantiated, then we do not need to resolve the
-         * method. The method cannot be marked as invoked.
-         */
-        if (holderOrSubtypeInstantiated || method.isIntrinsicMethod()) {
-            AnalysisMethod aResolved;
-            try {
-                aResolved = holder.resolveConcreteMethod(method, null);
-            } catch (UnsupportedFeatureException e) {
-                /* An unsupported overriding method is not reachable. */
-                aResolved = null;
-            }
-            if (aResolved != null) {
-                /*
-                 * aResolved == null means that the method in the base class was called, but never
-                 * with this holder.
-                 */
-                if (includeInlinedMethods ? aResolved.isReachable() : aResolved.isImplementationInvoked()) {
-                    implementations.add(aResolved);
-                }
-            }
+        AnalysisMethod resolved = method.resolveInType(holder, holderOrSubtypeInstantiated);
+        if (resolved != null && (includeInlinedMethods ? resolved.isReachable() : resolved.isImplementationInvoked())) {
+            implementations.add(resolved);
         }
+
         return holderOrSubtypeInstantiated;
     }
 
     /**
-     * Collect and returns *all* subtypes of this type, not only the immediate subtypes. The
-     * immediate sub-types are updated continuously as the universe is expanded and can be accessed
-     * using {@link AnalysisType#getSubTypes()}.
+     * Collect and returns *all reachable* subtypes of this type, not only the immediate subtypes.
+     * To access the immediate sub-types use {@link AnalysisType#getSubTypes()}.
+     *
+     * Since the sub-types are updated continuously as the universe is expanded this method may
+     * return different results on each call, until the analysis universe reaches a stable state.
      */
-    public static Set<AnalysisType> getAllSubtypes(AnalysisType baseType) {
-        HashSet<AnalysisType> result = new HashSet<>();
-        collectSubtypes(baseType, result);
+    public static Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
+        Set<AnalysisType> result = baseType.getAllSubtypes();
+        result.removeIf(t -> !t.isReachable());
         return result;
-    }
-
-    private static void collectSubtypes(AnalysisType baseType, Set<AnalysisType> result) {
-        for (AnalysisType subType : baseType.getSubTypes()) {
-            if (result.add(subType)) {
-                collectSubtypes(subType, result);
-            }
-        }
     }
 
     @Override
@@ -692,6 +668,7 @@ public class AnalysisUniverse implements Universe {
 
     public void initializeType(AnalysisType type) {
         hostVM.initializeType(type);
+        type.onInitialized();
         if (bb != null) {
             bb.onTypeInitialized(type);
         }
@@ -715,6 +692,14 @@ public class AnalysisUniverse implements Universe {
 
     public BigBang getBigbang() {
         return bb;
+    }
+
+    public void setConcurrentAnalysisAccess(DuringAnalysisAccess access) {
+        this.concurrentAnalysisAccess = access;
+    }
+
+    public DuringAnalysisAccess getConcurrentAnalysisAccess() {
+        return concurrentAnalysisAccess;
     }
 
     public void setHeapScanner(ImageHeapScanner heapScanner) {

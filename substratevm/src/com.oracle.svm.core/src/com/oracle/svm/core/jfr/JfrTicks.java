@@ -42,10 +42,15 @@ public final class JfrTicks {
         initialTicks = System.nanoTime();
     }
 
+    /**
+     * This method returns 0 if the JFR support is either disabled or not yet initialized.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long elapsedTicks() {
-        assert initialTicks > 0;
-        return System.nanoTime() - initialTicks;
+        if (HasJfrSupport.get() && initialTicks > 0) {
+            return System.nanoTime() - initialTicks;
+        }
+        return 0;
     }
 
     public static long getTicksFrequency() {

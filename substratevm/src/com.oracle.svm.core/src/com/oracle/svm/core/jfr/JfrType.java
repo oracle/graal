@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,10 @@ public enum JfrType {
     Symbol("jdk.types.Symbol"),
     Module("jdk.types.Module"),
     Package("jdk.types.Package"),
-    FrameType("jdk.types.FrameType");
+    FrameType("jdk.types.FrameType"),
+    GCCause("jdk.types.GCCause"),
+    GCName("jdk.types.GCName"),
+    VMOperation("jdk.types.VMOperationType");
 
     private final long id;
 

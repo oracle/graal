@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,11 @@ public class NativeImageSystemIOWrappers {
     final StdioWrapper outWrapper;
     final StdioWrapper errWrapper;
 
-    boolean listenForNextStdioWrite;
+    ProgressReporter progressReporter = null;
 
     NativeImageSystemIOWrappers() {
         outWrapper = new StdioWrapper(System.out);
         errWrapper = new StdioWrapper(System.err);
-        listenForNextStdioWrite = false;
     }
 
     void verifySystemOutErrReplacement() {
@@ -87,24 +86,21 @@ public class NativeImageSystemIOWrappers {
 
         @Override
         public void write(int b) {
-            if (listenForNextStdioWrite) {
-                listenForNextStdioWrite = false;
-                if (ProgressReporter.isInstalled()) {
-                    ProgressReporter.singleton().beforeNextStdioWrite();
-                }
-            }
+            maybeInformProgressReporterOnce();
             delegate.write(b);
         }
 
         @Override
         public void write(byte[] buf, int off, int len) {
-            if (listenForNextStdioWrite) {
-                listenForNextStdioWrite = false;
-                if (ProgressReporter.isInstalled()) {
-                    ProgressReporter.singleton().beforeNextStdioWrite();
-                }
-            }
+            maybeInformProgressReporterOnce();
             delegate.write(buf, off, len);
+        }
+
+        private void maybeInformProgressReporterOnce() {
+            if (progressReporter != null) {
+                progressReporter.beforeNextStdioWrite();
+                progressReporter = null;
+            }
         }
     }
 }

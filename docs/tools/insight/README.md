@@ -1,6 +1,6 @@
 ---
 layout: docs-experimental
-toc_group: tools
+toc_group: insight
 link_title: GraalVM Insight
 permalink: /tools/graalvm-insight/
 ---

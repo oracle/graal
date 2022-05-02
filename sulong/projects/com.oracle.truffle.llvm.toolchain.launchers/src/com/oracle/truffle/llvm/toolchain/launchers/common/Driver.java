@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -84,6 +84,34 @@ public class Driver {
         }
 
         public static OS getCurrent() {
+            return Lazy.current;
+        }
+    }
+
+    public enum Arch {
+
+        X86_64,
+        AARCH_64;
+
+        private static Arch findCurrent() {
+            final String name = System.getProperty("os.arch");
+            if (name.equals("amd64")) {
+                return X86_64;
+            }
+            if (name.equals("x86_64")) {
+                return X86_64;
+            }
+            if (name.equals("aarch64")) {
+                return AARCH_64;
+            }
+            throw new IllegalArgumentException("unknown architecture: " + name);
+        }
+
+        private static final class Lazy {
+            private static final Arch current = findCurrent();
+        }
+
+        public static Arch getCurrent() {
             return Lazy.current;
         }
     }

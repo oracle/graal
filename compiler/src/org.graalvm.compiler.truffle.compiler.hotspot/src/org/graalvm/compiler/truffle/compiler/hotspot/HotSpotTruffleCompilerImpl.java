@@ -286,7 +286,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         removeInliningPhase(newSuites);
 
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.NO)//
-                        .useProfilingInfo(false)//
+                        .profileProvider(null)//
                         .method(javaMethod) //
                         .compilationId(compilationId).build();
 

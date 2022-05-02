@@ -30,6 +30,11 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
 public interface AArch64LoweringProviderMixin extends LoweringProvider {
 
     @Override
+    default boolean divisionOverflowIsJVMSCompliant() {
+        return true;
+    }
+
+    @Override
     default Integer smallestCompareWidth() {
         return 32;
     }

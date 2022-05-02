@@ -49,7 +49,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.word.DynamicHubAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedType;
@@ -146,15 +146,15 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new TypeSnippets(options, runtimeConfig, providers, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new TypeSnippets(options, providers, lowerings);
     }
 
-    final RuntimeConfiguration runtimeConfig;
+    final KnownOffsets knownOffsets;
 
-    private TypeSnippets(OptionValues options, RuntimeConfiguration runtimeConfig, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    private TypeSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         super(options, providers);
-        this.runtimeConfig = runtimeConfig;
+        this.knownOffsets = KnownOffsets.singleton();
 
         lowerings.put(InstanceOfNode.class, new InstanceOfLowering(options, providers));
         lowerings.put(InstanceOfDynamicNode.class, new InstanceOfDynamicLowering(options, providers));
@@ -205,7 +205,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("start", hub.getTypeCheckStart());
                 args.add("range", hub.getTypeCheckRange());
                 args.add("slot", hub.getTypeCheckSlot());
-                args.addConst("typeIDSlotOffset", runtimeConfig.getTypeIDSlotsOffset());
+                args.addConst("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
                 return args;
             }
         }
@@ -247,7 +247,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 args.addConst("allowsNull", node.allowsNull());
-                args.addConst("typeIDSlotOffset", runtimeConfig.getTypeIDSlotsOffset());
+                args.addConst("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
                 return args;
             }
         }
@@ -277,7 +277,7 @@ public final class TypeSnippets extends SubstrateTemplates implements Snippets {
             args.add("checkedHub", node.getOtherClass());
             args.add("trueValue", replacer.trueValue);
             args.add("falseValue", replacer.falseValue);
-            args.addConst("typeIDSlotOffset", runtimeConfig.getTypeIDSlotsOffset());
+            args.addConst("typeIDSlotOffset", knownOffsets.getTypeIDSlotsOffset());
             return args;
         }
     }

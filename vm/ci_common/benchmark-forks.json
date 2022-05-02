@@ -1,9 +1,9 @@
 {
     "warmup/specjbb2005.js": 3,
     "warmup/acorn-polybench.js": 10,
-    "warmup/typescript-polybench.js": 10,
-    "warmup/asciidoctor-convert.rb": 10,
-    "warmup/asciidoctor-load-file.rb": 10,
+    "warmup/typescript-polybench.js": 20,
+    "warmup/asciidoctor-convert.rb": 20,
+    "warmup/asciidoctor-load-file.rb": 20,
     "interpreter/jsinit.js": 5,
     "interpreter/rbinit.rb": 5,
     "interpreter/pyinit.py": 5

@@ -28,7 +28,7 @@ import org.graalvm.polyglot.Value;
 
 import java.util.Optional;
 
-class PeakTimeMetric implements Metric {
+class PeakTimeMetric extends Metric {
     long startTime;
     long endTime;
     long totalTime;

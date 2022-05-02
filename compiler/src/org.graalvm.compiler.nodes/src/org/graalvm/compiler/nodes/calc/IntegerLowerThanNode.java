@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.calc;
 import static jdk.vm.ci.code.CodeUtil.mask;
 
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
@@ -36,6 +37,7 @@ import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -44,6 +46,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.TriState;
 
 /**
@@ -183,6 +186,25 @@ public abstract class IntegerLowerThanNode extends CompareNode {
             }
         }
 
+        /**
+         * Tries to further canonicalize the condition, but only returns the result if it is
+         * constant.
+         *
+         * @see #create
+         */
+        public LogicConstantNode constantOrNull(ValueNode x, ValueNode y, NodeView view) {
+            LogicNode result = CompareNode.tryConstantFoldPrimitive(getCondition(), x, y, false, view);
+            if (result instanceof LogicConstantNode) {
+                return (LogicConstantNode) result;
+            } else {
+                result = findSynonym(x, y, view);
+                if (result instanceof LogicConstantNode) {
+                    return (LogicConstantNode) result;
+                }
+                return null;
+            }
+        }
+
         protected LogicNode findSynonym(ValueNode forX, ValueNode forY, NodeView view) {
             if (GraphUtil.unproxify(forX) == GraphUtil.unproxify(forY)) {
                 return LogicConstantNode.contradiction();
@@ -239,9 +261,205 @@ public abstract class IntegerLowerThanNode extends CompareNode {
                         return canonical;
                     }
                 }
+                if (forX instanceof PiNode && forY instanceof PiNode) {
+                    PiNode piX = (PiNode) forX;
+                    PiNode piY = (PiNode) forY;
+                    ValueNode originalX = piX.getOriginalNode();
+                    ValueNode originalY = piY.getOriginalNode();
+                    if (originalY instanceof AddNode && ((AddNode) originalY).getY().isConstant() && ((AddNode) originalY).getX() == originalX) {
+                        // piX <- value, piY <- value + c
+                        return canonicalizePiXLowerPiXPlusC(piX, piY, false, view);
+                    } else if (originalX instanceof AddNode && ((AddNode) originalX).getY().isConstant() && ((AddNode) originalX).getX() == originalY) {
+                        // piX <- value + c, piY <- value
+                        return canonicalizePiXLowerPiXPlusC(piY, piX, true, view);
+                    }
+                }
+                return canonicalizeCommonArithmetic(forX, forY, view);
             }
             return null;
         }
+
+        /**
+         * Converts a {@linkplain IntegerLowerThanNode} with a certain subgraph pattern with two
+         * {@link PiNode} inputs and {@link AddNode} with a constant, into a pattern with a single
+         * {@link PiNode}.
+         *
+         * <h1>Semantics</h1>
+         *
+         * The pattern {@code PI1(value) < PI2(value + c)} is replaced by
+         * {@code PI*(value) < PI*(value) + c}, where the stamp of {@code PI*} is {@code PI1(value)}
+         * improved by {@code PI2(value + c) - c}.
+         *
+         * <h2>Input Subgraph</h2>
+         *
+         * <pre>
+         * +----+    +-------+   +---+    +----+
+         * | G1 |    | value |   | c |    | G2 |
+         * +----+    +---+---+   +-+-+    +-+--+
+         *       \       |   \   /         /
+         *        \      |   +-+-+        /
+         *         \     |   | + |       /
+         *          \    |   +-+-+      /
+         *           \   |      \      /
+         *            \  |       \    /
+         *           +-+-+-+     +-+-+-+
+         *           | PI1 |     | PI2 |
+         *           +-----+     +--+--+
+         *                 \       /
+         *                  \     /
+         *                  ++---++
+         *                  |  <  |
+         *                  +-----+
+         * </pre>
+         *
+         * <h2>Result Subgraph</h2>
+         *
+         * <pre>
+         *  +----+   +-------+      +----+
+         *  | G1 |   | value |      | G2 |
+         *  +----+   +---+---+      +-+--+
+         *        \      |           /
+         *         \     |          /
+         *          \    |         /
+         *           +---+-+      /
+         *           | PI1 |     /
+         *           +----++    /
+         *                 \   /
+         *                +-+-+--+
+         *                | PI*  |
+         *                +-+---++    +---+
+         *                  |    \    | c |
+         *                  |     \   +-+-+
+         *                  |      \   /
+         *                  |     +-+-+
+         *                  |     | + |
+         *                  |     ++--+
+         *                  |     /
+         *                  |    /
+         *                +-+--+-+
+         *                |  <   |
+         *                +------+
+         * </pre>
+         *
+         * The stamp of {@code PI*} is {@code stamp(PI2 - c)}.
+         *
+         * @param piValue a node with the pattern {@code PiNode(value)}
+         * @param piWithAdd a node with the pattern {@code }PiNode(AddNode(value, c))}
+         * @param mirror {@code true} if the {@link AddNode} is on {@linkplain #getY() RHS} of this
+         *            {@link IntegerLowerThanNode}.
+         * @return a {@link LogicConstantNode} or {@code null} if the result cannot be proven
+         *         constant
+         */
+        private LogicConstantNode canonicalizePiXLowerPiXPlusC(PiNode piValue, PiNode piWithAdd, boolean mirror, NodeView view) {
+            AddNode originalWithAdd = (AddNode) piWithAdd.getOriginalNode();
+            // piValue <- value
+            // piWithAdd <- value + c
+            // to
+            // newValue <- pi(piValue, stamp(piWithAdd - c))
+            // newWithAdd <- newValue + c
+            ValueNode constant = originalWithAdd.getY();
+            // calculate the stamp of piWithAdd - c
+            Stamp piWithAddStamp = piWithAdd.stamp(view);
+            Stamp subValueStamp = ArithmeticOpTable.forStamp(piWithAddStamp).getSub() // get subOp
+                            .foldStamp(piWithAddStamp, constant.stamp(view));
+            // create piValue with better stamp
+            ValueNode newValue = PiNode.create(piValue, subValueStamp, piWithAdd.getGuard().asNode());
+            // recreate to original operation of piWithAdd but using newValue instead of value
+            ValueNode newWithAdd = AddNode.create(newValue, constant, view);
+            if (mirror) {
+                return constantOrNull(newWithAdd, newValue, view);
+            } else {
+                return constantOrNull(newValue, newWithAdd, view);
+            }
+        }
+
+        protected LogicNode canonicalizeCommonArithmetic(ValueNode forX, ValueNode forY, NodeView view) {
+            if (isMatchingBitExtendNode(forX) && isMatchingBitExtendNode(forY)) {
+                IntegerConvertNode<?> forX1 = (IntegerConvertNode<?>) forX;
+                IntegerConvertNode<?> forY1 = (IntegerConvertNode<?>) forY;
+                // Extending to 32 bit might be required by the architecture
+                if (forX1.getInputBits() >= 32 && forX1.getResultBits() == forY1.getResultBits() && forX1.getInputBits() == forY1.getInputBits()) {
+                    return create(forX1.getValue(), forY1.getValue(), view);
+                }
+            }
+
+            if (forX instanceof AddNode && forY instanceof AddNode) {
+                AddNode addX = (AddNode) forX;
+                AddNode addY = (AddNode) forY;
+                ValueNode v1 = null;
+                ValueNode v2 = null;
+                ValueNode common = null;
+                if (addX.getX() == addY.getX()) {
+                    // (x + y) < (x + z) => y < z
+                    v1 = addX.getY();
+                    v2 = addY.getY();
+                    common = addX.getX();
+                } else if (addX.getX() == addY.getY()) {
+                    // (x + y) < (z + x) => y < z
+                    v1 = addX.getY();
+                    v2 = addY.getX();
+                    common = addX.getX();
+                } else if (addX.getY() == addY.getX()) {
+                    // (y + x) < (x + z) => y < z
+                    v1 = addX.getX();
+                    v2 = addY.getY();
+                    common = addX.getY();
+                } else if (addX.getY() == addY.getY()) {
+                    // (y + x) < (z + x) => y < z
+                    v1 = addX.getX();
+                    v2 = addY.getX();
+                    common = addX.getY();
+                }
+                if (v1 != null) {
+                    assert v2 != null;
+                    IntegerStamp stamp1 = (IntegerStamp) v1.stamp(view);
+                    IntegerStamp stamp2 = (IntegerStamp) v2.stamp(view);
+                    IntegerStamp stampCommon = (IntegerStamp) common.stamp(view);
+                    if (!addCanOverflow(stamp1, stampCommon) && !addCanOverflow(stamp2, stampCommon)) {
+                        return create(v1, v2, view);
+                    }
+                }
+            }
+
+            if (forX instanceof LeftShiftNode && forY instanceof LeftShiftNode) {
+                LeftShiftNode leftShiftX = (LeftShiftNode) forX;
+                LeftShiftNode leftShiftY = (LeftShiftNode) forY;
+                if (leftShiftX.getY() == leftShiftY.getY() &&
+                                leftShiftX.getY().isConstant() && leftShiftX.getY().asConstant() instanceof PrimitiveConstant) {
+                    PrimitiveConstant constant = (PrimitiveConstant) leftShiftX.getY().asConstant();
+                    if (constant.getJavaKind().isNumericInteger()) {
+                        ValueNode v1 = leftShiftX.getX();
+                        ValueNode v2 = leftShiftY.getX();
+                        IntegerStamp stamp1 = (IntegerStamp) v1.stamp(view);
+                        IntegerStamp stamp2 = (IntegerStamp) v2.stamp(view);
+                        if (!leftShiftCanOverflow(stamp1, constant.asLong()) && !leftShiftCanOverflow(stamp2, constant.asLong())) {
+                            return create(v1, v2, view);
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Return {@code true} if the node is an {@link IntegerConvertNode} that does not change the
+         * comparison result.
+         */
+        protected abstract boolean isMatchingBitExtendNode(ValueNode node);
+
+        /**
+         * Return {@code true} if the {@code a + b} can overflow w.r.t.
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerLessThanNode.LessThanOp signed} or
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerBelowNode.BelowOp unsigned} semantics.
+         */
+        protected abstract boolean addCanOverflow(IntegerStamp a, IntegerStamp b);
+
+        /**
+         * Return {@code true} if the {@code a << shift} can overflow w.r.t.
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerLessThanNode.LessThanOp signed} or
+         * {@linkplain org.graalvm.compiler.nodes.calc.IntegerBelowNode.BelowOp unsigned} semantics.
+         */
+        protected abstract boolean leftShiftCanOverflow(IntegerStamp a, long shift);
 
         /**
          * Exploit the fact that adding the (signed) MIN_VALUE on both side flips signed and

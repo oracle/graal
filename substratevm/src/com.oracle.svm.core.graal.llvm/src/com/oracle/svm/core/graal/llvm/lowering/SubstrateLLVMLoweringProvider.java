@@ -93,4 +93,9 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
         return true;
     }
 
+    @Override
+    public boolean divisionOverflowIsJVMSCompliant() {
+        return false;
+    }
+
 }

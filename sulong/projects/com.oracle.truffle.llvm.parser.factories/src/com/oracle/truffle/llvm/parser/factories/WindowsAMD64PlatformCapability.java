@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,13 +30,15 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorageFactory;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<WindowsAMD64PlatformCapability.UnknownSyscalls> {
@@ -67,19 +69,22 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
     }
 
     @Override
-    public Object createVAListStorage(RootNode rootNode, LLVMPointer vaListStackPtr) {
-        throw CompilerDirectives.shouldNotReachHere("not yet implemented");
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
+        return new LLVMMaybeVaPointer(allocaNode, vaListStackPtr);
     }
 
     @Override
     public Type getVAListType() {
-        // not yet implemented
-        return MetaType.UNKNOWN;
+        return PointerType.I8;
     }
 
     @Override
     public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
-        throw CompilerDirectives.shouldNotReachHere("not yet implemented");
+        return cached ? LLVMX86_64_WinVaListStorageFactory.PointerWrapperFactoryNodeGen.create() : LLVMX86_64_WinVaListStorageFactory.PointerWrapperFactoryNodeGen.getUncached();
     }
 
+    @Override
+    public OS getOS() {
+        return OS.Windows;
+    }
 }

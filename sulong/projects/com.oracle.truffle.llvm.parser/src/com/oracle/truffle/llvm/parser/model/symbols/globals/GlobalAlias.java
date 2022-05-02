@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,6 +40,7 @@ import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
+import com.oracle.truffle.llvm.runtime.LLVMThreadLocalSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
@@ -71,6 +72,9 @@ public final class GlobalAlias extends GlobalValueSymbol {
             return CommonNodeFactory.createLiteral(value, getType());
         } else if (symbol.isGlobalVariable()) {
             LLVMGlobal value = symbol.asGlobalVariable();
+            return CommonNodeFactory.createLiteral(value, getType());
+        } else if (symbol.isThreadLocalSymbol()) {
+            LLVMThreadLocalSymbol value = symbol.asThreadLocalSymbol();
             return CommonNodeFactory.createLiteral(value, getType());
         } else if (symbol.isElemPtrExpression()) {
             LLVMElemPtrSymbol value = symbol.asElemPtrExpression();

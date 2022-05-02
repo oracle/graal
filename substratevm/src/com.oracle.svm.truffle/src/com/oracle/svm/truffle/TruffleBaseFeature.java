@@ -32,17 +32,21 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -58,6 +62,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -73,6 +79,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -101,18 +108,21 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.nodes.DenyReplace;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.NodeClass;
+import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.Profile;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import sun.misc.Unsafe;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -147,10 +157,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
     }
 
+    private static final Method NODE_CLASS_getAccesssedFields = ReflectionUtil.lookupMethod(NodeClass.class, "getAccessedFields");
+
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
     private GraalObjectReplacer graalObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
+    private final Map<Class<?>, PossibleReplaceCandidatesSubtypeHandler> subtypeChecks = new HashMap<>();
     private boolean profilingEnabled;
     private boolean needsAllEncodings;
 
@@ -295,7 +308,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class)
                         .getProviderObjectReplacements(metaAccess);
         graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
-        access.registerObjectReplacer(this::replaceNodeFieldAccessor);
+
+        Class<?> nodeFieldData = access.findClassByName("com.oracle.truffle.api.nodes.NodeClassImpl$NodeFieldData");
+        access.registerObjectReplacer((e) -> replaceNodeFieldAccessor(nodeFieldData, e));
 
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
@@ -303,11 +318,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     }
 
     @SuppressWarnings("deprecation")
-    private Object replaceNodeFieldAccessor(Object source) {
-        if (source instanceof com.oracle.truffle.api.nodes.NodeFieldAccessor ||
-                        (source instanceof com.oracle.truffle.api.nodes.NodeFieldAccessor[] && ((com.oracle.truffle.api.nodes.NodeFieldAccessor[]) source).length > 0)) {
-            throw VMError.shouldNotReachHere("Cannot have NodeFieldAccessor in image, they must be created lazily");
-
+    private Object replaceNodeFieldAccessor(Class<?> invalidNodeFieldType, Object source) {
+        if (source != null && source.getClass() == invalidNodeFieldType) {
+            throw VMError.shouldNotReachHere("Cannot have NodeFieldData in image, they must be created lazily");
         } else if (source instanceof NodeClass && !(source instanceof SubstrateType)) {
             NodeClass nodeClass = (NodeClass) source;
             NodeClass replacement = graalObjectReplacer.createType(metaAccess.lookupJavaType(nodeClass.getType()));
@@ -404,37 +417,125 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
         NodeClass nodeClass = NodeClass.get(clazz);
 
-        for (com.oracle.truffle.api.nodes.NodeFieldAccessor accessor : nodeClass.getFields()) {
-            Field field;
-            try {
-                field = accessor.getDeclaringClass().getDeclaredField(accessor.getName());
-            } catch (NoSuchFieldException ex) {
-                throw shouldNotReachHere(ex);
-            }
-
-            if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.PARENT || accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD ||
-                            accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN) {
-                /*
-                 * It's a field which represents an edge in the graph. Such fields are written with
-                 * Unsafe in the NodeClass, e.g. when making changes in the graph.
-                 */
-                // TODO register unsafe accessed Truffle nodes in a separate partition?
-                access.registerAsUnsafeAccessed(field);
-            }
-
-            if (accessor.getKind() == com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA && com.oracle.truffle.api.nodes.NodeCloneable.class.isAssignableFrom(accessor.getType())) {
-                /*
-                 * It's a cloneable non-child data field of the node. Such fields are written with
-                 * Unsafe in the NodeUtil.deepCopyImpl.
-                 */
-                access.registerAsUnsafeAccessed(field);
-            }
-
-            /* All other fields are only read with Unsafe. */
+        Field[] fields;
+        try {
+            fields = (Field[]) NODE_CLASS_getAccesssedFields.invoke(nodeClass);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            throw shouldNotReachHere(e);
+        }
+        for (Field field : fields) {
+            /*
+             * All node fields are at least read with unsafe. All reference fields are also written
+             * but only with exactly the same type, so no need to register as unsafe accessed. If it
+             * is always the same type we are writing then the type flow analysis is not impacted
+             * and it is therefore enough to just register these child fields as accessed instead of
+             * unsafe accessed.
+             */
             access.registerAsAccessed(field);
+
+            if (field.getAnnotation(Child.class) != null) {
+                /*
+                 * Values of fields annotated with @Child may be replaced unsafely with any
+                 * replaceable subtype.
+                 *
+                 * If a field is registered for unsafe access and there is more than one
+                 * implementation for a value of a field, then any inlining could get prevented
+                 * unnecessarily. As an optimization we try to avoid registering for unsafe access
+                 * whenever possible to leverage the result of the type flow analysis.
+                 */
+                Class<?> type = field.getType();
+                if (Modifier.isFinal(type.getModifiers())) {
+                    // optimization: there is only one possible value for fields with final types
+                    // -> registering as as accessed is enough
+                } else if (type == Node.class || type == NodeInterface.class) {
+                    // optimization: there are always more than one node subclasses
+                    // -> we need to register as unsafe accessed eagerly
+                    access.registerAsUnsafeAccessed(field);
+                } else {
+                    /*
+                     * For any other type we count the non abstract subclasses that are not
+                     * annotated with @DenyReplace. If we see more than one of such types we need to
+                     * register the field as unsafely accessed, as replace might introduce types
+                     * there, that the type flow analysis would not see. But if it is just a single
+                     * or no subtype then registerAsAccessed is again enough.
+                     */
+                    PossibleReplaceCandidatesSubtypeHandler detector = subtypeChecks.get(type);
+                    if (detector == null) {
+                        detector = new PossibleReplaceCandidatesSubtypeHandler(type);
+                        access.registerSubtypeReachabilityHandler(detector, type);
+                        subtypeChecks.put(type, detector);
+                    }
+                    detector.addField(access, field);
+                }
+            }
         }
 
         access.requireAnalysisIteration();
+    }
+
+    /**
+     * Counts the number of subclasses that could be possible candidates for a {@link Child} field
+     * through replaces. Registers all added fields as unsafe accessed in case more then one
+     * replaceable subtype is used.
+     */
+    static class PossibleReplaceCandidatesSubtypeHandler implements BiConsumer<DuringAnalysisAccess, Class<?>> {
+
+        /**
+         * The fields are added serially, from the duringAnalysis phase which is run when the
+         * analysis reaches a local fix point, so no need for synchronization.
+         */
+        List<Field> fields = new ArrayList<>();
+        final Class<?> fieldType;
+        /**
+         * The candidates are counted from a reachability handler, which is run in parallel with the
+         * analysis.
+         */
+        final AtomicInteger candidateCount = new AtomicInteger(0);
+
+        PossibleReplaceCandidatesSubtypeHandler(Class<?> fieldType) {
+            this.fieldType = fieldType;
+        }
+
+        void addField(DuringAnalysisAccess access, Field field) {
+            assert field.getType() == fieldType;
+            if (candidateCount.get() > 1) {
+                /*
+                 * Limit already reached no need to remember fields anymore we can directly register
+                 * them as unsafe accessed.
+                 */
+                access.registerAsUnsafeAccessed(field);
+            } else {
+                fields.add(field);
+            }
+        }
+
+        @Override
+        public void accept(DuringAnalysisAccess t, Class<?> u) {
+            /*
+             * Never replaceable classes do not count as candidates. They are checked to never be
+             * used for replacing.
+             */
+            if (DirectAnnotationAccess.getAnnotation(u, DenyReplace.class) != null) {
+                return;
+            }
+
+            /*
+             * Abstract classes do not account to the number of possible child field candidates.
+             * They cannot be instantiated so are also not possible values for a child field.
+             */
+            if (Modifier.isAbstract(u.getModifiers())) {
+                return;
+            }
+
+            /* Limit reached, register the fields and clear the list. */
+            if (candidateCount.incrementAndGet() == 2) {
+                for (Field field : fields) {
+                    t.registerAsUnsafeAccessed(field);
+                }
+                fields = null;
+            }
+        }
+
     }
 
     /**
@@ -762,6 +863,11 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
             assert metaAccess instanceof HostedMetaAccess;
             return ((HostedMetaAccess) metaAccess).lookupJavaField(f).getLocation();
         }
+
+        @Override
+        public Class<?>[] types() {
+            return new Class<?>[]{int.class};
+        }
     }
 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
@@ -782,6 +888,15 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleBaseFeature.IsEnabled.class,
                 TruffleBaseFeature.IsCreateProcessDisabled.class})
 final class Target_java_lang_ProcessBuilder {
+}
+
+/*
+ * Ensure ProcessBuilder is not reachable through the enclosing class of Redirect.
+ */
+@Delete
+@TargetClass(className = "java.lang.ProcessBuilder", innerClass = "Redirect", onlyWith = {TruffleBaseFeature.IsEnabled.class,
+                TruffleBaseFeature.IsCreateProcessDisabled.class})
+final class Target_java_lang_ProcessBuilder_Redirect {
 }
 
 /*

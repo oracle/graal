@@ -25,10 +25,10 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-public class SubstitutionProfiler extends Node {
+public class SubstitutionProfiler extends EspressoNode {
 
     @CompilationFinal //
     private long profiles = 0;
@@ -42,15 +42,12 @@ public class SubstitutionProfiler extends Node {
         long mask = 1L << branch;
         if ((profiles & mask) == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            reportPolymorphicSpecialize();
             profiles |= mask;
         }
     }
 
-    /**
-     * Should return true if the substitution uses profiles. This will allow to spawn a profile for
-     * every call site.
-     */
-    public boolean shouldSplit() {
+    public boolean canSplit() {
         return false;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -221,7 +221,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         info.setBlocks(blockNodes);
 
         int loopSuccessorSlot = -1;
-        if (options.get(SulongEngineOption.ENABLE_OSR) && !options.get(SulongEngineOption.AOTCacheStore)) {
+        if (nodeFactory.isCfgOsrEnabled() && !options.get(SulongEngineOption.AOTCacheStore)) {
             LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
             cfg.build();
 

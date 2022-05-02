@@ -33,7 +33,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -98,13 +97,11 @@ public abstract class LLVMVaListLibrary extends Library {
      * the Truffle runtime. This method should be used only when the frame cannot be obtained
      * otherwise.
      */
+    @SuppressWarnings("deprecation")
     public void copyWithoutFrame(Object srcVaList, Object destVaList) {
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
-            @Override
-            public Object visitFrame(FrameInstance frameInstance) {
-                copy(srcVaList, destVaList, frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE));
-                return STOP_ITERATE;
-            }
+        Truffle.getRuntime().iterateFrames(frameInstance -> {
+            copy(srcVaList, destVaList, frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE));
+            return STOP_ITERATE;
         });
     }
 

@@ -74,7 +74,6 @@ final class InstrumentAccessor extends Accessor {
 
     static final NodeSupport NODES = ACCESSOR.nodeSupport();
     static final SourceSupport SOURCE = ACCESSOR.sourceSupport();
-    static final JDKSupport JDK = ACCESSOR.jdkSupport();
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();

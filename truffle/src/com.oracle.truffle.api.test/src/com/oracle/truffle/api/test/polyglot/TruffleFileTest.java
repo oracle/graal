@@ -903,6 +903,10 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         public static LanguageContext getContext() {
             return CONTEXT_REF.get(null);
         }
+
+        public DuplicateMimeTypeLanguage1() {
+            wrapper = false;
+        }
     }
 
     @TruffleLanguage.Registration(id = "DuplicateMimeTypeLanguage2", name = "DuplicateMimeTypeLanguage2", characterMimeTypes = "text/x-duplicate-mime", fileTypeDetectors = DuplicateMimeTypeLanguage2.Language2Detector.class)
@@ -914,10 +918,26 @@ public class TruffleFileTest extends AbstractPolyglotTest {
             }
         }
 
+        public DuplicateMimeTypeLanguage2() {
+            wrapper = false;
+        }
     }
 
     @TruffleLanguage.Registration(id = "InternalTruffleFileTestLanguage", name = "InternalTruffleFileTestLanguage", characterMimeTypes = "text/x-internal-file-test")
     public static final class InternalTruffleFileTestLanguage extends ProxyLanguage {
+
+        public InternalTruffleFileTestLanguage() {
+            /*
+             * Whenever the language is not used as a standalone language, e.g. it is used in
+             * AbstractPolyglotTest#setupEnv, or the delegation is set directly by
+             * ProxyLanguage#setDelegate, we cannot set wrapper to false for all instances, because
+             * the instance created by Truffle framework must delegate to the instance set by
+             * ProxyLanguage#setDelegate.
+             */
+            if (ProxyLanguage.getDelegate().getClass() == ProxyLanguage.class) {
+                wrapper = false;
+            }
+        }
 
         public String getHome() {
             return getLanguageHome();

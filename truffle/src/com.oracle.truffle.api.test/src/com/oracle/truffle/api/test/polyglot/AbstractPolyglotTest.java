@@ -110,16 +110,16 @@ public abstract class AbstractPolyglotTest {
     }
 
     private void setupEnv(Context originalContext, Context.Builder builder, ProxyLanguage language, ProxyInstrument instrument) {
-        if (language != null && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (language != null && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "custom proxy language"));
         }
-        if (instrument != null && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (instrument != null && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "custom proxy instrument"));
         }
-        if (needsLanguageEnv && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (needsLanguageEnv && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "language env"));
         }
-        if (needsInstrumentEnv && !TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (needsInstrumentEnv && TruffleTestAssumptions.isStrongEncapsulation()) {
             throw new AssertionError(String.format(STRONG_ENCAPSULATION_MESSAGE_TEMPLATE, "instrument env"));
         }
 

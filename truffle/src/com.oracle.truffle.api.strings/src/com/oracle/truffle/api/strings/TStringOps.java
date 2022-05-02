@@ -475,8 +475,9 @@ final class TStringOps {
         final int b1 = readValue(b, arrayB, strideB, b.length() - 1);
         final int mask0 = maskB == null ? 0 : readValue(maskB, offsetMask, b.length(), strideB, b.length() - 2);
         final int mask1 = maskB == null ? 0 : readValue(maskB, offsetMask, b.length(), strideB, b.length() - 1);
-        while (index > toIndex) {
-            index = lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(location, arrayA, a.offset(), strideA, index, b.length() - 2, b0, b1, mask0, mask1);
+        final int toIndex2Consecutive = toIndex + b.length() - 2;
+        while (index > toIndex2Consecutive) {
+            index = lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(location, arrayA, a.offset(), strideA, index, toIndex2Consecutive, b0, b1, mask0, mask1);
             if (index < 0) {
                 return -1;
             }
@@ -846,8 +847,8 @@ final class TStringOps {
                         stubArrayB, stubOffsetB, strideB, isNativeB, lengthCPY);
     }
 
-    private static Object arraycopyWithStrideIntl(
-                    Node location, Object stubArrayA, long stubOffsetA, int strideA, boolean isNativeA,
+    private static Object arraycopyWithStrideIntl(Node location,
+                    Object stubArrayA, long stubOffsetA, int strideA, boolean isNativeA,
                     Object stubArrayB, long stubOffsetB, int strideB, boolean isNativeB, int lengthCPY) {
         if (strideA == strideB) {
             int byteLength = lengthCPY << strideA;
@@ -918,12 +919,12 @@ final class TStringOps {
         return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
     }
 
-    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid) {
+    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid, boolean isAtEnd) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 0, isNative);
         final long stubOffset = stubOffset(array, offset, 0, 0, isNative);
-        if (assumeValid) {
+        if (assumeValid && !Encodings.isUTF8ContinuationByte(readS0(array, offset, length, 0)) && (isAtEnd || !Encodings.isUTF8ContinuationByte(readS0(array, offset, length + 1, length)))) {
             return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
         } else {
             long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
@@ -1198,7 +1199,7 @@ final class TStringOps {
 
     private static int runLastIndexOf2ConsecutiveWithOrMaskWithStride(Node location, Object array, long offset, int stride, boolean isNative, int fromIndex, int toIndex,
                     int c1, int c2, int mask1, int mask2) {
-        for (int i = fromIndex - 1; i >= toIndex; i--) {
+        for (int i = fromIndex - 1; i > toIndex; i--) {
             if ((readValue(array, offset, stride, i - 1, isNative) | mask1) == c1 && (readValue(array, offset, stride, i, isNative) | mask2) == c2) {
                 return i - 1;
             }

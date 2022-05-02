@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,6 +34,7 @@ import java.io.IOException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class ThreadsInteropTest extends InteropTestBase {
@@ -50,17 +51,23 @@ public class ThreadsInteropTest extends InteropTestBase {
         }
     }
 
-    @Test
-    public void testExternalThreads() throws IOException {
+    static Value cpart;
+
+    @BeforeClass
+    public static void parseTestFile() throws IOException {
         Source cpartSource = Source.newBuilder("llvm", InteropTestBase.getTestBitcodeFile("pthread_test.c")).build();
-        Value cpart = runWithPolyglot.getPolyglotContext().eval(cpartSource);
+        cpart = runWithPolyglot.getPolyglotContext().eval(cpartSource);
+    }
+
+    @Test
+    public void testExternalThreads() {
         Value[] ret = new Value[THREAD_COUNT];
         Thread[] threads = new Thread[THREAD_COUNT];
 
         for (int i = 0; i < THREAD_COUNT; i++) {
             final int threadIdx = i;
             threads[threadIdx] = new Thread(() -> {
-                ret[threadIdx] = cpart.invokeMember("get_self");
+                ret[threadIdx] = cpart.invokeMember("get_self", threadIdx);
             });
             threads[threadIdx].start();
         }
@@ -72,5 +79,55 @@ public class ThreadsInteropTest extends InteropTestBase {
             }
         }
         assertDifferent(ret);
+
+        Value different = cpart.invokeMember("check_different");
+        Assert.assertEquals("different", 1, different.asInt());
+    }
+
+    @Test
+    public void testFileIOLock() {
+        Value buffer = cpart.invokeMember("open_buffer");
+        Thread[] threads = new Thread[THREAD_COUNT];
+
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            final int threadIdx = i;
+            threads[threadIdx] = new Thread(() -> {
+                cpart.invokeMember("concurrent_put", buffer, threadIdx);
+            });
+            threads[threadIdx].start();
+        }
+
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException ex) {
+            }
+        }
+
+        Value result = cpart.invokeMember("finalize_buffer", buffer);
+
+        // Expected result: THREAD_COUNT * 20 lines, each containing "thread <idx> <lineno>"
+        // Where <idx> is the thread index (0 to THREAD_COUNT-1), and <lineno> is from 0 to 19.
+        int[] lineno = new int[THREAD_COUNT];
+        result.toString().lines().forEachOrdered(line -> {
+            String[] words = line.split(" ");
+
+            String expected = "thread <idx> <lineno>";
+            if (words.length > 1) {
+                try {
+                    int idx = Integer.parseInt(words[1]);
+                    int nextLineno = lineno[idx]++;
+                    expected = String.format("thread %d %d", idx, nextLineno);
+                } catch (NumberFormatException ex) {
+                    // ignore, the assert below will give a better error message
+                }
+            }
+
+            Assert.assertEquals("line", expected, line);
+        });
+
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            Assert.assertEquals("line count for thread " + i, 20, lineno[i]);
+        }
     }
 }

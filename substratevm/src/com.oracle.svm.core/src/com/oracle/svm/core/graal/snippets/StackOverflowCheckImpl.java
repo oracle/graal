@@ -116,8 +116,6 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{THROW_CACHED_STACK_OVERFLOW_ERROR, THROW_NEW_STACK_OVERFLOW_ERROR};
 
-    private static final StackOverflowError CACHED_STACK_OVERFLOW_ERROR = new StackOverflowError(ImplicitExceptions.NO_STACK_MSG);
-
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
     @Override
     public void initialize(IsolateThread thread) {
@@ -141,6 +139,12 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isWithinBounds(UnsignedWord address) {
+        return stackBoundaryTL.get().belowOrEqual(address) && VMThreads.StackBase.get().aboveOrEqual(address);
+    }
+
+    @Override
     public int getState() {
         return yellowZoneStateTL.get();
     }
@@ -161,7 +165,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void makeYellowZoneAvailable() {
-        setState(yellowZoneStateTL.get() + 1);
+        // Performance-sensitive: intentionally not calling setState(yellowZoneStateTL.get() + 1)
+        int oldState = yellowZoneStateTL.get();
+        int newState = oldState + 1;
+        yellowZoneStateTL.set(newState);
+        onYellowZoneMadeAvailable(oldState, newState);
     }
 
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
@@ -201,7 +209,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
     @Override
     public void protectYellowZone() {
-        setState(yellowZoneStateTL.get() - 1);
+        // Performance-sensitive: intentionally not calling setState(yellowZoneStateTL.get() - 1)
+        int oldState = yellowZoneStateTL.get();
+        int newState = oldState - 1;
+        yellowZoneStateTL.set(newState);
+        onYellowZoneProtected(oldState, newState);
     }
 
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
@@ -268,7 +280,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         VMError.guarantee(StackOverflowCheckImpl.yellowZoneStateTL.get() != StackOverflowCheckImpl.STATE_UNINITIALIZED,
                         "Stack boundary for the current thread not yet initialized. Only uninterruptible code with no stack overflow checks can run at this point.");
 
-        throw CACHED_STACK_OVERFLOW_ERROR;
+        throw ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
     }
 
     /**
@@ -285,7 +297,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
         StackOverflowError error;
         if (state > StackOverflowCheckImpl.STATE_YELLOW_ENABLED || Heap.getHeap().isAllocationDisallowed()) {
-            error = CACHED_STACK_OVERFLOW_ERROR;
+            error = ImplicitExceptions.CACHED_STACK_OVERFLOW_ERROR;
         } else {
             try {
                 StackOverflowCheck.singleton().makeYellowZoneAvailable();

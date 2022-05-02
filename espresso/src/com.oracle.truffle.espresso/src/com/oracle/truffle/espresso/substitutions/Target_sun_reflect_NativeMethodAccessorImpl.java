@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -220,7 +221,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
      */
     @Substitution
     public static @JavaType(Object.class) StaticObject invoke0(@JavaType(java.lang.reflect.Method.class) StaticObject guestMethod, @JavaType(Object.class) StaticObject receiver,
-                    @JavaType(Object[].class) StaticObject args, @Inject Meta meta) {
+                    @JavaType(Object[].class) StaticObject args, @Inject EspressoLanguage language, @Inject Meta meta) {
         StaticObject curMethod = guestMethod;
 
         Method reflectedMethod = null;
@@ -239,11 +240,12 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         }
 
         StaticObject parameterTypes = meta.java_lang_reflect_Method_parameterTypes.getObject(guestMethod);
-        StaticObject result = callMethodReflectively(meta, receiver, args, reflectedMethod, klass, parameterTypes);
+        StaticObject result = callMethodReflectively(language, meta, receiver, args, reflectedMethod, klass, parameterTypes);
         return result;
     }
 
-    public static @JavaType(Object.class) StaticObject callMethodReflectively(Meta meta, @JavaType(Object.class) StaticObject receiver, @JavaType(Object[].class) StaticObject args, Method m,
+    public static @JavaType(Object.class) StaticObject callMethodReflectively(EspressoLanguage language, Meta meta, @JavaType(Object.class) StaticObject receiver,
+                    @JavaType(Object[].class) StaticObject args, Method m,
                     Klass klass, @JavaType(Class[].class) StaticObject parameterTypes) {
         // Klass should be initialized if method is static, and could be delayed until method
         // invocation, according to specs. However, JCK tests that it is indeed always initialized
@@ -319,18 +321,18 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
             throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, "please let Karen know");
         }
 
-        int argsLen = StaticObject.isNull(args) ? 0 : args.length();
+        int argsLen = StaticObject.isNull(args) ? 0 : args.length(language);
         final Symbol<Type>[] signature = method.getParsedSignature();
 
         // Check number of arguments.
-        if (Signatures.parameterCount(signature, false) != argsLen) {
+        if (Signatures.parameterCount(signature) != argsLen) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "wrong number of arguments!");
         }
 
         Object[] adjustedArgs = new Object[argsLen];
         for (int i = 0; i < argsLen; ++i) {
-            StaticObject arg = args.get(i);
-            StaticObject paramTypeMirror = parameterTypes.get(i);
+            StaticObject arg = args.get(language, i);
+            StaticObject paramTypeMirror = parameterTypes.get(language, i);
             Klass paramKlass = paramTypeMirror.getMirrorKlass();
             // Throws guest IllegallArgumentException if the parameter cannot be casted or widened.
             adjustedArgs[i] = checkAndWiden(meta, arg, paramKlass);

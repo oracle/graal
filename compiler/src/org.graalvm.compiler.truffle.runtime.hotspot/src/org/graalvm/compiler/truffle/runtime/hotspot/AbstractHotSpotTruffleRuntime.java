@@ -51,7 +51,6 @@ import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -727,11 +726,10 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
-            FrameInstance currentFrame = runtime.getCurrentFrame();
-            if (currentFrame == null) {
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
+            if (callTarget == null) {
                 return;
             }
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) currentFrame.getCallTarget();
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
             long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;

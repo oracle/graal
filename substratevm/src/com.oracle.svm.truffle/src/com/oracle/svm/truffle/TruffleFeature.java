@@ -123,7 +123,6 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
@@ -293,7 +292,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work
-        config.registerAsCompiled((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()));
+        config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
@@ -351,8 +350,16 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsCompiled((AnalysisMethod) method);
+            config.registerAsRoot((AnalysisMethod) method, true);
         }
+
+        /*
+         * The concrete subclass of OptimizedCallTarget needs to be registered as in heap for the
+         * forced compilation of frame methods to work. Forcing compilation of a method effectively
+         * adds it as a root and non-static root methods are only compiled if types implementing
+         * them or any of their subtypes are allocated.
+         */
+        access.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass());
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system
@@ -443,14 +450,9 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     }
 
     private boolean includeCallee(ResolvedJavaMethod implementationMethod, GraalFeature.CallTreeNode calleeNode, List<AnalysisMethod> implementationMethods) {
-        Uninterruptible uninterruptibleAnnotation = implementationMethod.getAnnotation(Uninterruptible.class);
         if (implementationMethod.getAnnotation(CompilerDirectives.TruffleBoundary.class) != null) {
             return false;
-        } else if (implementationMethod.hasNeverInlineDirective()) {
-            /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
-            return false;
-        } else if (Uninterruptible.Utils.isUninterruptible(implementationMethod) && (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined())) {
-            /* The semantics of Uninterruptible would get lost during partial evaluation. */
+        } else if (!((SubstrateTruffleRuntime) Truffle.getRuntime()).isInlineable(implementationMethod)) {
             return false;
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {
             return false;
@@ -499,7 +501,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     }
 
     private void initializeMethodBlocklist(MetaAccessProvider metaAccess, FeatureAccess featureAccess) {
-        blocklistMethod(metaAccess, Object.class, "clone");
         blocklistMethod(metaAccess, Object.class, "equals", Object.class);
         blocklistMethod(metaAccess, Object.class, "hashCode");
         blocklistMethod(metaAccess, Object.class, "toString");

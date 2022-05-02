@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -63,6 +64,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -70,18 +72,19 @@ import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
-import com.oracle.svm.hosted.code.CompilationInfoSupport;
-import com.oracle.svm.hosted.code.CompileQueue;
+import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractImage;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
@@ -237,9 +240,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-            Set<AnalysisType> result = AnalysisUniverse.getAllSubtypes(baseType);
-            result.removeIf(t -> !isReachable(t));
-            return result;
+            return AnalysisUniverse.reachableSubtypes(baseType);
         }
 
         public Set<Executable> reachableMethodOverrides(Executable baseMethod) {
@@ -248,7 +249,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod, true);
+            return AnalysisUniverse.reachableMethodOverrides(baseMethod);
         }
 
         public void rescanObject(Object obj) {
@@ -324,10 +325,14 @@ public class FeatureImpl {
     public static class BeforeAnalysisAccessImpl extends AnalysisAccessBase implements Feature.BeforeAnalysisAccess {
 
         private final NativeLibraries nativeLibraries;
+        private final boolean concurrentReachabilityHandlers;
+        private final ReachabilityHandler reachabilityHandler;
 
         public BeforeAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
             super(featureHandler, imageClassLoader, bb, debugContext);
             this.nativeLibraries = nativeLibraries;
+            this.concurrentReachabilityHandlers = SubstrateOptions.RunReachabilityHandlersConcurrently.getValue(bb.getOptions());
+            this.reachabilityHandler = concurrentReachabilityHandlers ? ConcurrentReachabilityHandler.singleton() : ReachabilityHandlerFeature.singleton();
         }
 
         public NativeLibraries getNativeLibraries() {
@@ -408,21 +413,12 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(aField);
         }
 
-        public void registerAsInvoked(Executable method) {
-            registerAsInvoked(getMetaAccess().lookupJavaMethod(method));
+        public void registerAsRoot(Executable method, boolean invokeSpecial) {
+            bb.addRootMethod(method, invokeSpecial);
         }
 
-        public void registerAsInvoked(AnalysisMethod aMethod) {
-            bb.addRootMethod(aMethod).registerAsImplementationInvoked();
-        }
-
-        public void registerAsCompiled(Executable method) {
-            registerAsCompiled(getMetaAccess().lookupJavaMethod(method));
-        }
-
-        public void registerAsCompiled(AnalysisMethod aMethod) {
-            registerAsInvoked(aMethod);
-            CompilationInfoSupport.singleton().registerForcedCompilation(aMethod);
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial) {
+            bb.addRootMethod(aMethod, invokeSpecial);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {
@@ -439,22 +435,26 @@ public class FeatureImpl {
 
         @Override
         public void registerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Object... elements) {
-            ReachabilityHandlerFeature.singleton().registerReachabilityHandler(this, callback, elements);
+            reachabilityHandler.registerReachabilityHandler(this, callback, elements);
         }
 
         @Override
         public void registerMethodOverrideReachabilityHandler(BiConsumer<DuringAnalysisAccess, Executable> callback, Executable baseMethod) {
-            ReachabilityHandlerFeature.singleton().registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
+            reachabilityHandler.registerMethodOverrideReachabilityHandler(this, callback, baseMethod);
         }
 
         @Override
         public void registerSubtypeReachabilityHandler(BiConsumer<DuringAnalysisAccess, Class<?>> callback, Class<?> baseClass) {
-            ReachabilityHandlerFeature.singleton().registerSubtypeReachabilityHandler(this, callback, baseClass);
+            reachabilityHandler.registerSubtypeReachabilityHandler(this, callback, baseClass);
         }
 
         @Override
         public void registerClassInitializerReachabilityHandler(Consumer<DuringAnalysisAccess> callback, Class<?> clazz) {
-            ReachabilityHandlerFeature.singleton().registerClassInitializerReachabilityHandler(this, callback, clazz);
+            reachabilityHandler.registerClassInitializerReachabilityHandler(this, callback, clazz);
+        }
+
+        public boolean concurrentReachabilityHandlers() {
+            return concurrentReachabilityHandlers;
         }
     }
 
@@ -476,6 +476,25 @@ public class FeatureImpl {
             requireAnalysisIteration = false;
             return result;
         }
+
+    }
+
+    public static class ConcurrentAnalysisAccessImpl extends DuringAnalysisAccessImpl {
+
+        private static final String concurrentReachabilityOption = SubstrateOptionsParser.commandArgument(SubstrateOptions.RunReachabilityHandlersConcurrently, "-");
+
+        public ConcurrentAnalysisAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, Inflation bb, NativeLibraries nativeLibraries, DebugContext debugContext) {
+            super(featureHandler, imageClassLoader, bb, nativeLibraries, debugContext);
+        }
+
+        @Override
+        public void requireAnalysisIteration() {
+            String msg = "Calling DuringAnalysisAccessImpl.requireAnalysisIteration() is not necessary when running the reachability handlers concurrently during analysis. " +
+                            "To fallback to running the reachability handlers sequentially, i.e., from Feature.duringAnalysis(), you can add the " + concurrentReachabilityOption +
+                            " option to the native-image command. Note that the fallback option is deprecated and it will be removed in a future release.";
+            throw VMError.shouldNotReachHere(msg);
+        }
+
     }
 
     public static class AfterAnalysisAccessImpl extends AnalysisAccessBase implements Feature.AfterAnalysisAccess {
@@ -517,6 +536,10 @@ public class FeatureImpl {
             this.hUniverse = hUniverse;
             this.runtimeBuilder = runtimeBuilder;
             this.heap = heap;
+        }
+
+        public NativeLibraries getNativeLibraries() {
+            return runtimeBuilder.getNativeLibraries();
         }
 
         @Override
@@ -618,16 +641,20 @@ public class FeatureImpl {
     }
 
     public static class AfterCompilationAccessImpl extends CompilationAccessImpl implements Feature.AfterCompilationAccess {
-        private Collection<CompileQueue.CompileTask> compilationTasks;
+        private final Map<HostedMethod, CompileTask> compilations;
 
         public AfterCompilationAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse,
-                        Collection<CompileQueue.CompileTask> compilationTasks, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
+                        Map<HostedMethod, CompileTask> compilations, NativeImageHeap heap, DebugContext debugContext, SharedRuntimeConfigurationBuilder runtimeBuilder) {
             super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeBuilder);
-            this.compilationTasks = compilationTasks;
+            this.compilations = compilations;
         }
 
-        public Collection<CompileQueue.CompileTask> getCompilationTasks() {
-            return compilationTasks;
+        public Collection<CompileTask> getCompilationTasks() {
+            return compilations.values();
+        }
+
+        public Map<HostedMethod, CompileTask> getCompilations() {
+            return compilations;
         }
     }
 

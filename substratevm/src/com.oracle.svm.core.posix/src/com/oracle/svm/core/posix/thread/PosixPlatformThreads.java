@@ -32,6 +32,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -53,7 +54,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
@@ -129,11 +129,11 @@ public final class PosixPlatformThreads extends PlatformThreads {
         toTarget(thread).pthreadIdentifier = pthread;
     }
 
-    private static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
+    static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
         return toTarget(thread).pthreadIdentifier;
     }
 
-    private static boolean hasThreadIdentifier(Thread thread) {
+    static boolean hasThreadIdentifier(Thread thread) {
         return toTarget(thread).hasPthreadIdentifier;
     }
 
@@ -186,15 +186,15 @@ public final class PosixPlatformThreads extends PlatformThreads {
         @SuppressWarnings("unused")
         @Uninterruptible(reason = "prologue")
         static void enter(ThreadStartData data) {
-            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
+            int code = CEntryPointActions.enterAttachThread(data.getIsolate(), true, false);
             if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class)
     static WordBase pthreadStartRoutine(ThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
         freeStartData(data);

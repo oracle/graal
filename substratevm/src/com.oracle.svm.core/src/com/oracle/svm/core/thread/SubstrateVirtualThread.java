@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-// Checkstyle: stop
-
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import java.util.Locale;
@@ -37,7 +35,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -47,36 +44,24 @@ import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.util.VMError;
 
-import sun.misc.Unsafe;
-// Checkstyle: resume
-
-// Checkstyle: allow synchronization
+import jdk.internal.misc.Unsafe;
 
 /**
  * Implementation of {@link Thread} that does not correspond to an {@linkplain IsolateThread OS
  * thread} and instead gets mounted (scheduled to run) on a <em>platform thread</em> (OS thread),
  * which, until when it is unmounted again, is called its <em>carrier thread</em>.
  *
- * This class is based on Project Loom's {@code java.lang.VirtualThread}.
+ * This class is based on Project Loom's {@code java.lang.VirtualThread} (8fc1182).
  */
 final class SubstrateVirtualThread extends Thread {
-    private static final Unsafe U = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe U = Unsafe.getUnsafe();
     private static final ScheduledExecutorService UNPARKER = createDelayedTaskScheduler();
 
-    private static final long STATE;
-    private static final long PARK_PERMIT;
-    private static final long TERMINATION;
-    static {
-        try {
-            STATE = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("state"));
-            PARK_PERMIT = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("parkPermit"));
-            TERMINATION = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("termination"));
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
+    private static final long STATE = U.objectFieldOffset(SubstrateVirtualThread.class, "state");
+    private static final long PARK_PERMIT = U.objectFieldOffset(SubstrateVirtualThread.class, "parkPermit");
+    private static final long CARRIER_THREAD = U.objectFieldOffset(SubstrateVirtualThread.class, "carrierThread");
+    private static final long TERMINATION = U.objectFieldOffset(SubstrateVirtualThread.class, "termination");
 
     // scheduler and continuation
     private final Executor scheduler;
@@ -100,11 +85,14 @@ final class SubstrateVirtualThread extends Thread {
     private static final int RUNNABLE_SUSPENDED = (RUNNABLE | SUSPENDED);
     private static final int PARKED_SUSPENDED = (PARKED | SUSPENDED);
 
-    // parking permit, may eventually be merged into state
-    private volatile int parkPermit;
+    // parking permit
+    private volatile boolean parkPermit;
 
     // carrier thread when mounted
     private volatile Thread carrierThread;
+
+    // termination object when joining, created lazily if needed
+    private volatile CountDownLatch termination;
 
     /**
      * Number of active {@linkplain #pin() pinnings} of this virtual thread to its current carrier
@@ -112,9 +100,6 @@ final class SubstrateVirtualThread extends Thread {
      * when using or acquiring resources that are associated with the carrier thread.
      */
     private short pins;
-
-    // termination object when joining, created lazily if needed
-    private volatile CountDownLatch termination;
 
     SubstrateVirtualThread(Executor scheduler, Runnable task) {
         super(task);
@@ -177,7 +162,7 @@ final class SubstrateVirtualThread extends Thread {
 
     private void mount() {
         Thread carrier = PlatformThreads.currentThread.get();
-        this.carrierThread = carrier; // can be a weaker write with release semantics
+        setCarrierThread(carrier);
 
         if (JavaThreads.isInterrupted(this)) {
             PlatformThreads.setInterrupt(carrier);
@@ -201,7 +186,7 @@ final class SubstrateVirtualThread extends Thread {
 
         // break connection to carrier thread
         synchronized (interruptLock()) { // synchronize with interrupt
-            this.carrierThread = null; // can be a weaker write with release semantics
+            setCarrierThread(null);
         }
         JavaThreads.getAndClearInterruptedFlag(carrier);
     }
@@ -212,7 +197,7 @@ final class SubstrateVirtualThread extends Thread {
             return false;
         }
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        if (anchor.isNonNull() && cont.sp.aboveThan(anchor.getLastJavaSP())) {
+        if (anchor.isNonNull() && cont.getBottomSP().aboveThan(anchor.getLastJavaSP())) {
             return false;
         }
 
@@ -232,7 +217,7 @@ final class SubstrateVirtualThread extends Thread {
             setState(PARKED);
 
             // may have been unparked while parking
-            if (parkPermit() && compareAndSetState(PARKED, RUNNABLE)) {
+            if (parkPermit && compareAndSetState(PARKED, RUNNABLE)) {
                 submitRunContinuation();
             }
         } else if (s == YIELDING) {   // Thread.yield
@@ -258,7 +243,7 @@ final class SubstrateVirtualThread extends Thread {
 
         setState(PINNED);
         try {
-            if (!parkPermit()) {
+            if (!parkPermit) {
                 if (!timed) {
                     U.park(false, 0);
                 } else if (nanos > 0) {
@@ -395,7 +380,7 @@ final class SubstrateVirtualThread extends Thread {
                 try {
                     Thread carrier = carrierThread;
                     if (carrier != null && state() == PINNED) {
-                        U.unpark(carrier);
+                        Unsafe.getUnsafe().unpark(carrier);
                     }
                 } finally {
                     releaseInterruptLockAndSwitchBack(token);
@@ -630,7 +615,7 @@ final class SubstrateVirtualThread extends Thread {
         CountDownLatch termination = this.termination;
         if (termination == null) {
             termination = new CountDownLatch(1);
-            if (!U.compareAndSwapObject(this, TERMINATION, null, termination)) {
+            if (!U.compareAndSetObject(this, TERMINATION, null, termination)) {
                 termination = this.termination;
             }
         }
@@ -646,27 +631,25 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private boolean compareAndSetState(int expectedValue, int newValue) {
-        return U.compareAndSwapInt(this, STATE, expectedValue, newValue);
-    }
-
-    private boolean parkPermit() {
-        return parkPermit != 0;
+        return U.compareAndSetInt(this, STATE, expectedValue, newValue);
     }
 
     private void setParkPermit(boolean newValue) {
-        int v = newValue ? 1 : 0;
-        if (parkPermit != v) {
-            parkPermit = v;
+        if (parkPermit != newValue) {
+            parkPermit = newValue;
         }
     }
 
     private boolean getAndSetParkPermit(boolean newValue) {
-        int v = newValue ? 1 : 0;
-        if (parkPermit != v) {
-            return U.getAndSetInt(this, PARK_PERMIT, v) != 0;
+        if (parkPermit != newValue) {
+            return U.getAndSetBoolean(this, PARK_PERMIT, newValue);
         } else {
             return newValue;
         }
+    }
+
+    private void setCarrierThread(Thread carrier) {
+        U.putObjectRelease(this, CARRIER_THREAD, carrier);
     }
 
     private void dispatchUncaughtException(Throwable e) {
@@ -693,6 +676,10 @@ final class SubstrateVirtualThread extends Thread {
 
     @Override
     public void run() {
+    }
+
+    Executor getScheduler() {
+        return scheduler;
     }
 
     private static ScheduledExecutorService createDelayedTaskScheduler() {

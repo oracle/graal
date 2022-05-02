@@ -50,6 +50,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 /**
  * Smoke test of the API methods.
  */
+@SuppressWarnings("deprecation")
 public class MemoryFenceTest {
 
     @BeforeClass

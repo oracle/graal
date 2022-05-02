@@ -30,6 +30,7 @@ import java.util.Formatter;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -122,6 +123,7 @@ public class GraalHotSpotVMConfigAccess {
      */
     public final String osArch;
 
+    protected static final Version JVMCI_22_1_b01 = new Version(22, 1, 1);
     protected static final Version JVMCI_21_1_b02 = new Version(21, 1, 2);
     public static final Version JVMCI_20_3_b04 = new Version(20, 3, 4);
     protected static final Version JVMCI_20_2_b04 = new Version(20, 2, 4);
@@ -276,6 +278,22 @@ public class GraalHotSpotVMConfigAccess {
             return access.getConstant(name, type, notPresent);
         }
         return notPresent;
+    }
+
+    /**
+     * Verifies that if the constant described by {@code name} and {@code type} is defined by the
+     * VM, it has the value {@code expect}.
+     *
+     * @return {@code expect}
+     */
+    public <T> T verifyConstant(String name, Class<T> type, T expect) {
+        if (vmConstants.containsKey(name)) {
+            T value = access.getConstant(name, type, expect);
+            if (!Objects.equals(value, expect)) {
+                recordError(name, unexpected, String.valueOf(value));
+            }
+        }
+        return expect;
     }
 
     /**

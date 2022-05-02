@@ -76,6 +76,9 @@ class Instance {
         DebugContext debug = ir.getDebug();
         FrameMap frameMap = lirGenRes.getFrameMap();
         for (AbstractBlockBase<?> block : ir.linearScanOrder()) {
+            if (block == null) {
+                continue;
+            }
             for (LIRInstruction op : ir.getLIRforBlock(block)) {
                 op.forEachState((instruction, state) -> doState(debug, frameMap, instruction, state));
             }

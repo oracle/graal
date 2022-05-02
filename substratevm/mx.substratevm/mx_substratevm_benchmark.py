@@ -303,7 +303,16 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     def extra_profile_run_arg(self, benchmark, args, image_run_args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_profile_run_arg(benchmark, args, image_run_args)
         # remove -r X argument from image run args
-        return ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+        extra_profile_run_args = ['-r', '1'] + mx_sdk_benchmark.strip_args_with_number('-r', user_args)
+        if benchmark == "dotty" and self.version() not in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
+            # Before Renaissance 0.14.0, mx was manually placing all dependencies on the same classpath at build time
+            # and at run time. As of Renaissance 0.14.0, we use the standalone mode which uses the classpath defined
+            # in the manifest file at build time only. Dotty is a special benchmark since it also needs to know
+            # this classpath at runtime to be able to perform compilations. The location of the fatjar must then be
+            # explicitly passed also to the final image.
+            return ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))] + extra_profile_run_args
+        else:
+            return extra_profile_run_args
 
     def extra_agent_profile_run_arg(self, benchmark, args, image_run_args):
         user_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_agent_profile_run_arg(benchmark, args, image_run_args)
@@ -316,6 +325,15 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             return user_args
         else:
             return []
+
+    def build_assertions(self, benchmark, is_gate):
+        build_assertions = super(RenaissanceNativeImageBenchmarkSuite, self).build_assertions(benchmark, is_gate)
+        if benchmark == 'db-shootout' and is_gate:
+            # We are skipping build assertions in this package due to a problem with reflective access to a fields
+            # annotated with InjectAccessors (GR-36056).
+            return build_assertions + ['-J-da:com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider']
+        else:
+            return build_assertions
 
     def extra_image_build_argument(self, benchmark, args):
         default_args = _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS[benchmark] if benchmark in _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS else []

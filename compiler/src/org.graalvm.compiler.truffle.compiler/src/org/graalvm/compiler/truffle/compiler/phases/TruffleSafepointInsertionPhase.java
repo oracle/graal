@@ -141,7 +141,7 @@ public final class TruffleSafepointInsertionPhase extends Phase {
 
         assert node.asJavaConstant() != null : "must be a java constant";
         assert nodeType.isAssignableFrom(node.stamp(NodeView.DEFAULT).javaType(providers.getMetaAccess())) : "must be a truffle node";
-        node = graph.maybeAddOrUnique(node);
+        node = graph.addOrUnique(node);
         graph.addBeforeFixed(returnNode, graph.add(new TruffleSafepointNode(node)));
     }
 
@@ -189,12 +189,12 @@ public final class TruffleSafepointInsertionPhase extends Phase {
             // not an interesting receiver type
             return null;
         }
-        if (state.values() == null || state.values().size() == 0) {
-            // not enough values
+        if (state.localsSize() == 0) {
+            // not enough locals
             return null;
         }
-        // receiver type is located at index 0
-        ValueNode value = state.values().get(0);
+        // receiver type is local 0
+        ValueNode value = state.localAt(0);
         if (value == null) {
             // no receiver value available
             return null;

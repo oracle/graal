@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jni.hosted;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -79,6 +80,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
@@ -94,6 +96,7 @@ import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIValue;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -116,7 +119,12 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
+public class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
+    public static class Factory {
+        public JNIJavaCallWrapperMethod create(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+            return new JNIJavaCallWrapperMethod(reflectMethod, callVariant, nonVirtual, metaAccess, nativeLibs);
+        }
+    }
 
     public enum CallVariant {
         VARARGS,
@@ -130,7 +138,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
     private final CallVariant callVariant;
     private final boolean nonVirtual;
 
-    public JNIJavaCallWrapperMethod(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+    protected JNIJavaCallWrapperMethod(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
         super(createName(reflectMethod, callVariant, nonVirtual),
                         metaAccess.lookupJavaType(JNIJavaCallWrappers.class),
                         createSignature(reflectMethod, callVariant, nonVirtual, metaAccess),
@@ -245,10 +253,17 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
             ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedReceiver, hubNode));
             kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROFILE);
             kit.thenPart();
-            ValueNode createdObjectOrNull = createNewObjectCall(metaAccess, kit, invokeMethod, state, args);
+            ValueNode createdObjectOrNull;
+            if (invokeMethod.getDeclaringClass().isAbstract()) {
+                createdObjectOrNull = throwInstantiationException(metaAccess, kit, state);
+            } else {
+                createdObjectOrNull = createNewObjectCall(metaAccess, kit, invokeMethod, state, args);
+            }
+
             kit.elsePart();
             args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
             ValueNode unboxedReceiverOrNull = createMethodCall(kit, invokeMethod, invokeKind, state, args);
+
             AbstractMergeNode merge = kit.endIf();
             merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
             returnValue = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{createdObjectOrNull, unboxedReceiverOrNull}));
@@ -344,12 +359,30 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
         return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdObject, exceptionValue}));
     }
 
+    private static final Constructor<InstantiationException> INSTANTIATION_EXCEPTION_CONSTRUCTOR = ReflectionUtil.lookupConstructor(InstantiationException.class);
+
+    /**
+     * When trying to allocate an abstract class, allocate and throw exception instead. The
+     * exception is installed as the JNI pending exception, and the null constant is returned.
+     */
+    private static ValueNode throwInstantiationException(UniverseMetaAccess metaAccess, JNIGraphKit kit, FrameStateBuilder state) {
+        ResolvedJavaMethod throwMethod = FactoryMethodSupport.singleton().lookup(metaAccess, metaAccess.lookupJavaMethod(INSTANTIATION_EXCEPTION_CONSTRUCTOR), true);
+        int bci = kit.bci();
+        kit.startInvokeWithException(throwMethod, InvokeKind.Static, state, bci);
+        kit.noExceptionPart();
+        kit.append(new LoweredDeadEndNode());
+        kit.exceptionPart();
+        kit.setPendingException(kit.exceptionObject());
+        kit.endInvokeWithException();
+        return kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
+    }
+
     /**
      * Builds a JNI {@code Call<Type>Method} call, returning a node that contains the return value
      * or null/zero/false when an exception occurred (in which case the exception becomes a JNI
      * pending exception).
      */
-    private static ValueNode createMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
+    protected ValueNode createMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
         int bci = kit.bci();
         InvokeWithExceptionNode invoke = startInvokeWithRetainedException(kit, invokeMethod, invokeKind, state, bci, args);
         AbstractMergeNode invokeMerge = kit.endInvokeWithException();
@@ -370,7 +403,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
         return returnValue;
     }
 
-    private static InvokeWithExceptionNode startInvokeWithRetainedException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
+    protected static InvokeWithExceptionNode startInvokeWithRetainedException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
         ValueNode formerPendingException = kit.getAndClearPendingException();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
 

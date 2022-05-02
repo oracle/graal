@@ -54,4 +54,10 @@ public class SideEffectFreeWrite extends WriteNode {
     public boolean hasSideEffect() {
         return false;
     }
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return MemoryKill.NO_LOCATION;
+    }
+
 }

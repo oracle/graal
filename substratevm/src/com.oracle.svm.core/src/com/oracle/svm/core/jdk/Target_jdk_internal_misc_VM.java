@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.Map;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -39,6 +38,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+
+import jdk.internal.misc.Unsafe;
 
 @TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {
@@ -125,7 +126,7 @@ final class DirectMemoryAccessors {
         pageAlignDirectMemory = Boolean.getBoolean("sun.nio.PageAlignDirectMemory");
 
         /* Ensure values are published to other threads before marking fields as initialized. */
-        GraalUnsafeAccess.getUnsafe().storeFence();
+        Unsafe.getUnsafe().storeFence();
         initialized = true;
     }
 }

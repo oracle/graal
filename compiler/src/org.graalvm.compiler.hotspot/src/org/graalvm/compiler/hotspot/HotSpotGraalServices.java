@@ -26,9 +26,8 @@ package org.graalvm.compiler.hotspot;
 
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodHandles.Lookup;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.util.Objects;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -43,31 +42,28 @@ import jdk.vm.ci.services.Services;
  */
 public class HotSpotGraalServices {
 
-    // NOTE: The use of MethodHandles to access JVMCI API is to support
+    // NOTE: The use of reflection to access JVMCI API is to support
     // compiling on JDKs with varying versions of JVMCI.
 
-    private static final MethodHandle runtimeExitHotSpot;
-    private static final MethodHandle scopeOpenLocalScope;
-    private static final MethodHandle scopeEnterGlobalScope;
+    private static final Method runtimeExitHotSpot;
+    private static final Method scopeOpenLocalScope;
+    private static final Method scopeEnterGlobalScope;
 
-    private static final MethodHandle hotSpotSpeculationLogConstructor;
+    private static final Constructor<? extends HotSpotSpeculationLog> hotSpotSpeculationLogConstructor;
 
     static {
-        MethodHandle enterGlobalScope = null;
-        MethodHandle openLocalScope = null;
-        MethodHandle exitHotSpot = null;
-        MethodHandle constructor = null;
+        Method enterGlobalScope = null;
+        Method openLocalScope = null;
+        Method exitHotSpot = null;
+        Constructor<? extends HotSpotSpeculationLog> hslConstructor = null;
         boolean firstFound = false;
         try {
-            Lookup l = MethodHandles.lookup();
             Class<?> scopeClass = Class.forName("jdk.vm.ci.hotspot.HotSpotObjectConstantScope");
-            enterGlobalScope = l.unreflect(scopeClass.getDeclaredMethod("enterGlobalScope"));
+            enterGlobalScope = scopeClass.getDeclaredMethod("enterGlobalScope");
             firstFound = true;
-            openLocalScope = l.unreflect(scopeClass.getDeclaredMethod("openLocalScope", Object.class));
-            exitHotSpot = l.unreflect(HotSpotJVMCIRuntime.class.getDeclaredMethod("exitHotSpot", Integer.TYPE));
-            constructor = l.unreflectConstructor(HotSpotSpeculationLog.class.getDeclaredConstructor(Long.TYPE));
-        } catch (IllegalAccessException e) {
-            throw new InternalError(e);
+            openLocalScope = scopeClass.getDeclaredMethod("openLocalScope", Object.class);
+            exitHotSpot = HotSpotJVMCIRuntime.class.getDeclaredMethod("exitHotSpot", Integer.TYPE);
+            hslConstructor = HotSpotSpeculationLog.class.getDeclaredConstructor(Long.TYPE);
         } catch (Exception e) {
             // If the very first method is unavailable assume nothing is available. Otherwise only
             // some are missing so complain about it.
@@ -78,7 +74,7 @@ public class HotSpotGraalServices {
         runtimeExitHotSpot = exitHotSpot;
         scopeEnterGlobalScope = enterGlobalScope;
         scopeOpenLocalScope = openLocalScope;
-        hotSpotSpeculationLogConstructor = constructor;
+        hotSpotSpeculationLogConstructor = hslConstructor;
     }
 
     /**
@@ -94,7 +90,7 @@ public class HotSpotGraalServices {
     public static CompilationContext enterGlobalCompilationContext() {
         if (scopeEnterGlobalScope != null) {
             try {
-                AutoCloseable impl = (AutoCloseable) scopeEnterGlobalScope.invoke();
+                AutoCloseable impl = (AutoCloseable) scopeEnterGlobalScope.invoke(null);
                 return impl == null ? null : new CompilationContext(impl);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
@@ -115,7 +111,7 @@ public class HotSpotGraalServices {
     public static CompilationContext openLocalCompilationContext(Object description) {
         if (scopeOpenLocalScope != null) {
             try {
-                AutoCloseable impl = (AutoCloseable) scopeOpenLocalScope.invoke(Objects.requireNonNull(description));
+                AutoCloseable impl = (AutoCloseable) scopeOpenLocalScope.invoke(null, Objects.requireNonNull(description));
                 return impl == null ? null : new CompilationContext(impl);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
@@ -146,7 +142,7 @@ public class HotSpotGraalServices {
     public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {
         if (hotSpotSpeculationLogConstructor != null) {
             try {
-                return (SpeculationLog) hotSpotSpeculationLogConstructor.invoke(cachedFailedSpeculationsAddress);
+                return hotSpotSpeculationLogConstructor.newInstance(cachedFailedSpeculationsAddress);
             } catch (Throwable e) {
                 throw new InternalError(e);
             }

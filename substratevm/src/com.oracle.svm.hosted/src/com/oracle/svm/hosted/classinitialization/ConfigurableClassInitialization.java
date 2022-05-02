@@ -34,14 +34,13 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
-
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -52,8 +51,9 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -77,12 +77,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      */
     private final ConcurrentMap<Class<?>, InitKind> classInitKinds = new ConcurrentHashMap<>();
 
-    /*
+    /**
      * These two are intentionally static to keep the reference to objects and classes that were
      * initialized in the JDK.
      */
     private static final Map<Class<?>, StackTraceElement[]> initializedClasses = new ConcurrentHashMap<>();
-    private static final Map<Object, StackTraceElement[]> instantiatedObjects = new ConcurrentHashMap<>();
+    /**
+     * Instantiated objects must be traced using their identities as their hashCode may change
+     * during the execution. We also want two objects of the same class that have the same hash and
+     * are equal to be mapped as two distinct entries.
+     */
+    private static final Map<Object, StackTraceElement[]> instantiatedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
 
     private boolean configurationSealed;
 
@@ -175,43 +180,43 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
      */
     private InitKind ensureClassInitialized(Class<?> clazz, boolean allowErrors) {
         try {
-            GraalUnsafeAccess.ensureClassInitialized(clazz);
+            Unsafe.getUnsafe().ensureClassInitialized(clazz);
             return InitKind.BUILD_TIME;
         } catch (NoClassDefFoundError ex) {
-            if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                if (!allowErrors) {
-                    System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
-                                    ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time because option " +
-                                    SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+") + " is used for image building. " +
-                                    instructionsToInitializeAtRuntime(clazz));
-                }
+            if (allowErrors) {
+                return InitKind.RUN_TIME;
+            } else if (!LinkAtBuildTimeSupport.singleton().linkAtBuildTime(clazz)) {
+                System.out.println("Warning: class initialization of class " + clazz.getTypeName() + " failed with exception " +
+                                ex.getClass().getTypeName() + (ex.getMessage() == null ? "" : ": " + ex.getMessage()) + ". This class will be initialized at run time. " +
+                                instructionsToInitializeAtRuntime(clazz));
                 return InitKind.RUN_TIME;
             } else {
-                return reportInitializationError(allowErrors, clazz, ex);
-
+                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(clazz) + " " +
+                                instructionsToInitializeAtRuntime(clazz), clazz, ex);
             }
         } catch (Throwable t) {
-            return reportInitializationError(allowErrors, clazz, t);
+            if (allowErrors) {
+                return InitKind.RUN_TIME;
+            } else {
+                return reportInitializationError("Class initialization of " + clazz.getTypeName() + " failed. " +
+                                instructionsToInitializeAtRuntime(clazz), clazz, t);
+            }
         }
     }
 
-    private InitKind reportInitializationError(boolean allowErrors, Class<?> clazz, Throwable t) {
-        if (allowErrors) {
+    private InitKind reportInitializationError(String msg, Class<?> clazz, Throwable t) {
+        if (unsupportedFeatures != null) {
+            /*
+             * Report an unsupported feature during static analysis, so that we can collect multiple
+             * error messages without aborting analysis immediately. Returning InitKind.RUN_TIME
+             * ensures that analysis can continue, even though eventually an error is reported (so
+             * no image will be created).
+             */
+            unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
             return InitKind.RUN_TIME;
         } else {
-            String msg = String.format("Class initialization of %s failed. %s", clazz.getTypeName(), instructionsToInitializeAtRuntime(clazz));
-            if (unsupportedFeatures != null) {
-                /*
-                 * Report an unsupported feature during static analysis, so that we can collect
-                 * multiple error messages without aborting analysis immediately. Returning
-                 * InitKind.RUN_TIME ensures that analysis can continue, even though eventually an
-                 * error is reported (so no image will be created).
-                 */
-                unsupportedFeatures.addMessage(clazz.getTypeName(), null, msg, null, t);
-                return InitKind.RUN_TIME;
-            } else {
-                throw UserError.abort(t, "%s", msg);
-            }
+            throw UserError.abort(t, "%s", msg);
         }
     }
 
@@ -268,7 +273,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         setSubclassesAsRunTime(clazz);
         checkEagerInitialization(clazz);
 
-        if (!GraalUnsafeAccess.shouldBeInitialized(clazz)) {
+        if (!Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
             throw UserError.abort("The class %1$s has already been initialized (%2$s); it is too late to register %1$s for build-time initialization. %3$s",
                             clazz.getTypeName(), reason,
                             classInitializationErrorMessage(clazz, "Try avoiding this conflict by avoiding to initialize the class that caused initialization of " + clazz.getTypeName() +
@@ -396,7 +401,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         checkEagerInitialization(clazz);
 
         try {
-            GraalUnsafeAccess.ensureClassInitialized(clazz);
+            Unsafe.getUnsafe().ensureClassInitialized(clazz);
         } catch (Throwable ex) {
             throw UserError.abort(ex, "Class initialization failed for %s. The class is requested for re-running (reason: %s)", clazz.getTypeName(), reason);
         }
@@ -522,7 +527,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
          */
         Set<Class<?>> illegalyInitialized = new HashSet<>();
         for (Map.Entry<Class<?>, InitKind> entry : classInitKinds.entrySet()) {
-            if (entry.getValue().isRunTime() && !GraalUnsafeAccess.shouldBeInitialized(entry.getKey())) {
+            if (entry.getValue().isRunTime() && !Unsafe.getUnsafe().shouldBeInitialized(entry.getKey())) {
                 illegalyInitialized.add(entry.getKey());
             }
         }
@@ -587,7 +592,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
 
         /* Well, and enums that got initialized while annotations are parsed. */
-        if (clazz.isEnum() && !GraalUnsafeAccess.shouldBeInitialized(clazz)) {
+        if (clazz.isEnum() && !Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
             if (memoize) {
                 forceInitializeHosted(clazz, "enums referred in annotations must be initialized", false);
             }

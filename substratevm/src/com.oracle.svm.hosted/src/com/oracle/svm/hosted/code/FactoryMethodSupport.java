@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FactoryMethodHolder;
 import com.oracle.svm.core.code.FactoryThrowMethodHolder;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
@@ -72,6 +73,7 @@ public class FactoryMethodSupport {
         AnalysisUniverse aUniverse = aMetaAccess.getUniverse();
 
         AnalysisMethod aConstructor = constructor instanceof HostedMethod ? ((HostedMethod) constructor).getWrapped() : (AnalysisMethod) constructor;
+        VMError.guarantee(aConstructor.getDeclaringClass().isInstanceClass() && !aConstructor.getDeclaringClass().isAbstract(), "Must be a non-abstract instance class");
         Map<AnalysisMethod, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;
         FactoryMethod factoryMethod = methods.computeIfAbsent(aConstructor, key -> {
             /*
@@ -96,10 +98,6 @@ public class FactoryMethodSupport {
         } else {
             return aFactoryMethod;
         }
-    }
-
-    protected boolean inlineConstructor(@SuppressWarnings("unused") ResolvedJavaMethod constructor) {
-        return false;
     }
 
     protected AbstractNewObjectNode createNewInstance(HostedGraphKit kit, ResolvedJavaType type, boolean fillContents) {

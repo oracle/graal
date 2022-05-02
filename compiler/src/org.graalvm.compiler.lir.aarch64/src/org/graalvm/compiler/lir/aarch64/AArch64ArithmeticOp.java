@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ import jdk.vm.ci.meta.JavaConstant;
 public enum AArch64ArithmeticOp {
     // TODO At least add and sub *can* be used with SP, so this should be supported
     NEG,
+    NEGS,
     NOT,
     ADD(ADDSUBTRACT),
     ADDS(ADDSUBTRACT),
@@ -152,6 +153,9 @@ public enum AArch64ArithmeticOp {
             switch (opcode) {
                 case NEG:
                     masm.sub(size, dst, zr, src);
+                    break;
+                case NEGS:
+                    masm.subs(size, dst, zr, src);
                     break;
                 case FNEG:
                     masm.fneg(size, dst, src);

@@ -82,9 +82,10 @@ public final class TruffleStackTraceElement {
      * Returns a node representing the callsite on the stack.
      * <p>
      * Returns <code>null</code> if no detailed callsite information is available. This is the case
-     * when {@link CallTarget#call(Object...)} is used or for the top-of-the-stack element if
+     * when {@link CallTarget#call(Object...)} is used or for the top-of-the-stack element or if the
+     * exception is an internal exception or the
      * {@link com.oracle.truffle.api.exception.AbstractTruffleException#getLocation()} returned
-     * <code>null</code> or the exception wasn't a {@link TruffleException}.
+     * <code>null</code>.
      * <p>
      * See {@link FrameInstance#getCallNode()} for the relation between callsite and CallTarget.
      *
@@ -131,7 +132,7 @@ public final class TruffleStackTraceElement {
     public Object getGuestObject() {
         assert LanguageAccessor.engineAccess().getCurrentCreatorTruffleContext() != null : "The TruffleContext must be entered.";
         Object guestObject = LanguageAccessor.nodesAccess().translateStackTraceElement(this);
-        assert LanguageAccessor.exceptionAccess().assertGuestObject(guestObject);
+        assert LanguageAccessor.EXCEPTIONS.assertGuestObject(guestObject);
         return guestObject;
     }
 

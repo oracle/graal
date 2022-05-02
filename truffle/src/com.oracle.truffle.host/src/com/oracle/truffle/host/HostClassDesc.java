@@ -163,12 +163,12 @@ final class HostClassDesc {
         }
 
         private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
-            return Modifier.isPublic(declaringClass.getModifiers()) && HostAccessor.JDKSERVICES.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
+            return Modifier.isPublic(declaringClass.getModifiers()) && HostContext.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
         }
 
         private static HostMethodDesc collectPublicConstructors(HostClassCache hostAccess, Class<?> type) {
             HostMethodDesc ctor = null;
-            if (isClassAccessible(type, hostAccess)) {
+            if (isClassAccessible(type, hostAccess) && !Modifier.isAbstract(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;

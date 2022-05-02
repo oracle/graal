@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -374,7 +374,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      * @see LoopNode LoopNode on how to use loop nodes.
      * @deprecated without replacement
      */
-    @Deprecated
+    @Deprecated(since = "22.0")
     public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
                     com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
         if ((readFrameSlots == null) != (writtenFrameSlots == null)) {
@@ -389,7 +389,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      *             com.oracle.truffle.api.frame.FrameSlot[]) instead.
      */
     @SuppressWarnings("unused")
-    @Deprecated
+    @Deprecated(since = "20.2")
     public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, int invalidationBackoff, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
                     com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
         return createOSRLoop(repeating, osrThreshold, readFrameSlots, writtenFrameSlots);

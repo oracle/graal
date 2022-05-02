@@ -89,16 +89,16 @@ public final class DeoptimizationFeature implements GraalFeature {
          * The deoptimization stub is never called directly. It is patched in as the new return
          * address during deoptimization.
          */
-        access.registerAsCompiled(deoptStubMethod);
+        access.registerAsRoot(deoptStubMethod, true);
 
         /*
          * The deoptimize run time call is not used for method in the native image, but only for
          * runtime compiled methods. Make sure it gets compiled.
          */
-        access.registerAsCompiled((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()));
+        access.registerAsRoot((AnalysisMethod) DeoptimizationRuntime.DEOPTIMIZE.findMethod(access.getMetaAccess()), true);
 
         if (DeoptTester.enabled()) {
-            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()));
+            access.getBigBang().addRootMethod((AnalysisMethod) DeoptTester.DEOPTTEST.findMethod(access.getMetaAccess()), true);
         }
     }
 

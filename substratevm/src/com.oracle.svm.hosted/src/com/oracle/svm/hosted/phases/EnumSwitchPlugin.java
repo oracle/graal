@@ -141,7 +141,7 @@ final class EnumSwitchFeature implements GraalFeature {
         ImageSingletons.add(EnumSwitchPluginRegistry.class, new EnumSwitchPluginRegistry());
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         bb = access.getBigBang();
-        access.getHostVM().addMethodAfterParsingHook(this::onMethodParsed);
+        access.getHostVM().addMethodAfterParsingListener(this::onMethodParsed);
     }
 
     private void onMethodParsed(AnalysisMethod method, StructuredGraph graph) {

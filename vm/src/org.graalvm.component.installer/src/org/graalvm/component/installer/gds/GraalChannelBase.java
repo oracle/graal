@@ -77,8 +77,17 @@ public abstract class GraalChannelBase implements SoftwareChannel, ComponentCata
     private boolean allowUpdates = false;
 
     public GraalChannelBase(CommandInput aInput, Feedback aFeedback, ComponentRegistry aRegistry) {
+        if (aInput == null) {
+            throw new IllegalArgumentException("CommandInput cannot be null.");
+        }
         this.input = aInput;
+        if (aFeedback == null) {
+            throw new IllegalArgumentException("Feedback cannot be null.");
+        }
         this.fb = aFeedback;
+        if (aRegistry == null) {
+            throw new IllegalArgumentException("ComponentRegistry cannot be null.");
+        }
         this.localRegistry = aRegistry;
     }
 

@@ -67,15 +67,6 @@ public final class FallbackInvokeWithExceptionNode extends WithExceptionNode imp
     }
 
     /**
-     * At the time when this node was created (i.e. when creating the snippet template), we did not
-     * have actual parameters so the precise stamp was not known. To fix that, we allow updating it
-     * after the snippet was instantiated.
-     */
-    public boolean updateInitialStamp(Stamp newStamp) {
-        return updateStamp(newStamp);
-    }
-
-    /**
      * @see FallbackInvokeWithExceptionNode
      */
     @NodeIntrinsic

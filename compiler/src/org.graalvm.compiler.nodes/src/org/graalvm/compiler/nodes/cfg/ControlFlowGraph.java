@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
@@ -166,6 +167,22 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<Block> {
 
     public EconomicMap<LoopBeginNode, LoopFrequencyData> getLocalLoopFrequencyData() {
         return localLoopFrequencyData;
+    }
+
+    /**
+     * Update the cached local loop frequency for the given loop. Future queries of
+     * {@link #localLoopFrequency(LoopBeginNode)} on <em>this</em> {@link ControlFlowGraph} instance
+     * will return the updated value. This is useful for phases to record temporary effects of
+     * transformations on loop frequencies, without having to recompute a CFG.
+     * </p>
+     *
+     * The updated frequency is a cached value local to this CFG. It is <em>not</em> persisted in
+     * the IR graph. Newly computed {@link ControlFlowGraph} instances will recompute a frequency
+     * from loop exit probabilities, they will not see this locally cached value. Persistent changes
+     * to loop frequencies must be modeled by changing loop exit probabilities in the graph.
+     */
+    public void updateCachedLocalLoopFrequency(LoopBeginNode lb, Function<LoopFrequencyData, LoopFrequencyData> updater) {
+        localLoopFrequencyData.put(lb, updater.apply(localLoopFrequencyData.get(lb)));
     }
 
     public String dominatorTreeString() {

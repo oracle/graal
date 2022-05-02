@@ -25,6 +25,9 @@ package com.oracle.truffle.espresso.processor;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import java.util.List;
+
+import com.oracle.truffle.espresso.processor.EspressoProcessor.InjectableType;
 
 /**
  * Passed around during espresso annotation processing. It is meant to be subclassed to serve as
@@ -34,9 +37,12 @@ import javax.lang.model.element.TypeElement;
  * @see com.oracle.truffle.espresso.processor.SubstitutionProcessor.SubstitutorHelper
  */
 public class SubstitutionHelper {
+    final List<InjectableType> injectedTypes;
+    final boolean hasLanguageInjection;
     final boolean hasMetaInjection;
-    final boolean hasProfileInjection;
     final boolean hasContextInjection;
+    final boolean hasProfileInjection;
+    final boolean skipSafepoint;
 
     // Target of the substitution, cab be a public static method or a node.
     private final Element target;
@@ -58,9 +64,12 @@ public class SubstitutionHelper {
         ExecutableElement targetMethod = isNodeTarget()
                         ? processor.findNodeExecute(getNodeTarget())
                         : getMethodTarget();
-        this.hasMetaInjection = processor.hasMetaInjection(targetMethod);
-        this.hasProfileInjection = processor.hasProfileInjection(targetMethod);
-        this.hasContextInjection = processor.hasContextInjection(targetMethod);
+        this.injectedTypes = processor.getInjectedTypes(targetMethod);
+        this.hasLanguageInjection = injectedTypes.contains(InjectableType.LANGUAGE);
+        this.hasMetaInjection = injectedTypes.contains(InjectableType.META);
+        this.hasContextInjection = injectedTypes.contains(InjectableType.CONTEXT);
+        this.hasProfileInjection = injectedTypes.contains(InjectableType.PROFILE);
+        this.skipSafepoint = processor.skipsSafepoint(target);
     }
 
     public boolean isNodeTarget() {

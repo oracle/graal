@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.StoredContinuation;
@@ -50,9 +51,14 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * The layout encoding for instances is the aligned instance size (i.e., a positive number).
- * <p>
- * For arrays, the layout encoding is a negative number with the following format:<br>
+ * The layout encoding determines how the GC interprets an object. The following encodings are
+ * currently used:
+ * <ul>
+ * <li>Special objects: a positive value less or equal than {@link #LAST_SPECIAL_VALUE}.</li>
+ * <li>Instance objects: the layout encoding for instances is the aligned instance size (i.e., a
+ * positive number greater than {@link #LAST_SPECIAL_VALUE}).</li>
+ * <li>Array objects: the layout encoding for arrays is a negative number with the following
+ * format:<br>
  *
  * <code>[tag:2, free:10, base:12, indexShift:8]</code>
  * <ul>
@@ -61,6 +67,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <li>base: the array base offset</li>
  * <li>indexShift: the array index shift for accessing array elements or for computing the array
  * size based on the array length</li>
+ * </ul>
+ *
+ * {@link Hybrid} objects are also encoded as arrays but are treated like instance objects in other
+ * places (e.g. {@link HubType}). Another difference to arrays is that hybrid objects need a
+ * reference map because they have fields.</li>
  * </ul>
  */
 @DuplicatedInNativeCode
@@ -150,6 +161,7 @@ public class LayoutEncoding {
         return encoding == ABSTRACT_VALUE;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int encoding) {
         return encoding > LAST_SPECIAL_VALUE;
     }
@@ -243,9 +255,6 @@ public class LayoutEncoding {
 
     @AlwaysInline("GC performance")
     public static Pointer getObjectEndInline(Object obj) {
-        // TODO: This assumes that the object starts at obj.
-        // - In other universes obj could point to the hub in the middle of,
-        // for example, a butterfly object.
         final Pointer objStart = Word.objectToUntrackedPointer(obj);
         final UnsignedWord objSize = getSizeFromObjectInline(obj);
         return objStart.add(objSize);

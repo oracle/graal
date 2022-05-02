@@ -125,6 +125,7 @@ public final class LoadModulesNode extends LLVMRootNode {
         boolean isActive(LLVMLoadingPhase phase) {
             return phase == this || phase == ALL;
         }
+
     }
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, boolean isInternalSulongLibrary,
@@ -139,9 +140,10 @@ public final class LoadModulesNode extends LLVMRootNode {
         this.language = language;
         this.hasInitialised = false;
         this.initContext = null;
-        this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, libraryName);
+        DataSectionFactory dataSectionFactory = new DataSectionFactory(parserResult);
+        this.initSymbols = new InitializeSymbolsNode(parserResult, lazyParsing, isInternalSulongLibrary, libraryName, dataSectionFactory);
         this.initExternals = new InitializeExternalNode(parserResult);
-        this.initGlobals = new InitializeGlobalNode(parserResult, libraryName);
+        this.initGlobals = new InitializeGlobalNode(parserResult, libraryName, dataSectionFactory);
         this.initOverwrite = new InitializeOverwriteNode(parserResult);
         this.initModules = new InitializeModuleNode(language, parserResult, libraryName);
         this.indirectCall = IndirectCallNode.create();
@@ -150,7 +152,7 @@ public final class LoadModulesNode extends LLVMRootNode {
 
     @Override
     public String getName() {
-        return '<' + getClass().getSimpleName() + '>';
+        return '<' + getClass().getSimpleName() + '/' + libraryName + '/' + bitcodeID.getId() + '>';
     }
 
     @Override

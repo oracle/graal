@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2020, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import os
+import sys
 import stat
 import tempfile
 import shutil
@@ -249,12 +250,12 @@ def check_interesting(args=None, out=None):
     def _not_interesting(msg=None):
         if msg:
             mx.logv(mx.colorize("mx check-interesting: no ({})".format(msg), color="blue"))
-        exit(0)
+        sys.exit(0)
 
     def _interesting(msg=None):
         if msg:
             mx.logv(mx.colorize("mx check-interesting: yes ({})".format(msg), color="cyan"))
-        exit(1)
+        sys.exit(1)
 
     def _files_match_pattern(prefix, out_file, err_file):
         with open(out_file, 'r') as o, open(err_file, 'r') as e:

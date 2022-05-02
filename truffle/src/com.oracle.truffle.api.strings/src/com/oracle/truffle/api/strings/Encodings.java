@@ -130,6 +130,14 @@ final class Encodings {
         return ret;
     }
 
+    static byte[] utf8EncodeNonAscii(int codepoint, int encodedSize) {
+        assert encodedSize == utf8EncodedSize(codepoint);
+        assert encodedSize > 1;
+        byte[] ret = new byte[encodedSize];
+        utf8Encode(codepoint, encodedSize, ret, 0);
+        return ret;
+    }
+
     static void utf8Encode(int codepoint, byte[] buffer, int index, int length) {
         assert length == utf8EncodedSize(codepoint);
         if (length == 1) {
@@ -377,5 +385,9 @@ final class Encodings {
             }
         }
         return c;
+    }
+
+    static boolean isValidUnicodeCodepoint(int codepoint) {
+        return !isUTF16Surrogate(codepoint) && Integer.toUnsignedLong(codepoint) <= Character.MAX_CODE_POINT;
     }
 }

@@ -40,16 +40,28 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
-import com.oracle.truffle.regex.errors.PyErrorMessages;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.regex.errors.PyErrorMessages;
 
 public class PythonTests extends RegexTestBase {
 
     @Override
     String getEngineOptions() {
-        return "Flavor=PythonStr";
+        return "Flavor=PythonStr,Encoding=UTF-32";
+    }
+
+    @Override
+    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        super.test(pattern, flags, "", TruffleString.fromJavaStringUncached((String) input, TruffleString.Encoding.UTF_32), fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    @Override
+    void test(String pattern, String flags, String options, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        super.test(pattern, flags, options, TruffleString.fromJavaStringUncached((String) input, TruffleString.Encoding.UTF_32), fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
     @Test
@@ -91,7 +103,7 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28905() {
-        test("\\B", "y", "abc", 0, false);
+        test("\\B", "", "PythonMethod=match", "abc", 0, false);
         test("\\B", "", "", 0, false);
         test("\\B(b.)\\B", "", "abc bcd bc abxd", 0, true, 12, 14, 12, 14, 1);
         test("\\b(b.)\\b", "a", "abcd abc bcd bx", 0, true, 13, 15, 13, 15, 1);
@@ -99,8 +111,8 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr28906() {
-        test("^(\\|)?([^()]+)\\1$", "y", "a|", 0, false);
-        test("^(\\|)?([^()]+)\\1$", "y", "|a", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "", "PythonMethod=match", "a|", 0, false);
+        test("^(\\|)?([^()]+)\\1$", "", "PythonMethod=match", "|a", 0, false);
     }
 
     @Test
@@ -160,7 +172,7 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr32018() {
-        test("\\s*(?:#\\s*)?$", "y", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
+        test("\\s*(?:#\\s*)?$", "", "PythonMethod=match", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
     }
 
     @Test
@@ -278,5 +290,15 @@ public class PythonTests extends RegexTestBase {
     @Test
     public void testFullMatch() {
         test("a|ab", "", "PythonMethod=fullmatch", "ab", 0, true, 0, 2, -1);
+    }
+
+    @Test
+    public void testBrokenSurrogate() {
+        test("(.*?)([\"\\\\\\x00-\\x1f])", "msx", "PythonMethod=match", "\"z\ud834x\"", 1, true, 1, 5, 1, 4, 4, 5, 2);
+    }
+
+    @Test
+    public void testBStar() {
+        test("b*", "", "MustAdvance=true", "xyz", 0, true, 1, 1);
     }
 }

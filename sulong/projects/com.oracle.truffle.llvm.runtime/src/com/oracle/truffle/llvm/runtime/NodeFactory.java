@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -65,6 +65,8 @@ import java.util.List;
  * instantiate a node, but instead use the factory facade.
  */
 public interface NodeFactory {
+
+    boolean isCfgOsrEnabled();
 
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
@@ -188,6 +190,8 @@ public interface NodeFactory {
     LLVMMemoryOpNode createProtectGlobalsBlock();
 
     LLVMMemoryOpNode createFreeGlobalsBlock(boolean readOnly);
+
+    LLVMMemoryOpNode getFreeGlobalsBlockUncached(boolean readOnly);
 
     LLVMControlFlowNode createLoop(RepeatingNode body, int[] successorIDs);
 

@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosureArgumentNode;
@@ -51,10 +52,15 @@ import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.StringCl
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeDoubleNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeEnvNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeFloatNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeFloatVarargsNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt16Node;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt16VarargsNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt32Node;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt64Node;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt8Node;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt8VarargsNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeUInt16VarargsNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeUInt8VarargsNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeObjectNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeArrayNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeNullableNodeGen;
@@ -100,6 +106,10 @@ final class LibFFIType {
         }
     }
 
+    static CachedTypeInfo createVarargsPromotedTypeInfo(LibFFILanguage language, NativeSimpleType simpleType, CachedTypeInfo promotedType) {
+        return new SimpleType(language, simpleType, (SimpleType) promotedType);
+    }
+
     static CachedTypeInfo createArrayTypeInfo(CachedTypeInfo ptrType, NativeSimpleType simpleType) {
         switch (simpleType) {
             case UINT8:
@@ -124,6 +134,32 @@ final class LibFFIType {
     protected LibFFIType(CachedTypeInfo typeInfo, long type) {
         this.typeInfo = typeInfo;
         this.type = type;
+    }
+
+    /**
+     * Implement the type promotion rules for variable arguments.
+     */
+    LibFFIType varargsPromoteType(Node node) {
+        if (typeInfo instanceof SimpleType) {
+            NativeSimpleType simpleType = ((SimpleType) typeInfo).simpleType;
+            switch (simpleType) {
+                case SINT8:
+                case SINT16:
+                case UINT8:
+                case UINT16:
+                case FLOAT:
+                    return LibFFIContext.get(node).lookupVarargsType(simpleType);
+            }
+        }
+        // fallback: all other types are allowed as is
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        // debug output only
+        CompilerAsserts.neverPartOfCompilation();
+        return typeInfo.toString();
     }
 
     enum Direction {
@@ -235,6 +271,11 @@ final class LibFFIType {
                     throw CompilerDirectives.shouldNotReachHere(simpleType.name());
             }
         }
+
+        @Override
+        public String toString() {
+            return simpleType.toString();
+        }
     }
 
     static final class SimpleType extends BasicType {
@@ -244,6 +285,15 @@ final class LibFFIType {
         SimpleType(LibFFILanguage language, NativeSimpleType simpleType, int size, int alignment) {
             super(language, simpleType, size, alignment, 0);
             this.sharedArgumentNode = createSharedArgumentNode();
+            assert !this.sharedArgumentNode.isAdoptable();
+        }
+
+        /**
+         * For auto-promotion of varargs types.
+         */
+        SimpleType(LibFFILanguage language, NativeSimpleType simpleType, SimpleType promotedType) {
+            super(language, simpleType, promotedType.size, promotedType.alignment, 0);
+            this.sharedArgumentNode = promotedType.createVarargsArgumentNode(simpleType);
             assert !this.sharedArgumentNode.isAdoptable();
         }
 
@@ -318,6 +368,23 @@ final class LibFFIType {
             }
         }
 
+        private SerializeArgumentNode createVarargsArgumentNode(NativeSimpleType originalType) {
+            switch (originalType) {
+                case SINT8:
+                    return new SerializeInt8VarargsNode(this);
+                case UINT8:
+                    return new SerializeUInt8VarargsNode(this);
+                case SINT16:
+                    return new SerializeInt16VarargsNode(this);
+                case UINT16:
+                    return new SerializeUInt16VarargsNode(this);
+                case FLOAT:
+                    return new SerializeFloatVarargsNode(this);
+                default:
+                    throw CompilerDirectives.shouldNotReachHere(simpleType.name());
+            }
+        }
+
         @Override
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return BufferClosureArgumentNodeGen.create(this, arg);
@@ -338,11 +405,6 @@ final class LibFFIType {
                 default:
                     return this;
             }
-        }
-
-        @Override
-        public String toString() {
-            return simpleType.toString();
         }
     }
 
@@ -486,6 +548,11 @@ final class LibFFIType {
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             throw new AssertionError("Arrays can only be passed from Java to native");
         }
+
+        @Override
+        public String toString() {
+            return "[" + elementType.toString() + "]";
+        }
     }
 
     @SuppressWarnings("unused")
@@ -512,6 +579,11 @@ final class LibFFIType {
         @Override
         public ClosureArgumentNode createClosureArgumentNode(ClosureArgumentNode arg) {
             return new InjectedClosureArgumentNode();
+        }
+
+        @Override
+        public String toString() {
+            return "ENV";
         }
     }
 }

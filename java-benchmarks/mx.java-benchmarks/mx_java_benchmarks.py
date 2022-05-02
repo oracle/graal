@@ -350,21 +350,24 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
     def extra_image_build_argument(self, benchmark, args):
-        return ['-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
-                '-J-Dsun.nio.ch.maxUpdateArraySize=100',
+        return ['-J-Dsun.nio.ch.maxUpdateArraySize=100',
+                '-J-Djava.util.logging.manager=org.jboss.logmanager.LogManager',
                 '-J-Dvertx.logger-delegate-factory-class-name=io.quarkus.vertx.core.runtime.VertxLogDelegateFactory',
-                '-J-Dvertx.disableDnsResolver=true,'
+                '-J-Dvertx.disableDnsResolver=true',
                 '-J-Dio.netty.leakDetection.level=DISABLED',
-                '-J-Dio.netty.allocator.maxOrder=1',
+                '-J-Dio.netty.allocator.maxOrder=3',
                 '-J-Duser.language=en',
                 '-J-Duser.country=US',
                 '-J-Dfile.encoding=UTF-8',
-                '--initialize-at-build-time=',
+                '-H:-ParseOnce',
+                '-J--add-exports=java.security.jgss/sun.security.krb5=ALL-UNNAMED',
+                '-J--add-opens=java.base/java.text=ALL-UNNAMED',
                 '-H:+JNI',
                 '-H:+AllowFoldMethods',
+                '-J-Djava.awt.headless=true',
                 '-H:FallbackThreshold=0',
                 '-H:+ReportExceptionStackTraces',
-                '-H:-AddAllCharsets',
+                '-H:+AddAllCharsets',
                 '-H:EnableURLProtocols=http',
                 '-H:NativeLinkerOption=-no-pie',
                 '-H:-UseServiceLoaderFeature',
@@ -373,7 +376,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.7"
+        return "1.0.8"
 
     def applicationDist(self):
         return mx.library("TIKA_" + self.version(), True).get_path(True)
@@ -383,6 +386,14 @@ class BaseTikaBenchmarkSuite(BaseQuarkusBenchmarkSuite):
 
     def serviceEndpoint(self):
         return 'parse'
+
+    def extra_image_build_argument(self, benchmark, args):
+        # Older JDK versions would need -H:NativeLinkerOption=libharfbuzz as an extra build argument.
+        expectedJdkVersion = mx.VersionSpec("11.0.13")
+        if mx.get_jdk().version < expectedJdkVersion:
+            mx.abort(benchmark + " needs at least JDK version " + str(expectedJdkVersion))
+
+        return super(BaseTikaBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 
 class TikaWrkBenchmarkSuite(BaseTikaBenchmarkSuite, mx_sdk_benchmark.BaseWrkBenchmarkSuite):
@@ -402,7 +413,7 @@ mx_benchmark.add_bm_suite(TikaWrkBenchmarkSuite())
 
 class BaseQuarkusHelloWorldBenchmarkSuite(BaseQuarkusBenchmarkSuite):
     def version(self):
-        return "1.0.2"
+        return "1.0.3"
 
     def applicationDist(self):
         return mx.library("QUARKUS_HW_" + self.version(), True).get_path(True)
@@ -445,9 +456,9 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
     def get_application_startup_units(self):
         return 'ms'
 
-    def skip_build_assertions(self, benchmark):
-        # This method overrides NativeImageMixin.skip_build_assertions
-        return True  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
+    def build_assertions(self, benchmark, is_gate):
+        # This method overrides NativeImageMixin.build_assertions
+        return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
 
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
@@ -455,14 +466,13 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
 class BaseShopCartBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "0.3.5"
+        return "0.3.6"
 
     def applicationDist(self):
-        shopcartCache = mx.library("SHOPCART_" + self.version(), True).get_path(True)
-        return os.path.join(shopcartCache, "shopcart-" + self.version())
+        return mx.library("SHOPCART_" + self.version(), True).get_path(True)
 
     def applicationPath(self):
-        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + "-all.jar")
+        return os.path.join(self.applicationDist(), "shopcart-" + self.version() + ".jar")
 
     def serviceEndpoint(self):
         return 'clients'
@@ -504,7 +514,7 @@ mx_benchmark.add_bm_suite(ShopCartWrkBenchmarkSuite())
 
 class BaseMicronautHelloWorldBenchmarkSuite(BaseMicronautBenchmarkSuite):
     def version(self):
-        return "1.0.2"
+        return "1.0.3"
 
     def applicationDist(self):
         return mx.library("MICRONAUT_HW_" + self.version(), True).get_path(True)
@@ -1205,7 +1215,7 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
         return "large"
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
-        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        skip_patterns = super(ScalaDacapoLargeBenchmarkSuite, self).flakySuccessPatterns()
         if "specs" in benchmarks:
             skip_patterns += [
                 re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
@@ -1236,25 +1246,7 @@ mx_benchmark.add_bm_suite(ScalaDacapoGargantuanBenchmarkSuite())
 
 
 _allSpecJVM2008Benches = [
-    'startup.helloworld',
-    'startup.compiler.compiler',
-    # 'startup.compiler.sunflow', # disabled until timeout problem in jdk8 is resolved
-    'startup.compress',
-    'startup.crypto.aes',
-    'startup.crypto.rsa',
-    'startup.crypto.signverify',
-    'startup.mpegaudio',
-    'startup.scimark.fft',
-    'startup.scimark.lu',
-    'startup.scimark.monte_carlo',
-    'startup.scimark.sor',
-    'startup.scimark.sparse',
-    'startup.serial',
-    'startup.sunflow',
-    'startup.xml.transform',
-    'startup.xml.validation',
     'compiler.compiler',
-    # 'compiler.sunflow',
     'compress',
     'crypto.aes',
     'crypto.rsa',
@@ -1276,8 +1268,11 @@ _allSpecJVM2008Benches = [
     'xml.validation'
 ]
 _allSpecJVM2008BenchesJDK9 = list(_allSpecJVM2008Benches)
-_allSpecJVM2008BenchesJDK9.remove('compiler.compiler') # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
-_allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
+if 'compiler.compiler' in _allSpecJVM2008BenchesJDK9:
+    # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9+
+    _allSpecJVM2008BenchesJDK9.remove('compiler.compiler')
+if 'startup.compiler.compiler' in _allSpecJVM2008BenchesJDK9:
+    _allSpecJVM2008BenchesJDK9.remove('startup.compiler.compiler')
 
 
 class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
@@ -1893,7 +1888,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
-        return sorted([bench for bench in _renaissanceConfig.keys()])
+        return sorted(bench for bench in _renaissanceConfig)
 
     def defaultSuiteVersion(self):
         #  return self.availableSuiteVersions()[-1]

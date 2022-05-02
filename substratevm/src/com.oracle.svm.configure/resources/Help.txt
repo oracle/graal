@@ -5,6 +5,7 @@ This tool can be used to prepare a configuration of JNI, reflection and
 resources for a native-image build.
 
 Usage: native-image-configure generate [options]
+       native-image-configure generate-conditional [options]
        native-image-configure generate-filters [options]
        native-image-configure command-file <command-file-path>
        native-image-configure help
@@ -82,6 +83,25 @@ generate                  generates configuration file(s) from all inputs.
     --no-builtin-heuristic-filter
                           This option disables builtin heuristics that identify
                           further internal JNI, reflection and resource usages.
+
+generate-conditional      generates conditional configuration from data
+                          collected by previous agent runs.
+    --input-dir=<path>
+                          reads configuration and metadata from a directory that
+                          was previously populated by a run with the agent in
+                          the partial configuration mode.
+    --output-dir=<path>
+                          writes a set of conditional configuration files to
+                          the given path.
+    --user-code-filter=<path>
+                          specifies a filter file used to classify classes as
+                          user application classes. Generated conditions will
+                          only reference these classes.
+    --class-name-filter=<path>
+                          specifies a filter file used to exclude classes from
+                          the computed configuration. Both the configuration
+                          and the conditions in the configuration will be
+                          tested against this filter.
 
 generate-filters          builds a class filter according to the parameters.
                           Filter rules are created according to the order of

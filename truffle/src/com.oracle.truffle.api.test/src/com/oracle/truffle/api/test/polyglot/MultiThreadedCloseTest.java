@@ -100,7 +100,7 @@ public class MultiThreadedCloseTest extends AbstractPolyglotTest {
 
     @Test
     public void testWithThreads() {
-        setupEnv(Context.newBuilder().allowCreateThread(true).build(), new CloseLanguage() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowCreateThread(true).build(), new CloseLanguage() {
 
             @Override
             protected void initializeContext(CloseContext ctx) throws Exception {

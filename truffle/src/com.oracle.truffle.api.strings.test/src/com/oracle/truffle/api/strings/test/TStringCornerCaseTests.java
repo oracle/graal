@@ -43,10 +43,10 @@ package com.oracle.truffle.api.strings.test;
 
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
-import com.oracle.truffle.api.strings.MutableTruffleString;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.oracle.truffle.api.strings.MutableTruffleString;
 import com.oracle.truffle.api.strings.TruffleString;
 
 public class TStringCornerCaseTests extends TStringTestBase {

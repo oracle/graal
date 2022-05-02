@@ -31,9 +31,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
@@ -41,13 +39,13 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateUncached
-public abstract class ToEspressoNode extends Node {
+public abstract class ToEspressoNode extends EspressoNode {
     static final int LIMIT = 2;
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
@@ -104,11 +102,11 @@ public abstract class ToEspressoNode extends Node {
                     }
                     break;
                 case Void:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("Unexpected cast to void");
             }
         } catch (UnsupportedMessageException e) {
-            exceptionProfile.enter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Contract violation: if fitsIn{type} returns true, as{type} must succeed.");
         }
         exceptionProfile.enter();
@@ -157,7 +155,7 @@ public abstract class ToEspressoNode extends Node {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
     Object doForeignNull(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
-        return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
+        return StaticObject.createForeignNull(getLanguage(), value);
     }
 
     @Specialization(guards = {"isStringCompatible(klass)"})
@@ -175,7 +173,7 @@ public abstract class ToEspressoNode extends Node {
             try {
                 return klass.getMeta().toGuestString(interop.asString(value));
             } catch (UnsupportedMessageException e) {
-                exceptionProfile.enter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
             }
         }
@@ -200,13 +198,13 @@ public abstract class ToEspressoNode extends Node {
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck) throws UnsupportedTypeException {
         try {
-            checkHasAllFieldsOrThrow(value, klass, interop, EspressoContext.get(this).getMeta());
+            checkHasAllFieldsOrThrow(value, klass, interop, getMeta());
         } catch (ClassCastException e) {
             errorProfile.enter();
             throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
         }
         initCheck.execute(klass);
-        return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
+        return StaticObject.createForeign(getLanguage(), klass, value, interop);
     }
 
 /*
@@ -223,11 +221,11 @@ public abstract class ToEspressoNode extends Node {
     Object doForeignArray(Object value, ArrayKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
-        Meta meta = EspressoContext.get(this).getMeta();
+        Meta meta = getMeta();
         // Buffer-like can be casted to byte[] only.
         // Array-like can be casted to *[].
         if ((klass == meta._byte_array && interop.hasBufferElements(value)) || interop.hasArrayElements(value)) {
-            return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
+            return StaticObject.createForeign(getLanguage(), klass, value, interop);
         }
         errorProfile.enter();
         throw UnsupportedTypeException.create(new Object[]{value}, "Cannot cast a non-array value to an array type");
@@ -252,7 +250,7 @@ public abstract class ToEspressoNode extends Node {
                     return;
                 }
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }

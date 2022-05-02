@@ -622,9 +622,9 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             Value a = operand(src);
             Value b;
             if (y instanceof AddNode) {
-                b = x instanceof LeftShiftNode ? operand(shiftAmount) : getArithmeticLIRGenerator().emitNegate(operand(shiftAmount));
+                b = x instanceof LeftShiftNode ? operand(shiftAmount) : getArithmeticLIRGenerator().emitNegate(operand(shiftAmount), false);
             } else {
-                b = x instanceof LeftShiftNode ? getArithmeticLIRGenerator().emitNegate(operand(shiftAmount)) : operand(shiftAmount);
+                b = x instanceof LeftShiftNode ? getArithmeticLIRGenerator().emitNegate(operand(shiftAmount), false) : operand(shiftAmount);
             }
             return getArithmeticLIRGenerator().emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ROR, false, a, b);
         };

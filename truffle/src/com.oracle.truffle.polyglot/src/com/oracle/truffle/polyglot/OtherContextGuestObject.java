@@ -132,41 +132,38 @@ final class OtherContextGuestObject implements TruffleObject {
                     BranchProfile seenOther,
                     BranchProfile seenError) throws Exception {
         if (message.getLibraryClass() == InteropLibrary.class) {
-            Object[] prev;
             try {
-                prev = layer.engine.enter(delegateContext);
-            } catch (Throwable e) {
-                throw toHostException(receiverContext, e);
-            }
-            try {
-                Object returnValue;
-                Object[] migratedArgs = migrateArgs(message, args, receiverContext, delegateContext);
-                if ((message == IDENTICAL) && migratedArgs[0] instanceof OtherContextGuestObject) {
-                    OtherContextGuestObject foreignCompare = (OtherContextGuestObject) migratedArgs[0];
-                    /*
-                     * It is guaranteed at this point that host foreign values with the same context
-                     * are already unboxed.
-                     */
-                    assert foreignCompare.delegateContext != delegateContext;
-                    /*
-                     * If two values of different contexts are compared with each other we end up in
-                     * an endless recursion as each invocation performs argument boxing to hosted
-                     * values which in turn will call isIdenticalOrUndefined of the other value.
-                     */
-                    returnValue = Boolean.FALSE;
-                } else {
-                    returnValue = delegateLibrary.send(receiver, message, migratedArgs);
-                }
-                return migrateReturn(returnValue, receiverContext, delegateContext);
-            } catch (Exception e) {
-                seenError.enter();
-                throw migrateException(receiverContext, e, delegateContext);
-            } finally {
+                Object[] prev = layer.engine.enter(delegateContext);
                 try {
-                    layer.engine.leave(prev, delegateContext);
+                    Object returnValue;
+                    Object[] migratedArgs = migrateArgs(message, args, receiverContext, delegateContext);
+                    if ((message == IDENTICAL) && migratedArgs[0] instanceof OtherContextGuestObject) {
+                        OtherContextGuestObject foreignCompare = (OtherContextGuestObject) migratedArgs[0];
+                        /*
+                         * It is guaranteed at this point that host foreign values with the same
+                         * context are already unboxed.
+                         */
+                        assert foreignCompare.delegateContext != delegateContext;
+                        /*
+                         * If two values of different contexts are compared with each other we end
+                         * up in an endless recursion as each invocation performs argument boxing to
+                         * hosted values which in turn will call isIdenticalOrUndefined of the other
+                         * value.
+                         */
+                        returnValue = Boolean.FALSE;
+                    } else {
+                        returnValue = delegateLibrary.send(receiver, message, migratedArgs);
+                    }
+                    return migrateReturn(returnValue, receiverContext, delegateContext);
                 } catch (Throwable e) {
-                    throw toHostException(receiverContext, e);
+                    seenError.enter();
+                    throw migrateException(receiverContext, e, delegateContext);
+                } finally {
+                    layer.engine.leave(prev, delegateContext);
                 }
+            } catch (Throwable t) {
+                seenError.enter();
+                throw toHostOrInnerContextBoundaryException(receiverContext, t, delegateContext);
             }
         } else {
             seenOther.enter();
@@ -174,8 +171,9 @@ final class OtherContextGuestObject implements TruffleObject {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @TruffleBoundary
-    static <T extends Exception> RuntimeException migrateException(PolyglotContextImpl receiverContext, T e, PolyglotContextImpl valueContext) throws T {
+    static <T extends Throwable> RuntimeException migrateException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl valueContext) throws T {
         if (e instanceof OtherContextException) {
             OtherContextException other = (OtherContextException) e;
             if (other.receiverContext == receiverContext && other.delegateContext == valueContext) {
@@ -187,23 +185,68 @@ final class OtherContextGuestObject implements TruffleObject {
             if (e instanceof AbstractTruffleException) {
                 throw new OtherContextException(receiverContext, (AbstractTruffleException) e, valueContext);
             } else {
-                throw new OtherContextException(receiverContext, e, valueContext);
+                throw new OtherContextException(receiverContext, (Exception) e, valueContext);
             }
-        } else if (e instanceof PolyglotEngineException) {
-            // [GR-35549] Truffle isolate enters the guest context as result of
-            // delegateLibrary#send(). Exceptions thrown by enter are wrapped as
-            // PolyglotEngineException. We need to unwrap them and throw as host exception.
-            throw toHostException(receiverContext, e);
         } else {
-            throw e;
+            throw (T) e;
         }
     }
 
-    private static RuntimeException toHostException(PolyglotContextImpl context, Throwable e) {
-        try {
-            throw PolyglotImpl.engineToLanguageException(e);
-        } catch (Throwable ex) {
-            throw context.engine.host.toHostException(context.getHostContextImpl(), ex);
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    static <T extends Throwable> RuntimeException toHostOrInnerContextBoundaryException(PolyglotContextImpl receiverContext, Throwable e, PolyglotContextImpl delegateContext) throws T {
+        if (e instanceof PolyglotEngineException || e instanceof PolyglotEngineImpl.CancelExecution || e instanceof PolyglotContextImpl.ExitException) {
+            try {
+                if (e instanceof PolyglotEngineImpl.CancelExecution) {
+                    if (delegateContext.parent != null) {
+                        PolyglotContextImpl.State receiverContextState = receiverContext.state;
+                        if (!receiverContextState.isCancelling() && receiverContextState != PolyglotContextImpl.State.CLOSED_CANCELLED) {
+                            delegateContext.runOnCancelled();
+                            throw new IllegalStateException("Context cancel exception of inner context leaks outside to a non-cancelled context!");
+                        }
+                        throw (PolyglotEngineImpl.CancelExecution) e;
+                    } else {
+                        throw PolyglotImpl.guestToHostException(delegateContext.getHostContext(), e, false);
+                    }
+                } else if (e instanceof PolyglotContextImpl.ExitException) {
+                    if (delegateContext.parent != null) {
+                        PolyglotContextImpl.State receiverContextState = receiverContext.state;
+                        if (!receiverContextState.isExiting() && receiverContextState != PolyglotContextImpl.State.CLOSED_EXITED) {
+                            delegateContext.runOnExited(((PolyglotContextImpl.ExitException) e).getExitCode());
+                            throw new IllegalStateException("Context exit exception of inner context leaks outside to a non-exited context!");
+                        }
+                        throw (PolyglotContextImpl.ExitException) e;
+                    } else {
+                        throw PolyglotImpl.guestToHostException(delegateContext.getHostContext(), e, false);
+                    }
+                } else {
+                    if (delegateContext.parent != null && e instanceof PolyglotEngineException && ((PolyglotEngineException) e).closedException) {
+                        PolyglotContextImpl.State enclosingState = receiverContext != null ? receiverContext.state : PolyglotContextImpl.State.DEFAULT;
+                        boolean enclosingDisposing = receiverContext != null && receiverContext.disposing;
+                        if (enclosingState != PolyglotContextImpl.State.CLOSED && !enclosingDisposing) {
+                            delegateContext.runOnClosed();
+                            throw new IllegalStateException("Context close exception of inner context leaks outside to a non-closed context!");
+                        }
+                    }
+                    // [GR-35549] Truffle isolate enters the guest context as result of
+                    // delegateLibrary#send(). Exceptions thrown by enter are wrapped as
+                    // PolyglotEngineException. We need to unwrap them and throw as host exception.
+                    throw PolyglotImpl.engineToLanguageException(e);
+                }
+            } catch (Throwable ex) {
+                if (delegateContext.parent != null) {
+                    /*
+                     * Note that the parent context might be different from the receiverContext. In
+                     * any case, if the delegateContext has parent, we don't wrap the resulting
+                     * exception with HostException.
+                     */
+                    throw ex;
+                } else {
+                    throw receiverContext.engine.host.toHostException(receiverContext.getHostContextImpl(), ex);
+                }
+            }
+        } else {
+            throw (T) e;
         }
     }
 

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.word;
 
-import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -50,6 +48,7 @@ import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -63,7 +62,7 @@ import sun.misc.Unsafe;
 
 public abstract class Word implements SignedWord, UnsignedWord, Pointer {
 
-    private static final Unsafe UNSAFE = getUnsafe();
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     static {
         BoxFactoryImpl.initialize();

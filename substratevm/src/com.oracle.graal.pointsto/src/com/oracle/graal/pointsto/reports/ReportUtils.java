@@ -68,6 +68,10 @@ public class ReportUtils {
         return report(description, path, name, extension, reporter, true);
     }
 
+    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint) {
+        return report(description, path, name, extension, reporter, enablePrint, getTimeStampString());
+    }
+
     /**
      * Print a report in the format: path/name_timeStamp.extension. The path is relative to the
      * working directory.
@@ -78,15 +82,20 @@ public class ReportUtils {
      * @param name the name of the report
      * @param extension the extension of the report
      * @param reporter a consumer that writes to a PrintWriter
+     * @param timeStamp from {@link #getTimeStampString}
      */
-    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint) {
-        String fileName = timeStampedFileName(name, extension);
+    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint, String timeStamp) {
+        String fileName = timeStampedFileName(name, extension, timeStamp);
         Path reportDir = Paths.get(path);
         return reportImpl(enablePrint, description, reportDir, fileName, reporter);
     }
 
     public static String timeStampedFileName(String name, String extension) {
-        String fileName = name + "_" + getTimeStampString();
+        return timeStampedFileName(name, extension, getTimeStampString());
+    }
+
+    public static String timeStampedFileName(String name, String extension, String timeStamp) {
+        String fileName = name + "_" + timeStamp;
         return extension.isEmpty() ? fileName : fileName + "." + extension;
     }
 

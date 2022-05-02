@@ -84,7 +84,7 @@ def c1visualizer(args):
     v8u40 = mx.VersionSpec("1.8.0_40")
     v12 = mx.VersionSpec("12")
     def _c1vJdkVersionCheck(version):
-        return version >= v8u40 and version < v12
+        return v8u40 <= version < v12
     env = dict(os.environ)
     env['jdkhome'] = mx.get_jdk(_c1vJdkVersionCheck, versionDescription='(JDK that is >= 1.8.0u40 and <= 11)', purpose="running C1 Visualizer").home
     run_netbeans_app('C1Visualizer', env, args() if callable(args) else args)

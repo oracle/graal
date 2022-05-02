@@ -37,7 +37,6 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -46,7 +45,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
@@ -55,6 +53,7 @@ import com.oracle.svm.core.JavaMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
@@ -66,6 +65,8 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
+
+import jdk.internal.misc.Unsafe;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
     private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
@@ -95,8 +96,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             }
             return newArray;
         } else {
-            sun.misc.Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
-            Object result = unsafe.allocateInstance(DynamicHub.toClass(hub));
+            Object result = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
             int firstFieldOffset = ConfigurationValues.getObjectLayout().getFirstFieldOffset();
             int curOffset = firstFieldOffset;
 

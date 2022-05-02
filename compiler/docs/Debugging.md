@@ -215,9 +215,8 @@ visualizations of certain compiler data structures. Currently, there is support 
 
 * HIR graphs (i.e., instances of
   [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
-  [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer) (IGV), and
-* LIR register allocation and generated code to the
-  [C1Visualizer](https://java.net/projects/c1visualizer/)
+  [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md), and
+* LIR register allocation and generated code to the [C1Visualizer](https://github.com/zakkak/c1visualizer)
 
 Dumping is enabled via the `-Dgraal.Dump` option. The dump handler for generating C1Visualizer
 output will also generate output for LIR graphs if the `-Dgraal.PrintBackendCFG=true` option is specified
@@ -277,4 +276,4 @@ Alternatively, you can see the machine code using [HotSpot's PrintAssembly suppo
 mx hsdis
 mx vm -XX:+UseJVMCICompiler -XX:+BootstrapJVMCI -XX:-TieredCompilation -XX:CompileCommand='print,*Node.updateUsages' -version
 ```
-The first step above installs the [hsdis](https://kenai.com/projects/base-hsdis) disassembler and only needs to be performed once.
+The first step above installs the `hsdis` disassembler and only needs to be performed once.

@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeStack;
@@ -77,7 +76,6 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -102,9 +100,8 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     private static final CounterKey counterConstantInputReplacements = DebugContext.counter("FixReads_ConstantInputReplacement");
     private static final CounterKey counterBetterMergedStamps = DebugContext.counter("FixReads_BetterMergedStamp");
 
-    protected boolean replaceInputsWithConstants;
-    protected BasePhase<? super CoreProviders> schedulePhase;
-    protected CanonicalizerPhase canonicalizerPhase;
+    protected final boolean replaceInputsWithConstants;
+    protected final BasePhase<? super CoreProviders> schedulePhase;
 
     @Override
     public float codeSizeIncrease() {
@@ -200,6 +197,10 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 return getBestStamp(node);
             }
 
+            @Override
+            public boolean divisionOverflowIsJVMSCompliant() {
+                return false;
+            }
         }
 
         public RawConditionalEliminationVisitor(StructuredGraph graph, ScheduleResult schedule, MetaAccessProvider metaAccess, boolean replaceInputsWithConstants) {
@@ -594,10 +595,9 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     }
 
-    public FixReadsPhase(boolean replaceInputsWithConstants, BasePhase<? super CoreProviders> schedulePhase, CanonicalizerPhase canonicalizerPhase) {
+    public FixReadsPhase(boolean replaceInputsWithConstants, BasePhase<? super CoreProviders> schedulePhase) {
         this.replaceInputsWithConstants = replaceInputsWithConstants;
         this.schedulePhase = schedulePhase;
-        this.canonicalizerPhase = canonicalizerPhase;
     }
 
     @Override
@@ -607,20 +607,14 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         schedulePhase.apply(graph, context);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
-        EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
-        try (Graph.NodeEventScope scope = graph.trackNodeEvents(ec)) {
-            for (Block block : schedule.getCFG().getBlocks()) {
-                fixReadsClosure.processNodes(block, schedule);
-            }
-            assert graph.verify();
-            if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
-                schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
-
-            }
+        for (Block block : schedule.getCFG().getBlocks()) {
+            fixReadsClosure.processNodes(block, schedule);
         }
         graph.setAfterStage(StageFlag.FIXED_READS);
-        if (!ec.getNodes().isEmpty()) {
-            canonicalizerPhase.applyIncremental(graph, context, ec.getNodes());
+        assert graph.verify();
+        if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
+            schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
+
         }
     }
 
@@ -682,7 +676,8 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
     }
 
-    public void setReplaceInputsWithConstants(boolean replaceInputsWithConstants) {
-        this.replaceInputsWithConstants = replaceInputsWithConstants;
+    public BasePhase<? super CoreProviders> getSchedulePhase() {
+        return schedulePhase;
     }
+
 }

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
@@ -38,11 +39,13 @@ import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 
-public class LivenessAnalysis {
+public final class LivenessAnalysis {
 
     public static final DebugTimer LIVENESS_TIMER = DebugTimer.create("liveness");
     public static final DebugTimer BUILDER_TIMER = DebugTimer.create("builder", LIVENESS_TIMER);
@@ -51,61 +54,58 @@ public class LivenessAnalysis {
     public static final DebugTimer PROPAGATE_TIMER = DebugTimer.create("propagation", LIVENESS_TIMER);
     public static final DebugTimer ACTION_TIMER = DebugTimer.create("action", LIVENESS_TIMER);
 
-    public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
-        @Override
-        public void performPostBCI(VirtualFrame frame, int bci) {
-        }
-
-        @Override
-        public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
-        }
-
-        @Override
-        public void onStart(VirtualFrame frame) {
-        }
-    };
+    private static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis(null, null, null);
 
     /**
      * Contains 2 entries per BCI: the action to perform on entering the BCI (for nulling out locals
      * when jumping into a block), and one for the action to perform after executing the bytecode
      * (/ex: Nulling out a local once it has been loaded and no other load requires it).
      */
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final LocalVariableAction[] result;
-    @CompilerDirectives.CompilationFinal(dimensions = 1) //
+    @CompilationFinal(dimensions = 1) //
     private final EdgeAction[] edge;
     private final LocalVariableAction onStart;
 
-    public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
+    public void performOnEdge(VirtualFrame frame, int bci, int nextBci, boolean disable) {
         if (CompilerDirectives.inCompiledCode()) {
-            if (edge != null && edge[nextBci] != null) {
-                edge[nextBci].onEdge(frame, bci);
+            if (!disable) {
+                if (edge != null && edge[nextBci] != null) {
+                    edge[nextBci].onEdge(frame, bci);
+                }
             }
         }
     }
 
-    public void onStart(VirtualFrame frame) {
+    public void onStart(VirtualFrame frame, boolean disable) {
         if (CompilerDirectives.inCompiledCode()) {
-            if (onStart != null) {
-                onStart.execute(frame);
+            if (!disable) {
+                if (onStart != null) {
+                    onStart.execute(frame);
+                }
             }
         }
     }
 
-    public void performPostBCI(VirtualFrame frame, int bci) {
+    public void performPostBCI(VirtualFrame frame, int bci, boolean disable) {
         if (CompilerDirectives.inCompiledCode()) {
-            if (result != null && result[bci] != null) {
-                result[bci].execute(frame);
+            if (!disable) {
+                if (result != null && result[bci] != null) {
+                    result[bci].execute(frame);
+                }
             }
         }
     }
 
     @SuppressWarnings("try")
     public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
-        Method method = methodVersion.getMethod();
-        if (!method.getContext().livenessAnalysis) {
+
+        EspressoContext context = methodVersion.getMethod().getContext();
+        if (!enableLivenessAnalysis(context, methodVersion)) {
             return NO_ANALYSIS;
         }
+
+        Method method = methodVersion.getMethod();
         TimerCollection scope = method.getContext().getTimers();
         try (DebugCloseable liveness = LIVENESS_TIMER.scope(scope)) {
             Graph<? extends LinkedBlock> graph;
@@ -160,14 +160,29 @@ public class LivenessAnalysis {
         }
     }
 
-    public LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart) {
+    private static boolean enableLivenessAnalysis(EspressoContext context, Method.MethodVersion methodVersion) {
+        switch (context.LivenessAnalysisMode) {
+            case NONE:
+                return false;
+            case ALL:
+                return true;
+            case AUTO: {
+                /*
+                 * Heuristic: Only enable liveness analysis when the number of locals exceeds a
+                 * threshold. In practice, liveness analysis is only enabled for < 5% of methods.
+                 */
+                return methodVersion.getMaxLocals() >= context.LivenessAnalysisMinimumLocals;
+            }
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    private LivenessAnalysis(LocalVariableAction[] result, EdgeAction[] edge, LocalVariableAction onStart) {
         this.result = result;
         this.edge = edge;
         this.onStart = onStart;
-    }
-
-    private LivenessAnalysis() {
-        this(null, null, null);
     }
 
     private static final class Builder {
@@ -261,7 +276,7 @@ public class LivenessAnalysis {
                 for (int j = 0; j < predecessors.length; j++) {
                     int pred = predecessors[j];
                     BitSet predEnd = helper.endFor(pred);
-                    if (predEnd.get(local)) {
+                    if (predEnd != null && predEnd.get(local)) {
                         ArrayList<Integer> kill = kills[j];
                         if (kill == null) {
                             kills[j] = kill = new ArrayList<>();

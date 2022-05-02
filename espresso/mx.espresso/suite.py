@@ -23,7 +23,7 @@
 suite = {
     "mxversion": "5.280.5",
     "name": "espresso",
-    "version" : "22.1.0",
+    "version" : "22.2.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -179,7 +179,7 @@ suite = {
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
-        "com.oracle.truffle.espresso.libespresso": {
+        "com.oracle.truffle.espresso.libjavavm": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [
@@ -348,10 +348,10 @@ suite = {
             "maven": False,
         },
 
-        "LIB_ESPRESSO": {
+        "LIB_JAVAVM": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.espresso.libespresso",
+                "com.oracle.truffle.espresso.libjavavm",
             ],
             "distDependencies": [
                 "sdk:GRAAL_SDK",

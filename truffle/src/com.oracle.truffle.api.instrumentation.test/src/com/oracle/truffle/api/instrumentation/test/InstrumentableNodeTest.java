@@ -343,6 +343,10 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
         private int numMultipleMaterializations;
         private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
+        public MaterializationLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();

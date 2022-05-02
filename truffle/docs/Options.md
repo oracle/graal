@@ -66,7 +66,7 @@ They are useful to users and language and tool implementers.
 - `--engine.Inlining=true|false` : Enable automatic inlining of guest language call targets (default: true).
 - `--engine.InliningExpansionBudget=[1, inf)` : The base expansion budget for language-agnostic inlining (default: 12000).
 - `--engine.InliningInliningBudget=[1, inf)` : The base inlining budget for language-agnostic inlining (default: 12000)
-- `--engine.InliningRecursionDepth=[1, inf)` : Maximum depth for recursive inlining (default: 2).
+- `--engine.InliningRecursionDepth=[0, inf)` : Maximum depth for recursive inlining (default: 2).
 - `--engine.InvalidationReprofileCount=` : Delay compilation after an invalidation to allow for reprofiling. Deprecated: no longer has any effect.
 - `--engine.LastTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root in last tier under normal compilation load (default: 10000).
 - `--engine.MinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled (default: 3).
@@ -82,6 +82,7 @@ They are useful to users and language and tool implementers.
 - `--engine.TraceCompilation` : Print information for compilation results.
 - `--engine.HostCallStackHeadRoom=[1, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
 - `--engine.IsolateLibrary=<path>` : Path to the isolate library.
+- `--engine.IsolateMemoryProtection=true|false` : Enable memory protection for the isolate.
 - `--engine.IsolateOption.<key>=<value>` : Isolate VM options.
 <!-- END: expert-engine-options -->
 
@@ -144,6 +145,7 @@ The accepted values are:
 - `--engine.InstrumentFilter=<method>,<method>,...` : Method filter for host methods in which to add instrumentation.
 - `--engine.InstrumentationTableSize=[1, inf)` : Maximum number of instrumentation counters available (default: 10000).
 - `--engine.IterativePartialEscape` : Run the partial escape analysis iteratively in Truffle compilation.
+- `--engine.MaximumGraalGraphSize=[1, inf)` : Stop partial evaluation when the graph exceeded this size (default: 150000).
 - `--engine.MaximumGraalNodeCount=[1, inf)` : Stop partial evaluation when the graph exceeded this many nodes (default: 40000).
 - `--engine.MaximumInlineNodeCount=[1, inf)` : Ignore further truffle inlining decisions when the graph exceeded this many nodes (default: 150000).
 - `--engine.MethodExpansionStatistics=true|false|peTier|truffleTier|lowTier|<tier>,<tier>,...` : Print statistics on expanded Java methods during partial evaluation at the end of a run.Accepted values are:  

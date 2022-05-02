@@ -31,8 +31,17 @@ import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Allow iterative peeling of loops up to this many times (each time the peeling phase runs).")
+        public static final OptionKey<Integer> IterativePeelingLimit = new OptionKey<>(2);
+        // @formatter:on
+    }
 
     public static final CounterKey PEELED = DebugContext.counter("Peeled");
 
@@ -56,11 +65,15 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
                     if (canPeel(loop)) {
-                        if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context)) {
-                            debug.log("Peeling %s", loop);
-                            PEELED.increment(debug);
-                            LoopTransformations.peel(loop);
-                            debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s", loop);
+                        for (int iteration = 0; iteration < Options.IterativePeelingLimit.getValue(graph.getOptions()); iteration++) {
+                            if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context, iteration)) {
+                                debug.log("Peeling %s, iteration %s", loop, iteration);
+                                PEELED.increment(debug);
+                                LoopTransformations.peel(loop);
+                                loop.invalidateFragmentsAndIVs();
+                                data.getCFG().updateCachedLocalLoopFrequency(loop.loopBegin(), f -> f.decrementFrequency(1.0));
+                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "Peeling %s, iteration %s", loop, iteration);
+                            }
                         }
                     }
                 }

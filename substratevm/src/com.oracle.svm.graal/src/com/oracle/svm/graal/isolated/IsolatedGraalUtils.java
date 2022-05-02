@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
+import org.graalvm.nativeimage.Isolates.ProtectionDomain;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -47,11 +48,11 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.os.MemoryProtectionProvider;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -65,6 +66,14 @@ public final class IsolatedGraalUtils {
         long addressSpaceSize = SubstrateOptions.CompilationIsolateAddressSpaceSize.getValue();
         if (addressSpaceSize > 0) {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
+        }
+        /*
+         * if protection keys are used, the compilation isolate needs to use the same protection
+         * domain as the client, otherwise it cannot access the client's code cache
+         */
+        if (MemoryProtectionProvider.isAvailable()) {
+            ProtectionDomain domain = MemoryProtectionProvider.singleton().getProtectionDomain();
+            builder.setProtectionDomain(domain);
         }
         // Compilation isolates do the reference handling manually to avoid the extra thread.
         builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling, false));
@@ -81,8 +90,7 @@ public final class IsolatedGraalUtils {
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void initializeCompilationIsolate0(
                     @SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, PointerBase runtimeOptions, int runtimeOptionsLength) {
         applyClientRuntimeOptionValues(runtimeOptions, runtimeOptionsLength);
@@ -99,8 +107,7 @@ public final class IsolatedGraalUtils {
         return installedCode;
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static ClientHandle<SubstrateInstalledCode> compileInNewIsolateAndInstall0(
                     @SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, ClientIsolateThread clientIsolate, ImageHeapRef<SubstrateMethod> methodRef) {
 
@@ -131,8 +138,7 @@ public final class IsolatedGraalUtils {
         }
     }
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void compileInNewIsolate0(
                     @SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, ClientIsolateThread clientIsolate, ImageHeapRef<SubstrateMethod> methodRef) {
 

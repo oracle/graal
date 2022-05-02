@@ -91,8 +91,8 @@ public class AArch64DarwinUContextRegisterDumper implements UContextRegisterDump
         dumpReg(log, "R28 ", regs.read(28), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
         dumpReg(log, "R29 ", sigcontext.fp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
         dumpReg(log, "R30 ", sigcontext.lr(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
-        dumpReg(log, "SP ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
-        dumpReg(log, "PC ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "SP  ", sigcontext.sp(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
+        dumpReg(log, "PC  ", sigcontext.pc(), printLocationInfo, allowJavaHeapAccess, allowUnsafeOperations);
     }
 
     @Override
@@ -110,12 +110,14 @@ public class AArch64DarwinUContextRegisterDumper implements UContextRegisterDump
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getSP(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
         return WordFactory.pointer(sigcontext.sp());
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public PointerBase getIP(Signal.ucontext_t uContext) {
         Signal.AArch64DarwinMContext64 sigcontext = uContext.uc_mcontext_darwin_aarch64();
         return WordFactory.pointer(sigcontext.pc());

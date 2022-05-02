@@ -68,9 +68,7 @@ public class TStringLastByteIndexOfStringTest extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            testIndexOfString(a, array, isValid, encoding, codepoints, byteIndices, true, true, (b, expectedIndex) -> {
-                Assert.assertEquals(expectedIndex, node.execute(a, b, array.length, 0, encoding));
-            });
+            testIndexOfString(a, array, isValid, encoding, codepoints, byteIndices, true, true, (b, fromIndex, toIndex) -> node.execute(a, b, fromIndex, toIndex, encoding));
         });
     }
 

@@ -39,7 +39,7 @@ public interface LoopPolicies {
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Boolean> PeelALot = new OptionKey<>(false);
     }
 
-    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers);
+    boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration);
 
     boolean shouldFullUnroll(LoopEx loop);
 

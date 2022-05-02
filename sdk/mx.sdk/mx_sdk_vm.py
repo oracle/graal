@@ -159,7 +159,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
                  default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
-                 use_modules=None, main_module=None, option_vars=None, home_finder=True, **kwargs):
+                 use_modules=None, main_module=None, link_at_build_time=True, option_vars=None, home_finder=True, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -174,6 +174,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.main_module = main_module
         assert self.use_modules is None or self.main_module
         self.main_class = main_class
+        self.link_at_build_time = link_at_build_time
         self.is_main_launcher = is_main_launcher
         self.default_symlinks = default_symlinks
         self.is_sdk_launcher = is_sdk_launcher
@@ -206,13 +207,15 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
         """
         :param str language
         :param str main_class
         """
         kwargs.pop('destination', None)
         super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, **kwargs)
+        if not launchers:
+            assert not main_class
         self.is_sdk_launcher = is_sdk_launcher
         self.main_class = main_class
         self.language = language
@@ -1022,8 +1025,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         out = mx.OutputCapture()
         mx.logv('[Creating CDS shared archive]')
         if mx.run([mx.exe_suffix(join(dst_jdk_dir, 'bin', 'java')), '-Xshare:dump', '-Xmx128M', '-Xms128M'], out=out, err=out, nonZeroIsFatal=False) != 0:
-            mx.log(out.data)
-            mx.abort('Error generating CDS shared archive')
+            if "Shared spaces are not supported in this VM" in out.data:
+                # GR-37047: CDS support in darwin-aarch64 jdk11 is missing.
+                assert mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64' and jdk.javaCompliance == '11'
+            else:
+                mx.log(out.data)
+                mx.abort('Error generating CDS shared archive')
     else:
         # -Xshare is incompatible with --upgrade-module-path
         pass

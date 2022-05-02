@@ -175,7 +175,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         processingEnv.getMessager().printMessage(Kind.WARNING, msg, e, mirror, value);
     }
 
-    static AnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
+    static CodeAnnotationMirror copyAnnotations(AnnotationMirror mirror, Predicate<ExecutableElement> filter) {
         CodeAnnotationMirror res = new CodeAnnotationMirror(mirror.getAnnotationType());
         for (Map.Entry<? extends ExecutableElement, ? extends AnnotationValue> e : mirror.getElementValues().entrySet()) {
             ExecutableElement executable = e.getKey();
@@ -262,7 +262,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
         String filename = "META-INF/services/" + providerBinName;
         List<String> providerClassNames = new ArrayList<>(providerRegistrations.size());
         for (String providerFqn : providerRegistrations.keySet()) {
-            TypeElement te = ElementUtils.getTypeElement(env, providerFqn);
+            TypeElement te = ElementUtils.getTypeElement(providerFqn);
             if (te == null) {
                 providerClassNames.add(providerFqn);
             } else {

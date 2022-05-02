@@ -64,7 +64,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Base class for nodes that intrinsify {@link System#arraycopy}.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = SIZE_64)
-public abstract class BasicArrayCopyNode extends WithExceptionNode implements DeoptBciSupplier, StateSplit, Virtualizable, SingleMemoryKill, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
+public abstract class BasicArrayCopyNode extends WithExceptionNode
+                implements DeoptBciSupplier, StateSplit, Virtualizable, SingleMemoryKill, MemoryAccess, Lowerable, DeoptimizingNode.DeoptDuring {
 
     public static final NodeClass<BasicArrayCopyNode> TYPE = NodeClass.create(BasicArrayCopyNode.class);
 
@@ -166,6 +167,9 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode implements De
     }
 
     public static JavaKind selectComponentKind(BasicArrayCopyNode arraycopy) {
+        if (arraycopy.getSource() == null || arraycopy.getDestination() == null) {
+            return null;
+        }
         ResolvedJavaType srcType = StampTool.typeOrNull(arraycopy.getSource().stamp(NodeView.DEFAULT));
         ResolvedJavaType destType = StampTool.typeOrNull(arraycopy.getDestination().stamp(NodeView.DEFAULT));
 

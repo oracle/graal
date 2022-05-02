@@ -632,6 +632,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             methodScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionNode);
             registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, exceptionNode, true, false);
             exceptionNode.setStateAfter(methodScope.exceptionState);
+            exceptionNode.setNodeSourcePosition(methodScope.callerBytecodePosition);
 
             exceptionNode.setNext(makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionNextOrderId));
             return BeginNode.begin(exceptionNode);
@@ -702,7 +703,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 WithExceptionNode replacee = (WithExceptionNode) insertBefore;
                 graph.replaceWithExceptionSplit(replacee, withExceptionNode);
                 AbstractBeginNode next = withExceptionNode.next();
-                if (withExceptionNode instanceof MemoryKill) {
+                if (MemoryKill.isMemoryKill(withExceptionNode)) {
                     /* Insert the correct memory killing begin node at the next edge. */
                     GraalError.guarantee(next instanceof BeginNode, "Not a BeginNode %s", next);
                     AbstractBeginNode beginNode = graph.add(new BeginNode());
@@ -1046,7 +1047,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return false;
             }
 
-            ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
+            ValueNode[] arguments = callTarget.arguments().toArray(ValueNode.EMPTY_ARRAY);
             FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 
             /*
@@ -1117,7 +1118,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return null;
             }
 
-            ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[0]);
+            ValueNode[] arguments = callTarget.arguments().toArray(ValueNode.EMPTY_ARRAY);
             GraphBuilderContext graphBuilderContext = new PENonAppendGraphBuilderContext(methodScope, invokeData.invoke);
 
             for (InlineInvokePlugin plugin : inlineInvokePlugins) {
@@ -1514,7 +1515,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 NewMultiArrayNode newArrayNode = (NewMultiArrayNode) node;
                 PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(methodScope, newArrayNode);
                 ResolvedJavaType elementType = newArrayNode.type();
-                ValueNode[] dimensions = newArrayNode.dimensions().toArray(new ValueNode[0]);
+                ValueNode[] dimensions = newArrayNode.dimensions().toArray(ValueNode.EMPTY_ARRAY);
                 for (NodePlugin nodePlugin : nodePlugins) {
                     if (nodePlugin.handleNewMultiArray(graphBuilderContext, elementType, dimensions)) {
                         replacedNode = graphBuilderContext.pushedNode;

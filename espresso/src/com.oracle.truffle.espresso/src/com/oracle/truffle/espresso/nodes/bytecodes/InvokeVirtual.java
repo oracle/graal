@@ -30,14 +30,14 @@ import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -58,7 +58,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * </ul>
  */
 @NodeInfo(shortName = "INVOKEVIRTUAL")
-public abstract class InvokeVirtual extends Node {
+public abstract class InvokeVirtual extends EspressoNode {
 
     final Method resolutionSeed;
 
@@ -81,9 +81,9 @@ public abstract class InvokeVirtual extends Node {
         return (StaticObject) args[0];
     }
 
-    @ImportStatic(InvokeVirtual.class)
+    @ImportStatic({InvokeVirtual.class, Utils.class})
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
-    public abstract static class WithoutNullCheck extends Node {
+    public abstract static class WithoutNullCheck extends EspressoNode {
 
         final Method resolutionSeed;
 
@@ -95,7 +95,8 @@ public abstract class InvokeVirtual extends Node {
 
         public abstract Object execute(Object[] args);
 
-        abstract static class LazyDirectCallNode extends Node {
+        @ImportStatic(Utils.class)
+        abstract static class LazyDirectCallNode extends EspressoNode {
 
             final Method.MethodVersion resolvedMethod;
 
@@ -106,13 +107,17 @@ public abstract class InvokeVirtual extends Node {
             public abstract Object execute(Object[] args);
 
             @Specialization
-            Object doCached(Object[] args, @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+            Object doCached(Object[] args, @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
                 return directCallNode.call(args);
             }
         }
 
         protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
-            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+            return getContext().getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        protected ClassHierarchyAssumption readLeafAssumption() {
+            return getContext().getClassHierarchyOracle().isLeafMethod(resolutionSeed.getMethodVersion());
         }
 
         // The implementor assumption might be invalidated right between the assumption check and
@@ -132,7 +137,7 @@ public abstract class InvokeVirtual extends Node {
 
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
-                                        "resolutionSeed.getLeafAssumption()",
+                                        "readLeafAssumption().getAssumption()",
                                         "resolvedMethod.getRedefineAssumption()"
                         })
         Object callLeafMethod(Object[] args,
@@ -154,7 +159,7 @@ public abstract class InvokeVirtual extends Node {
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
+                        @Cached("createAndMaybeForceInline(resolvedMethod)") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             return directCallNode.call(args);
@@ -201,7 +206,7 @@ public abstract class InvokeVirtual extends Node {
 
     @GenerateUncached
     @NodeInfo(shortName = "INVOKEVIRTUAL dynamic")
-    public abstract static class Dynamic extends Node {
+    public abstract static class Dynamic extends EspressoNode {
 
         protected static final int LIMIT = 4;
 
@@ -218,7 +223,7 @@ public abstract class InvokeVirtual extends Node {
 
         @GenerateUncached
         @NodeInfo(shortName = "INVOKEVIRTUAL dynamic !nullcheck")
-        public abstract static class WithoutNullCheck extends Node {
+        public abstract static class WithoutNullCheck extends EspressoNode {
 
             protected static final int LIMIT = 4;
 

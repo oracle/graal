@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "22.1.0",
+  "version" : "22.2.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -397,6 +397,22 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.nativebridge.processor.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.nativebridge",
+      ],
+      "annotationProcessors" : [
+        "GRAAL_NATIVEBRIDGE_PROCESSOR",
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "11+",
+      "workingSets" : "Graal,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
     "org.graalvm.libgraal.jni" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -723,6 +739,12 @@ suite = {
         "jdk.unsupported",
         "java.management",
       ],
+      "requiresConcealed" : {
+        "java.instrument" : [
+          "sun.instrument",
+          "java.lang.instrument",
+        ],
+      },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR"
       ],
@@ -1921,6 +1943,7 @@ suite = {
         "org.graalvm.compiler.truffle.test",
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
+        "org.graalvm.nativebridge.processor.test",
       ],
       "distDependencies" : [
         "GRAAL_ONLY_TEST",

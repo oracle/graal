@@ -196,6 +196,10 @@ public class DeadlockTest {
         private final CountDownLatch materializationLatch = new CountDownLatch(1);
         private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
+        public LockingLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final Source code = request.getSource();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.gen;
 
+import org.graalvm.compiler.asm.VectorSize;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -267,6 +268,21 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
     }
 
+    enum CharsetName {
+        ASCII,
+        ISO_8859_1
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitEncodeArray(Value src, Value dst, Value length, CharsetName charset) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitHasNegatives(Value array, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);
@@ -329,4 +345,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      * {@code isPreSync == true}) or following (if {@code isPreSync == false}) memory writes.
      */
     void emitCacheWritebackSync(boolean isPreSync);
+
+    /**
+     * Returns the maximum size of vector registers.
+     */
+    default VectorSize getMaxVectorSize() {
+        throw GraalError.unimplemented("Max vector size is not specified on this architecture");
+    }
 }

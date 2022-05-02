@@ -48,10 +48,12 @@ import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.URLConnectionFactory;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Downloads file to local, optionally checks its integrity using digest.
- * 
+ *
  * @author sdedic
  */
 public final class FileDownloader {
@@ -74,6 +76,8 @@ public final class FileDownloader {
     private Consumer<SeekableByteChannel> dataInterceptor;
     private URLConnectionFactory connectionFactory;
     private boolean simpleOutput;
+
+    private Map<String, List<String>> responseHeader = Collections.emptyMap();
     private DownloadExceptionInterceptor downloadExceptionInterceptor = (ex, fd) -> ex;
 
     public interface DownloadExceptionInterceptor {
@@ -82,6 +86,14 @@ public final class FileDownloader {
          * Exception is thrown.
          */
         IOException interceptDownloadException(IOException downloadException, FileDownloader fileDownloader);
+    }
+
+    public Map<String, List<String>> getResponseHeader() {
+        return responseHeader;
+    }
+
+    public Map<String, String> getRequestHeaders() {
+        return Collections.unmodifiableMap(requestHeaders);
     }
 
     /**
@@ -415,6 +427,7 @@ public final class FileDownloader {
             stopProgress(success);
         }
         verifyDigest();
+        responseHeader = conn.getHeaderFields();
         feedback.addLocalFileCache(sourceURL, localFile.toPath());
     }
 

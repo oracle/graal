@@ -34,7 +34,7 @@ public interface ReadableJavaField extends ResolvedJavaField {
     static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
         if (javaField instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) javaField;
-            assert readableField.isValueAvailable();
+            assert readableField.isValueAvailable() : "Field " + readableField.format("%H.%n") + " value not available for reading.";
             return readableField.readValue(metaAccess, javaConstant);
         } else {
             return originalConstantReflection.readFieldValue(javaField, javaConstant);

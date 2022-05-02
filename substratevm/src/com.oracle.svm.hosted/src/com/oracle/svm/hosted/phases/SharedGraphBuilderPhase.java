@@ -51,12 +51,11 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
-import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.LinkAtBuildTimeSupport;
 
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
@@ -84,18 +83,18 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
         private final boolean explicitExceptionEdges;
-        private final boolean allowIncompleteClassPath;
+        private final boolean linkAtBuildTime;
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, boolean explicitExceptionEdges) {
-            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, NativeImageOptions.AllowIncompleteClasspath.getValue());
+            this(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, explicitExceptionEdges, LinkAtBuildTimeSupport.singleton().linkAtBuildTime(method.getDeclaringClass()));
         }
 
         protected SharedBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean allowIncompleteClasspath) {
+                        IntrinsicContext intrinsicContext, boolean explicitExceptionEdges, boolean linkAtBuildTime) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
             this.explicitExceptionEdges = explicitExceptionEdges;
-            this.allowIncompleteClassPath = allowIncompleteClasspath;
+            this.linkAtBuildTime = linkAtBuildTime;
         }
 
         @Override
@@ -183,16 +182,15 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         protected void handleIllegalNewInstance(JavaType type) {
             /*
-             * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-             * otherwise report the error during image building.
+             * If linkAtBuildTime was set for type, report the error during image building,
+             * otherwise defer the error reporting to runtime.
              */
-            if (allowIncompleteClassPath) {
-                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
-            } else {
-                String message = "Cannot instantiate " + type.toJavaName() +
-                                ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
-                                " option. The instantiation error is then reported at run time.";
+            if (linkAtBuildTime) {
+                String message = "Cannot instantiate " + type.toJavaName() + ". " +
+                                LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
                 throw new TypeInstantiationException(message);
+            } else {
+                ExceptionSynthesizer.throwException(this, InstantiationError.class, type.toJavaName());
             }
         }
 
@@ -248,13 +246,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
 
         private void handleUnresolvedType(JavaType type) {
             /*
-             * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-             * otherwise report the error during image building.
+             * If linkAtBuildTime was set for type, report the error during image building,
+             * otherwise defer the error reporting to runtime.
              */
-            if (allowIncompleteClassPath) {
-                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
-            } else {
+            if (linkAtBuildTime) {
                 reportUnresolvedElement("type", type.toJavaName());
+            } else {
+                ExceptionSynthesizer.throwException(this, NoClassDefFoundError.class, type.toJavaName());
             }
         }
 
@@ -265,13 +263,13 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 handleUnresolvedType(declaringClass);
             } else {
                 /*
-                 * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-                 * otherwise report the error during image building.
+                 * If linkAtBuildTime was set for type, report the error during image building,
+                 * otherwise defer the error reporting to runtime.
                  */
-                if (allowIncompleteClassPath) {
-                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
-                } else {
+                if (linkAtBuildTime) {
                     reportUnresolvedElement("field", field.format("%H.%n"));
+                } else {
+                    ExceptionSynthesizer.throwException(this, NoSuchFieldError.class, field.format("%H.%n"));
                 }
             }
         }
@@ -283,26 +281,21 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 handleUnresolvedType(declaringClass);
             } else {
                 /*
-                 * If --allow-incomplete-classpath is set defer the error reporting to runtime,
-                 * otherwise report the error during image building.
+                 * If linkAtBuildTime was set for type, report the error during image building,
+                 * otherwise defer the error reporting to runtime.
                  */
-                if (allowIncompleteClassPath) {
-                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
-                } else {
+                if (linkAtBuildTime) {
                     reportUnresolvedElement("method", javaMethod.format("%H.%n(%P)"));
+                } else {
+                    ExceptionSynthesizer.throwException(this, NoSuchMethodError.class, javaMethod.format("%H.%n(%P)"));
                 }
             }
         }
 
-        private static void reportUnresolvedElement(String elementKind, String elementAsString) {
-            String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString +
-                            ". To diagnose the issue you can use the " + allowIncompleteClassPathOption() +
-                            " option. The missing " + elementKind + " is then reported at run time when it is accessed the first time.";
+        private void reportUnresolvedElement(String elementKind, String elementAsString) {
+            String message = "Discovered unresolved " + elementKind + " during parsing: " + elementAsString + ". " +
+                            LinkAtBuildTimeSupport.singleton().errorMessageFor(method.getDeclaringClass());
             throw new UnresolvedElementException(message);
-        }
-
-        private static String allowIncompleteClassPathOption() {
-            return SubstrateOptionsParser.commandArgument(NativeImageOptions.AllowIncompleteClasspath, "+");
         }
 
         @Override

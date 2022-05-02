@@ -69,6 +69,7 @@ import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.PUBLIC;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.lang.invoke.VarHandle;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -712,6 +713,7 @@ public class FlatNodeGenFactory {
         if (node.isUncachable() && node.isGenerateUncached()) {
             CodeTypeElement uncached = GeneratorUtils.createClass(node, null, modifiers(PRIVATE, STATIC, FINAL), "Uncached", node.getTemplateType().asType());
             uncached.getEnclosedElements().addAll(createUncachedFields());
+            uncached.addAnnotationMirror(new CodeAnnotationMirror(types.DenyReplace));
 
             for (NodeFieldData field : node.getFields()) {
                 if (!field.isGenerated()) {
@@ -4095,7 +4097,11 @@ public class FlatNodeGenFactory {
 
         String boundaryMethodName;
         if (specialization != null) {
-            boundaryMethodName = specialization.getId() + "Boundary";
+            if (generatorMode.equals(GeneratorMode.EXPORTED_MESSAGE)) {
+                boundaryMethodName = String.format("%s_%sBoundary", node.getNodeId(), specialization.getId());
+            } else {
+                boundaryMethodName = String.format("%sBoundary", specialization.getId());
+            }
         } else {
             boundaryMethodName = "specializationBoundary";
         }
@@ -4426,7 +4432,7 @@ public class FlatNodeGenFactory {
         // here: we must ensure that the item that is being appended to the list is fully
         // initialized.
         builder.startStatement();
-        builder.startStaticCall(context.getTypes().MemoryFence, "storeStore");
+        builder.startStaticCall(context.getType(VarHandle.class), "storeStoreFence");
         builder.end();
         builder.end();
         builder.startStatement();

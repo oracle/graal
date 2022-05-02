@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface Children {
+
     }
 
     /**
@@ -99,6 +100,7 @@ public abstract class Node implements NodeInterface, Cloneable {
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.FIELD})
     public @interface Child {
+
     }
 
     /** @since 0.8 or earlier */
@@ -107,7 +109,7 @@ public abstract class Node implements NodeInterface, Cloneable {
         assert NodeClass.get(getClass()) != null; // ensure NodeClass constructor does not throw
     }
 
-    NodeClass getNodeClass() {
+    final NodeClass getNodeClass() {
         return NodeClass.get(getClass());
     }
 
@@ -468,7 +470,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @since 0.8 or earlier
      */
     public final Iterable<Node> getChildren() {
-        return new Iterable<Node>() {
+        return new Iterable<>() {
             public Iterator<Node> iterator() {
                 return getNodeClass().makeIterator(Node.this);
             }
@@ -566,6 +568,11 @@ public abstract class Node implements NodeInterface, Cloneable {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(getClass().getSimpleName());
+        Class<?> enclosing = getClass().getEnclosingClass();
+        while (enclosing != null) {
+            sb.insert(0, enclosing.getSimpleName() + ".");
+            enclosing = enclosing.getEnclosingClass();
+        }
         Map<String, Object> properties = getDebugProperties();
         boolean hasProperties = false;
         for (Map.Entry<String, Object> entry : properties.entrySet()) {
@@ -643,7 +650,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link LanguageReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     @SuppressWarnings({"unchecked", "rawtypes"})
     @TruffleBoundary
     protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
@@ -687,7 +694,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @deprecated in 21.3, use static final context references instead. See
      *             {@link LanguageReference} for the new intended usage.
      */
-    @Deprecated
+    @Deprecated(since = "21.3")
     @SuppressWarnings("unchecked")
     @TruffleBoundary
     protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {

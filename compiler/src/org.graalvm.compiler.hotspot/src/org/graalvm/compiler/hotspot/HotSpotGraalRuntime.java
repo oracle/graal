@@ -242,6 +242,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         bootstrapJVMCI = config.getFlag("BootstrapJVMCI", Boolean.class);
 
         this.compilerProfiler = GraalServices.loadSingle(CompilerProfiler.class, false);
+
+        startupLibGraal(this);
     }
 
     /**
@@ -527,6 +529,16 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         outputDirectory.close();
 
         shutdownLibGraal(this);
+    }
+
+    /**
+     * Substituted by
+     * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}
+     * to notify {@code org.graalvm.libgraal.LibGraalIsolate} and call
+     * {@code org.graalvm.nativeimage.VMRuntime.initialize()}.
+     */
+    @SuppressWarnings("unused")
+    private static void startupLibGraal(HotSpotGraalRuntime runtime) {
     }
 
     /**

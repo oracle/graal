@@ -40,7 +40,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
-import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.replacements.SnippetSubstitutionNode;
@@ -87,37 +86,33 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
     @Test
     public void testAESencryptBlock() throws Exception {
         Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
-        String aesEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(runtime().getVMConfig(), "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
-        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", aesEncryptName, "AES", 128, "AES/CBC/NoPadding");
-        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", aesEncryptName, "AES", 128, "AES/CBC/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implEncryptBlock", "AES", 128, "AES/CBC/PKCS5Padding");
     }
 
     @Test
     public void testAESDecryptBlock() throws Exception {
         Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
-        String aesDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(runtime().getVMConfig(), "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
-        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", aesDecryptName, "AES", 128, "AES/CBC/NoPadding");
-        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", aesDecryptName, "AES", 128, "AES/CBC/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 128, "AES/CBC/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.AESCrypt", "implDecryptBlock", "AES", 128, "AES/CBC/PKCS5Padding");
     }
 
     @Test
     public void testCipherBlockChainingEncrypt() throws Exception {
         Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
-        String cbcEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(runtime().getVMConfig(), "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcEncryptName, "AES", 128, "AES/CBC/NoPadding");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcEncryptName, "AES", 128, "AES/CBC/PKCS5Padding");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcEncryptName, "DESede", 168, "DESede/CBC/NoPadding");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcEncryptName, "DESede", 168, "DESede/CBC/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "AES", 128, "AES/CBC/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "AES", 128, "AES/CBC/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "DESede", 168, "DESede/CBC/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implEncrypt", "DESede", 168, "DESede/CBC/PKCS5Padding");
     }
 
     @Test
     public void testCipherBlockChainingDecrypt() throws Exception {
         Assume.assumeTrue(runtime().getVMConfig().useAESIntrinsics);
-        String cbcDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(runtime().getVMConfig(), "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcDecryptName, "AES", 128, "AES/CBC/NoPadding");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcDecryptName, "AES", 128, "AES/CBC/PKCS5Padding");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcDecryptName, "DESede", 168, "DESede/CBC/NoPadding");
-        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", cbcDecryptName, "DESede", 168, "DESede/CBC/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "AES", 128, "AES/CBC/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "AES", 128, "AES/CBC/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "DESede", 168, "DESede/CBC/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.CipherBlockChaining", "implDecrypt", "DESede", 168, "DESede/CBC/PKCS5Padding");
     }
 
     @Test
@@ -127,6 +122,24 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "AES", 128, "AES/CTR/PKCS5Padding");
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "DESede", 168, "DESede/CTR/NoPadding");
         testEncryptDecrypt("com.sun.crypto.provider.CounterMode", "implCrypt", "DESede", 168, "DESede/CTR/PKCS5Padding");
+    }
+
+    @Test
+    public void testEletronicCodeBookEncrypt() throws Exception {
+        Assume.assumeTrue(runtime().getVMConfig().electronicCodeBookEncrypt != 0L);
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 128, "AES/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "AES", 128, "AES/ECB/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "DESede", 168, "DESede/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBEncrypt", "DESede", 168, "DESede/ECB/PKCS5Padding");
+    }
+
+    @Test
+    public void testEletronicCodeBookDecrypt() throws Exception {
+        Assume.assumeTrue(runtime().getVMConfig().electronicCodeBookDecrypt != 0L);
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 128, "AES/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "AES", 128, "AES/ECB/PKCS5Padding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "DESede", 168, "DESede/ECB/NoPadding");
+        testEncryptDecrypt("com.sun.crypto.provider.ElectronicCodeBook", "implECBDecrypt", "DESede", 168, "DESede/ECB/PKCS5Padding");
     }
 
     AlgorithmParameters algorithmParameters;

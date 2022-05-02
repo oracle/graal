@@ -204,9 +204,10 @@ def test():
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello::main",
                       [r"#0%shello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:76"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
-                       r"#2%s com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
-                       r"#3%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
+                       r"#1%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#3%s com\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#4%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
 
@@ -347,13 +348,13 @@ def test():
             r"%sjava\.lang\.Object \* clone\(void\);"%(spaces_pattern),
             r"%spublic:"%(spaces_pattern),
             r"%sboolean equals\(java\.lang\.Object \*\);"%(spaces_pattern),
+            r"%sjava\.lang\.Class \* getClass\(void\);"%(spaces_pattern),
             r"%sint hashCode\(void\);"%(spaces_pattern),
             r"%svoid notify\(void\);"%(spaces_pattern),
             r"%svoid notifyAll\(void\);"%(spaces_pattern),
             r"%sjava\.lang\.String \* toString\(void\);"%(spaces_pattern),
             r"%svoid wait\(void\);"%(spaces_pattern),
             r"%svoid wait\(long\);"%(spaces_pattern),
-            r"%svoid wait\(long, int\);"%(spaces_pattern),
             r"}"]
     
     checker = Checker('ptype Object', rexp)
@@ -394,9 +395,10 @@ def test():
     checker = Checker("backtrace hello.Hello.Greeter::greeter",
                       [r"#0%shello\.Hello\$Greeter::greeter\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:37"%(spaces_pattern, wildcard_pattern),
                        r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\)%s at hello/Hello\.java:76"%(spaces_pattern, address_pattern, wildcard_pattern),
-                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
-                       r"#3%scom\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
-                       r"#4%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
+                       r"#2%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#3%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern),
+                       r"#4%scom\.oracle\.svm\.core\.JavaMainWrapper::run%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, wildcard_pattern, package_pattern),
+                       r"#5%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s%s"%(spaces_pattern, address_pattern, hex_digits_pattern, wildcard_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
 

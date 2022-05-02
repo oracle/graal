@@ -65,6 +65,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.util.JavaConstantFormattable;
@@ -225,10 +227,22 @@ public class BinaryGraphPrinter implements
         return info.graph.getNodeCount();
     }
 
+    private static boolean checkNoChars(Node node, Map<String, ? super Object> props) {
+        for (Map.Entry<String, Object> e : props.entrySet()) {
+            Object value = e.getValue();
+            if (value instanceof Character) {
+                throw new AssertionError("value of " + node.getClass().getName() + " debug property \"" + e.getKey() +
+                                "\" should be an Integer or a String as a Character value may not be printable/viewable");
+            }
+        }
+        return true;
+    }
+
     @Override
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void nodeProperties(GraphInfo info, Node node, Map<String, ? super Object> props) {
         node.getDebugProperties((Map) props);
+        assert checkNoChars(node, props);
         NodeMap<Block> nodeToBlocks = info.nodeToBlocks;
 
         if (nodeToBlocks != null) {
@@ -284,11 +298,15 @@ public class BinaryGraphPrinter implements
             props.put("category", "floating");
         }
 
-        if (node instanceof SingleMemoryKill) {
+        if (MemoryKill.isSingleMemoryKill(node)) {
             props.put("killedLocationIdentity", ((SingleMemoryKill) node).getKilledLocationIdentity());
         }
-        if (node instanceof MultiMemoryKill) {
+        if (MemoryKill.isMultiMemoryKill(node)) {
             props.put("killedLocationIdentities", ((MultiMemoryKill) node).getKilledLocationIdentities());
+        }
+
+        if (node instanceof MemoryAccess) {
+            props.put("locationIdentity", ((MemoryAccess) node).getLocationIdentity());
         }
 
         if (getSnippetReflectionProvider() != null) {

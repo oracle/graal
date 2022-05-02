@@ -26,6 +26,7 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
+import com.oracle.objectfile.ObjectFile.RelocationKind;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.io.Utf8;
@@ -43,13 +44,12 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
     private static final int CV_VECTOR_DEFAULT_SIZE = 200;
     private static final int CV_STRINGTABLE_DEFAULT_SIZE = 200;
 
-    private final CVDebugInfo cvDebugInfo;
     private final ArrayList<CVSymbolRecord> cvRecords;
     private final CVStringTable stringTable;
     private final CVFileTableRecord fileTableRecord;
 
     CVSymbolSectionImpl(CVDebugInfo cvDebugInfo) {
-        this.cvDebugInfo = cvDebugInfo;
+        super(cvDebugInfo);
         this.cvRecords = new ArrayList<>(CV_VECTOR_DEFAULT_SIZE);
         this.stringTable = new CVStringTable(CV_STRINGTABLE_DEFAULT_SIZE);
         this.fileTableRecord = new CVFileTableRecord(cvDebugInfo, stringTable);
@@ -68,9 +68,9 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
     public void createContent(DebugContext debugContext) {
         int pos = 0;
         enableLog(debugContext);
-        log(debugContext, "CVSymbolSectionImpl.createContent() adding records");
-        addRecords(debugContext);
-        log(debugContext, "CVSymbolSectionImpl.createContent() start");
+        log("CVSymbolSectionImpl.createContent() adding records");
+        addRecords();
+        log("CVSymbolSectionImpl.createContent() start");
         /* Add header size. */
         pos += Integer.BYTES;
         /* Add sum of all record sizes. */
@@ -81,49 +81,49 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
         /* Create a buffer that holds it all. */
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
-        log(debugContext, "CVSymbolSectionImpl.createContent() end");
+        log("CVSymbolSectionImpl.createContent() end");
     }
 
     @Override
     public void writeContent(DebugContext debugContext) {
         int pos = 0;
         enableLog(debugContext);
-        log(debugContext, "CVSymbolSectionImpl.writeContent() start recordcount=%d", cvRecords.size());
+        log("CVSymbolSectionImpl.writeContent() start recordcount=%d", cvRecords.size());
         byte[] buffer = getContent();
         /* Write section header. */
-        log(debugContext, "  [0x%08x] CV_SIGNATURE_C13", pos);
+        log("  [0x%08x] CV_SIGNATURE_C13", pos);
         pos = CVUtil.putInt(CV_SIGNATURE_C13, buffer, pos);
         /* Write all records. */
         for (CVSymbolRecord record : cvRecords) {
             pos = CVUtil.align4(pos);
-            log(debugContext, "  [0x%08x] %s", pos, record.toString());
-            record.logContents(debugContext);
+            log("  [0x%08x] %s", pos, record.toString());
+            record.logContents();
             pos = record.computeFullContents(buffer, pos);
         }
-        log(debugContext, "CVSymbolSectionImpl.writeContent() end");
+        log("CVSymbolSectionImpl.writeContent() end");
     }
 
-    private void addRecords(DebugContext debugContext) {
+    private void addRecords() {
         addPrologueRecord();
-        addFunctionRecords(debugContext);
+        addFunctionRecords();
         addFileRecord();
         addStringTableRecord();
     }
 
     private void addPrologueRecord() {
-        CVSymbolSubsection prologue = new CVSymbolSubsection(cvDebugInfo);
-        CVSymbolSubrecord.CVObjectNameRecord objectNameRecord = new CVSymbolSubrecord.CVObjectNameRecord(cvDebugInfo);
+        CVSymbolSubsection prologue = new CVSymbolSubsection(getCvDebugInfo());
+        CVSymbolSubrecord.CVObjectNameRecord objectNameRecord = new CVSymbolSubrecord.CVObjectNameRecord(getCvDebugInfo());
         if (objectNameRecord.isValid()) {
             prologue.addRecord(objectNameRecord);
         }
-        prologue.addRecord(new CVSymbolSubrecord.CVCompile3Record(cvDebugInfo));
-        prologue.addRecord(new CVSymbolSubrecord.CVEnvBlockRecord(cvDebugInfo));
+        prologue.addRecord(new CVSymbolSubrecord.CVCompile3Record(getCvDebugInfo()));
+        prologue.addRecord(new CVSymbolSubrecord.CVEnvBlockRecord(getCvDebugInfo()));
         addRecord(prologue);
     }
 
-    private void addFunctionRecords(DebugContext debugContext) {
+    private void addFunctionRecords() {
         /* This will build and add many records for each function. */
-        new CVSymbolSubsectionBuilder(cvDebugInfo).build(debugContext);
+        new CVSymbolSubsectionBuilder(getCvDebugInfo()).build();
     }
 
     private void addFileRecord() {
@@ -136,7 +136,7 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
     }
 
     private void addStringTableRecord() {
-        CVSymbolRecord stringTableRecord = new CVStringTableRecord(cvDebugInfo, stringTable);
+        CVSymbolRecord stringTableRecord = new CVStringTableRecord(getCvDebugInfo(), stringTable);
         addRecord(stringTableRecord);
     }
 
@@ -185,5 +185,38 @@ public final class CVSymbolSectionImpl extends CVSectionImpl {
 
     void addRecord(CVSymbolRecord record) {
         cvRecords.add(record);
+    }
+
+    /**
+     * Mark an offset:segment relocation site for linker or loader fixup.
+     *
+     * @param buffer output buffer
+     * @param initialPos position of fixup in output buffer
+     * @param symbolName symbolname to reference
+     * @return new position in output buffer
+     */
+    public int markRelocationSite(byte[] buffer, int initialPos, String symbolName) {
+        return markRelocationSite(buffer, initialPos, symbolName, 0);
+    }
+
+    /**
+     * Mark an offset:segment + offset relocation site for linker or loader fixup.
+     *
+     * @param buffer output buffer
+     * @param initialPos position of fixup in output buffer
+     * @param symbolName symbolname to reference
+     * @param offset offset from symbol
+     * @return new position in output buffer
+     */
+    public int markRelocationSite(byte[] buffer, int initialPos, String symbolName, long offset) {
+        int pos = markRelocationSite(buffer, initialPos, symbolName, RelocationKind.SECREL_4, offset);
+        return markRelocationSite(buffer, pos, symbolName, RelocationKind.SECTION_2, 0);
+    }
+
+    private int markRelocationSite(byte[] buffer, int initialPos, String symbolName, RelocationKind kind, long offset) {
+        if (buffer != null) {
+            markRelocationSite(initialPos, kind, symbolName, offset);
+        }
+        return initialPos + RelocationKind.getRelocationSize(kind);
     }
 }

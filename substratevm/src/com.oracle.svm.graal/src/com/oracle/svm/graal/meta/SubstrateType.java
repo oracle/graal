@@ -25,13 +25,12 @@
 package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
-import java.util.ArrayList;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
@@ -43,10 +42,11 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeClass;
-import com.oracle.truffle.api.nodes.NodeCloneable;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -54,11 +54,8 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.misc.Unsafe;
 
 public class SubstrateType extends NodeClass implements SharedType {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     protected static final SubstrateType[] EMPTY_ARRAY = new SubstrateType[0];
 
@@ -476,54 +473,6 @@ public class SubstrateType extends NodeClass implements SharedType {
      * Implementation of Truffle NodeClass interface
      */
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.nodes.NodeFieldAccessor getNodeClassField() {
-        return SubstrateNodeFieldAccessor.fromSubstrateField(
-                        getNodeFields(field -> DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("nodeClass")).iterator().next());
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getCloneableFields() {
-        return nodeFieldIterableToArray(getNodeFields(field -> !SubstrateNodeFieldAccessor.isChildField(field) && !SubstrateNodeFieldAccessor.isChildrenField(field) &&
-                        NodeCloneable.class.isAssignableFrom(DynamicHub.toClass(field.getType().getHub()))));
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getFields() {
-        return nodeFieldIterableToArray(getNodeFields(null));
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.nodes.NodeFieldAccessor getParentField() {
-        return SubstrateNodeFieldAccessor.fromSubstrateField(
-                        getNodeFields(field -> DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("parent")).iterator().next());
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getChildFields() {
-        return nodeFieldIterableToArray(getNodeFields(field -> SubstrateNodeFieldAccessor.isChildField(field)));
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public com.oracle.truffle.api.nodes.NodeFieldAccessor[] getChildrenFields() {
-        return nodeFieldIterableToArray(getNodeFields(field -> SubstrateNodeFieldAccessor.isChildrenField(field)));
-    }
-
-    @SuppressWarnings("deprecation")
-    private static com.oracle.truffle.api.nodes.NodeFieldAccessor[] nodeFieldIterableToArray(Iterable<SubstrateField> fields) {
-        ArrayList<com.oracle.truffle.api.nodes.NodeFieldAccessor> fieldList = new ArrayList<>();
-        for (SubstrateField field : fields) {
-            fieldList.add(SubstrateNodeFieldAccessor.fromSubstrateField(field));
-        }
-        return fieldList.toArray(new com.oracle.truffle.api.nodes.NodeFieldAccessor[0]);
-    }
-
     @Override
     public Iterator<Node> makeIterator(Node node) {
         return new SubstrateNodeIterator(node, this);
@@ -534,12 +483,6 @@ public class SubstrateType extends NodeClass implements SharedType {
     public Class<? extends Node> getType() {
         assert Node.class.isAssignableFrom(DynamicHub.toClass(getHub()));
         return (Class<? extends Node>) DynamicHub.toClass(getHub());
-    }
-
-    @Override
-    @SuppressWarnings("deprecation")
-    protected Iterable<SubstrateField> getNodeFields() {
-        return getNodeFields(null);
     }
 
     @Override
@@ -555,58 +498,54 @@ public class SubstrateType extends NodeClass implements SharedType {
         }
     }
 
-    private Iterable<SubstrateField> getNodeFields(Predicate<SubstrateField> filter) {
-        return () -> new SubstrateNodeFieldIterator(this, filter);
-    }
-
     @Override
     public void putFieldObject(Object field, Node receiver, Object value) {
         assert !getFieldType(field).isPrimitive();
         assert value == null || getFieldType(field).isInstance(value);
-        long offset = SubstrateNodeFieldAccessor.makeOffset((SubstrateField) field);
-        UNSAFE.putObject(receiver, offset, value);
+        long offset = makeOffset((SubstrateField) field);
+        Unsafe.getUnsafe().putObject(receiver, offset, value);
     }
 
     @Override
     public Object getFieldObject(Object field, Node receiver) {
         assert !getFieldType(field).isPrimitive();
-        long offset = SubstrateNodeFieldAccessor.makeOffset((SubstrateField) field);
-        return UNSAFE.getObject(receiver, offset);
+        long offset = makeOffset((SubstrateField) field);
+        return Unsafe.getUnsafe().getObject(receiver, offset);
     }
 
     @Override
     public Object getFieldValue(Object field, Node node) {
         Class<?> fieldType = getFieldType(field);
-        long offset = SubstrateNodeFieldAccessor.makeOffset((SubstrateField) field);
+        long offset = makeOffset((SubstrateField) field);
         if (fieldType == boolean.class) {
-            return UNSAFE.getBoolean(node, offset);
+            return Unsafe.getUnsafe().getBoolean(node, offset);
         } else if (fieldType == byte.class) {
-            return UNSAFE.getByte(node, offset);
+            return Unsafe.getUnsafe().getByte(node, offset);
         } else if (fieldType == short.class) {
-            return UNSAFE.getShort(node, offset);
+            return Unsafe.getUnsafe().getShort(node, offset);
         } else if (fieldType == char.class) {
-            return UNSAFE.getChar(node, offset);
+            return Unsafe.getUnsafe().getChar(node, offset);
         } else if (fieldType == int.class) {
-            return UNSAFE.getInt(node, offset);
+            return Unsafe.getUnsafe().getInt(node, offset);
         } else if (fieldType == long.class) {
-            return UNSAFE.getLong(node, offset);
+            return Unsafe.getUnsafe().getLong(node, offset);
         } else if (fieldType == float.class) {
-            return UNSAFE.getFloat(node, offset);
+            return Unsafe.getUnsafe().getFloat(node, offset);
         } else if (fieldType == double.class) {
-            return UNSAFE.getDouble(node, offset);
+            return Unsafe.getUnsafe().getDouble(node, offset);
         } else {
-            return UNSAFE.getObject(node, offset);
+            return Unsafe.getUnsafe().getObject(node, offset);
         }
     }
 
     @Override
     public boolean isChildField(Object field) {
-        return SubstrateNodeFieldAccessor.isChildField((SubstrateField) field);
+        return isChildField((SubstrateField) field);
     }
 
     @Override
     public boolean isChildrenField(Object field) {
-        return SubstrateNodeFieldAccessor.isChildrenField((SubstrateField) field);
+        return isChildrenField((SubstrateField) field);
     }
 
     @Override
@@ -615,24 +554,19 @@ public class SubstrateType extends NodeClass implements SharedType {
     }
 
     @Override
+    protected boolean isReplaceAllowed() {
+        boolean replaceDenied = Modifier.isFinal(getModifiers()) && getAnnotation(DenyReplace.class) != null;
+        return !replaceDenied;
+    }
+
+    @Override
     public Class<?> getFieldType(Object field) {
-        return SubstrateNodeFieldAccessor.makeType((SubstrateField) field);
+        return makeType((SubstrateField) field);
     }
 
     @Override
     public String getFieldName(Object field) {
         return ((SubstrateField) field).getName();
-    }
-}
-
-@SuppressWarnings("deprecation")
-class SubstrateNodeFieldAccessor extends com.oracle.truffle.api.nodes.NodeFieldAccessor.AbstractUnsafeNodeFieldAccessor {
-
-    private final long offset;
-
-    protected SubstrateNodeFieldAccessor(SubstrateField field, NodeFieldKind nodeFieldKind) {
-        super(nodeFieldKind, makeDeclaringClass(field), field.getName(), makeType(field));
-        this.offset = makeOffset(field);
     }
 
     protected static boolean isChildrenField(SubstrateField field) {
@@ -661,26 +595,6 @@ class SubstrateNodeFieldAccessor extends com.oracle.truffle.api.nodes.NodeFieldA
         return field.getLocation();
     }
 
-    @Override
-    public long getOffset() {
-        return offset;
-    }
-
-    static SubstrateNodeFieldAccessor fromSubstrateField(SubstrateField field) {
-        com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind nodeFieldKind;
-        if (DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("parent")) {
-            nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.PARENT;
-        } else if (DynamicHub.toClass(field.getDeclaringClass().getHub()) == Node.class && field.getName().equals("nodeClass")) {
-            nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.NODE_CLASS;
-        } else if (SubstrateNodeFieldAccessor.isChildField(field)) {
-            nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILD;
-        } else if (SubstrateNodeFieldAccessor.isChildrenField(field)) {
-            nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.CHILDREN;
-        } else {
-            nodeFieldKind = com.oracle.truffle.api.nodes.NodeFieldAccessor.NodeFieldKind.DATA;
-        }
-        return new SubstrateNodeFieldAccessor(field, nodeFieldKind);
-    }
 }
 
 class SubstrateNodeFieldIterator implements Iterator<SubstrateField> {
@@ -741,8 +655,6 @@ class SubstrateNodeFieldIterator implements Iterator<SubstrateField> {
 
 class SubstrateNodeIterator implements Iterator<Node> {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
     private final Node node;
 
     private final SubstrateType type;
@@ -788,15 +700,15 @@ class SubstrateNodeIterator implements Iterator<Node> {
     }
 
     private boolean computeNextFromField(SubstrateField field) {
-        if (SubstrateNodeFieldAccessor.isChildField(field)) {
+        if (SubstrateType.isChildField(field)) {
             long offset = field.getLocation();
-            next = (Node) UNSAFE.getObject(node, offset);
+            next = (Node) Unsafe.getUnsafe().getObject(node, offset);
             if (next != null) {
                 return true;
             }
-        } else if (SubstrateNodeFieldAccessor.isChildrenField(field)) {
+        } else if (SubstrateType.isChildrenField(field)) {
             long offset = field.getLocation();
-            children = (Object[]) UNSAFE.getObject(node, offset);
+            children = (Object[]) Unsafe.getUnsafe().getObject(node, offset);
             nextChildInChildren = 0;
             return computeNextFromChildren();
         }

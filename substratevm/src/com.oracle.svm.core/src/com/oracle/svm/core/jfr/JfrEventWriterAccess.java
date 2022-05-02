@@ -26,21 +26,20 @@ package com.oracle.svm.core.jfr;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.misc.Unsafe;
 import jdk.jfr.internal.EventWriter;
-import sun.misc.Unsafe;
 
 /**
  * Used to access the Java event writer class, see {@link jdk.jfr.internal.EventWriter}.
  */
 public final class JfrEventWriterAccess {
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
 
     private static final Field startPosition = ReflectionUtil.lookupField(EventWriter.class, "startPosition");
     private static final Field startPositionAddress = ReflectionUtil.lookupField(EventWriter.class, "startPositionAddress");

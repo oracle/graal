@@ -32,24 +32,18 @@ import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.nodes.BciProvider;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
 @GenerateWrapper
 @ExportLibrary(NodeLibrary.class)
-public abstract class BaseQuickNode extends Node implements BciProvider, InstrumentableNode, ContextAccess {
+public abstract class BaseQuickNode extends EspressoNode implements BciProvider, InstrumentableNode {
 
     public abstract int execute(VirtualFrame frame);
 
     public final boolean isInstrumentable() {
         return true;
-    }
-
-    public final EspressoContext getContext() {
-        return EspressoContext.get(this);
     }
 
     @Override

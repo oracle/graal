@@ -128,7 +128,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     public enum IntrinsifyOp {
         NON_NULL,
-        POSITIVE_INT
+        POSITIVE_INT,
+        INT_NON_ZERO,
+        LONG_NON_ZERO
     }
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode input, ValueNode guard, IntrinsifyOp intrinsifyOp) {
@@ -142,6 +144,14 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             case POSITIVE_INT:
                 piStamp = StampFactory.positiveInt();
                 pushKind = JavaKind.Int;
+                break;
+            case INT_NON_ZERO:
+                piStamp = StampFactory.nonZeroInt();
+                pushKind = JavaKind.Int;
+                break;
+            case LONG_NON_ZERO:
+                piStamp = StampFactory.nonZeroLong();
+                pushKind = JavaKind.Long;
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
@@ -329,8 +339,19 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return intrinsified(value, guard, IntrinsifyOp.POSITIVE_INT);
     }
 
+    public static int piCastNonZero(int value, GuardingNode guard) {
+        return intrinsified(value, guard, IntrinsifyOp.INT_NON_ZERO);
+    }
+
+    public static long piCastNonZero(long value, GuardingNode guard) {
+        return intrinsified(value, guard, IntrinsifyOp.LONG_NON_ZERO);
+    }
+
     @NodeIntrinsic
     private static native int intrinsified(int value, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
+
+    @NodeIntrinsic
+    private static native long intrinsified(long value, GuardingNode guard, @ConstantNodeParameter IntrinsifyOp intrinsifyOp);
 
     /**
      * Changes the stamp of an object and ensures the newly stamped value is non-null and does not
@@ -394,7 +415,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
          * @param snippetReplaceeStamp the stamp of the node being replace by the snippet
          */
         public void makeReplacement(Stamp snippetReplaceeStamp) {
-            ValueNode value = graph().maybeAddOrUnique(PiNode.create(object(), snippetReplaceeStamp, null));
+            ValueNode value = graph().addOrUnique(PiNode.create(object(), snippetReplaceeStamp, null));
             replaceAndDelete(value);
         }
     }

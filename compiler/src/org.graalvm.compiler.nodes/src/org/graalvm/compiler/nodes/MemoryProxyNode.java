@@ -68,7 +68,7 @@ public final class MemoryProxyNode extends ProxyNode implements SingleMemoryKill
 
     @Override
     public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
-        assert newOriginalNode instanceof MemoryKill;
+        assert MemoryKill.isMemoryKill(newOriginalNode);
         return graph().addWithoutUniqueWithInputs(new MemoryProxyNode((MemoryKill) newOriginalNode, newProxyPoint, getKilledLocationIdentity()));
     }
 }

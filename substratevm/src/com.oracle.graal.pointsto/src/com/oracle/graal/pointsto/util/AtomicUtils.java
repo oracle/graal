@@ -25,14 +25,63 @@
 package com.oracle.graal.pointsto.util;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class AtomicUtils {
 
+    /**
+     * Atomically set the field to 1 if the current value is 0.
+     * 
+     * @return {@code true} if successful.
+     */
+    public static <T> boolean atomicMark(T holder, AtomicIntegerFieldUpdater<T> updater) {
+        return updater.compareAndSet(holder, 0, 1);
+    }
+
+    /**
+     * Atomically set the field to 1 if the current value is 0. If successful, execute the task.
+     *
+     * @return {@code true} if successful.
+     */
+    public static <T> boolean atomicMarkAndRun(T holder, AtomicIntegerFieldUpdater<T> updater, Runnable task) {
+        boolean firstAttempt = updater.compareAndSet(holder, 0, 1);
+        if (firstAttempt) {
+            task.run();
+        }
+        return firstAttempt;
+    }
+
+    /**
+     * Return true if the field is set to 1, false otherwise.
+     */
+    public static <T> boolean isSet(T holder, AtomicIntegerFieldUpdater<T> updater) {
+        return updater.get(holder) == 1;
+    }
+
+    /**
+     * Atomically sets the value to {@code true} if the current value {@code == false}.
+     * 
+     * @return {@code true} if successful.
+     */
     public static boolean atomicMark(AtomicBoolean flag) {
         return flag.compareAndSet(false, true);
+    }
+
+    /**
+     * Atomically sets the value to {@code true} if the current value {@code == false}. If
+     * successful, execute the task.
+     *
+     * @return {@code true} if successful.
+     */
+    public static boolean atomicMarkAndRun(AtomicBoolean flag, Runnable task) {
+        boolean firstAttempt = flag.compareAndSet(false, true);
+        if (firstAttempt) {
+            task.run();
+        }
+        return firstAttempt;
     }
 
     /**

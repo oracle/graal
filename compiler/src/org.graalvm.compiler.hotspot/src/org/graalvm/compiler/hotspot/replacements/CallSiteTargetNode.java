@@ -26,12 +26,11 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
@@ -82,9 +81,7 @@ public final class CallSiteTargetNode extends MacroNode implements Canonicalizab
         if (target != null) {
             graph().replaceFixedWithFloating(this, target);
         } else {
-            InvokeNode invoke = createInvoke();
-            graph().replaceFixedWithFixed(this, invoke);
-            invoke.lower(tool);
+            super.lower(tool);
         }
     }
 }

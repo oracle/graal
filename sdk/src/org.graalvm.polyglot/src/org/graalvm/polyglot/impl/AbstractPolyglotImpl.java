@@ -59,7 +59,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -116,17 +115,17 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract ExecutionListener newExecutionListener(AbstractManagementDispatch dispatch, Object receiver);
+        public abstract ExecutionListener newExecutionListener(AbstractExecutionListenerDispatch dispatch, Object receiver);
 
-        public abstract ExecutionEvent newExecutionEvent(AbstractManagementDispatch dispatch, Object event);
+        public abstract ExecutionEvent newExecutionEvent(AbstractExecutionEventDispatch dispatch, Object event);
 
         public abstract Object getReceiver(ExecutionListener executionListener);
 
-        public abstract AbstractManagementDispatch getDispatch(ExecutionListener executionListener);
+        public abstract AbstractExecutionListenerDispatch getDispatch(ExecutionListener executionListener);
 
         public abstract Object getReceiver(ExecutionEvent executionEvent);
 
-        public abstract AbstractManagementDispatch getDispatch(ExecutionEvent executionEvent);
+        public abstract AbstractExecutionEventDispatch getDispatch(ExecutionEvent executionEvent);
     }
 
     public abstract static class IOAccess {
@@ -241,6 +240,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
         public abstract String validatePolyglotAccess(PolyglotAccess access, Set<String> language);
+
+        public abstract void engineClosed(Engine engine);
 
     }
 
@@ -368,9 +369,19 @@ public abstract class AbstractPolyglotImpl {
 
     }
 
-    public abstract static class AbstractManagementDispatch extends AbstractDispatchClass {
+    public abstract static class AbstractExecutionListenerDispatch extends AbstractDispatchClass {
 
-        protected AbstractManagementDispatch(AbstractPolyglotImpl polyglotImpl) {
+        protected AbstractExecutionListenerDispatch(AbstractPolyglotImpl polyglotImpl) {
+            Objects.requireNonNull(polyglotImpl);
+        }
+
+        public abstract void closeExecutionListener(Object impl);
+
+    }
+
+    public abstract static class AbstractExecutionEventDispatch extends AbstractDispatchClass {
+
+        protected AbstractExecutionEventDispatch(AbstractPolyglotImpl polyglotImpl) {
             Objects.requireNonNull(polyglotImpl);
         }
 
@@ -387,8 +398,6 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isExecutionEventStatement(Object impl);
 
         public abstract boolean isExecutionEventRoot(Object impl);
-
-        public abstract void closeExecutionListener(Object impl);
 
         public abstract PolyglotException getExecutionEventException(Object impl);
 
@@ -566,6 +575,8 @@ public abstract class AbstractPolyglotImpl {
                         boolean statements,
                         boolean roots,
                         Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions);
+
+        public abstract void shutdown(Object engine);
 
     }
 
@@ -777,6 +788,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Object migrateValue(Object hostContext, Object value, Object valueContext);
 
         public abstract void pin(Object receiver);
+
+        public abstract void hostExit(int exitCode);
 
     }
 
@@ -1059,10 +1072,6 @@ public abstract class AbstractPolyglotImpl {
 
     public Context getCurrentContext() {
         return getNext().getCurrentContext();
-    }
-
-    public Collection<? extends Object> findActiveEngines() {
-        return getNext().findActiveEngines();
     }
 
     public Value asValue(Object o) {

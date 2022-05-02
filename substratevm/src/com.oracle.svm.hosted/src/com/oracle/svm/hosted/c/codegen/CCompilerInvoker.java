@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -200,8 +200,9 @@ public abstract class CCompilerInvoker {
              * implicit unsigned/signed conversions to detect signedness of types. `/wd4800`,
              * `/wd4804` are needed to silence warnings when querying bool types. `/wd4214` is
              * needed to make older versions of cl.exe accept bitfields larger than int-size.
+             * `/wd4201` enables the use of nameless struct/union, which is used by libffi.
              */
-            return Arrays.asList("/WX", "/W4", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
+            return Arrays.asList("/WX", "/W4", "/wd4201", "/wd4244", "/wd4245", "/wd4800", "/wd4804", "/wd4214");
         }
     }
 
@@ -346,8 +347,11 @@ public abstract class CCompilerInvoker {
             this.targetArch = targetArch;
         }
 
-        @Override
-        public String toString() {
+        public String getShortDescription() {
+            return String.format("%s (%s, %s, %d.%d.%d)", compilerPath.toFile().getName(), vendor, targetArch, versionMajor, versionMinor0, versionMinor1);
+        }
+
+        public String toCGlobalDataString() {
             return String.join("|", Arrays.asList(shortName, vendor, targetArch,
                             String.format("%d.%d.%d", versionMajor, versionMinor0, versionMinor1)));
         }

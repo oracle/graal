@@ -134,43 +134,64 @@ public class HeapSnapshotVerifier {
         }
 
         @Override
+        @SuppressWarnings({"unchecked", "rawtypes"})
         public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
             if (field.isStatic()) {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
-                AnalysisFuture<JavaConstant> fieldValueTask = typeData.getFieldTask(field);
-                if (fieldValueTask.isDone()) {
-                    JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
-                    if (!Objects.equals(fieldSnapshot, fieldValue)) {
-                        Consumer<ScanReason> onAnalysisModified = (deepReason) -> onStaticFieldMismatch(field, fieldSnapshot, fieldValue, deepReason);
-                        scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
-                        heapPatched = true;
+                Object fieldValueTask = typeData.getFieldValue(field);
+                if (fieldValueTask instanceof JavaConstant) {
+                    JavaConstant fieldSnapshot = (JavaConstant) fieldValueTask;
+                    verifyStaticFieldValue(typeData, field, fieldSnapshot, fieldValue, reason);
+                } else if (fieldValueTask instanceof AnalysisFuture<?>) {
+                    AnalysisFuture<JavaConstant> future = (AnalysisFuture<JavaConstant>) fieldValueTask;
+                    if (future.isDone()) {
+                        JavaConstant fieldSnapshot = future.guardedGet();
+                        verifyStaticFieldValue(typeData, field, fieldSnapshot, fieldValue, reason);
+                    } else {
+                        onStaticFieldNotComputed(field, fieldValue, reason);
                     }
-                } else {
-                    onStaticFieldNotComputed(field, fieldValue, reason);
                 }
             } else {
                 ImageHeapInstance receiverObject = (ImageHeapInstance) getReceiverObject(receiver, reason);
-                AnalysisFuture<JavaConstant> fieldValueTask = receiverObject.getFieldTask(field);
-                if (fieldValueTask.isDone()) {
-                    JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
-                    if (!Objects.equals(fieldSnapshot, fieldValue)) {
-                        Consumer<ScanReason> onAnalysisModified = (deepReason) -> onInstanceFieldMismatch(receiverObject, field, fieldSnapshot, fieldValue, deepReason);
+                Object fieldValueTask = receiverObject.getFieldValue(field);
+                if (fieldValueTask instanceof JavaConstant) {
+                    JavaConstant fieldSnapshot = (JavaConstant) fieldValueTask;
+                    verifyInstanceFieldValue(field, receiverObject, fieldSnapshot, fieldValue, reason);
+                } else if (fieldValueTask instanceof AnalysisFuture<?>) {
+                    AnalysisFuture<JavaConstant> future = (AnalysisFuture<JavaConstant>) fieldValueTask;
+                    if (future.isDone()) {
+                        JavaConstant fieldSnapshot = future.guardedGet();
+                        verifyInstanceFieldValue(field, receiverObject, fieldSnapshot, fieldValue, reason);
+                    } else {
+                        /*
+                         * There may be some instance fields not yet computed because the verifier
+                         * can insert new objects for annotation proxy implementations when scanning
+                         * types. The annotations are set lazily, based on reachability, since we
+                         * only want annotations in the heap that are otherwise marked as used.
+                         */
+                        Consumer<ScanReason> onAnalysisModified = (deepReason) -> onInstanceFieldNotComputed(receiverObject, field, fieldValue, deepReason);
                         scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
                         heapPatched = true;
                     }
-                } else {
-                    /*
-                     * There may be some instance fields not yet computed because the verifier can
-                     * insert new objects for annotation proxy implementations when scanning types.
-                     * The annotations are set lazily, based on reachability, since we only want
-                     * annotations in the heap that are otherwise marked as used.
-                     */
-                    Consumer<ScanReason> onAnalysisModified = (deepReason) -> onInstanceFieldNotComputed(receiverObject, field, fieldValue, deepReason);
-                    scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
-                    heapPatched = true;
                 }
             }
             return false;
+        }
+
+        private void verifyStaticFieldValue(TypeData typeData, AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
+            if (!Objects.equals(fieldSnapshot, fieldValue)) {
+                Consumer<ScanReason> onAnalysisModified = (deepReason) -> onStaticFieldMismatch(field, fieldSnapshot, fieldValue, deepReason);
+                scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                heapPatched = true;
+            }
+        }
+
+        private void verifyInstanceFieldValue(AnalysisField field, ImageHeapInstance receiverObject, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
+            if (!Objects.equals(fieldSnapshot, fieldValue)) {
+                Consumer<ScanReason> onAnalysisModified = (deepReason) -> onInstanceFieldMismatch(receiverObject, field, fieldSnapshot, fieldValue, deepReason);
+                scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                heapPatched = true;
+            }
         }
 
         @Override
@@ -194,26 +215,47 @@ public class HeapSnapshotVerifier {
             return false;
         }
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
         private ImageHeapObject getReceiverObject(JavaConstant constant, ScanReason reason) {
-            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(constant);
-            if (task == null || !task.isDone()) {
-                throw error(reason, "Task %s for constant %s.", (task == null ? "is null" : "not yet executed"), constant);
+            Object task = imageHeap.getTask(constant);
+            if (task == null) {
+                throw error(reason, "Task is null for constant %s.", constant);
+            } else if (task instanceof ImageHeapObject) {
+                return (ImageHeapObject) task;
+            } else {
+                assert task instanceof AnalysisFuture;
+                AnalysisFuture<ImageHeapObject> future = ((AnalysisFuture<ImageHeapObject>) task);
+                if (future.isDone()) {
+                    return future.guardedGet();
+                } else {
+                    throw error(reason, "Task not yet executed for constant %s.", constant);
+                }
             }
-            return task.guardedGet();
         }
 
         @Override
+        @SuppressWarnings({"unchecked", "rawtypes"})
         public void forEmbeddedRoot(JavaConstant root, ScanReason reason) {
-            AnalysisFuture<ImageHeapObject> rootTask = imageHeap.getTask(root);
+            Object rootTask = imageHeap.getTask(root);
             if (rootTask == null) {
                 throw error(reason, "No snapshot task found for embedded root %s %n", root);
-            } else if (rootTask.isDone()) {
-                JavaConstant rootSnapshot = rootTask.guardedGet().getObject();
-                if (!Objects.equals(rootSnapshot, root)) {
-                    throw error(reason, "Value mismatch for embedded root %n snapshot: %s %n new value: %s %n", rootSnapshot, root);
-                }
+            } else if (rootTask instanceof ImageHeapObject) {
+                JavaConstant snapshot = ((ImageHeapObject) rootTask).getObject();
+                verifyEmbeddedRoot(snapshot, root, reason);
             } else {
-                throw error(reason, "Snapshot not yet computed for embedded root %n new value: %s %n", root);
+                AnalysisFuture<ImageHeapObject> future = ((AnalysisFuture<ImageHeapObject>) rootTask);
+                if (future.isDone()) {
+                    JavaConstant snapshot = future.guardedGet().getObject();
+                    verifyEmbeddedRoot(snapshot, root, reason);
+                } else {
+                    throw error(reason, "Snapshot not yet computed for embedded root %n new value: %s %n", root);
+                }
+            }
+        }
+
+        private void verifyEmbeddedRoot(JavaConstant rootSnapshot, JavaConstant root, ScanReason reason) {
+            if (!Objects.equals(rootSnapshot, root)) {
+                throw error(reason, "Value mismatch for embedded root %n snapshot: %s %n new value: %s %n", rootSnapshot, root);
             }
         }
 
@@ -241,26 +283,37 @@ public class HeapSnapshotVerifier {
             ensureTypeScanned(null, typeConstant, type, reason);
         }
 
-        private void ensureTypeScanned(JavaConstant object, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        private void ensureTypeScanned(JavaConstant value, JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
             AnalysisError.guarantee(type.isReachable(), "The heap snapshot verifier discovered a type not marked as reachable " + type.toJavaName());
-            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(typeConstant);
+            Object task = imageHeap.getTask(typeConstant);
             /* Make sure the DynamicHub value is scanned. */
             if (task == null) {
                 onNoTaskForClassConstant(type, reason);
                 scanner.toImageHeapObject(typeConstant, reason, null);
                 heapPatched = true;
+            } else if (task instanceof ImageHeapObject) {
+                JavaConstant snapshot = ((ImageHeapObject) task).getObject();
+                verifyTypeConstant(snapshot, typeConstant, reason);
             } else {
-                if (task.isDone()) {
-                    JavaConstant snapshot = task.guardedGet().getObject();
-                    if (!Objects.equals(snapshot, typeConstant)) {
-                        throw error(reason, "Value mismatch for class constant snapshot: %s %n new value: %s %n", snapshot, typeConstant);
-                    }
+                assert task instanceof AnalysisFuture;
+                AnalysisFuture<ImageHeapObject> future = ((AnalysisFuture<ImageHeapObject>) task);
+                if (future.isDone()) {
+                    JavaConstant snapshot = future.guardedGet().getObject();
+                    verifyTypeConstant(snapshot, typeConstant, reason);
                 } else {
-                    onTaskForClassConstantNotDone(object, type, reason);
-                    task.ensureDone();
+                    onTaskForClassConstantNotDone(value, type, reason);
+                    future.ensureDone();
                 }
             }
         }
+
+        private void verifyTypeConstant(JavaConstant snapshot, JavaConstant typeConstant, ScanReason reason) {
+            if (!Objects.equals(snapshot, typeConstant)) {
+                throw error(reason, "Value mismatch for class constant snapshot: %s %n new value: %s %n", snapshot, typeConstant);
+            }
+        }
+
     }
 
     private void onNoTaskForClassConstant(AnalysisType type, ScanReason reason) {

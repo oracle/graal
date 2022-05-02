@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,7 +35,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessSymbolNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMAccessGlobalSymbolNodeGen;
 
 public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionNode {
 
@@ -58,6 +58,6 @@ public abstract class LLVMLookupDispatchTargetSymbolNode extends LLVMExpressionN
     }
 
     protected LLVMLookupDispatchTargetNode createLookupNode() {
-        return LLVMLookupDispatchTargetNodeGen.create(LLVMAccessSymbolNodeGen.create(function));
+        return LLVMLookupDispatchTargetNodeGen.create(LLVMAccessGlobalSymbolNodeGen.create(function));
     }
 }

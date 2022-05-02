@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.phases;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
@@ -43,6 +47,7 @@ import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -54,9 +59,10 @@ import org.graalvm.compiler.phases.contract.PhaseSizeContract;
 import jdk.vm.ci.meta.JavaMethod;
 
 /**
- * Base class for all compiler phases. Subclasses should be stateless. There will be one global
- * instance for each compiler phase that is shared for all compilations. VM-, target- and
- * compilation-specific data can be passed with a context object.
+ * Base class for all compiler phases. Subclasses should be stateless, except for subclasses of
+ * {@link SingleRunSubphase}. There will be one global instance for each compiler phase that is
+ * shared for all compilations. VM-, target- and compilation-specific data can be passed with a
+ * context object.
  */
 public abstract class BasePhase<C> implements PhaseSizeContract {
 
@@ -191,8 +197,18 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    /**
+     * An extension point for subclasses, called at the start of
+     * {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     */
+    protected void startApplyHook() {
+
+    }
+
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+        startApplyHook();
+
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
@@ -405,4 +421,41 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             this.filters = filters;
         }
     }
+
+    /**
+     * Marker interface for fields inside phase classes that capture some state that is shared
+     * across all compilations. Such fields must be declared {@code private static volatile}. They
+     * should only be used under exceptional circumstances, e.g., to guard code that adds a
+     * {@linkplain Runtime#addShutdownHook(Thread) runtime shutdown hook} for printing global phase
+     * statistics at VM shutdown.
+     */
+    @Target(value = {ElementType.FIELD})
+    @Retention(value = RetentionPolicy.RUNTIME)
+    public static @interface SharedGlobalPhaseState {
+
+    }
+
+    /**
+     * Hashing a phase is used to implement and test phase plan serialization. Hashing a phase
+     * should take into account any fields that configure a phase. This will be done properly once a
+     * {@code PhaseInfo} annotation is introduced (c.f. {@link NodeInfo}). The hash code returned
+     * needs to be stable across VM executions.
+     */
+    @Override
+    public int hashCode() {
+        return this.getClass().getName().hashCode();
+    }
+
+    /**
+     * @see #hashCode
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        return getClass().equals(obj.getClass());
+    }
+
 }

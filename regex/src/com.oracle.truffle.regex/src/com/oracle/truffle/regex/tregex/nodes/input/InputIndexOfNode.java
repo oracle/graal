@@ -43,8 +43,8 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
@@ -77,6 +77,13 @@ public abstract class InputIndexOfNode extends Node {
                     @Cached TruffleString.CharIndexOfAnyCharUTF16Node indexOfRawValueNode) {
         assert encoding == Encodings.UTF_16 || encoding == Encodings.UTF_16_RAW;
         return indexOfRawValueNode.execute(input, fromIndex, maxIndex, chars);
+    }
+
+    @Specialization
+    public int doTStringInts(TruffleString input, int fromIndex, int maxIndex, int[] ints, Encoding encoding,
+                    @Cached TruffleString.IntIndexOfAnyIntUTF32Node indexOfRawValueNode) {
+        assert encoding == Encodings.UTF_32;
+        return indexOfRawValueNode.execute(input, fromIndex, maxIndex, ints);
     }
 
     @Specialization(guards = "neitherByteArrayNorString(input)")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import com.oracle.svm.core.jfr.logging.JfrLogging;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -38,10 +37,12 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
+import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.internal.EventWriter;
@@ -281,20 +282,15 @@ public class SubstrateJVM {
             chunkWriter.unlock();
         }
 
-        JavaVMOperation.enqueueBlockingSafepoint("Jfr begin recording", () -> {
-            recording = true;
-            SubstrateJVM.getThreadRepo().registerRunningThreads();
-            // After changing the value of recording to true, JFR events can be triggered at any
-            // time.
-        });
+        JfrBeginRecordingOperation vmOp = new JfrBeginRecordingOperation();
+        vmOp.enqueue();
     }
 
     /** See {@link JVM#endRecording}. */
     public void endRecording() {
         assert recording;
-        JavaVMOperation.enqueueBlockingSafepoint("JFR end recording", () -> recording = false);
-        // After the safepoint, it is guaranteed that all JfrNativeEventWriters finished their job
-        // and that no further JFR events will be triggered.
+        JfrEndRecordingOperation vmOp = new JfrEndRecordingOperation();
+        vmOp.enqueue();
     }
 
     /** See {@link JVM#isRecording}. This is not thread safe */
@@ -499,6 +495,16 @@ public class SubstrateJVM {
         return eventSettings[(int) event.getId()].isEnabled();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void setLarge(JfrEvent event, boolean large) {
+        eventSettings[(int) event.getId()].setLarge(large);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isLarge(JfrEvent event) {
+        return eventSettings[(int) event.getId()].isLarge();
+    }
+
     /** See {@link JVM#setThreshold}. */
     public boolean setThreshold(long eventTypeId, long ticks) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setThresholdTicks(ticks);
@@ -509,5 +515,32 @@ public class SubstrateJVM {
     public boolean setCutoff(long eventTypeId, long cutoffTicks) {
         eventSettings[NumUtil.safeToInt(eventTypeId)].setCutoffTicks(cutoffTicks);
         return true;
+    }
+
+    private static class JfrBeginRecordingOperation extends JavaVMOperation {
+        JfrBeginRecordingOperation() {
+            super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            SubstrateJVM.get().recording = true;
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
+            // After changing the value of recording to true, JFR events can be triggered at any
+            // time.
+        }
+    }
+
+    private static class JfrEndRecordingOperation extends JavaVMOperation {
+        JfrEndRecordingOperation() {
+            super(VMOperationInfos.get(JfrEndRecordingOperation.class, "JFR end recording", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            SubstrateJVM.get().recording = false;
+            // After the safepoint, it is guaranteed that all JfrNativeEventWriters finished their
+            // job and that no further JFR events will be triggered.
+        }
     }
 }

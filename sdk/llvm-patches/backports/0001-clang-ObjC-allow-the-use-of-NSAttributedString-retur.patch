@@ -1,0 +1,67 @@
+From 44c3fb5080e32b108fc4d05e8fbe255b6e2a8f51 Mon Sep 17 00:00:00 2001
+From: Alex Lorenz <arphaman@gmail.com>
+Date: Tue, 9 Mar 2021 13:18:19 -0800
+Subject: [PATCH] [clang][ObjC] allow the use of NSAttributedString * return
+ type with format_arg attribute
+
+This is useful for APIs that want to produce an attributed NSString as a result of
+some formatting API call.
+---
+ clang/lib/Sema/SemaDeclAttr.cpp            | 8 ++++++--
+ clang/test/SemaObjC/format-arg-attribute.m | 3 +++
+ 2 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/clang/lib/Sema/SemaDeclAttr.cpp b/clang/lib/Sema/SemaDeclAttr.cpp
+index 30d08b3d4ac0..2bd24b828211 100644
+--- a/clang/lib/Sema/SemaDeclAttr.cpp
++++ b/clang/lib/Sema/SemaDeclAttr.cpp
+@@ -153,7 +153,8 @@ static bool isInstanceMethod(const Decl *D) {
+   return false;
+ }
+ 
+-static inline bool isNSStringType(QualType T, ASTContext &Ctx) {
++static inline bool isNSStringType(QualType T, ASTContext &Ctx,
++                                  bool AllowNSAttributedString = false) {
+   const auto *PT = T->getAs<ObjCObjectPointerType>();
+   if (!PT)
+     return false;
+@@ -164,6 +165,9 @@ static inline bool isNSStringType(QualType T, ASTContext &Ctx) {
+ 
+   IdentifierInfo* ClsName = Cls->getIdentifier();
+ 
++  if (AllowNSAttributedString &&
++      ClsName == &Ctx.Idents.get("NSAttributedString"))
++    return true;
+   // FIXME: Should we walk the chain of classes?
+   return ClsName == &Ctx.Idents.get("NSString") ||
+          ClsName == &Ctx.Idents.get("NSMutableString");
+@@ -3328,7 +3332,7 @@ static void handleFormatArgAttr(Sema &S, Decl *D, const ParsedAttr &AL) {
+     return;
+   }
+   Ty = getFunctionOrMethodResultType(D);
+-  if (!isNSStringType(Ty, S.Context) &&
++  if (!isNSStringType(Ty, S.Context, /*AllowNSAttributedString=*/true) &&
+       !isCFStringType(Ty, S.Context) &&
+       (!Ty->isPointerType() ||
+        !Ty->castAs<PointerType>()->getPointeeType()->isCharType())) {
+diff --git a/clang/test/SemaObjC/format-arg-attribute.m b/clang/test/SemaObjC/format-arg-attribute.m
+index 67c9c2e3d4c9..ac81bdc21dc1 100644
+--- a/clang/test/SemaObjC/format-arg-attribute.m
++++ b/clang/test/SemaObjC/format-arg-attribute.m
+@@ -1,6 +1,7 @@
+ // RUN: %clang_cc1 -verify -fsyntax-only %s
+ 
+ @class NSString;
++@class NSAttributedString;
+ 
+ extern NSString *fa2 (const NSString *) __attribute__((format_arg(1)));
+ extern NSString *fa3 (NSString *) __attribute__((format_arg(1)));
+@@ -25,3 +26,5 @@ extern NSString *fi2 (NSString *) __attribute__((format_arg(1)));
+ extern int fi3 (const NSString *) __attribute__((format_arg(1)));  // expected-error {{function does not return NSString}}
+ extern NSString *fi4 (const NSString *) __attribute__((format_arg(1))); 
+ extern NSString *fi5 (const NSString *) __attribute__((format_arg(1))); 
++
++extern NSAttributedString *fattrs (const NSString *) __attribute__((format_arg(1)));
+-- 
+2.35.1
+

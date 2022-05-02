@@ -29,6 +29,8 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -122,6 +124,15 @@ public final class GCImpl implements GC {
     }
 
     @Override
+    public String getName() {
+        if (SubstrateOptions.UseEpsilonGC.getValue()) {
+            return "Epsilon GC";
+        } else {
+            return "Serial GC";
+        }
+    }
+
+    @Override
     public void collect(GCCause cause) {
         collect(cause, false);
     }
@@ -152,7 +163,6 @@ public final class GCImpl implements GC {
             if (outOfMemory) {
                 throw OUT_OF_MEMORY_ERROR;
             }
-            doReferenceHandlingInRegularThread();
         }
     }
 
@@ -209,7 +219,7 @@ public final class GCImpl implements GC {
 
         NoAllocationVerifier nav = noAllocationVerifier.open();
         try {
-            long startTicks = JfrGCEventSupport.startGCPhasePause();
+            long startTicks = JfrTicks.elapsedTicks();
             try {
                 outOfMemory = doCollectImpl(cause, requestingNanoTime, forceFullGC, false);
                 if (outOfMemory) {
@@ -223,7 +233,7 @@ public final class GCImpl implements GC {
                     }
                 }
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), cause.getName(), startTicks);
+                JfrGCEvents.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
             }
         } finally {
             nav.close();
@@ -240,22 +250,22 @@ public final class GCImpl implements GC {
         boolean outOfMemory = false;
 
         if (incremental) {
-            long startTicks = JfrGCEventSupport.startGCPhasePause();
+            long startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 outOfMemory = doCollectOnce(cause, requestingNanoTime, false, false);
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Incremental GC", startTicks);
             }
         }
         if (!incremental || outOfMemory || forceFullGC || policy.shouldCollectCompletely(incremental)) {
             if (incremental) { // uncommit unaligned chunks
                 CommittedMemoryProvider.get().afterGarbageCollection();
             }
-            long startTicks = JfrGCEventSupport.startGCPhasePause();
+            long startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 outOfMemory = doCollectOnce(cause, requestingNanoTime, true, incremental);
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Full GC", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Full GC", startTicks);
             }
         }
 
@@ -517,7 +527,7 @@ public final class GCImpl implements GC {
         try {
             Timer rootScanTimer = timers.rootScan.open();
             try {
-                startTicks = JfrGCEventSupport.startGCPhasePause();
+                startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     if (incremental) {
                         cheneyScanFromDirtyRoots();
@@ -525,7 +535,7 @@ public final class GCImpl implements GC {
                         cheneyScanFromRoots();
                     }
                 } finally {
-                    JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan Roots" : "Scan Roots", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), incremental ? "Incremental Scan" : "Scan", startTicks);
                 }
             } finally {
                 rootScanTimer.close();
@@ -539,11 +549,11 @@ public final class GCImpl implements GC {
                      * operation. To avoid side-effects between the code cache cleaning and the GC
                      * core, it is crucial that all the GC core work finished before.
                      */
-                    startTicks = JfrGCEventSupport.startGCPhasePause();
+                    startTicks = JfrGCEvents.startGCPhasePause();
                     try {
                         cleanRuntimeCodeCache();
                     } finally {
-                        JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Clean Runtime CodeCache", startTicks);
+                        JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Clean Runtime CodeCache", startTicks);
                     }
                 } finally {
                     cleanCodeCacheTimer.close();
@@ -552,12 +562,12 @@ public final class GCImpl implements GC {
 
             Timer referenceObjectsTimer = timers.referenceObjects.open();
             try {
-                startTicks = JfrGCEventSupport.startGCPhasePause();
+                startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     Reference<?> newlyPendingList = ReferenceObjectProcessing.processRememberedReferences();
                     HeapImpl.getHeapImpl().addToReferencePendingList(newlyPendingList);
                 } finally {
-                    JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Process Remembered References", startTicks);
                 }
             } finally {
                 referenceObjectsTimer.close();
@@ -566,7 +576,7 @@ public final class GCImpl implements GC {
             Timer releaseSpacesTimer = timers.releaseSpaces.open();
             try {
                 assert chunkReleaser.isEmpty();
-                startTicks = JfrGCEventSupport.startGCPhasePause();
+                startTicks = JfrGCEvents.startGCPhasePause();
                 try {
                     releaseSpaces();
 
@@ -579,17 +589,17 @@ public final class GCImpl implements GC {
                     boolean keepAllAlignedChunks = incremental;
                     chunkReleaser.release(keepAllAlignedChunks);
                 } finally {
-                    JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
+                    JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Release Spaces", startTicks);
                 }
             } finally {
                 releaseSpacesTimer.close();
             }
 
-            startTicks = JfrGCEventSupport.startGCPhasePause();
+            startTicks = JfrGCEvents.startGCPhasePause();
             try {
                 swapSpaces();
             } finally {
-                JfrGCEventSupport.emitGCPhasePauseEvent(getCollectionEpoch(), "Swap Spaces", startTicks);
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Swap Spaces", startTicks);
             }
         } finally {
             counters.close();
@@ -622,44 +632,66 @@ public final class GCImpl implements GC {
     private void cheneyScanFromRoots() {
         Timer cheneyScanFromRootsTimer = timers.cheneyScanFromRoots.open();
         try {
-            /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
-            /*
-             * Debugging tip: I could move the taking of the snapshot and the scanning of grey
-             * Objects into each of the blackening methods, or even put them around individual
-             * Object reference visits.
-             */
-            prepareForPromotion(false);
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
+                /*
+                 * Debugging tip: I could move the taking of the snapshot and the scanning of grey
+                 * Objects into each of the blackening methods, or even put them around individual
+                 * Object reference visits.
+                 */
+                prepareForPromotion(false);
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Snapshot Heap", startTicks);
+            }
 
-            /*
-             * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
-             * objects are in fromSpace.
-             */
-            promoteChunksWithPinnedObjects();
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Make sure all chunks with pinned objects are in toSpace, and any formerly pinned
+                 * objects are in fromSpace.
+                 */
+                promoteChunksWithPinnedObjects();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Pinned Objects", startTicks);
+            }
 
-            /*
-             * Stack references are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenStackRoots();
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Stack references are grey at the beginning of a collection, so I need to blacken
+                 * them.
+                 */
+                blackenStackRoots();
 
-            /* Custom memory regions which contain object references. */
-            walkThreadLocals();
+                /* Custom memory regions which contain object references. */
+                walkThreadLocals();
 
-            /*
-             * Native image Objects are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenImageHeapRoots();
+                /*
+                 * Native image Objects are grey at the beginning of a collection, so I need to
+                 * blacken them.
+                 */
+                blackenImageHeapRoots();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan Roots", startTicks);
+            }
 
-            /* Visit all the Objects promoted since the snapshot. */
-            scanGreyObjects(false);
-
-            if (DeoptimizationSupport.enabled()) {
-                /* Visit the runtime compiled code, now that we know all the reachable objects. */
-                walkRuntimeCodeCache();
-
-                /* Visit all objects that became reachable because of the compiled code. */
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Visit all the Objects promoted since the snapshot. */
                 scanGreyObjects(false);
+
+                if (DeoptimizationSupport.enabled()) {
+                    /*
+                     * Visit the runtime compiled code, now that we know all the reachable objects.
+                     */
+                    walkRuntimeCodeCache();
+
+                    /* Visit all objects that became reachable because of the compiled code. */
+                    scanGreyObjects(false);
+                }
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
             }
 
             greyToBlackObjectVisitor.reset();
@@ -671,63 +703,89 @@ public final class GCImpl implements GC {
     private void cheneyScanFromDirtyRoots() {
         Timer cheneyScanFromDirtyRootsTimer = timers.cheneyScanFromDirtyRoots.open();
         try {
-            /*
-             * Move all the chunks in fromSpace to toSpace. That does not make those chunks grey, so
-             * I have to use the dirty cards marks to blacken them, but that's what card marks are
-             * for.
-             */
-            OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-            oldGen.emptyFromSpaceIntoToSpace();
-
-            /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
-            /*
-             * Debugging tip: I could move the taking of the snapshot and the scanning of grey
-             * Objects into each of the blackening methods, or even put them around individual
-             * Object reference visits.
-             */
-            prepareForPromotion(true);
-
-            /*
-             * Make sure any released objects are in toSpace (because this is an incremental
-             * collection). I do this before blackening any roots to make sure the chunks with
-             * pinned objects are moved entirely, as opposed to promoting the objects individually
-             * by roots. This makes the objects in those chunks grey.
-             */
-            promoteChunksWithPinnedObjects();
-
-            /*
-             * Blacken Objects that are dirty roots. There are dirty cards in ToSpace. Do this early
-             * so I don't have to walk the cards of individually promoted objects, which will be
-             * visited by the grey object scanner.
-             */
-            blackenDirtyCardRoots();
-
-            /*
-             * Stack references are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenStackRoots();
-
-            /* Custom memory regions which contain object references. */
-            walkThreadLocals();
-
-            /*
-             * Native image Objects are grey at the beginning of a collection, so I need to blacken
-             * them.
-             */
-            blackenDirtyImageHeapRoots();
-
-            /* Visit all the Objects promoted since the snapshot, transitively. */
-            scanGreyObjects(true);
-
-            if (DeoptimizationSupport.enabled()) {
-                /* Visit the runtime compiled code, now that we know all the reachable objects. */
-                walkRuntimeCodeCache();
-
-                /* Visit all objects that became reachable because of the compiled code. */
-                scanGreyObjects(true);
+            long startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Move all the chunks in fromSpace to toSpace. That does not make those chunks
+                 * grey, so I have to use the dirty cards marks to blacken them, but that's what
+                 * card marks are for.
+                 */
+                OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
+                oldGen.emptyFromSpaceIntoToSpace();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Old Generation", startTicks);
             }
 
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Take a snapshot of the heap so that I can visit all the promoted Objects. */
+                /*
+                 * Debugging tip: I could move the taking of the snapshot and the scanning of grey
+                 * Objects into each of the blackening methods, or even put them around individual
+                 * Object reference visits.
+                 */
+                prepareForPromotion(true);
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Snapshot Heap", startTicks);
+            }
+
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Make sure any released objects are in toSpace (because this is an incremental
+                 * collection). I do this before blackening any roots to make sure the chunks with
+                 * pinned objects are moved entirely, as opposed to promoting the objects
+                 * individually by roots. This makes the objects in those chunks grey.
+                 */
+                promoteChunksWithPinnedObjects();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Promote Pinned Objects", startTicks);
+            }
+
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /*
+                 * Blacken Objects that are dirty roots. There are dirty cards in ToSpace. Do this
+                 * early so I don't have to walk the cards of individually promoted objects, which
+                 * will be visited by the grey object scanner.
+                 */
+                blackenDirtyCardRoots();
+
+                /*
+                 * Stack references are grey at the beginning of a collection, so I need to blacken
+                 * them.
+                 */
+                blackenStackRoots();
+
+                /* Custom memory regions which contain object references. */
+                walkThreadLocals();
+
+                /*
+                 * Native image Objects are grey at the beginning of a collection, so I need to
+                 * blacken them.
+                 */
+                blackenDirtyImageHeapRoots();
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan Roots", startTicks);
+            }
+
+            startTicks = JfrGCEvents.startGCPhasePause();
+            try {
+                /* Visit all the Objects promoted since the snapshot, transitively. */
+                scanGreyObjects(true);
+
+                if (DeoptimizationSupport.enabled()) {
+                    /*
+                     * Visit the runtime compiled code, now that we know all the reachable objects.
+                     */
+                    walkRuntimeCodeCache();
+
+                    /* Visit all objects that became reachable because of the compiled code. */
+                    scanGreyObjects(true);
+                }
+            } finally {
+                JfrGCEvents.emitGCPhasePauseEvent(getCollectionEpoch(), "Scan From Roots", startTicks);
+            }
             greyToBlackObjectVisitor.reset();
         } finally {
             cheneyScanFromDirtyRootsTimer.close();
@@ -852,7 +910,7 @@ public final class GCImpl implements GC {
                 if (referenceMapIndex == ReferenceMapIndex.NO_REFERENCE_MAP) {
                     throw CodeInfoTable.reportNoReferenceMap(sp, ip, codeInfo);
                 }
-                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, greyToBlackObjRefVisitor);
+                CodeReferenceMapDecoder.walkOffsetsFromPointer(sp, referenceMapEncoding, referenceMapIndex, greyToBlackObjRefVisitor, null);
             } else {
                 /*
                  * This is a deoptimized frame. The DeoptimizedFrame object is stored in the frame,
@@ -861,15 +919,20 @@ public final class GCImpl implements GC {
             }
 
             if (DeoptimizationSupport.enabled() && codeInfo != CodeInfoTable.getImageCodeInfo()) {
-                /*
-                 * For runtime-compiled code that is currently on the stack, we need to treat all
-                 * the references to Java heap objects as strong references. It is important that we
-                 * really walk *all* those references here. Otherwise, RuntimeCodeCacheWalker might
-                 * decide to invalidate too much code, depending on the order in which the CodeInfo
-                 * objects are visited.
-                 */
-                RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
-                RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+                RuntimeCodeInfoAccess.acquireThreadWriteAccess();
+                try {
+                    /*
+                     * For runtime-compiled code that is currently on the stack, we need to treat
+                     * all the references to Java heap objects as strong references. It is important
+                     * that we really walk *all* those references here. Otherwise,
+                     * RuntimeCodeCacheWalker might decide to invalidate too much code, depending on
+                     * the order in which the CodeInfo objects are visited.
+                     */
+                    RuntimeCodeInfoAccess.walkStrongReferences(codeInfo, greyToBlackObjRefVisitor);
+                    RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, greyToBlackObjRefVisitor);
+                } finally {
+                    RuntimeCodeInfoAccess.releaseThreadWriteAccess();
+                }
             }
 
             if (!JavaStackWalker.continueWalk(walk, queryResult, deoptFrame)) {
@@ -1100,13 +1163,6 @@ public final class GCImpl implements GC {
         collectionInProgress = false;
     }
 
-    // This method will be removed as soon as possible, see GR-36676.
-    static void doReferenceHandlingInRegularThread() {
-        if (ReferenceHandler.useRegularJavaThread() && !VMOperation.isInProgress() && PlatformThreads.isCurrentAssigned()) {
-            doReferenceHandling();
-        }
-    }
-
     /**
      * Inside a VMOperation, we are not allowed to do certain things, e.g., perform synchronization
      * (because it can deadlock when a lock is held outside the VMOperation). Similar restrictions
@@ -1173,7 +1229,7 @@ public final class GCImpl implements GC {
 
     private static class CollectionVMOperation extends NativeVMOperation {
         CollectionVMOperation() {
-            super("Garbage collection", SystemEffect.SAFEPOINT);
+            super(VMOperationInfos.get(CollectionVMOperation.class, "Garbage collection", SystemEffect.SAFEPOINT));
         }
 
         @Override
@@ -1314,7 +1370,9 @@ public final class GCImpl implements GC {
         log.string(prefix).string("MaximumHeapSize: ").unsigned(getPolicy().getMaximumHeapSize()).newline();
         log.string(prefix).string("AlignedChunkSize: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
 
-        JavaVMOperation.enqueueBlockingSafepoint("PrintGCSummaryShutdownHook", ThreadLocalAllocation::disableAndFlushForAllThreads);
+        FlushTLABsOperation vmOp = new FlushTLABsOperation();
+        vmOp.enqueue();
+
         HeapImpl heap = HeapImpl.getHeapImpl();
         Space edenSpace = heap.getYoungGeneration().getEden();
         UnsignedWord youngChunkBytes = edenSpace.getChunkBytes();
@@ -1342,5 +1400,16 @@ public final class GCImpl implements GC {
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();
         log.string(prefix).string("TotalNanos: ").signed(totalNanos).newline();
         log.string(prefix).string("GCLoadPercent: ").signed(roundedGCLoad).newline();
+    }
+
+    private static class FlushTLABsOperation extends JavaVMOperation {
+        protected FlushTLABsOperation() {
+            super(VMOperationInfos.get(FlushTLABsOperation.class, "Flush TLABs", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
+        }
     }
 }

@@ -76,13 +76,13 @@ public class ThreadStatus {
                     JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT +
                     JVMTI_THREAD_STATE_IN_OBJECT_WAIT;
 
-    /** {@link sun.misc.Unsafe#park}. */
+    /** {@link jdk.internal.misc.Unsafe#park}. */
     public static final int PARKED = JVMTI_THREAD_STATE_ALIVE +
                     JVMTI_THREAD_STATE_WAITING +
                     JVMTI_THREAD_STATE_WAITING_INDEFINITELY +
                     JVMTI_THREAD_STATE_PARKED;
 
-    /** {@link sun.misc.Unsafe#park}. */
+    /** {@link jdk.internal.misc.Unsafe#park}. */
     public static final int PARKED_TIMED = JVMTI_THREAD_STATE_ALIVE +
                     JVMTI_THREAD_STATE_WAITING +
                     JVMTI_THREAD_STATE_WAITING_WITH_TIMEOUT +

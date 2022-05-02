@@ -81,7 +81,6 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -104,8 +103,9 @@ import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMKind;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMPendingSpecialRegisterRead;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMValueWrapper;
 import com.oracle.svm.core.graal.llvm.util.LLVMUtils.LLVMVariable;
-import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.KnownOffsets;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
+import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
@@ -130,7 +130,6 @@ import jdk.vm.ci.meta.ValueKind;
 public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuilder {
     private final LLVMGenerator gen;
     private final LLVMIRBuilder builder;
-    private final RuntimeConfiguration runtimeConfiguration;
     private final DebugInfoBuilder debugInfoBuilder;
 
     private Map<Node, LLVMValueWrapper> valueMap = new HashMap<>();
@@ -138,10 +137,9 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
     private Map<ValuePhiNode, LLVMValueRef> backwardsPhi = new HashMap<>();
     private long nextCGlobalId = 0L;
 
-    protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen, RuntimeConfiguration runtimeConfiguration) {
+    protected NodeLLVMBuilder(StructuredGraph graph, LLVMGenerator gen) {
         this.gen = gen;
         this.builder = gen.getBuilder();
-        this.runtimeConfiguration = runtimeConfiguration;
         this.debugInfoBuilder = new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), this);
         setCompilationResultMethod(gen.getCompilationResult(), graph);
 
@@ -567,19 +565,19 @@ public class NodeLLVMBuilder implements NodeLIRBuilderTool, SubstrateNodeLIRBuil
         LLVMValueRef anchor = llvmOperand(SubstrateBackend.getJavaFrameAnchor(callTarget));
         anchor = builder.buildIntToPtr(anchor, builder.rawPointerType());
 
-        LLVMValueRef lastSPAddr = builder.buildGEP(anchor, builder.constantInt(runtimeConfiguration.getJavaFrameAnchorLastSPOffset()));
+        LLVMValueRef lastSPAddr = builder.buildGEP(anchor, builder.constantInt(KnownOffsets.singleton().getJavaFrameAnchorLastSPOffset()));
         Register stackPointer = gen.getRegisterConfig().getFrameRegister();
         builder.buildStore(builder.buildReadRegister(builder.register(stackPointer.name)), builder.buildBitcast(lastSPAddr, builder.pointerType(builder.wordType())));
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
             LLVMValueRef threadLocalArea = gen.getSpecialRegisterValue(SpecialRegister.ThreadPointer);
-            LLVMValueRef statusIndex = builder.constantInt(runtimeConfiguration.getVMThreadStatusOffset());
+            LLVMValueRef statusIndex = builder.constantInt(KnownOffsets.singleton().getVMThreadStatusOffset());
             LLVMValueRef statusAddress = builder.buildGEP(builder.buildIntToPtr(threadLocalArea, builder.rawPointerType()), statusIndex);
             LLVMValueRef newThreadStatus = builder.constantInt(SubstrateBackend.getNewThreadStatus(callTarget));
             builder.buildVolatileStore(newThreadStatus, builder.buildBitcast(statusAddress, builder.pointerType(builder.intType())), Integer.BYTES);
         }
 
-        LLVMValueRef wrapper = gen.createJNIWrapper(callee, nativeABI, args.length, runtimeConfiguration.getJavaFrameAnchorLastIPOffset());
+        LLVMValueRef wrapper = gen.createJNIWrapper(callee, nativeABI, args.length, KnownOffsets.singleton().getJavaFrameAnchorLastIPOffset());
 
         LLVMValueRef[] newArgs = new LLVMValueRef[args.length + 2];
         if (!nativeABI) {

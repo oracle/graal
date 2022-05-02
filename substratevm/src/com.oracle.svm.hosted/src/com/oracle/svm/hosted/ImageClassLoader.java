@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,14 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -68,14 +70,14 @@ public final class ImageClassLoader {
     }
 
     public final Platform platform;
-    public final AbstractNativeImageClassLoaderSupport classLoaderSupport;
+    public final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    ImageClassLoader(Platform platform, AbstractNativeImageClassLoaderSupport classLoaderSupport) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
     }
@@ -427,7 +429,31 @@ public final class ImageClassLoader {
         return classLoaderSupport.getMainClassFromModule(module);
     }
 
-    public Optional<? extends Object> findModule(String moduleName) {
+    public Optional<Module> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
+    }
+
+    public String getMainClassNotFoundErrorMessage(String className) {
+        List<Path> classPath = applicationClassPath();
+        String classPathString = classPath.isEmpty() ? "" : String.format("%nclasspath: '%s'", pathsToString(classPath));
+        List<Path> modulePath = applicationModulePath();
+        String modulePathString = modulePath.isEmpty() ? "" : String.format("%nmodulepath: '%s'", pathsToString(modulePath));
+        return String.format("Main entry point class '%s' neither found on the classpath nor on the modulepath.%s%s", className, classPathString, modulePathString);
+    }
+
+    private static String pathsToString(List<Path> paths) {
+        return paths.stream().map(n -> String.valueOf(n)).collect(Collectors.joining(File.pathSeparator));
+    }
+
+    public EconomicSet<String> classes(URI container) {
+        return classLoaderSupport.classes(container);
+    }
+
+    public EconomicSet<String> packages(URI container) {
+        return classLoaderSupport.packages(container);
+    }
+
+    public boolean noEntryForURI(EconomicSet<String> set) {
+        return classLoaderSupport.noEntryForURI(set);
     }
 }

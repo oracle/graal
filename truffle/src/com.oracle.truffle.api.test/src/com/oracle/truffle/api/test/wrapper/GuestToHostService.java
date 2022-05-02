@@ -181,4 +181,8 @@ public class GuestToHostService extends AbstractHostService {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public void hostExit(int exitCode) {
+        System.exit(exitCode);
+    }
 }

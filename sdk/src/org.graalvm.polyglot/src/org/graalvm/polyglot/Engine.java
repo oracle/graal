@@ -46,7 +46,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -65,6 +64,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -111,6 +111,8 @@ import org.graalvm.polyglot.io.ProcessHandler;
 public final class Engine implements AutoCloseable {
 
     private static volatile Throwable initializationException;
+    private static volatile boolean shutdownHookInitialized;
+    private static final Map<Engine, Void> ENGINES = Collections.synchronizedMap(new WeakHashMap<>());
 
     final AbstractEngineDispatch dispatch;
     final Object receiver;
@@ -385,7 +387,9 @@ public final class Engine implements AutoCloseable {
      */
     @SuppressWarnings("unchecked")
     static Collection<Engine> findActiveEngines() {
-        return (Collection<Engine>) getImpl().findActiveEngines();
+        synchronized (ENGINES) {
+            return new ArrayList<>(ENGINES.keySet());
+        }
     }
 
     private static final Engine EMPTY = new Engine(null, null);
@@ -639,7 +643,22 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine newEngine(AbstractEngineDispatch dispatch, Object receiver) {
-            return new Engine(dispatch, receiver);
+            Engine engine = new Engine(dispatch, receiver);
+            if (!shutdownHookInitialized) {
+                synchronized (ENGINES) {
+                    if (!shutdownHookInitialized) {
+                        shutdownHookInitialized = true;
+                        Runtime.getRuntime().addShutdownHook(new Thread(new EngineShutDownHook()));
+                    }
+                }
+            }
+            ENGINES.put(engine, null);
+            return engine;
+        }
+
+        @Override
+        public void engineClosed(Engine engine) {
+            ENGINES.remove(engine);
         }
 
         @Override
@@ -858,36 +877,14 @@ public final class Engine implements AutoCloseable {
         }
     }
 
-    private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-
     @SuppressWarnings({"unchecked", "deprecation"})
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl polyglot = null;
-                Class<?> servicesClass = null;
                 if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
                     polyglot = loadAndValidateProviders(createInvalidPolyglotImpl());
                 } else {
-                    if (JDK8_OR_EARLIER) {
-                        try {
-                            servicesClass = Class.forName("jdk.vm.ci.services.Services");
-                        } catch (ClassNotFoundException e) {
-                        }
-                        if (servicesClass != null) {
-                            try {
-                                Method m = servicesClass.getDeclaredMethod("load", Class.class);
-                                polyglot = loadAndValidateProviders(((Iterable<? extends AbstractPolyglotImpl>) m.invoke(null, AbstractPolyglotImpl.class)).iterator());
-                            } catch (Throwable e) {
-                                // Fail fast for other errors
-                                throw new InternalError(e);
-                            }
-                        }
-                    }
-                }
-
-                if (polyglot == null) {
-                    // >= JDK 9.
                     polyglot = loadAndValidateProviders(searchServiceLoader());
                 }
                 if (polyglot == null) {
@@ -998,11 +995,6 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Collection<Engine> findActiveEngines() {
-            return Collections.emptyList();
-        }
-
-        @Override
         public void preInitializeEngine(Object hostLanguage) {
         }
 
@@ -1073,4 +1065,16 @@ public final class Engine implements AutoCloseable {
 
     }
 
+    private static final class EngineShutDownHook implements Runnable {
+
+        public void run() {
+            Engine[] engines;
+            synchronized (ENGINES) {
+                engines = ENGINES.keySet().toArray(new Engine[0]);
+            }
+            for (Engine engine : engines) {
+                engine.dispatch.shutdown(engine.receiver);
+            }
+        }
+    }
 }

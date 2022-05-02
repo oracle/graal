@@ -33,12 +33,11 @@ import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
+import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -126,7 +125,7 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
         new ReadEliminationPhase(canonicalizer).apply(graph, context);
         Assert.assertEquals(3, graph.getNodes().filter(UnsafeAccessNode.class).count());
         // after lowering the same applies for reads and writes
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
         new ReadEliminationPhase(canonicalizer).apply(graph, context);
         Assert.assertEquals(reads, graph.getNodes().filter(ReadNode.class).count());
@@ -141,7 +140,7 @@ public class UnsafeReadEliminationTest extends GraalCompilerTest {
         new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
         Assert.assertEquals(3, graph.getNodes().filter(UnsafeAccessNode.class).count());
         // after lowering the same applies for reads and writes
-        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
         new PartialEscapePhase(true, true, canonicalizer, null, options).apply(graph, context);
         Assert.assertEquals(reads, graph.getNodes().filter(ReadNode.class).count());

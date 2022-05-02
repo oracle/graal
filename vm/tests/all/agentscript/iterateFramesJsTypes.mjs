@@ -1,2 +1,2 @@
-import {retABC} from 'iterateFramesJsTypesMod.mjs';
+import {retABC} from './iterateFramesJsTypesMod.mjs';
 print(retABC());

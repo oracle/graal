@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
@@ -58,16 +57,14 @@ import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import sun.misc.Unsafe;
 
 /**
  * Writes the native image heap into one or multiple {@link RelocatableBuffer}s.
  */
 public final class NativeImageHeapWriter {
-
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     private final NativeImageHeap heap;
     private final ImageHeapLayoutInfo heapLayout;
@@ -380,9 +377,10 @@ public final class NativeImageHeapWriter {
                 }
             } else {
                 int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, 0));
-                int elementTypeSize = UNSAFE.arrayIndexScale(array.getClass());
+                int elementTypeSize = Unsafe.getUnsafe().arrayIndexScale(array.getClass());
                 assert elementTypeSize == kind.getByteCount();
-                UNSAFE.copyMemory(array, UNSAFE.arrayBaseOffset(array.getClass()), buffer.getBackingArray(), Unsafe.ARRAY_BYTE_BASE_OFFSET + elementIndex, length * elementTypeSize);
+                Unsafe.getUnsafe().copyMemory(array, Unsafe.getUnsafe().arrayBaseOffset(array.getClass()), buffer.getBackingArray(), Unsafe.ARRAY_BYTE_BASE_OFFSET + elementIndex,
+                                length * elementTypeSize);
             }
 
         } else {

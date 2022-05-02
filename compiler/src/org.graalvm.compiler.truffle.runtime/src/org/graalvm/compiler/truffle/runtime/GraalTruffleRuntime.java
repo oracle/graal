@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,7 +84,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
@@ -422,12 +421,16 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 throw new NoClassDefFoundError(className);
             }
         }
-        String className = "com.oracle.truffle.api.strings.TStringOps";
-        try {
-            Class<?> c = Class.forName(className);
-            m.put(c.getName(), c);
-        } catch (ClassNotFoundException e) {
-            throw new NoClassDefFoundError(className);
+        for (String className : new String[]{
+                        "com.oracle.truffle.api.strings.TStringOps",
+                        "com.oracle.truffle.object.UnsafeAccess",
+        }) {
+            try {
+                Class<?> c = Class.forName(className);
+                m.put(c.getName(), c);
+            } catch (ClassNotFoundException e) {
+                throw new NoClassDefFoundError(className);
+            }
         }
         return m;
     }
@@ -494,7 +497,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public DirectCallNode createDirectCallNode(CallTarget target) {
+    public final DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
             OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
             final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(optimizedTarget);
@@ -506,48 +509,46 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public IndirectCallNode createIndirectCallNode() {
+    public final IndirectCallNode createIndirectCallNode() {
         return new OptimizedIndirectCallNode();
     }
 
     @Override
-    public VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
+    public final VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
         return OptimizedCallTarget.createFrame(frameDescriptor, arguments);
     }
 
     @Override
-    public MaterializedFrame createMaterializedFrame(Object[] arguments) {
+    public final MaterializedFrame createMaterializedFrame(Object[] arguments) {
         return createMaterializedFrame(arguments, new FrameDescriptor());
     }
 
     @Override
-    public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
+    public final MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
         return new FrameWithoutBoxing(frameDescriptor, arguments);
     }
 
     @Override
-    public CompilerOptions createCompilerOptions() {
-        return new GraalCompilerOptions();
-    }
-
-    @Override
-    public Assumption createAssumption() {
+    public final Assumption createAssumption() {
         return createAssumption(null);
     }
 
     @Override
-    public Assumption createAssumption(String name) {
+    public final Assumption createAssumption(String name) {
         return new OptimizedAssumption(name);
     }
 
-    public GraalTruffleRuntimeListener getListener() {
+    public final GraalTruffleRuntimeListener getListener() {
         return listeners;
     }
 
     @TruffleBoundary
     @Override
-    public <T> T iterateFrames(final FrameInstanceVisitor<T> visitor) {
-        return iterateImpl(visitor, 0);
+    public final <T> T iterateFrames(FrameInstanceVisitor<T> visitor, int skipFrames) {
+        if (skipFrames < 0) {
+            throw new IllegalArgumentException("The skipFrames parameter must be >= 0.");
+        }
+        return iterateImpl(visitor, skipFrames);
     }
 
     /**
@@ -556,11 +557,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      */
     private int compilationThresholdScale = FixedPointMath.toFixedPoint(1.0);
 
-    public int compilationThresholdScale() {
+    public final int compilationThresholdScale() {
         return compilationThresholdScale;
     }
 
-    void setCompilationThresholdScale(int scale) {
+    final void setCompilationThresholdScale(int scale) {
         this.compilationThresholdScale = scale;
     }
 
@@ -669,23 +670,12 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     protected abstract StackIntrospection getStackIntrospection();
 
     @Override
-    public FrameInstance getCallerFrame() {
-        return iterateImpl(frame -> frame, 1);
-    }
-
-    @TruffleBoundary
-    @Override
-    public FrameInstance getCurrentFrame() {
-        return iterateImpl(frame -> frame, 0);
-    }
-
-    @Override
     public <T> T getCapability(Class<T> capability) {
         if (capability == TVMCI.class) {
             return capability.cast(tvmci);
         } else if (capability == LayoutFactory.class) {
             LayoutFactory layoutFactory = loadObjectLayoutFactory();
-            GraalRuntimeAccessor.JDK.exportTo(layoutFactory.getClass());
+            ModuleUtil.exportTo(layoutFactory.getClass());
             return capability.cast(layoutFactory);
         } else if (capability == TVMCI.Test.class) {
             return capability.cast(getTestTvmci());
@@ -702,7 +692,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public abstract SpeculationLog createSpeculationLog();
 
     @Override
-    @Deprecated
+    @Deprecated(since = "22.0")
     @SuppressWarnings("deprecation")
     public final RootCallTarget createCallTarget(RootNode rootNode) {
         return rootNode.getCallTarget();
@@ -1050,7 +1040,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return FrameSlotKind.values().length;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
         TruffleBoundary truffleBoundary = getAnnotation(TruffleBoundary.class, original);
@@ -1074,6 +1063,15 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             return InlineKind.DO_NOT_INLINE_WITH_EXCEPTION;
         }
         return InlineKind.INLINE;
+    }
+
+    @Override
+    public boolean isInlineable(ResolvedJavaMethod method) {
+        /*
+         * Ensure that methods excluded from inlining are also never inlined during Truffle
+         * compilation.
+         */
+        return method.canBeInlined();
     }
 
     @Override
@@ -1320,7 +1318,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
                 if (target instanceof OptimizedCallTarget) {
                     OptimizedCallTarget callTarget = ((OptimizedCallTarget) target);
-                    if (callTarget.getSourceCallTarget() != null) {
+                    if (callTarget.isSplit()) {
                         builder.append(" <split-").append(Integer.toHexString(callTarget.hashCode())).append(">");
                     }
                 }

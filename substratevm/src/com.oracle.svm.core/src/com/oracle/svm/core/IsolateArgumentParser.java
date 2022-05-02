@@ -56,7 +56,7 @@ import com.oracle.svm.core.util.VMError;
  */
 public class IsolateArgumentParser {
     private static final RuntimeOptionKey<?>[] OPTIONS = {SubstrateGCOptions.MinHeapSize, SubstrateGCOptions.MaxHeapSize, SubstrateGCOptions.MaxNewSize,
-                    SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling};
+                    SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling};
     private static final int OPTION_COUNT = OPTIONS.length;
     private static final CGlobalData<CCharPointer> OPTION_NAMES = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNames);
     private static final CGlobalData<CIntPointer> OPTION_NAME_POSITIONS = CGlobalDataFactory.createBytes(IsolateArgumentParser::createOptionNamePosition);
@@ -71,11 +71,6 @@ public class IsolateArgumentParser {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public IsolateArgumentParser() {
-    }
-
-    @Fold
-    public static boolean isSupported() {
-        return ImageSingletons.contains(IsolateArgumentParser.class);
     }
 
     @Fold
@@ -160,7 +155,8 @@ public class IsolateArgumentParser {
         }
 
         CLongPointer numericValue = StackValue.get(Long.BYTES);
-        for (int i = 0; i < argc; i++) {
+        // Ignore the first argument as it represents the executable file name.
+        for (int i = 1; i < argc; i++) {
             CCharPointer arg = argv.read(i);
             if (arg.isNonNull()) {
                 CCharPointer tail = matchPrefix(arg);

@@ -165,8 +165,12 @@ public class TypeInitializerGraph {
      * types unknown to points-to analysis (which sees only the substituted version.
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
-        return m.getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
-                        hostVM.hasClassInitializerSideEffect(m) ||
+        for (var invoke : m.getInvokes()) {
+            if (isInvokeInitiallyUnsafe(invoke)) {
+                return Safety.UNSAFE;
+            }
+        }
+        return hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
     }
 
@@ -177,7 +181,7 @@ public class TypeInitializerGraph {
     /**
      * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
-    private boolean isInvokeInitiallyUnsafe(InvokeInfo i) {
+    private static boolean isInvokeInitiallyUnsafe(InvokeInfo i) {
         return i.getTargetMethod().isNative() ||
                         !i.canBeStaticallyBound();
     }
@@ -209,9 +213,11 @@ public class TypeInitializerGraph {
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
-        if (m.getInvokes().stream().anyMatch(this::isInvokeUnsafeIterative)) {
-            methodSafety.put(m, Safety.UNSAFE);
-            return true;
+        for (var invoke : m.getInvokes()) {
+            if (isInvokeUnsafeIterative(invoke)) {
+                methodSafety.put(m, Safety.UNSAFE);
+                return true;
+            }
         }
         if (hostVM.getInitializedClasses(m).stream().anyMatch(this::isUnsafe)) {
             methodSafety.put(m, Safety.UNSAFE);

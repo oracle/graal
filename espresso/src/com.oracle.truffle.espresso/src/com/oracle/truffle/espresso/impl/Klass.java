@@ -29,10 +29,10 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import org.graalvm.collections.EconomicSet;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -133,7 +133,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
             if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-                return ((StaticObject) result).rawForeignObject();
+                EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
+                return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
         }
@@ -326,9 +327,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
-            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+            Meta meta = EspressoContext.get(toEspressoNode).getMeta();
+            int length = getLength(arguments, toEspressoNode, meta);
+            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, meta);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")
@@ -718,7 +719,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).getStaticsImpl();
         }
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Primitives/arrays do not have static fields");
     }
 
@@ -773,11 +774,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (!(this instanceof ObjectKlass)) {
             return true; // primitives or arrays are considered initialized.
         }
-        int state = ((ObjectKlass) this).getState();
-        return state == ObjectKlass.INITIALIZED ||
-                        state == ObjectKlass.ERRONEOUS ||
-                        // initializing thread
-                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(this);
+        return ((ObjectKlass) this).isInitializingOrInitializedImpl();
     }
 
     /**
@@ -1093,7 +1090,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Field requireDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         Field obj = lookupDeclaredField(fieldName, fieldType);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing field: ", fieldName, ": ", fieldType, " in ", this);
+            throw EspressoError.shouldNotReachHere("Missing field: " + fieldName + ": " + fieldType + " in " + this);
         }
         return obj;
     }
@@ -1125,7 +1122,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      *
      * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
      * specified class or interface C.
-     * 
+     *
      * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
      *
      * 4) Otherwise, field lookup fails.
@@ -1167,7 +1164,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         // Unreachable?
         assert this instanceof PrimitiveKlass;
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("lookupFieldTable on primitive type");
     }
 
@@ -1176,14 +1173,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return ((ObjectKlass) this).lookupStaticFieldTableImpl(slot);
         }
         // Array nor primitives have static fields.
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("lookupStaticFieldTable on primitive/array type");
     }
 
     public final Method requireMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method obj = lookupMethod(methodName, signature);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " starting at ", this);
+            throw EspressoError.shouldNotReachHere("Missing method: " + methodName + ": " + signature + " starting at " + this);
         }
         return obj;
     }
@@ -1191,7 +1188,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Method requireDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method obj = lookupDeclaredMethod(methodName, signature);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " in ", this);
+            throw EspressoError.shouldNotReachHere("Missing method: " + methodName + ": " + signature + " in " + this);
         }
         return obj;
     }
@@ -1538,7 +1535,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     // visible to TypeCheckNode
     public Assumption getRedefineAssumption() {
-        return AlwaysValidAssumption.INSTANCE;
+        return Assumption.ALWAYS_VALID;
     }
 
     // endregion jdwp-specific

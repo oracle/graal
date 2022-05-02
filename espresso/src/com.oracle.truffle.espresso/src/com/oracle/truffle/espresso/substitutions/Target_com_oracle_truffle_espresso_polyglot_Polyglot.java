@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -167,7 +168,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             try {
-                return castToBoxed(targetKlass, value.rawForeignObject(), interop, meta, exceptionProfile);
+                return castToBoxed(targetKlass, value.rawForeignObject(getLanguage()), interop, meta, exceptionProfile);
             } catch (UnsupportedMessageException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
@@ -187,7 +188,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
-            Object foreignObject = value.rawForeignObject();
+            Object foreignObject = value.rawForeignObject(getLanguage());
 
             // Array-like foreign objects can be wrapped as *[].
             // Buffer-like foreign objects can be wrapped (only) as byte[].
@@ -212,7 +213,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             try {
-                return meta.toGuestString(interop.asString(value.rawForeignObject()));
+                return meta.toGuestString(interop.asString(value.rawForeignObject(getLanguage())));
             } catch (UnsupportedMessageException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to String");
@@ -233,7 +234,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             // Casting to ForeignException skip the field checks.
-            Object foreignObject = value.rawForeignObject();
+            Object foreignObject = value.rawForeignObject(getLanguage());
             if (interop.isException(foreignObject)) {
                 initCheck.execute((ObjectKlass) targetKlass);
                 return StaticObject.createForeignException(meta, foreignObject, interop);
@@ -260,10 +261,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             assert value.isForeignObject();
             ObjectKlass targetObjectKlass = (ObjectKlass) targetKlass;
             try {
-                Object foreignObject = value.rawForeignObject();
+                Object foreignObject = value.rawForeignObject(getLanguage());
                 ToEspressoNode.checkHasAllFieldsOrThrow(foreignObject, targetObjectKlass, interop, meta);
                 initCheck.execute(targetObjectKlass);
-                return StaticObject.createForeign(meta.getEspressoLanguage(), targetKlass, foreignObject, interop);
+                return StaticObject.createForeign(meta.getLanguage(), targetKlass, foreignObject, interop);
             } catch (ClassCastException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, e.getMessage());
@@ -307,8 +308,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast to void");
         }
-        CompilerDirectives.transferToInterpreter();
-        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: ", targetKlass);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: " + targetKlass);
     }
 
     // endregion Polyglot#cast
@@ -378,20 +379,20 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @Inject Meta meta) {
+    public static void exportObject(@JavaType(String.class) StaticObject name, @JavaType(Object.class) StaticObject value, @Inject EspressoLanguage language, @Inject Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
         String bindingName = meta.toHostString(name);
         if (value.isForeignObject()) {
-            meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject());
+            meta.getContext().getEnv().exportSymbol(bindingName, value.rawForeignObject(language));
         } else {
             meta.getContext().getEnv().exportSymbol(bindingName, value);
         }
     }
 
     protected static StaticObject createForeignObject(Object object, Meta meta, InteropLibrary interopLibrary) {
-        return StaticObject.createForeign(meta.getEspressoLanguage(), meta.java_lang_Object, object, interopLibrary);
+        return StaticObject.createForeign(meta.getLanguage(), meta.java_lang_Object, object, interopLibrary);
     }
 }

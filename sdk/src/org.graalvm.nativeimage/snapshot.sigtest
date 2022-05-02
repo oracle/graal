@@ -151,6 +151,7 @@ CLSS public abstract interface org.graalvm.nativeimage.IsolateThread
 intf org.graalvm.word.PointerBase
 
 CLSS public final org.graalvm.nativeimage.Isolates
+innr public abstract interface static ProtectionDomain
 innr public final static CreateIsolateParameters
 innr public final static IsolateException
 meth public static org.graalvm.nativeimage.Isolate getIsolate(org.graalvm.nativeimage.IsolateThread)
@@ -166,11 +167,12 @@ CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameter
 innr public final static Builder
 meth public java.lang.String getAuxiliaryImagePath()
 meth public java.util.List<java.lang.String> getArguments()
+meth public org.graalvm.nativeimage.Isolates$ProtectionDomain getProtectionDomain()
 meth public org.graalvm.word.UnsignedWord getAuxiliaryImageReservedSpaceSize()
 meth public org.graalvm.word.UnsignedWord getReservedAddressSpaceSize()
 meth public static org.graalvm.nativeimage.Isolates$CreateIsolateParameters getDefault()
 supr java.lang.Object
-hfds DEFAULT,arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds DEFAULT,arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,protectionDomain,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder
  outer org.graalvm.nativeimage.Isolates$CreateIsolateParameters
@@ -180,14 +182,20 @@ meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder app
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImagePath(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImageReservedSpaceSize(org.graalvm.word.UnsignedWord)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder reservedAddressSpaceSize(org.graalvm.word.UnsignedWord)
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder setProtectionDomain(org.graalvm.nativeimage.Isolates$ProtectionDomain)
 supr java.lang.Object
-hfds arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,protectionDomain,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$IsolateException
  outer org.graalvm.nativeimage.Isolates
 cons public init(java.lang.String)
 supr java.lang.RuntimeException
 hfds serialVersionUID
+
+CLSS public abstract interface static org.graalvm.nativeimage.Isolates$ProtectionDomain
+ outer org.graalvm.nativeimage.Isolates
+fld public final static org.graalvm.nativeimage.Isolates$ProtectionDomain NEW_DOMAIN
+fld public final static org.graalvm.nativeimage.Isolates$ProtectionDomain NO_DOMAIN
 
 CLSS public abstract interface org.graalvm.nativeimage.LogHandler
 meth public abstract void fatalError()
@@ -503,6 +511,7 @@ innr public abstract interface static !annotation IsolateContext
 innr public abstract interface static !annotation IsolateThreadContext
 innr public abstract interface static ExceptionHandler
 innr public final static !enum Builtin
+innr public final static !enum Publish
 innr public final static AlwaysIncluded
 innr public final static FatalExceptionHandler
 innr public final static NotIncludedAutomatically
@@ -512,6 +521,7 @@ meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.nativeima
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String[] documentation()
 meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Builtin builtin()
+meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Publish publishAs()
 
 CLSS public final static org.graalvm.nativeimage.c.function.CEntryPoint$AlwaysIncluded
  outer org.graalvm.nativeimage.c.function.CEntryPoint
@@ -557,6 +567,15 @@ CLSS public final static org.graalvm.nativeimage.c.function.CEntryPoint$NotInclu
 intf java.util.function.BooleanSupplier
 meth public boolean getAsBoolean()
 supr java.lang.Object
+
+CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Publish
+ outer org.graalvm.nativeimage.c.function.CEntryPoint
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish NotPublished
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolOnly
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolAndHeader
+meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish valueOf(java.lang.String)
+meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish[] values()
+supr java.lang.Enum<org.graalvm.nativeimage.c.function.CEntryPoint$Publish>
 
 CLSS public final org.graalvm.nativeimage.c.function.CEntryPointLiteral<%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer>
 meth public !varargs static <%0 extends org.graalvm.nativeimage.c.function.CFunctionPointer> org.graalvm.nativeimage.c.function.CEntryPointLiteral<{%%0}> create(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
@@ -963,9 +982,9 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeReflection
 meth public !varargs static void register(boolean,boolean,java.lang.reflect.Field[])
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.1")
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.1")
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
 meth public !varargs static void register(java.lang.reflect.Field[])

@@ -56,7 +56,6 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
 import org.graalvm.compiler.lir.StandardOp.ImplicitNullCheck;
 import org.graalvm.compiler.lir.SwitchStrategy;
 import org.graalvm.compiler.lir.SwitchStrategy.BaseSwitchClosure;
@@ -64,7 +63,6 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -74,31 +72,6 @@ import jdk.vm.ci.meta.VMConstant;
 import jdk.vm.ci.meta.Value;
 
 public class AMD64ControlFlow {
-
-    public static final class ReturnOp extends AMD64BlockEndOp implements BlockEndOp {
-        public static final LIRInstructionClass<ReturnOp> TYPE = LIRInstructionClass.create(ReturnOp.class);
-        @Use({REG, ILLEGAL}) protected Value x;
-
-        public ReturnOp(Value x) {
-            super(TYPE);
-            this.x = x;
-        }
-
-        @Override
-        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-            crb.frameContext.leave(crb);
-            /*
-             * We potentially return to the interpreter, and that's an AVX-SSE transition. The only
-             * live value at this point should be the return value in either rax, or in xmm0 with
-             * the upper half of the register unused, so we don't destroy any value here.
-             */
-            if (masm.supports(CPUFeature.AVX)) {
-                masm.vzeroupper();
-            }
-            masm.ret(0);
-            crb.frameContext.returned(crb);
-        }
-    }
 
     public static class BranchOp extends AMD64BlockEndOp implements StandardOp.BranchOp {
         public static final LIRInstructionClass<BranchOp> TYPE = LIRInstructionClass.create(BranchOp.class);

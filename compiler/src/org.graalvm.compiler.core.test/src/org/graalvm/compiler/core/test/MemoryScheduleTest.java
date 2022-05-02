@@ -45,13 +45,14 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -700,7 +701,7 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             if (mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
                 createInliningPhase(canonicalizer).apply(graph, context);
             }
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
 
             new FloatingReadPhase().apply(graph);
             new RemoveValueProxyPhase().apply(graph);
@@ -715,9 +716,9 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             }
             debug.dump(DebugContext.BASIC_LEVEL, graph, "after removal of framestates");
 
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
+            new MidTierLoweringPhase(canonicalizer).apply(graph, midContext);
             LowTierContext lowContext = new LowTierContext(getProviders(), getTargetProvider());
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, lowContext);
+            new LowTierLoweringPhase(canonicalizer).apply(graph, lowContext);
 
             SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
             schedule.apply(graph, getDefaultLowTierContext());

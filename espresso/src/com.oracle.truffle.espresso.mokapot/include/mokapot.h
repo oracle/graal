@@ -27,7 +27,7 @@
 #include "jni.h"
 #include "os.h"
 
-#include "libespresso_dynamic.h"
+#include "libjavavm_dynamic.h"
 
 #include <trufflenfi.h>
 #include <stddef.h>
@@ -69,7 +69,7 @@ typedef uint64_t julong;
 /* Usage of the JavaVM reserved fields:
  * vm type   | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * ----------+----------------+---------------------+----------------+
- * reserved0 | NULL           | LibEspressoIsolate* | context handle |
+ * reserved0 | NULL           | LibJavaVMIsolate* | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
  * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
@@ -414,7 +414,7 @@ jlong (*JVM_MaxMemory)(void);
 
 jint (*JVM_ActiveProcessorCount)(void);
 
-void * (*JVM_LoadLibrary)(const char *name);
+void * (*JVM_LoadLibrary)(const char *name /*, jboolean throwException*/);
 
 void (*JVM_UnloadLibrary)(void * handle);
 
@@ -953,10 +953,10 @@ void add_java_vm(JavaVM* vm);
 jint remove_java_vm(JavaVM* vm);
 void gather_java_vms(JavaVM** buf, jsize buf_size, jsize* numVms);
 
-#define LIB_ESPRESSO_PLAIN 0
-#define LIB_ESPRESSO_POLYGLOT 1
+#define LIB_JAVAVM_PLAIN 0
+#define LIB_JAVAVM_POLYGLOT 1
 
-typedef struct LibEspresso {
+typedef struct LibJavaVM {
     graal_create_isolate_fn_t create_isolate;
     graal_attach_thread_fn_t attach_thread;
     graal_detach_thread_fn_t detach_thread;
@@ -969,12 +969,12 @@ typedef struct LibEspresso {
     Espresso_ReleaseContext_fn_t Espresso_ReleaseContext;   // release
     Espresso_CloseContext_fn_t Espresso_CloseContext;       // release + leave + close
     Espresso_Exit_fn_t Espresso_Exit;                       // leave + close + exit
-} LibEspresso;
+} LibJavaVM;
 
-typedef struct LibEspressoIsolate {
-    LibEspresso *lib;
+typedef struct LibJavaVMIsolate {
+    LibJavaVM *lib;
     graal_isolate_t *isolate;
     jboolean is_sun_standard_launcher; // -Dsun.java.launcher=SUN_STANDARD
-} LibEspressoIsolate;
+} LibJavaVMIsolate;
 
 #endif // _MOKAPOT_H

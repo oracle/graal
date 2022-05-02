@@ -59,7 +59,6 @@ import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticFeature
 class HeapFeature implements GraalFeature {
-
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.UseSerialGC.getValue();
@@ -97,7 +96,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        // Needed for the barrier set
+        // Needed for the barrier set.
         access.registerAsUsed(Object[].class);
     }
 

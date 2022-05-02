@@ -91,7 +91,8 @@ public class PolymorphicSignatureWrapperMethod implements ResolvedJavaMethod, Gr
             receiver = args.remove(0);
         }
 
-        ValueNode parameterArray = kit.append(new NewArrayNode(metaAccess.lookupJavaType(Object.class), kit.createInt(args.size()), false));
+        ValueNode parameterArray = kit.append(new NewArrayNode(metaAccess.lookupJavaType(Object.class), kit.createInt(args.size()), true));
+
         for (int i = 0; i < args.size(); ++i) {
             ValueNode arg = args.get(i);
             if (arg.getStackKind().isPrimitive()) {
