@@ -202,7 +202,7 @@ class LibFFIContext {
     }
 
     Object lookupSymbol(LibFFILibrary library, String name) {
-        return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
+        return LibFFISymbol.create(library, name, lookup(nativeContext, library.handle, name));
     }
 
     LibFFIType lookupSimpleType(NativeSimpleType type) {
@@ -230,7 +230,7 @@ class LibFFIContext {
         synchronized (language) {
             if (language.simpleTypeMap[idx] == null) {
                 assert language.arrayTypeMap[idx] == null;
-                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
+                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(simpleType, size, alignment);
                 language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
                 if (idx == pointerIdx) {
                     language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
@@ -251,7 +251,7 @@ class LibFFIContext {
         assert varargsTypeMap[idx] == null : "initializeVarargsType called twice for " + simpleType;
         synchronized (language) {
             if (language.varargsTypeMap[idx] == null) {
-                language.varargsTypeMap[idx] = LibFFIType.createVarargsPromotedTypeInfo(language, simpleType, promoted.typeInfo);
+                language.varargsTypeMap[idx] = LibFFIType.createVarargsPromotedTypeInfo(simpleType, promoted.typeInfo);
             }
         }
 
