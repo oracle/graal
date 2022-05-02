@@ -245,7 +245,12 @@ public class SLNodeVisitor extends SLBaseVisitor {
         @Override
         public SLStatementNode visitReturn_statement(Return_statementContext ctx) {
 
-            final SLExpressionNode valueNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());
+            final SLExpressionNode valueNode;
+            if (ctx.expression() != null) {
+                valueNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());
+            } else {
+                valueNode = null;
+            }
 
             final int start = ctx.r.getStartIndex();
             final int length = valueNode == null ? ctx.r.getText().length() : valueNode.getSourceEndIndex() - start;
