@@ -13,7 +13,9 @@ on:
       - '.travis.yml'
       - '.github/workflows/quarkus.yml'
       - '**.md'
-  workflow_dispatch: []
+  # Enable manual dispatch of the workflow
+  # see https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch:
 
 # The following aims to reduce CI CPU cycles by:
 # 1. Cancelling any previous builds of this PR when pushing new changes to it
@@ -153,7 +155,9 @@ jobs:
         if [[ ${GATE} == *style* ]]
         then
           export ECLIPSE_TAR=eclipse.tar.gz
-          wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+          ECLIPSE_ORG_VERSION=$(cat common.json | jq -r '.downloads.eclipse.eclipse_org.version')
+          ECLIPSE_ORG_TIMESTAMP=$(cat common.json | jq -r '.downloads.eclipse.eclipse_org.timestamp')
+          wget --no-verbose https://archive.eclipse.org/eclipse/downloads/drops4/R-${ECLIPSE_ORG_VERSION}-${ECLIPSE_ORG_TIMESTAMP}/eclipse-SDK-${ECLIPSE_ORG_VERSION}-linux-gtk-x86_64.tar.gz -O $ECLIPSE_TAR
           tar -xzf ${ECLIPSE_TAR}
           export ECLIPSE_EXE=${PWD}/eclipse/eclipse
 
