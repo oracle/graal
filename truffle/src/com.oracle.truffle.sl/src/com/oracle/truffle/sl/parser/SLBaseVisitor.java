@@ -28,8 +28,10 @@ public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<
         parser.addErrorListener(listener);
 
         parser.simplelanguage().accept(visitor);
-        
-        source.setFunctions(visitor.functions);
+
+        if (source.getFunctions() == null) {
+            source.setFunctions(visitor.functions);
+        }
 
         return visitor.functions;
     }
