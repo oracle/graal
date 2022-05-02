@@ -25,6 +25,7 @@
 package org.graalvm.nativebridge.processor;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
@@ -64,7 +65,8 @@ abstract class AbstractBridgeGenerator {
         this.types = parser.types;
     }
 
-    final FactoryMethodInfo resolveFactoryMethod(CharSequence factoryMethodName, CharSequence startPointSimpleName, CodeBuilder.Parameter... additionalRequiredParameters) {
+    final FactoryMethodInfo resolveFactoryMethod(CharSequence factoryMethodName, CharSequence startPointSimpleName, CharSequence endPointSimpleName,
+                    CodeBuilder.Parameter... additionalRequiredParameters) {
         List<CodeBuilder.Parameter> parameters = new ArrayList<>(definitionData.annotatedTypeConstructorParams.size() + 1);
         List<CodeBuilder.Parameter> superParameters = new ArrayList<>(definitionData.annotatedTypeConstructorParams.size());
         List<CodeBuilder.Parameter> requiredList = new ArrayList<>();
@@ -77,7 +79,7 @@ abstract class AbstractBridgeGenerator {
             superParameters.add(parameter);
         }
         parameters.addAll(requiredList);
-        return new FactoryMethodInfo(factoryMethodName, startPointSimpleName, parameters, superParameters);
+        return new FactoryMethodInfo(factoryMethodName, startPointSimpleName, endPointSimpleName, parameters, superParameters);
     }
 
     abstract void generateAPI(CodeBuilder builder, CharSequence targetClassSimpleName);
@@ -85,6 +87,9 @@ abstract class AbstractBridgeGenerator {
     abstract void generateImpl(CodeBuilder builder, CharSequence targetClassSimpleName);
 
     abstract MarshallerSnippets marshallerSnippets(MarshallerData marshallerData);
+
+    void configureMultipleDefinitions(@SuppressWarnings("unused") List<DefinitionData> otherDefinitions) {
+    }
 
     static int getStaticBufferSize(int marshalledParametersCount, boolean marshalledResult) {
         int slots = marshalledParametersCount != 0 ? marshalledParametersCount : marshalledResult ? 1 : 0;
@@ -267,11 +272,13 @@ abstract class AbstractBridgeGenerator {
 
     abstract static class MarshallerSnippets {
 
+        private final NativeBridgeProcessor processor;
         private final AbstractTypeCache cache;
         final MarshallerData marshallerData;
         final Types types;
 
-        MarshallerSnippets(MarshallerData marshallerData, Types types, AbstractTypeCache cache) {
+        MarshallerSnippets(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache) {
+            this.processor = processor;
             this.marshallerData = marshallerData;
             this.types = types;
             this.cache = cache;
@@ -362,7 +369,7 @@ abstract class AbstractBridgeGenerator {
                 newArgs.add(jniEnvFieldName);
                 args = newArgs;
             }
-            CharSequence proxy = createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            CharSequence proxy = createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
             if (marshallerData.customDispatchFactory != null) {
                 CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
                                 marshallerData.customDispatchFactory.getSimpleName(), proxy);
@@ -380,7 +387,7 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory && !isNativeObject) {
                 args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[0])).build());
             }
-            CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
             if (marshallerData.customDispatchFactory != null) {
                 CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
                                 marshallerData.customDispatchFactory.getSimpleName(), proxy);
@@ -403,16 +410,38 @@ abstract class AbstractBridgeGenerator {
             return result;
         }
 
-        private CharSequence createProxy(CodeBuilder builder, CharSequence factoryMethod, List<CharSequence> args) {
+        private CharSequence createProxy(CodeBuilder builder, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
             boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
             if (hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
-                return new CodeBuilder(builder).invoke(type,
-                                factoryMethod, args.toArray(new CharSequence[0])).build();
+                CodeBuilder newInstanceBuilder = new CodeBuilder(builder);
+                boolean hasJNI = hasJNIFactory(marshallerData);
+                boolean hasNative = hasNativeFactory(marshallerData);
+                if (hasJNI && hasNative) {
+                    newInstanceBuilder.invokeStatic(cache.imageInfo, "inImageCode").write(" ? ").invoke(type, nativeFactoryMethod, args.toArray(new CharSequence[0])).write(" : ").invoke(type,
+                                    jniFactoryMethod, args.toArray(new CharSequence[0]));
+                } else if (hasJNI) {
+                    newInstanceBuilder.invoke(type, jniFactoryMethod, args.toArray(new CharSequence[0]));
+                } else if (hasNative) {
+                    newInstanceBuilder.invoke(type, nativeFactoryMethod, args.toArray(new CharSequence[0]));
+                } else {
+                    throw new IllegalStateException("Generated type must have JNI or Native start point.");
+                }
+                return newInstanceBuilder.build();
             } else {
                 return new CodeBuilder(builder).newInstance((DeclaredType) types.erasure(marshallerData.forType),
                                 args.toArray(new CharSequence[0])).build();
             }
+        }
+
+        private boolean hasJNIFactory(MarshallerData data) {
+            Element element = ((DeclaredType) types.erasure(data.forType)).asElement();
+            return processor.getAnnotation(element, cache.generateHSToNativeBridge) != null || processor.getAnnotation(element, cache.generateNativeToHSBridge) != null;
+        }
+
+        private boolean hasNativeFactory(MarshallerData data) {
+            Element element = ((DeclaredType) types.erasure(data.forType)).asElement();
+            return processor.getAnnotation(element, cache.generateNativeToNativeBridge) != null;
         }
 
         final CharSequence marshallHotSpotToNativeProxyInNative(CodeBuilder builder, CharSequence parameterName) {
@@ -563,12 +592,15 @@ abstract class AbstractBridgeGenerator {
 
         final CharSequence name;
         final CharSequence startPointSimpleName;
+        final CharSequence endPointSimpleName;
         final List<CodeBuilder.Parameter> parameters;
         final List<CodeBuilder.Parameter> superCallParameters;
 
-        FactoryMethodInfo(CharSequence name, CharSequence startPointSimpleName, List<CodeBuilder.Parameter> parameters, List<CodeBuilder.Parameter> superCallParameters) {
+        FactoryMethodInfo(CharSequence name, CharSequence startPointSimpleName, CharSequence endPointSimpleName, List<CodeBuilder.Parameter> parameters,
+                        List<CodeBuilder.Parameter> superCallParameters) {
             this.name = name;
             this.startPointSimpleName = startPointSimpleName;
+            this.endPointSimpleName = endPointSimpleName;
             this.parameters = parameters;
             this.superCallParameters = superCallParameters;
         }

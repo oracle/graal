@@ -1188,8 +1188,10 @@ abstract class AbstractBridgeParser {
         final DeclaredType foreignException;
         final DeclaredType generateHSToNativeBridge;
         final DeclaredType generateNativeToHSBridge;
+        final DeclaredType generateNativeToNativeBridge;
         final DeclaredType hSObject;
         final DeclaredType idempotent;
+        final DeclaredType imageInfo;
         final DeclaredType in;
         final DeclaredType jBooleanArray;
         final DeclaredType jByteArray;
@@ -1247,8 +1249,10 @@ abstract class AbstractBridgeParser {
             this.foreignException = (DeclaredType) processor.getType("org.graalvm.nativebridge.ForeignException");
             this.generateHSToNativeBridge = (DeclaredType) processor.getType(HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION);
             this.generateNativeToHSBridge = (DeclaredType) processor.getType(NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
+            this.generateNativeToNativeBridge = (DeclaredType) processor.getType(NativeToNativeBridgeParser.GENERATE_NATIVE_TO_NATIVE_ANNOTATION);
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.idempotent = (DeclaredType) processor.getType("org.graalvm.nativebridge.Idempotent");
+            this.imageInfo = (DeclaredType) processor.getType("org.graalvm.nativeimage.ImageInfo");
             this.in = (DeclaredType) processor.getType("org.graalvm.nativebridge.In");
             this.jBooleanArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JBooleanArray");
             this.jByteArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JByteArray");

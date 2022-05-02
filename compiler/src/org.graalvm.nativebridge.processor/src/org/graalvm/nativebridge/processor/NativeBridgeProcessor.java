@@ -46,10 +46,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @SupportedAnnotationTypes({
                 HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION,
                 NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION,
+                NativeToNativeBridgeParser.GENERATE_NATIVE_TO_NATIVE_ANNOTATION
 })
 public final class NativeBridgeProcessor extends AbstractProcessor {
 
@@ -73,6 +75,19 @@ public final class NativeBridgeProcessor extends AbstractProcessor {
         if (!annotatedElements.isEmpty()) {
             NativeToHotSpotBridgeParser parser = NativeToHotSpotBridgeParser.create(this);
             parse(parser, annotatedElements, toGenerate);
+        }
+        annotatedElements = roundEnv.getElementsAnnotatedWith(getTypeElement(NativeToNativeBridgeParser.GENERATE_NATIVE_TO_NATIVE_ANNOTATION));
+        if (!annotatedElements.isEmpty()) {
+            NativeToNativeBridgeParser parser = NativeToNativeBridgeParser.create(this);
+            parse(parser, annotatedElements, toGenerate);
+        }
+        for (List<AbstractBridgeGenerator> generatorsForElement : toGenerate.values()) {
+            for (AbstractBridgeGenerator generator : generatorsForElement) {
+                List<DefinitionData> otherDefinitions = generatorsForElement.stream().filter((g) -> g != generator).map((g) -> g.definitionData).collect(Collectors.toList());
+                if (!otherDefinitions.isEmpty()) {
+                    generator.configureMultipleDefinitions(otherDefinitions);
+                }
+            }
         }
         for (Entry<TypeElement, List<AbstractBridgeGenerator>> e : toGenerate.entrySet()) {
             TypeElement annotatedElement = e.getKey();
