@@ -733,13 +733,13 @@ public abstract class NFATraversalRegexASTVisitor {
                 Group group = (Group) node;
                 if (pathIsGroupEnter(lastVisited) || pathIsGroupPassThrough(lastVisited)) {
                     if (pathGroupHasNext(lastVisited)) {
-                        cur = pathGroupGetNext(lastVisited);
-                        switchNextGroupAlternative(group);
                         if (pathIsGroupPassThrough(lastVisited)) {
                             // a passthrough node was changed to an enter node,
                             // so we register the loop in insideLoops
                             registerInsideLoop(group);
                         }
+                        switchNextGroupAlternative(group);
+                        advanceTo(pathGroupGetNext(lastVisited));
                         return false;
                     } else {
                         if (pathIsGroupEnter(lastVisited)) {
