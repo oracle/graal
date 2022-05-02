@@ -1853,6 +1853,9 @@ public class BasicNodeFactory implements NodeFactory {
                 return CommonNodeFactory.createSignedCast(args[1], retType);
             case "fcmp":
                 return CommonNodeFactory.createComparison(getCompareOp(args[3]), retType, args[1], args[2]);
+            case "fmuladd":
+                LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.ADD, retType, mulNodeF80, args[3]);
         }
 
         return LLVMX86_MissingBuiltin.create(declaration.getName());
