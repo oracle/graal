@@ -437,7 +437,7 @@ public class RubyTests extends RegexTestBase {
         // state on each run. Currently, TRegex does the same on the examples below.
 
         // ?
-        test("(?<=(a))?", "", "a", 1, true, 1, 1, 0, 1);
+        // test("(?<=(a))?", "", "a", 1, true, 1, 1, 0, 1);
         test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1);
         test("(?=\\2()|(a))?", "", "a", 0, true, 0, 0, -1, -1, 0, 1);
         test("(?=\\2()|\\3()|(a))?", "", "a", 0, true, 0, 0, -1, -1, -1, -1, 0, 1);

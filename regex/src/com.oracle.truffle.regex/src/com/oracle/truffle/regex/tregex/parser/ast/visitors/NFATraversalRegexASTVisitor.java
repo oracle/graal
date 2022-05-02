@@ -238,7 +238,7 @@ public abstract class NFATraversalRegexASTVisitor {
         targetDeduplicationSet.clear();
         deduplicatedTargets = 0;
         if (runRoot.isGroup() && runRoot.getParent().isSubtreeRoot()) {
-            cur = runRoot;
+            advanceTo(runRoot);
         } else {
             advanceTerm(runRoot);
         }
@@ -246,8 +246,7 @@ public abstract class NFATraversalRegexASTVisitor {
             boolean foundNextTarget = false;
             while (!done && !foundNextTarget) {
                 // advance until we reach the next node to visit
-                foundNextTarget = !doAdvance();
-                foundNextTarget = deduplicateTarget() && foundNextTarget;
+                foundNextTarget = doAdvance();
             }
             if (done) {
                 break;
@@ -327,7 +326,7 @@ public abstract class NFATraversalRegexASTVisitor {
                 popQuantifierGuard(finalGuard);
                 quantifierGuardsResult = new QuantifierGuard[quantifierGuardsResultBuffer.size()];
                 for (int i = quantifierGuardsResultBuffer.size() - 1; i >= 0; i--) {
-                    quantifierGuardsResult[quantifierGuardsResult.length - i + 1] = quantifierGuardsResultBuffer.get(i);
+                    quantifierGuardsResult[quantifierGuardsResult.length - i - 1] = quantifierGuardsResultBuffer.get(i);
                 }
             } else {
                 quantifierGuardsResult = quantifierGuards == null ? QuantifierGuard.NO_GUARDS : quantifierGuards.toArray();
@@ -409,8 +408,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
                 return advanceTerm(parent);
             } else {
-                cur = forward ? sequence.getFirstTerm() : sequence.getLastTerm();
-                return true;
+                advanceTo(forward ? sequence.getFirstTerm() : sequence.getLastTerm());
+                return false;
             }
         } else if (cur.isGroup()) {
             final Group group = (Group) cur;
@@ -425,8 +424,8 @@ public abstract class NFATraversalRegexASTVisitor {
             // must have at least one child sequence, so no check is needed here.
             // createGroupEnterPathElement initializes the group alternation index with 1, so we
             // don't have to increment it here, either.
-            cur = group.getFirstAlternative();
-            return true;
+            advanceTo(group.getFirstAlternative());
+            return false;
         } else {
             curPath.add(createPathElement(cur));
             if (cur.isPositionAssertion()) {
@@ -462,7 +461,7 @@ public abstract class NFATraversalRegexASTVisitor {
                     // already
                     return retreat();
                 }
-                return false;
+                return true;
             }
         }
     }
@@ -490,15 +489,20 @@ public abstract class NFATraversalRegexASTVisitor {
         visitedSet.add(cur);
     }
 
+    private boolean advanceTo(RegexASTNode node) {
+        cur = node;
+        return deduplicateTarget();
+    }
+
     private boolean advanceTerm(Term term) {
         if (ast.isNFAInitialState(term) || (term.getParent().isSubtreeRoot() && (term.isPositionAssertion() || term.isMatchFound()))) {
             assert term.isPositionAssertion() || term.isMatchFound();
             if (term.isPositionAssertion()) {
-                cur = term.asPositionAssertion().getNext();
+                advanceTo(term.asPositionAssertion().getNext());
             } else {
-                cur = term.asMatchFound().getNext();
+                advanceTo(term.asMatchFound().getNext());
             }
-            return true;
+            return false;
         }
         Term curTerm = term;
         while (!curTerm.getParent().isSubtreeRoot()) {
@@ -513,13 +517,13 @@ public abstract class NFATraversalRegexASTVisitor {
                 final Group parentGroup = parentSeq.getParent();
                 pushGroupExit(parentGroup);
                 if (parentGroup.isLoop()) {
-                    cur = parentGroup;
-                    return true;
+                    advanceTo(parentGroup);
+                    return false;
                 }
                 curTerm = parentGroup;
             } else {
-                cur = parentSeq.getTerms().get(curTerm.getSeqIndex() + (forward ? 1 : -1));
-                return true;
+                advanceTo(parentSeq.getTerms().get(curTerm.getSeqIndex() + (forward ? 1 : -1)));
+                return false;
             }
         }
         assert curTerm.isGroup();
@@ -527,8 +531,8 @@ public abstract class NFATraversalRegexASTVisitor {
         if (insideEmptyGuardGroup.contains(curTerm)) {
             return advanceEmptyGuard(curTerm);
         }
-        cur = curTerm.getSubTreeParent().getMatchFound();
-        return true;
+        advanceTo(curTerm.getSubTreeParent().getMatchFound());
+        return false;
     }
 
     private boolean advanceEmptyGuard(Term curTerm) {
@@ -538,8 +542,7 @@ public abstract class NFATraversalRegexASTVisitor {
             // We found a zero-width match group with a bounded quantifier.
             // By returning the quantified group itself, we map the transition target to the special
             // empty-match state.
-            cur = curTerm;
-            return false;
+            return advanceTo(curTerm);
         }
         return retreat();
     }
@@ -737,7 +740,7 @@ public abstract class NFATraversalRegexASTVisitor {
                             // so we register the loop in insideLoops
                             registerInsideLoop(group);
                         }
-                        return true;
+                        return false;
                     } else {
                         if (pathIsGroupEnter(lastVisited)) {
                             popGroupEnter(group);
@@ -768,8 +771,9 @@ public abstract class NFATraversalRegexASTVisitor {
                     // only one of the two transitions will be admissible. The clause below lets us
                     // generate the second transition by replacing the loop exit with a loop escape.
                     switchExitToEscape(group);
-                    if (advanceTerm(group)) {
-                        return true;
+                    // TODO: maybe replace with return advanceTerm(group) || retreat()
+                    if (!advanceTerm(group)) {
+                        return false;
                     } else {
                         retreat();
                     }
