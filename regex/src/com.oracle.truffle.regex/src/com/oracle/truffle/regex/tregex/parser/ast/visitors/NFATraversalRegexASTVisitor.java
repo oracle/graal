@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.parser.ast.visitors;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
@@ -118,7 +119,7 @@ public abstract class NFATraversalRegexASTVisitor {
      * necessary for expressions with an exponential number of possible paths, like
      * {@code /(a?|b?|c?|d?|e?|f?|g?)(a?|b?|c?|d?|e?|f?|g?)(a?|b?|c?|d?|e?|f?|g?)/}.
      */
-    private static final int SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD = 100_000;
+    private static final int SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD = Integer.MAX_VALUE;
     protected final RegexAST ast;
     private Term root;
     /**
@@ -172,7 +173,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private final TBitSet captureGroupUpdates;
     private final TBitSet captureGroupClears;
 
-    private final ObjectArrayBuffer<QuantifierGuard> quantifierGuards = new ObjectArrayBuffer<>();
+    private QuantifierGuardsLinkedList quantifierGuards = null;
     private QuantifierGuard[] quantifierGuardsResult = null;
     private final int[] quantifierGuardsLoop;
     private final int[] quantifierGuardsExited;
@@ -212,6 +213,14 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected abstract boolean canTraverseLookArounds();
 
+    private void clearQuantifierGuards() {
+        quantifierGuards = null;
+    }
+
+    private void pushQuantifierGuard(QuantifierGuard guard) {
+        quantifierGuards = new QuantifierGuardsLinkedList(guard, quantifierGuards);
+    }
+
     protected void run(Term runRoot) {
         assert insideLoops.isEmpty();
         assert insideEmptyGuardGroup.isEmpty();
@@ -222,10 +231,10 @@ public abstract class NFATraversalRegexASTVisitor {
         assert Arrays.stream(quantifierGuardsLoop).allMatch(x -> x == 0);
         assert Arrays.stream(quantifierGuardsExited).allMatch(x -> x == 0);
         root = runRoot;
-        quantifierGuards.clear();
+        clearQuantifierGuards();
         if (root.isGroup() && !root.getParent().isSubtreeRoot()) {
             Group emptyMatch = root.getParent().getParent().asGroup();
-            quantifierGuards.add(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
+            pushQuantifierGuard(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
         }
         targetDeduplicationSet.clear();
         deduplicatedTargets = 0;
@@ -306,17 +315,23 @@ public abstract class NFATraversalRegexASTVisitor {
             if (target != null && target.isGroup() && !target.getParent().isSubtreeRoot() && target.getParent().getParent().asGroup().hasQuantifier()) {
                 Group emptyMatch = target.getParent().getParent().asGroup();
                 QuantifierGuard finalGuard = QuantifierGuard.createEnterEmptyMatch(emptyMatch.getQuantifier());
-                quantifierGuards.add(finalGuard);
-                List<QuantifierGuard> quantifierGuardsResultBuffer = new ArrayList<>(quantifierGuards.length());
-                for (QuantifierGuard guard : quantifierGuards) {
+                pushQuantifierGuard(finalGuard);
+                List<QuantifierGuard> quantifierGuardsResultBuffer = new ArrayList<>(quantifierGuards.getLength());
+                QuantifierGuardsLinkedList cur = quantifierGuards;
+                while (cur != null) {
+                    QuantifierGuard guard = cur.getGuard();
                     if (guard.getKind() == QuantifierGuard.Kind.enterEmptyMatch || guard.getKind() == QuantifierGuard.Kind.exitEmptyMatch || guard.getQuantifier() != emptyMatch.getQuantifier()) {
                         quantifierGuardsResultBuffer.add(guard);
                     }
+                    cur = cur.getPrev();
                 }
                 popQuantifierGuard(finalGuard);
-                quantifierGuardsResult = quantifierGuardsResultBuffer.toArray(QuantifierGuard.NO_GUARDS);
+                quantifierGuardsResult = new QuantifierGuard[quantifierGuardsResultBuffer.size()];
+                for (int i = quantifierGuardsResultBuffer.size() - 1; i >= 0; i--) {
+                    quantifierGuardsResult[quantifierGuardsResult.length - i + 1] = quantifierGuardsResultBuffer.get(i);
+                }
             } else {
-                quantifierGuardsResult = quantifierGuards.toArray(QuantifierGuard.NO_GUARDS);
+                quantifierGuardsResult = quantifierGuards == null ? QuantifierGuard.NO_GUARDS : quantifierGuards.toArray();
             }
 
             assert Arrays.equals(quantifierGuardsResult, calcQuantifierGuardsOrig());
@@ -602,8 +617,9 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private void popQuantifierGuard(QuantifierGuard expectedGuard) {
-        assert quantifierGuards.length() > 0;
-        QuantifierGuard droppedGuard = (QuantifierGuard) quantifierGuards.pop();
+        assert quantifierGuards != null;
+        QuantifierGuard droppedGuard = quantifierGuards.getGuard();
+        quantifierGuards = quantifierGuards.getPrev();
         assert droppedGuard.equals(expectedGuard);
     }
 
@@ -613,17 +629,17 @@ public abstract class NFATraversalRegexASTVisitor {
             Quantifier quantifier = group.getQuantifier();
             if (quantifier.hasIndex()) {
                 if (quantifierGuardsLoop[quantifier.getIndex()] > 0 && quantifierGuardsExited[quantifier.getIndex()] == 0) {
-                    quantifierGuards.add(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
+                    pushQuantifierGuard(quantifier.isInfiniteLoop() ? QuantifierGuard.createLoopInc(quantifier) : QuantifierGuard.createLoop(quantifier));
                 } else {
-                    quantifierGuards.add(QuantifierGuard.createEnter(quantifier));
+                    pushQuantifierGuard(QuantifierGuard.createEnter(quantifier));
                 }
             }
             if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
-                quantifierGuards.add(QuantifierGuard.createEnterZeroWidth(quantifier));
+                pushQuantifierGuard(QuantifierGuard.createEnterZeroWidth(quantifier));
             }
         }
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
-            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+            pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
         }
     }
 
@@ -668,12 +684,12 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
                 if (ast.getOptions().getFlavor().canHaveEmptyLoopIterations() || !root.isCharacterClass()) {
-                    quantifierGuards.add(QuantifierGuard.createExitZeroWidth(quantifier));
+                    pushQuantifierGuard(QuantifierGuard.createExitZeroWidth(quantifier));
                 }
             }
         }
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
-            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+            pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
         }
     }
 
@@ -703,15 +719,15 @@ public abstract class NFATraversalRegexASTVisitor {
             if (quantifier.hasIndex()) {
                 if (quantifier.getMin() > 0) {
                     quantifierGuardsExited[quantifier.getIndex()]++;
-                    quantifierGuards.add(QuantifierGuard.createExit(quantifier));
+                    pushQuantifierGuard(QuantifierGuard.createExit(quantifier));
                 } else {
-                    quantifierGuards.add(QuantifierGuard.createClear(quantifier));
+                    pushQuantifierGuard(QuantifierGuard.createClear(quantifier));
                 }
             }
         }
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
-            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
-            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+            pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexStart()));
+            pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
         }
     }
 
@@ -753,11 +769,11 @@ public abstract class NFATraversalRegexASTVisitor {
                 quantifierGuardsExited[quantifier.getIndex()]++;
             }
             if (quantifier.hasZeroWidthIndex() && (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
-                quantifierGuards.add(QuantifierGuard.createEscapeZeroWidth(quantifier));
+                pushQuantifierGuard(QuantifierGuard.createEscapeZeroWidth(quantifier));
             }
         }
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
-            quantifierGuards.add(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
+            pushQuantifierGuard(QuantifierGuard.createUpdateCG(group.getBoundaryIndexEnd()));
         }
     }
 
@@ -860,11 +876,7 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private boolean deduplicateTarget() {
-        if (!canTraverseLookArounds()) {
-            quantifierGuardsResult = null;
-            calcQuantifierGuards();
-        }
-        DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuardsResult);
+        DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards);
         boolean isDuplicate = !targetDeduplicationSet.add(key);
         if (isDuplicate) {
             if (++deduplicatedTargets > SUCCESSOR_DEDUPLICATION_BAILOUT_THRESHOLD) {
@@ -1053,10 +1065,10 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private static final class DeduplicationKey {
-        public final StateSet<RegexAST, RegexASTNode> nodesInvolved;
-        public final QuantifierGuard[] quantifierGuards;
+        private final StateSet<RegexAST, RegexASTNode> nodesInvolved;
+        private final QuantifierGuardsLinkedList quantifierGuards;
 
-        public DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath, QuantifierGuard[] quantifierGuards) {
+        public DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath, QuantifierGuardsLinkedList quantifierGuards) {
             this.nodesInvolved = lookAroundsOnPath.copy();
             this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
@@ -1069,12 +1081,62 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             DeduplicationKey other = (DeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Arrays.equals(this.quantifierGuards, other.quantifierGuards);
+            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards);
         }
 
         @Override
         public int hashCode() {
-            return nodesInvolved.hashCode() + 31 * Arrays.hashCode(quantifierGuards);
+            return nodesInvolved.hashCode() + 31 * Objects.hashCode(quantifierGuards);
+        }
+    }
+
+    private static final class QuantifierGuardsLinkedList {
+        private final QuantifierGuard guard;
+        private final QuantifierGuardsLinkedList prev;
+        private final int length;
+        private final int hashCode;
+
+        public QuantifierGuardsLinkedList(QuantifierGuard guard, QuantifierGuardsLinkedList prev) {
+            this.guard = guard;
+            this.prev = prev;
+            this.length = prev == null ? 1 : prev.length + 1;
+            this.hashCode = guard.hashCode() + 31 * (prev == null ? 0 : prev.hashCode);
+        }
+
+        public QuantifierGuardsLinkedList getPrev() {
+            return prev;
+        }
+
+        public QuantifierGuard getGuard() {
+            return guard;
+        }
+
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!(obj instanceof QuantifierGuardsLinkedList)) {
+                return false;
+            }
+            QuantifierGuardsLinkedList other = (QuantifierGuardsLinkedList) obj;
+            return this.hashCode == other.hashCode && this.length == other.length && this.guard.equals(other.guard) && (prev == null || prev.equals(other.prev));
+        }
+
+        @Override
+        public int hashCode() {
+            return hashCode;
+        }
+
+        public QuantifierGuard[] toArray() {
+            QuantifierGuard[] ret = new QuantifierGuard[getLength()];
+            QuantifierGuardsLinkedList cur = this;
+            for (int i = ret.length - 1; i >= 0; i--) {
+                ret[i] = cur.getGuard();
+                cur = cur.getPrev();
+            }
+            return ret;
         }
     }
 }
