@@ -46,8 +46,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -61,59 +68,21 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
-import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
-import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
-import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
-import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
-import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
-import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLBreakNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLContinueNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLDebuggerNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLIfNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLReturnNode;
-import com.oracle.truffle.sl.nodes.controlflow.SLWhileNode;
-import com.oracle.truffle.sl.nodes.expression.SLAddNode;
-import com.oracle.truffle.sl.nodes.expression.SLBigIntegerLiteralNode;
-import com.oracle.truffle.sl.nodes.expression.SLDivNode;
-import com.oracle.truffle.sl.nodes.expression.SLEqualNode;
-import com.oracle.truffle.sl.nodes.expression.SLFunctionLiteralNode;
-import com.oracle.truffle.sl.nodes.expression.SLInvokeNode;
-import com.oracle.truffle.sl.nodes.expression.SLLessOrEqualNode;
-import com.oracle.truffle.sl.nodes.expression.SLLessThanNode;
-import com.oracle.truffle.sl.nodes.expression.SLLogicalAndNode;
-import com.oracle.truffle.sl.nodes.expression.SLLogicalOrNode;
-import com.oracle.truffle.sl.nodes.expression.SLMulNode;
-import com.oracle.truffle.sl.nodes.expression.SLReadPropertyNode;
-import com.oracle.truffle.sl.nodes.expression.SLStringLiteralNode;
-import com.oracle.truffle.sl.nodes.expression.SLSubNode;
-import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
-import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
-import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.operations.SLOperationsBuilder;
-import com.oracle.truffle.sl.parser.SLNodeFactory;
-import com.oracle.truffle.sl.parser.SimpleLanguageLexer;
-import com.oracle.truffle.sl.parser.SimpleLanguageParser;
-import com.oracle.truffle.sl.runtime.SLBigNumber;
+import com.oracle.truffle.sl.parser.operations.SLNodeVisitor;
 import com.oracle.truffle.sl.runtime.SLContext;
-import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
-import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLObject;
 import com.oracle.truffle.sl.runtime.SLStrings;
 
@@ -218,6 +187,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     private final Shape rootShape;
 
+    @Option(name = "useOperations", help = "Use the SL interpreter implemented using the Truffle Operations DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> USE_OPERATIONS = new OptionKey<>(false);
+
+    private boolean useOperations;
+
     public SLLanguage() {
         counter++;
         this.rootShape = Shape.newBuilder().layout(SLObject.class).build();
@@ -225,6 +199,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
+        useOperations = USE_OPERATIONS.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
@@ -232,6 +207,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     protected boolean patchContext(SLContext context, Env newEnv) {
         context.patchContext(newEnv);
         return true;
+    }
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new SLLanguageOptionDescriptors();
     }
 
     public RootCallTarget getOrCreateUndefinedFunction(TruffleString name) {
@@ -326,8 +306,14 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             source = Source.newBuilder(language, sb.toString(), source.getName()).build();
         }
 
-        OperationsNode[] operations = SLOperationsBuilder.parse(this, source);
-        return new SLOperationsRootNode(this, operations[operations.length - 1], null).getCallTarget();
+        if (useOperations) {
+            OperationsNode[] operations = SLOperationsBuilder.parse(this, source);
+            return new SLOperationsRootNode(this, operations[operations.length - 1], null).getCallTarget();
+        } else {
+            Map<TruffleString, RootCallTarget> targets = SLNodeVisitor.parseSL(this, source);
+            RootCallTarget rootTarget = targets.get(SLStrings.MAIN);
+            return new SLEvalRootNode(this, rootTarget, targets).getCallTarget();
+        }
     }
 
     /**

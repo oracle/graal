@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.sl.nodes.controlflow;
 
-import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
+import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
+import com.oracle.truffle.sl.nodes.util.SLToBooleanNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
 
 /**
@@ -63,7 +63,7 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
      * value. We do not have a node type that can only return a {@code boolean} value, so
      * {@link #evaluateCondition executing the condition} can lead to a type error.
      */
-    @Child private SLExpressionNode conditionNode;
+    @Child private SLToBooleanNode conditionNode;
 
     /** Statement (or {@link SLBlockNode block}) executed as long as the condition is true. */
     @Child private SLStatementNode bodyNode;
@@ -77,13 +77,13 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
     private final BranchProfile breakTaken = BranchProfile.create();
 
     public SLWhileRepeatingNode(SLExpressionNode conditionNode, SLStatementNode bodyNode) {
-        this.conditionNode = SLUnboxNodeGen.create(conditionNode);
+        this.conditionNode = SLToBooleanNodeGen.create(SLUnboxNodeGen.create(conditionNode));
         this.bodyNode = bodyNode;
     }
 
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
-        if (!evaluateCondition(frame)) {
+        if (!conditionNode.executeBoolean(frame)) {
             /* Normal exit of the loop when loop condition is false. */
             return false;
         }
@@ -105,23 +105,6 @@ public final class SLWhileRepeatingNode extends Node implements RepeatingNode {
             breakTaken.enter();
             /* Break out of the loop. */
             return false;
-        }
-    }
-
-    private boolean evaluateCondition(VirtualFrame frame) {
-        try {
-            /*
-             * The condition must evaluate to a boolean value, so we call the boolean-specialized
-             * execute method.
-             */
-            return conditionNode.executeBoolean(frame);
-        } catch (UnexpectedResultException ex) {
-            /*
-             * The condition evaluated to a non-boolean result. This is a type error in the SL
-             * program. We report it with the same exception that Truffle DSL generated nodes use to
-             * report type errors.
-             */
-            throw new UnsupportedSpecializationException(this, new Node[]{conditionNode}, ex.getResult());
         }
     }
 

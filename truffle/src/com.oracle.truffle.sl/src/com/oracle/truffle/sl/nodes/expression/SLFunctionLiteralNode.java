@@ -71,10 +71,8 @@ public abstract class SLFunctionLiteralNode extends SLExpressionNode {
                     @Cached("lookupFunctionCached(functionName, this)") SLFunction result,
                     @Bind("this") Node node) {
         if (result == null) {
-            // multi-context case, perform the lookup every time
             return lookupFunction(functionName, node);
         } else {
-            // single-context case, make sure the function name does not change
             assert result.getName().equals(functionName) : "function name should be compilation constant";
             return result;
         }

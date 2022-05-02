@@ -467,7 +467,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         public SLExpressionNode visitMemberAssign(MemberAssignContext ctx) {
             final SLExpressionNode result;
             if (assignmentName == null) {
-                SemErr(ctx.start, "invalid assignment target");
+                SemErr(ctx.expression().start, "invalid assignment target");
                 result = null;
             } else if (assignmentReceiver == null) {
                 SLExpressionNode valueNode = EXPRESSION_VISITOR.visitExpression(ctx.expression());

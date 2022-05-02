@@ -303,8 +303,12 @@ public class SLTestRunner extends ParentRunner<TestCase> {
                 SLLanguage.installBuiltin(builtin);
             }
 
-            Context.Builder builder = Context.newBuilder().allowExperimentalOptions(true).allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL).in(
-                            new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))).out(out);
+            Context.Builder builder = Context.newBuilder() //
+                            .allowExperimentalOptions(true) //
+                            .allowHostClassLookup((s) -> true) //
+                            .allowHostAccess(HostAccess.ALL) //
+                            .in(new ByteArrayInputStream(testCase.testInput.getBytes("UTF-8"))) //
+                            .out(out);
             for (Map.Entry<String, String> e : testCase.options.entrySet()) {
                 builder.option(e.getKey(), e.getValue());
             }

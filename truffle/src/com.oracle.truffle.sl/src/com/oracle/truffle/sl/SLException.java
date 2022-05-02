@@ -84,7 +84,7 @@ public class SLException extends AbstractOperationsTruffleException {
         SLException ex = new SLException("", operation, bci);
 
         if (operation != null) {
-            SourceSection ss = ex.getLocation().getSourceSection();
+            SourceSection ss = ex.getLocation().getEncapsulatingSourceSection();
             if (ss != null && ss.isAvailable()) {
                 result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }
