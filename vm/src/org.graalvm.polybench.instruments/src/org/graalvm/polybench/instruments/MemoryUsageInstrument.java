@@ -69,6 +69,9 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
 
     private static final ThreadMXBean THREAD_BEAN = (ThreadMXBean) ManagementFactory.getThreadMXBean();
     private final Set<Thread> threads = new HashSet<>();
+    /*
+     * Used for lock-free asynchronous traversal.
+     */
     private volatile Thread[] threadsArray;
     private final ConcurrentHashMap<TruffleContext, MemoryTracking> memoryTrackedContexts = new ConcurrentHashMap<>();
 

@@ -49,11 +49,11 @@ import org.graalvm.visualvm.lib.jfluid.heap.HeapFactory;
 import org.graalvm.visualvm.lib.jfluid.heap.Instance;
 
 /**
- * This metric collects the memory footprint of code related data structures of a polyglot
- * benchmark. It measures the retained memory for code size by measuring the total memory of the
- * process before initializing the language first, then after each iteration computing the
- * difference. In addition it subtracts all runtime objects not representing code reachable from the
- * context such that only overhead from code related data structure is reported.
+ * This metric collects the memory footprint of code-related data structures of a benchmark. For
+ * each iteration, the metric reports the difference of the retained memory used between
+ * {@link #beforeInitialize(Config) before-initialization} and {@link #reportAfterIteration(Config)
+ * after-iteration}. For each measurement it subtracts the size of objects known to represent
+ * non-code related data structures like user objects allocated as part of the benchmark.
  *
  * This metric is currently only supported on JVM. It is recommended to build a libgraal image and
  * not use jargraal for running this metric for more predictable results. Otherwise the heap dumps
