@@ -627,13 +627,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     /**
      * Denotes the preferred nds register (VEX.vvvv) for VEX-encoding of an SSE instruction.
-     * 
+     *
      * For RM instructions where VEX.vvvv is reserved and must be 1111b, we should use
      * {@link PreferredNDS#NONE}. For RVM instructions, the default should be
      * {@link PreferredNDS#DST} to mimic the semantic of {@code dst <- op (dst, src)}. We should
      * only use {@link PreferredNDS#SRC} for unary instructions, e.g., ROUNDSS. This would help us
      * avoid an implicit dependency to {@code dst} register.
-     * 
+     *
      * Note that when {@code src} is a memory address, we will choose {@code dst} as {@code nds}
      * even if {@link PreferredNDS#SRC} is specified, which implies an implicit dependency to
      * {@code dst}. In {@code org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertOp},
