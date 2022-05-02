@@ -29,11 +29,8 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -43,6 +40,7 @@ import java.util.stream.StreamSupport;
 
 import javax.management.MBeanServer;
 
+import org.graalvm.launcher.Launcher;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -50,22 +48,40 @@ import org.graalvm.visualvm.lib.jfluid.heap.Heap;
 import org.graalvm.visualvm.lib.jfluid.heap.HeapFactory;
 import org.graalvm.visualvm.lib.jfluid.heap.Instance;
 
+/**
+ * This metric collects the memory footprint of code related data structures of a polyglot
+ * benchmark. It measures the retained memory for code size by measuring the total memory of the
+ * process before initializing the language first, then after each iteration computing the
+ * difference. In addition it subtracts all runtime objects not representing code reachable from the
+ * context such that only overhead from code related data structure is reported.
+ *
+ * This metric is currently only supported on JVM. It is recommended to build a libgraal image and
+ * not use jargraal for running this metric for more predictable results. Otherwise the heap dumps
+ * created to compute the retained heap size are influenced by allocations happening on the compiler
+ * threads.
+ *
+ * This metric might be too slow for large heaps (>10GB). Use VisualVM or other memory inspection
+ * tools for debugging regressions measured by this metric.
+ */
 public final class MemoryFootprintMetric extends Metric {
-
-    long accumulatedFootprint;
-    long previousHeap;
-    final List<Long> values = new ArrayList<>();
 
     private final Method dumpHeap;
     private final Object dumpHeapBean; // This is the name of the HotSpot Diagnostic MBean
     private final String hotspotBeanName = "com.sun.management:type=HotSpotDiagnostic";
+    private long startHeap;
+    private long startMaxContextHeap;
 
     MemoryFootprintMetric() {
         try {
-            Class<?> clazz = Class.forName("com.sun.management.HotSpotDiagnosticMXBean");
-            MBeanServer server = ManagementFactory.getPlatformMBeanServer();
-            dumpHeapBean = ManagementFactory.newPlatformMXBeanProxy(server, hotspotBeanName, clazz);
-            dumpHeap = clazz.getMethod("dumpHeap", String.class, boolean.class);
+            if (Launcher.isAOT()) {
+                dumpHeapBean = null;
+                dumpHeap = null;
+            } else {
+                Class<?> clazz = Class.forName("com.sun.management.HotSpotDiagnosticMXBean");
+                MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+                dumpHeapBean = ManagementFactory.newPlatformMXBeanProxy(server, hotspotBeanName, clazz);
+                dumpHeap = clazz.getMethod("dumpHeap", String.class, boolean.class);
+            }
         } catch (RuntimeException re) {
             throw re;
         } catch (Exception exp) {
@@ -86,16 +102,12 @@ public final class MemoryFootprintMetric extends Metric {
     @Override
     public Map<String, String> getEngineOptions(Config config) {
         HashMap<String, String> map = new HashMap<>();
-        /*
-         * We use background compilation as this increases determinism of heap dumps. Background
-         * compilation might allocate and lead to noise even with libgraal.
-         */
-        map.put("engine.BackgroundCompilation", "false");
+        map.put("memory-usage", "true");
         return map;
     }
 
     @Override
-    public void beforeLoad(Config config) {
+    public void beforeInitialize(Config config) {
         /*
          * This is supposed to trigger an eager compilation before we start to measure. We are not
          * interested in overhead incurred by the compiler here and this is intended to reduce the
@@ -105,54 +117,27 @@ public final class MemoryFootprintMetric extends Metric {
         for (int i = 0; i < 10000; i++) {
             v.getArrayElement(0);
         }
-        previousHeap = computeRetainedSizeImpl();
-        accumulatedFootprint = 0;
-        values.clear();
-    }
-
-    @Override
-    public void afterLoad(Config config) {
-        computeRetainedSize();
-    }
-
-    @Override
-    public void beforeIteration(boolean warmup, int iteration, Config config) {
-    }
-
-    @Override
-    public void reset() {
-        values.clear();
+        startHeap = computeRetainedSizeImpl();
+        startMaxContextHeap = contextHeap();
     }
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return computeRetainedSize();
+        long heap = computeRetainedSizeImpl() - startHeap;
+        long maxContextHeap = contextHeap() - startMaxContextHeap;
+        return Optional.of((double) (heap - maxContextHeap));
     }
 
-    private Optional<Double> computeRetainedSize() {
-        long heap = computeRetainedSizeImpl();
-        this.accumulatedFootprint += heap - previousHeap;
-        this.previousHeap = heap;
-        values.add(accumulatedFootprint);
-        return Optional.of((double) accumulatedFootprint);
-    }
-
-    @Override
-    public Optional<Double> reportAfterAll() {
-        if (values.isEmpty()) {
-            return Optional.empty();
-        }
-        // report median value
-        Collections.sort(values);
-        return Optional.of((double) values.get(values.size() / 2));
+    public static long contextHeap() {
+        return Context.getCurrent().getPolyglotBindings().getMember("getContextHeapSize").execute().asLong();
     }
 
     private long computeRetainedSizeImpl() {
         try {
+            System.gc();
             File hprof = File.createTempFile("memoryUsage", ".hprof");
             try {
                 hprof.delete();
-
                 dumpHeap(hprof.getAbsolutePath(), true);
                 Heap heap = HeapFactory.createHeap(hprof);
 
@@ -185,6 +170,9 @@ public final class MemoryFootprintMetric extends Metric {
     }
 
     private void dumpHeap(String fileName, boolean live) {
+        if (dumpHeapBean == null) {
+            throw new UnsupportedOperationException("Heap dumps are not supported on this platform.");
+        }
         try {
             dumpHeap.invoke(dumpHeapBean, fileName, live);
         } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {

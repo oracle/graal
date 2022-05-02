@@ -26,8 +26,6 @@ package org.graalvm.polybench;
 
 import java.lang.reflect.InvocationTargetException;
 
-import org.graalvm.launcher.Launcher;
-
 public class MetricFactory {
 
     public void loadMetric(Config config, String name) {
@@ -53,23 +51,14 @@ public class MetricFactory {
                 config.metric = new AllocatedBytesMetric();
                 break;
             case "max-context-heap":
-                if (Launcher.isAOT()) {
-                    throw new UnsupportedOperationException(name + " is not yet supported on SVM");
-                } else {
-                    config.metric = new MaxContextHeapMetric();
-                    config.warmupIterations = 0;
-                    config.iterations = 10;
-                }
+                config.metric = new MaxContextHeapMetric();
+                config.warmupIterations = 0;
+                config.iterations = 10;
                 break;
             case "memory-footprint":
-                if (Launcher.isAOT()) {
-                    throw new UnsupportedOperationException(name + " is not yet supported on SVM");
-                } else {
-                    System.out.println("Warning: The footprint metric is only reliable when used with libgraal.");
-                    config.metric = new MemoryFootprintMetric();
-                    config.warmupIterations = 0;
-                    config.iterations = 10;
-                }
+                config.metric = new MemoryFootprintMetric();
+                config.warmupIterations = 0;
+                config.iterations = 10;
                 break;
             default:
                 String className = classNameFor(name);

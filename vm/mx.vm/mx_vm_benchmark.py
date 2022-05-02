@@ -50,9 +50,7 @@ POLYBENCH_METRIC_MAPPING = {
     "compilation-time": "compile-time",
     "partial-evaluation-time": "pe-time",
     "allocated-bytes": "allocated-memory",
-    "peak-time": "time",
-    "max-context-heap": "max-context-heap",
-    "memory-footprint": "memory-footprint"
+    "peak-time": "time"
 }  # Maps some polybench metrics to standardized metric names
 
 
@@ -1110,7 +1108,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.iteration": ("<iteration>", int),
                 }, startPattern=r"::: Running :::")
             ]
-        elif metric_name == "allocated-memory":
+        elif metric_name == "allocated-memory" or metric_name == "memory-footprint" or metric_name == "max-context-heap":
             rules += [
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
@@ -1137,21 +1135,21 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 })
             ]
         rules += [
-            mx_benchmark.StdOutRule(r"### load time \(ms\): (?P<delta>[0-9]+)", {
+            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmarks[0],
                 "metric.name": "context-eval-time",
                 "metric.value": ("<delta>", float),
-                "metric.unit": "ms",
+                "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
                 "metric.score-function": "id",
                 "metric.better": "lower",
                 "metric.iteration": 0
             }),
-            mx_benchmark.StdOutRule(r"### init time \(ms\): (?P<delta>[0-9]+)", {
+            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmarks[0],
                 "metric.name": "context-init-time",
                 "metric.value": ("<delta>", float),
-                "metric.unit": "ms",
+                "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
                 "metric.score-function": "id",
                 "metric.better": "lower",

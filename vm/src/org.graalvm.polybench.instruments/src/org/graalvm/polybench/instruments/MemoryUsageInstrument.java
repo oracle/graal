@@ -30,8 +30,9 @@ import java.util.HashSet;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -42,7 +43,6 @@ import org.graalvm.options.OptionKey;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
@@ -69,6 +69,7 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
 
     private static final ThreadMXBean THREAD_BEAN = (ThreadMXBean) ManagementFactory.getThreadMXBean();
     private final Set<Thread> threads = new HashSet<>();
+    private volatile Thread[] threadsArray;
     private final ConcurrentHashMap<TruffleContext, MemoryTracking> memoryTrackedContexts = new ConcurrentHashMap<>();
 
     private Env currentEnv;
@@ -114,7 +115,6 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
                             interop.writeMember(polyglotBindings, key, function.getValue());
                         }
                     }
-
                 } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
                     throw CompilerDirectives.shouldNotReachHere("Exception during interop.");
                 }
@@ -146,6 +146,7 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             public void onThreadInitialized(TruffleContext context, Thread thread) {
                 synchronized (MemoryUsageInstrument.this) {
                     threads.add(thread);
+                    threadsArray = threads.toArray(new Thread[0]);
                 }
             }
 
@@ -153,6 +154,7 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             public void onThreadDisposed(TruffleContext context, Thread thread) {
                 synchronized (MemoryUsageInstrument.this) {
                     threads.remove(thread);
+                    threadsArray = threads.toArray(new Thread[0]);
                 }
             }
         }, true);
@@ -187,14 +189,15 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
             TruffleContext context = currentEnv.getEnteredContext();
             MemoryTracking tracking = memoryTrackedContexts.computeIfAbsent(context, (c) -> new MemoryTracking(c));
             synchronized (tracking) {
-                if (tracking.actionFuture != null) {
+                if (tracking.task != null) {
                     throw new IllegalStateException("still running");
                 }
                 tracking.previousProperties = null;
-                tracking.action = new ContextHeapSizeThreadLocalAction();
+                tracking.task = new ContextHeapSizeThreadLocalTask(tracking);
                 // force update on start
-                tracking.action.computeUpdate(true);
-                tracking.actionFuture = currentEnv.submitThreadLocal(context, null, tracking.action);
+                tracking.task.computeUpdate(true);
+                tracking.timer = new Timer();
+                tracking.timer.schedule(tracking.task, 0L, 1L);
 
                 return NullValue.NULL;
             }
@@ -211,27 +214,29 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
                 if (tracking.previousProperties != null) {
                     return tracking.previousProperties;
                 }
-                if (tracking.actionFuture == null) {
+                if (tracking.timer == null) {
                     return NullValue.NULL;
                 }
-
-                tracking.actionFuture.cancel(true);
-                tracking.actionFuture = null;
+                tracking.task.cancel();
+                tracking.timer.cancel();
+                tracking.timer = null;
 
                 Map<String, Object> properties = new HashMap<>();
 
                 // force update on stop
-                tracking.action.computeUpdate(true);
+                tracking.task.computeUpdate(true);
 
-                LongSummaryStatistics statistics = tracking.action.statistics;
+                LongSummaryStatistics statistics = tracking.task.statistics;
                 properties.put("contextHeapCount", statistics.getCount());
                 properties.put("contextHeapAverage", statistics.getAverage());
                 properties.put("contextHeapMin", statistics.getMin());
                 properties.put("contextHeapMax", statistics.getMax());
 
                 // stop running actions for other threads
-                tracking.action.cancelled.set(true);
+                tracking.task.cancelled.set(true);
                 tracking.previousProperties = new ReadOnlyProperties(properties);
+
+                tracking.task = null;
                 return tracking.previousProperties;
             }
         }
@@ -241,44 +246,48 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
 
         final TruffleContext context;
 
-        Future<Void> actionFuture;
-        ContextHeapSizeThreadLocalAction action;
+        ContextHeapSizeThreadLocalTask task;
         ReadOnlyProperties previousProperties;
+        Timer timer;
 
         MemoryTracking(TruffleContext context) {
             this.context = context;
         }
-
     }
 
-    final class ContextHeapSizeThreadLocalAction extends ThreadLocalAction {
+    final class ContextHeapSizeThreadLocalTask extends TimerTask {
 
         final LongSummaryStatistics statistics = new LongSummaryStatistics();
         final AtomicBoolean cancelled = new AtomicBoolean();
         final ConcurrentHashMap<Thread, Thread> seenThreads = new ConcurrentHashMap<>();
-
-        volatile Thread[] threadsArray;
 
         volatile long previousSize;
         volatile long previousMax;
         final AtomicLong previousThreadAllocatedBytes = new AtomicLong();
 
         long totalAllocatedMemory;
+        final MemoryTracking tracking;
 
-        protected ContextHeapSizeThreadLocalAction() {
-            super(true, false, true);
+        ContextHeapSizeThreadLocalTask(MemoryTracking tracking) {
+            this.tracking = tracking;
         }
 
         @Override
-        protected void perform(Access access) {
+        public void run() {
             computeUpdate(false);
         }
 
         long computeUpdate(boolean force) {
             if (needsUpdate() || force) {
-                TruffleContext context = currentEnv.getEnteredContext();
-                synchronized (this) {
-                    long heapSize = currentEnv.calculateContextHeapSize(context, Long.MAX_VALUE, cancelled);
+                /*
+                 * We pause the context in order to get more deterministic results.
+                 */
+                synchronized (tracking) {
+                    if (tracking.task == null) {
+                        // cancelled
+                        return 0L;
+                    }
+                    long heapSize = currentEnv.calculateContextHeapSize(tracking.context, Long.MAX_VALUE, cancelled);
                     this.statistics.accept(heapSize);
                     this.previousSize = heapSize;
                     this.previousMax = statistics.getMax();
@@ -290,23 +299,14 @@ public final class MemoryUsageInstrument extends TruffleInstrument {
         }
 
         private boolean needsUpdate() {
-            /*
-             * This action is called recurring (every safepoint). We therefore need to make sure we
-             * keep the overhead reasonable, e.g. use lock free data structures here.
-             */
-            Thread prev = seenThreads.putIfAbsent(Thread.currentThread(), Thread.currentThread());
-            if (prev == null || threadsArray == null) {
-                threadsArray = seenThreads.keySet().toArray(new Thread[0]);
-            }
-
             long threadAllocatedBytes = getThreadAllocatedBytes();
             /*
              * The idea is that this scales with the maximum retained memory. We recompute the total
-             * consumption only if at least a 4th of the heap was freshly allocated. The idea is to
+             * consumption only if at least a 8th of the heap was freshly allocated. The idea is to
              * strike a trade off between overhead and precision as computation may be quite
              * expensive.
              */
-            long allocationUpdateDiffBytes = previousMax / 4L;
+            long allocationUpdateDiffBytes = previousMax / 8;
             long previousAllocatedBytes;
             boolean update = false;
             do {

@@ -24,19 +24,24 @@
  */
 package org.graalvm.polybench;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 
+/**
+ * This metric collects the maximum context heap used during the computation of the benchmark. The
+ * metric uses the number of thread allocated bytes to trigger the context heap computation
+ * regularly on a timer thread. The maximum context heap used will be reported for each iteration.
+ *
+ * This metric is currently only supported on JVM.
+ *
+ * This metric might be too slow for large heaps (>10GB). Use VisualVM or other memory inspection
+ * tools for debugging regressions measured by this metric.
+ */
 public final class MaxContextHeapMetric extends Metric {
-
-    final List<Long> values = new ArrayList<>();
 
     @Override
     public String name() {
@@ -64,21 +69,7 @@ public final class MaxContextHeapMetric extends Metric {
     public Optional<Double> reportAfterIteration(Config config) {
         Value result = Context.getCurrent().getPolyglotBindings().getMember("stopContextMemoryTracking").execute();
         long value = result.getMember("contextHeapMax").asLong();
-        values.add(value);
         return Optional.of((double) value);
     }
 
-    @Override
-    public void reset() {
-        values.clear();
-    }
-
-    @Override
-    public Optional<Double> reportAfterAll() {
-        if (values.isEmpty()) {
-            return Optional.empty();
-        }
-        Collections.sort(values);
-        return Optional.of((double) values.get(values.size() / 2));
-    }
 }
