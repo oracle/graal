@@ -40,7 +40,7 @@
  */
 // Checkstyle: stop
 //@formatter:off
-package com.oracle.truffle.sl.parser.operations;
+package com.oracle.truffle.sl.parser;
 
 // DO NOT MODIFY - generated from SimpleLanguage.g4 using "mx create-sl-parser"
 

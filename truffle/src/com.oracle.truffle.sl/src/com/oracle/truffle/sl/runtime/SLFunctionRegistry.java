@@ -53,9 +53,9 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.parser.operations.SLNodeVisitor;
-import com.oracle.truffle.sl.parser.operations.SLOperationsVisitor;
-import com.oracle.truffle.sl.parser.operations.SLSource;
+import com.oracle.truffle.sl.parser.SLNodeVisitor;
+import com.oracle.truffle.sl.parser.SLOperationsVisitor;
+import com.oracle.truffle.sl.parser.SLSource;
 
 /**
  * Manages the mapping from function names to {@link SLFunction function objects}.

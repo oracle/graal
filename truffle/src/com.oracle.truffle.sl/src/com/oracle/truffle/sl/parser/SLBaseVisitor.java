@@ -1,4 +1,4 @@
-package com.oracle.truffle.sl.parser.operations;
+package com.oracle.truffle.sl.parser;
 
 import java.util.HashMap;
 import java.util.Map;

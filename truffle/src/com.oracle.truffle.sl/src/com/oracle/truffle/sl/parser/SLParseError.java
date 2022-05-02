@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.sl.parser.operations;
+package com.oracle.truffle.sl.parser;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ExceptionType;
