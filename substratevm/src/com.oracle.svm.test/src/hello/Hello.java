@@ -93,7 +93,7 @@ public class Hello {
         noInlineThis();
         inlineFrom();
         noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
-                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F,10.125D, false, 12.375F);
+                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
         System.exit(0);
     }
 

@@ -246,8 +246,8 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                         pos = writePrimitiveConstantLocation(context, value.constantValue(), buffer, pos);
                     } else if (constant.isNull()) {
                         pos = writeNullConstantLocation(context, value.constantValue(), buffer, pos);
-                    }  else {
-                        assert false : "Should not reach here!";
+                    } else {
+                        pos = writeObjectConstantLocation(context, value.constantValue(), value.heapOffset(), buffer, pos);
                     }
                     break;
                 default:
@@ -353,7 +353,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             pos += putShort((short) byteCount, scratch, 0);
             pos += putByte(op, scratch, 0);
             pos += putULEB(dataByteCount, scratch, 0);
-            
+
             if (dataByteCount == 1) {
                 if (kind == JavaKind.Boolean) {
                     pos += putByte((byte) (constant.asBoolean() ? 1 : 0), scratch, 0);
@@ -388,7 +388,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                 long l = (kind == JavaKind.Long ? constant.asLong() : Double.doubleToRawLongBits(constant.asDouble()));
                 pos = putLong(l, buffer, pos);
             }
-            verboseLog(context, "  [0x%08x]     CONSTANT %s", pos, constant.toValueString());
+            verboseLog(context, "  [0x%08x]     CONSTANT (primitive) %s", pos, constant.toValueString());
         }
         return pos;
     }
@@ -410,8 +410,16 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             pos = putByte(op, buffer, pos);
             pos = putULEB(dataByteCount, buffer, pos);
             pos = writeAttrData8(0, buffer, pos);
-            verboseLog(context, "  [0x%08x]     CONSTANT %s", pos, constant.toValueString());
+            verboseLog(context, "  [0x%08x]     CONSTANT (null) %s", pos, constant.toValueString());
         }
+        return pos;
+    }
+
+    private int writeObjectConstantLocation(DebugContext context, JavaConstant constant, long heapOffset, byte[] buffer, int p) {
+        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull();
+        int pos = p;
+        pos = writeHeapLocationLocList(heapOffset, buffer, pos);
+        verboseLog(context, "  [0x%08x]     CONSTANT (object) %s", pos, constant.toValueString());
         return pos;
     }
 
@@ -600,72 +608,72 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     // map from compiler AArch64 register indices to corresponding dwarf AArch64 register index
     private static final int[] GRAAL_AARCH64_TO_DWARF_REG_MAP = {
-            DwarfRegEncodingAArch64.R0.encoding,
-            DwarfRegEncodingAArch64.R1.encoding,
-            DwarfRegEncodingAArch64.R2.encoding,
-            DwarfRegEncodingAArch64.R3.encoding,
-            DwarfRegEncodingAArch64.R4.encoding,
-            DwarfRegEncodingAArch64.R5.encoding,
-            DwarfRegEncodingAArch64.R6.encoding,
-            DwarfRegEncodingAArch64.R7.encoding,
-            DwarfRegEncodingAArch64.R8.encoding,
-            DwarfRegEncodingAArch64.R9.encoding,
-            DwarfRegEncodingAArch64.R10.encoding,
-            DwarfRegEncodingAArch64.R11.encoding,
-            DwarfRegEncodingAArch64.R12.encoding,
-            DwarfRegEncodingAArch64.R13.encoding,
-            DwarfRegEncodingAArch64.R14.encoding,
-            DwarfRegEncodingAArch64.R15.encoding,
-            DwarfRegEncodingAArch64.R16.encoding,
-            DwarfRegEncodingAArch64.R17.encoding,
-            DwarfRegEncodingAArch64.R18.encoding,
-            DwarfRegEncodingAArch64.R19.encoding,
-            DwarfRegEncodingAArch64.R20.encoding,
-            DwarfRegEncodingAArch64.R21.encoding,
-            DwarfRegEncodingAArch64.R22.encoding,
-            DwarfRegEncodingAArch64.R23.encoding,
-            DwarfRegEncodingAArch64.R24.encoding,
-            DwarfRegEncodingAArch64.R25.encoding,
-            DwarfRegEncodingAArch64.R26.encoding,
-            DwarfRegEncodingAArch64.R27.encoding,
-            DwarfRegEncodingAArch64.R28.encoding,
-            DwarfRegEncodingAArch64.R29.encoding,
-            DwarfRegEncodingAArch64.R30.encoding,
-            DwarfRegEncodingAArch64.R31.encoding,
-            DwarfRegEncodingAArch64.ZR.encoding,
-            DwarfRegEncodingAArch64.SP.encoding,
-            DwarfRegEncodingAArch64.V0.encoding,
-            DwarfRegEncodingAArch64.V1.encoding,
-            DwarfRegEncodingAArch64.V2.encoding,
-            DwarfRegEncodingAArch64.V3.encoding,
-            DwarfRegEncodingAArch64.V4.encoding,
-            DwarfRegEncodingAArch64.V5.encoding,
-            DwarfRegEncodingAArch64.V6.encoding,
-            DwarfRegEncodingAArch64.V7.encoding,
-            DwarfRegEncodingAArch64.V8.encoding,
-            DwarfRegEncodingAArch64.V9.encoding,
-            DwarfRegEncodingAArch64.V10.encoding,
-            DwarfRegEncodingAArch64.V11.encoding,
-            DwarfRegEncodingAArch64.V12.encoding,
-            DwarfRegEncodingAArch64.V13.encoding,
-            DwarfRegEncodingAArch64.V14.encoding,
-            DwarfRegEncodingAArch64.V15.encoding,
-            DwarfRegEncodingAArch64.V16.encoding,
-            DwarfRegEncodingAArch64.V17.encoding,
-            DwarfRegEncodingAArch64.V18.encoding,
-            DwarfRegEncodingAArch64.V19.encoding,
-            DwarfRegEncodingAArch64.V20.encoding,
-            DwarfRegEncodingAArch64.V21.encoding,
-            DwarfRegEncodingAArch64.V22.encoding,
-            DwarfRegEncodingAArch64.V23.encoding,
-            DwarfRegEncodingAArch64.V24.encoding,
-            DwarfRegEncodingAArch64.V25.encoding,
-            DwarfRegEncodingAArch64.V26.encoding,
-            DwarfRegEncodingAArch64.V27.encoding,
-            DwarfRegEncodingAArch64.V28.encoding,
-            DwarfRegEncodingAArch64.V29.encoding,
-            DwarfRegEncodingAArch64.V30.encoding,
-            DwarfRegEncodingAArch64.V31.encoding,
+                    DwarfRegEncodingAArch64.R0.encoding,
+                    DwarfRegEncodingAArch64.R1.encoding,
+                    DwarfRegEncodingAArch64.R2.encoding,
+                    DwarfRegEncodingAArch64.R3.encoding,
+                    DwarfRegEncodingAArch64.R4.encoding,
+                    DwarfRegEncodingAArch64.R5.encoding,
+                    DwarfRegEncodingAArch64.R6.encoding,
+                    DwarfRegEncodingAArch64.R7.encoding,
+                    DwarfRegEncodingAArch64.R8.encoding,
+                    DwarfRegEncodingAArch64.R9.encoding,
+                    DwarfRegEncodingAArch64.R10.encoding,
+                    DwarfRegEncodingAArch64.R11.encoding,
+                    DwarfRegEncodingAArch64.R12.encoding,
+                    DwarfRegEncodingAArch64.R13.encoding,
+                    DwarfRegEncodingAArch64.R14.encoding,
+                    DwarfRegEncodingAArch64.R15.encoding,
+                    DwarfRegEncodingAArch64.R16.encoding,
+                    DwarfRegEncodingAArch64.R17.encoding,
+                    DwarfRegEncodingAArch64.R18.encoding,
+                    DwarfRegEncodingAArch64.R19.encoding,
+                    DwarfRegEncodingAArch64.R20.encoding,
+                    DwarfRegEncodingAArch64.R21.encoding,
+                    DwarfRegEncodingAArch64.R22.encoding,
+                    DwarfRegEncodingAArch64.R23.encoding,
+                    DwarfRegEncodingAArch64.R24.encoding,
+                    DwarfRegEncodingAArch64.R25.encoding,
+                    DwarfRegEncodingAArch64.R26.encoding,
+                    DwarfRegEncodingAArch64.R27.encoding,
+                    DwarfRegEncodingAArch64.R28.encoding,
+                    DwarfRegEncodingAArch64.R29.encoding,
+                    DwarfRegEncodingAArch64.R30.encoding,
+                    DwarfRegEncodingAArch64.R31.encoding,
+                    DwarfRegEncodingAArch64.ZR.encoding,
+                    DwarfRegEncodingAArch64.SP.encoding,
+                    DwarfRegEncodingAArch64.V0.encoding,
+                    DwarfRegEncodingAArch64.V1.encoding,
+                    DwarfRegEncodingAArch64.V2.encoding,
+                    DwarfRegEncodingAArch64.V3.encoding,
+                    DwarfRegEncodingAArch64.V4.encoding,
+                    DwarfRegEncodingAArch64.V5.encoding,
+                    DwarfRegEncodingAArch64.V6.encoding,
+                    DwarfRegEncodingAArch64.V7.encoding,
+                    DwarfRegEncodingAArch64.V8.encoding,
+                    DwarfRegEncodingAArch64.V9.encoding,
+                    DwarfRegEncodingAArch64.V10.encoding,
+                    DwarfRegEncodingAArch64.V11.encoding,
+                    DwarfRegEncodingAArch64.V12.encoding,
+                    DwarfRegEncodingAArch64.V13.encoding,
+                    DwarfRegEncodingAArch64.V14.encoding,
+                    DwarfRegEncodingAArch64.V15.encoding,
+                    DwarfRegEncodingAArch64.V16.encoding,
+                    DwarfRegEncodingAArch64.V17.encoding,
+                    DwarfRegEncodingAArch64.V18.encoding,
+                    DwarfRegEncodingAArch64.V19.encoding,
+                    DwarfRegEncodingAArch64.V20.encoding,
+                    DwarfRegEncodingAArch64.V21.encoding,
+                    DwarfRegEncodingAArch64.V22.encoding,
+                    DwarfRegEncodingAArch64.V23.encoding,
+                    DwarfRegEncodingAArch64.V24.encoding,
+                    DwarfRegEncodingAArch64.V25.encoding,
+                    DwarfRegEncodingAArch64.V26.encoding,
+                    DwarfRegEncodingAArch64.V27.encoding,
+                    DwarfRegEncodingAArch64.V28.encoding,
+                    DwarfRegEncodingAArch64.V29.encoding,
+                    DwarfRegEncodingAArch64.V30.encoding,
+                    DwarfRegEncodingAArch64.V31.encoding,
     };
 
     // register numbers used by DWARF for AMD64 registers
@@ -712,37 +720,37 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
 
     // map from compiler X86_64 register indices to corresponding dwarf AMD64 register index
     private static final int[] GRAAL_X86_64_TO_DWARF_REG_MAP = {
-            DwarfRegEncodingAMD64.RAX.encoding,
-            DwarfRegEncodingAMD64.RCX.encoding,
-            DwarfRegEncodingAMD64.RDX.encoding,
-            DwarfRegEncodingAMD64.RBX.encoding,
-            DwarfRegEncodingAMD64.RSP.encoding,
-            DwarfRegEncodingAMD64.RBP.encoding,
-            DwarfRegEncodingAMD64.RSI.encoding,
-            DwarfRegEncodingAMD64.RDI.encoding,
-            DwarfRegEncodingAMD64.R8.encoding,
-            DwarfRegEncodingAMD64.R9.encoding,
-            DwarfRegEncodingAMD64.R10.encoding,
-            DwarfRegEncodingAMD64.R11.encoding,
-            DwarfRegEncodingAMD64.R12.encoding,
-            DwarfRegEncodingAMD64.R13.encoding,
-            DwarfRegEncodingAMD64.R14.encoding,
-            DwarfRegEncodingAMD64.R15.encoding,
-            DwarfRegEncodingAMD64.XMM0.encoding,
-            DwarfRegEncodingAMD64.XMM1.encoding,
-            DwarfRegEncodingAMD64.XMM2.encoding,
-            DwarfRegEncodingAMD64.XMM3.encoding,
-            DwarfRegEncodingAMD64.XMM4.encoding,
-            DwarfRegEncodingAMD64.XMM5.encoding,
-            DwarfRegEncodingAMD64.XMM6.encoding,
-            DwarfRegEncodingAMD64.XMM7.encoding,
-            DwarfRegEncodingAMD64.XMM8.encoding,
-            DwarfRegEncodingAMD64.XMM9.encoding,
-            DwarfRegEncodingAMD64.XMM10.encoding,
-            DwarfRegEncodingAMD64.XMM11.encoding,
-            DwarfRegEncodingAMD64.XMM12.encoding,
-            DwarfRegEncodingAMD64.XMM13.encoding,
-            DwarfRegEncodingAMD64.XMM14.encoding,
-            DwarfRegEncodingAMD64.XMM15.encoding,
+                    DwarfRegEncodingAMD64.RAX.encoding,
+                    DwarfRegEncodingAMD64.RCX.encoding,
+                    DwarfRegEncodingAMD64.RDX.encoding,
+                    DwarfRegEncodingAMD64.RBX.encoding,
+                    DwarfRegEncodingAMD64.RSP.encoding,
+                    DwarfRegEncodingAMD64.RBP.encoding,
+                    DwarfRegEncodingAMD64.RSI.encoding,
+                    DwarfRegEncodingAMD64.RDI.encoding,
+                    DwarfRegEncodingAMD64.R8.encoding,
+                    DwarfRegEncodingAMD64.R9.encoding,
+                    DwarfRegEncodingAMD64.R10.encoding,
+                    DwarfRegEncodingAMD64.R11.encoding,
+                    DwarfRegEncodingAMD64.R12.encoding,
+                    DwarfRegEncodingAMD64.R13.encoding,
+                    DwarfRegEncodingAMD64.R14.encoding,
+                    DwarfRegEncodingAMD64.R15.encoding,
+                    DwarfRegEncodingAMD64.XMM0.encoding,
+                    DwarfRegEncodingAMD64.XMM1.encoding,
+                    DwarfRegEncodingAMD64.XMM2.encoding,
+                    DwarfRegEncodingAMD64.XMM3.encoding,
+                    DwarfRegEncodingAMD64.XMM4.encoding,
+                    DwarfRegEncodingAMD64.XMM5.encoding,
+                    DwarfRegEncodingAMD64.XMM6.encoding,
+                    DwarfRegEncodingAMD64.XMM7.encoding,
+                    DwarfRegEncodingAMD64.XMM8.encoding,
+                    DwarfRegEncodingAMD64.XMM9.encoding,
+                    DwarfRegEncodingAMD64.XMM10.encoding,
+                    DwarfRegEncodingAMD64.XMM11.encoding,
+                    DwarfRegEncodingAMD64.XMM12.encoding,
+                    DwarfRegEncodingAMD64.XMM13.encoding,
+                    DwarfRegEncodingAMD64.XMM14.encoding,
+                    DwarfRegEncodingAMD64.XMM15.encoding,
     };
 }

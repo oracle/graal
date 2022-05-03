@@ -42,6 +42,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
@@ -52,6 +53,7 @@ import com.oracle.svm.hosted.meta.HostedClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedInterface;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedPrimitiveType;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -67,7 +69,6 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -86,6 +87,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.WordBase;
 
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
@@ -111,7 +113,7 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeCh
 class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final DebugContext debugContext;
     private final NativeImageCodeCache codeCache;
-    @SuppressWarnings("unused") private final NativeImageHeap heap;
+    private final NativeImageHeap heap;
     boolean useHeapBase;
     int compressShift;
     int tagsMask;
@@ -123,9 +125,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private final Set<HostedMethod> allOverrides;
     HostedType wordBaseType;
 
-    private static final String GRAAL_WORDBASE_TYPE_NAME = "Lorg/graalvm/word/WordBase;";
-
-    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap) {
+    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, HostedMetaAccess metaAccess) {
         super();
         this.debugContext = debugContext;
         this.codeCache = codeCache;
@@ -154,7 +154,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
-        wordBaseType = heap.getUniverse().getTypes().stream().filter(type -> type.getName().equals(GRAAL_WORDBASE_TYPE_NAME)).findFirst().get();
+        wordBaseType = metaAccess.lookupJavaType(WordBase.class);
     }
 
     @Override
@@ -206,6 +206,27 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     static ObjectLayout getObjectLayout() {
         return ConfigurationValues.getObjectLayout();
+    }
+
+    /**
+     * Return the offset into the initial heap at which the object identified by constant is located
+     * or -1 if the object is not present in the initial heap.
+     *
+     * @param constant must have JavaKind Object and must be non-null.
+     *
+     * @return the offset into the initial heap at which the object identified by constant is
+     *         located or -1 if the object is not present in the initial heap.
+     */
+    public long objectOffset(JavaConstant constant) {
+        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : "invalid constant for object offset lookup";
+        if (constant instanceof SubstrateObjectConstant) {
+            Object object = SubstrateObjectConstant.asObject(constant);
+            ObjectInfo objectInfo = heap.getObjectInfo(object);
+            if (objectInfo != null) {
+                return objectInfo.getAddress();
+            }
+        }
+        return -1;
     }
 
     /*
@@ -1954,13 +1975,19 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 this.localKind = LocalKind.STACKSLOT;
                 this.value = new NativeImageDebugStackValue((StackSlot) value, framesize);
             } else if (value instanceof JavaConstant) {
-                // for now we can only handle primiitve constants
-                if (value instanceof PrimitiveConstant || ((JavaConstant) value).isNull()) {
+                JavaConstant constant = (JavaConstant) value;
+                if (constant instanceof PrimitiveConstant || constant.isNull()) {
                     this.localKind = LocalKind.CONSTANT;
-                    this.value = new NativeImageDebugConstantValue((JavaConstant) value);
+                    this.value = new NativeImageDebugConstantValue(constant);
                 } else {
-                    this.localKind = LocalKind.UNDEFINED;
-                    this.value = null;
+                    long heapOffset = objectOffset(constant);
+                    if (heapOffset >= 0) {
+                        this.localKind = LocalKind.CONSTANT;
+                        this.value = new NativeImageDebugConstantValue(constant, heapOffset);
+                    } else {
+                        this.localKind = LocalKind.UNDEFINED;
+                        this.value = null;
+                    }
                 }
             } else {
                 this.localKind = LocalKind.UNDEFINED;
@@ -2087,6 +2114,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public long heapOffset() {
+            return ((NativeImageDebugConstantValue) value).getHeapOffset();
+        }
+
+        @Override
         public JavaConstant constantValue() {
             return ((NativeImageDebugConstantValue) value).getConstant();
         }
@@ -2112,7 +2144,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof  NativeImageDebugRegisterValue)) {
+            if (!(o instanceof NativeImageDebugRegisterValue)) {
                 return false;
             }
             NativeImageDebugRegisterValue that = (NativeImageDebugRegisterValue) o;
@@ -2142,7 +2174,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof  NativeImageDebugStackValue)) {
+            if (!(o instanceof NativeImageDebugStackValue)) {
                 return false;
             }
             NativeImageDebugStackValue that = (NativeImageDebugStackValue) o;
@@ -2157,27 +2189,37 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     public class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
         private JavaConstant value;
+        private long heapoffset;
 
         NativeImageDebugConstantValue(JavaConstant value) {
+            this(value, -1);
+        }
+
+        NativeImageDebugConstantValue(JavaConstant value, long heapoffset) {
             this.value = value;
+            this.heapoffset = heapoffset;
         }
 
         public JavaConstant getConstant() {
             return value;
         }
 
+        public long getHeapOffset() {
+            return heapoffset;
+        }
+
         @Override
         public boolean equals(Object o) {
-            if (!(o instanceof  NativeImageDebugConstantValue)) {
+            if (!(o instanceof NativeImageDebugConstantValue)) {
                 return false;
             }
             NativeImageDebugConstantValue that = (NativeImageDebugConstantValue) o;
-            return value .equals(that.value);
+            return heapoffset == that.heapoffset && value.equals(that.value);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(value);
+            return Objects.hash(value) * 31 + (int) heapoffset;
         }
     }
 

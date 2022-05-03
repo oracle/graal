@@ -285,6 +285,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final byte DW_OP_bregx = (byte) 0x92;
     public static final byte DW_OP_push_object_address = (byte) 0x97;
     public static final byte DW_OP_implicit_value = (byte) 0x9e;
+    public static final byte DW_OP_stack_value = (byte) 0x9f;
 
     /* Register constants for AArch64. */
     public static final byte rheapbase_aarch64 = (byte) 27;

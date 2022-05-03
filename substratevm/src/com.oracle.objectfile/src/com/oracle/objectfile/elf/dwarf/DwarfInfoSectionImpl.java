@@ -33,6 +33,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
 
 import org.graalvm.compiler.debug.DebugContext;
@@ -1063,42 +1064,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Field offset needs to be relocated relative to static primitive or static object base. */
         int offset = fieldEntry.getOffset();
         log(context, "  [0x%08x]     location  heapbase + 0x%x (%s)", pos, offset, (fieldEntry.getValueType().isPrimitive() ? "primitive" : "object"));
-        pos = writeHeapLocation(offset, buffer, pos);
+        pos = writeHeapLocationExprLoc(offset, buffer, pos);
         return pos;
-    }
-
-    private int writeHeapLocation(int offset, byte[] buffer, int p) {
-        int pos = p;
-        if (dwarfSections.useHeapBase()) {
-            /* Write a location rebasing the offset relative to the heapbase register. */
-            byte regOp = (byte) (DwarfDebugInfo.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
-            /*
-             * We have to size the DWARF expression by writing it to the scratch buffer so we can
-             * write its size as a ULEB before the expression itself.
-             */
-            int size = putByte(regOp, scratch, 0) + putSLEB(offset, scratch, 0);
-            if (buffer == null) {
-                /* Add ULEB size to the expression size. */
-                return pos + putULEB(size, scratch, 0) + size;
-            } else {
-                /* Write the size and expression into the output buffer. */
-                pos = putULEB(size, buffer, pos);
-                pos = putByte(regOp, buffer, pos);
-                return putSLEB(offset, buffer, pos);
-            }
-        } else {
-            /* Write a relocatable address relative to the heap section start. */
-            byte regOp = DwarfDebugInfo.DW_OP_addr;
-            int size = 9;
-            /* Write the size and expression into the output buffer. */
-            if (buffer == null) {
-                return pos + putULEB(size, scratch, 0) + size;
-            } else {
-                pos = putULEB(size, buffer, pos);
-                pos = putByte(regOp, buffer, pos);
-                return putRelocatableHeapOffset(offset, buffer, pos);
-            }
-        }
     }
 
     private int writeArrayTypes(DebugContext context, byte[] buffer, int pos) {
@@ -1423,7 +1390,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                     case CONSTANT:
                         JavaConstant constant = value.constantValue();
                         // can only handle primitive or null constants just now
-                        if (constant instanceof PrimitiveConstant || constant.isNull()) {
+                        if (constant instanceof PrimitiveConstant || constant.getJavaKind() == JavaKind.Object) {
                             localValues.add(value);
                         }
                         break;

@@ -374,6 +374,8 @@ public interface DebugInfoProvider {
 
         int stackSlot();
 
+        long heapOffset();
+
         JavaConstant constantValue();
     }
 
