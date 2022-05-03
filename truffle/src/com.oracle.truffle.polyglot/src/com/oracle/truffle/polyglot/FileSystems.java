@@ -61,10 +61,12 @@ import java.nio.file.WatchService;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -1345,6 +1347,9 @@ final class FileSystems {
         }
 
         private boolean inLanguageHome(final Path path) {
+            if (!(path.isAbsolute() && isNormalized(path))) {
+                throw new IllegalArgumentException("The path must be normalized absolute path.");
+            }
             for (Path home : getLanguageHomes()) {
                 if (path.startsWith(home)) {
                     return true;
@@ -1380,6 +1385,17 @@ final class FileSystems {
      */
     private static class ReadOnlyFileSystem extends DeniedIOFileSystem {
 
+        private static final List<AccessMode> READ_MODES = Arrays.asList(
+                        AccessMode.READ,
+                        AccessMode.EXECUTE);
+
+        private static final List<StandardOpenOption> READ_OPTIONS = Arrays.asList(
+                        StandardOpenOption.READ,
+                        StandardOpenOption.DSYNC,
+                        StandardOpenOption.SPARSE,
+                        StandardOpenOption.SYNC,
+                        StandardOpenOption.TRUNCATE_EXISTING);
+
         private final FileSystem delegateFileSystem;
 
         ReadOnlyFileSystem(FileSystem fileSystem) {
@@ -1398,28 +1414,31 @@ final class FileSystems {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            if (modes.contains(AccessMode.WRITE)) {
-                throw new IOException("Read-only file");
-            } else {
+            Set<? extends AccessMode> writeModes = new HashSet<>(modes);
+            writeModes.removeAll(READ_MODES);
+            if (writeModes.isEmpty()) {
                 delegateFileSystem.checkAccess(path, modes, linkOptions);
+            } else {
+                throw new IOException("Read-only file");
             }
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path inPath, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-            boolean read = options.contains(StandardOpenOption.READ);
-            boolean write = options.contains(StandardOpenOption.WRITE) || options.contains(StandardOpenOption.DELETE_ON_CLOSE);
-            if (!read && !write) {
-                if (options.contains(StandardOpenOption.APPEND)) {
-                    write = true;
-                } else {
-                    read = true;
-                }
+            Set<OpenOption> copy = new HashSet<>(options);
+            Set<OpenOption> writeOptions = new HashSet<>(copy);
+            boolean read = writeOptions.contains(StandardOpenOption.READ);
+            writeOptions.removeAll(READ_OPTIONS);
+            // The APPEND option is ignored in case of read but without explicit READ option it
+            // implies write. Remove the APPEND option only when options contain READ.
+            if (read) {
+                writeOptions.remove(StandardOpenOption.APPEND);
             }
+            boolean write = !writeOptions.isEmpty();
             if (write) {
-                return super.newByteChannel(inPath, options, attrs);
+                throw forbidden(inPath);
             } else {
-                return delegateFileSystem.newByteChannel(inPath, options, attrs);
+                return delegateFileSystem.newByteChannel(inPath, copy, attrs);
             }
         }
 
