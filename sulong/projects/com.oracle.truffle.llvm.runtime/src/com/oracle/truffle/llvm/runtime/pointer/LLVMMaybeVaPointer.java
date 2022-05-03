@@ -60,6 +60,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrar
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -96,7 +98,11 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     public LLVMMaybeVaPointer(LLVMVAListNode allocaNode, LLVMPointer address) {
         this.allocaNode = allocaNode;
-        this.allocVAPointerAssumption = allocaNode.getAssumption();
+        if (allocaNode != null) {
+            this.allocVAPointerAssumption = allocaNode.getAssumption();
+        } else {
+            this.allocVAPointerAssumption = null;
+        }
         this.address = address;
     }
 
@@ -121,7 +127,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     }
 
     private Object createVaListStorage() {
-        return allocaNode.getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).createActualVAListStorage();
+        return LLVMLanguage.getContext().getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).createActualVAListStorage();
     }
 
     @ExportMessage
@@ -141,33 +147,41 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
      * native access is permitted after calling the cleanup method.
      */
     protected void nativeObjectAccess() {
-        if (!wasVAListPointer && allocVAPointerAssumption.isValid()) {
+        if (!wasVAListPointer && allocVAPointerAssumption != null && allocVAPointerAssumption.isValid()) {
             allocVAPointerAssumption.invalidate();
         }
     }
 
     @ExportMessage
     static class Shift {
-        static protected Object createStorage(LLVMMaybeVaPointer self, LLVMPointerOffsetLoadNode loadPtr, VAListPointerWrapperFactoryDelegate wrapperFactory) {
-            if (!self.isPointer()) {
-                return self.vaList.getObject();
+        // static protected Object createStorage(LLVMMaybeVaPointer self, LLVMPointerOffsetLoadNode loadPtr, VAListPointerWrapperFactoryDelegate wrapperFactory) {
+        //     if (!self.isPointer()) {
+        //         return self.vaList.getObject();
+        //     }
+        //     LLVMPointer vaListPtr = loadPtr.executeWithTarget(self.address, 0);
+        //     Object vaListInstance = wrapperFactory.execute(vaListPtr);
+        //     self.vaList = LLVMManagedPointer.create(vaListInstance);
+        //     self.wasVAListPointer = true;
+        //     return vaListInstance;
+        // }
+        @Specialization(guards = "self.isPointer()")
+        static protected Object shift(LLVMMaybeVaPointer self, Type type, Frame frame) {
+            Object ret = null;
+            if (PrimitiveType.DOUBLE == type) {
+
+            } else {
+                CompilerDirectives.shouldNotReachHere();
             }
-            LLVMPointer vaListPtr = loadPtr.executeWithTarget(self.address, 0);
-            Object vaListInstance = wrapperFactory.execute(vaListPtr);
-            self.vaList = LLVMManagedPointer.create(vaListInstance);
-            self.wasVAListPointer = true;
-            return vaListInstance;
+            return ret;
         }
 
-        @Specialization(limit = "3")
+        @Specialization(limit = "3", guards = "!self.isPointer()")
         @GenerateAOT.Exclude
         static protected Object shift(LLVMMaybeVaPointer self, Type type, Frame frame,
-                        @Cached LLVMPointerOffsetLoadNode loadPtr,
-                        @Cached VAListPointerWrapperFactoryDelegate wrapperFactory,
-                        @Bind(value = "createStorage(self, loadPtr, wrapperFactory)") Object vaListStorage,
-                        @CachedLibrary(value = "vaListStorage") LLVMManagedReadLibrary readLibrary) {
+                        @CachedLibrary LLVMManagedReadLibrary readLibrary) {
             assert self.wasVAListPointer;
 
+            Object vaListStorage = self.vaList.getObject();
             Object ret = null;
             long offset = self.vaList.getOffset();
             if (PrimitiveType.DOUBLE == type) {
@@ -573,6 +587,22 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     public Object asForeign() {
         assert !isPointer();
         return this;
+    }
+
+    @ExportMessage
+    public void toNative(@CachedLibrary(limit = "2") InteropLibrary interop,
+                         @Cached LLVMI64StoreNode.LLVMI64OffsetStoreNode offsetStoreNode,
+                         @CachedLibrary(limit = "2") LLVMManagedWriteLibrary writeLibrary) {
+        assert !isPointer();
+        interop.toNative(vaList.getObject());
+        try {
+            long ptr = interop.asPointer(vaList.getObject()) + vaList.getOffset();
+            offsetStoreNode.executeWithTarget(address, 0, ptr);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.shouldNotReachHere();
+        }
+
+        vaList = null;
     }
 
     @Override

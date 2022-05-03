@@ -49,6 +49,8 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
@@ -63,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -411,12 +414,23 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         @GenerateAOT.Exclude
         protected Object extractFromGlobal(LLVMManagedPointer p,
                         @Bind("getGlobal(p)") Object global,
+                        @Cached LLVMToNativeNode toNativeNode,
+                        @CachedLibrary("global") LLVMManagedWriteLibrary writeLibrary,
                         @CachedLibrary("global") LLVMManagedReadLibrary readLibrary) {
             Object ret = readLibrary.readGenericI64(global, 0);
             if (ret instanceof LLVMDarwinAarch64VaListStorage) {
+                CompilerDirectives.shouldNotReachHere();
+
+            } else if (ret instanceof LLVMMaybeVaPointer) {
                 return ret;
             }
-            return createWrapper(p);
+            // return createWrapper(p);
+            LLVMMemory memory = LLVMLanguage.get(null).getLLVMMemory();
+            LLVMNativePointer globalMemory = memory.allocateMemory(toNativeNode, 8);
+            Object storage = new LLVMMaybeVaPointer(null, globalMemory);
+
+            writeLibrary.writeGenericI64(global, 0, storage);
+            return storage;
         }
 
         @Specialization(guards = "isManagedPointer(p)")
