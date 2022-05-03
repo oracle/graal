@@ -1291,7 +1291,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         private void checkPoisonPill(Meta meta) {
             if (poisonPill) {
                 // Conflicting Maximally-specific non-abstract interface methods.
-                if (getJavaVersion().java9OrLater() && getContext().SpecCompliancyMode == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
+                if (getJavaVersion().java9OrLater() && getSpecComplianceMode() == EspressoOptions.SpecComplianceMode.HOTSPOT) {
                     /*
                      * Supposed to be IncompatibleClassChangeError (see jvms-6.5.invokeinterface),
                      * but HotSpot throws AbstractMethodError.

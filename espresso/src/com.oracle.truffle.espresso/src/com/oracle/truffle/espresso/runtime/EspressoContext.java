@@ -195,8 +195,6 @@ public final class EspressoContext {
 
     // Behavior control
     public final boolean EnableManagement;
-    public final EspressoOptions.VerifyMode Verify;
-    public final EspressoOptions.SpecCompliancyMode SpecCompliancyMode;
     public final boolean Polyglot;
     public final boolean HotSwapAPI;
     public final boolean ExitHost;
@@ -284,9 +282,7 @@ public final class EspressoContext {
         this.InlineFieldAccessors = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
         this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
-        this.Verify = env.getOptions().get(EspressoOptions.Verify);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
-        this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.LivenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
         this.LivenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
@@ -797,19 +793,6 @@ public final class EspressoContext {
             allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
         }
         return object;
-    }
-
-    public boolean needsVerify(StaticObject classLoader) {
-        switch (Verify) {
-            case NONE:
-                return false;
-            case REMOTE:
-                return !StaticObject.isNull(classLoader);
-            case ALL:
-                return true;
-            default:
-                return true;
-        }
     }
 
     public void prepareDispose() {

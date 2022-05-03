@@ -110,6 +110,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @CompilationFinal private JavaVersion javaVersion;
 
+    // region Options
+    private boolean optionsInitialized;
+    @CompilationFinal public EspressoOptions.VerifyMode verifyMode;
+    @CompilationFinal public EspressoOptions.SpecComplianceMode specComplianceMode;
+    // endregion Options
+
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
     public EspressoLanguage() {
@@ -144,10 +150,20 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
+        initializeOptions(env);
+
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
         return context;
+    }
+
+    private void initializeOptions(final TruffleLanguage.Env env) {
+        if (!optionsInitialized) {
+            verifyMode = env.getOptions().get(EspressoOptions.Verify);
+            specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
+            optionsInitialized = true;
+        }
     }
 
     @Override
@@ -290,6 +306,23 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public JavaVersion getJavaVersion() {
         return javaVersion;
+    }
+
+    public EspressoOptions.SpecComplianceMode specComplianceMode() {
+        return specComplianceMode;
+    }
+
+    public boolean needsVerify(StaticObject classLoader) {
+        switch (verifyMode) {
+            case NONE:
+                return false;
+            case REMOTE:
+                return !StaticObject.isNull(classLoader);
+            case ALL:
+                return true;
+            default:
+                return true;
+        }
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {
