@@ -340,8 +340,8 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     }
 
     private EvalResult evalSource(Context context) {
-        String path = config.path;
-        String language = getLanguageId(path);
+        final String path = config.path;
+        final String language = getLanguageId(config.path);
 
         config.metric.beforeInitialize(config);
         try {
@@ -352,7 +352,6 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             config.metric.afterInitialize(config);
         }
 
-        File file = new File(path);
         if ("jar".equals(getExtension(path))) {
             // Espresso cannot eval .jar files, instead we load the JAR's main class.
             String className = config.className;
@@ -372,15 +371,10 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             } finally {
                 config.metric.afterLoad(config);
             }
+            File file = new File(path);
             return new EvalResult("java", file.getName(), true, file.length(), mainKlass);
         } else {
-            Source source;
-            try {
-                source = Source.newBuilder(language, file).build();
-            } catch (IOException e) {
-                throw abort("Error while examining source file '" + file + "': " + e.getMessage());
-            }
-
+            Source source = createSource();
             config.metric.beforeLoad(config);
             Value result;
             try {
@@ -392,6 +386,17 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             }
             return new EvalResult(language, source.getName(), source.hasBytes(), source.getLength(), result);
         }
+    }
+
+    private Source createSource() {
+        String path = config.path;
+        Source source;
+        try {
+            source = Source.newBuilder(getLanguageId(path), new File(path)).build();
+        } catch (IOException e) {
+            throw abort("Error while examining source file '" + path + "': " + e.getMessage());
+        }
+        return source;
     }
 
     static class EvalResult {
