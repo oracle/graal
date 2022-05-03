@@ -30,8 +30,9 @@ import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAl
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -582,8 +583,8 @@ public class CompilationResultBuilder {
         Writer dumpBBInfoWriter = null;
         if (debug.isDumpEnabledForMethod() && DebugOptions.DumpBBRelativePCAndFreq.getValue(options)) {
             try {
-                final String dumpBBInfoPath = PathUtilities.getPath(debug.getDumpPath(".blocks", true), "block_info");
-                dumpBBInfoWriter = new FileWriter(dumpBBInfoPath);
+                final OutputStream out = PathUtilities.openOutputStream(debug.getDumpPath(".blocks", false));
+                dumpBBInfoWriter = new OutputStreamWriter(out);
             } catch (IOException e) {
                 throw debug.handle(e);
             }
