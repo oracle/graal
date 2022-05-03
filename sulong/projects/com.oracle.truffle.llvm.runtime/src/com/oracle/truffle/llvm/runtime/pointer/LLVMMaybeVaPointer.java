@@ -193,7 +193,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     void copy(Object pointer, @SuppressWarnings("unused") Frame frame) {
-        wasVAListPointer = true;
+        assert wasVAListPointer;
         if (pointer instanceof LLVMMaybeVaPointer) {
             ((LLVMMaybeVaPointer) pointer).vaList = vaList;
         }
