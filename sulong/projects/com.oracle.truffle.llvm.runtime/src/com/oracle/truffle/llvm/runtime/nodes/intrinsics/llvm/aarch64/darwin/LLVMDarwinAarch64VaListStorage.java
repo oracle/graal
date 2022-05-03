@@ -425,6 +425,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             if (ret instanceof LLVMMaybeVaPointer) {
                 ((LLVMMaybeVaPointer) ret).wasVAListPointer = true;
             } else {
+                CompilerDirectives.transferToInterpreter();
                 CompilerDirectives.shouldNotReachHere("unhandled case: " + ret);
             }
             return ret;

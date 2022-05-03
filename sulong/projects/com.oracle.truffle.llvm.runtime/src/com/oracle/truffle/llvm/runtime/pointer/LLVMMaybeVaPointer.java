@@ -170,11 +170,11 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
             Object ret = null;
             long offset = self.vaList.getOffset();
-            if (PrimitiveType.DOUBLE.equals(type)) {
+            if (PrimitiveType.DOUBLE == type) {
                 ret = readLibrary.readDouble(vaListStorage, offset);
-            } else if (PrimitiveType.I32.equals(type)) {
+            } else if (PrimitiveType.I32 == type) {
                 ret = readLibrary.readI32(vaListStorage, offset);
-            } else if (PrimitiveType.I64.equals(type)) {
+            } else if (PrimitiveType.I64 == type) {
                 try {
                     ret = readLibrary.readI64(vaListStorage, offset);
                 } catch (UnexpectedResultException e) {
@@ -183,6 +183,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             } else if (type instanceof PointerType) {
                 ret = readLibrary.readPointer(vaListStorage, offset);
             } else {
+                CompilerDirectives.transferToInterpreter();
                 CompilerDirectives.shouldNotReachHere("MaybeVaPointer.shift: not implemented: " + type);
             }
             self.vaList = self.vaList.increment(Long.BYTES);
