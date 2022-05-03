@@ -120,14 +120,14 @@ public abstract class ToEspressoNode extends EspressoNode {
                 case Int     : return interop.asInt(value);
                 case Float   : return interop.asFloat(value);
                 case Long    : return interop.asLong(value);
-                case Double  : return interop.asDouble(value);                
+                case Double  : return interop.asDouble(value);
                 case Char: {
                     String str = interop.asString(value);
                     if (str.length() == 1) {
                         return str.charAt(0);
                     }
                     break;
-                }                
+                }
                 case Void:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere("Unexpected cast to void");

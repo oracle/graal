@@ -120,14 +120,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
         abstract @JavaType(Object.class) StaticObject execute(EspressoContext context, Klass targetKlass, @JavaType(Object.class) StaticObject value);
 
-        static boolean isPrimitiveKlass(Klass targetKlass) {
-            return targetKlass.isPrimitive();
-        }
-
-        static boolean isArrayKlass(Klass targetKlass) {
-            return targetKlass.isArray();
-        }
-
         static boolean isNull(StaticObject object) {
             return StaticObject.isNull(object);
         }
@@ -215,10 +207,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-string foreign object to String");
             }
-        }
-
-        static boolean instanceOfThrowable(EspressoContext context, Klass klass) {
-            return context.getMeta().java_lang_Throwable.isAssignableFrom(klass);
         }
 
         @Specialization(guards = {
