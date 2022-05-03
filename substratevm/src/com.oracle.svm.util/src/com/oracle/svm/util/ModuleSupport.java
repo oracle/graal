@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import jdk.internal.module.Modules;
 
-@Platforms(Platform.HOSTED_ONLY.class)
 public final class ModuleSupport {
 
     public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
@@ -48,6 +47,7 @@ public final class ModuleSupport {
         return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public enum Access {
         OPEN {
             @Override
@@ -85,6 +85,7 @@ public final class ModuleSupport {
         abstract void giveAccess(Module accessingModule, Module declaringModule, String packageName);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void accessModuleByClass(Access access, Class<?> accessingClass, Class<?> declaringClass) {
         accessModuleByClass(access, accessingClass, declaringClass.getModule(), declaringClass.getPackageName());
     }
@@ -95,6 +96,7 @@ public final class ModuleSupport {
      * exported to ALL-UNNAMED. If no packages are given, all packages of the module are opened or
      * exported.
      */
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void accessPackagesToClass(Access access, Class<?> accessingClass, boolean optional, String moduleName, String... packageNames) {
         Module declaringModule = getModule(moduleName, optional);
         if (declaringModule == null) {
@@ -107,6 +109,7 @@ public final class ModuleSupport {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static Module getModule(String moduleName, boolean optional) {
         Objects.requireNonNull(moduleName);
         Optional<Module> declaringModuleOpt = ModuleLayer.boot().findModule(moduleName);
@@ -119,6 +122,7 @@ public final class ModuleSupport {
         return declaringModuleOpt.get();
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
         Module namedAccessingModule = null;
         if (accessingClass != null) {
