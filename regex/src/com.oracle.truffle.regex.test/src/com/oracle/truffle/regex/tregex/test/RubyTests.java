@@ -509,4 +509,13 @@ public class RubyTests extends RegexTestBase {
         String a500 = new String(new char[500]).replace('\0', 'a');
         test("^(?>(?=a)(" + a1000 + "|))++$", "", a500, 0, false);
     }
+
+    @Test
+    public void nfaTraversalTests() {
+        // This relies on correctly maneuvering through the necessary capture groups in the
+        // NFATraversalRegexASTVisitor. Since Ruby's empty checks monitor capture groups, capture
+        // group updates are stored in quantifier guards and correctly pruning the traversal
+        // relies on respecting the quantifier guards.
+        test("(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())\\3\\5\\7", "", "", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1);
+    }
 }
