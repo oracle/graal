@@ -109,8 +109,8 @@ public abstract class Metric {
     }
 
     /**
-     * Invoked after the benchmark is loaded. That means just before source code is parsed or
-     * classes are loaded. This is guaranteed to happen after initialization, but before the first
+     * Invoked after the benchmark is loaded. That means just after source code is parsed or classes
+     * are loaded. This is guaranteed to happen after initialization, but before the first
      * iteration.
      */
     public void afterLoad(Config config) {
