@@ -145,6 +145,49 @@ public class AsCollectionsTest {
     }
 
     @Test
+    public void testAsExpandableList() {
+        ArrayList origList = new ArrayList(4);
+        origList.add("a");
+        origList.add("b");
+        origList.add("c");
+        TruffleObject to = new ExpandableListBasedTO(origList);
+        assertTrue(INTEROP.hasArrayElements(to));
+
+        List interopList = asJavaObject(List.class, to);
+        assertEquals(origList.size(), interopList.size());
+        assertEquals(origList.toString(), new ArrayList<>(interopList).toString());
+        assertEquals(origList.toString(), interopList.toString());
+        // Test get out of bounds
+        try {
+            interopList.get(3);
+            fail();
+        } catch (IndexOutOfBoundsException ioobex) {
+            // O.K.
+        }
+        // Test set out of bounds
+        try {
+            interopList.set(3, "1000");
+            fail();
+        } catch (IndexOutOfBoundsException ioobex) {
+            // O.K.
+        }
+        Object old = interopList.set(1, "bbb");
+        assertEquals("b", old);
+        assertEquals("bbb", interopList.get(1));
+
+        interopList.add("ccc");
+        assertEquals("ccc", interopList.get(3));
+
+        interopList.add(1, "ddd");
+        assertEquals("a", interopList.get(0));
+        assertEquals("ddd", interopList.get(1));
+        assertEquals("bbb", interopList.get(2));
+        assertEquals("c", interopList.get(3));
+        assertEquals("ccc", interopList.get(4));
+
+    }
+
+    @Test
     public void testAsMap() {
         Map<String, String> origMap = new LinkedHashMap<>();
         for (int i = 10; i <= 100; i += 10) {
@@ -310,6 +353,81 @@ public class AsCollectionsTest {
         @ExportMessage(name = "isArrayElementInsertable")
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < getArraySize();
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return ProxyLanguage.class;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object toDisplayString(boolean sideEffects) {
+            return list.toString();
+        }
+
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings({"static-method", "unused"})
+    static final class ExpandableListBasedTO implements TruffleObject {
+
+        final ArrayList list;
+
+        ExpandableListBasedTO(ArrayList list) {
+            this.list = list;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object readArrayElement(long index) throws InvalidArrayIndexException {
+            try {
+                return list.get((int) index);
+            } catch (IndexOutOfBoundsException ioob) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
+            if (index == getArraySize()) {
+                return list.add(value);
+            } else {
+                try {
+                    list.set((int) index, value);
+                    return value;
+                } catch (IndexOutOfBoundsException ioob) {
+                    throw InvalidArrayIndexException.create(index);
+                }
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        long getArraySize() {
+            return list.size();
+        }
+
+        @ExportMessage(name = "isArrayElementReadable")
+        @ExportMessage(name = "isArrayElementModifiable")
+        boolean isArrayElementReadable(long index) {
+            return index >= 0 && index < getArraySize();
+        }
+
+        @ExportMessage(name = "isArrayElementInsertable")
+        boolean isArrayElementModifiable(long index) {
+            return index >= 0 && index <= getArraySize();
         }
 
         @ExportMessage
