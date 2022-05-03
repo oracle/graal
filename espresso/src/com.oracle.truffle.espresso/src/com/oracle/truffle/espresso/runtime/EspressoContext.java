@@ -143,7 +143,7 @@ public final class EspressoContext {
 
     // region Runtime
     private final StringTable strings;
-    private final ClassRegistries registries;
+    private ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
     private final ClassHierarchyOracle classHierarchyOracle;
@@ -245,7 +245,6 @@ public final class EspressoContext {
         this.language = language;
 
         this.bootClassLoaderID = language.getNewLoaderId();
-        this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics();
@@ -491,6 +490,8 @@ public final class EspressoContext {
                 EspressoError.guarantee(getJavaVersion() != null, "Java version");
             }
 
+            this.registries = new ClassRegistries(this);
+
             if (getJavaVersion().modulesEnabled()) {
                 registries.initJavaBaseModule();
                 registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
@@ -500,7 +501,6 @@ public final class EspressoContext {
 
             initializeAgents();
 
-            registries.getBootClassRegistry().setBootKlassPath(getBootClasspath());
             try (DebugCloseable metaInit = META_INIT.scope(timers)) {
                 this.meta = new Meta(this);
             }

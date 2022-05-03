@@ -26,7 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -52,11 +52,11 @@ public final class BootClassRegistry extends ClassRegistry {
     static final DebugCounter loadLinkedKlassCacheHits = DebugCounter.create("BCL loadLinkedKlassCacheHits");
     private static final DebugTimer BOOT_KLASS_READ = DebugTimer.create("boot klass read");
 
-    @CompilerDirectives.CompilationFinal //
-    private Classpath bootClasspath;
+    @CompilationFinal private final Classpath bootClasspath;
 
-    public BootClassRegistry(long loaderID) {
+    public BootClassRegistry(long loaderID, Classpath bootClasspath) {
         super(loaderID);
+        this.bootClasspath = bootClasspath;
     }
 
     @Override
@@ -134,10 +134,6 @@ public final class BootClassRegistry extends ClassRegistry {
     @Override
     public @JavaType(ClassLoader.class) StaticObject getClassLoader() {
         return StaticObject.NULL;
-    }
-
-    public void setBootKlassPath(Classpath cp) {
-        this.bootClasspath = cp;
     }
 
     @SuppressWarnings("try")

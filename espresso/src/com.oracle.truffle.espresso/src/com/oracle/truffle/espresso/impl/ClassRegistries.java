@@ -67,7 +67,7 @@ public final class ClassRegistries {
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
-        this.bootClassRegistry = new BootClassRegistry(context.getLanguage().getNewLoaderId());
+        this.bootClassRegistry = new BootClassRegistry(context.getLanguage().getNewLoaderId(), context.getBootClasspath());
         this.constraints = new LoadingConstraints(context);
     }
 
