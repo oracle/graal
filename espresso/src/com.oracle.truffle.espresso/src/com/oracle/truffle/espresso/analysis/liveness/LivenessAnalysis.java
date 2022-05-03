@@ -161,7 +161,7 @@ public final class LivenessAnalysis {
     }
 
     private static boolean enableLivenessAnalysis(EspressoContext context, Method.MethodVersion methodVersion) {
-        switch (context.LivenessAnalysisMode) {
+        switch (context.getLanguage().livenessAnalysisMode()) {
             case NONE:
                 return false;
             case ALL:
@@ -171,7 +171,7 @@ public final class LivenessAnalysis {
                  * Heuristic: Only enable liveness analysis when the number of locals exceeds a
                  * threshold. In practice, liveness analysis is only enabled for < 5% of methods.
                  */
-                return methodVersion.getMaxLocals() >= context.LivenessAnalysisMinimumLocals;
+                return methodVersion.getMaxLocals() >= context.getLanguage().livenessAnalysisMinimumLocals();
             }
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

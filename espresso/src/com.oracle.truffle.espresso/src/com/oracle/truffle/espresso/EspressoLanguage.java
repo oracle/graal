@@ -111,9 +111,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @CompilationFinal private JavaVersion javaVersion;
 
     // region Options
+    @CompilationFinal private EspressoOptions.VerifyMode verifyMode;
+    @CompilationFinal private EspressoOptions.SpecComplianceMode specComplianceMode;
+    @CompilationFinal private EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
+    @CompilationFinal private int livenessAnalysisMinimumLocals;
+
     private boolean optionsInitialized;
-    @CompilationFinal public EspressoOptions.VerifyMode verifyMode;
-    @CompilationFinal public EspressoOptions.SpecComplianceMode specComplianceMode;
     // endregion Options
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
@@ -162,6 +165,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (!optionsInitialized) {
             verifyMode = env.getOptions().get(EspressoOptions.Verify);
             specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
+            livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+            livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
             optionsInitialized = true;
         }
     }
@@ -310,6 +315,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public EspressoOptions.SpecComplianceMode specComplianceMode() {
         return specComplianceMode;
+    }
+
+    public EspressoOptions.LivenessAnalysisMode livenessAnalysisMode() {
+        return livenessAnalysisMode;
+    }
+
+    public int livenessAnalysisMinimumLocals() {
+        return livenessAnalysisMinimumLocals;
     }
 
     public boolean needsVerify(StaticObject classLoader) {

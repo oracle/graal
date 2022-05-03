@@ -190,8 +190,6 @@ public final class EspressoContext {
     public final boolean InlineFieldAccessors;
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
-    public final EspressoOptions.LivenessAnalysisMode LivenessAnalysisMode;
-    public final int LivenessAnalysisMinimumLocals;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -283,8 +281,6 @@ public final class EspressoContext {
         this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
         this.SplitMethodHandles = JDWPOptions == null && env.getOptions().get(EspressoOptions.SplitMethodHandles);
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
-        this.LivenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
-        this.LivenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
