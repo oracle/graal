@@ -31,6 +31,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -83,12 +84,21 @@ public final class ListInterop extends IterableInterop {
     @ExportMessage
     static void writeArrayElement(StaticObject receiver, long index, Object value,
                     @Cached ListSet listSet,
+                    @Cached ListAdd listAdd,
                     @Cached.Shared("size") @Cached(value = "getSizeLookup()", allowUncached = true) LookupAndInvokeKnownMethodNode size,
-                    @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException {
-        if (!boundsCheck(receiver, index, size)) {
-            error.enter();
-            throw InvalidArrayIndexException.create(index);
+                    @Cached @Shared("error") BranchProfile error) throws InvalidArrayIndexException, UnsupportedMessageException {
+        int listSize = (int) size.execute(receiver, EMPTY_ARGS);
+        if (!boundsCheck(index, listSize)) {
+            // append new element if allowed
+            if (boundsCheckForAdd(index, listSize)) {
+                listAdd.listAdd(receiver, value, error);
+                return;
+            } else {
+                error.enter();
+                throw InvalidArrayIndexException.create(index);
+            }
         }
+        // replace existing element
         listSet.listSet(receiver, index, value, error);
     }
 
@@ -104,11 +114,27 @@ public final class ListInterop extends IterableInterop {
         return boundsCheck(receiver, index, size);
     }
 
-    // TODO: isArrayElementRemovable and isArrayElementInsertable
+    @ExportMessage
+    static boolean isArrayElementInsertable(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") long index) {
+        // we can't easily determine is the guest list is modifiable or not,
+        // so we return true here and let writeArrayElement fail in case the
+        // associated guest method throws
+        return true;
+    }
+
+    // TODO: isArrayElementRemovable
 
     private static boolean boundsCheck(StaticObject receiver, long index,
                     LookupAndInvokeKnownMethodNode size) {
         return 0 <= index && index < (int) size.execute(receiver, EMPTY_ARGS);
+    }
+
+    private static boolean boundsCheck(long index, int size) {
+        return 0 <= index && index < size;
+    }
+
+    private static boolean boundsCheckForAdd(long index, int size) {
+        return 0 <= index && index <= size;
     }
 
     @GenerateUncached
@@ -189,6 +215,48 @@ public final class ListInterop extends IterableInterop {
 
         static Method doSetLookup(StaticObject receiver) {
             return receiver.getKlass().lookupMethod(Name.set, Signature.Object_int_Object);
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ListAdd extends EspressoNode {
+        static final int LIMIT = 3;
+
+        public void listAdd(StaticObject receiver, Object value, BranchProfile error) throws UnsupportedMessageException {
+            try {
+                execute(receiver, value);
+            } catch (EspressoException e) {
+                error.enter();
+                if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_UnsupportedOperationException)) {
+                    throw UnsupportedMessageException.create();
+                }
+                throw e; // unexpected exception
+            } catch (ArityException | UnsupportedTypeException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere();
+            }
+        }
+
+        protected abstract void execute(StaticObject receiver, Object value) throws ArityException, UnsupportedTypeException;
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
+        static void doCached(StaticObject receiver, Object value,
+                        @Cached("receiver.getKlass()") Klass cachedKlass,
+                        @Cached("doAddLookup(receiver)") Method method,
+                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+            invoke.execute(method, receiver, new Object[]{value});
+        }
+
+        @Specialization(replaces = "doCached")
+        static void doUncached(StaticObject receiver, Object value,
+                        @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+            Method set = doAddLookup(receiver);
+            invoke.execute(set, receiver, new Object[]{value});
+        }
+
+        static Method doAddLookup(StaticObject receiver) {
+            return receiver.getKlass().lookupMethod(Name.add, Signature._boolean_Object);
         }
     }
 }
