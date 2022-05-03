@@ -55,6 +55,44 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     public static final int LIMIT = 2;
 
+    // region Specialization predicates
+
+    static boolean isStaticObject(Object obj) {
+        return obj instanceof StaticObject;
+    }
+
+    static boolean isHostString(Object object) {
+        return object instanceof String;
+    }
+
+    static boolean isString(Klass klass) {
+        return klass.getMeta().java_lang_String.equals(klass);
+    }
+
+    static boolean isStringCompatible(Klass klass) {
+        // Accept String superclasses and superinterfaces.
+        return klass.isAssignableFrom(klass.getMeta().java_lang_String);
+    }
+
+    static boolean isByteArray(Klass klass) {
+        return klass.getMeta()._byte_array.equals(klass);
+    }
+
+    static boolean isPrimitiveKlass(Klass klass) {
+        return klass instanceof PrimitiveKlass;
+    }
+
+    static boolean isForeignException(Klass klass) {
+        Meta meta = klass.getMeta();
+        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
+    }
+
+    static boolean isEspressoException(Object object) {
+        return object instanceof EspressoException;
+    }
+
+    // endregion Specialization predicates
+
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedTypeException;
 
     @Specialization
@@ -118,17 +156,17 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isPrimitiveKlass(klass)"
     })
     Object doForeignNull(Object value, @SuppressWarnings("unused") Klass klass,
-                         @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @SuppressWarnings("unused") @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
         return StaticObject.createForeignNull(EspressoLanguage.get(this), value);
     }
 
     @Specialization(guards = {
-                    "interop.isString(value)",
-                    // !interop.isNull(value), // redundant
+                    "isString(klass)",
                     "!isStaticObject(value)",
+                    "interop.isString(value)",
                     "!isHostString(value)",
-                    "!isEspressoException(value)",
-                    "isString(klass)"
+                    // !interop.isNull(value), // redundant
+                    // "!isEspressoException(value)", // redundant
     })
     Object doForeignString(Object value, ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
@@ -142,12 +180,12 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "interop.isException(value)",
-                    // !interop.isNull(value), // redundant
+                    "isForeignException(klass)",
                     "!isStaticObject(value)",
-                    "!isHostString(value)",
+                    "interop.isException(value)",
                     "!isEspressoException(value)",
-                    "isForeignException(klass)"
+                    // !interop.isNull(value), // redundant
+                    // "!isHostString(value)", // redundant
     })
     Object doForeignException(Object value, ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -158,8 +196,8 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     @Specialization(guards = {
                     "interop.hasArrayElements(value)",
-                    "!interop.isNull(value)",
                     "!isStaticObject(value)",
+                    "!interop.isNull(value)",
                     "!isHostString(value)",
                     "!isEspressoException(value)"
     })
@@ -169,12 +207,12 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
+                    "isByteArray(klass)",
+                    "!isStaticObject(value)",
                     "interop.hasBufferElements(value)",
                     "!interop.isNull(value)",
-                    "!isStaticObject(value)",
                     "!isHostString(value)",
                     "!isEspressoException(value)",
-                    "isByteArray(klass)"
     })
     Object doForeignBuffer(Object value, ArrayKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
@@ -210,40 +248,6 @@ public abstract class ToEspressoNode extends EspressoNode {
     @Fallback
     Object doUnsupportedType(Object value, Klass klass) throws UnsupportedTypeException {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
-    }
-
-    static boolean isStaticObject(Object obj) {
-        return obj instanceof StaticObject;
-    }
-
-    static boolean isHostString(Object object) {
-        return object instanceof String;
-    }
-
-    static boolean isString(Klass klass) {
-        return klass.getMeta().java_lang_String.equals(klass);
-    }
-
-    static boolean isStringCompatible(Klass klass) {
-        // Accept String superclasses and superinterfaces.
-        return klass.isAssignableFrom(klass.getMeta().java_lang_String);
-    }
-
-    static boolean isByteArray(Klass klass) {
-        return klass.getMeta()._byte_array.equals(klass);
-    }
-
-    static boolean isPrimitiveKlass(Klass klass) {
-        return klass instanceof PrimitiveKlass;
-    }
-
-    static boolean isForeignException(Klass klass) {
-        Meta meta = klass.getMeta();
-        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
-    }
-
-    static boolean isEspressoException(Object object) {
-        return object instanceof EspressoException;
     }
 
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {
