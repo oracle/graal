@@ -368,19 +368,19 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (isVariadic || inBoundary)
             return false;
 
-        if (m.isTracing()) {
-            b.startStatement().startCall("tracer", "traceSpecialization");
-            b.string("$bci");
-            b.doubleQuote(cinstr.name);
-            b.string("" + specialization.getIntrospectionIndex());
-            for (int i = 0; i < bindings.length; i++) {
-                Parameter parameter = specialization.getParameters().get(i);
-                if (parameter.getSpecification().isSignature()) {
-                    b.tree(bindings[i]);
-                }
-            }
-            b.end(2);
-        }
+        // if (m.isTracing()) {
+        // b.startStatement().startCall("tracer", "traceSpecialization");
+        // b.string("$bci");
+        // b.variable(cinstr.opcodeIdField);
+        // b.string("" + specialization.getIntrospectionIndex());
+        // for (int i = 0; i < bindings.length; i++) {
+        // Parameter parameter = specialization.getParameters().get(i);
+        // if (parameter.getSpecification().isSignature()) {
+        // b.tree(bindings[i]);
+        // }
+        // }
+        // b.end(2);
+        // }
 
         createPushResult(frameState, b, specializationCall, specialization.getMethod().getReturnType());
         return true;

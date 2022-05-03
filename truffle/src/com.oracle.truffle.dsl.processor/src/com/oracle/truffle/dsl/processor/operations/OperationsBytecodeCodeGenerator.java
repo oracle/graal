@@ -9,7 +9,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -19,7 +18,6 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -99,33 +97,6 @@ public class OperationsBytecodeCodeGenerator {
 
         CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
         builderBytecodeNodeType.add(ctor);
-
-        CodeVariableElement fldTracer = null;
-        CodeVariableElement fldHitCount;
-        if (m.isTracing()) {
-            fldHitCount = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(int.class)), "hitCount");
-            builderBytecodeNodeType.add(fldHitCount);
-
-            fldTracer = new CodeVariableElement(types.ExecutionTracer, "tracer");
-            builderBytecodeNodeType.add(fldTracer);
-        } else {
-            fldHitCount = null;
-        }
-
-        {
-            CodeTreeBuilder b = ctor.getBuilder();
-
-            if (m.isTracing()) {
-                b.startAssign(fldHitCount).startNewArray(
-                                (ArrayType) fldHitCount.getType(),
-                                CodeTreeBuilder.createBuilder().variable(fldBc).string(".length").build());
-                b.end(2);
-
-                b.startAssign(fldTracer).startStaticCall(types.ExecutionTracer, "get");
-                b.doubleQuote(ElementUtils.getClassQualifiedName(m.getTemplateType()));
-                b.end(2);
-            }
-        }
 
         {
             Set<String> copiedLibraries = new HashSet<>();
@@ -262,6 +233,20 @@ public class OperationsBytecodeCodeGenerator {
                 cinstr.setNumChildNodes(childIndices.size());
                 cinstr.setNumConsts(constIndices.size());
                 cinstr.setPrepareAOTMethod(metPrepareForAOT);
+
+                if (m.isTracing()) {
+                    CodeExecutableElement metGetSpecBits = new CodeExecutableElement(Set.of(Modifier.PRIVATE, Modifier.STATIC), arrayOf(context.getType(boolean.class)),
+                                    "doGetStateBits_" + cinstr.getUniqueName() + "_");
+                    metGetSpecBits.setEnclosingElement(typBuilderImpl);
+                    typBuilderImpl.add(metGetSpecBits);
+
+                    metGetSpecBits.addParameter(new CodeVariableElement(arrayOf(context.getType(byte.class)), "bc"));
+                    metGetSpecBits.addParameter(new CodeVariableElement(context.getType(int.class), "$bci"));
+                    CodeTreeBuilder b = metGetSpecBits.createBuilder();
+                    b.tree(plugs.createGetSpecializationBits());
+
+                    cinstr.setGetSpecializationBits(metGetSpecBits);
+                }
             }
 
         }
@@ -299,8 +284,17 @@ public class OperationsBytecodeCodeGenerator {
             b.declaration("int", varSp.getName(), CodeTreeBuilder.singleVariable(argStartSp));
             b.declaration("int", varBci.getName(), CodeTreeBuilder.singleVariable(argStartBci));
 
+            CodeVariableElement varTracer;
+
             if (m.isTracing()) {
-                b.startStatement().startCall(fldTracer, "startFunction").string("this").end(2);
+                varTracer = new CodeVariableElement(types.ExecutionTracer, "tracer");
+                b.startAssign("ExecutionTracer " + varTracer.getName()).startStaticCall(types.ExecutionTracer, "get");
+                b.typeLiteral(m.getTemplateType().asType());
+                b.end(2);
+
+                b.startStatement().startCall(varTracer, "startFunction").string("this").end(2);
+            } else {
+                varTracer = null;
             }
 
             CodeVariableElement varReturnValue = new CodeVariableElement(context.getType(Object.class), "returnValue");
@@ -317,6 +311,7 @@ public class OperationsBytecodeCodeGenerator {
             vars.frame = argFrame;
             vars.sp = varSp;
             vars.returnValue = varReturnValue;
+            vars.tracer = varTracer;
 
             b.declaration("short", varCurOpcode.getName(), OperationGeneratorUtils.createReadOpcode(fldBc, varBci));
 
@@ -325,10 +320,6 @@ public class OperationsBytecodeCodeGenerator {
             b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
             b.tree(GeneratorUtils.createPartialEvaluationConstant(varSp));
             b.tree(GeneratorUtils.createPartialEvaluationConstant(varCurOpcode));
-
-            if (m.isTracing()) {
-                b.startStatement().variable(fldHitCount).string("[bci]++").end();
-            }
 
             b.startIf().variable(varSp).string(" < maxLocals + VALUES_OFFSET").end();
             b.startBlock();
@@ -347,10 +338,9 @@ public class OperationsBytecodeCodeGenerator {
                 b.startBlock();
 
                 if (m.isTracing()) {
-                    b.startStatement().startCall(fldTracer, "traceInstruction");
+                    b.startStatement().startCall(varTracer, "traceInstruction");
                     b.variable(varBci);
-                    b.doubleQuote(op.name);
-                    b.trees(op.createTracingArguments(vars));
+                    b.variable(op.opcodeIdField);
                     b.end(2);
                 }
 
@@ -384,12 +374,11 @@ public class OperationsBytecodeCodeGenerator {
 
             b.tree(GeneratorUtils.createPartialEvaluationConstant(varBci));
 
-            if (m.isTracing()) {
-                b.startStatement().startCall(fldTracer, "traceException");
-                b.string("ex");
-                b.end(2);
-
-            }
+            // if (m.isTracing()) {
+            // b.startStatement().startCall(fldTracer, "traceException");
+            // b.string("ex");
+            // b.end(2);
+            // }
 
             b.startFor().string("int handlerIndex = 0; handlerIndex < " + fldHandlers.getName() + ".length; handlerIndex++").end();
             b.startBlock();
@@ -423,11 +412,14 @@ public class OperationsBytecodeCodeGenerator {
             b.end(); // while block
 
             if (m.isTracing()) {
-                b.startStatement().startCall(fldTracer, "endFunction").end(2);
+                b.startStatement().startCall(varTracer, "endFunction");
+                b.string("this");
+                b.end(2);
             }
 
             b.startReturn().string("returnValue").end();
 
+            vars.tracer = null;
             vars.bci = null;
             vars.nextBci = null;
             vars.frame = null;
@@ -482,10 +474,6 @@ public class OperationsBytecodeCodeGenerator {
 
             b.startWhile().string("bci < bc.length").end();
             b.startBlock(); // while block
-
-            if (m.isTracing()) {
-                b.statement("sb.append(String.format(\" [ %3d ]\", hitCount[bci]))");
-            }
 
             b.statement("sb.append(String.format(\" %04x \", bci))");
 
@@ -558,51 +546,6 @@ public class OperationsBytecodeCodeGenerator {
 
             vars.bci = null;
 
-        }
-
-        if (m.isTracing()) {
-            CodeExecutableElement mGetTrace = GeneratorUtils.override(types.OperationsNode, "getNodeTrace");
-            builderBytecodeNodeType.add(mGetTrace);
-
-            CodeTreeBuilder b = mGetTrace.getBuilder();
-
-            b.declaration("int", "bci", "0");
-            b.declaration("ArrayList<InstructionTrace>", "insts", "new ArrayList<>()");
-
-            vars.bci = new CodeVariableElement(context.getType(int.class), "bci");
-
-            b.startWhile().string("bci < bc.length").end();
-            b.startBlock(); // while block
-
-            b.tree(OperationGeneratorUtils.createInstructionSwitch(m, vars, withInstrumentation, op -> {
-                CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
-                if (op == null) {
-                    builder.startThrow().startNew(context.getType(IllegalArgumentException.class)).doubleQuote("Unknown opcode").end(2);
-                    return builder.build();
-                }
-
-                builder.startStatement();
-                builder.startCall("insts", "add");
-                builder.startNew(types.InstructionTrace);
-
-                builder.variable(op.opcodeIdField);
-                builder.startGroup().variable(fldHitCount).string("[bci]").end();
-
-                builder.end(3);
-
-                builder.statement("bci += " + op.length());
-                builder.statement("break");
-
-                return builder.build();
-            }));
-
-            b.end(); // while block
-
-            b.startReturn().startNew(types.NodeTrace);
-            b.startCall("insts", "toArray").string("new InstructionTrace[0]").end();
-            b.end(2);
-
-            vars.bci = null;
         }
 
         {

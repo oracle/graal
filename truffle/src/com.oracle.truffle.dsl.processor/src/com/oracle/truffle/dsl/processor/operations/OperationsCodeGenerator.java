@@ -16,7 +16,6 @@ import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -148,28 +147,42 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                 CodeTreeBuilder b = mStaticInit.appendBuilder();
 
-                b.startAssign("ExecutionTracer tracer").startStaticCall(types.ExecutionTracer, "get");
-                b.doubleQuote(ElementUtils.getClassQualifiedName(m.getTemplateType()));
-                b.end(2);
+                b.startStatement().startStaticCall(types.ExecutionTracer, "initialize");
 
-                b.startStatement().startCall("tracer", "setOutputPath");
+                b.typeLiteral(m.getTemplateType().asType());
+
+                // destination path
                 b.doubleQuote(decisionsFilePath);
-                b.end(2);
 
+                // instruction names
+                b.startNewArray(new ArrayCodeTypeMirror(context.getType(String.class)), null);
+                b.string("null");
+                for (Instruction instr : m.getInstructions()) {
+                    b.doubleQuote(instr.name);
+                }
+                b.end();
+
+                // specialization names
+
+                b.startNewArray(new ArrayCodeTypeMirror(new ArrayCodeTypeMirror(context.getType(String.class))), null);
+                b.string("null");
                 for (Instruction instr : m.getInstructions()) {
                     if (!(instr instanceof CustomInstruction)) {
+                        b.string("null");
                         continue;
                     }
 
+                    b.startNewArray(new ArrayCodeTypeMirror(context.getType(String.class)), null);
                     CustomInstruction cinstr = (CustomInstruction) instr;
-
-                    b.startStatement().startCall("tracer", "setInstructionSpecializationNames");
-                    b.doubleQuote(cinstr.name);
                     for (String name : cinstr.getSpecializationNames()) {
                         b.doubleQuote(name);
                     }
-                    b.end(2);
+                    b.end();
                 }
+                b.end();
+
+                b.end(2);
+
             }
         }
 
@@ -902,19 +915,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         String simpleName = m.getTemplateType().getSimpleName() + "Builder";
 
-        try {
-            return List.of(createBuilder(simpleName));
-        } catch (Exception e) {
-            CodeTypeElement el = GeneratorUtils.createClass(m, null, MOD_PUBLIC_ABSTRACT, simpleName, null);
-            CodeTreeBuilder b = el.createDocBuilder();
-
-            b.lineComment(e.getClass().getName() + ": " + e.getMessage());
-            for (StackTraceElement ste : e.getStackTrace()) {
-                b.lineComment("  at " + ste.toString());
-            }
-
-            return List.of(el);
-        }
+        return List.of(createBuilder(simpleName));
     }
 
 }

@@ -122,6 +122,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.operation.tracing.OperationsStatistics;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
@@ -210,6 +211,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private volatile int asynchronousStackDepth = 0;
 
     final SpecializationStatistics specializationStatistics;
+    final OperationsStatistics operationStatistics;
     Function<String, TruffleLogger> engineLoggerSupplier;   // effectively final
     private volatile TruffleLogger engineLogger;
 
@@ -309,6 +311,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.specializationStatistics = SpecializationStatistics.create();
         } else {
             this.specializationStatistics = null;
+        }
+
+        if (this.engineOptionValues.hasBeenSet(PolyglotEngineOptions.OperationsTracingState)) {
+            this.operationStatistics = OperationsStatistics.create(this.engineOptionValues.get(PolyglotEngineOptions.OperationsTracingState));
+        } else {
+            this.operationStatistics = null;
         }
 
         notifyCreated();
@@ -513,6 +521,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.specializationStatistics = SpecializationStatistics.create();
         } else {
             this.specializationStatistics = null;
+        }
+
+        if (this.engineOptionValues.hasBeenSet(PolyglotEngineOptions.OperationsTracingState)) {
+            this.operationStatistics = OperationsStatistics.create(this.engineOptionValues.get(PolyglotEngineOptions.OperationsTracingState));
+        } else {
+            this.operationStatistics = null;
         }
 
         Collection<PolyglotInstrument> instrumentsToCreate = new ArrayList<>();
@@ -1208,6 +1222,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                         }
                     }
                     getEngineLogger().log(Level.INFO, String.format("Specialization histogram: %n%s", logMessage.toString()));
+                }
+
+                if (operationStatistics != null) {
+                    operationStatistics.write();
                 }
 
                 if (!inShutdownHook) {

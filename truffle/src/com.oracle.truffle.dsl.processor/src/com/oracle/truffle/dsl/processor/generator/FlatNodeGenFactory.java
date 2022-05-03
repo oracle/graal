@@ -4732,7 +4732,7 @@ public class FlatNodeGenFactory {
                 builder.end().startElseBlock();
                 builder.startStatement().string("prev.next_ = ");
                 if (specializedIsNode) {
-                    builder.string("prev.insertAccessor");
+                    builder.string("prev.", useInsertAccessor(specialization, false));
                 }
                 builder.string("(cur.next_)").end();
 

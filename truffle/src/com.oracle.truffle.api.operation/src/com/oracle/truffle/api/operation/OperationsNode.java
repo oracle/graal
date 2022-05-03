@@ -10,7 +10,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.operation.tracing.NodeTrace;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -79,10 +78,6 @@ public abstract class OperationsNode extends Node implements InstrumentableNode,
     protected abstract Object continueAt(VirtualFrame frame, int index, int startSp);
 
     public abstract String dump();
-
-    public NodeTrace getNodeTrace() {
-        throw new UnsupportedOperationException("Operations not built with tracing");
-    }
 
     protected final void copyReparsedInfo(OperationsNode other) {
         this.sourceInfo = other.sourceInfo;

@@ -7,7 +7,6 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.BoxingEliminationBehaviour;
 
 public class SuperInstruction extends Instruction {
     private static void createResults(Instruction[] instrs, ArrayList<InputType> inputs, ArrayList<ResultType> results) {

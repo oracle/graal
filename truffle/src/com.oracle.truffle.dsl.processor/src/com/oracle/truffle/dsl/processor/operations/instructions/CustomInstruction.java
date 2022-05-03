@@ -143,6 +143,19 @@ public class CustomInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
+        if (vars.tracer != null) {
+            b.startStatement().startCall(vars.tracer, "traceActiveSpecializations");
+            b.variable(vars.bci);
+            b.variable(opcodeIdField);
+
+            b.startStaticCall(getSpecializationBits);
+            b.variable(vars.bc);
+            b.variable(vars.bci);
+            b.end();
+
+            b.end(2);
+        }
+
         if (data.getMainProperties().isVariadic) {
 
             b.declaration("int", "numVariadics", "LE_BYTES.getShort(bc, bci + " + getArgumentOffset(inputs.length - 1) + ")");
@@ -263,7 +276,6 @@ public class CustomInstruction extends Instruction {
     public void setBoxingEliminationData(int boxingEliminationBitOffset, int boxingEliminationBitMask) {
         this.boxingEliminationBitOffset = boxingEliminationBitOffset;
         this.boxingEliminationBitMask = boxingEliminationBitMask;
-
     }
 
     @Override

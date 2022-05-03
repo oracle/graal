@@ -189,6 +189,7 @@ suite = {
         "sdk:GRAAL_SDK",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
+        "com.oracle.truffle.api.operation",
       ],
       "requires" : [
         "java.logging",

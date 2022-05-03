@@ -120,6 +120,10 @@ final class PolyglotEngineOptions {
                     "Enables printing of code sharing related information to the logger. This option is intended to support debugging language implementations.")//
     static final OptionKey<Boolean> TraceCodeSharing = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
+                    "Enables and sets the state file path for Operations tracer") //
+    static final OptionKey<String> OperationsTracingState = new OptionKey<>("");
+
     enum StaticObjectStorageStrategies {
         DEFAULT,
         ARRAY_BASED,

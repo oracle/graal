@@ -30,6 +30,7 @@ public abstract class Instruction {
         public CodeVariableElement[] results;
 
         public CodeVariableElement probeNodes;
+        public CodeVariableElement tracer;
     }
 
     public static enum InputType {

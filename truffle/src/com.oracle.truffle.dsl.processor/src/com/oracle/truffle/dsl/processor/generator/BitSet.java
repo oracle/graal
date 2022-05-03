@@ -44,7 +44,6 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.createReference
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

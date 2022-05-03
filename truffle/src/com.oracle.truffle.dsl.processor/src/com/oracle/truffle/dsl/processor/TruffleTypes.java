@@ -241,8 +241,6 @@ public class TruffleTypes {
     public static final String OperationsInstrumentTreeNode_Name = "com.oracle.truffle.api.operation.OperationsInstrumentTreeNode";
     public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
     public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
-    public static final String NodeTrace_Name = "com.oracle.truffle.api.operation.tracing.NodeTrace";
-    public static final String InstructionTrace_Name = "com.oracle.truffle.api.operation.tracing.InstructionTrace";
 
     public final DeclaredType BuilderExceptionHandler = c.getDeclaredTypeOptional(BuilderExceptionHandler_Name);
     public final DeclaredType BuilderOperationData = c.getDeclaredTypeOptional(BuilderOperationData_Name);
@@ -259,8 +257,6 @@ public class TruffleTypes {
     public final DeclaredType OperationsInstrumentTreeNode = c.getDeclaredTypeOptional(OperationsInstrumentTreeNode_Name);
     public final DeclaredType Variadic = c.getDeclaredTypeOptional(Variadic_Name);
     public final DeclaredType ExecutionTracer = c.getDeclaredTypeOptional(ExecutionTracer_Name);
-    public final DeclaredType NodeTrace = c.getDeclaredTypeOptional(NodeTrace_Name);
-    public final DeclaredType InstructionTrace = c.getDeclaredTypeOptional(InstructionTrace_Name);
 
     // Library API
     public static final String EagerExportProvider_Name = "com.oracle.truffle.api.library.EagerExportProvider";
