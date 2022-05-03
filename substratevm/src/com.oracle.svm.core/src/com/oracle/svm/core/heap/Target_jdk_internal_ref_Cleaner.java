@@ -24,13 +24,19 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.lang.ref.Cleaner;
 import java.lang.ref.ReferenceQueue;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.core.thread.VMThreads;
+
+import jdk.internal.misc.InnocuousThread;
 
 @TargetClass(className = "jdk.internal.ref.Cleaner")
 public final class Target_jdk_internal_ref_Cleaner {
@@ -90,18 +96,74 @@ final class Target_jdk_internal_ref_CleanerImpl {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.ref.ReferenceQueue")//
     public ReferenceQueue<Object> queue;
+
+    /** @see #run() */
+    @Substitute
+    @TargetElement(name = "run", onlyWith = JDK11OrEarlier.class)
+    public void runJDK11() {
+        Thread t = Thread.currentThread();
+        InnocuousThread mlThread = (t instanceof InnocuousThread) ? (InnocuousThread) t : null;
+        while (!phantomCleanableList.isListEmpty() || !weakCleanableList.isListEmpty() || !softCleanableList.isListEmpty()) {
+            if (mlThread != null) {
+                mlThread.eraseThreadLocals();
+            }
+            try {
+                Cleaner.Cleanable ref = (Cleaner.Cleanable) queue.remove(60 * 1000L);
+                if (ref != null) {
+                    ref.clean();
+                }
+            } catch (Throwable e) {
+                if (VMThreads.isTearingDown()) {
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
+     * This loop executes in a daemon thread and waits until there are no more cleanables (including
+     * the {@code Cleaner} itself), ignoring {@link InterruptedException}. This blocks VM tear-down,
+     * so we add a check if the VM is tearing down here.
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    public void run() {
+        Thread t = Thread.currentThread();
+        InnocuousThread mlThread = (t instanceof InnocuousThread) ? (InnocuousThread) t : null;
+        while (!phantomCleanableList.isListEmpty()) {
+            if (mlThread != null) {
+                mlThread.eraseThreadLocals();
+            }
+            try {
+                Cleaner.Cleanable ref = (Cleaner.Cleanable) queue.remove(60 * 1000L);
+                if (ref != null) {
+                    ref.clean();
+                }
+            } catch (Throwable e) {
+                if (VMThreads.isTearingDown()) {
+                    return;
+                }
+            }
+        }
+    }
 }
 
 @TargetClass(className = "jdk.internal.ref.PhantomCleanable")
 final class Target_jdk_internal_ref_PhantomCleanable {
+    @Alias
+    native boolean isListEmpty();
 }
 
 // Removed by JDK-8251861
 @TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_ref_WeakCleanable {
+    @Alias
+    native boolean isListEmpty();
 }
 
 // Removed by JDK-8251861
 @TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_ref_SoftCleanable {
+    @Alias
+    native boolean isListEmpty();
 }
