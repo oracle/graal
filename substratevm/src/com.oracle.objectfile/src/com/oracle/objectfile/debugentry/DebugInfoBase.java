@@ -386,7 +386,7 @@ public abstract class DebugInfoBase {
         DebugLocalValueInfo[] localValueInfos = locationInfo.getLocalValueInfo();
         for (int i = 0; i < localValueInfos.length; i++) {
             DebugLocalValueInfo localValueInfo = localValueInfos[i];
-            debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo.valueString());
+            debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo);
         }
         subRange.setLocalValueInfo(localValueInfos);
         return subRange;

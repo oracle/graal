@@ -465,7 +465,7 @@ def test():
     execute("continue")
 
     exec_string = execute("info args")
-    # we canto be sure whether "this" or the argument available
+    # we cannot be sure whether "this" or argument "x" are available
     # the call to println may get inlined in which case there is no
     # guarantee that the args won't be optimized away
     rexp = [r"this = %s"%(wildcard_pattern),
@@ -503,7 +503,7 @@ def test():
             r"%sprivate:"%spaces_pattern,
             r"%sstatic void noInlineFoo\(void\);"%spaces_pattern,
             r"%sstatic void noInlineHere\(int\);"%spaces_pattern,
-            r"%sstatic void noInlineManyArgs\(int, int, int, int, int, int, int, int, int, float, float, float, float, float, float, float, float, float\);"%spaces_pattern,
+            r"%sstatic void noInlineManyArgs\(int, int, int, int, boolean, int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float\);"%spaces_pattern,
             r"%sstatic void noInlineTest\(void\);"%spaces_pattern,
             r"%sstatic void noInlineThis\(void\);"%spaces_pattern,
             r"}"]
@@ -671,25 +671,29 @@ def test():
            r"i1 = 1",
            r"i2 = 2",
            r"i3 = 3",
-           r"i4 = 4",
+           r"b4 = true",
            r"i5 = 5",
            r"i6 = 6",
-           r"i7 = 7",
+           r"l7 = 7",
            r"i8 = 8",
+           r"l9 = 9",
            r"f0 = 0",
            r"f1 = 1.125",
            r"f2 = 2.25",
            r"f3 = 3.375",
-           r"f4 = 4.5",
+           r"d4 = 4.5",
            r"f5 = 5.625",
            r"f6 = 6.75",
            r"f7 = 7.875",
-           r"f8 = 9"]
+           r"f8 = 9",
+           r"d9 = 10.125",
+           r"b10 = false",
+           r"f11 = 12.375"]
     checker = Checker('info args', rexp)
     checker.check(exec_string)
     
     exec_string = execute("x/i $pc")
-    rexp = r"=> 0x542100 <hello.Hello::noInlineManyArgs(int, int, int, int, int, int, int, int, int, float, float, float, float, float, float, float, float, float)>:	sub    $0x68,%rsp"
+    rexp = r"=> 0x542100 <hello.Hello::noInlineManyArgs(int, int, int, int, boolean int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float)>:	sub    $0x68,%rsp"
     rexp = r".*sub %s\$0x%s,%%rsp"%(spaces_pattern, hex_digits_pattern)
     checker = Checker('x/i $pc', rexp)
     checker.check(exec_string)
@@ -700,20 +704,24 @@ def test():
            r"i1 = 1",
            r"i2 = 2",
            r"i3 = 3",
-           r"i4 = 4",
+           r"b4 = true",
            r"i5 = 5",
            r"i6 = 6",
-           r"i7 = 7",
+           r"l7 = 7",
            r"i8 = 8",
+           r"l9 = 9",
            r"f0 = 0",
            r"f1 = 1.125",
            r"f2 = 2.25",
            r"f3 = 3.375",
-           r"f4 = 4.5",
+           r"d4 = 4.5",
            r"f5 = 5.625",
            r"f6 = 6.75",
            r"f7 = 7.875",
-           r"f8 = 9"]
+           r"f8 = 9",
+           r"d9 = 10.125",
+           r"b10 = false",
+           r"f11 = 12.375"]
     checker = Checker('info args 2', rexp)
     checker.check(exec_string)
 

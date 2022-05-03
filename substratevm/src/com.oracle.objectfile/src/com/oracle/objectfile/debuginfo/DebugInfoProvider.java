@@ -368,8 +368,6 @@ public interface DebugInfoProvider {
             CONSTANT
         }
 
-        String valueString();
-
         LocalKind localKind();
 
         int regIndex();

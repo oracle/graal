@@ -92,8 +92,8 @@ public class Hello {
         inlineCallChain();
         noInlineThis();
         inlineFrom();
-        noInlineManyArgs(0, 1, 2, 3, 4, 5, 6, 7, 8,
-                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F);
+        noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
+                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F,10.125D, false, 12.375F);
         System.exit(0);
     }
 
@@ -182,26 +182,30 @@ public class Hello {
     }
 
     @NeverInline("For testing purposes")
-    private static void noInlineManyArgs(int i0, int i1, int i2, int i3, int i4, int i5, int i6, int i7, int i8,
-                    float f0, float f1, float f2, float f3, float f4, float f5, float f6, float f7, float f8) {
+    private static void noInlineManyArgs(int i0, int i1, int i2, int i3, boolean b4, int i5, int i6, long l7, int i8, long l9,
+                    float f0, float f1, float f2, float f3, double d4, float f5, float f6, float f7, float f8, double d9, boolean b10, float f11) {
         System.out.println("i0 = " + i0);
         System.out.println("i1 = " + i1);
         System.out.println("i2 = " + i2);
         System.out.println("i3 = " + i3);
-        System.out.println("i4 = " + i4);
+        System.out.println("b4 = " + b4);
         System.out.println("i5 = " + i5);
         System.out.println("i6 = " + i6);
-        System.out.println("i7 = " + i7);
+        System.out.println("i7 = " + l7);
         System.out.println("i8 = " + i8);
+        System.out.println("l9 = " + l9);
         System.out.println("f0 = " + f0);
         System.out.println("f1 = " + f1);
         System.out.println("f2 = " + f2);
         System.out.println("f3 = " + f3);
-        System.out.println("f4 = " + f4);
+        System.out.println("d4 = " + d4);
         System.out.println("f5 = " + f5);
         System.out.println("f6 = " + f6);
         System.out.println("f7 = " + f7);
         System.out.println("f8 = " + f8);
+        System.out.println("d9 = " + d9);
+        System.out.println("b10 = " + b10);
+        System.out.println("f11 = " + f11);
     }
 
 }

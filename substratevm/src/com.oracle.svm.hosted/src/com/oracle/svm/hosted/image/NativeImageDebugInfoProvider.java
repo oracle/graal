@@ -94,6 +94,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -1766,7 +1767,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             for (int i = 0; i < size; i++) {
                 NativeImageDebugLocalValueInfo thisLocal = (NativeImageDebugLocalValueInfo) localInfoList.get(i);
                 NativeImageDebugLocalValueInfo thatLocal = (NativeImageDebugLocalValueInfo) that.localInfoList.get(i);
-                if (!thisLocal.sameAs(thatLocal)) {
+                if (!thisLocal.equals(thatLocal)) {
                     return null;
                 }
             }
@@ -1986,6 +1987,40 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof NativeImageDebugLocalValueInfo)) {
+                return false;
+            }
+            NativeImageDebugLocalValueInfo that = (NativeImageDebugLocalValueInfo) o;
+            // values need to have the same name
+            if (!name.equals(that.name)) {
+                return false;
+            }
+            // values need to be for the same line
+            if (line != that.line) {
+                return false;
+            }
+            // location kinds must match
+            if (localKind != that.localKind) {
+                return false;
+            }
+            // locations must match
+            switch (localKind) {
+                case REGISTER:
+                case STACKSLOT:
+                case CONSTANT:
+                    return value.equals(that.value);
+                default:
+                    return true;
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(name, value) * 31 + line;
+        }
+
+        @Override
         public String name() {
             return name;
         }
@@ -2023,14 +2058,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public String valueString() {
+        public String toString() {
             switch (localKind) {
                 case REGISTER:
                     return "reg[" + regIndex() + "]";
                 case STACKSLOT:
                     return "stack[" + stackSlot() + "]";
                 case CONSTANT:
-                    return (constantValue() != null ? constantValue().toValueString() : "null");
+                    return "constant[" + (constantValue() != null ? constantValue().toValueString() : "null") + "]";
                 default:
                     return "-";
             }
@@ -2055,25 +2090,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public JavaConstant constantValue() {
             return ((NativeImageDebugConstantValue) value).getConstant();
         }
-
-        public boolean sameAs(NativeImageDebugLocalValueInfo that) {
-            if (localKind == that.localKind) {
-                switch (localKind) {
-                    case REGISTER:
-                        return regIndex() != that.regIndex();
-                    case STACKSLOT:
-                        return stackSlot() != that.stackSlot();
-                    case CONSTANT: {
-                        Constant thisValue = constantValue();
-                        Constant thatValue = that.constantValue();
-                        return (thisValue == thatValue || (thisValue != null && thisValue.equals(thatValue)));
-                    }
-                    case UNDEFINED:
-                        return true;
-                }
-            }
-            return false;
-        }
     }
 
     public class NativeImageDebugLocalValue {
@@ -2093,6 +2109,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int getNumber() {
             return number;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof  NativeImageDebugRegisterValue)) {
+                return false;
+            }
+            NativeImageDebugRegisterValue that = (NativeImageDebugRegisterValue) o;
+            return number == that.number;
+        }
+
+        @Override
+        public int hashCode() {
+            return number * 31;
+        }
     }
 
     public class NativeImageDebugStackValue extends NativeImageDebugLocalValue {
@@ -2109,6 +2139,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int getOffset() {
             return offset;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof  NativeImageDebugStackValue)) {
+                return false;
+            }
+            NativeImageDebugStackValue that = (NativeImageDebugStackValue) o;
+            return offset == that.offset;
+        }
+
+        @Override
+        public int hashCode() {
+            return offset * 31;
+        }
     }
 
     public class NativeImageDebugConstantValue extends NativeImageDebugLocalValue {
@@ -2120,6 +2164,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         public JavaConstant getConstant() {
             return value;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof  NativeImageDebugConstantValue)) {
+                return false;
+            }
+            NativeImageDebugConstantValue that = (NativeImageDebugConstantValue) o;
+            return value .equals(that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(value);
         }
     }
 

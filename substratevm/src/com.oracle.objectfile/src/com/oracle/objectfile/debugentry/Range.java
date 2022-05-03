@@ -377,7 +377,7 @@ public class Range {
         for (int i = 0; i < localValueCount; i++) {
             DebugLocalValueInfo localValueInfo = subRange.getLocalValue(i);
             DebugLocalInfo local = subRange.getLocal(i);
-            if (local != null && localValueInfo.localKind() != DebugLocalValueInfo.LocalKind.UNDEFINED) {
+            if (local != null) {
                 switch (localValueInfo.localKind()) {
                     case REGISTER:
                     case STACKSLOT:
