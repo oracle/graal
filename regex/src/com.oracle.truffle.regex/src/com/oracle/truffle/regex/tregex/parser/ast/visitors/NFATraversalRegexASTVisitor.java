@@ -165,6 +165,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private final List<CaptureGroupEvent> captureGroupEvents;
     private final TBitSet captureGroupUpdates;
     private final TBitSet captureGroupClears;
+    private int lastGroup;
 
     private QuantifierGuardsLinkedList quantifierGuards = null;
     private QuantifierGuard[] quantifierGuardsResult = null;
@@ -214,6 +215,9 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private void clearCaptureGroups() {
         captureGroupEvents.clear();
+        captureGroupUpdates.clear();
+        captureGroupClears.clear();
+        lastGroup = -1;
     }
 
     private void pushQuantifierGuard(QuantifierGuard guard) {
@@ -342,30 +346,15 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     protected GroupBoundaries getGroupBoundaries() {
-        captureGroupUpdates.clear();
-        captureGroupClears.clear();
-        int lastGroup = -1;
-        for (CaptureGroupEvent event : captureGroupEvents) {
-            if (event.update) {
-                captureGroupUpdates.setRange(event.low, event.high);
-                captureGroupClears.clearRange(event.low, event.high);
-                if (ast.getOptions().getFlavor().usesLastGroupResultField() && event.low % 2 == 1 && event.low >= 2) {
-                    assert event.low == event.high;
-                    lastGroup = event.low / 2;
-                }
-            } else {
-                captureGroupClears.setRange(event.low, event.high);
-                captureGroupUpdates.clearRange(event.low, event.high);
-            }
-        }
         GroupBoundaries ret = ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears, lastGroup);
-        assert ret.equals(getGroupBoundariesOrig());
+        GroupBoundaries orig = getGroupBoundariesOrig();
+        assert ret.equals(orig);
         return ret;
     }
 
     private GroupBoundaries getGroupBoundariesOrig() {
-        captureGroupUpdates.clear();
-        captureGroupClears.clear();
+        TBitSet captureGroupUpdates = new TBitSet(2 * ast.getNumberOfCaptureGroups());
+        TBitSet captureGroupClears = new TBitSet(2 * ast.getNumberOfCaptureGroups());
         int lastGroup = -1;
         for (int i = 0; i < curPath.length(); i++) {
             long element = curPath.get(i);
@@ -565,10 +554,10 @@ public abstract class NFATraversalRegexASTVisitor {
         return retreat();
     }
 
-    private void popCaptureGroupEvent(CaptureGroupEvent expectedEvent) {
+    private void popCaptureGroupEvent() {
         assert !captureGroupEvents.isEmpty();
-        CaptureGroupEvent droppedEvent = captureGroupEvents.remove(captureGroupEvents.size() - 1);
-        assert droppedEvent.equals(expectedEvent);
+        CaptureGroupEvent poppedEvent = captureGroupEvents.remove(captureGroupEvents.size() - 1);
+        lastGroup = poppedEvent.undo(captureGroupUpdates, captureGroupClears, lastGroup);
     }
 
     private void popQuantifierGuard(QuantifierGuard expectedGuard) {
@@ -582,12 +571,12 @@ public abstract class NFATraversalRegexASTVisitor {
         curPath.add(createPathElement(group) | (groupAltIndex << PATH_GROUP_ALT_INDEX_OFFSET) | PATH_GROUP_ACTION_ENTER);
         // Capture groups
         if (group.isCapturing()) {
-            captureGroupEvents.add(CaptureGroupEvent.createUpdate(group.getBoundaryIndexStart()));
+            captureGroupUpdate(group.getBoundaryIndexStart());
         }
         if (!ast.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry() && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
             int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
             int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
-            captureGroupEvents.add(CaptureGroupEvent.createClear(lo, hi));
+            captureGroupClear(lo, hi);
         }
         // Quantifier guards
         if (group.hasQuantifier()) {
@@ -612,12 +601,10 @@ public abstract class NFATraversalRegexASTVisitor {
         assert pathIsGroupEnter(curPath.peek());
         // Capture groups
         if (!ast.getOptions().getFlavor().nestedCaptureGroupsKeptOnLoopReentry() && group.hasQuantifier() && group.hasEnclosedCaptureGroups()) {
-            int lo = Group.groupNumberToBoundaryIndexStart(group.getEnclosedCaptureGroupsLow());
-            int hi = Group.groupNumberToBoundaryIndexEnd(group.getEnclosedCaptureGroupsHigh() - 1);
-            popCaptureGroupEvent(CaptureGroupEvent.createClear(lo, hi));
+            popCaptureGroupEvent();
         }
         if (group.isCapturing()) {
-            popCaptureGroupEvent(CaptureGroupEvent.createUpdate(group.getBoundaryIndexStart()));
+            popCaptureGroupEvent();
         }
         // Quantifier guards
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
@@ -654,7 +641,10 @@ public abstract class NFATraversalRegexASTVisitor {
         curPath.add(createPathElement(group) | PATH_GROUP_ACTION_EXIT);
         // Capture groups
         if (group.isCapturing()) {
-            captureGroupEvents.add(CaptureGroupEvent.createUpdate(group.getBoundaryIndexEnd()));
+            captureGroupUpdate(group.getBoundaryIndexEnd());
+            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
+                lastGroupUpdate(group.getGroupNumber());
+            }
         }
         // Quantifier guards
         if (group.hasQuantifier()) {
@@ -677,7 +667,10 @@ public abstract class NFATraversalRegexASTVisitor {
         assert pathIsGroupExit(curPath.peek());
         // Capture groups
         if (group.isCapturing()) {
-            popCaptureGroupEvent(CaptureGroupEvent.createUpdate(group.getBoundaryIndexEnd()));
+            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
+                popCaptureGroupEvent();
+            }
+            popCaptureGroupEvent();
         }
         // Quantifier guards
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
@@ -751,7 +744,10 @@ public abstract class NFATraversalRegexASTVisitor {
         // Capture groups
         // TODO: Maybe we don't need this in GROUP_ESCAPE?
         if (group.isCapturing()) {
-            captureGroupEvents.add(CaptureGroupEvent.createUpdate(group.getBoundaryIndexEnd()));
+            captureGroupUpdate(group.getBoundaryIndexEnd());
+            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
+                lastGroupUpdate(group.getGroupNumber());
+            }
         }
         // Quantifier guards
         if (group.hasQuantifier()) {
@@ -773,7 +769,10 @@ public abstract class NFATraversalRegexASTVisitor {
         // Capture groups
         // TODO: Maybe we don't need this in GROUP_ESCAPE?
         if (group.isCapturing()) {
-            popCaptureGroupEvent(CaptureGroupEvent.createUpdate(group.getBoundaryIndexEnd()));
+            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
+                popCaptureGroupEvent();
+            }
+            popCaptureGroupEvent();
         }
         // Quantifier guards
         if (ast.getOptions().getFlavor().emptyChecksMonitorCaptureGroups() && group.isCapturing()) {
@@ -789,6 +788,23 @@ public abstract class NFATraversalRegexASTVisitor {
             }
         }
         curPath.pop();
+    }
+
+    private void captureGroupUpdate(int boundary) {
+        captureGroupEvents.add(new CaptureGroupEvent.CaptureGroupUpdate(boundary, captureGroupUpdates.get(boundary), captureGroupClears.get(boundary)));
+        captureGroupUpdates.set(boundary);
+        captureGroupClears.clear(boundary);
+    }
+
+    private void captureGroupClear(int low, int high) {
+        captureGroupEvents.add(new CaptureGroupEvent.CaptureGroupClears(captureGroupUpdates.copy(), captureGroupClears.copy()));
+        captureGroupClears.setRange(low, high);
+        captureGroupUpdates.clearRange(low, high);
+    }
+
+    private void lastGroupUpdate(int newLastGroup) {
+        captureGroupEvents.add(new CaptureGroupEvent.LastGroupUpdate(lastGroup));
+        lastGroup = newLastGroup;
     }
 
     private boolean retreat() {
@@ -1101,37 +1117,70 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
-    private static final class CaptureGroupEvent {
-        private final boolean update;
-        private final int low;
-        private final int high;
+    private static abstract class CaptureGroupEvent {
 
-        private CaptureGroupEvent(boolean update, int low, int high) {
-            this.update = update;
-            this.low = low;
-            this.high = high;
-        }
+        public abstract int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup);
 
-        public static CaptureGroupEvent createUpdate(int boundary) {
-            return new CaptureGroupEvent(true, boundary, boundary);
-        }
+        private static final class CaptureGroupUpdate extends CaptureGroupEvent {
 
-        public static CaptureGroupEvent createClear(int low, int high) {
-            return new CaptureGroupEvent(false, low, high);
-        }
+            private final int boundary;
+            private final boolean prevUpdate;
+            private final boolean prevClear;
 
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof  CaptureGroupEvent)) {
-                return false;
+            public CaptureGroupUpdate(int boundary, boolean prevUpdate, boolean prevClear) {
+                this.boundary = boundary;
+                this.prevUpdate = prevUpdate;
+                this.prevClear = prevClear;
             }
-            CaptureGroupEvent other = (CaptureGroupEvent) obj;
-            return this.update == other.update && this.low == other.low && this.high == other.high;
+
+            @Override
+            public int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+                if (prevUpdate) {
+                    captureGroupUpdates.set(boundary);
+                } else {
+                    captureGroupUpdates.clear(boundary);
+                }
+                if (prevClear) {
+                    captureGroupClears.set(boundary);
+                } else {
+                    captureGroupClears.clear(boundary);
+                }
+                return lastGroup;
+            }
         }
 
-        @Override
-        public int hashCode() {
-            return Objects.hash(update, low, high);
+        private static final class CaptureGroupClears extends CaptureGroupEvent {
+
+            private final TBitSet prevUpdates;
+            private final TBitSet prevClears;
+
+            public CaptureGroupClears(TBitSet prevUpdates, TBitSet prevClears) {
+                this.prevUpdates = prevUpdates;
+                this.prevClears = prevClears;
+            }
+
+            @Override
+            public int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+                captureGroupUpdates.clear();
+                captureGroupUpdates.union(prevUpdates);
+                captureGroupClears.clear();
+                captureGroupClears.union(prevClears);
+                return lastGroup;
+            }
+        }
+
+        private static final class LastGroupUpdate extends CaptureGroupEvent {
+
+            private final int prevLastGroup;
+
+            public LastGroupUpdate(int prevLastGroup) {
+                this.prevLastGroup = prevLastGroup;
+            }
+
+            @Override
+            public int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+                return prevLastGroup;
+            }
         }
     }
 }
