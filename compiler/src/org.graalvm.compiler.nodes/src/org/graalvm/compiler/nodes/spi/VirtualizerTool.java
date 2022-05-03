@@ -173,5 +173,11 @@ public interface VirtualizerTool extends CoreProviders {
 
     DebugContext getDebug();
 
+    /**
+     *
+     * Creates a deep-copy of the VirtualizerTool, snapshotting the current virtual ObjectStates.
+     *
+     * @return new VirtualizerTool, deep-copied from this.
+     */
     VirtualizerTool createSnapshot();
 }

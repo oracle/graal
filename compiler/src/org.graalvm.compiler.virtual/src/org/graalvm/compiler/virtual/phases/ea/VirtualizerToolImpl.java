@@ -207,13 +207,13 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
 
     private boolean canVirtualizeLargeByteArrayUnsafeWrite(VirtualObjectNode virtual, JavaKind accessKind, long offset) {
         return canVirtualizeLargeByteArrayUnsafeAccess() && virtual.isVirtualByteArrayAccess(this.getMetaAccessExtensionProvider(), accessKind) &&
-                        /*
-                         * Require aligned writes. Some architectures do not support recovering
-                         * writes to unaligned offsets. Since most use cases for this optimization
-                         * will write to reasonable offsets, disabling the optimization for
-                         * unreasonable ones is not that big an issue.
-                         */
-                        ((offset % accessKind.getByteCount()) == 0);
+                /*
+                 * Require aligned writes. Some architectures do not support recovering
+                 * writes to unaligned offsets. Since most use cases for this optimization
+                 * will write to reasonable offsets, disabling the optimization for
+                 * unreasonable ones is not that big an issue.
+                 */
+                ((offset % accessKind.getByteCount()) == 0);
     }
 
     int getVirtualByteCount(ValueNode[] entries, int startIndex) {
