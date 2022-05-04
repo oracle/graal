@@ -138,7 +138,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         data.setDecisionsFilePath(getMainDecisionsFilePath(typeElement, generateOperationsMirror));
 
-        AnnotationValue forceTracingValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing");
+        AnnotationValue forceTracingValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true);
 
         boolean isTracing;
         if ((boolean) forceTracingValue.getValue()) {

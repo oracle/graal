@@ -356,8 +356,6 @@ public class OperationsStatistics {
                 inst.activeSpecializationsMap.put(key, count);
             }
 
-            System.out.println(inst);
-
             return inst;
         }
 
@@ -368,10 +366,6 @@ public class OperationsStatistics {
             result.put("Use the overrides file to alter the optimisation decisions.");
             int numDecisions = 10;
             activeSpecializationsMap.entrySet().stream() //
-                            .map(e -> {
-                                System.out.println("state: " + e.getValue() + ":" + e.getKey());
-                                return e;
-                            }) //
                             .sorted((a, b) -> Long.compare(b.getValue(), a.getValue())) //
                             .limit(numDecisions) //
                             .forEachOrdered(e -> {
