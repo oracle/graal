@@ -368,7 +368,7 @@ public class OperationsBytecodeCodeGenerator {
             // b.end(2);
             // }
 
-            b.startFor().string("int handlerIndex = 0; handlerIndex < " + fldHandlers.getName() + ".length; handlerIndex++").end();
+            b.startFor().string("int handlerIndex = " + fldHandlers.getName() + ".length - 1; handlerIndex >= 0; handlerIndex--").end();
             b.startBlock();
 
             b.tree(GeneratorUtils.createPartialEvaluationConstant("handlerIndex"));

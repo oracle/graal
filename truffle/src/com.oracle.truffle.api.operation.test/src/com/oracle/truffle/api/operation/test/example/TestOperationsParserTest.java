@@ -741,4 +741,59 @@ public class TestOperationsParserTest {
 
         testOrdering(false, root, 1L, 3L, 5L);
     }
+
+    @Test
+    public void testFinallyTryNestedTryThrow() {
+        RootCallTarget root = parse(b -> {
+
+            // try { try { 1; throw; 2; } finally { 3; } } finally { 4; }
+            // expected: 1, 3, 4
+
+            b.beginFinallyTry(0);
+            {
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(4L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+
+                b.beginFinallyTry(1);
+                {
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(3L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(1L);
+                        b.endAppenderOperation();
+
+                        b.emitThrowOperation();
+
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(2L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+                }
+                b.endFinallyTry();
+            }
+            b.endFinallyTry();
+
+            b.build();
+        });
+
+        testOrdering(true, root, 1L, 3L, 4L);
+    }
 }

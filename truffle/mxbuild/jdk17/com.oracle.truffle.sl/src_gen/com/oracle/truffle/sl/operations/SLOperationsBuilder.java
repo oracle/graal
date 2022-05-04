@@ -5990,7 +5990,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                         }
                     } catch (AbstractTruffleException ex) {
                         CompilerAsserts.partialEvaluationConstant(bci);
-                        for (int handlerIndex = 0; handlerIndex < handlers.length; handlerIndex++) {
+                        for (int handlerIndex = handlers.length - 1; handlerIndex >= 0; handlerIndex--) {
                             CompilerAsserts.partialEvaluationConstant(handlerIndex);
                             BuilderExceptionHandler handler = handlers[handlerIndex];
                             if (handler.startBci > bci || handler.endBci <= bci) continue;
