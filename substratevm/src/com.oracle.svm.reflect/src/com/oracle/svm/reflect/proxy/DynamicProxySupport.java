@@ -24,18 +24,12 @@
  */
 package com.oracle.svm.reflect.proxy;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.svm.reflect.serialize.hosted.SerializationFeature;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -47,6 +41,7 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.reflect.serialize.hosted.SerializationFeature;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -207,10 +202,8 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             if (!loaded && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
-        } else {
-            if ((getCommonClassLoader(interfaces) != loader) && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
-                throw incompatibleClassLoaders(loader, interfaces);
-            }
+        } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && (getCommonClassLoader(interfaces) != loader)) {
+            throw incompatibleClassLoaders(loader, interfaces);
         }
         return clazz;
     }

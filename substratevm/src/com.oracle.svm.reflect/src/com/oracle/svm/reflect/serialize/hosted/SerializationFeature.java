@@ -40,6 +40,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -255,7 +256,7 @@ public class SerializationFeature implements Feature {
     public static void registerProxyClassForSerialization(Class<?> proxyClass) {
         proxyClasses.add(proxyClass);
     }
-    
+
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         if (ImageSingletons.contains(FallbackFeature.class)) {
@@ -519,7 +520,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private static void registerMethods(Class<?> serializationTargetClass) {
         RuntimeReflection.register(serializationTargetClass.getDeclaredMethods());
-        if (!serializationTargetClass.getName().contains("$Proxy")) {
+        // By the JDK specification, serialVersionUID for proxy classes is always 0 and it is not
+        // used during deserialization process of a proxy class
+        if (!Proxy.isProxyClass(serializationTargetClass)) {
             // computeDefaultSUID will be reflectively called at runtime to verify class consistency
             Method computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
             RuntimeReflection.register(computeDefaultSUID);
