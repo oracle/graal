@@ -422,7 +422,7 @@ public class NativeImageClassLoaderSupport {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
             } catch (UserError.UserException e) {
-                if (ModuleSupport.modulePathBuild) {
+                if (ModuleSupport.modulePathBuild && classpath().isEmpty()) {
                     throw e;
                 } else {
                     /*
