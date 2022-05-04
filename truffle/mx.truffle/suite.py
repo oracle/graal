@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.300.4",
+  "mxversion" : "6.0.1",
   "name" : "truffle",
   "version" : "22.2.0",
   "release" : False,
