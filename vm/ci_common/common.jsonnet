@@ -496,7 +496,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build.run_checks() + [
+    ] + vm.check_graalvm_base_build.run_obfuscation_checks() + vm.check_graalvm_base_build.run_structure_checks("linux", "amd64") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -521,7 +521,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build.run_checks() + [
+    ] + vm.check_graalvm_base_build.run_obfuscation_checks() + vm.check_graalvm_base_build.run_structure_checks("linux", "aarch64") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -538,7 +538,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build.run_checks("1434") + [
+    ] + vm.check_graalvm_base_build.run_obfuscation_checks() + vm.check_graalvm_base_build.run_structure_checks("darwin", "amd64") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -572,7 +572,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build.run_checks("1434") + [
+    ] + vm.check_graalvm_base_build.run_obfuscation_checks() + vm.check_graalvm_base_build.run_structure_checks("darwin", "aarch64") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -605,7 +605,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build.run_checks("857") + [
+    ] + vm.check_graalvm_base_build.run_obfuscation_checks() + vm.check_graalvm_base_build.run_structure_checks("windows", "amd64") + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
@@ -637,7 +637,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + vm.vm_profiles + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_base_build.run_checks("1039") + [
+    ] + vm.check_graalvm_base_build.run_obfuscation_checks() + [
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
