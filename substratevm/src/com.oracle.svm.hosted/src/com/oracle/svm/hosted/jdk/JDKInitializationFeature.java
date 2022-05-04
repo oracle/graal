@@ -141,6 +141,10 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.security.validator", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.x509", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.smartcardio", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("com.sun.jndi", "Core JDK classes are initialized at build time");
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            rci.initializeAtBuildTime("apple.security", "Core JDK classes are initialized at build time");
+        }
 
         rci.rerunInitialization("com.sun.jndi.dns.DnsClient", "Contains Random references, therefore can't be included in the image heap.");
         rci.rerunInitialization("sun.net.www.protocol.http.DigestAuthentication$Parameters", "Contains Random references, therefore can't be included in the image heap.");
