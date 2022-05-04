@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -353,55 +354,57 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         private void optimizeCompare(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardNode guard) {
             CountedLoopInfo countedLoop = iv.getLoop().counted();
             GuardingNode overflowGuard = countedLoop.getOverFlowGuard();
-            ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
-            LogicNode newCompare;
-            ValueNode extremum = iv.extremumNode(true, StampFactory.forKind(JavaKind.Long));
-            GuardedValueNode guardedExtremum = graph.unique(new GuardedValueNode(extremum, overflowGuard));
-            // guardedExtremum |<| longBound && iv.initNode() |<| bound
-            ValueNode y1 = longBound;
-            ValueNode y2 = bound;
-            ValueNode x1 = guardedExtremum;
-            ValueNode x2 = iv.initNode();
-            if (mirrored) {
-                // longBound |<| guardedExtremum && bound |<| iv.initNode()
-                x1 = longBound;
-                y1 = guardedExtremum;
-                x2 = bound;
-                y2 = iv.initNode();
-            }
-            LogicNode test1;
-            LogicNode test2;
-            if (compare instanceof IntegerBelowNode) {
-                test1 = graph.unique(new IntegerBelowNode(x1, y1));
-                test2 = graph.unique(new IntegerBelowNode(x2, y2));
-            } else {
-                assert compare instanceof IntegerLessThanNode;
-                test1 = graph.unique(new IntegerLessThanNode(x1, y1));
-                test2 = graph.unique(new IntegerLessThanNode(x2, y2));
-            }
-            newCompare = ShortCircuitOrNode.and(test1, guard.isNegated(), test2, guard.isNegated(), BranchProbabilityData.unknown());
+            try (DebugCloseable position = compare.withNodeSourcePosition()) {
+                ValueNode longBound = IntegerConvertNode.convert(bound, StampFactory.forKind(JavaKind.Long), graph, NodeView.DEFAULT);
+                LogicNode newCompare;
+                ValueNode extremum = iv.extremumNode(true, StampFactory.forKind(JavaKind.Long));
+                GuardedValueNode guardedExtremum = graph.unique(new GuardedValueNode(extremum, overflowGuard));
+                // guardedExtremum |<| longBound && iv.initNode() |<| bound
+                ValueNode y1 = longBound;
+                ValueNode y2 = bound;
+                ValueNode x1 = guardedExtremum;
+                ValueNode x2 = iv.initNode();
+                if (mirrored) {
+                    // longBound |<| guardedExtremum && bound |<| iv.initNode()
+                    x1 = longBound;
+                    y1 = guardedExtremum;
+                    x2 = bound;
+                    y2 = iv.initNode();
+                }
+                LogicNode test1;
+                LogicNode test2;
+                if (compare instanceof IntegerBelowNode) {
+                    test1 = graph.unique(new IntegerBelowNode(x1, y1));
+                    test2 = graph.unique(new IntegerBelowNode(x2, y2));
+                } else {
+                    assert compare instanceof IntegerLessThanNode;
+                    test1 = graph.unique(new IntegerLessThanNode(x1, y1));
+                    test2 = graph.unique(new IntegerLessThanNode(x2, y2));
+                }
+                newCompare = ShortCircuitOrNode.and(test1, guard.isNegated(), test2, guard.isNegated(), BranchProbabilityData.unknown());
 
-            /*
-             * the fact that the guard was negated was integrated in the ShortCircuitOr so it needs
-             * to be reset here
-             */
-            if (guard.isNegated()) {
-                guard.negate();
-            }
+                /*
+                 * the fact that the guard was negated was integrated in the ShortCircuitOr so it needs
+                 * to be reset here
+                 */
+                if (guard.isNegated()) {
+                    guard.negate();
+                }
 
-            boolean createLoopEnteredCheck = true;
-            if (isInverted(iv.getLoop())) {
-                createLoopEnteredCheck = false;
-            }
-            if (createLoopEnteredCheck) {
-                newCompare = createLoopEnterCheck(countedLoop, newCompare);
-            }
+                boolean createLoopEnteredCheck = true;
+                if (isInverted(iv.getLoop())) {
+                    createLoopEnteredCheck = false;
+                }
+                if (createLoopEnteredCheck) {
+                    newCompare = createLoopEnterCheck(countedLoop, newCompare);
+                }
 
-            guard.replaceFirstInput(compare, newCompare);
-            GuardingNode loopBodyGuard = MultiGuardNode.combine(guard, countedLoop.getBody());
-            for (ValueNode usage : guard.usages().filter(ValueNode.class).snapshot()) {
-                if (usage != loopBodyGuard) {
-                    usage.replaceFirstInput(guard, loopBodyGuard.asNode());
+                guard.replaceFirstInput(compare, newCompare);
+                GuardingNode loopBodyGuard = MultiGuardNode.combine(guard, countedLoop.getBody());
+                for (ValueNode usage : guard.usages().filter(ValueNode.class).snapshot()) {
+                    if (usage != loopBodyGuard) {
+                        usage.replaceFirstInput(guard, loopBodyGuard.asNode());
+                    }
                 }
             }
             graph.getOptimizationLog().report(SpeculativeGuardMovementPhase.class, "CompareOptimized", compare);
