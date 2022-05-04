@@ -183,9 +183,7 @@ public final class BytecodeOSRMetadata {
             if (beforeTransfer != null) {
                 beforeTransfer.run();
             }
-            // Note: We pass the parent frame as a parameter, so the original arguments are not
-            // preserved. In the interface, we call the OSR frame arguments undefined.
-            return callTarget.callOSR(parentFrame);
+            return callTarget.callOSR(osrNode.storeParentFrameInArguments(parentFrame));
         }
         // Case 3: code is invalid; either give up or reschedule compilation
         if (callTarget.isCompilationFailed()) {
