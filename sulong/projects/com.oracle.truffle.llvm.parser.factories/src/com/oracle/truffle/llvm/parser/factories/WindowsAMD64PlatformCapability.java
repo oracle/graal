@@ -71,7 +71,7 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
 
     @Override
     public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
-        return new LLVMMaybeVaPointer(allocaNode, vaListStackPtr);
+        return LLVMMaybeVaPointer.createWithAlloca(vaListStackPtr, allocaNode);
     }
 
     @Override
