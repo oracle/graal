@@ -3,7 +3,6 @@ package com.oracle.truffle.api.operation.test.example;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -15,7 +14,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.OperationsRootNode;
-import com.oracle.truffle.api.operation.tracing.ExecutionTracer;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 

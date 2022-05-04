@@ -13,4 +13,6 @@ public @interface GenerateOperations {
     String[] decisionOverrideFiles() default {};
 
     Class<?>[] boxingEliminationTypes() default {};
+
+    boolean forceTracing() default false;
 }

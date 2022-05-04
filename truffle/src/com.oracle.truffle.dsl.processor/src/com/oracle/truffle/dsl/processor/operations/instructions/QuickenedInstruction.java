@@ -53,7 +53,7 @@ public class QuickenedInstruction extends CustomInstruction {
         this.activeSpecNames = activeSpecNames;
 
         if (activeSpecNames.isEmpty()) {
-            data.addError("Invalid quickened instruction %s: no specializations defined.", data.getName());
+            data.addWarning("Invalid quickened instruction %s: no specializations defined.", data.getName());
             activeSpecs = null;
             return;
         }
@@ -71,7 +71,7 @@ public class QuickenedInstruction extends CustomInstruction {
             }
 
             List<String> realSpecNames = data.getNodeData().getSpecializations().stream().map(x -> x.getId()).toList();
-            data.addError("Invalid specialization id '%s' for operation %s. Expected one of %s.", activeSpec, data.getName(), realSpecNames);
+            data.addWarning("Invalid specialization id '%s' for operation %s. Expected one of %s.", activeSpec, data.getName(), realSpecNames);
             hasErrors = true;
         }
 

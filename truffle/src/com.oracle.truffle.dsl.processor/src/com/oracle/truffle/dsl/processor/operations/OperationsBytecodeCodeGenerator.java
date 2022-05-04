@@ -18,6 +18,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
+import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -99,7 +100,7 @@ public class OperationsBytecodeCodeGenerator {
         builderBytecodeNodeType.add(ctor);
 
         {
-            Set<String> copiedLibraries = new HashSet<>();
+            StaticConstants staticConstants = new StaticConstants();
             for (Instruction instr : m.getInstructions()) {
                 if (!(instr instanceof CustomInstruction)) {
                     continue;
@@ -124,7 +125,8 @@ public class OperationsBytecodeCodeGenerator {
                                 innerTypeNames, additionalData,
                                 methodNames, isVariadic,
                                 additionalDataKinds,
-                                fldConsts, cinstr, childIndices);
+                                fldConsts, cinstr, childIndices,
+                                staticConstants);
                 cinstr.setPlugs(plugs);
 
                 NodeCodeGenerator generator = new NodeCodeGenerator();
@@ -161,23 +163,6 @@ public class OperationsBytecodeCodeGenerator {
                     }
 
                     builderBytecodeNodeType.add(te);
-                }
-
-                for (VariableElement ve : ElementFilter.fieldsIn(result.getEnclosedElements())) {
-                    if (ve.getSimpleName().toString().equals("UNCACHED")) {
-                        continue;
-                    }
-                    if (!ve.getModifiers().containsAll(MOD_PRIVATE_STATIC_FINAL)) {
-                        continue;
-                    }
-
-                    if (copiedLibraries.contains(ve.getSimpleName().toString())) {
-                        continue;
-                    }
-
-                    copiedLibraries.add(ve.getSimpleName().toString());
-
-                    builderBytecodeNodeType.add(ve);
                 }
 
                 CodeExecutableElement metPrepareForAOT = null;
@@ -249,6 +234,9 @@ public class OperationsBytecodeCodeGenerator {
                 }
             }
 
+            for (CodeVariableElement element : staticConstants.elements()) {
+                builderBytecodeNodeType.add(element);
+            }
         }
 
         ExecutionVariables vars = new ExecutionVariables();

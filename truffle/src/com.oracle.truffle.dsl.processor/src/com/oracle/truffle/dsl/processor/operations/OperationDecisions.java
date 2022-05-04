@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -18,12 +19,13 @@ public class OperationDecisions {
         return quicken;
     }
 
-    public OperationDecisions merge(OperationDecisions other) {
+    public OperationDecisions merge(OperationDecisions other, MessageContainer messager) {
         for (Quicken q : other.quicken) {
             if (quicken.contains(q)) {
-                throw new AssertionError("duplicate decision");
+                messager.addWarning("Duplicate optimization decision: %s", q);
+            } else {
+                quicken.add(q);
             }
-            quicken.add(q);
         }
 
         return this;
@@ -88,10 +90,15 @@ public class OperationDecisions {
         }
     }
 
-    public static OperationDecisions deserialize(JSONArray o) {
+    public static OperationDecisions deserialize(JSONArray o, MessageContainer messager) {
         OperationDecisions decisions = new OperationDecisions();
 
         for (int i = 0; i < o.length(); i++) {
+            if (o.get(i) instanceof String) {
+                // strings are treated as comments
+                continue;
+            }
+
             JSONObject decision = o.getJSONObject(i);
 
             switch (decision.getString("type")) {
@@ -100,8 +107,8 @@ public class OperationDecisions {
                     decisions.quicken.add(q);
                     break;
                 default:
-                    // TODO error handling
-                    throw new AssertionError("invalid decision type" + decision.getString("type"));
+                    messager.addError("Invalid optimization decision: '%s'", decision.getString("type"));
+                    break;
             }
         }
 

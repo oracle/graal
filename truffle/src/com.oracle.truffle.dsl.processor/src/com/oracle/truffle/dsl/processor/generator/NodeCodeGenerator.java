@@ -79,7 +79,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     @Override
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, NodeData node) {
-        StaticConstants constants = new StaticConstants();
+        StaticConstants constants = plugs != null ? plugs.createConstants() : new StaticConstants();
         List<CodeTypeElement> rootTypes = createImpl(context, node, constants);
         if (rootTypes != null) {
             if (rootTypes.size() != 1) {

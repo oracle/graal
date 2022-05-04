@@ -21,6 +21,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateB
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.StateBitSet;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
+import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -31,12 +32,11 @@ import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
-import com.oracle.truffle.dsl.processor.model.Parameter;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
-import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 
 public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
@@ -51,6 +51,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private final CodeVariableElement fldConsts;
     private final CustomInstruction cinstr;
     private final List<Object> childIndices;
+    private final StaticConstants staticConstants;
 
     private final ProcessorContext context;
     private final TruffleTypes types;
@@ -66,7 +67,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
                     Set<String> innerTypeNames, List<Object> additionalData,
                     Set<String> methodNames, boolean isVariadic, List<DataKind> additionalDataKinds, CodeVariableElement fldConsts, CustomInstruction cinstr,
-                    List<Object> childIndices) {
+                    List<Object> childIndices, StaticConstants staticConstants) {
         this.m = m;
         this.fldBc = fldBc;
         this.fldChildren = fldChildren;
@@ -79,6 +80,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         this.fldConsts = fldConsts;
         this.cinstr = cinstr;
         this.childIndices = childIndices;
+        this.staticConstants = staticConstants;
 
         this.context = ProcessorContext.getInstance();
         this.types = context.getTypes();
@@ -711,5 +713,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         cinstr.setBoxingEliminationData(cinstr.lengthWithoutState() + bitSetOffset(targetSet), 1 << offset);
+    }
+
+    public StaticConstants createConstants() {
+        return staticConstants;
     }
 }

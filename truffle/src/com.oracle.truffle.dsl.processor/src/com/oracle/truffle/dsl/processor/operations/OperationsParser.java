@@ -138,7 +138,15 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         data.setDecisionsFilePath(getMainDecisionsFilePath(typeElement, generateOperationsMirror));
 
-        boolean isTracing = TruffleProcessorOptions.operationsEnableTracing(processingEnv);
+        AnnotationValue forceTracingValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing");
+
+        boolean isTracing;
+        if ((boolean) forceTracingValue.getValue()) {
+            isTracing = true;
+            data.addWarning("Tracing compilation is forced. This should only be used during development.");
+        } else {
+            isTracing = TruffleProcessorOptions.operationsEnableTracing(processingEnv);
+        }
 
         if (!isTracing) {
             OperationDecisions decisions = parseDecisions(typeElement, generateOperationsMirror, data);
@@ -188,12 +196,12 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             return null;
         }
 
-        List<String> overrideFiles = (List<String>) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionOverrideFiles").getValue();
+        List<AnnotationValue> overrideFiles = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionOverrideFiles").getValue();
 
-        for (String overrideFile : overrideFiles) {
-            OperationDecisions overrideDecision = parseDecisions(element, overrideFile, data, false);
+        for (AnnotationValue overrideFile : overrideFiles) {
+            OperationDecisions overrideDecision = parseDecisions(element, (String) overrideFile.getValue(), data, false);
             if (overrideDecision != null) {
-                mainDecisions.merge(overrideDecision);
+                mainDecisions.merge(overrideDecision, data);
             }
         }
 
@@ -205,7 +213,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         try {
             FileInputStream fi = new FileInputStream(target);
             JSONArray o = new JSONArray(new JSONTokener(fi));
-            return OperationDecisions.deserialize(o);
+            return OperationDecisions.deserialize(o, data);
         } catch (FileNotFoundException ex) {
             if (isMain) {
                 data.addError("Decisions file '%s' not found. Build & run with tracing to generate it.", path);

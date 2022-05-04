@@ -40,8 +40,12 @@
  */
 package com.oracle.truffle.dsl.processor.generator;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
+import javax.lang.model.element.VariableElement;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
@@ -55,6 +59,18 @@ public final class StaticConstants {
         libraries.clear();
         contextReferences.clear();
         languageReferences.clear();
+    }
+
+    public boolean contains(VariableElement ve) {
+        return libraries.containsValue(ve) || contextReferences.containsValue(ve) || languageReferences.containsValue(ve);
+    }
+
+    public List<CodeVariableElement> elements() {
+        List<CodeVariableElement> result = new ArrayList<>();
+        result.addAll(libraries.values());
+        result.addAll(contextReferences.values());
+        result.addAll(languageReferences.values());
+        return result;
     }
 
 }

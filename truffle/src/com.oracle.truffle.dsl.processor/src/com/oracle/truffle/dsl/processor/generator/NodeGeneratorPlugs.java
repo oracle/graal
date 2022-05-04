@@ -80,4 +80,6 @@ public interface NodeGeneratorPlugs {
     List<SpecializationData> filterSpecializations(List<SpecializationData> implementedSpecializations);
 
     boolean isStateGuaranteed(boolean stateGuaranteed);
+
+    StaticConstants createConstants();
 }
