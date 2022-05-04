@@ -1009,7 +1009,10 @@ public abstract class PlatformThreads {
                                 final boolean interruptedStatus = JavaThreads.isInterrupted(thread);
                                 trace.string("  thread.getName(): ").string(name)
                                                 .string("  interruptedStatus: ").bool(interruptedStatus)
-                                                .string("  getState(): ").string(status.name());
+                                                .string("  getState(): ").string(status.name()).newline();
+                                for (StackTraceElement e : thread.getStackTrace()) {
+                                    trace.string(e.toString()).newline();
+                                }
                             }
                             trace.newline().flush();
                         }
