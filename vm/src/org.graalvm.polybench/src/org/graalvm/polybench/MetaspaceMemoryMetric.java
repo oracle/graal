@@ -63,7 +63,7 @@ import org.graalvm.visualvm.lib.jfluid.heap.Instance;
  * This metric might be too slow for large heaps (>10GB). Use VisualVM or other memory inspection
  * tools for debugging regressions measured by this metric.
  */
-public final class MemoryFootprintMetric extends Metric {
+public final class MetaspaceMemoryMetric extends Metric {
 
     private final Method dumpHeap;
     private final Object dumpHeapBean; // This is the name of the HotSpot Diagnostic MBean
@@ -71,7 +71,7 @@ public final class MemoryFootprintMetric extends Metric {
     private long startHeap;
     private long startMaxContextHeap;
 
-    MemoryFootprintMetric() {
+    public MetaspaceMemoryMetric() {
         try {
             if (Launcher.isAOT()) {
                 dumpHeapBean = null;
@@ -87,11 +87,6 @@ public final class MemoryFootprintMetric extends Metric {
         } catch (Exception exp) {
             throw new RuntimeException(exp);
         }
-    }
-
-    @Override
-    public String name() {
-        return "memory-footprint";
     }
 
     @Override

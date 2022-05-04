@@ -41,12 +41,7 @@ import org.graalvm.polyglot.Value;
  * This metric might be too slow for large heaps (>10GB). Use VisualVM or other memory inspection
  * tools for debugging regressions measured by this metric.
  */
-public final class MaxContextHeapMetric extends Metric {
-
-    @Override
-    public String name() {
-        return "max-context-heap";
-    }
+public final class ApplicationMemoryMetric extends Metric {
 
     @Override
     public String unit() {

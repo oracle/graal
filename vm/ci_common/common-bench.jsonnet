@@ -88,9 +88,9 @@ local repo_config = import '../../repo-configuration.libsonnet';
 
   vm_bench_polybench_linux_memory: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
-      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=max-context-heap'],
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=metaspace-memory'],
       self.upload,
-      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=memory-footprint'],
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=application-memory'],
       self.upload,
       # We run the interprer benchmarks in both interprer and standard mode to compare allocation with and without compilation.
       self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-interpreter', '--metric=allocated-bytes'],

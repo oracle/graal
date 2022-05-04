@@ -17,20 +17,19 @@ The following options are accepted:
   --class-name <class>     
        The class name of an Espresso benchmark inside the jar specified 
        by path (only relevant when executing Java workloads).
-       
+
   --mode [interpreter | standard]
        Specified the mode which the benchmark will be running in. (default standard)
-       
 
   --metric [peak-time | compilation-time | partial-evaluation-time | one-shot | 
-            memory-footprint | max-context-heap | none] (default peak-time)
+            metaspace-memory | application-memory | none] (default peak-time)
   
   -w <N>
        The number of warmup iterations
-       
+
   -i <N>
        The number of hot iterations
-       
+
   --eval-source-only
        Indicates that the source file will be evaluated only, and the benchmark 
        execution will be skipped. It can be useful for parsing time benchmarking 
@@ -46,7 +45,7 @@ following options:
 
   --multi-context-runs=<N>
        The number of runs
-       
+
   --shared-engine=[true | false]
        Indicates whether the contexts will share a single engine. If false, the context 
        of each run will have a separate engine, otherwise all contexts will share a single 

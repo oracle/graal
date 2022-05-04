@@ -30,9 +30,6 @@ public class MetricFactory {
 
     public void loadMetric(Config config, String name) {
         switch (name) {
-            case "peak-time":
-                config.metric = new PeakTimeMetric();
-                break;
             case "none":
                 config.metric = new NoMetric();
                 break;
@@ -47,34 +44,32 @@ public class MetricFactory {
                 config.warmupIterations = 0;
                 config.iterations = 1;
                 break;
-            case "allocated-bytes":
-                config.metric = new AllocatedBytesMetric();
-                break;
-            case "max-context-heap":
-                config.metric = new MaxContextHeapMetric();
-                config.warmupIterations = 0;
-                config.iterations = 10;
-                break;
-            case "memory-footprint":
-                config.metric = new MemoryFootprintMetric();
+            case "application-memory":
+            case "metaspace-memory":
+                instantiateMetric(config, name);
                 config.warmupIterations = 0;
                 config.iterations = 10;
                 break;
             default:
-                String className = classNameFor(name);
-                try {
-                    Class<?> cls;
-                    try {
-                        cls = Class.forName("org.graalvm.polybench." + className);
-                    } catch (ClassNotFoundException e) {
-                        cls = Class.forName("com.oracle.graalvm.polybench." + className);
-                    }
-                    config.metric = (Metric) cls.getConstructor().newInstance();
-                } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException | ClassCastException | ClassNotFoundException e) {
-                    throw failureException(name, e);
-                }
+                instantiateMetric(config, name);
+                break;
         }
 
+    }
+
+    private static void instantiateMetric(Config config, String name) {
+        String className = classNameFor(name);
+        try {
+            Class<?> cls;
+            try {
+                cls = Class.forName("org.graalvm.polybench." + className);
+            } catch (ClassNotFoundException e) {
+                cls = Class.forName("com.oracle.graalvm.polybench." + className);
+            }
+            config.metric = (Metric) cls.getConstructor().newInstance();
+        } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException | ClassCastException | ClassNotFoundException e) {
+            throw failureException(name, e);
+        }
     }
 
     private static IllegalArgumentException failureException(String name, Exception e) {
