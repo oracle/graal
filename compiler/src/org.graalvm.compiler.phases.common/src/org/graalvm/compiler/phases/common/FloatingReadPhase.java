@@ -265,34 +265,36 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
         assert checkNoImmutableLocations(keys);
 
-        for (LocationIdentity key : keys) {
-            int mergedStatesCount = 0;
-            boolean isPhi = false;
-            MemoryKill merged = null;
-            for (MemoryMap state : states) {
-                MemoryKill last = state.getLastLocationAccess(key);
-                if (isPhi) {
-                    // Fortify: Suppress Null Deference false positive (`isPhi == true` implies
-                    // `merged != null`)
-                    ((MemoryPhiNode) merged).addInput(ValueNodeUtil.asNode(last));
-                } else {
-                    if (merged == last) {
-                        // nothing to do
-                    } else if (merged == null) {
-                        merged = last;
+        try (DebugCloseable position = merge.withNodeSourcePosition()) {
+            for (LocationIdentity key : keys) {
+                int mergedStatesCount = 0;
+                boolean isPhi = false;
+                MemoryKill merged = null;
+                for (MemoryMap state : states) {
+                    MemoryKill last = state.getLastLocationAccess(key);
+                    if (isPhi) {
+                        // Fortify: Suppress Null Deference false positive (`isPhi == true` implies
+                        // `merged != null`)
+                        ((MemoryPhiNode) merged).addInput(ValueNodeUtil.asNode(last));
                     } else {
-                        MemoryPhiNode phi = merge.graph().addWithoutUnique(new MemoryPhiNode(merge, key));
-                        for (int j = 0; j < mergedStatesCount; j++) {
-                            phi.addInput(ValueNodeUtil.asNode(merged));
+                        if (merged == last) {
+                            // nothing to do
+                        } else if (merged == null) {
+                            merged = last;
+                        } else {
+                            MemoryPhiNode phi = merge.graph().addWithoutUnique(new MemoryPhiNode(merge, key));
+                            for (int j = 0; j < mergedStatesCount; j++) {
+                                phi.addInput(ValueNodeUtil.asNode(merged));
+                            }
+                            phi.addInput(ValueNodeUtil.asNode(last));
+                            merged = phi;
+                            isPhi = true;
                         }
-                        phi.addInput(ValueNodeUtil.asNode(last));
-                        merged = phi;
-                        isPhi = true;
                     }
+                    mergedStatesCount++;
                 }
-                mergedStatesCount++;
+                newState.getMap().put(key, merged);
             }
-            newState.getMap().put(key, merged);
         }
         return newState;
 
@@ -354,7 +356,9 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
             }
 
             if (createMemoryMapNodes && node instanceof MemoryMapControlSinkNode) {
-                ((MemoryMapControlSinkNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));
+                try (DebugCloseable position = node.withNodeSourcePosition()) {
+                    ((MemoryMapControlSinkNode) node).setMemoryMap(node.graph().unique(new MemoryMapNode(state.getMap())));
+                }
             }
             return state;
         }
@@ -477,9 +481,11 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
 
         private static void createMemoryPhi(LoopBeginNode loop, MemoryMapImpl initialState, EconomicMap<LocationIdentity, MemoryPhiNode> phis, LocationIdentity location) {
-            MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
-            phi.addInput(ValueNodeUtil.asNode(initialState.getLastLocationAccess(location)));
-            phis.put(location, phi);
+            try (DebugCloseable position = loop.withNodeSourcePosition()) {
+                MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
+                phi.addInput(ValueNodeUtil.asNode(initialState.getLastLocationAccess(location)));
+                phis.put(location, phi);
+            }
         }
     }
 }
