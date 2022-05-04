@@ -24,8 +24,13 @@
  */
 package com.oracle.svm.reflect.proxy;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.InvocationHandler;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -100,9 +105,12 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             Class<?> clazz;
             try {
                 clazz = getJdkProxyClass(classLoader, intfs);
+                key.setClassLoader(classLoader);
             } catch (Throwable e) {
                 try {
-                    clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
+                    ClassLoader commonLoader = getCommonClassLoader(intfs);
+                    clazz = getJdkProxyClass(commonLoader, intfs);
+                    key.setClassLoader(commonLoader);
                 } catch (Throwable e2) {
                     return e;
                 }
@@ -158,7 +166,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        ProxyCacheKey key = new ProxyCacheKey(interfaces);
+        ProxyCacheKey key = new ProxyCacheKey(loader, interfaces);
         Object clazzOrError = proxyCache.get(key);
         if (clazzOrError == null) {
             throw VMError.unsupportedFeature("Proxy class defined by interfaces " + Arrays.toString(interfaces) + " not found. " +
@@ -170,6 +178,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             throw new GraalError((Throwable) clazzOrError);
         }
         Class<?> clazz = (Class<?>) clazzOrError;
+
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.
@@ -200,8 +209,10 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             if (!loaded && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
-        } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
-            throw incompatibleClassLoaders(loader, interfaces);
+        } else {
+            if ((getCommonClassLoader(interfaces) != loader) && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
+                throw incompatibleClassLoaders(loader, interfaces);
+            }
         }
         return clazz;
     }
