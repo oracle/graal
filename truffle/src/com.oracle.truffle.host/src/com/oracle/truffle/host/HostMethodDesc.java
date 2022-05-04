@@ -64,6 +64,8 @@ abstract class HostMethodDesc {
 
     abstract String getName();
 
+    abstract String getDeclaringClassName();
+
     abstract SingleMethod[] getOverloads();
 
     boolean isInternal() {
@@ -164,6 +166,11 @@ abstract class HostMethodDesc {
         @Override
         public String getName() {
             return getReflectionMethod().getName();
+        }
+
+        @Override
+        String getDeclaringClassName() {
+            return getReflectionMethod().getDeclaringClass().getName();
         }
 
         @Override
@@ -432,6 +439,11 @@ abstract class HostMethodDesc {
             }
 
             @Override
+            String getDeclaringClassName() {
+                return null;
+            }
+
+            @Override
             public String toString() {
                 return "Method[clone]";
             }
@@ -474,6 +486,11 @@ abstract class HostMethodDesc {
         @Override
         public String getName() {
             return getOverloads()[0].getName();
+        }
+
+        @Override
+        String getDeclaringClassName() {
+            return getOverloads()[0].getDeclaringClassName();
         }
 
         @Override
