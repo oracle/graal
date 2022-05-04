@@ -79,7 +79,7 @@ public class LockEliminationPhase extends Phase {
                     }
                     GraphUtil.removeFixedWithUnusedInputs(monitorEnterNode);
                     GraphUtil.removeFixedWithUnusedInputs(monitorExitNode);
-                    graph.getOptimizationLog().report(getClass(), "LockElimination", monitorEnterNode);
+                    graph.getOptimizationLog().report(getClass(), "LockCoarsened", monitorEnterNode);
                 }
             }
         }

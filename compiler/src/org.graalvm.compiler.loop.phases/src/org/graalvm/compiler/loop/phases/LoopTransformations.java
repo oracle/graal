@@ -111,7 +111,7 @@ public abstract class LoopTransformations {
         inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
         loop.loopBegin().graph().getOptimizationLog()
-                .report(LoopTransformations.class, "Peeling", loop.loopBegin())
+                .report(LoopTransformations.class, "LoopPeeling", loop.loopBegin())
                 .setProperty("peelings", loop.loopBegin().peelings());
         if (mainExit != null) {
             adaptCountedLoopExitProbability(mainExit, frequencyBefore - 1D);
@@ -148,14 +148,13 @@ public abstract class LoopTransformations {
                 try (NodeEventScope peeledScope = graph.trackNodeEvents(peeledListener)) {
                     LoopTransformations.peel(loop);
                 }
-                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After peeling loop %s", loop);
                 c.applyIncremental(graph, context, peeledListener.getNodes());
                 loop.invalidateFragmentsAndIVs();
                 for (Node n : graph.getNewNodes(newNodes)) {
                     if (n.isAlive() && (n instanceof IfNode || n instanceof SwitchNode || n instanceof FixedGuardNode || n instanceof BeginNode)) {
                         Simplifiable s = (Simplifiable) n;
                         s.simplify(defaultSimplifier);
-                        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After simplifying if %s", s);
+                        graph.getOptimizationLog().report(LoopTransformations.class, "LoopCfgSimplification", n);
                     }
                 }
                 if (graph.getNodeCount() > initialNodeCount + MaximumDesiredSize.getValue(graph.getOptions()) * 2 ||
@@ -168,7 +167,7 @@ public abstract class LoopTransformations {
         // Canonicalize with the original canonicalizer to capture all simplifications
         canonicalizer.applyIncremental(graph, context, l.getNodes());
         loop.loopBegin().graph().getOptimizationLog()
-                .report(LoopTransformations.class, "FullUnroll", loop.loopBegin());
+                .report(LoopTransformations.class, "LoopFullUnroll", loop.loopBegin());
     }
 
     public static void unswitch(LoopEx loop, List<ControlSplitNode> controlSplitNodeSet, boolean isTrivialUnswitch) {
@@ -179,10 +178,6 @@ public abstract class LoopTransformations {
         if (!isTrivialUnswitch) {
             loop.loopBegin().incrementUnswitches();
         }
-
-        loop.loopBegin().graph().getOptimizationLog()
-                .report(LoopTransformations.class, "Unswitch", loop.loopBegin())
-                .setProperty("unswitches", loop.loopBegin().unswitches());
 
         // create new control split out of loop
         ControlSplitNode newControlSplit = (ControlSplitNode) firstNode.copyWithInputs();
@@ -228,16 +223,19 @@ public abstract class LoopTransformations {
         }
 
         // TODO (gd) probabilities need some amount of fixup.. (probably also in other transforms)
+        loop.loopBegin().graph().getOptimizationLog()
+                .report(LoopTransformations.class, "LoopUnswitching", loop.loopBegin())
+                .setProperty("unswitches", loop.loopBegin().unswitches());
     }
 
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
-        loop.loopBegin().graph().getOptimizationLog()
-                .report(LoopTransformations.class, "PartialUnroll", loop.loopBegin())
-                .setProperty("unrollFactor", loop.loopBegin().getUnrollFactor());
         adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
+        loop.loopBegin().graph().getOptimizationLog()
+                .report(LoopTransformations.class, "LoopPartialUnroll", loop.loopBegin())
+                .setProperty("unrollFactor", loop.loopBegin().getUnrollFactor());
     }
 
     /**

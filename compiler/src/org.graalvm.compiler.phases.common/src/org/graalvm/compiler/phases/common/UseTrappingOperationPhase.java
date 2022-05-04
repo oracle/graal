@@ -225,7 +225,7 @@ public abstract class UseTrappingOperationPhase extends BasePhase<LowTierContext
             // Need to add a null check node.
             trappingVersionNode = createImplicitNode(graph, condition, deoptReasonAndAction, deoptSpeculation);
             graph.replaceSplit(ifNode, trappingVersionNode, nonTrappingContinuation);
-            debug.log("Inserted NullCheckNode %s", trappingVersionNode);
+            graph.getOptimizationLog().report(getClass(), "InsertedNullCheck", ifNode);
         }
         trappingVersionNode.setStateBefore(deopt.stateBefore());
         actionBeforeGuardRewrite(trappingVersionNode);
