@@ -105,12 +105,10 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             Class<?> clazz;
             try {
                 clazz = getJdkProxyClass(classLoader, intfs);
-                key.setClassLoader(classLoader);
             } catch (Throwable e) {
                 try {
                     ClassLoader commonLoader = getCommonClassLoader(intfs);
                     clazz = getJdkProxyClass(commonLoader, intfs);
-                    key.setClassLoader(commonLoader);
                 } catch (Throwable e2) {
                     return e;
                 }
@@ -166,7 +164,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
-        ProxyCacheKey key = new ProxyCacheKey(loader, interfaces);
+        ProxyCacheKey key = new ProxyCacheKey(interfaces);
         Object clazzOrError = proxyCache.get(key);
         if (clazzOrError == null) {
             throw VMError.unsupportedFeature("Proxy class defined by interfaces " + Arrays.toString(interfaces) + " not found. " +
