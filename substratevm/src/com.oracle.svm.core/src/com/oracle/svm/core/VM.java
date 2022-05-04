@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,15 +32,13 @@ import com.oracle.svm.core.util.VMError;
 
 public final class VM {
 
+    public final String graalVMVersion;
     public final String version;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VM(String config) {
-        String versionStr = System.getProperty("org.graalvm.version");
-        VMError.guarantee(versionStr != null);
-        versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
-        versionStr += " " + config;
-        version = versionStr;
+        graalVMVersion = System.getProperty("org.graalvm.version");
+        VMError.guarantee(graalVMVersion != null);
+        version = String.format("GraalVM %s Java %s %s", graalVMVersion, JavaVersionUtil.JAVA_SPEC, config);
     }
 }

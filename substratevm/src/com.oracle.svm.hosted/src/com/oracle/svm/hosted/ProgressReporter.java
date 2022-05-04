@@ -82,7 +82,6 @@ public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
-    private static final int MAX_NUM_FEATURES = 50;
     private static final int MAX_NUM_BREAKDOWN = 10;
     private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
     private static final String HEAP_BREAKDOWN_TITLE = String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN);
@@ -258,21 +257,36 @@ public class ProgressReporter {
         }
     }
 
-    public void printFeatures(List<String> list) {
-        int numUserFeatures = list.size();
-        if (numUserFeatures > 0) {
-            l().a(" ").a(numUserFeatures).a(" ").doclink("user-provided feature(s)", "#glossary-user-provided-features").println();
-            if (numUserFeatures <= MAX_NUM_FEATURES) {
-                for (String name : list) {
-                    l().a("  - ").a(name).println();
-                }
-            } else {
-                for (int i = 0; i < MAX_NUM_FEATURES; i++) {
-                    l().a("  - ").a(list.get(i)).println();
-                }
-                l().a("  ... ").a(numUserFeatures - MAX_NUM_FEATURES).a(" more").println();
+    public void printFeatures(List<Feature> features) {
+        int numFeatures = features.size();
+        if (numFeatures > 0) {
+            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").println();
+            String graalVMVersion = ImageSingletons.lookup(VM.class).graalVMVersion;
+            features.sort((a, b) -> a.getClass().getName().compareTo(b.getClass().getName()));
+            for (Feature feature : features) {
+                printFeature(l(), feature, graalVMVersion);
             }
         }
+    }
+
+    private static void printFeature(DirectPrinter printer, Feature feature, String graalVMVersion) {
+        printer.a(" - ");
+        String name = feature.getClass().getName();
+        String url = feature.getURL();
+        if (url != null) {
+            printer.link(name, url);
+        } else {
+            printer.a(name);
+        }
+        String version = feature.getVersion();
+        if (version != null) {
+            printer.a(" (").a(version == Feature.GRAALVM_VERSION ? graalVMVersion : version).a(")");
+        }
+        String description = feature.getDescription();
+        if (description != null) {
+            printer.a(": ").a(description);
+        }
+        printer.println();
     }
 
     public ReporterClosable printAnalysis(BigBang bb) {

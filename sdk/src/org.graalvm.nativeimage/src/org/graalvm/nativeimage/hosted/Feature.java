@@ -87,6 +87,53 @@ import org.graalvm.nativeimage.Platforms;
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 public interface Feature {
+    static final String GRAALVM_VERSION = "<graalvm-version-placeholder (resolves to something like `22.2.0`)>";
+
+    /**
+     * A URL to documentation or the sources of the feature.
+     *
+     * The URL will be used as a link for the feature in the build output (if supported by the
+     * user's terminal).
+     *
+     * @since 22.2
+     */
+    default String getURL() {
+        return null;
+    }
+
+    /**
+     * The version of the feature.
+     *
+     * The version is displayed to users as part of the build output. Return
+     * #{@link Feature#GRAALVM_VERSION} for the current GraalVM version.
+     *
+     * @since 22.2
+     */
+    default String getVersion() {
+        return null;
+    }
+
+    /**
+     * A short description of the feature (e.g., "Enables Truffle support").
+     *
+     * The description is displayed to users as part of the build output.
+     *
+     * @since 22.2
+     */
+    default String getDescription() {
+        return null;
+    }
+
+    /**
+     * Returns true if the feature should be considered to be internal.
+     *
+     * Internal features are not listed as part of the build output.
+     *
+     * @since 22.2
+     */
+    default boolean isInternal() {
+        return false;
+    }
 
     /**
      * Access methods that are available for all feature methods.
@@ -105,10 +152,10 @@ public interface Feature {
 
         /**
          * Returns the class path of the native image that is currently built.
-         * 
+         *
          * The returned list does not include the native image generator itself, and does not
          * include the JDK.
-         * 
+         *
          * @since 20.2
          */
         List<Path> getApplicationClassPath();
@@ -362,7 +409,7 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#beforeUniverseBuilding}.
-     * 
+     *
      * @since 21.1
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -548,9 +595,9 @@ public interface Feature {
     /**
      * Handler for code that needs to run before universe building, but after hosted meta-access has
      * been created.
-     * 
+     *
      * @param access The supported operations that the feature can perform at this time
-     * 
+     *
      * @since 21.1
      */
     default void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {

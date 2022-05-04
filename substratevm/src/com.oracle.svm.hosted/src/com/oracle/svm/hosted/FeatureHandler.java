@@ -204,7 +204,7 @@ public class FeatureHandler {
         ClassLoaderSupport classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
         List<String> userEnabledFeatures = Options.userEnabledFeatures();
         return featureInstances.stream()
-                        .filter(f -> classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName()))
+                        .filter(f -> !f.isInternal() && (classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName())))
                         .collect(Collectors.toList());
     }
 }
