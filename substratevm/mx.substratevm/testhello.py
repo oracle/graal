@@ -156,7 +156,7 @@ def test():
         can_print_data = True
 
     isolates = False
-    if os.environ.get('debuginfotest.isolates', 'no') == 'yes':
+    if os.environ.get('debuginfotest_isolates', 'no') == 'yes':
         isolates = True
         
     if isolates:
@@ -496,6 +496,7 @@ def test():
             r"%sstatic void inlineMee\(void\);"%spaces_pattern,
             r"%sstatic void inlineMixTo\(int\);"%spaces_pattern,
             r"%sstatic void inlineMoo\(void\);"%spaces_pattern,
+            r"%sstatic void inlineReceiveConstants\(byte, int, long, java\.lang\.String \*, float, double\);"%spaces_pattern,
             r"%sstatic void inlineTailRecursion\(int\);"%spaces_pattern,
             r"%sstatic void inlineTo\(int\);"%spaces_pattern,
             r"%spublic:"%spaces_pattern,
@@ -504,6 +505,7 @@ def test():
             r"%sstatic void noInlineFoo\(void\);"%spaces_pattern,
             r"%sstatic void noInlineHere\(int\);"%spaces_pattern,
             r"%sstatic void noInlineManyArgs\(int, int, int, int, boolean, int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float\);"%spaces_pattern,
+            r"%sstatic void noInlinePassConstants\(void\);"%spaces_pattern,
             r"%sstatic void noInlineTest\(void\);"%spaces_pattern,
             r"%sstatic void noInlineThis\(void\);"%spaces_pattern,
             r"}"]
@@ -524,13 +526,13 @@ def test():
 
     # list inlineIs and inlineA and check that the listing maps to the inlined code instead of the actual code,
     # although not ideal this is how GDB treats inlined code in C/C++ as well
-    rexp = [r"127%sinlineA\(\);"%spaces_pattern]
+    rexp = [r"128%sinlineA\(\);"%spaces_pattern]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
-    rexp = [r'file: "hello/Hello\.java", line number: 132, symbol: "hello\.Hello::inlineA"',
-            r"132%snoInlineTest\(\);"%spaces_pattern,
-            r'file: "hello/Hello\.java", line number: 133, symbol: "hello\.Hello::inlineA"',
-            r"133%s}"%spaces_pattern]
+    rexp = [r'file: "hello/Hello\.java", line number: 133, symbol: "hello\.Hello::inlineA"',
+            r"133%snoInlineTest\(\);"%spaces_pattern,
+            r'file: "hello/Hello\.java", line number: 134, symbol: "hello\.Hello::inlineA"',
+            r"134%s}"%spaces_pattern]
     checker = Checker('list inlineA', rexp)
     checker.check(execute("list inlineA"))
 
@@ -543,38 +545,38 @@ def test():
 
     execute("continue")
     exec_string = execute("list")
-    rexp = [r"127%sinlineA\(\);"%spaces_pattern]
+    rexp = [r"128%sinlineA\(\);"%spaces_pattern]
     checker = Checker('hit break at inlineIs', rexp)
     checker.check(exec_string, skip_fails=False)
     execute("step")
     exec_string = execute("list")
-    rexp = [r"132%snoInlineTest\(\);"%spaces_pattern]
+    rexp = [r"133%snoInlineTest\(\);"%spaces_pattern]
     checker = Checker('step in inlineA', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 4")
-    rexp = [r"#0%shello\.Hello::inlineA \(\) at hello/Hello\.java:132"%spaces_pattern,
-            r"#1%shello\.Hello::inlineIs \(\) at hello/Hello\.java:127"%spaces_pattern,
-            r"#2%shello\.Hello::noInlineThis\(void\) \(\) at hello/Hello\.java:122"%spaces_pattern,
+    rexp = [r"#0%shello\.Hello::inlineA \(\) at hello/Hello\.java:133"%spaces_pattern,
+            r"#1%shello\.Hello::inlineIs \(\) at hello/Hello\.java:128"%spaces_pattern,
+            r"#2%shello\.Hello::noInlineThis\(void\) \(\) at hello/Hello\.java:123"%spaces_pattern,
             r"#3%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:93"%(spaces_pattern, address_pattern, arg_values_pattern)]
     checker = Checker('backtrace inlineMee', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
     exec_string = execute("break hello.Hello::noInlineTest")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 137\."%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 138\."%(digits_pattern, address_pattern)
     checker = Checker('break noInlineTest', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("continue")
     exec_string = execute("list")
-    rexp = r"137%sSystem.out.println\(\"This is a test\"\);"%spaces_pattern
+    rexp = r"138%sSystem.out.println\(\"This is a test\"\);"%spaces_pattern
     checker = Checker('hit breakpoint in noInlineTest', rexp)
     checker.check(exec_string, skip_fails=False)
     exec_string = execute("backtrace 5")
-    rexp = [r"#0%shello\.Hello::noInlineTest\(void\) \(\) at hello/Hello\.java:137"%(spaces_pattern),
-            r"#1%s%s in hello\.Hello::inlineA \(\) at hello/Hello\.java:132"%(spaces_pattern, address_pattern),
-            r"#2%shello\.Hello::inlineIs \(\) at hello/Hello\.java:127"%(spaces_pattern),
-            r"#3%shello\.Hello::noInlineThis\(void\) \(\) at hello/Hello\.java:122"%(spaces_pattern),
+    rexp = [r"#0%shello\.Hello::noInlineTest\(void\) \(\) at hello/Hello\.java:138"%(spaces_pattern),
+            r"#1%s%s in hello\.Hello::inlineA \(\) at hello/Hello\.java:133"%(spaces_pattern, address_pattern),
+            r"#2%shello\.Hello::inlineIs \(\) at hello/Hello\.java:128"%(spaces_pattern),
+            r"#3%shello\.Hello::noInlineThis\(void\) \(\) at hello/Hello\.java:123"%(spaces_pattern),
             r"#4%s%s in hello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:93"%(spaces_pattern, address_pattern, arg_values_pattern)]
     checker = Checker('backtrace in inlineMethod', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -582,86 +584,86 @@ def test():
     execute("delete breakpoints")
     # Set breakpoint at method with inline and not-inlined invocation in same line
     exec_string = execute("break hello.Hello::inlineFrom")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 143."%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 144."%(digits_pattern, address_pattern)
     checker = Checker('break inlineFrom', rexp)
     checker.check(exec_string, skip_fails=False)
 
     exec_string = execute("info break 6")
-    rexp = [r"6%sbreakpoint%skeep%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:143"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, address_pattern)]
+    rexp = [r"6%sbreakpoint%skeep%sy%s%s in hello\.Hello::inlineFrom at hello/Hello\.java:144"%(spaces_pattern, spaces_pattern, spaces_pattern, spaces_pattern, address_pattern)]
     checker = Checker('info break inlineFrom', rexp)
     checker.check(exec_string)
 
     execute("delete breakpoints")
     exec_string = execute("break Hello.java:159")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 159\."%(digits_pattern, address_pattern)
-    checker = Checker('break Hello.java:157', rexp)
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 160\."%(digits_pattern, address_pattern)
+    checker = Checker('break Hello.java:158', rexp)
     checker.check(exec_string)
 
     execute("continue 5")
     exec_string = execute("backtrace 14")
-    rexp = [r"#0%shello\.Hello::inlineMixTo %s at hello/Hello\.java:159"%(spaces_pattern, arg_values_pattern),
-            r"#1%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:151"%(spaces_pattern, arg_values_pattern),
-            r"#2%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:157"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#3%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:151"%(spaces_pattern, arg_values_pattern),
-            r"#4%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:157"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#5%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:151"%(spaces_pattern, arg_values_pattern),
-            r"#6%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:157"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#7%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:151"%(spaces_pattern, arg_values_pattern),
-            r"#8%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:157"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#9%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:151"%(spaces_pattern, arg_values_pattern),
-            r"#10%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:157"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#11%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:151"%(spaces_pattern, arg_values_pattern),
-            r"#12%s%s in hello\.Hello::inlineFrom \(\) at hello/Hello\.java:143"%(spaces_pattern, address_pattern),
+    rexp = [r"#0%shello\.Hello::inlineMixTo %s at hello/Hello\.java:160"%(spaces_pattern, arg_values_pattern),
+            r"#1%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:152"%(spaces_pattern, arg_values_pattern),
+            r"#2%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#3%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:152"%(spaces_pattern, arg_values_pattern),
+            r"#4%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#5%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:152"%(spaces_pattern, arg_values_pattern),
+            r"#6%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#7%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:152"%(spaces_pattern, arg_values_pattern),
+            r"#8%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#9%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:152"%(spaces_pattern, arg_values_pattern),
+            r"#10%s%s in hello\.Hello::inlineMixTo %s at hello/Hello\.java:158"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#11%shello\.Hello::noInlineHere\(int\) %s at hello/Hello\.java:152"%(spaces_pattern, arg_values_pattern),
+            r"#12%s%s in hello\.Hello::inlineFrom \(\) at hello/Hello\.java:144"%(spaces_pattern, address_pattern),
             r"#13%shello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:94"%(spaces_pattern, arg_values_pattern)]
     checker = Checker('backtrace in recursive inlineMixTo', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
-    exec_string = execute("break Hello.java:172")
-    rexp = r"Breakpoint %s at %s: Hello\.java:172\. \(2 locations\)"%(digits_pattern, address_pattern)
-    checker = Checker('break Hello.java:172', rexp)
+    exec_string = execute("break Hello.java:173")
+    rexp = r"Breakpoint %s at %s: Hello\.java:173\. \(2 locations\)"%(digits_pattern, address_pattern)
+    checker = Checker('break Hello.java:173', rexp)
     checker.check(exec_string)
 
     execute("continue")
     exec_string = execute("backtrace 14")
-    rexp = [r"#0%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:172"%(spaces_pattern, arg_values_pattern),
-            r"#1%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:164"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#2%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:170"%(spaces_pattern, arg_values_pattern),
-            r"#3%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:164"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#4%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:170"%(spaces_pattern, arg_values_pattern),
-            r"#5%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:164"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#6%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:170"%(spaces_pattern, arg_values_pattern),
-            r"#7%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:164"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#8%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:170"%(spaces_pattern, arg_values_pattern),
-            r"#9%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:164"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#10%shello\.Hello::inlineTo %s at hello/Hello\.java:170"%(spaces_pattern, arg_values_pattern),
-            r"#11%shello\.Hello::inlineHere %s at hello/Hello\.java:164"%(spaces_pattern, arg_values_pattern),
-            r"#12%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:145"%(spaces_pattern),
+    rexp = [r"#0%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:173"%(spaces_pattern, arg_values_pattern),
+            r"#1%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#2%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
+            r"#3%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#4%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
+            r"#5%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#6%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
+            r"#7%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#8%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
+            r"#9%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#10%shello\.Hello::inlineTo %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
+            r"#11%shello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, arg_values_pattern),
+            r"#12%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:146"%(spaces_pattern),
             r"#13%shello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:94"%(spaces_pattern, arg_values_pattern)]
     checker = Checker('backtrace in recursive inlineTo', rexp)
     checker.check(exec_string, skip_fails=False)
 
     execute("delete breakpoints")
-    exec_string = execute("break Hello.java:178")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 178\."%(digits_pattern, address_pattern)
+    exec_string = execute("break Hello.java:179")
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 179\."%(digits_pattern, address_pattern)
     checker = Checker('break Hello.java:178', rexp)
     checker.check(exec_string)
 
     execute("continue 5")
     exec_string = execute("backtrace 8")
-    rexp = [r"#0%shello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:178"%(spaces_pattern, arg_values_pattern),
-            r"#1%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:181"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#2%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:181"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#3%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:181"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#4%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:181"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#5%s%s in hello\.Hello::inlineTailRecursion %s at hello/Hello\.java:181"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#6%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:146"%(spaces_pattern),
+    rexp = [r"#0%shello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:179"%(spaces_pattern, arg_values_pattern),
+            r"#1%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#2%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#3%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#4%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#5%s%s in hello\.Hello::inlineTailRecursion %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#6%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:147"%(spaces_pattern),
             r"#7%shello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:94"%(spaces_pattern, arg_values_pattern)]
     checker = Checker('backtrace in recursive inlineTo', rexp)
     checker.check(exec_string, skip_fails=False)
 
     exec_string = execute("break hello.Hello::noInlineManyArgs")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 187\."%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 188\."%(digits_pattern, address_pattern)
     checker = Checker('break hello.Hello::noInlineManyArgs', rexp)
     checker.check(exec_string)
 
@@ -724,6 +726,47 @@ def test():
            r"f11 = 12.375"]
     checker = Checker('info args 2', rexp)
     checker.check(exec_string)
+
+    execute("delete breakpoints");
+
+    exec_string = execute("break hello.Hello::inlineReceiveConstants")
+    rexp = r"Breakpoint %s at %s: hello\.Hello::inlineReceiveConstants\. \(%s locations\)"%(digits_pattern, address_pattern, digits_pattern)
+    checker = Checker('break hello.Hello::inlineReceiveConstants', rexp)
+    checker.check(exec_string)
+
+    execute("continue")
+
+    exec_string = execute("info args")
+    rexp =[r"b = 1 '\\001'",
+           r"i = 2",
+           r"l = 3",
+           r"s = %s"%(address_pattern),
+           r"f = 4",
+           r"d = 5"]
+    checker = Checker('info args 3', rexp)
+    checker.check(exec_string)
+
+    execute("set print elements 10")
+    exec_string = execute("x/s s->value->data");
+    execute("set print elements unlimited")
+    rexp=[r'%s:%s"stringtext"'%(address_pattern, spaces_pattern)];
+    checker = Checker('x/s s->value->data', rexp)
+    checker.check(exec_string, skip_fails=True)
+
+    exec_string = execute("next 3")
+    exec_string = execute("info locals")
+    rexp =[r"n = 6",
+           r"q = 20",
+           r"t = %s"%(address_pattern)]
+    checker = Checker('info locals 3', rexp)
+    checker.check(exec_string)
+
+    execute("set print elements 11")
+    exec_string = execute("x/s t->value->data");
+    execute("set print elements unlimited")
+    rexp=[r'%s:%s"stringtext!"'%(address_pattern, spaces_pattern)];
+    checker = Checker('x/s t->value->data', rexp)
+    checker.check(exec_string, skip_fails=True)
 
     print(execute("quit 0"))
 

@@ -94,6 +94,7 @@ public class Hello {
         inlineFrom();
         noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
                         0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
+        noInlinePassConstants();
         System.exit(0);
     }
 
@@ -208,4 +209,24 @@ public class Hello {
         System.out.println("f11 = " + f11);
     }
 
+    @NeverInline("For testing purposes")
+    private static void noInlinePassConstants() {
+        inlineReceiveConstants((byte) 1, 2, 3L, "stringtext", 4.0F, 5.0D);
+    }
+
+    @AlwaysInline("For testing purposes")
+    private static void inlineReceiveConstants(byte b, int i, long l, String s, float f, double d) {
+        long n = i * l;
+        double q = f * d;
+        String t = s + "!";
+        System.out.println(String.format("b = %d\n", b));
+        System.out.println(String.format("i = %d\n", i));
+        System.out.println(String.format("l = %d\n", l));
+        System.out.println(String.format("s = %s\n", s));
+        System.out.println(String.format("f = %g\n", f));
+        System.out.println(String.format("d = %g\n", d));
+        System.out.println(String.format("n = %d\n", n));
+        System.out.println(String.format("q = %g\n", q));
+        System.out.println(String.format("t = %s\n", t));
+    }
 }
