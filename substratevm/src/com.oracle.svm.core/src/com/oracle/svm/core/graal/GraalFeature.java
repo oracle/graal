@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ public interface GraalFeature extends Feature {
 
     /**
      * Called to register foreign calls.
-     * 
+     *
      * @param foreignCalls The foreign call registry to add to.
      *
      */
@@ -74,7 +74,7 @@ public interface GraalFeature extends Feature {
     /**
      * Called to register lowering providers for static analysis, ahead-of-time compilation, and
      * runtime compilation.
-     * 
+     *
      * @param runtimeConfig The runtime configuration.
      * @param options The initial option values.
      * @param providers Providers that the lowering can use.
@@ -104,5 +104,16 @@ public interface GraalFeature extends Feature {
      * @param runtimeConfig The runtime configuration.
      */
     default void registerCodeObserver(RuntimeConfiguration runtimeConfig) {
+    }
+
+    /**
+     * Returns true if the feature should be hidden from users.
+     *
+     * Hidden features are not listed as part of the build output.
+     *
+     * @since 22.2
+     */
+    default boolean isHidden() {
+        return false;
     }
 }

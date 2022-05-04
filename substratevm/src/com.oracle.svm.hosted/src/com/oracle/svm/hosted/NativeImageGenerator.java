@@ -555,7 +555,7 @@ public class NativeImageGenerator {
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
-            reporter.printFeatures(featureHandler.getUserFeatureNames());
+            reporter.printFeatures(featureHandler.getUserSpecificFeatures());
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {

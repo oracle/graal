@@ -89,6 +89,29 @@ import org.graalvm.nativeimage.Platforms;
 public interface Feature {
 
     /**
+     * A URL to documentation or the sources of the feature.
+     *
+     * The URL will be used as a link for the feature in the build output (if supported by the
+     * user's terminal).
+     *
+     * @since 22.2
+     */
+    default String getURL() {
+        return null;
+    }
+
+    /**
+     * A short description of the feature (e.g., "Enables Truffle support").
+     *
+     * The description is displayed to users as part of the build output.
+     *
+     * @since 22.2
+     */
+    default String getDescription() {
+        return null;
+    }
+
+    /**
      * Access methods that are available for all feature methods.
      *
      * @since 19.0
@@ -105,10 +128,10 @@ public interface Feature {
 
         /**
          * Returns the class path of the native image that is currently built.
-         * 
+         *
          * The returned list does not include the native image generator itself, and does not
          * include the JDK.
-         * 
+         *
          * @since 20.2
          */
         List<Path> getApplicationClassPath();
@@ -362,7 +385,7 @@ public interface Feature {
 
     /**
      * Access methods available for {@link Feature#beforeUniverseBuilding}.
-     * 
+     *
      * @since 21.1
      */
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -548,9 +571,9 @@ public interface Feature {
     /**
      * Handler for code that needs to run before universe building, but after hosted meta-access has
      * been created.
-     * 
+     *
      * @param access The supported operations that the feature can perform at this time
-     * 
+     *
      * @since 21.1
      */
     default void beforeUniverseBuilding(BeforeUniverseBuildingAccess access) {

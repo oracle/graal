@@ -83,8 +83,8 @@ The garbage collector used within the generated image:
 
 For more information see the [docs on Memory Management at Image Run Time][doc_mem_mgmt].
 
-#### <a name="glossary-user-provided-features"></a>User-provided Features
-All [`Features`][jdoc_feature] that are provided by the user or implicitly registered for the user, for example, by a framework.
+#### <a name="glossary-user-specific-features"></a>User-specific Features
+All [`Features`][jdoc_feature] that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
 GraalVM Native Image deploys a number of internal features, which are excluded from this list.
 
 ### <a name="stage-analysis"></a>Performing Analysis

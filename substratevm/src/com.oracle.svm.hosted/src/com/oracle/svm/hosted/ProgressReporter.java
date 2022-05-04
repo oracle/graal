@@ -88,7 +88,6 @@ public class ProgressReporter {
     private static final String LINE_SEPARATOR;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
-    private static final int MAX_NUM_FEATURES = 50;
     private static final int MAX_NUM_BREAKDOWN = 10;
     private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
     private static final String HEAP_BREAKDOWN_TITLE = String.format("Top %d object types in image heap:", MAX_NUM_BREAKDOWN);
@@ -268,21 +267,31 @@ public class ProgressReporter {
         }
     }
 
-    public void printFeatures(List<String> list) {
-        int numUserFeatures = list.size();
-        if (numUserFeatures > 0) {
-            l().a(" ").a(numUserFeatures).a(" ").doclink("user-provided feature(s)", "#glossary-user-provided-features").println();
-            if (numUserFeatures <= MAX_NUM_FEATURES) {
-                for (String name : list) {
-                    l().a("  - ").a(name).println();
-                }
-            } else {
-                for (int i = 0; i < MAX_NUM_FEATURES; i++) {
-                    l().a("  - ").a(list.get(i)).println();
-                }
-                l().a("  ... ").a(numUserFeatures - MAX_NUM_FEATURES).a(" more").println();
+    public void printFeatures(List<Feature> features) {
+        int numFeatures = features.size();
+        if (numFeatures > 0) {
+            l().a(" ").a(numFeatures).a(" ").doclink("user-specific feature(s)", "#glossary-user-specific-features").println();
+            features.sort((a, b) -> a.getClass().getName().compareTo(b.getClass().getName()));
+            for (Feature feature : features) {
+                printFeature(l(), feature);
             }
         }
+    }
+
+    private static void printFeature(DirectPrinter printer, Feature feature) {
+        printer.a(" - ");
+        String name = feature.getClass().getName();
+        String url = feature.getURL();
+        if (url != null) {
+            printer.link(name, url);
+        } else {
+            printer.a(name);
+        }
+        String description = feature.getDescription();
+        if (description != null) {
+            printer.a(": ").a(description);
+        }
+        printer.println();
     }
 
     public ReporterClosable printAnalysis(BigBang bb) {
