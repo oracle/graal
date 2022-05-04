@@ -141,49 +141,47 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         if (m.isTracing()) {
             String decisionsFilePath = m.getDecisionsFilePath();
-            if (decisionsFilePath != null) {
-                CodeExecutableElement mStaticInit = new CodeExecutableElement(MOD_STATIC, null, "<cinit>");
-                typBuilderImpl.add(mStaticInit);
+            CodeExecutableElement mStaticInit = new CodeExecutableElement(MOD_STATIC, null, "<cinit>");
+            typBuilderImpl.add(mStaticInit);
 
-                CodeTreeBuilder b = mStaticInit.appendBuilder();
+            CodeTreeBuilder b = mStaticInit.appendBuilder();
 
-                b.startStatement().startStaticCall(types.ExecutionTracer, "initialize");
+            b.startStatement().startStaticCall(types.ExecutionTracer, "initialize");
 
-                b.typeLiteral(m.getTemplateType().asType());
+            b.typeLiteral(m.getTemplateType().asType());
 
-                // destination path
-                b.doubleQuote(decisionsFilePath);
+            // destination path
+            b.doubleQuote(decisionsFilePath);
 
-                // instruction names
-                b.startNewArray(new ArrayCodeTypeMirror(context.getType(String.class)), null);
-                b.string("null");
-                for (Instruction instr : m.getInstructions()) {
-                    b.doubleQuote(instr.name);
-                }
-                b.end();
-
-                // specialization names
-
-                b.startNewArray(new ArrayCodeTypeMirror(new ArrayCodeTypeMirror(context.getType(String.class))), null);
-                b.string("null");
-                for (Instruction instr : m.getInstructions()) {
-                    if (!(instr instanceof CustomInstruction)) {
-                        b.string("null");
-                        continue;
-                    }
-
-                    b.startNewArray(new ArrayCodeTypeMirror(context.getType(String.class)), null);
-                    CustomInstruction cinstr = (CustomInstruction) instr;
-                    for (String name : cinstr.getSpecializationNames()) {
-                        b.doubleQuote(name);
-                    }
-                    b.end();
-                }
-                b.end();
-
-                b.end(2);
-
+            // instruction names
+            b.startNewArray(new ArrayCodeTypeMirror(context.getType(String.class)), null);
+            b.string("null");
+            for (Instruction instr : m.getInstructions()) {
+                b.doubleQuote(instr.name);
             }
+            b.end();
+
+            // specialization names
+
+            b.startNewArray(new ArrayCodeTypeMirror(new ArrayCodeTypeMirror(context.getType(String.class))), null);
+            b.string("null");
+            for (Instruction instr : m.getInstructions()) {
+                if (!(instr instanceof CustomInstruction)) {
+                    b.string("null");
+                    continue;
+                }
+
+                b.startNewArray(new ArrayCodeTypeMirror(context.getType(String.class)), null);
+                CustomInstruction cinstr = (CustomInstruction) instr;
+                for (String name : cinstr.getSpecializationNames()) {
+                    b.doubleQuote(name);
+                }
+                b.end();
+            }
+            b.end();
+
+            b.end(2);
+
         }
 
         CodeVariableElement fldLanguage = new CodeVariableElement(MOD_PRIVATE_FINAL, m.getLanguageType(), "language");
@@ -466,12 +464,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
             CodeTreeBuilder b = mDoLeave.createBuilder();
 
-            b.startWhile().string("getCurStack() > data.stackDepth").end();
-            b.startBlock();
-
-            b.tree(m.getOperationsContext().commonPop.createEmitCode(vars, new CodeTree[0]));
-
-            b.end();
+            // b.startWhile().string("getCurStack() > data.stackDepth").end();
+            // b.startBlock();
+            //
+            // b.tree(m.getOperationsContext().commonPop.createEmitCode(vars, new CodeTree[0]));
+            //
+            // b.end();
 
             b.startSwitch().string("data.operationId").end();
             b.startBlock();

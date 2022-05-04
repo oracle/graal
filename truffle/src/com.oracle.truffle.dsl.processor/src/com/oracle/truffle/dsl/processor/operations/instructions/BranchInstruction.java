@@ -77,7 +77,7 @@ public class BranchInstruction extends Instruction {
     }
 
     @Override
-    public CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+    public CodeTree createCustomEmitCode(BuilderVariables vars, CodeTree[] arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
@@ -85,8 +85,6 @@ public class BranchInstruction extends Instruction {
         b.variable(vars.operationData);
         b.startGroup().cast(types.BuilderOperationLabel).tree(arguments[0]).end();
         b.end(2);
-
-        b.tree(super.createEmitCode(vars, arguments));
 
         return b.build();
     }

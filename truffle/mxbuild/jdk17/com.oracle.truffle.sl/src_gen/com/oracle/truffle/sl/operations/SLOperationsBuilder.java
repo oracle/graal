@@ -103,6 +103,10 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
     public abstract void endTryCatch();
 
+    public abstract void beginFinallyTry(int arg0);
+
+    public abstract void endFinallyTry();
+
     public abstract void emitLabel(OperationLabel arg0);
 
     public abstract void emitBranch(OperationLabel arg0);
@@ -208,85 +212,87 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         private static final int OP_CONDITIONAL = 4;
         private static final int OP_WHILE = 5;
         private static final int OP_TRY_CATCH = 6;
-        private static final int OP_LABEL = 7;
-        private static final int OP_BRANCH = 8;
-        private static final int OP_CONST_OBJECT = 9;
-        private static final int OP_LOAD_ARGUMENT = 10;
-        private static final int OP_STORE_LOCAL = 11;
-        private static final int OP_LOAD_LOCAL = 12;
-        private static final int OP_RETURN = 13;
-        private static final int OP_INSTRUMENTATION = 14;
-        private static final int OP_SLADD_OPERATION = 15;
-        private static final int OP_SLDIV_OPERATION = 16;
-        private static final int OP_SLEQUAL_OPERATION = 17;
-        private static final int OP_SLLESS_OR_EQUAL_OPERATION = 18;
-        private static final int OP_SLLESS_THAN_OPERATION = 19;
-        private static final int OP_SLLOGICAL_NOT_OPERATION = 20;
-        private static final int OP_SLMUL_OPERATION = 21;
-        private static final int OP_SLREAD_PROPERTY_OPERATION = 22;
-        private static final int OP_SLSUB_OPERATION = 23;
-        private static final int OP_SLWRITE_PROPERTY_OPERATION = 24;
-        private static final int OP_SLUNBOX_OPERATION = 25;
-        private static final int OP_SLFUNCTION_LITERAL_OPERATION = 26;
-        private static final int OP_SLTO_BOOLEAN_OPERATION = 27;
-        private static final int OP_SLEVAL_ROOT_OPERATION = 28;
-        private static final int OP_SLINVOKE_OPERATION = 29;
+        private static final int OP_FINALLY_TRY = 7;
+        private static final int OP_LABEL = 8;
+        private static final int OP_BRANCH = 9;
+        private static final int OP_CONST_OBJECT = 10;
+        private static final int OP_LOAD_ARGUMENT = 11;
+        private static final int OP_STORE_LOCAL = 12;
+        private static final int OP_LOAD_LOCAL = 13;
+        private static final int OP_RETURN = 14;
+        private static final int OP_INSTRUMENTATION = 15;
+        private static final int OP_SLADD_OPERATION = 16;
+        private static final int OP_SLDIV_OPERATION = 17;
+        private static final int OP_SLEQUAL_OPERATION = 18;
+        private static final int OP_SLLESS_OR_EQUAL_OPERATION = 19;
+        private static final int OP_SLLESS_THAN_OPERATION = 20;
+        private static final int OP_SLLOGICAL_NOT_OPERATION = 21;
+        private static final int OP_SLMUL_OPERATION = 22;
+        private static final int OP_SLREAD_PROPERTY_OPERATION = 23;
+        private static final int OP_SLSUB_OPERATION = 24;
+        private static final int OP_SLWRITE_PROPERTY_OPERATION = 25;
+        private static final int OP_SLUNBOX_OPERATION = 26;
+        private static final int OP_SLFUNCTION_LITERAL_OPERATION = 27;
+        private static final int OP_SLTO_BOOLEAN_OPERATION = 28;
+        private static final int OP_SLEVAL_ROOT_OPERATION = 29;
+        private static final int OP_SLINVOKE_OPERATION = 30;
         private static final int INSTR_POP = 1;
         private static final int INSTR_BRANCH = 2;
         private static final int INSTR_BRANCH_FALSE = 3;
-        private static final int INSTR_LOAD_CONSTANT_OBJECT = 4;
-        private static final int INSTR_LOAD_CONSTANT_LONG = 5;
+        private static final int INSTR_THROW = 4;
+        private static final int INSTR_LOAD_CONSTANT_OBJECT = 5;
         private static final int INSTR_LOAD_CONSTANT_BOOLEAN = 6;
-        private static final int INSTR_LOAD_ARGUMENT_OBJECT = 7;
-        private static final int INSTR_LOAD_ARGUMENT_LONG = 8;
+        private static final int INSTR_LOAD_CONSTANT_LONG = 7;
+        private static final int INSTR_LOAD_ARGUMENT_OBJECT = 8;
         private static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 9;
-        private static final int INSTR_STORE_LOCAL = 10;
-        private static final int INSTR_LOAD_LOCAL_OBJECT = 11;
-        private static final int INSTR_LOAD_LOCAL_LONG = 12;
+        private static final int INSTR_LOAD_ARGUMENT_LONG = 10;
+        private static final int INSTR_STORE_LOCAL = 11;
+        private static final int INSTR_LOAD_LOCAL_OBJECT = 12;
         private static final int INSTR_LOAD_LOCAL_BOOLEAN = 13;
-        private static final int INSTR_RETURN = 14;
-        private static final int INSTR_INSTRUMENT_ENTER = 15;
-        private static final int INSTR_INSTRUMENT_EXIT_VOID = 16;
-        private static final int INSTR_INSTRUMENT_EXIT = 17;
-        private static final int INSTR_INSTRUMENT_LEAVE = 18;
-        private static final int INSTR_C_SLADD_OPERATION = 19;
-        private static final int INSTR_C_SLDIV_OPERATION = 20;
-        private static final int INSTR_C_SLEQUAL_OPERATION = 21;
-        private static final int INSTR_C_SLLESS_OR_EQUAL_OPERATION = 22;
-        private static final int INSTR_C_SLLESS_THAN_OPERATION = 23;
-        private static final int INSTR_C_SLLOGICAL_NOT_OPERATION = 24;
-        private static final int INSTR_C_SLMUL_OPERATION = 25;
-        private static final int INSTR_C_SLREAD_PROPERTY_OPERATION = 26;
-        private static final int INSTR_C_SLSUB_OPERATION = 27;
-        private static final int INSTR_C_SLWRITE_PROPERTY_OPERATION = 28;
-        private static final int INSTR_C_SLUNBOX_OPERATION = 29;
-        private static final int INSTR_C_SLFUNCTION_LITERAL_OPERATION = 30;
-        private static final int INSTR_C_SLTO_BOOLEAN_OPERATION = 31;
-        private static final int INSTR_C_SLEVAL_ROOT_OPERATION = 32;
-        private static final int INSTR_C_SLINVOKE_OPERATION = 33;
-        private static final int INSTR_C_SLUNBOX_OPERATION_Q_FROM_LONG = 34;
-        private static final int INSTR_C_SLADD_OPERATION_Q_ADD_LONG = 35;
-        private static final int INSTR_C_SLREAD_PROPERTY_OPERATION_Q_READ_SLOBJECT0 = 36;
-        private static final int INSTR_C_SLUNBOX_OPERATION_Q_FROM_BOOLEAN = 37;
-        private static final int INSTR_C_SLTO_BOOLEAN_OPERATION_Q_BOOLEAN = 38;
-        private static final int INSTR_C_SLLESS_OR_EQUAL_OPERATION_Q_LESS_OR_EQUAL0 = 39;
-        private static final int INSTR_C_SLINVOKE_OPERATION_Q_DIRECT = 40;
-        private static final int INSTR_C_SLFUNCTION_LITERAL_OPERATION_Q_PERFORM = 41;
-        private static final int INSTR_C_SLWRITE_PROPERTY_OPERATION_Q_WRITE_SLOBJECT0 = 42;
-        private static final int INSTR_C_SLLESS_THAN_OPERATION_Q_LESS_THAN0 = 43;
+        private static final int INSTR_LOAD_LOCAL_LONG = 14;
+        private static final int INSTR_RETURN = 15;
+        private static final int INSTR_INSTRUMENT_ENTER = 16;
+        private static final int INSTR_INSTRUMENT_EXIT_VOID = 17;
+        private static final int INSTR_INSTRUMENT_EXIT = 18;
+        private static final int INSTR_INSTRUMENT_LEAVE = 19;
+        private static final int INSTR_C_SLADD_OPERATION = 20;
+        private static final int INSTR_C_SLDIV_OPERATION = 21;
+        private static final int INSTR_C_SLEQUAL_OPERATION = 22;
+        private static final int INSTR_C_SLLESS_OR_EQUAL_OPERATION = 23;
+        private static final int INSTR_C_SLLESS_THAN_OPERATION = 24;
+        private static final int INSTR_C_SLLOGICAL_NOT_OPERATION = 25;
+        private static final int INSTR_C_SLMUL_OPERATION = 26;
+        private static final int INSTR_C_SLREAD_PROPERTY_OPERATION = 27;
+        private static final int INSTR_C_SLSUB_OPERATION = 28;
+        private static final int INSTR_C_SLWRITE_PROPERTY_OPERATION = 29;
+        private static final int INSTR_C_SLUNBOX_OPERATION = 30;
+        private static final int INSTR_C_SLFUNCTION_LITERAL_OPERATION = 31;
+        private static final int INSTR_C_SLTO_BOOLEAN_OPERATION = 32;
+        private static final int INSTR_C_SLEVAL_ROOT_OPERATION = 33;
+        private static final int INSTR_C_SLINVOKE_OPERATION = 34;
+        private static final int INSTR_C_SLUNBOX_OPERATION_Q_FROM_LONG = 35;
+        private static final int INSTR_C_SLADD_OPERATION_Q_ADD_LONG = 36;
+        private static final int INSTR_C_SLREAD_PROPERTY_OPERATION_Q_READ_SLOBJECT0 = 37;
+        private static final int INSTR_C_SLUNBOX_OPERATION_Q_FROM_BOOLEAN = 38;
+        private static final int INSTR_C_SLTO_BOOLEAN_OPERATION_Q_BOOLEAN = 39;
+        private static final int INSTR_C_SLLESS_OR_EQUAL_OPERATION_Q_LESS_OR_EQUAL0 = 40;
+        private static final int INSTR_C_SLINVOKE_OPERATION_Q_DIRECT = 41;
+        private static final int INSTR_C_SLFUNCTION_LITERAL_OPERATION_Q_PERFORM = 42;
+        private static final int INSTR_C_SLWRITE_PROPERTY_OPERATION_Q_WRITE_SLOBJECT0 = 43;
+        private static final int INSTR_C_SLLESS_THAN_OPERATION_Q_LESS_THAN0 = 44;
         private static final short[][] BOXING_DESCRIPTORS = {
         // OBJECT
-        {-1, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // BYTE
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // INT
         null,
         // FLOAT
         null,
         // LONG
-        {-1, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // DOUBLE
         null};
 
@@ -361,12 +367,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
         @Override
         protected void doLeaveOperation(BuilderOperationData data) {
-            while (getCurStack() > data.stackDepth) {
-                int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
-                LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
-                bci = bci + 2;
-            }
             switch (data.operationId) {
+                case OP_FINALLY_TRY :
+                {
+                    bci = doLeaveFinallyTry(bc, bci, data, exceptionHandlers);
+                    break;
+                }
                 case OP_INSTRUMENTATION :
                 {
                     int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
@@ -592,6 +598,28 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                     }
                     break;
                 }
+                case OP_FINALLY_TRY :
+                {
+                    for (int i = 0; i < lastPush; i++) {
+                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
+                        bci = bci + 2;
+                    }
+                    if (childIndex == 0) {
+                        doEndFinallyBlock0(bc, bci, exceptionHandlers);
+                        bc = doFinallyRestoreBc();
+                        bci = doFinallyRestoreBci();
+                        exceptionHandlers = doFinallyRestoreExceptions();
+                        doEndFinallyBlock1();
+                        BuilderExceptionHandler beh = new BuilderExceptionHandler();
+                        beh.startBci = bci;
+                        beh.startStack = getCurStack();
+                        beh.exceptionIndex = (int)trackLocalsHelper(operationData.arguments[0]);
+                        exceptionHandlers.add(beh);
+                        operationData.aux[1] = beh;
+                    }
+                    break;
+                }
             }
         }
 
@@ -739,6 +767,53 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             doAfterChild();
         }
 
+        @SuppressWarnings("unused")
+        @Override
+        public void beginFinallyTry(int arg0) {
+            doBeforeChild();
+            operationData = new BuilderOperationData(operationData, OP_FINALLY_TRY, getCurStack(), 2, true, arg0);
+            operationData.aux[0] = doBeginFinallyTry(bc, bci, exceptionHandlers);
+            bc = new byte[65535];
+            bci = 0;
+            exceptionHandlers = new ArrayList<BuilderExceptionHandler>();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public void endFinallyTry() {
+            if (operationData.operationId != OP_FINALLY_TRY) {
+                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+            }
+            int numChildren = operationData.numChildren;
+            if (numChildren != 2) {
+                throw new IllegalStateException("FinallyTry expected 2 children, got " + numChildren);
+            }
+            int endBci = bci;
+            bci = doLeaveFinallyTry(bc, bci, operationData, exceptionHandlers);
+            BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
+            {
+                calculateLeaves(operationData, (BuilderOperationLabel) endLabel);
+                int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
+                createOffset(bci + 2, endLabel);
+                bci = bci + 4;
+            }
+            BuilderExceptionHandler beh = ((BuilderExceptionHandler) operationData.aux[1]);
+            beh.endBci = endBci;
+            beh.handlerBci = bci;
+            bci = doLeaveFinallyTry(bc, bci, operationData, exceptionHandlers);
+            {
+                int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                LE_BYTES.putShort(bc, bci, (short) INSTR_THROW);
+                LE_BYTES.putShort(bc, bci + 2, (short) (int) operationData.arguments[0]);
+                bci = bci + 4;
+            }
+            doEmitLabel(bci, endLabel);
+            lastPush = 0;
+            operationData = operationData.parent;
+            doAfterChild();
+        }
+
         @Override
         public void emitLabel(OperationLabel arg0) {
             doBeforeChild();
@@ -845,6 +920,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("Return expected 1 children, got " + numChildren);
             }
+            calculateLeaves(operationData);
             int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
             LE_BYTES.putShort(bc, bci, (short) INSTR_RETURN);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
@@ -1430,13 +1506,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     BRANCH
          *
-         * load.constant.object
+         * throw
          *   Inputs:
-         *     CONST_POOL
+         *     LOCAL
          *   Results:
-         *     STACK_VALUE
          *
-         * load.constant.long
+         * load.constant.object
          *   Inputs:
          *     CONST_POOL
          *   Results:
@@ -1448,19 +1523,25 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
+         * load.constant.long
+         *   Inputs:
+         *     CONST_POOL
+         *   Results:
+         *     STACK_VALUE
+         *
          * load.argument.object
          *   Inputs:
          *     ARGUMENT
          *   Results:
          *     STACK_VALUE
          *
-         * load.argument.long
+         * load.argument.boolean
          *   Inputs:
          *     ARGUMENT
          *   Results:
          *     STACK_VALUE
          *
-         * load.argument.boolean
+         * load.argument.long
          *   Inputs:
          *     ARGUMENT
          *   Results:
@@ -1478,13 +1559,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.local.long
+         * load.local.boolean
          *   Inputs:
          *     LOCAL
          *   Results:
          *     STACK_VALUE
          *
-         * load.local.boolean
+         * load.local.long
          *   Inputs:
          *     LOCAL
          *   Results:
@@ -5612,6 +5693,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                     continue loop;
                                 }
                             }
+                            case INSTR_THROW :
+                            {
+                                int slot = LE_BYTES.getShort(bc, bci + 2);
+                                throw (AbstractTruffleException) frame.getObject(slot);
+                            }
                             case INSTR_LOAD_CONSTANT_OBJECT :
                             {
                                 frame.setObject(sp, consts[LE_BYTES.getShort(bc, bci + 2)]);
@@ -5619,16 +5705,16 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_CONSTANT_LONG :
+                            case INSTR_LOAD_CONSTANT_BOOLEAN :
                             {
-                                frame.setLong(sp, (long) consts[LE_BYTES.getShort(bc, bci + 2)]);
+                                frame.setBoolean(sp, (boolean) consts[LE_BYTES.getShort(bc, bci + 2)]);
                                 sp = sp + 1;
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_CONSTANT_BOOLEAN :
+                            case INSTR_LOAD_CONSTANT_LONG :
                             {
-                                frame.setBoolean(sp, (boolean) consts[LE_BYTES.getShort(bc, bci + 2)]);
+                                frame.setLong(sp, (long) consts[LE_BYTES.getShort(bc, bci + 2)]);
                                 sp = sp + 1;
                                 nextBci = bci + 4;
                                 break;
@@ -5641,11 +5727,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_ARGUMENT_LONG :
+                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
                             {
                                 Object value = frame.getArguments()[LE_BYTES.getShort(bc, bci + 2)];
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
+                                if (value instanceof Boolean) {
+                                    frame.setBoolean(sp, (boolean) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -5653,11 +5739,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                            case INSTR_LOAD_ARGUMENT_LONG :
                             {
                                 Object value = frame.getArguments()[LE_BYTES.getShort(bc, bci + 2)];
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
+                                if (value instanceof Long) {
+                                    frame.setLong(sp, (long) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -5680,11 +5766,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_LOCAL_LONG :
+                            case INSTR_LOAD_LOCAL_BOOLEAN :
                             {
                                 Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
+                                if (value instanceof Boolean) {
+                                    frame.setBoolean(sp, (boolean) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -5692,11 +5778,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_LOCAL_BOOLEAN :
+                            case INSTR_LOAD_LOCAL_LONG :
                             {
                                 Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
+                                if (value instanceof Long) {
+                                    frame.setLong(sp, (long) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -5932,13 +6018,14 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             break;
                         }
                         case INSTR_BRANCH :
+                        case INSTR_THROW :
                         case INSTR_LOAD_CONSTANT_OBJECT :
                         case INSTR_LOAD_ARGUMENT_OBJECT :
-                        case INSTR_LOAD_ARGUMENT_LONG :
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        case INSTR_LOAD_ARGUMENT_LONG :
                         case INSTR_LOAD_LOCAL_OBJECT :
-                        case INSTR_LOAD_LOCAL_LONG :
                         case INSTR_LOAD_LOCAL_BOOLEAN :
+                        case INSTR_LOAD_LOCAL_LONG :
                         case INSTR_C_SLLOGICAL_NOT_OPERATION :
                         case INSTR_C_SLTO_BOOLEAN_OPERATION :
                         case INSTR_C_SLEVAL_ROOT_OPERATION :
@@ -5952,8 +6039,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci = bci + 7;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        case INSTR_LOAD_CONSTANT_LONG :
                         {
                             LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_CONSTANT_OBJECT);
                             bci = bci + 4;
@@ -6096,6 +6183,30 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 7;
                             break;
                         }
+                        case INSTR_THROW :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("throw                            ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            bci += 4;
+                            break;
+                        }
                         case INSTR_LOAD_CONSTANT_OBJECT :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6115,34 +6226,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.constant.object             ");
-                            {
-                                Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
-                                sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
-                            }
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
-                        case INSTR_LOAD_CONSTANT_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.constant.long               ");
                             {
                                 Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
                                 sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
@@ -6180,6 +6263,34 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.constant.long               ");
+                            {
+                                Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
+                                sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
+                            }
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
                         case INSTR_LOAD_ARGUMENT_OBJECT :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6205,31 +6316,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.argument.long               ");
-                            sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6249,6 +6335,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.argument.boolean            ");
+                            sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.argument.long               ");
                             sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");
@@ -6305,31 +6416,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.local.long                  ");
-                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6349,6 +6435,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.local.boolean               ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.local.long                  ");
                             sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");

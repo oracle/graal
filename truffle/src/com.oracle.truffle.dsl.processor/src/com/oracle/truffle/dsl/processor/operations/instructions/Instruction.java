@@ -454,8 +454,20 @@ public abstract class Instruction {
         return result;
     }
 
-    public CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+    @SuppressWarnings("unused")
+    protected CodeTree createCustomEmitCode(BuilderVariables vars, CodeTree[] arguments) {
+        return null;
+    }
+
+    @SuppressWarnings("unused")
+    protected CodeTree createCustomEmitCodeAfter(BuilderVariables vars, CodeTree[] arguments) {
+        return null;
+    }
+
+    public final CodeTree createEmitCode(BuilderVariables vars, CodeTree[] arguments) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+        b.tree(createCustomEmitCode(vars, arguments));
 
         // calculate stack offset
         int numPush = numPush();
@@ -485,6 +497,8 @@ public abstract class Instruction {
         b.tree(createInitializeAdditionalStateBytes(vars, arguments));
 
         b.startAssign(vars.bci).variable(vars.bci).string(" + " + length()).end();
+
+        b.tree(createCustomEmitCodeAfter(vars, arguments));
 
         return b.build();
     }

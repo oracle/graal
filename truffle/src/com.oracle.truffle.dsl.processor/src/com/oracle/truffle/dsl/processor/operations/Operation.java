@@ -7,6 +7,7 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 
 import java.util.List;
 
+import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
@@ -125,7 +126,7 @@ public abstract class Operation {
                 arguments[i] = CodeTreeBuilder.createBuilder().string("operationData.arguments[" + i + "]").build();
             }
 
-            return instruction.createEmitCode(vars, arguments);
+            return OperationGeneratorUtils.createEmitInstruction(vars, instruction, arguments);
 
         }
 
@@ -160,7 +161,7 @@ public abstract class Operation {
 
             CodeTree[] arguments = new CodeTree[]{CodeTreeBuilder.singleString("arg0")};
 
-            b.tree(instructions[FrameKind.OBJECT.ordinal()].createEmitCode(vars, arguments));
+            b.tree(OperationGeneratorUtils.createEmitInstruction(vars, instructions[FrameKind.OBJECT.ordinal()], arguments));
 
             return b.build();
         }
@@ -611,6 +612,149 @@ public abstract class Operation {
                             createGetAux(vars, AUX_END_LABEL, getTypes().BuilderOperationLabel)));
 
             return b.build();
+        }
+
+        @Override
+        public boolean hasLeaveCode() {
+            return true;
+        }
+    }
+
+    public static class FinallyTry extends Operation {
+
+        private final int AUX_CONTEXT = 0;
+        private final int AUX_BEH = 1;
+
+        public FinallyTry(OperationsContext builder, int id) {
+            super(builder, "FinallyTry", id, 2);
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(new CodeTypeMirror(TypeKind.INT));
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            // TODO - this could be made to return Try value on exit
+            return CodeTreeBuilder.singleString("0");
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startStatement().variable(vars.operationData).string(".aux[" + AUX_CONTEXT + "] = ").startCall("doBeginFinallyTry");
+            b.variable(vars.bc);
+            b.variable(vars.bci);
+            b.variable(vars.exteptionHandlers);
+            b.end(2);
+
+            b.startAssign(vars.bc).startNewArray((ArrayType) vars.bc.asType(), CodeTreeBuilder.singleString("65535")).end(2);
+            b.startAssign(vars.bci).string("0").end();
+            b.startAssign(vars.exteptionHandlers).startNew(vars.exteptionHandlers.asType()).end(2);
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createAfterChildCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.tree(createPopLastChildCode(vars));
+
+            b.startIf().variable(vars.childIndex).string(" == 0").end().startBlock();
+            {
+                b.startStatement().startCall("doEndFinallyBlock0");
+                b.variable(vars.bc);
+                b.variable(vars.bci);
+                b.variable(vars.exteptionHandlers);
+                b.end(2);
+
+                b.startAssign(vars.bc).startCall("doFinallyRestoreBc").end(2);
+                b.startAssign(vars.bci).startCall("doFinallyRestoreBci").end(2);
+                b.startAssign(vars.exteptionHandlers).startCall("doFinallyRestoreExceptions").end(2);
+
+                b.startStatement().startCall("doEndFinallyBlock1").end(2);
+
+                CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+                b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
+
+                b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
+                b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
+                b.startStatement().variable(varBeh).string(".exceptionIndex = (int)");
+                b.startCall("trackLocalsHelper");
+                b.startGroup().variable(vars.operationData).string(".arguments[0]").end();
+                b.end();
+                b.end();
+                b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
+                b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
+
+            }
+            b.end();
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createLeaveCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            emitLeaveCode(vars, b);
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            // ; exception end
+            // << handler code >>
+            // goto end
+            // ; exception handler start
+            // << handler code >>
+            // throw [exc]
+            // end:
+
+            b.startAssign("int endBci").variable(vars.bci).end();
+
+            emitLeaveCode(vars, b);
+
+            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+
+            b.startBlock();
+            b.tree(OperationGeneratorUtils.createEmitInstruction(vars, builder.commonBranch, varEndLabel));
+            b.end();
+
+            b.declaration(getTypes().BuilderExceptionHandler, "beh", createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler));
+            b.startAssign("beh.endBci").string("endBci").end();
+            b.startAssign("beh.handlerBci").variable(vars.bci).end();
+
+            emitLeaveCode(vars, b);
+
+            b.startBlock();
+            CodeTree localIdx = CodeTreeBuilder.createBuilder().variable(vars.operationData).string(".arguments[0]").build();
+            b.tree(OperationGeneratorUtils.createEmitInstruction(vars, builder.commonThrow, localIdx));
+            b.end();
+
+            b.tree(OperationGeneratorUtils.createEmitLabel(vars, varEndLabel));
+
+            return b.build();
+        }
+
+        private static void emitLeaveCode(BuilderVariables vars, CodeTreeBuilder b) {
+            b.startAssign(vars.bci).startCall("doLeaveFinallyTry");
+            b.variable(vars.bc);
+            b.variable(vars.bci);
+            b.variable(vars.operationData);
+            b.variable(vars.exteptionHandlers);
+            b.end(2);
+        }
+
+        @Override
+        public int getNumAuxValues() {
+            return 2;
         }
 
         @Override

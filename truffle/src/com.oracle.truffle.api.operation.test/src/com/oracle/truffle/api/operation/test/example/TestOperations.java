@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation.test.example;
 
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.junit.Assert;
@@ -86,11 +87,18 @@ public class TestOperations {
     }
 
     @Operation
-    @GenerateAOT
     static class AlwaysBoxOperation {
         @Specialization
         public static Object perform(Object value) {
             return value;
+        }
+    }
+
+    @Operation
+    static class AppenderOperation {
+        @Specialization
+        public static void perform(List<Object> list, Object value) {
+            list.add(value);
         }
     }
 }

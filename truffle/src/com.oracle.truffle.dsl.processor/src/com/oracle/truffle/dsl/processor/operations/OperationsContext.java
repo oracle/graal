@@ -22,6 +22,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruc
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.ThrowInstruction;
 
 public class OperationsContext {
 
@@ -29,10 +30,9 @@ public class OperationsContext {
     private int operationId = 1;
 
     public Instruction commonPop;
-
     public Instruction commonBranch;
-
     public Instruction commonBranchFalse;
+    public Instruction commonThrow;
 
     public LoadArgumentInstruction[] loadArgumentInstructions;
     public LoadConstantInstruction[] loadConstantInstructions;
@@ -59,10 +59,9 @@ public class OperationsContext {
 
     private void createCommonInstructions() {
         commonPop = add(new DiscardInstruction("pop", instructionId++, InputType.STACK_VALUE_IGNORED));
-
         commonBranch = add(new BranchInstruction(instructionId++));
-
         commonBranchFalse = add(new ConditionalBranchInstruction(this, instructionId++));
+        commonThrow = add(new ThrowInstruction(instructionId++));
     }
 
     private void createBuiltinOperations() {
@@ -72,6 +71,7 @@ public class OperationsContext {
         add(new Operation.IfThenElse(this, operationId++, true));
         add(new Operation.While(this, operationId++));
         add(new Operation.TryCatch(this, operationId++));
+        add(new Operation.FinallyTry(this, operationId++));
 
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));

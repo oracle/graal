@@ -136,7 +136,8 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             return data;
         }
 
-        data.setDecisionsFilePath(getMainDecisionsFilePath(typeElement, generateOperationsMirror));
+        String decisionsFilePath = getMainDecisionsFilePath(typeElement, generateOperationsMirror);
+        data.setDecisionsFilePath(decisionsFilePath);
 
         AnnotationValue forceTracingValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true);
 
@@ -144,6 +145,12 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         if ((boolean) forceTracingValue.getValue()) {
             isTracing = true;
             data.addWarning("Tracing compilation is forced. This should only be used during development.");
+            if (decisionsFilePath == null) {
+                data.addError("Tracing forced, but no decisions file specified! Specify the tracing decisions file.");
+            }
+        } else if (decisionsFilePath == null) {
+            // decisions file not specified, can't trace no matter the options
+            isTracing = false;
         } else {
             isTracing = TruffleProcessorOptions.operationsEnableTracing(processingEnv);
         }

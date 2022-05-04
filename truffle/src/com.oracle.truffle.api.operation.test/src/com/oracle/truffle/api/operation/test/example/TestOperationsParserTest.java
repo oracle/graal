@@ -3,6 +3,8 @@ package com.oracle.truffle.api.operation.test.example;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -12,6 +14,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.OperationsRootNode;
 import com.oracle.truffle.api.source.Source;
@@ -314,4 +317,428 @@ public class TestOperationsParserTest {
         Assert.assertEquals(Value.asValue(7L), v.execute(3L, 4L));
     }
 
+    private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
+        List<Object> result = new ArrayList<>();
+
+        try {
+            root.call(result);
+            if (expectException) {
+                Assert.fail();
+            }
+        } catch (Exception ex) {
+            if (!expectException) {
+                throw new AssertionError("unexpected", ex);
+            }
+        }
+
+        Assert.assertArrayEquals(order, result.toArray());
+    }
+
+    @Test
+    public void testFinallyTryBasic() {
+
+        // try { 1; } finally { 2; }
+        // expected 1, 2
+
+        RootCallTarget root = parse(b -> {
+            b.beginFinallyTry(0);
+            {
+
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(2L);
+                b.endAppenderOperation();
+
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(1L);
+                b.endAppenderOperation();
+            }
+            b.endFinallyTry();
+
+            b.beginReturn();
+            b.emitConstObject(0L);
+            b.endReturn();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 2L);
+    }
+
+    @Test
+    public void testFinallyTryException() {
+
+        // try { 1; throw; 2; } finally { 3; }
+        // expected: 1, 3
+
+        RootCallTarget root = parse(b -> {
+            b.beginFinallyTry(0);
+            {
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(3L);
+                b.endAppenderOperation();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.emitThrowOperation();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.beginReturn();
+            b.emitConstObject(0L);
+            b.endReturn();
+
+            b.build();
+        });
+
+        testOrdering(true, root, 1L, 3L);
+    }
+
+    @Test
+    public void testFinallyTryReturn() {
+        RootCallTarget root = parse(b -> {
+            b.beginFinallyTry(0);
+            {
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(1L);
+                b.endAppenderOperation();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitConstObject(0L);
+                    b.endReturn();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(3L);
+            b.endAppenderOperation();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 2L, 1L);
+    }
+
+    @Test
+    public void testFinallyTryBranchOut() {
+        RootCallTarget root = parse(b -> {
+
+            // try { 1; goto lbl; 2; } finally { 3; } 4; lbl: 5;
+            // expected: 1, 3, 5
+
+            OperationLabel lbl = b.createLabel();
+
+            b.beginFinallyTry(0);
+            {
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(3L);
+                b.endAppenderOperation();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.emitBranch(lbl);
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(4L);
+            b.endAppenderOperation();
+
+            b.emitLabel(lbl);
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(5L);
+            b.endAppenderOperation();
+
+            b.beginReturn();
+            b.emitConstObject(0L);
+            b.endReturn();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L);
+    }
+
+    @Test
+    public void testFinallyTryCancel() {
+        RootCallTarget root = parse(b -> {
+
+            // try { 1; return; } finally { 2; goto lbl; } 3; lbl: 4;
+            // expected: 1, 2, 4
+
+            OperationLabel lbl = b.createLabel();
+
+            b.beginFinallyTry(0);
+            {
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+
+                    b.emitBranch(lbl);
+                }
+                b.endBlock();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitConstObject(0L);
+                    b.endReturn();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(3L);
+            b.endAppenderOperation();
+
+            b.emitLabel(lbl);
+
+            b.beginAppenderOperation();
+            b.emitLoadArgument(0);
+            b.emitConstObject(4L);
+            b.endAppenderOperation();
+
+            b.beginReturn();
+            b.emitConstObject(0L);
+            b.endReturn();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 2L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryInnerCf() {
+        RootCallTarget root = parse(b -> {
+
+            // try { 1; return; 2 } finally { 3; goto lbl; 4; lbl: 5; }
+            // expected: 1, 3, 5
+
+            b.beginFinallyTry(0);
+            {
+                b.beginBlock();
+                {
+                    OperationLabel lbl = b.createLabel();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(3L);
+                    b.endAppenderOperation();
+
+                    b.emitBranch(lbl);
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(4L);
+                    b.endAppenderOperation();
+
+                    b.emitLabel(lbl);
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(5L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitConstObject(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L);
+    }
+
+    @Test
+    public void testFinallyTryNestedTry() {
+        RootCallTarget root = parse(b -> {
+
+            // try { try { 1; return; 2; } finally { 3; } } finally { 4; }
+            // expected: 1, 3, 4
+
+            b.beginFinallyTry(0);
+            {
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(4L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+
+                b.beginFinallyTry(1);
+                {
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(3L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(1L);
+                        b.endAppenderOperation();
+
+                        b.beginReturn();
+                        b.emitConstObject(0L);
+                        b.endReturn();
+
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(2L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+                }
+                b.endFinallyTry();
+            }
+            b.endFinallyTry();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 3L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryNestedFinally() {
+        RootCallTarget root = parse(b -> {
+
+            // try { 1; return; 2; } finally { try { 3; return; 4; } finally { 5; } }
+            // expected: 1, 3, 5
+
+            b.beginFinallyTry(0);
+            {
+                b.beginFinallyTry(0);
+                {
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(5L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(3L);
+                        b.endAppenderOperation();
+
+                        b.beginReturn();
+                        b.emitConstObject(0L);
+                        b.endReturn();
+
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(4L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+                }
+                b.endFinallyTry();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitConstObject(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 3L, 5L);
+    }
 }

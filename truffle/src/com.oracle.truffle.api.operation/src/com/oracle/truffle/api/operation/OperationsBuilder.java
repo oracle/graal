@@ -1,6 +1,7 @@
 package com.oracle.truffle.api.operation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -50,14 +51,18 @@ public abstract class OperationsBuilder {
         int locationBci;
         BuilderOperationLabel label;
 
-        public LabelFill(int locationBci, BuilderOperationLabel label) {
+        LabelFill(int locationBci, BuilderOperationLabel label) {
             this.locationBci = locationBci;
             this.label = label;
         }
+
+        LabelFill offset(int offset) {
+            return new LabelFill(offset + locationBci, label);
+        }
     }
 
-    private final ArrayList<LabelFill> labelFills = new ArrayList<>();
-    private final ArrayList<BuilderOperationLabel> labels = new ArrayList<>();
+    private ArrayList<LabelFill> labelFills = new ArrayList<>();
+    private ArrayList<BuilderOperationLabel> labels = new ArrayList<>();
 
     protected final void relocateLabels(int bci, int length) {
         for (LabelFill fill : labelFills) {
@@ -79,7 +84,19 @@ public abstract class OperationsBuilder {
     }
 
     protected final void labelPass(byte[] bc) {
+        labelPass(bc, null);
+    }
+
+    private final void labelPass(byte[] bc, FinallyTryContext finallyTry) {
         for (LabelFill fill : labelFills) {
+            if (finallyTry != null) {
+                if (fill.label.belongsTo(finallyTry)) {
+                    assert fill.label.hasValue : "inner label should have been resolved by now";
+                    finallyTry.relocationOffsets.add(fill.locationBci);
+                } else {
+                    finallyTry.handlerLabelFills.add(fill);
+                }
+            }
             LE_BYTES.putShort(bc, fill.locationBci, (short) fill.label.targetBci);
         }
     }
@@ -87,12 +104,16 @@ public abstract class OperationsBuilder {
     protected BuilderOperationData operationData = null;
 
     public final OperationLabel createLabel() {
-        BuilderOperationLabel label = new BuilderOperationLabel(operationData);
+        BuilderOperationLabel label = new BuilderOperationLabel(operationData, currentFinallyTry);
         labels.add(label);
         return label;
     }
 
     protected abstract void doLeaveOperation(BuilderOperationData data);
+
+    protected final void calculateLeaves(BuilderOperationData fromData) {
+        calculateLeaves(fromData, (BuilderOperationData) null);
+    }
 
     protected final void calculateLeaves(BuilderOperationData fromData, BuilderOperationLabel toLabel) {
         calculateLeaves(fromData, toLabel.data);
@@ -103,10 +124,20 @@ public abstract class OperationsBuilder {
             throw new UnsupportedOperationException("illegal jump to deeper operation");
         }
 
+        if (fromData == toData) {
+            return; // nothing to leave
+        }
+
         BuilderOperationData cur = fromData;
-        while ((toData == null && cur != null) || cur.depth > toData.depth) {
+        while (true) {
             doLeaveOperation(cur);
             cur = cur.parent;
+
+            if (toData == null && cur == null) {
+                break;
+            } else if (toData != null && cur.depth <= toData.depth) {
+                break;
+            }
         }
 
         if (cur != toData) {
@@ -197,5 +228,108 @@ public abstract class OperationsBuilder {
     protected final int doBeginInstrumentation(Class<? extends Tag> tag) {
         instrumentTrees.add(new OperationsInstrumentTreeNode(tag));
         return instrumentTrees.size() - 1;
+    }
+
+    // ------------------------ try / finally ------------------------
+
+    private FinallyTryContext currentFinallyTry = null;
+
+    static class FinallyTryContext {
+        final FinallyTryContext prev;
+        private final byte[] bc;
+        private final int bci;
+        private final ArrayList<BuilderExceptionHandler> exceptionHandlers;
+        private final ArrayList<LabelFill> labelFills;
+        private final ArrayList<BuilderOperationLabel> labels;
+        private final int curStack;
+        private final int maxStack;
+
+        private byte[] handlerBc;
+        private ArrayList<BuilderExceptionHandler> handlerHandlers;
+        public ArrayList<LabelFill> handlerLabelFills = new ArrayList<>();
+        public ArrayList<Integer> relocationOffsets = new ArrayList<>();
+        public int handlerMaxStack;
+
+        FinallyTryContext(FinallyTryContext prev, byte[] bc, int bci, ArrayList<BuilderExceptionHandler> exceptionHandlers, ArrayList<LabelFill> labelFills, ArrayList<BuilderOperationLabel> labels,
+                        int curStack, int maxStack) {
+            this.prev = prev;
+            this.bc = bc;
+            this.bci = bci;
+            this.exceptionHandlers = exceptionHandlers;
+            this.labelFills = labelFills;
+            this.labels = labels;
+            this.curStack = curStack;
+            this.maxStack = maxStack;
+        }
+
+        private boolean finalized() {
+            return handlerBc != null;
+        }
+    }
+
+    protected final Object doBeginFinallyTry(byte[] bc, int bci, ArrayList<BuilderExceptionHandler> handlers) {
+        currentFinallyTry = new FinallyTryContext(currentFinallyTry, bc, bci, handlers, labelFills, labels, curStack, maxStack);
+        labelFills = new ArrayList<>();
+        labels = new ArrayList<>();
+        curStack = 0;
+        maxStack = 0;
+        return currentFinallyTry;
+    }
+
+    protected final void doEndFinallyBlock0(byte[] bc, int bci, ArrayList<BuilderExceptionHandler> handlers) {
+        labelPass(bc, currentFinallyTry);
+        currentFinallyTry.handlerBc = Arrays.copyOf(bc, bci);
+        currentFinallyTry.handlerHandlers = handlers;
+        currentFinallyTry.handlerMaxStack = maxStack;
+    }
+
+    protected final byte[] doFinallyRestoreBc() {
+        return currentFinallyTry.bc;
+    }
+
+    protected final int doFinallyRestoreBci() {
+        return currentFinallyTry.bci;
+    }
+
+    protected final ArrayList<BuilderExceptionHandler> doFinallyRestoreExceptions() {
+        return currentFinallyTry.exceptionHandlers;
+    }
+
+    protected final void doEndFinallyBlock1() {
+        labelFills = currentFinallyTry.labelFills;
+        labels = currentFinallyTry.labels;
+        curStack = currentFinallyTry.curStack;
+        maxStack = currentFinallyTry.maxStack;
+        currentFinallyTry = currentFinallyTry.prev;
+    }
+
+    protected final int doLeaveFinallyTry(byte[] bc, int bci, BuilderOperationData data, ArrayList<BuilderExceptionHandler> handlers) {
+        FinallyTryContext context = (FinallyTryContext) data.aux[0];
+
+        if (!context.finalized()) {
+            // still in Finally part, nothing to leave yet
+            return bci;
+        }
+
+        System.arraycopy(context.handlerBc, 0, bc, bci, context.handlerBc.length);
+
+        for (int offset : context.relocationOffsets) {
+            short oldOffset = LE_BYTES.getShort(bc, bci + offset);
+            LE_BYTES.putShort(bc, bci + offset, (short) (oldOffset + bci));
+        }
+
+        for (BuilderExceptionHandler handler : context.handlerHandlers) {
+            handlers.add(handler.offset(bci, curStack));
+        }
+
+        for (LabelFill fill : context.handlerLabelFills) {
+            labelFills.add(fill.offset(bci));
+        }
+
+        if (maxStack < curStack + context.handlerMaxStack) {
+            maxStack = curStack + context.handlerMaxStack;
+        }
+
+        return bci + context.handlerBc.length;
     }
 }

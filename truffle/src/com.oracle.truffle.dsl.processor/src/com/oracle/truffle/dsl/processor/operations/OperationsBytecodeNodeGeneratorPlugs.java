@@ -698,21 +698,23 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     public void finishUp() {
-        int offset = -1;
-        BitSet targetSet = null;
-        for (StateBitSet set : multiState.getSets()) {
-            if (set.contains(resultUnboxedState)) {
-                targetSet = set;
-                offset = Arrays.asList(set.getObjects()).indexOf(resultUnboxedState);
-                break;
+        if (cinstr.numPush() > 0) {
+            int offset = -1;
+            BitSet targetSet = null;
+            for (StateBitSet set : multiState.getSets()) {
+                if (set.contains(resultUnboxedState)) {
+                    targetSet = set;
+                    offset = Arrays.asList(set.getObjects()).indexOf(resultUnboxedState);
+                    break;
+                }
             }
-        }
 
-        if (offset < 0 || targetSet == null) {
-            throw new AssertionError();
-        }
+            if (offset < 0 || targetSet == null) {
+                throw new AssertionError();
+            }
 
-        cinstr.setBoxingEliminationData(cinstr.lengthWithoutState() + bitSetOffset(targetSet), 1 << offset);
+            cinstr.setBoxingEliminationData(cinstr.lengthWithoutState() + bitSetOffset(targetSet), 1 << offset);
+        }
     }
 
     public StaticConstants createConstants() {
