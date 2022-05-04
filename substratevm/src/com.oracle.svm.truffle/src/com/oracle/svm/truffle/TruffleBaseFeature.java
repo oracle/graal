@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -130,6 +131,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link DefaultTruffleRuntime}.
  */
 public final class TruffleBaseFeature implements com.oracle.svm.core.graal.GraalFeature {
+
+    @Override
+    public String getURL() {
+        return "https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.truffle/src/com/oracle/svm/truffle/TruffleBaseFeature.java";
+    }
+
+    @Override
+    public String getVersion() {
+        return Feature.GRAALVM_VERSION;
+    }
+
+    @Override
+    public String getDescription() {
+        return "Provides base support for Truffle";
+    }
 
     public static final class IsEnabled implements BooleanSupplier {
         @Override
