@@ -69,7 +69,7 @@ public class ValueMergeUtil {
      * @return PhiNode merging all ValuesProduced
      */
     public static <T> ValueNode mergeValueProducersWithMappings(AbstractMergeNode merge, List<? extends T> valueProducers, Function<T, FixedWithNextNode> lastInstrFunction,
-            Function<T, ValueNode> valueFunction, Map<EndNode, T> newEndNodeMappings) {
+                    Function<T, ValueNode> valueFunction, Map<EndNode, T> newEndNodeMappings) {
         ValueNode singleResult = null;
         PhiNode phiResult = null;
         for (T valueProducer : valueProducers) {
