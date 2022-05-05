@@ -102,8 +102,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                 clazz = getJdkProxyClass(classLoader, intfs);
             } catch (Throwable e) {
                 try {
-                    ClassLoader commonLoader = getCommonClassLoader(intfs);
-                    clazz = getJdkProxyClass(commonLoader, intfs);
+                    clazz = getJdkProxyClass(getCommonClassLoader(intfs), intfs);
                 } catch (Throwable e2) {
                     return e;
                 }
@@ -171,7 +170,6 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             throw new GraalError((Throwable) clazzOrError);
         }
         Class<?> clazz = (Class<?>) clazzOrError;
-
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.
@@ -195,14 +193,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                     throw incompatibleClassLoaders(loader, interfaces);
                 }
             }
-            if (!ClassUtil.isSameOrParentLoader(commonLoader, loader)) {
+            if (!ClassUtil.isSameOrParentLoader(commonLoader, loader) && getCommonClassLoader(interfaces) != loader) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
             boolean loaded = PredefinedClassesSupport.loadClassIfNotLoaded(commonLoader, null, clazz);
-            if (!loaded && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
+            if (!loaded && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && getCommonClassLoader(interfaces) != loader) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
-        } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && (getCommonClassLoader(interfaces) != loader)) {
+        } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && getCommonClassLoader(interfaces) != loader) {
             throw incompatibleClassLoaders(loader, interfaces);
         }
         return clazz;
