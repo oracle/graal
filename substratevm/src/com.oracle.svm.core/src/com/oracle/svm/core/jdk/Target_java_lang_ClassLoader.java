@@ -324,9 +324,6 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Delete
-    private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
-
-    @Delete
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
 
     @Substitute

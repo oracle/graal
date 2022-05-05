@@ -25,10 +25,16 @@
  */
 package com.oracle.svm.core.hub;
 
+import java.io.IOException;
+import java.lang.reflect.Proxy;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.ProtectionDomain;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -189,6 +195,7 @@ public final class PredefinedClassesSupport {
             if (protectionDomain != null) {
                 hub.setProtectionDomainAtRuntime(protectionDomain);
             }
+
             loadedClassesByName.put(clazz.getName(), clazz);
             return true;
         } finally {
