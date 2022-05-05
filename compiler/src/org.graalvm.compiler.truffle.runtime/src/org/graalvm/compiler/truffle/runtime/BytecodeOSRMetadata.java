@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -304,6 +304,12 @@ public final class BytecodeOSRMetadata {
                             break;
                         case FrameWithoutBoxing.OBJECT_TAG:
                             target.setObject(slot, source.getObject(slot));
+                            break;
+                        case FrameWithoutBoxing.STATIC_TAG:
+                            // Since we do not know the actual value of the slot at this point, we
+                            // copy both.
+                            target.setObjectStatic(slot, source.getObjectStatic(slot));
+                            target.setLongStatic(slot, source.getLongStatic(slot));
                             break;
                         default:
                             // illegal slots don't need to be transferred
