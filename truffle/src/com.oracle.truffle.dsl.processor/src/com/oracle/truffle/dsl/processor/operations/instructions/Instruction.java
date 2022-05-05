@@ -100,6 +100,7 @@ public abstract class Instruction {
                 case CONST_POOL:
                     return context.getType(Object.class);
                 case LOCAL:
+                    return context.getTypes().OperationLocal;
                 case ARGUMENT:
                     return context.getType(int.class);
                 case BRANCH_TARGET:
@@ -215,7 +216,7 @@ public abstract class Instruction {
                 case RETURN:
                     return null;
                 case SET_LOCAL:
-                    return context.getType(int.class);
+                    return context.getTypes().OperationLocal;
                 default:
                     throw new IllegalArgumentException("Unexpected value: " + this);
             }
@@ -368,8 +369,8 @@ public abstract class Instruction {
             value = CodeTreeBuilder.createBuilder().startCall(vars.consts, "add").tree(value).end().build();
         }
 
-        if (n >= inputs.length && results[n - inputs.length] == ResultType.SET_LOCAL) {
-            value = CodeTreeBuilder.createBuilder().startCall("trackLocalsHelper").tree(value).end().build();
+        if ((n < inputs.length && inputs[n] == InputType.LOCAL) || (n >= inputs.length && results[n - inputs.length] == ResultType.SET_LOCAL)) {
+            value = CodeTreeBuilder.createBuilder().startCall("getLocalIndex").tree(value).end().build();
         }
 
         return CodeTreeBuilder.createBuilder().startStatement().startCall("LE_BYTES", "putShort") //

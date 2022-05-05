@@ -624,14 +624,18 @@ public abstract class Operation {
 
         private final int AUX_CONTEXT = 0;
         private final int AUX_BEH = 1;
+        private final int AUX_LOCAL = 2;
 
-        public FinallyTry(OperationsContext builder, int id) {
-            super(builder, "FinallyTry", id, 2);
+        private final boolean noExcept;
+
+        public FinallyTry(OperationsContext builder, int id, boolean noExcept) {
+            super(builder, noExcept ? "FinallyTryNoExcept" : "FinallyTry", id, 2);
+            this.noExcept = noExcept;
         }
 
         @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
-            return List.of(new CodeTypeMirror(TypeKind.INT));
+            return List.of();
         }
 
         @Override
@@ -643,6 +647,12 @@ public abstract class Operation {
         @Override
         public CodeTree createBeginCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            if (!noExcept) {
+                b.startStatement().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "] = ");
+                b.startCall("createParentLocal");
+                b.end(2);
+            }
 
             b.startStatement().variable(vars.operationData).string(".aux[" + AUX_CONTEXT + "] = ").startCall("doBeginFinallyTry");
             b.variable(vars.bc);
@@ -677,18 +687,20 @@ public abstract class Operation {
 
                 b.startStatement().startCall("doEndFinallyBlock1").end(2);
 
-                CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
-                b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
+                if (!noExcept) {
+                    CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
+                    b.declaration(getTypes().BuilderExceptionHandler, "beh", CodeTreeBuilder.createBuilder().startNew(getTypes().BuilderExceptionHandler).end().build());
 
-                b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
-                b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
-                b.startStatement().variable(varBeh).string(".exceptionIndex = (int)");
-                b.startCall("trackLocalsHelper");
-                b.startGroup().variable(vars.operationData).string(".arguments[0]").end();
-                b.end();
-                b.end();
-                b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
-                b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
+                    b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
+                    b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
+                    b.startStatement().variable(varBeh).string(".exceptionIndex = ");
+                    b.startCall("getLocalIndex");
+                    b.startGroup().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").end();
+                    b.end();
+                    b.end();
+                    b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
+                    b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
+                }
 
             }
             b.end();
@@ -708,37 +720,41 @@ public abstract class Operation {
         public CodeTree createEndCode(BuilderVariables vars) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            // ; exception end
-            // << handler code >>
-            // goto end
-            // ; exception handler start
-            // << handler code >>
-            // throw [exc]
-            // end:
+            if (noExcept) {
+                emitLeaveCode(vars, b);
+            } else {
+                // ; exception end
+                // << handler code >>
+                // goto end
+                // ; exception handler start
+                // << handler code >>
+                // throw [exc]
+                // end:
 
-            b.startAssign("int endBci").variable(vars.bci).end();
+                b.startAssign("int endBci").variable(vars.bci).end();
 
-            emitLeaveCode(vars, b);
+                emitLeaveCode(vars, b);
 
-            CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
-            b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
+                CodeVariableElement varEndLabel = new CodeVariableElement(getTypes().BuilderOperationLabel, "endLabel");
+                b.declaration(getTypes().BuilderOperationLabel, varEndLabel.getName(), createCreateLabel());
 
-            b.startBlock();
-            b.tree(OperationGeneratorUtils.createEmitInstruction(vars, builder.commonBranch, varEndLabel));
-            b.end();
+                b.startBlock();
+                b.tree(OperationGeneratorUtils.createEmitInstruction(vars, builder.commonBranch, varEndLabel));
+                b.end();
 
-            b.declaration(getTypes().BuilderExceptionHandler, "beh", createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler));
-            b.startAssign("beh.endBci").string("endBci").end();
-            b.startAssign("beh.handlerBci").variable(vars.bci).end();
+                b.declaration(getTypes().BuilderExceptionHandler, "beh", createGetAux(vars, AUX_BEH, getTypes().BuilderExceptionHandler));
+                b.startAssign("beh.endBci").string("endBci").end();
+                b.startAssign("beh.handlerBci").variable(vars.bci).end();
 
-            emitLeaveCode(vars, b);
+                emitLeaveCode(vars, b);
 
-            b.startBlock();
-            CodeTree localIdx = CodeTreeBuilder.createBuilder().variable(vars.operationData).string(".arguments[0]").build();
-            b.tree(OperationGeneratorUtils.createEmitInstruction(vars, builder.commonThrow, localIdx));
-            b.end();
+                b.startBlock();
+                CodeTree localIdx = CodeTreeBuilder.createBuilder().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").build();
+                b.tree(OperationGeneratorUtils.createEmitInstruction(vars, builder.commonThrow, localIdx));
+                b.end();
 
-            b.tree(OperationGeneratorUtils.createEmitLabel(vars, varEndLabel));
+                b.tree(OperationGeneratorUtils.createEmitLabel(vars, varEndLabel));
+            }
 
             return b.build();
         }
@@ -754,7 +770,7 @@ public abstract class Operation {
 
         @Override
         public int getNumAuxValues() {
-            return 2;
+            return noExcept ? 1 : 3;
         }
 
         @Override

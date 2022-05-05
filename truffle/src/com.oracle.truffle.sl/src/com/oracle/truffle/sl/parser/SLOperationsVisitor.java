@@ -1,9 +1,13 @@
 package com.oracle.truffle.sl.parser;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -12,6 +16,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.operation.OperationLabel;
+import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -43,7 +48,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 public class SLOperationsVisitor extends SLBaseVisitor {
 
-    private static final boolean DO_LOG_NODE_CREATION = false;
+    private static final boolean DO_LOG_NODE_CREATION = true;
 
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, SLSource source, SLOperationsBuilder builder) {
         return parseSLImpl(source, new SLOperationsVisitor(language, source, builder));
@@ -60,52 +65,72 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     }
 
     private final SLOperationsBuilder b;
-    private LexicalScope scope;
+    private LocalScope scope;
 
-    private OperationLabel breakLabel;
-    private OperationLabel continueLabel;
+    private static class LocalScope {
+        private final LocalScope parent;
+        private Map<TruffleString, OperationLocal> locals;
+        private Set<TruffleString> setLocals;
 
-    private static class LexicalScope {
-        int count;
-        Map<TruffleString, Integer> names = new HashMap<>();
-        LexicalScope parent;
-
-        LexicalScope(LexicalScope parent) {
+        LocalScope(LocalScope parent) {
             this.parent = parent;
-            count = parent == null ? 0 : parent.count;
+            this.locals = new HashMap<>();
+            this.setLocals = new HashSet<>();
         }
 
-        public Integer get(TruffleString name) {
-// System.out.println("get " + name);
-            Integer value = names.get(name);
-            if (value != null) {
-                return value;
+        public OperationLocal get(TruffleString value) {
+            OperationLocal result = locals.get(value);
+            if (result != null) {
+                return result;
             } else if (parent != null) {
-                return parent.get(name);
+                return parent.get(value);
             } else {
                 return null;
             }
         }
 
-        public int getOrCreate(TruffleString name) {
-            Integer value = get(name);
-            if (value == null) {
-                return create(name);
+        public boolean isSet(TruffleString value) {
+            if (setLocals.contains(value)) {
+                return true;
+            } else if (parent != null) {
+                return parent.isSet(value);
             } else {
-                return value;
+                return false;
             }
         }
 
-        public int create(TruffleString name) {
-            int value = create();
-            names.put(name, value);
-            return value;
+        public void put(TruffleString value, OperationLocal local) {
+            locals.put(value, local);
         }
 
-        public int create() {
-            return count++;
+    }
+
+    private static class FindLocalsVisitor extends SimpleLanguageOperationsBaseVisitor<Void> {
+        boolean entered = false;
+        List<Token> results = new ArrayList<>();
+
+        @Override
+        public Void visitBlock(BlockContext ctx) {
+            if (entered) {
+                return null;
+            }
+
+            entered = true;
+            return super.visitBlock(ctx);
+        }
+
+        @Override
+        public Void visitNameAccess(NameAccessContext ctx) {
+            if (ctx.member_expression().size() > 0 && ctx.member_expression(0) instanceof MemberAssignContext) {
+                results.add(ctx.IDENTIFIER().getSymbol());
+            }
+
+            return super.visitNameAccess(ctx);
         }
     }
+
+    private OperationLabel breakLabel;
+    private OperationLabel continueLabel;
 
     @Override
     public Void visit(ParseTree tree) {
@@ -124,11 +149,12 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.beginSource(source.getSource());
         b.beginInstrumentation(StandardTags.RootTag.class);
 
-        scope = new LexicalScope(null);
+        scope = new LocalScope(null);
 
         for (int i = 1; i < ctx.IDENTIFIER().size(); i++) {
             TruffleString paramName = asTruffleString(ctx.IDENTIFIER(i).getSymbol(), false);
-            int idx = scope.create(paramName);
+            OperationLocal idx = b.createLocal();
+            scope.put(paramName, idx);
 
             b.beginStoreLocal(idx);
             b.emitLoadArgument(i - 1);
@@ -141,13 +167,13 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         b.endInstrumentation();
 
-        b.beginReturn();
-        b.emitConstObject(SLNull.SINGLETON);
-        b.endReturn();
-
         scope = scope.parent;
 
         assert scope == null;
+
+        b.beginReturn();
+        b.emitConstObject(SLNull.SINGLETON);
+        b.endReturn();
 
         b.endInstrumentation();
         b.endSource();
@@ -173,14 +199,17 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitBlock(BlockContext ctx) {
-        scope = new LexicalScope(scope);
-
         b.beginBlock();
+
+        scope = new LocalScope(scope);
+
+        FindLocalsVisitor helper = new FindLocalsVisitor();
+
         super.visitBlock(ctx);
-        b.endBlock();
 
         scope = scope.parent;
 
+        b.endBlock();
         return null;
     }
 
@@ -306,12 +335,12 @@ public class SLOperationsVisitor extends SLBaseVisitor {
      * }
      * </pre>
      */
-    private void logicalOrBegin(int localIdx) {
+    private void logicalOrBegin(OperationLocal localIdx) {
         b.beginBlock();
         b.beginStoreLocal(localIdx);
     }
 
-    private void logicalOrMiddle(int localIdx) {
+    private void logicalOrMiddle(OperationLocal localIdx) {
         b.endStoreLocal();
         b.beginConditional();
         b.beginSLToBooleanOperation();
@@ -320,7 +349,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.emitLoadLocal(localIdx);
     }
 
-    private void logicalOrEnd(@SuppressWarnings("unused") int localIdx) {
+    private void logicalOrEnd(@SuppressWarnings("unused") OperationLocal localIdx) {
         b.endConditional();
         b.endBlock();
     }
@@ -334,21 +363,21 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         b.beginInstrumentation(StandardTags.ExpressionTag.class);
 
-        int[] locals = new int[numTerms - 1];
+        OperationLocal[] tmpLocals = new OperationLocal[numTerms - 1];
         for (int i = 0; i < numTerms - 1; i++) {
-            locals[i] = scope.create();
-            logicalOrBegin(locals[i]);
+            tmpLocals[i] = b.createLocal();
+            logicalOrBegin(tmpLocals[i]);
         }
 
         for (int i = 0; i < numTerms; i++) {
             visit(ctx.logic_term(i));
 
             if (i != 0) {
-                logicalOrEnd(locals[i - 1]);
+                logicalOrEnd(tmpLocals[i - 1]);
             }
 
             if (i != numTerms - 1) {
-                logicalOrMiddle(locals[i]);
+                logicalOrMiddle(tmpLocals[i]);
             }
         }
         b.endInstrumentation();
@@ -368,12 +397,12 @@ public class SLOperationsVisitor extends SLBaseVisitor {
      * }
      * </pre>
      */
-    private void logicalAndBegin(int localIdx) {
+    private void logicalAndBegin(OperationLocal localIdx) {
         b.beginBlock();
         b.beginStoreLocal(localIdx);
     }
 
-    private void logicalAndMiddle(int localIdx) {
+    private void logicalAndMiddle(OperationLocal localIdx) {
         b.endStoreLocal();
         b.beginConditional();
         b.beginSLToBooleanOperation();
@@ -381,7 +410,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.endSLToBooleanOperation();
     }
 
-    private void logicalAndEnd(int localIdx) {
+    private void logicalAndEnd(OperationLocal localIdx) {
         b.emitLoadLocal(localIdx);
         b.endConditional();
         b.endBlock();
@@ -398,21 +427,21 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.beginInstrumentation(StandardTags.ExpressionTag.class);
         b.beginSLUnboxOperation();
 
-        int[] locals = new int[numTerms - 1];
+        OperationLocal[] tmpLocals = new OperationLocal[numTerms - 1];
         for (int i = 0; i < numTerms - 1; i++) {
-            locals[i] = scope.create();
-            logicalAndBegin(locals[i]);
+            tmpLocals[i] = b.createLocal();
+            logicalAndBegin(tmpLocals[i]);
         }
 
         for (int i = 0; i < numTerms; i++) {
             visit(ctx.logic_factor(i));
 
             if (i != 0) {
-                logicalAndEnd(locals[i - 1]);
+                logicalAndEnd(tmpLocals[i - 1]);
             }
 
             if (i != numTerms - 1) {
-                logicalAndMiddle(locals[i]);
+                logicalAndMiddle(tmpLocals[i]);
             }
         }
 
@@ -576,7 +605,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     private void buildMemberExpressionRead(Token ident, List<Member_expressionContext> members, int idx) {
         if (idx == -1) {
-            Integer localIdx = scope.get(asTruffleString(ident, false));
+            OperationLocal localIdx = scope.get(asTruffleString(ident, false));
             if (localIdx != null) {
                 b.emitLoadLocal(localIdx);
             } else {
@@ -641,9 +670,17 @@ public class SLOperationsVisitor extends SLBaseVisitor {
      * }
      * </pre>
      */
+
+    private Stack<OperationLocal> writeLocalsStack = new Stack<>();
+
     private void buildMemberExpressionWriteBefore(Token ident, List<Member_expressionContext> members, int idx, Token errorToken) {
         if (idx == -1) {
-            int localIdx = scope.getOrCreate(asTruffleString(ident, false));
+            OperationLocal localIdx = scope.get(asTruffleString(ident, false));
+            if (localIdx == null) {
+                localIdx = b.createLocal();
+            }
+            writeLocalsStack.push(localIdx);
+
             b.beginBlock();
             b.beginStoreLocal(localIdx);
             return;
@@ -674,7 +711,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     private void buildMemberExpressionWriteAfter(Token ident, @SuppressWarnings("unused") List<Member_expressionContext> members, int idx) {
         if (idx == -1) {
-            int localIdx = scope.get(asTruffleString(ident, false));
+            OperationLocal localIdx = writeLocalsStack.pop();
+            scope.put(asTruffleString(ident, false), localIdx);
             b.endStoreLocal();
             b.emitLoadLocal(localIdx);
             b.endBlock();

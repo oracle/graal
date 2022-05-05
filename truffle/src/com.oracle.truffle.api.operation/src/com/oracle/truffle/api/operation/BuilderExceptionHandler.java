@@ -24,6 +24,6 @@ public class BuilderExceptionHandler {
 
     @Override
     public String toString() {
-        return String.format("{start=%04x, end=%04x, handler=%04x}", startBci, endBci, handlerBci);
+        return String.format("{start=%04x, end=%04x, handler=%04x, index=%d}", startBci, endBci, handlerBci, exceptionIndex);
     }
 }

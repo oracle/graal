@@ -135,7 +135,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     }
 
     private CodeTypeElement createBuilderImpl(CodeTypeElement typBuilder) {
-        String simpleName = m.getTemplateType().getSimpleName() + "BuilderImpl";
+        String simpleName = "BuilderImpl";
         CodeTypeElement typBuilderImpl = GeneratorUtils.createClass(m, null, Set.of(Modifier.PRIVATE, Modifier.STATIC), simpleName, typBuilder.asType());
         typBuilderImpl.setEnclosingElement(typBuilder);
 
@@ -245,12 +245,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement builderBytecodeNodeType;
         CodeTypeElement builderInstrBytecodeNodeType;
         {
-            bytecodeGenerator = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "BytecodeNode", m, false);
+            bytecodeGenerator = new OperationsBytecodeCodeGenerator(typBuilderImpl, m, false);
             builderBytecodeNodeType = bytecodeGenerator.createBuilderBytecodeNode();
             typBuilderImpl.add(builderBytecodeNodeType);
         }
         if (ENABLE_INSTRUMENTATION) {
-            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, simpleName + "InstrumentableBytecodeNode", m, true);
+            OperationsBytecodeCodeGenerator bcg = new OperationsBytecodeCodeGenerator(typBuilderImpl, m, true);
             builderInstrBytecodeNodeType = bcg.createBuilderBytecodeNode();
             typBuilderImpl.add(builderInstrBytecodeNodeType);
         } else {
@@ -412,7 +412,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                 b.string("sources");
                 b.variable(fldNodeNumber);
                 b.string("createMaxStack()");
-                b.startGroup().string("maxLocals + 1").end();
+                b.startGroup().string("numLocals").end();
                 b.string("bcCopy");
                 b.string("cpCopy");
                 b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();
@@ -431,7 +431,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("sources");
             b.variable(fldNodeNumber);
             b.string("createMaxStack()");
-            b.startGroup().string("maxLocals + 1").end();
+            b.startGroup().string("numLocals").end();
             b.string("bcCopy");
             b.string("cpCopy");
             b.startNewArray(new ArrayCodeTypeMirror(types.Node), CodeTreeBuilder.singleVariable(fldNumChildNodes)).end();

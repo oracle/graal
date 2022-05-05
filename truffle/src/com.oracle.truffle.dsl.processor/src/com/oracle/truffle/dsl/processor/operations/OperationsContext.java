@@ -71,7 +71,8 @@ public class OperationsContext {
         add(new Operation.IfThenElse(this, operationId++, true));
         add(new Operation.While(this, operationId++));
         add(new Operation.TryCatch(this, operationId++));
-        add(new Operation.FinallyTry(this, operationId++));
+        add(new Operation.FinallyTry(this, operationId++, false));
+        add(new Operation.FinallyTry(this, operationId++, true));
 
         add(new Operation.Label(this, operationId++));
         add(new Operation.Simple(this, "Branch", operationId++, 0, commonBranch));

@@ -4,6 +4,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -14,7 +15,9 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.operation.OperationLabel;
+import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.OperationsRootNode;
 import com.oracle.truffle.api.source.Source;
@@ -22,41 +25,14 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public class TestOperationsParserTest {
 
-    private static class Tester {
-        private final OperationsNode node;
-        private final OperationsRootNode rootNode;
-
-        Tester(String src, boolean withSourceInfo) {
-            Source s = Source.newBuilder("test-operations", src, "test").build();
-
-            if (withSourceInfo) {
-                node = TestOperationsBuilder.parseWithSourceInfo(null, s)[0];
-            } else {
-                node = TestOperationsBuilder.parse(null, s)[0];
-            }
-            rootNode = node.createRootNode(null, "TestFunction");
-        }
-
-        Tester(String src) {
-            this(src, false);
-        }
-
-        public Tester test(Object expectedResult, Object... arguments) {
-            Object result = rootNode.getCallTarget().call(arguments);
-            Assert.assertEquals(expectedResult, result);
-            return this;
-        }
-
-        public Tester then(Consumer<OperationsNode> action) {
-            action.accept(node);
-            return this;
-        }
-    }
-
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
-        OperationsNode operationsNode = TestOperationsBuilder.parse(null, builder)[0];
+        OperationsNode operationsNode = parseNode(builder);
         System.out.println(operationsNode.dump());
         return operationsNode.createRootNode(null, "TestFunction").getCallTarget();
+    }
+
+    private static OperationsNode parseNode(Consumer<TestOperationsBuilder> builder) {
+        return TestOperationsBuilder.parse(null, builder)[0];
     }
 
     @Test
@@ -149,7 +125,61 @@ public class TestOperationsParserTest {
                    + "      (inclocal 0 1)))"
                    + "  (return (local 1)))";
         //@formatter:on
-        new Tester(src).test(45L, 10L);
+
+        // i = 0; j = 0;
+        // while ( i < arg0 ) { j = j + i; i = i + 1; }
+        // return j;
+
+        RootCallTarget root = parse(b -> {
+            OperationLocal locI = b.createLocal();
+            OperationLocal locJ = b.createLocal();
+
+            b.beginStoreLocal(locI);
+            b.emitConstObject(0L);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(locJ);
+            b.emitConstObject(0L);
+            b.endStoreLocal();
+
+            b.beginWhile();
+            {
+                b.beginLessThanOperation();
+                b.emitLoadLocal(locI);
+                b.emitLoadArgument(0);
+                b.endLessThanOperation();
+
+                b.beginBlock();
+                {
+                    b.beginStoreLocal(locJ);
+                    {
+                        b.beginAddOperation();
+                        b.emitLoadLocal(locJ);
+                        b.emitLoadLocal(locI);
+                        b.endAddOperation();
+                    }
+                    b.endStoreLocal();
+
+                    b.beginStoreLocal(locI);
+                    {
+                        b.beginAddOperation();
+                        b.emitLoadLocal(locI);
+                        b.emitConstObject(1L);
+                        b.endAddOperation();
+                    }
+                    b.endStoreLocal();
+                }
+                b.endBlock();
+            }
+            b.endWhile();
+
+            b.beginReturn();
+            b.emitLoadLocal(locJ);
+            b.endReturn();
+
+        });
+
+        Assert.assertEquals(45L, root.call(10L));
     }
 
     @Test
@@ -187,35 +217,39 @@ public class TestOperationsParserTest {
     @Test
     public void testVariableBoxingElim() {
         RootCallTarget root = parse(b -> {
-            b.beginStoreLocal(0);
+
+            OperationLocal local0 = b.createLocal();
+            OperationLocal local1 = b.createLocal();
+
+            b.beginStoreLocal(local0);
             b.emitConstObject(0L);
             b.endStoreLocal();
 
-            b.beginStoreLocal(1);
+            b.beginStoreLocal(local1);
             b.emitConstObject(0L);
             b.endStoreLocal();
 
             b.beginWhile();
 
             b.beginLessThanOperation();
-            b.emitLoadLocal(0);
+            b.emitLoadLocal(local0);
             b.emitConstObject(100L);
             b.endLessThanOperation();
 
             b.beginBlock();
 
-            b.beginStoreLocal(1);
+            b.beginStoreLocal(local1);
             b.beginAddOperation();
             b.beginAlwaysBoxOperation();
-            b.emitLoadLocal(1);
+            b.emitLoadLocal(local1);
             b.endAlwaysBoxOperation();
-            b.emitLoadLocal(0);
+            b.emitLoadLocal(local0);
             b.endAddOperation();
             b.endStoreLocal();
 
-            b.beginStoreLocal(0);
+            b.beginStoreLocal(local0);
             b.beginAddOperation();
-            b.emitLoadLocal(0);
+            b.emitLoadLocal(local0);
             b.emitConstObject(1L);
             b.endAddOperation();
             b.endStoreLocal();
@@ -225,96 +259,13 @@ public class TestOperationsParserTest {
             b.endWhile();
 
             b.beginReturn();
-            b.emitLoadLocal(1);
+            b.emitLoadLocal(local1);
             b.endReturn();
 
             b.build();
         });
 
         Assert.assertEquals(4950L, root.call());
-    }
-
-    @Test
-    public void testSourceInfo() {
-        String src = "  (return (add 1 2))";
-        new Tester(src).then(node -> {
-            SourceSection ss = node.getSourceSection();
-            Assert.assertNotNull(ss);
-            Assert.assertEquals(2, ss.getCharIndex());
-            Assert.assertEquals(src.length(), ss.getCharEndIndex());
-        });
-    }
-
-    @Test
-    public void testContextEval() {
-        String src = "(return (add 1 2))";
-
-        Context context = Context.create("test-operations");
-        long result = context.eval("test-operations", src).asLong();
-        Assert.assertEquals(3, result);
-    }
-
-    @Test
-    public void testStacktrace() {
-        //@formatter:off
-        String src = "(return\n"
-                   + "  (add\n"
-                   + "    1\n"
-                   + "    (fail)))";
-        //@formatter:on
-
-        Context context = Context.create("test-operations");
-        try {
-            context.eval(org.graalvm.polyglot.Source.newBuilder("test-operations", src, "test-operations").build());
-            fail();
-        } catch (PolyglotException ex) {
-            Assert.assertEquals(4, ex.getStackTrace()[0].getLineNumber());
-        } catch (IOException e) {
-            Assert.fail();
-        }
-    }
-
-    // @Test
-    public void testTracing() {
-        //@formatter:off
-        String src = "(do"
-                   + "  (setlocal 0 0)"
-                   + "  (setlocal 2 0)"
-                   + "  (while"
-                   + "    (less (local 0) 100)"
-                   + "    (do"
-                   + "      (setlocal 1 0)"
-                   + "      (while"
-                   + "        (less (local 1) 100)"
-                   + "        (do"
-                   + "          (setlocal 2 (add (local 2) (local 1)))"
-                   + "          (setlocal 1 (add (local 1) 1))))"
-                   + "      (setlocal 0 (add (local 0) 1))))"
-                   + "  (return (local 2)))";
-        //@formatter:on
-        new Tester(src).test(495000L);
-    }
-
-    @Test
-    public void testInstrumentation() {
-        //@formatter:off
-        String src = "(stmt"
-                   + "  (return (add 1 2)))";
-        //@formatter:on
-
-        new Tester(src, true).test(3L);
-    }
-
-    @Test
-    public void testCompilation() {
-        Context context = Context.create("test-operations");
-
-        Value v = context.parse("test-operations", "(return (add (arg 0) (arg 1)))");
-        for (long i = 0; i < 1000000; i++) {
-            v.execute(i, 1L);
-        }
-
-        Assert.assertEquals(Value.asValue(7L), v.execute(3L, 4L));
     }
 
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {
@@ -325,13 +276,13 @@ public class TestOperationsParserTest {
             if (expectException) {
                 Assert.fail();
             }
-        } catch (Exception ex) {
+        } catch (AbstractTruffleException ex) {
             if (!expectException) {
                 throw new AssertionError("unexpected", ex);
             }
         }
 
-        Assert.assertArrayEquals(order, result.toArray());
+        Assert.assertArrayEquals("expected " + Arrays.toString(order) + " got " + result, order, result.toArray());
     }
 
     @Test
@@ -341,7 +292,7 @@ public class TestOperationsParserTest {
         // expected 1, 2
 
         RootCallTarget root = parse(b -> {
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
 
                 b.beginAppenderOperation();
@@ -373,7 +324,7 @@ public class TestOperationsParserTest {
         // expected: 1, 3
 
         RootCallTarget root = parse(b -> {
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -411,7 +362,7 @@ public class TestOperationsParserTest {
     @Test
     public void testFinallyTryReturn() {
         RootCallTarget root = parse(b -> {
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -453,7 +404,7 @@ public class TestOperationsParserTest {
 
             OperationLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginAppenderOperation();
                 b.emitLoadArgument(0);
@@ -509,7 +460,7 @@ public class TestOperationsParserTest {
 
             OperationLabel lbl = b.createLabel();
 
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginBlock();
                 {
@@ -566,7 +517,7 @@ public class TestOperationsParserTest {
             // try { 1; return; 2 } finally { 3; goto lbl; 4; lbl: 5; }
             // expected: 1, 3, 5
 
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginBlock();
                 {
@@ -626,7 +577,7 @@ public class TestOperationsParserTest {
             // try { try { 1; return; 2; } finally { 3; } } finally { 4; }
             // expected: 1, 3, 4
 
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginBlock();
                 {
@@ -637,7 +588,7 @@ public class TestOperationsParserTest {
                 }
                 b.endBlock();
 
-                b.beginFinallyTry(1);
+                b.beginFinallyTry();
                 {
                     b.beginBlock();
                     {
@@ -683,9 +634,9 @@ public class TestOperationsParserTest {
             // try { 1; return; 2; } finally { try { 3; return; 4; } finally { 5; } }
             // expected: 1, 3, 5
 
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
-                b.beginFinallyTry(0);
+                b.beginFinallyTry();
                 {
                     b.beginBlock();
                     {
@@ -749,7 +700,7 @@ public class TestOperationsParserTest {
             // try { try { 1; throw; 2; } finally { 3; } } finally { 4; }
             // expected: 1, 3, 4
 
-            b.beginFinallyTry(0);
+            b.beginFinallyTry();
             {
                 b.beginBlock();
                 {
@@ -760,7 +711,7 @@ public class TestOperationsParserTest {
                 }
                 b.endBlock();
 
-                b.beginFinallyTry(1);
+                b.beginFinallyTry();
                 {
                     b.beginBlock();
                     {
@@ -795,5 +746,145 @@ public class TestOperationsParserTest {
         });
 
         testOrdering(true, root, 1L, 3L, 4L);
+    }
+
+    @Test
+    public void testFinallyTryNestedFinallyThrow() {
+        RootCallTarget root = parse(b -> {
+
+            // try { 1; throw; 2; } finally { try { 3; throw; 4; } finally { 5; } }
+            // expected: 1, 3, 5
+
+            b.beginFinallyTry();
+            {
+                b.beginFinallyTry();
+                {
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(5L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+
+                    b.beginBlock();
+                    {
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(3L);
+                        b.endAppenderOperation();
+
+                        b.emitThrowOperation();
+
+                        b.beginAppenderOperation();
+                        b.emitLoadArgument(0);
+                        b.emitConstObject(4L);
+                        b.endAppenderOperation();
+                    }
+                    b.endBlock();
+                }
+                b.endFinallyTry();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.emitThrowOperation();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTry();
+
+            b.build();
+        });
+
+        testOrdering(true, root, 1L, 3L, 5L);
+    }
+
+    @Test
+    public void testFinallyTryNoExceptReturn() {
+
+        // try { 1; return; 2; } finally noexcept { 3; }
+        // expected: 1, 3
+
+        RootCallTarget root = parse(b -> {
+            b.beginFinallyTryNoExcept();
+            {
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(3L);
+                b.endAppenderOperation();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.beginReturn();
+                    b.emitConstObject(0L);
+                    b.endReturn();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTryNoExcept();
+
+            b.build();
+        });
+
+        testOrdering(false, root, 1L, 3L);
+    }
+
+    @Test
+    public void testFinallyTryNoExceptException() {
+
+        // try { 1; throw; 2; } finally noexcept { 3; }
+        // expected: 1
+
+        RootCallTarget root = parse(b -> {
+            b.beginFinallyTryNoExcept();
+            {
+                b.beginAppenderOperation();
+                b.emitLoadArgument(0);
+                b.emitConstObject(3L);
+                b.endAppenderOperation();
+
+                b.beginBlock();
+                {
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(1L);
+                    b.endAppenderOperation();
+
+                    b.emitThrowOperation();
+
+                    b.beginAppenderOperation();
+                    b.emitLoadArgument(0);
+                    b.emitConstObject(2L);
+                    b.endAppenderOperation();
+                }
+                b.endBlock();
+            }
+            b.endFinallyTryNoExcept();
+
+            b.build();
+        });
+
+        testOrdering(true, root, 1L);
     }
 }

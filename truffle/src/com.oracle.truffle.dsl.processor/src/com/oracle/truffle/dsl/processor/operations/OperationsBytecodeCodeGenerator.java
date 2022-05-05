@@ -51,13 +51,11 @@ public class OperationsBytecodeCodeGenerator {
     final DeclaredType ConditionProfile = context.getDeclaredType(ConditionProfile_Name);
 
     private final CodeTypeElement typBuilderImpl;
-    private final String simpleName;
     private final OperationsData m;
     private final boolean withInstrumentation;
 
-    public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, String simpleName, OperationsData m, boolean withInstrumentation) {
+    public OperationsBytecodeCodeGenerator(CodeTypeElement typBuilderImpl, OperationsData m, boolean withInstrumentation) {
         this.typBuilderImpl = typBuilderImpl;
-        this.simpleName = simpleName;
         this.m = m;
         this.withInstrumentation = withInstrumentation;
     }
@@ -67,7 +65,9 @@ public class OperationsBytecodeCodeGenerator {
      * executable Truffle node.
      */
     public CodeTypeElement createBuilderBytecodeNode() {
-        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, simpleName, types.OperationsNode);
+        String namePrefix = withInstrumentation ? "Instrumentable" : "";
+
+        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", types.OperationsNode);
 
         CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(byte.class)), "bc");
         GeneratorUtils.addCompilationFinalAnnotation(fldBc, 1);
@@ -254,7 +254,7 @@ public class OperationsBytecodeCodeGenerator {
             CodeExecutableElement mContinueAt = new CodeExecutableElement(
                             Set.of(Modifier.PROTECTED), context.getType(Object.class), "continueAt",
                             argFrame, argStartBci, argStartSp);
-            builderBytecodeNodeType.add(mContinueAt);
+            builderBytecodeNodeType.getEnclosedElements().add(0, mContinueAt);
 
             {
                 CodeAnnotationMirror annExplodeLoop = new CodeAnnotationMirror(types.ExplodeLoop);

@@ -26,23 +26,16 @@ public abstract class OperationsBuilder {
         return builtNodes.toArray(new OperationsNode[builtNodes.size()]);
     }
 
-    protected int maxLocals = -1;
     protected int instrumentationId = 0;
 
     public void reset() {
         labelFills.clear();
-        maxLocals = -1;
         instrumentationId = 0;
 
         curStack = 0;
         maxStack = 0;
-    }
 
-    protected final Object trackLocalsHelper(Object value) {
-        if (maxLocals < (int) value) {
-            maxLocals = (int) value;
-        }
-        return value;
+        numLocals = 0;
     }
 
     // ------------------------ labels ------------------------
@@ -203,6 +196,54 @@ public abstract class OperationsBuilder {
         // this should probably be:
         // assert this.curStack == curStack;
         this.curStack = curStack;
+    }
+
+    // ------------------------ locals handling ------------------------
+
+    protected int numLocals;
+
+    public final OperationLocal createLocal() {
+        BuilderOperationLocal local = new BuilderOperationLocal(operationData, operationData.numLocals++);
+
+        if (numLocals < local.id + 1) {
+            numLocals = local.id + 1;
+        }
+
+        System.out.printf(" -- created local: %d%n", local.id);
+
+        return local;
+    }
+
+    protected final OperationLocal createParentLocal() {
+        BuilderOperationData parent = operationData.parent;
+        assert operationData.numLocals == parent.numLocals;
+
+        BuilderOperationLocal local = new BuilderOperationLocal(parent, parent.numLocals++);
+        operationData.numLocals++;
+
+        if (numLocals < local.id + 1) {
+            numLocals = local.id + 1;
+        }
+
+        return local;
+    }
+
+    protected int getLocalIndex(Object value) {
+        BuilderOperationLocal local = (BuilderOperationLocal) value;
+
+        // verify nesting
+        assert verifyNesting(local.owner, operationData) : "local access not nested properly";
+
+        return local.id;
+    }
+
+    private static boolean verifyNesting(BuilderOperationData parent, BuilderOperationData child) {
+        BuilderOperationData cur = child;
+        while (cur.depth > parent.depth) {
+            cur = cur.parent;
+        }
+
+        return cur == parent;
     }
 
     // ------------------------ source sections ------------------------
