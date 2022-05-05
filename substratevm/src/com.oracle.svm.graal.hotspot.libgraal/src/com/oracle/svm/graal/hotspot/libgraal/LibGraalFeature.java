@@ -221,6 +221,7 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeatur
         for (Class<? extends OptionDescriptors> optionsClass : imageClassLoader.findSubclasses(OptionDescriptors.class, false)) {
             if (!Modifier.isAbstract(optionsClass.getModifiers()) && !OptionDescriptorsMap.class.isAssignableFrom(optionsClass)) {
                 try {
+                    ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, optionsClass);
                     for (OptionDescriptor d : optionsClass.getDeclaredConstructor().newInstance()) {
                         if (!(d.getOptionKey() instanceof HostedOptionKey)) {
                             descriptors.put(d.getName(), d);
