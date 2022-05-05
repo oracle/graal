@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <stdlib.h>
-#include <stdio.h>
 
-int max_int(int a, int b) {
-    return a > b ? a : b;
-}
+// The unistd.h header does not exist on Windows. This file includes the io.h
+// header instead and provides compatible functions.
 
-int main() {
-    int *mem = calloc(sizeof(int), 1000);
-    int *mem2 = calloc(sizeof(int), 100);
-    int sum = 0;
-    for (int i = 0; i < 1000; i++) {
-        mem[i] = i;
-        for (int j = 0; j < 100; j++) {
-            mem2[j] = j;
-            sum += max_int(mem[i], mem2[j]);
-        }
-    }
-    printf("%d\n", sum);
-    if (50116650 != sum) {
-        abort();
-    }
+#include <io.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+#define S_IRUSR _S_IREAD
+#define S_IWUSR _S_IWRITE
+#define S_IXUSR _S_IEXEC
+#define X_OK 0 // does not exist in windows, just use 0
+#define R_OK 4
+#define W_OK 2
+#define F_OK 0
+
+int mkstemp(char *name) {
+    char *tempName = _mktemp(name);
+    return _sopen(tempName, _O_CREAT | _O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
 }

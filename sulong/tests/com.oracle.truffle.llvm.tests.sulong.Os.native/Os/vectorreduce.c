@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-int printf(const char *, ...);
+#include <stdio.h>
 
 short a = 1, b;
 
