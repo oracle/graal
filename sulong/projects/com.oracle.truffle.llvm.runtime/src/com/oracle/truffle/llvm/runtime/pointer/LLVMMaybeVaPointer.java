@@ -146,7 +146,6 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         CompilerDirectives.shouldNotReachHere();
     }
 
-
     public long getAddress() {
         // this address should only be accessed if we are not dealing with a managed va_list
         assert isPointer();
