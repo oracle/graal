@@ -247,15 +247,15 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         private static final int INSTR_BRANCH_FALSE = 3;
         private static final int INSTR_THROW = 4;
         private static final int INSTR_LOAD_CONSTANT_OBJECT = 5;
-        private static final int INSTR_LOAD_CONSTANT_LONG = 6;
-        private static final int INSTR_LOAD_CONSTANT_BOOLEAN = 7;
+        private static final int INSTR_LOAD_CONSTANT_BOOLEAN = 6;
+        private static final int INSTR_LOAD_CONSTANT_LONG = 7;
         private static final int INSTR_LOAD_ARGUMENT_OBJECT = 8;
-        private static final int INSTR_LOAD_ARGUMENT_LONG = 9;
-        private static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 10;
+        private static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 9;
+        private static final int INSTR_LOAD_ARGUMENT_LONG = 10;
         private static final int INSTR_STORE_LOCAL = 11;
         private static final int INSTR_LOAD_LOCAL_OBJECT = 12;
-        private static final int INSTR_LOAD_LOCAL_LONG = 13;
-        private static final int INSTR_LOAD_LOCAL_BOOLEAN = 14;
+        private static final int INSTR_LOAD_LOCAL_BOOLEAN = 13;
+        private static final int INSTR_LOAD_LOCAL_LONG = 14;
         private static final int INSTR_RETURN = 15;
         private static final int INSTR_INSTRUMENT_ENTER = 16;
         private static final int INSTR_INSTRUMENT_EXIT_VOID = 17;
@@ -292,13 +292,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         // BYTE
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // INT
         null,
         // FLOAT
         null,
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // DOUBLE
         null};
 
@@ -1572,13 +1572,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.constant.long
+         * load.constant.boolean
          *   Inputs:
          *     CONST_POOL
          *   Results:
          *     STACK_VALUE
          *
-         * load.constant.boolean
+         * load.constant.long
          *   Inputs:
          *     CONST_POOL
          *   Results:
@@ -1590,13 +1590,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.argument.long
+         * load.argument.boolean
          *   Inputs:
          *     ARGUMENT
          *   Results:
          *     STACK_VALUE
          *
-         * load.argument.boolean
+         * load.argument.long
          *   Inputs:
          *     ARGUMENT
          *   Results:
@@ -1614,13 +1614,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.local.long
+         * load.local.boolean
          *   Inputs:
          *     LOCAL
          *   Results:
          *     STACK_VALUE
          *
-         * load.local.boolean
+         * load.local.long
          *   Inputs:
          *     LOCAL
          *   Results:
@@ -2163,16 +2163,16 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_CONSTANT_LONG :
+                            case INSTR_LOAD_CONSTANT_BOOLEAN :
                             {
-                                frame.setLong(sp, (long) consts[LE_BYTES.getShort(bc, bci + 2)]);
+                                frame.setBoolean(sp, (boolean) consts[LE_BYTES.getShort(bc, bci + 2)]);
                                 sp = sp + 1;
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_CONSTANT_BOOLEAN :
+                            case INSTR_LOAD_CONSTANT_LONG :
                             {
-                                frame.setBoolean(sp, (boolean) consts[LE_BYTES.getShort(bc, bci + 2)]);
+                                frame.setLong(sp, (long) consts[LE_BYTES.getShort(bc, bci + 2)]);
                                 sp = sp + 1;
                                 nextBci = bci + 4;
                                 break;
@@ -2185,11 +2185,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_ARGUMENT_LONG :
+                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
                             {
                                 Object value = frame.getArguments()[LE_BYTES.getShort(bc, bci + 2)];
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
+                                if (value instanceof Boolean) {
+                                    frame.setBoolean(sp, (boolean) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2197,11 +2197,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                            case INSTR_LOAD_ARGUMENT_LONG :
                             {
                                 Object value = frame.getArguments()[LE_BYTES.getShort(bc, bci + 2)];
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
+                                if (value instanceof Long) {
+                                    frame.setLong(sp, (long) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2224,11 +2224,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_LOCAL_LONG :
+                            case INSTR_LOAD_LOCAL_BOOLEAN :
                             {
                                 Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
+                                if (value instanceof Boolean) {
+                                    frame.setBoolean(sp, (boolean) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2236,11 +2236,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_LOCAL_BOOLEAN :
+                            case INSTR_LOAD_LOCAL_LONG :
                             {
                                 Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
+                                if (value instanceof Long) {
+                                    frame.setLong(sp, (long) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2478,25 +2478,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLAddOperation_SLAddOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b10) != 0 /* is-state_0 addLong(long, long) */);
                 try {
@@ -2729,25 +2735,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLDivOperation_SLDivOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLDivOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLDivOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLDivOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLDivOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 divLong(long, long) */;
                 try {
@@ -2941,25 +2953,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLEqualOperation_SLEqualOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0, byte state_1) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b10) != 0 /* is-state_0 doLong(long, long) */);
                 boolean value = SLEqualNode.doLong($child0Value_, $child1Value_);
@@ -2973,25 +2991,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLEqualOperation_SLEqualOperation_execute__boolean_boolean1_(VirtualFrame $frame, int $bci, int $sp, byte state_0, byte state_1) {
                 boolean $child0Value_;
-                if ($frame.isBoolean($sp - 2)) {
-                    $child0Value_ = $frame.getBoolean($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Boolean) {
-                    $child0Value_ = (boolean) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 2)) {
+                        $child0Value_ = $frame.getBoolean($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Boolean)) {
+                        $child0Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 boolean $child1Value_;
-                if ($frame.isBoolean($sp - 1)) {
-                    $child1Value_ = $frame.getBoolean($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Boolean) {
-                    $child1Value_ = (boolean) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 1)) {
+                        $child1Value_ = $frame.getBoolean($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Boolean)) {
+                        $child1Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b1000) != 0 /* is-state_0 doBoolean(boolean, boolean) */);
                 boolean value = SLEqualNode.doBoolean($child0Value_, $child1Value_);
@@ -3421,25 +3445,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLLessOrEqualOperation_SLLessOrEqualOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 lessOrEqual(long, long) */;
                 boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
@@ -3602,25 +3632,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLLessThanOperation_SLLessThanOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 lessThan(long, long) */;
                 boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
@@ -3783,14 +3819,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLLogicalNotOperation_SLLogicalNotOperation_execute__boolean0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 boolean $child0Value_;
-                if ($frame.isBoolean($sp - 1)) {
-                    $child0Value_ = $frame.getBoolean($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Boolean) {
-                    $child0Value_ = (boolean) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLLogicalNotOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 1)) {
+                        $child0Value_ = $frame.getBoolean($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Boolean)) {
+                        $child0Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLLogicalNotOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 doBoolean(boolean) */;
                 boolean value = SLLogicalNotNode.doBoolean($child0Value_);
@@ -3890,25 +3929,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLMulOperation_SLMulOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLMulOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLMulOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLMulOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLMulOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 mulLong(long, long) */;
                 try {
@@ -4484,25 +4529,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLSubOperation_SLSubOperation_execute__long_long0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLSubOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLSubOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLSubOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLSubOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 subLong(long, long) */;
                 try {
@@ -5066,14 +5117,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLUnboxOperation_SLUnboxOperation_execute__boolean0_(VirtualFrame $frame, int $bci, int $sp, byte state_0, byte state_1) {
                 boolean $child0Value_;
-                if ($frame.isBoolean($sp - 1)) {
-                    $child0Value_ = $frame.getBoolean($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Boolean) {
-                    $child0Value_ = (boolean) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 1)) {
+                        $child0Value_ = $frame.getBoolean($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Boolean)) {
+                        $child0Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b1000) != 0 /* is-state_0 fromBoolean(boolean) */);
                 boolean value = SLUnboxNode.fromBoolean($child0Value_);
@@ -5087,14 +5141,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLUnboxOperation_SLUnboxOperation_execute__long1_(VirtualFrame $frame, int $bci, int $sp, byte state_0, byte state_1) {
                 long $child0Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child0Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child0Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b10000) != 0 /* is-state_0 fromLong(long) */);
                 long value = SLUnboxNode.fromLong($child0Value_);
@@ -5452,14 +5509,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
             private void SLToBooleanOperation_SLToBooleanOperation_execute__boolean0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
                 boolean $child0Value_;
-                if ($frame.isBoolean($sp - 1)) {
-                    $child0Value_ = $frame.getBoolean($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Boolean) {
-                    $child0Value_ = (boolean) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLToBooleanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 1)) {
+                        $child0Value_ = $frame.getBoolean($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Boolean)) {
+                        $child0Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLToBooleanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 doBoolean(boolean) */;
                 boolean value = SLToBooleanNode.doBoolean($child0Value_);
@@ -5767,14 +5827,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             private void SLUnboxOperation_q_FromLong_execute_(VirtualFrame $frame, int $bci, int $sp) {
                 byte state_0 = bc[$bci + 3 + 0];
                 long $child0Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child0Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child0Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b10000) != 0 /* is-state_0 fromLong(long) */);
                 long value = SLUnboxNode.fromLong($child0Value_);
@@ -5789,25 +5852,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             private void SLAddOperation_q_AddLong_execute_(VirtualFrame $frame, int $bci, int $sp) {
                 byte state_0 = bc[$bci + 4 + 0];
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLAddOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b10) != 0 /* is-state_0 addLong(long, long) */);
                 try {
@@ -5862,14 +5931,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             private void SLUnboxOperation_q_FromBoolean_execute_(VirtualFrame $frame, int $bci, int $sp) {
                 byte state_0 = bc[$bci + 3 + 0];
                 boolean $child0Value_;
-                if ($frame.isBoolean($sp - 1)) {
-                    $child0Value_ = $frame.getBoolean($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Boolean) {
-                    $child0Value_ = (boolean) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 1)) {
+                        $child0Value_ = $frame.getBoolean($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Boolean)) {
+                        $child0Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLUnboxOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert ((state_0 & 0b1000) != 0 /* is-state_0 fromBoolean(boolean) */);
                 boolean value = SLUnboxNode.fromBoolean($child0Value_);
@@ -5884,14 +5956,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             private void SLToBooleanOperation_q_Boolean_execute_(VirtualFrame $frame, int $bci, int $sp) {
                 byte state_0 = bc[$bci + 3 + 0];
                 boolean $child0Value_;
-                if ($frame.isBoolean($sp - 1)) {
-                    $child0Value_ = $frame.getBoolean($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Boolean) {
-                    $child0Value_ = (boolean) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLToBooleanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isBoolean($sp - 1)) {
+                        $child0Value_ = $frame.getBoolean($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Boolean)) {
+                        $child0Value_ = (boolean) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLToBooleanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 doBoolean(boolean) */;
                 boolean value = SLToBooleanNode.doBoolean($child0Value_);
@@ -5906,25 +5981,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             private void SLLessOrEqualOperation_q_LessOrEqual0_execute_(VirtualFrame $frame, int $bci, int $sp) {
                 byte state_0 = bc[$bci + 4 + 0];
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLLessOrEqualOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 lessOrEqual(long, long) */;
                 boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
@@ -6032,25 +6113,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             private void SLLessThanOperation_q_LessThan0_execute_(VirtualFrame $frame, int $bci, int $sp) {
                 byte state_0 = bc[$bci + 4 + 0];
                 long $child0Value_;
-                if ($frame.isLong($sp - 2)) {
-                    $child0Value_ = $frame.getLong($sp - 2);
-                } else if ($frame.isObject($sp - 2) && $frame.getObject($sp - 2) instanceof Long) {
-                    $child0Value_ = (long) $frame.getObject($sp - 2);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    Object $child1Value = $frame.getValue($sp - 1);
-                    SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 2)) {
+                        $child0Value_ = $frame.getLong($sp - 2);
+                    } else if ($frame.isObject($sp - 2) && ((_getObjectValue = $frame.getObject($sp - 2)) instanceof Long)) {
+                        $child0Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        Object $child1Value = $frame.getValue($sp - 1);
+                        SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $frame.getValue($sp - 2), $child1Value);
+                        return;
+                    }
                 }
                 long $child1Value_;
-                if ($frame.isLong($sp - 1)) {
-                    $child1Value_ = $frame.getLong($sp - 1);
-                } else if ($frame.isObject($sp - 1) && $frame.getObject($sp - 1) instanceof Long) {
-                    $child1Value_ = (long) $frame.getObject($sp - 1);
-                } else {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
-                    return;
+                {
+                    Object _getObjectValue = null;
+                    if ($frame.isLong($sp - 1)) {
+                        $child1Value_ = $frame.getLong($sp - 1);
+                    } else if ($frame.isObject($sp - 1) && ((_getObjectValue = $frame.getObject($sp - 1)) instanceof Long)) {
+                        $child1Value_ = (long) _getObjectValue;
+                    } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        SLLessThanOperation_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $frame.getValue($sp - 1));
+                        return;
+                    }
                 }
                 assert (state_0 & 0b10) != 0 /* is-state_0 lessThan(long, long) */;
                 boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
@@ -6076,11 +6163,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                         case INSTR_THROW :
                         case INSTR_LOAD_CONSTANT_OBJECT :
                         case INSTR_LOAD_ARGUMENT_OBJECT :
-                        case INSTR_LOAD_ARGUMENT_LONG :
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        case INSTR_LOAD_ARGUMENT_LONG :
                         case INSTR_LOAD_LOCAL_OBJECT :
-                        case INSTR_LOAD_LOCAL_LONG :
                         case INSTR_LOAD_LOCAL_BOOLEAN :
+                        case INSTR_LOAD_LOCAL_LONG :
                         case INSTR_C_SLLOGICAL_NOT_OPERATION :
                         case INSTR_C_SLTO_BOOLEAN_OPERATION :
                         case INSTR_C_SLEVAL_ROOT_OPERATION :
@@ -6094,8 +6181,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci = bci + 7;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        case INSTR_LOAD_CONSTANT_LONG :
                         {
                             LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_CONSTANT_OBJECT);
                             bci = bci + 4;
@@ -6290,34 +6377,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.constant.long               ");
-                            {
-                                Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
-                                sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
-                            }
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6337,6 +6396,34 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.constant.boolean            ");
+                            {
+                                Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
+                                sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
+                            }
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.constant.long               ");
                             {
                                 Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
                                 sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
@@ -6371,31 +6458,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.argument.long               ");
-                            sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6415,6 +6477,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.argument.boolean            ");
+                            sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.argument.long               ");
                             sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");
@@ -6471,31 +6558,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.local.long                  ");
-                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6515,6 +6577,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.local.boolean               ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.local.long                  ");
                             sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");

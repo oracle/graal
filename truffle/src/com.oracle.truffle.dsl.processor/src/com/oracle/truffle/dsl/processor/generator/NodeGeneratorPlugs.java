@@ -57,7 +57,7 @@ public interface NodeGeneratorPlugs {
 
     CodeTree createAssignExecuteChild(
                     NodeData node, FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType, LocalVariable targetValue,
-                    Function<FrameState, CodeTree> createExecuteAndSpecialize);
+                    TypeSystemData typeSystem, Function<FrameState, CodeTree> createExecuteAndSpecialize);
 
     CodeTree createThrowUnsupportedChild(NodeExecutionData execution);
 

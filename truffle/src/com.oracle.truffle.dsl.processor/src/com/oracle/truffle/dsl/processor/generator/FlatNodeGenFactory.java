@@ -2760,7 +2760,7 @@ public class FlatNodeGenFactory {
                     LocalVariable targetValue) {
         if (plugs != null) {
             CodeTree result = plugs.createAssignExecuteChild(
-                            node, originalFrameState, frameState, parent, execution, forType, targetValue,
+                            node, originalFrameState, frameState, parent, execution, forType, targetValue, typeSystem,
                             fs -> createCallExecuteAndSpecialize(forType, fs));
             if (result != null) {
                 return result;
