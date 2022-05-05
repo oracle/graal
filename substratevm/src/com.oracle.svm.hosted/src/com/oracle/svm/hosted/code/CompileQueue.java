@@ -1261,9 +1261,13 @@ public class CompileQueue {
         if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {
             return false;
         }
-        if (!callee.canBeInlined()) {
-            return false;
-        }
+        /*
+         * Note that we do not check callee.canBeInlined() yet. Otherwise a @NeverInline annotation
+         * on a virtual target method would also prevent inlining of a concrete implementation
+         * method (after a later de-virtualization of the invoke) that is not annotated
+         * with @NeverInline. It is the responsibility of every inlining phase to check
+         * canBeInlined().
+         */
         return invoke.useForInlining();
     }
 
