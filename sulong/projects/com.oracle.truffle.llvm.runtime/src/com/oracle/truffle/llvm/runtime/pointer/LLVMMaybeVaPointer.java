@@ -51,7 +51,6 @@ import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMCopyTargetLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
@@ -93,7 +92,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
-    private LLVMPointer address;
+    protected LLVMPointer address;
 
     private long nativeOffset = 0;
     private LLVMManagedPointer vaList;
@@ -124,7 +123,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         return vaList == null;
     }
 
-    boolean isStoredInHeap() {
+    boolean isStoredOnHeap() {
         return allocaNode == null;
     }
 
@@ -148,31 +147,49 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
-    void initialize(Object[] realArguments, int numberOfExplicitArguments, Frame frame,
-                    @Cached LLVMPointerOffsetStoreNode storeNode,
-                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary writeLibrary,
-                    @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+    static class Initialize {
+        static boolean isManagedPtr(Object obj) {
+            return LLVMManagedPointer.isInstance(obj);
+        }
 
+        @Specialization(guards = {"self.isStoredOnHeap()", "isManagedPtr(self.address)"})
+        static void initializeOnHeapManaged(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
+                       @CachedLibrary(limit = "3") LLVMManagedWriteLibrary writeLibrary,
+                       @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+            Object vaListInstance = self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
+
+            writeLibrary.writeGenericI64(((LLVMManagedPointer) self.address).getObject(), 0, vaListInstance);
+        }
+        @Specialization(guards = "self.isStoredOnHeap()")
+        static void initializeOnHeapNative(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
+                       @Cached LLVMPointerOffsetStoreNode storeNode,
+                       @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+            Object vaListInstance = self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
+
+            /* triggers toNative transition for vaListInstance */
+            storeNode.executeWithTarget(self.address, 0, vaListInstance);
+        }
+        @Specialization(guards = "!self.isStoredOnHeap()")
+        static void initializeStack(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
+                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+            self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
+
+            /*
+             * storing to stack memory would trigger a toNative transitions as well, but we can
+             * avoid it as we intercept reads from that stack storage
+            */
+        }
+    }
+
+    Object initializeBase(Object[] realArguments, int numberOfExplicitArguments, Frame frame,
+                    LLVMVaListLibrary vaListLibrary) {
         assert numberOfExplicitArguments <= realArguments.length;
         Object vaListInstance = createVaListStorage();
         vaListLibrary.initialize(vaListInstance, realArguments, numberOfExplicitArguments, frame);
 
         vaList = LLVMManagedPointer.create(vaListInstance);
         wasVAListPointer = true;
-
-        if (isStoredInHeap()) {
-            if (LLVMManagedPointer.isInstance(address)) {
-                writeLibrary.writeGenericI64(((LLVMManagedPointer) address).getObject(), 0, vaListInstance);
-            } else {
-                /* triggers toNative transition for vaListInstance */
-                storeNode.executeWithTarget(address, 0, vaListInstance);
-            }
-        } else {
-            /*
-             * storing to stack memory would trigger a toNative transitions as well, but we can
-             * avoid it as we intercept reads from that stack storage
-             */
-        }
+        return vaListInstance;
     }
 
     /**
@@ -181,7 +198,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
      * native access is permitted after calling the cleanup method.
      */
     protected void nativeObjectAccess() {
-        if (isStoredInHeap() || wasVAListPointer) {
+        if (isStoredOnHeap() || wasVAListPointer) {
             return;
         }
         if (allocVAPointerAssumption.isValid()) {
@@ -253,7 +270,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class Copy {
-        @Specialization(guards = {"self.isStoredInHeap()"})
+        @Specialization(guards = {"self.isStoredOnHeap()"})
         static void copyHeapNative(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
                         @Cached LLVMPointerOffsetLoadNode offsetLoadNode,
                         @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
