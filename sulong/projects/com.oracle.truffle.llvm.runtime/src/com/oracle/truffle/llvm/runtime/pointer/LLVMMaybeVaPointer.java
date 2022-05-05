@@ -57,6 +57,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
@@ -138,6 +139,13 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             throw UnsupportedMessageException.create();
         }
     }
+
+    @ExportMessage
+    void toNative() {
+        assert !wasVAListPointer;
+        CompilerDirectives.shouldNotReachHere();
+    }
+
 
     public long getAddress() {
         // this address should only be accessed if we are not dealing with a managed va_list
@@ -305,6 +313,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         static void copyManaged(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame) {
             assert self.isManagedStorage() || !self.isStoredOnHeap();
             assert !other.isStoredOnHeap();
+            other.wasVAListPointer = true;
             other.vaList = self.vaList;
             /*
              * Skip writing to stack memory as it would trigger a toNative transition. Reads to the
@@ -641,11 +650,16 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class WriteGenericI64 {
-        static boolean isManagedPtr(Object obj) {
-            return LLVMManagedPointer.isInstance(obj);
+        static boolean isVaListStorage(Object obj) {
+            if (!LLVMManagedPointer.isInstance(obj)) {
+                return false;
+            }
+            LLVMManagedPointer ptr = LLVMManagedPointer.cast(obj);
+            // FIXME: windows-amd64 and darwin-aarch64 should have the same base class
+            return ptr.getObject() instanceof LLVMVaListStorage || ptr.getObject() instanceof LLVMX86_64_WinVaListStorage;
         }
 
-        @Specialization(guards = {"isManagedPtr(value)", "offset == 0"})
+        @Specialization(guards = {"isVaListStorage(value)", "offset == 0"})
         static void writeVAList(LLVMMaybeVaPointer self, long offset, LLVMManagedPointer value) {
             assert offset == 0;
             self.wasVAListPointer = true;
