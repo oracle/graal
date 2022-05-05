@@ -99,7 +99,7 @@ public class PEExportSymbolsMapper extends ExportSymbolsMapper {
         for (Pair<String, String> pair : mappings) {
             LLVMFunction function = fileScope.getFunction(pair.getRight());
             if (function != null) {
-                publicFileScope.register(new LLVMAlias(pair.getLeft(), function, true));
+                publicFileScope.register(pair.getLeft().equals(function.getName()) ? function : new LLVMAlias(pair.getLeft(), function, true));
             } else {
                 LLVMContext.llvmLogger().warning(
                                 String.format("Could not map %s to %s. Target symbol not found, ignoring export.\n", pair.getLeft(), pair.getRight()));
