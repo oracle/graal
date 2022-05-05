@@ -61,12 +61,14 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("javax.naming", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("javax.tools", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("javax.xml", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("jdk.internal", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.jfr", "Needed for Native Image substitutions");
         rci.initializeAtBuildTime("jdk.net", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.nio", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
+        rci.initializeAtBuildTime("jdk.xml", JDK_CLASS_REASON);
 
         rci.initializeAtBuildTime("sun.invoke", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.launcher", JDK_CLASS_REASON);
@@ -105,6 +107,10 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtRunTime("com.sun.naming.internal.ResourceManager$AppletParameter", "Initializes AWT");
         rci.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         rci.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
+
+        /* XML-related */
+        rci.initializeAtBuildTime("com.sun.xml", JDK_CLASS_REASON);
+        rci.initializeAtBuildTime("com.sun.org.apache", JDK_CLASS_REASON);
 
         /* Security services */
         rci.initializeAtBuildTime("com.sun.crypto.provider", JDK_CLASS_REASON);
