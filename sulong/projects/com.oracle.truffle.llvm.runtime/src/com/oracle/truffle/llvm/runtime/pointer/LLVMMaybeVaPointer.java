@@ -154,21 +154,23 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     static class Initialize {
         @Specialization(guards = {"self.isStoredOnHeap()", "self.isManagedStorage()"})
         static void initializeOnHeapManaged(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
-                       @CachedLibrary(limit = "3") LLVMManagedWriteLibrary writeLibrary,
-                       @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary writeLibrary,
+                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
             Object vaListInstance = self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
 
             writeLibrary.writeGenericI64(((LLVMManagedPointer) self.address).getObject(), 0, vaListInstance);
         }
+
         @Specialization(guards = "self.isStoredOnHeap()")
         static void initializeOnHeapNative(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
-                       @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode storeNode,
-                       @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
+                        @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode storeNode,
+                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
             Object vaListInstance = self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
 
             /* triggers toNative transition for vaListInstance */
             storeNode.executeWithTarget(self.address, 0, vaListInstance);
         }
+
         @Specialization(guards = "!self.isStoredOnHeap()")
         static void initializeStack(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
                         @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
@@ -177,7 +179,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             /*
              * storing to stack memory would trigger a toNative transitions as well, but we can
              * avoid it as we intercept reads from that stack storage
-            */
+             */
         }
     }
 
@@ -272,8 +274,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     static class Copy {
         @Specialization(guards = {"self.isManagedStorage()", "other.isManagedStorage()"})
         static void copyHeapStorageManaged(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
-                       @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLibrary,
-                       @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLibrary) {
+                        @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLibrary,
+                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLibrary) {
             assert self.isStoredOnHeap();
             LLVMManagedPointer selfPtr = (LLVMManagedPointer) self.address;
             LLVMManagedPointer otherPtr = (LLVMManagedPointer) other.address;
@@ -305,8 +307,10 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             assert self.isManagedStorage() || !self.isStoredOnHeap();
             assert !other.isStoredOnHeap();
             other.vaList = self.vaList;
-            /* Skip writing to stack memory as it would trigger a toNative transition. Reads to the stack
-             * storage are intercepted. */
+            /*
+             * Skip writing to stack memory as it would trigger a toNative transition. Reads to the
+             * stack storage are intercepted.
+             */
         }
     }
 
