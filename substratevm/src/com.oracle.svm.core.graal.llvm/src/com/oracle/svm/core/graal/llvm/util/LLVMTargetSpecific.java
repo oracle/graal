@@ -46,14 +46,19 @@ public interface LLVMTargetSpecific {
     }
 
     /**
-     * Snippet that gets the value of an arbitrary register.
-     */
-    String getRegisterInlineAsm(String register);
-
-    /**
      * Snippet that jumps to a runtime-computed address.
      */
     String getJumpInlineAsm();
+
+    /**
+     * Snippet that loads a value in a register.
+     */
+    String getLoadInlineAsm(String inputRegister, int offset);
+
+    /**
+     * Snippet that adds two registers and save the result in one of them.
+     */
+    String getAddInlineAssembly(String outputRegisterName, String inputRegisterName);
 
     /**
      * Name of the architecture to be passed to the LLVM compiler.
@@ -96,6 +101,11 @@ public interface LLVMTargetSpecific {
     default String getLLVMRegisterName(String register) {
         return register;
     }
+
+    /**
+     * A scratch register of the architecture.
+     */
+    String getScratchRegister();
 }
 
 @AutomaticFeature
@@ -112,14 +122,20 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
-            @Override
-            public String getRegisterInlineAsm(String register) {
-                return "movq %" + register + ", $0";
-            }
 
             @Override
             public String getJumpInlineAsm() {
                 return "jmpq *$0";
+            }
+
+            @Override
+            public String getLoadInlineAsm(String inputRegister, int offset) {
+                return "movq " + offset + "(%" + inputRegister + "), $0";
+            }
+
+            @Override
+            public String getAddInlineAssembly(String outputRegister, String inputRegister) {
+                return "addq $0, %" + inputRegister;
             }
 
             @Override
@@ -165,6 +181,11 @@ class LLVMAMD64TargetSpecificFeature implements Feature {
                 }
                 return list;
             }
+
+            @Override
+            public String getScratchRegister() {
+                return "rax";
+            }
         });
     }
 }
@@ -183,14 +204,20 @@ class LLVMAArch64TargetSpecificFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(LLVMTargetSpecific.class, new LLVMTargetSpecific() {
-            @Override
-            public String getRegisterInlineAsm(String register) {
-                return "MOV $0, " + getLLVMRegisterName(register);
-            }
 
             @Override
             public String getJumpInlineAsm() {
                 return "BR $0";
+            }
+
+            @Override
+            public String getLoadInlineAsm(String inputRegister, int offset) {
+                return "LDR $0, [" + getLLVMRegisterName(inputRegister) + ", #" + offset + "]";
+            }
+
+            @Override
+            public String getAddInlineAssembly(String outputRegister, String inputRegister) {
+                return "ADD $0, " + getLLVMRegisterName(outputRegister) + ", " + getLLVMRegisterName(inputRegister);
             }
 
             @Override
@@ -239,6 +266,11 @@ class LLVMAArch64TargetSpecificFeature implements Feature {
             @Override
             public String getLLVMRegisterName(String register) {
                 return register.replace("r", "x");
+            }
+
+            @Override
+            public String getScratchRegister() {
+                return "x16";
             }
         });
     }
