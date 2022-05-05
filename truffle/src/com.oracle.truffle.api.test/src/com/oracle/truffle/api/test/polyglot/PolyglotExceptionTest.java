@@ -496,6 +496,10 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 assertFalse(e.isHostException());
                 assertTrue(e.isCancelled());
             });
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         }
     }
 
@@ -680,6 +684,10 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             future.get();
             executorService.shutdownNow();
             assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         }
     }
 

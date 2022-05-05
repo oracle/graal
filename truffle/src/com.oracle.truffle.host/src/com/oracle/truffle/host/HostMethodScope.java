@@ -243,7 +243,7 @@ final class HostMethodScope {
             }
             assert d != null : "delegate must not be null here";
             Object returnValue = library.send(d, message, args);
-            if (message.getReturnType() == Object.class) {
+            if (message.getReturnType() == Object.class && !(d instanceof PinnedObject)) {
                 /*
                  * Object return type indicates for an interop message that any interop value may be
                  * returned.
