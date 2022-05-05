@@ -49,7 +49,6 @@ import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 import com.oracle.svm.core.graal.llvm.lowering.LLVMLoadExceptionObjectLowering;
 import com.oracle.svm.core.graal.llvm.lowering.SubstrateLLVMLoweringProvider;
 import com.oracle.svm.core.graal.llvm.replacements.LLVMGraphBuilderPlugins;
-import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode;
 import com.oracle.svm.core.graal.llvm.runtime.LLVMExceptionUnwind;
 import com.oracle.svm.core.graal.llvm.util.LLVMOptions;
 import com.oracle.svm.core.graal.llvm.util.LLVMToolchain;
@@ -90,7 +89,8 @@ public class LLVMFeature implements Feature, InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (ModuleSupport.modulePathBuild) {
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NodeClass.class, LLVMIntrinsicNode.class);
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, LLVMGraphBuilderPlugins.class);
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, NodeClass.class, SubstrateLLVMLoweringProvider.class);
         }
 
         ImageSingletons.add(SubstrateBackendFactory.class, new SubstrateBackendFactory() {
