@@ -127,6 +127,10 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         return allocaNode == null;
     }
 
+    boolean isManagedStorage() {
+        return LLVMManagedPointer.isInstance(address);
+    }
+
     @ExportMessage
     public long asPointer() throws UnsupportedMessageException {
         if (isPointer()) {
@@ -148,11 +152,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class Initialize {
-        static boolean isManagedPtr(Object obj) {
-            return LLVMManagedPointer.isInstance(obj);
-        }
-
-        @Specialization(guards = {"self.isStoredOnHeap()", "isManagedPtr(self.address)"})
+        @Specialization(guards = {"self.isStoredOnHeap()", "self.isManagedStorage()"})
         static void initializeOnHeapManaged(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary writeLibrary,
                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
@@ -270,17 +270,43 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class Copy {
-        @Specialization(guards = {"self.isStoredOnHeap()"})
-        static void copyHeapNative(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
+        @Specialization(guards = {"self.isManagedStorage()", "other.isManagedStorage()"})
+        static void copyHeapStorageManaged(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
+                       @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLibrary,
+                       @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLibrary) {
+            assert self.isStoredOnHeap();
+            LLVMManagedPointer selfPtr = (LLVMManagedPointer) self.address;
+            LLVMManagedPointer otherPtr = (LLVMManagedPointer) other.address;
+            Object vaListInstance = readLibrary.readGenericI64(selfPtr.getObject(), 0);
+            writeLibrary.writeGenericI64(otherPtr.getObject(), 0, vaListInstance);
+
+            assert vaListInstance == self.vaList.getObject();
+            other.vaList = self.vaList;
+        }
+
+        @Specialization(guards = {"self.isStoredOnHeap()", "other.isStoredOnHeap()"})
+        static void copyHeapStorageNative(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
                         @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode offsetLoadNode,
                         @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
             LLVMPointer vaListPtr = offsetLoadNode.executeWithTarget(self.address, 0);
             offsetStoreNode.executeWithTarget(other.address, 0, vaListPtr);
         }
 
-        @Specialization
-        static void copyStack(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame) {
+        @Specialization(guards = {"!self.isStoredOnHeap()", "other.isManagedStorage()"})
+        static void copyManagedFromStackToHeap(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
+                        @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLibrary) {
+            LLVMManagedPointer otherPtr = (LLVMManagedPointer) other.address;
+            writeLibrary.writeGenericI64(otherPtr.getObject(), 0, self.vaList.getObject());
             other.vaList = self.vaList;
+        }
+
+        @Specialization
+        static void copyManaged(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame) {
+            assert self.isManagedStorage() || !self.isStoredOnHeap();
+            assert !other.isStoredOnHeap();
+            other.vaList = self.vaList;
+            /* Skip writing to stack memory as it would trigger a toNative transition. Reads to the stack
+             * storage are intercepted. */
         }
     }
 
