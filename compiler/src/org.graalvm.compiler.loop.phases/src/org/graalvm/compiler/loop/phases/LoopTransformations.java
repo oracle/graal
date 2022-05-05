@@ -32,7 +32,6 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.debug.DebugContext;
@@ -755,42 +754,6 @@ public abstract class LoopTransformations {
         }
 
         return controls.getValues();
-//
-// EconomicMap<ValueNode, List<ControlSplitNode>> ifControls =
-// EconomicMap.create(Equivalence.IDENTITY);
-// for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
-// if (loop.isOutsideLoop(ifNode.condition())) {
-// ValueNode invariantValue = ifNode.condition();
-// List<ControlSplitNode> ifs = ifControls.get(invariantValue);
-// if (ifs == null) {
-// ifs = new ArrayList<>();
-// ifControls.put(invariantValue, ifs);
-// }
-// ifs.add(ifNode);
-// }
-// }
-//
-// EconomicMap<ValueNode, List<SwitchNode>> switchControls =
-// EconomicMap.create(Equivalence.IDENTITY);
-// for (SwitchNode switchNode : loop.whole().nodes().filter(SwitchNode.class)) {
-// if (switchNode.successors().count() > 1 && loop.isOutsideLoop(switchNode.value())) {
-// ValueNode invariantValue = switchNode.value();
-// List<SwitchNode> switchs = switchControls.get(invariantValue);
-// if (switchs == null) {
-// switchs = new ArrayList<>();
-// switchs.add(switchNode);
-// switchControls.put(invariantValue, switchs);
-// } else {
-// // The list is not empty because we always add a node when we create it.
-// if (switchs.get(0).structureEquals(switchNode)) {
-// // Only collect switches which test the same values in the same order
-// switchs.add(switchNode);
-// }
-// }
-// }
-// }
-// return ifControls.putAll((UnmodifiableEconomicMap<ValueNode, List<SwitchNode>>) switchControls);
-// new Stream(ifControls.getValues());
     }
 
     public static boolean isUnrollableLoop(LoopEx loop) {
