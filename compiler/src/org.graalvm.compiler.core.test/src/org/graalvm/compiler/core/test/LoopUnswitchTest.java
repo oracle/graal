@@ -24,12 +24,19 @@
  */
 package org.graalvm.compiler.core.test;
 
+import java.util.List;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
+import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
+import org.graalvm.compiler.nodes.loop.LoopEx;
+import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
@@ -120,13 +127,206 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         test("test2Snippet", "referenceSnippet2");
     }
 
-    @SuppressWarnings("try")
+    public static int test3Snippet(int a, int b) {
+        int sum = 0;
+        for (int i = 0; i < 1000; ++i) {
+            if (a > 0) {
+                switch (b) {
+                    case 0:
+                        sum += 1;
+                        break;
+                    default:
+                        sum += 2;
+                        break;
+                }
+            } else {
+                sum += 3;
+            }
+        }
+        return sum;
+    }
+
+    public static int reference3SwitchSnippet(int a, int b) {
+        int sum = 0;
+        switch (b) {
+            case 0:
+                for (int i = 0; i < 1000; ++i) {
+                    if (a > 0) {
+                        sum += 1;
+                    } else {
+                        sum += 3;
+                    }
+                }
+                break;
+            default:
+                for (int i = 0; i < 1000; ++i) {
+                    if (a > 0) {
+                        sum += 2;
+                    } else {
+                        sum += 3;
+                    }
+                }
+        }
+        return sum;
+    }
+
+    public static int reference3IfSnippet(int a, int b) {
+        int sum = 0;
+        if (a > 0) {
+            for (int i = 0; i < 1000; ++i) {
+                switch (b) {
+                    case 0:
+                        sum += 1;
+                        break;
+                    default:
+                        sum += 2;
+                        break;
+                }
+            }
+        } else {
+            for (int i = 0; i < 1000; ++i) {
+                sum += 3;
+            }
+        }
+        return sum;
+    }
+
+    public static int reference3SwitchIfSnippet(int a, int b) {
+        int sum = 0;
+        switch (b) {
+            case 0:
+                if (a > 0) {
+                    for (int i = 0; i < 1000; ++i) {
+                        sum += 1;
+                    }
+                } else {
+                    for (int i = 0; i < 1000; ++i) {
+                        sum += 3;
+                    }
+                }
+                break;
+            default:
+                if (a > 0) {
+                    for (int i = 0; i < 1000; ++i) {
+                        sum += 2;
+                    }
+                } else {
+                    for (int i = 0; i < 1000; ++i) {
+                        sum += 3;
+                    }
+                }
+
+        }
+        return sum;
+
+    }
+
+    public static int reference3IfSwitchSnippet(int a, int b) {
+        int sum = 0;
+        if (a > 0) {
+            switch (b) {
+                case 0:
+                    for (int i = 0; i < 1000; ++i) {
+                        sum += 1;
+                    }
+                    break;
+                default:
+                    for (int i = 0; i < 1000; ++i) {
+                        sum += 2;
+                    }
+                    break;
+            }
+        } else {
+            for (int i = 0; i < 1000; ++i) {
+                sum += 3;
+            }
+        }
+        return sum;
+    }
+
+    @Test
+    public void test3Switch() {
+        // Only the switch is unswitched
+        test("test3Snippet", "reference3SwitchSnippet", new DefaultLoopPolicies() {
+            @Override
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+                return (controlSplits.get(0) instanceof SwitchNode) ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+            }
+        });
+    }
+
+    @Test
+    public void test3If() {
+        // Only the if is unswitched
+        test("test3Snippet", "reference3IfSnippet", new DefaultLoopPolicies() {
+            @Override
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+                return (controlSplits.get(0) instanceof IfNode) ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+            }
+        });
+    }
+
+    @Test
+    public void test3IfSwitch() {
+        // First the if is unswitched then the switch
+        test("test3Snippet", "reference3IfSwitchSnippet", new DefaultLoopPolicies() {
+            boolean hasUnswitchedIf = false;
+
+            @Override
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+                if (controlSplits.get(0) instanceof IfNode) {
+                    if (hasUnswitchedIf) {
+                        return UnswitchingDecision.NO;
+                    } else {
+                        hasUnswitchedIf = true;
+                        return UnswitchingDecision.YES;
+                    }
+                } else {
+                    return hasUnswitchedIf ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+                }
+            }
+        });
+    }
+
+    @Test
+    public void test3SwitchIf() {
+        // First the switch is unswitched then the if
+        test("test3Snippet", "reference3SwitchIfSnippet", new DefaultLoopPolicies() {
+            boolean hasUnswitchedSwitch = false;
+
+            @Override
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
+                if (controlSplits.get(0) instanceof SwitchNode) {
+                    if (hasUnswitchedSwitch) {
+                        return UnswitchingDecision.NO;
+                    } else {
+                        hasUnswitchedSwitch = true;
+                        return UnswitchingDecision.YES;
+                    }
+                } else {
+                    return hasUnswitchedSwitch ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+                }
+            }
+        });
+    }
+
+    @Test
+    public void test3() {
+        // Use the default policy and so the if should be unswitched before the switch
+        test("test3Snippet", "reference3IfSwitchSnippet");
+    }
+
     private void test(String snippet, String referenceSnippet) {
+        test(snippet, referenceSnippet, new DefaultLoopPolicies());
+    }
+
+    @SuppressWarnings("try")
+    private void test(String snippet, String referenceSnippet, LoopPolicies policies) {
         DebugContext debug = getDebugContext();
         final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO);
         final StructuredGraph referenceGraph = parseEager(referenceSnippet, AllowAssumptions.NO);
 
-        new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
+        new LoopUnswitchingPhase(policies).apply(graph, getDefaultHighTierContext());
 
         // Framestates create comparison problems
         graph.clearAllStateAfterForTestingOnly();
