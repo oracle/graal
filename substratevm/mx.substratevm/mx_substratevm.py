@@ -1096,6 +1096,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             jar_distributions=jar_distributions,
             build_args=[
                 '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
+                '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,org.graalvm.jniutils,org.graalvm.graphio,com.oracle.truffle',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowFoldMethods',
                 '-H:+ReportExceptionStackTraces',

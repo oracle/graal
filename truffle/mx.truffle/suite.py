@@ -108,8 +108,8 @@ suite = {
     },
 
     "TRUFFLE_JCODINGS": {
-      "sha1" : "c88c640b82534bea6bdb0dfacf4035665ad91e26",
-      "version" : "1.0.56.6",
+      "sha1" : "61f6dfc53c3003e17b994c8f968e69d2544cf777",
+      "version" : "1.0.56.7",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
       "exports" : [],
       "license": ["MIT"],

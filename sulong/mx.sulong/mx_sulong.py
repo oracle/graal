@@ -438,6 +438,7 @@ class ToolchainConfig(object):
                 jar_distributions=self._get_jar_dists(),
                 main_class=self._tool_to_main(tool),
                 build_args=[
+                    '--initialize-at-build-time=com.oracle.truffle.llvm.toolchain.launchers',
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
                 ],
                 is_main_launcher=False,
