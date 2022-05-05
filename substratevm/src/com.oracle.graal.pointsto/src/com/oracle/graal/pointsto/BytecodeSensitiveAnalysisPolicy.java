@@ -303,19 +303,17 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
          * invocation site to avoid redundant relinking. MethodFlows is unique for each method type
          * flow and context combination.
          */
-        private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
+        private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
         private final AnalysisContext callerContext;
 
         protected BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-            calleesFlows = null;
             callerContext = null;
         }
 
         protected BytecodeSensitiveVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveVirtualInvokeTypeFlow original) {
             super(bb, methodFlows, original);
-            calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
             callerContext = methodFlows.context();
         }
 

@@ -52,8 +52,8 @@ final class LibFFISymbol extends AbstractNativePointer {
     protected final LibFFILibrary library;
     private final String name;
 
-    static Object create(LibFFILanguage language, LibFFILibrary library, String name, long address) {
-        return language.getTools().createBindableSymbol(new LibFFISymbol(library, name, address));
+    static Object create(LibFFILibrary library, String name, long address) {
+        return new LibFFISymbol(library, name, address);
     }
 
     private LibFFISymbol(LibFFILibrary library, String name, long address) {

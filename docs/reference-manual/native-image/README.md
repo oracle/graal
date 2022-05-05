@@ -79,8 +79,9 @@ xcode-select --install
 
 To start using Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC).
 There are two installation options:
-    * Install the Visual Studio Build Tools with the Windows 10 SDK
-    * Install Visual Studio with the Windows 10 SDK
+
+* Install the Visual Studio Build Tools with the Windows 10 SDK
+* Install Visual Studio with the Windows 10 SDK
 
 You can use Visual Studio 2017 version 15.9 or later.
 

@@ -239,11 +239,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         WordOrDwordAssertion(CPU, CPU, WORD, QWORD),
         QwordAssertion(CPU, CPU, QWORD),
         FloatAssertion(XMM, XMM, SS, SD, PS, PD),
+        ScalarFloatAssertion(XMM, XMM, SS, SD),
         PackedFloatAssertion(XMM, XMM, PS, PD),
         SingleAssertion(XMM, XMM, SS),
         DoubleAssertion(XMM, XMM, SD),
         PackedDoubleAssertion(XMM, XMM, PD),
         IntToFloatAssertion(XMM, CPU, DWORD, QWORD),
+        DwordToFloatAssertion(XMM, CPU, DWORD),
+        QwordToFloatAssertion(XMM, CPU, QWORD),
         FloatToIntAssertion(CPU, XMM, DWORD, QWORD);
 
         private final RegisterCategory resultCategory;
@@ -426,8 +429,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public static class AMD64RMOp extends AMD64RROp {
         // @formatter:off
         public static final AMD64RMOp IMUL   = new AMD64RMOp("IMUL",         P_0F, 0xAF, OpAssertion.ByteOrLargerAssertion);
-        public static final AMD64RMOp BSF    = new AMD64RMOp("BSF",          P_0F, 0xBC);
-        public static final AMD64RMOp BSR    = new AMD64RMOp("BSR",          P_0F, 0xBD);
+        public static final AMD64RMOp BSF    = new AMD64RMOp("BSF",          P_0F, 0xBC, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64RMOp BSR    = new AMD64RMOp("BSR",          P_0F, 0xBD, OpAssertion.WordOrLargerAssertion);
         // POPCNT, TZCNT, and LZCNT support word operation. However, the legacy size prefix should
         // be emitted before the mandatory prefix 0xF3. Since we are not emitting bit count for
         // 16-bit operands, here we simply use DwordOrLargerAssertion.
@@ -440,124 +443,43 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final AMD64RMOp MOVSX  = new AMD64RMOp("MOVSX",        P_0F, 0xBF, OpAssertion.DwordOrLargerAssertion);
         public static final AMD64RMOp MOVSXD = new AMD64RMOp("MOVSXD",             0x63, OpAssertion.QwordAssertion);
         public static final AMD64RMOp MOVB   = new AMD64RMOp("MOVB",               0x8A, OpAssertion.ByteAssertion);
-        public static final AMD64RMOp MOV    = new AMD64RMOp("MOV",                0x8B);
-        public static final AMD64RMOp CMP    = new AMD64RMOp("CMP",                0x3B);
-
-        // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
-        public static final AMD64RMOp MOVD   = new AMD64RMOp("MOVD",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatAssertion, CPUFeature.SSE2);
-        public static final AMD64RMOp MOVQ   = new AMD64RMOp("MOVQ",   0x66, P_0F, 0x6E, OpAssertion.IntToFloatAssertion, CPUFeature.SSE2);
-        public static final AMD64RMOp MOVSS  = new AMD64RMOp("MOVSS",        P_0F, 0x10, OpAssertion.FloatAssertion, CPUFeature.SSE);
-        public static final AMD64RMOp MOVSD  = new AMD64RMOp("MOVSD",        P_0F, 0x10, OpAssertion.FloatAssertion, CPUFeature.SSE);
+        public static final AMD64RMOp MOV    = new AMD64RMOp("MOV",                0x8B, OpAssertion.WordOrLargerAssertion);
+        public static final AMD64RMOp CMP    = new AMD64RMOp("CMP",                0x3B, OpAssertion.WordOrLargerAssertion);
 
         // TEST is documented as MR operation, but it's symmetric, and using it as RM operation is more convenient.
         public static final AMD64RMOp TESTB  = new AMD64RMOp("TEST",               0x84, OpAssertion.ByteAssertion);
-        public static final AMD64RMOp TEST   = new AMD64RMOp("TEST",               0x85);
+        public static final AMD64RMOp TEST   = new AMD64RMOp("TEST",               0x85, OpAssertion.WordOrLargerAssertion);
         // @formatter:on
 
-        protected AMD64RMOp(String opcode, int op) {
-            this(opcode, 0, op);
-        }
-
         protected AMD64RMOp(String opcode, int op, OpAssertion assertion) {
-            this(opcode, 0, op, assertion);
-        }
-
-        protected AMD64RMOp(String opcode, int prefix, int op) {
-            this(opcode, 0, prefix, op, null);
+            this(opcode, 0, 0, op, assertion, null);
         }
 
         protected AMD64RMOp(String opcode, int prefix, int op, OpAssertion assertion) {
             this(opcode, 0, prefix, op, assertion, null);
         }
 
-        protected AMD64RMOp(String opcode, int prefix, int op, OpAssertion assertion, CPUFeature feature) {
-            this(opcode, 0, prefix, op, assertion, feature);
+        protected AMD64RMOp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
+            super(opcode, prefix1, prefix2, op, assertion, feature);
         }
 
         protected AMD64RMOp(String opcode, int prefix, int op, boolean dstIsByte, boolean srcIsByte, OpAssertion assertion) {
             super(opcode, 0, prefix, op, dstIsByte, srcIsByte, assertion, null);
         }
 
-        protected AMD64RMOp(String opcode, int prefix1, int prefix2, int op, CPUFeature feature) {
-            this(opcode, prefix1, prefix2, op, OpAssertion.WordOrLargerAssertion, feature);
-        }
-
-        protected AMD64RMOp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
-            super(opcode, prefix1, prefix2, op, assertion, feature);
-        }
-
         @Override
-        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
+        public void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
             assert verify(asm, size, dst, src);
-            if (isSSEInstruction()) {
-                Register nds = Register.None;
-                switch (op) {
-                    case 0x10:
-                    case 0x51:
-                        if ((size == SS) || (size == SD)) {
-                            nds = dst;
-                        }
-                        break;
-                    case 0x2A:
-                    case 0x54:
-                    case 0x55:
-                    case 0x56:
-                    case 0x57:
-                    case 0x58:
-                    case 0x59:
-                    case 0x5A:
-                    case 0x5C:
-                    case 0x5D:
-                    case 0x5E:
-                    case 0x5F:
-                        nds = dst;
-                        break;
-                    default:
-                        break;
-                }
-                asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == QWORD);
-                asm.emitByte(op);
-                asm.emitModRM(dst, src);
-            } else {
-                emitOpcode(asm, size, getRXB(dst, src), dst.encoding, src.encoding);
-                asm.emitModRM(dst, src);
-            }
+            assert !isSSEInstruction();
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, src.encoding);
+            asm.emitModRM(dst, src);
         }
 
-        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
+        public void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
             assert verify(asm, size, dst, null);
-            if (isSSEInstruction()) {
-                Register nds = Register.None;
-                switch (op) {
-                    case 0x51:
-                        if ((size == SS) || (size == SD)) {
-                            nds = dst;
-                        }
-                        break;
-                    case 0x2A:
-                    case 0x54:
-                    case 0x55:
-                    case 0x56:
-                    case 0x57:
-                    case 0x58:
-                    case 0x59:
-                    case 0x5A:
-                    case 0x5C:
-                    case 0x5D:
-                    case 0x5E:
-                    case 0x5F:
-                        nds = dst;
-                        break;
-                    default:
-                        break;
-                }
-                asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == QWORD);
-                asm.emitByte(op);
-                asm.emitOperandHelper(dst, src, 0);
-            } else {
-                emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
-                asm.emitOperandHelper(dst, src, 0);
-            }
+            assert !isSSEInstruction();
+            emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
+            asm.emitOperandHelper(dst, src, 0);
         }
     }
 
@@ -566,37 +488,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      */
     public static class AMD64MROp extends AMD64RROp {
         // @formatter:off
-        public static final AMD64MROp MOVB   = new AMD64MROp("MOVB",               0x88, OpAssertion.ByteAssertion);
-        public static final AMD64MROp MOV    = new AMD64MROp("MOV",                0x89);
-
-        // MOVD and MOVQ are the same opcode, just with different operand size prefix
-        // Note that as MR opcodes, they have reverse operand order, so the IntToFloatingAssertion must be used.
-        public static final AMD64MROp MOVD   = new AMD64MROp("MOVD",   0x66, P_0F, 0x7E, OpAssertion.IntToFloatAssertion, CPUFeature.SSE2);
-        public static final AMD64MROp MOVQ   = new AMD64MROp("MOVQ",   0x66, P_0F, 0x7E, OpAssertion.IntToFloatAssertion, CPUFeature.SSE2);
-
-        // MOVSS and MOVSD are the same opcode, just with different operand size prefix
-        public static final AMD64MROp MOVSS  = new AMD64MROp("MOVSS",        P_0F, 0x11, OpAssertion.FloatAssertion, CPUFeature.SSE);
-        public static final AMD64MROp MOVSD  = new AMD64MROp("MOVSD",        P_0F, 0x11, OpAssertion.FloatAssertion, CPUFeature.SSE);
-        // @formatter:on
-
-        protected AMD64MROp(String opcode, int op) {
-            this(opcode, 0, op);
-        }
+        public static final AMD64MROp MOVB   = new AMD64MROp("MOVB", 0x88, OpAssertion.ByteAssertion);
+        public static final AMD64MROp MOV    = new AMD64MROp("MOV",  0x89, OpAssertion.WordOrLargerAssertion);
+       // @formatter:on
 
         protected AMD64MROp(String opcode, int op, OpAssertion assertion) {
-            this(opcode, 0, op, assertion);
-        }
-
-        protected AMD64MROp(String opcode, int prefix, int op) {
-            this(opcode, prefix, op, OpAssertion.WordOrLargerAssertion);
+            this(opcode, 0, 0, op, assertion, null);
         }
 
         protected AMD64MROp(String opcode, int prefix, int op, OpAssertion assertion) {
-            this(opcode, prefix, op, assertion, null);
-        }
-
-        protected AMD64MROp(String opcode, int prefix, int op, OpAssertion assertion, CPUFeature feature) {
-            this(opcode, 0, prefix, op, assertion, feature);
+            this(opcode, 0, prefix, op, assertion, null);
         }
 
         protected AMD64MROp(String opcode, int prefix1, int prefix2, int op, OpAssertion assertion, CPUFeature feature) {
@@ -604,36 +505,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         @Override
-        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
+        public void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
             assert verify(asm, size, src, dst);
-            if (isSSEInstruction()) {
-                Register nds = Register.None;
-                switch (op) {
-                    case 0x11:
-                        if ((size == SS) || (size == SD)) {
-                            nds = src;
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                asm.simdPrefix(src, nds, dst, size, prefix1, prefix2, size == QWORD);
-                asm.emitByte(op);
-                asm.emitModRM(src, dst);
-            } else {
-                emitOpcode(asm, size, getRXB(src, dst), src.encoding, dst.encoding);
-                asm.emitModRM(src, dst);
-            }
+            assert !isSSEInstruction();
+            emitOpcode(asm, size, getRXB(src, dst), src.encoding, dst.encoding);
+            asm.emitModRM(src, dst);
         }
 
-        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src) {
+        public void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src) {
             assert verify(asm, size, src, null);
-            if (isSSEInstruction()) {
-                asm.simdPrefix(src, Register.None, dst, size, prefix1, prefix2, size == QWORD);
-                asm.emitByte(op);
-            } else {
-                emitOpcode(asm, size, getRXB(src, dst), src.encoding, 0);
-            }
+            assert !isSSEInstruction();
+            emitOpcode(asm, size, getRXB(src, dst), src.encoding, 0);
             asm.emitOperandHelper(src, dst, 0);
         }
     }
@@ -744,6 +626,47 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     /**
+     * Denotes the preferred nds register (VEX.vvvv) for VEX-encoding of an SSE instruction.
+     *
+     * For RM instructions where VEX.vvvv is reserved and must be 1111b, we should use
+     * {@link PreferredNDS#NONE}. For RVM instructions, the default should be
+     * {@link PreferredNDS#DST} to mimic the semantic of {@code dst <- op (dst, src)}. We should
+     * only use {@link PreferredNDS#SRC} for unary instructions, e.g., ROUNDSS. This would help us
+     * avoid an implicit dependency to {@code dst} register.
+     *
+     * Note that when {@code src} is a memory address, we will choose {@code dst} as {@code nds}
+     * even if {@link PreferredNDS#SRC} is specified, which implies an implicit dependency to
+     * {@code dst}. In {@code org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary.AVXConvertOp},
+     * we manually insert an {@code XOR} instruction for {@code dst}.
+     */
+    private enum PreferredNDS {
+        NONE,
+        DST,
+        SRC;
+
+        public Register getNds(Register reg, @SuppressWarnings("unused") AMD64Address address) {
+            switch (this) {
+                case DST:
+                case SRC:
+                    return reg;
+                default:
+                    return Register.None;
+            }
+        }
+
+        public Register getNds(Register dst, Register src) {
+            switch (this) {
+                case DST:
+                    return dst;
+                case SRC:
+                    return src;
+                default:
+                    return Register.None;
+            }
+        }
+    }
+
+    /**
      * Opcodes with operand order of RMI.
      *
      * We only have one form of round as the operation is always treated with single variant input,
@@ -753,31 +676,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:off
         public static final AMD64RMIOp IMUL    = new AMD64RMIOp("IMUL", false, 0x69);
         public static final AMD64RMIOp IMUL_SX = new AMD64RMIOp("IMUL", true,  0x6B);
-        public static final AMD64RMIOp ROUNDSS = new AMD64RMIOp("ROUNDSS", true, P_0F3A, 0x0A, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
-        public static final AMD64RMIOp ROUNDSD = new AMD64RMIOp("ROUNDSD", true, P_0F3A, 0x0B, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final AMD64RMIOp ROUNDSS = new AMD64RMIOp("ROUNDSS", true, P_0F3A, 0x0A, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
+        public static final AMD64RMIOp ROUNDSD = new AMD64RMIOp("ROUNDSD", true, P_0F3A, 0x0B, PreferredNDS.SRC, OpAssertion.PackedDoubleAssertion, CPUFeature.SSE4_1);
         // @formatter:on
 
+        private final PreferredNDS preferredNDS;
+
         protected AMD64RMIOp(String opcode, boolean immIsByte, int op) {
-            this(opcode, immIsByte, 0, op, OpAssertion.WordOrLargerAssertion, null);
+            super(opcode, immIsByte, 0, op, OpAssertion.WordOrLargerAssertion, null);
+            this.preferredNDS = PreferredNDS.NONE;
         }
 
-        protected AMD64RMIOp(String opcode, boolean immIsByte, int prefix, int op, OpAssertion assertion, CPUFeature feature) {
+        protected AMD64RMIOp(String opcode, boolean immIsByte, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion, CPUFeature feature) {
             super(opcode, immIsByte, prefix, op, assertion, feature);
+            this.preferredNDS = preferredNDS;
         }
 
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src, int imm) {
             assert verify(asm, size, dst, src);
             if (isSSEInstruction()) {
-                Register nds = Register.None;
-                switch (op) {
-                    case 0x0A:
-                    case 0x0B:
-                        nds = dst;
-                        break;
-                    default:
-                        break;
-                }
-                asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, false);
+                asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, false);
                 asm.emitByte(op);
                 asm.emitModRM(dst, src);
             } else {
@@ -790,16 +708,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src, int imm) {
             assert verify(asm, size, dst, null);
             if (isSSEInstruction()) {
-                Register nds = Register.None;
-                switch (op) {
-                    case 0x0A:
-                    case 0x0B:
-                        nds = dst;
-                        break;
-                    default:
-                        break;
-                }
-                asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, false);
+                asm.simdPrefix(dst, preferredNDS.getNds(dst, src), src, size, prefix1, prefix2, false);
                 asm.emitByte(op);
             } else {
                 emitOpcode(asm, size, getRXB(dst, src), dst.encoding, 0);
@@ -832,36 +741,112 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public static class SSEOp extends AMD64RMOp {
         // @formatter:off
-        public static final SSEOp CVTSI2SS  = new SSEOp("CVTSI2SS",  0xF3, P_0F, 0x2A, OpAssertion.IntToFloatAssertion);
-        public static final SSEOp CVTSI2SD  = new SSEOp("CVTSI2SD",  0xF2, P_0F, 0x2A, OpAssertion.IntToFloatAssertion);
-        public static final SSEOp CVTTSS2SI = new SSEOp("CVTTSS2SI", 0xF3, P_0F, 0x2C, OpAssertion.FloatToIntAssertion);
-        public static final SSEOp CVTTSD2SI = new SSEOp("CVTTSD2SI", 0xF2, P_0F, 0x2C, OpAssertion.FloatToIntAssertion);
-        public static final SSEOp UCOMIS    = new SSEOp("UCOMIS",          P_0F, 0x2E, OpAssertion.PackedFloatAssertion);
-        public static final SSEOp SQRT      = new SSEOp("SQRT",            P_0F, 0x51);
-        public static final SSEOp AND       = new SSEOp("AND",             P_0F, 0x54, OpAssertion.PackedFloatAssertion);
-        public static final SSEOp ANDN      = new SSEOp("ANDN",            P_0F, 0x55, OpAssertion.PackedFloatAssertion);
-        public static final SSEOp OR        = new SSEOp("OR",              P_0F, 0x56, OpAssertion.PackedFloatAssertion);
-        public static final SSEOp XOR       = new SSEOp("XOR",             P_0F, 0x57, OpAssertion.PackedFloatAssertion);
-        public static final SSEOp ADD       = new SSEOp("ADD",             P_0F, 0x58);
-        public static final SSEOp MUL       = new SSEOp("MUL",             P_0F, 0x59);
-        public static final SSEOp CVTSS2SD  = new SSEOp("CVTSS2SD",        P_0F, 0x5A, OpAssertion.SingleAssertion);
-        public static final SSEOp CVTSD2SS  = new SSEOp("CVTSD2SS",        P_0F, 0x5A, OpAssertion.DoubleAssertion);
-        public static final SSEOp SUB       = new SSEOp("SUB",             P_0F, 0x5C);
-        public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D);
-        public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E);
-        public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F);
+        public static final SSEOp CVTSI2SS  = new SSEOp("CVTSI2SS",  0xF3, P_0F, 0x2A, PreferredNDS.DST,  OpAssertion.IntToFloatAssertion);
+        public static final SSEOp CVTSI2SD  = new SSEOp("CVTSI2SD",  0xF2, P_0F, 0x2A, PreferredNDS.DST,  OpAssertion.IntToFloatAssertion);
+        public static final SSEOp CVTTSS2SI = new SSEOp("CVTTSS2SI", 0xF3, P_0F, 0x2C, PreferredNDS.NONE, OpAssertion.FloatToIntAssertion);
+        public static final SSEOp CVTTSD2SI = new SSEOp("CVTTSD2SI", 0xF2, P_0F, 0x2C, PreferredNDS.NONE, OpAssertion.FloatToIntAssertion);
+        public static final SSEOp UCOMIS    = new SSEOp("UCOMIS",          P_0F, 0x2E, PreferredNDS.NONE, OpAssertion.PackedFloatAssertion);
+        public static final SSEOp SQRT      = new SSEOp("SQRT",            P_0F, 0x51, PreferredNDS.SRC,  OpAssertion.ScalarFloatAssertion);
+        public static final SSEOp AND       = new SSEOp("AND",             P_0F, 0x54, PreferredNDS.DST,  OpAssertion.PackedFloatAssertion);
+        public static final SSEOp ANDN      = new SSEOp("ANDN",            P_0F, 0x55, PreferredNDS.DST,  OpAssertion.PackedFloatAssertion);
+        public static final SSEOp OR        = new SSEOp("OR",              P_0F, 0x56, PreferredNDS.DST,  OpAssertion.PackedFloatAssertion);
+        public static final SSEOp XOR       = new SSEOp("XOR",             P_0F, 0x57, PreferredNDS.DST,  OpAssertion.PackedFloatAssertion);
+        public static final SSEOp ADD       = new SSEOp("ADD",             P_0F, 0x58, PreferredNDS.DST);
+        public static final SSEOp MUL       = new SSEOp("MUL",             P_0F, 0x59, PreferredNDS.DST);
+        public static final SSEOp CVTSS2SD  = new SSEOp("CVTSS2SD",        P_0F, 0x5A, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
+        public static final SSEOp CVTSD2SS  = new SSEOp("CVTSD2SS",        P_0F, 0x5A, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+        public static final SSEOp SUB       = new SSEOp("SUB",             P_0F, 0x5C, PreferredNDS.DST);
+        public static final SSEOp MIN       = new SSEOp("MIN",             P_0F, 0x5D, PreferredNDS.DST);
+        public static final SSEOp DIV       = new SSEOp("DIV",             P_0F, 0x5E, PreferredNDS.DST);
+        public static final SSEOp MAX       = new SSEOp("MAX",             P_0F, 0x5F, PreferredNDS.DST);
+
+        // MOVD/MOVQ and MOVSS/MOVSD are the same opcode, just with different operand size prefix
+        public static final SSEOp MOVD      = new SSEOp("MOVD",      0x66, P_0F, 0x6E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
+        public static final SSEOp MOVQ      = new SSEOp("MOVQ",      0x66, P_0F, 0x6E, PreferredNDS.NONE, OpAssertion.QwordToFloatAssertion);
+        public static final SSEOp MOVSS     = new SSEOp("MOVSS",           P_0F, 0x10, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
+        public static final SSEOp MOVSD     = new SSEOp("MOVSD",           P_0F, 0x10, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
         // @formatter:on
 
-        protected SSEOp(String opcode, int prefix, int op) {
-            this(opcode, prefix, op, OpAssertion.FloatAssertion);
+        private final PreferredNDS preferredNDS;
+
+        protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS) {
+            this(opcode, 0, prefix, op, preferredNDS, OpAssertion.FloatAssertion);
         }
 
-        protected SSEOp(String opcode, int prefix, int op, OpAssertion assertion) {
-            this(opcode, 0, prefix, op, assertion);
+        protected SSEOp(String opcode, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
+            this(opcode, 0, prefix, op, preferredNDS, assertion);
         }
 
-        protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, OpAssertion assertion) {
+        protected SSEOp(String opcode, int mandatoryPrefix, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
             super(opcode, mandatoryPrefix, prefix, op, assertion, CPUFeature.SSE2);
+            this.preferredNDS = preferredNDS;
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
+            assert verify(asm, size, dst, src);
+            assert isSSEInstruction();
+            Register nds = preferredNDS.getNds(dst, src);
+            asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == QWORD);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, AMD64Address src) {
+            assert verify(asm, size, dst, null);
+            assert isSSEInstruction();
+            // MOVSS/SD are not RVM instruction when the dst is an address
+            Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(dst, src);
+            asm.simdPrefix(dst, nds, src, size, prefix1, prefix2, size == QWORD);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src, 0);
+        }
+    }
+
+    /**
+     * Opcode with operand order of MR.
+     */
+    public static class SSEMROp extends AMD64MROp {
+        // @formatter:off
+        // MOVD and MOVQ are the same opcode, just with different operand size prefix
+        // Note that as MR opcodes, they have reverse operand order, so the IntToFloatingAssertion must be used.
+        public static final SSEMROp MOVD  = new SSEMROp("MOVD", 0x66, P_0F, 0x7E, PreferredNDS.NONE, OpAssertion.DwordToFloatAssertion);
+        public static final SSEMROp MOVQ  = new SSEMROp("MOVQ", 0x66, P_0F, 0x7E, PreferredNDS.NONE, OpAssertion.QwordToFloatAssertion);
+        // MOVSS and MOVSD are the same opcode, just with different operand size prefix
+        public static final SSEMROp MOVSS = new SSEMROp("MOVSS",      P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.SingleAssertion);
+        public static final SSEMROp MOVSD = new SSEMROp("MOVSD",      P_0F, 0x11, PreferredNDS.SRC,  OpAssertion.DoubleAssertion);
+        // @formatter:on
+
+        private final PreferredNDS preferredNDS;
+
+        protected SSEMROp(String opcode, int prefix, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
+            this(opcode, 0, prefix, op, preferredNDS, assertion);
+        }
+
+        protected SSEMROp(String opcode, int prefix1, int prefix2, int op, PreferredNDS preferredNDS, OpAssertion assertion) {
+            super(opcode, prefix1, prefix2, op, assertion, CPUFeature.SSE2);
+            this.preferredNDS = preferredNDS;
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, Register dst, Register src) {
+            assert verify(asm, size, src, dst);
+            assert isSSEInstruction();
+            asm.simdPrefix(src, preferredNDS.getNds(dst, src), dst, size, prefix1, prefix2, size == QWORD);
+            asm.emitByte(op);
+            asm.emitModRM(src, dst);
+        }
+
+        @Override
+        public final void emit(AMD64Assembler asm, OperandSize size, AMD64Address dst, Register src) {
+            assert verify(asm, size, src, null);
+            assert isSSEInstruction();
+            // MOVSS/SD are not RVM instruction when the dst is an address
+            Register nds = (this == MOVSS || this == MOVSD) ? Register.None : preferredNDS.getNds(src, dst);
+            asm.simdPrefix(src, nds, dst, size, prefix1, prefix2, size == QWORD);
+            asm.emitByte(op);
+            asm.emitOperandHelper(src, dst, 0);
         }
     }
 
@@ -1193,9 +1178,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
             assert op != 0x1A || op != 0x5A;
-            // Avoid artificial dependency on xmm0 for VSQRTSS/SD
-            Register nds = (this == VexRMOp.VSQRTSS || this == VexRMOp.VSQRTSD) ? src : Register.None;
-            asm.vexPrefix(dst, nds, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
@@ -1203,9 +1186,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
             assert op != 0x1A || op != 0x5A;
-            // Avoid artificial dependency on xmm0 for VSQRTSS/SD
-            Register nds = (this == VexRMOp.VSQRTSS || this == VexRMOp.VSQRTSD) ? src : Register.None;
-            asm.vexPrefix(dst, nds, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
@@ -1259,8 +1240,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRMOp VPTEST          = new VexRMOp("VPTEST",          P_66, M_0F38, WIG, 0x17);
         public static final VexRMOp VSQRTPD         = new VexRMOp("VSQRTPD",         P_66, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W1);
         public static final VexRMOp VSQRTPS         = new VexRMOp("VSQRTPS",         P_,   M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_VL,           EVEXTuple.FVM,       W0);
-        public static final VexRMOp VSQRTSD         = new VexRMOp("VSQRTSD",         P_F2, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,          EVEXTuple.FVM,       W1);
-        public static final VexRMOp VSQRTSS         = new VexRMOp("VSQRTSS",         P_F3, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,          EVEXTuple.FVM,       W0);
         public static final VexRMOp VUCOMISS        = new VexRMOp("VUCOMISS",        P_,   M_0F,   WIG, 0x2E, VEXOpAssertion.AVX1_AVX512F_128_ONLY,     EVEXTuple.T1S_32BIT, W0);
         public static final VexRMOp VUCOMISD        = new VexRMOp("VUCOMISD",        P_66, M_0F,   WIG, 0x2E, VEXOpAssertion.AVX1_AVX512F_128_ONLY,     EVEXTuple.T1S_64BIT, W1);
         public static final VexRMOp VPABSB          = new VexRMOp("VPABSB",          P_66, M_0F38, WIG, 0x1C, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,     EVEXTuple.FVM,       WIG);
@@ -1288,18 +1267,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
-            // Avoid artificial dependency on xmm0 for VSQRTSS/SD
-            Register nds = (this == VexRMOp.VSQRTSS || this == VexRMOp.VSQRTSD) ? src : Register.None;
-            asm.vexPrefix(dst, nds, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
-            // Avoid artificial dependency on xmm0 for VSQRTSS/SD
-            Register nds = (this == VexRMOp.VSQRTSS || this == VexRMOp.VSQRTSD) ? dst : Register.None;
-            boolean useEvex = asm.vexPrefix(dst, nds, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            boolean useEvex = asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0, getDisp8Scale(useEvex, size));
         }
@@ -1321,6 +1296,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMoveOp VMOVAPD   = new VexMoveOp("VMOVAPD",   P_66, M_0F, WIG, 0x28, 0x29, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
         public static final VexMoveOp VMOVUPS   = new VexMoveOp("VMOVUPS",   P_,   M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexMoveOp VMOVUPD   = new VexMoveOp("VMOVUPD",   P_66, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
+        // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers. 
         public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    P_F3, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_32BIT, W0);
         public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    P_F2, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_64BIT, W1);
         public static final VexMoveOp VMOVD     = new VexMoveOp("VMOVD",     P_66, M_0F, W0,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, W0);
@@ -1328,14 +1304,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         // @formatter:on
 
         private final int opReverse;
-
-        private VexMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse) {
-            this(opcode, pp, mmmmm, w, op, opReverse, VEXOpAssertion.AVX1, EVEXTuple.INVALID, WIG);
-        }
-
-        private VexMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
-            this(opcode, pp, mmmmm, w, op, opReverse, assertion, EVEXTuple.INVALID, WIG);
-        }
 
         private VexMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
@@ -1355,6 +1323,27 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             asm.emitByte(opReverse);
             asm.emitModRM(src, dst);
         }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+            // MOVSS/SD are RVM instruction when both operands are registers
+            Register nds = (this == VMOVSS || this == VMOVSD) ? src : Register.None;
+            asm.vexPrefix(dst, nds, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+            // MOVSS/SD are RVM instruction when both operands are registers
+            Register nds = (this == VMOVSS || this == VMOVSD) ? src : Register.None;
+            asm.vexPrefix(dst, nds, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+        }
+
     }
 
     public interface VexRRIOp {
@@ -1586,12 +1575,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPSUBD          = new VexRVMOp("VPSUBD",      P_66, M_0F,   WIG, 0xFA, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexRVMOp VPSUBQ          = new VexRVMOp("VPSUBQ",      P_66, M_0F,   WIG, 0xFB, VEXOpAssertion.AVX1_AVX2_AVX512F_VL,         EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPSHUFB         = new VexRVMOp("VPSHUFB",     P_66, M_0F38, WIG, 0x00, VEXOpAssertion.AVX1_AVX2_AVX512BW_VL,        EVEXTuple.FVM,       WIG);
-        public static final VexRVMOp VCVTSD2SS       = new VexRVMOp("VCVTSD2SS",   P_F2, M_0F,   WIG, 0x5A, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY,  EVEXTuple.T1S_64BIT, W1);
-        public static final VexRVMOp VCVTSS2SD       = new VexRVMOp("VCVTSS2SD",   P_F3, M_0F,   WIG, 0x5A, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY,  EVEXTuple.T1S_32BIT, W0);
-        public static final VexRVMOp VCVTSI2SD       = new VexRVMOp("VCVTSI2SD",   P_F2, M_0F,   W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY,  EVEXTuple.T1S_32BIT, W0);
-        public static final VexRVMOp VCVTSQ2SD       = new VexRVMOp("VCVTSQ2SD",   P_F2, M_0F,   W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY,  EVEXTuple.T1S_64BIT, W1);
-        public static final VexRVMOp VCVTSI2SS       = new VexRVMOp("VCVTSI2SS",   P_F3, M_0F,   W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY,  EVEXTuple.T1S_32BIT, W0);
-        public static final VexRVMOp VCVTSQ2SS       = new VexRVMOp("VCVTSQ2SS",   P_F3, M_0F,   W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY,  EVEXTuple.T1S_64BIT, W1);
         public static final VexRVMOp VPCMPEQB        = new VexRVMOp("VPCMPEQB",    P_66, M_0F,   WIG, 0x74, VEXOpAssertion.AVX1_2);
         public static final VexRVMOp VPCMPEQB_AVX512 = new VexRVMOp("VPCMPEQB",    P_66, M_0F,   WIG, 0x74, VEXOpAssertion.MASK_XMM_XMM_AVX512BW_VL,     EVEXTuple.FVM,       WIG);
         public static final VexRVMOp VPCMPEQW        = new VexRVMOp("VPCMPEQW",    P_66, M_0F,   WIG, 0x75, VEXOpAssertion.AVX1_2);
@@ -1610,6 +1593,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPCMPGTQ_AVX512 = new VexRVMOp("VPCMPGTQ",    P_66, M_0F38, WIG, 0x37, VEXOpAssertion.MASK_XMM_XMM_AVX512F_VL,      EVEXTuple.FVM,       W1);
         public static final VexRVMOp VFMADD231SS     = new VexRVMOp("VFMADD231SS", P_66, M_0F38, W0,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_32BIT, W0);
         public static final VexRVMOp VFMADD231SD     = new VexRVMOp("VFMADD231SD", P_66, M_0F38, W1,  0xB9, VEXOpAssertion.FMA_AVX512F_128ONLY,          EVEXTuple.T1S_64BIT, W1);
+        public static final VexRVMOp VSQRTSD         = new VexRVMOp("VSQRTSD",     P_F2, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VSQRTSS         = new VexRVMOp("VSQRTSS",     P_F3, M_0F,   WIG, 0x51, VEXOpAssertion.AVX1_AVX512F_ALL,             EVEXTuple.FVM,       W0);
 
         public static final VexRVMOp VPERMW          = new VexRVMOp("VPERMW",      P_66, M_0F38, W1,  0x8D, VEXOpAssertion.AVX512BW_VL,                  EVEXTuple.FVM,       W1);
         public static final VexRVMOp VPERMD          = new VexRVMOp("VPERMD",      P_66, M_0F38, W0,  0x36, VEXOpAssertion.AVX2_AVX512F_VL,              EVEXTuple.FVM,       W0);
@@ -1677,6 +1662,21 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public boolean isPacked() {
             return pp == P_ || pp == P_66;
+        }
+    }
+
+    public static final class VexRVMConvertOp extends VexRVMOp {
+        // @formatter:off
+        public static final VexRVMConvertOp VCVTSD2SS = new VexRVMConvertOp("VCVTSD2SS", P_F2, M_0F, WIG, 0x5A, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, W1);
+        public static final VexRVMConvertOp VCVTSS2SD = new VexRVMConvertOp("VCVTSS2SD", P_F3, M_0F, WIG, 0x5A, VEXOpAssertion.XMM_XMM_XMM_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, W0);
+        public static final VexRVMConvertOp VCVTSI2SD = new VexRVMConvertOp("VCVTSI2SD", P_F2, M_0F, W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, W0);
+        public static final VexRVMConvertOp VCVTSQ2SD = new VexRVMConvertOp("VCVTSQ2SD", P_F2, M_0F, W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, W1);
+        public static final VexRVMConvertOp VCVTSI2SS = new VexRVMConvertOp("VCVTSI2SS", P_F3, M_0F, W0,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, W0);
+        public static final VexRVMConvertOp VCVTSQ2SS = new VexRVMConvertOp("VCVTSQ2SS", P_F3, M_0F, W1,  0x2A, VEXOpAssertion.XMM_XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_64BIT, W1);
+        // @formatter:on
+
+        private VexRVMConvertOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+            super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
         }
     }
 
@@ -1901,12 +1901,6 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         private final int immOp;
         private final int r;
-
-        private VexShiftOp(String opcode, int pp, int mmmmm, int w, int op, int immOp, int r) {
-            super(opcode, pp, mmmmm, w, op, VEXOpAssertion.AVX1_2);
-            this.immOp = immOp;
-            this.r = r;
-        }
 
         private VexShiftOp(String opcode, int pp, int mmmmm, int w, int op, int immOp, int r, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
             super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
@@ -2807,7 +2801,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void movlhps(Register dst, Register src) {
         assert inRC(XMM, dst) && inRC(XMM, src);
-        simdPrefix(dst, src, src, PS, P_0F, false);
+        simdPrefix(dst, dst, src, PS, P_0F, false);
         emitByte(0x16);
         emitModRM(dst, src);
     }
@@ -2888,27 +2882,27 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movsd(Register dst, Register src) {
-        AMD64RMOp.MOVSD.emit(this, SD, dst, src);
+        SSEOp.MOVSD.emit(this, SD, dst, src);
     }
 
     public final void movsd(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVSD.emit(this, SD, dst, src);
+        SSEOp.MOVSD.emit(this, SD, dst, src);
     }
 
     public final void movsd(AMD64Address dst, Register src) {
-        AMD64MROp.MOVSD.emit(this, SD, dst, src);
+        SSEMROp.MOVSD.emit(this, SD, dst, src);
     }
 
     public final void movss(Register dst, Register src) {
-        AMD64RMOp.MOVSS.emit(this, SS, dst, src);
+        SSEOp.MOVSS.emit(this, SS, dst, src);
     }
 
     public final void movss(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVSS.emit(this, SS, dst, src);
+        SSEOp.MOVSS.emit(this, SS, dst, src);
     }
 
     public final void movss(AMD64Address dst, Register src) {
-        AMD64MROp.MOVSS.emit(this, SS, dst, src);
+        SSEMROp.MOVSS.emit(this, SS, dst, src);
     }
 
     public final void mulpd(Register dst, Register src) {
@@ -4167,18 +4161,18 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void movdq(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVQ.emit(this, QWORD, dst, src);
+        SSEOp.MOVQ.emit(this, QWORD, dst, src);
     }
 
     public final void movdq(AMD64Address dst, Register src) {
-        AMD64MROp.MOVQ.emit(this, QWORD, dst, src);
+        SSEMROp.MOVQ.emit(this, QWORD, dst, src);
     }
 
     public final void movdq(Register dst, Register src) {
         if (inRC(XMM, dst) && inRC(CPU, src)) {
-            AMD64RMOp.MOVQ.emit(this, QWORD, dst, src);
+            SSEOp.MOVQ.emit(this, QWORD, dst, src);
         } else if (inRC(XMM, src) && inRC(CPU, dst)) {
-            AMD64MROp.MOVQ.emit(this, QWORD, dst, src);
+            SSEMROp.MOVQ.emit(this, QWORD, dst, src);
         } else {
             throw new InternalError("should not reach here");
         }
@@ -4186,16 +4180,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     public final void movdl(Register dst, Register src) {
         if (inRC(XMM, dst) && inRC(CPU, src)) {
-            AMD64RMOp.MOVD.emit(this, DWORD, dst, src);
+            SSEOp.MOVD.emit(this, DWORD, dst, src);
         } else if (inRC(XMM, src) && inRC(CPU, dst)) {
-            AMD64MROp.MOVD.emit(this, DWORD, dst, src);
+            SSEMROp.MOVD.emit(this, DWORD, dst, src);
         } else {
             throw new InternalError("should not reach here");
         }
     }
 
     public final void movdl(Register dst, AMD64Address src) {
-        AMD64RMOp.MOVD.emit(this, DWORD, dst, src);
+        SSEOp.MOVD.emit(this, DWORD, dst, src);
     }
 
     public final void movddup(Register dst, Register src) {

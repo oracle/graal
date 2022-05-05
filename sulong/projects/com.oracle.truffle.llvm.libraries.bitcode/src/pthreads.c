@@ -69,6 +69,10 @@ int pthread_setname_np(pthread_t thread, const char *name) {
 int pthread_setname_np(const char *name) {
     return __sulong_thread_setname_np(__sulong_thread_self(), name);
 }
+
+mach_port_t pthread_mach_thread_np(pthread_t thread) {
+    return (mach_port_t) thread;
+}
 #endif
 
 int pthread_getname_np(pthread_t thread, char *name, size_t len) {

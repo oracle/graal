@@ -45,21 +45,16 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 import java.io.IOException;
 
-@TruffleLanguage.Registration(id = "internal/nfi-llvm", name = "nfi-llvm", version = "6.0.0", internal = true, interactive = false, //
+@TruffleLanguage.Registration(id = "internal/nfi-llvm", name = "nfi-llvm", version = "12.0.0", internal = true, interactive = false, //
                 services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED, dependentLanguages = "llvm")
 public final class SulongNFI extends TruffleLanguage<Env> {
 
     @CompilationFinal private SulongNFIBackend backend;
-
-    NFIBackendTools getTools() {
-        return backend.tools;
-    }
 
     @Override
     protected Env createContext(Env env) {
@@ -71,9 +66,9 @@ public final class SulongNFI extends TruffleLanguage<Env> {
             }
 
             @Override
-            public NFIBackend createBackend(NFIBackendTools tools) {
+            public NFIBackend createBackend() {
                 if (backend == null) {
-                    backend = new SulongNFIBackend(tools);
+                    backend = new SulongNFIBackend();
                 }
                 return backend;
             }
@@ -84,10 +79,7 @@ public final class SulongNFI extends TruffleLanguage<Env> {
     @ExportLibrary(NFIBackendLibrary.class)
     final class SulongNFIBackend implements NFIBackend {
 
-        private final NFIBackendTools tools;
-
-        SulongNFIBackend(NFIBackendTools tools) {
-            this.tools = tools;
+        SulongNFIBackend() {
         }
 
         @Override
