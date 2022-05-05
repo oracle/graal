@@ -77,7 +77,7 @@ final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<Darw
     }
 
     @Override
-    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType) {
         return LLVMMaybeVaPointer.createWithAlloca(vaListStackPtr, allocaNode);
     }
 
@@ -87,8 +87,8 @@ final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<Darw
     }
 
     @Override
-    public Type getVAListType() {
-        return LLVMDarwinAarch64VaListStorage.VA_LIST_TYPE;
+    public Type getGlobalVAListType(Type type) {
+        return LLVMDarwinAarch64VaListStorage.VA_LIST_TYPE.equals(type) ? LLVMDarwinAarch64VaListStorage.VA_LIST_TYPE : null;
     }
 
     @Override
