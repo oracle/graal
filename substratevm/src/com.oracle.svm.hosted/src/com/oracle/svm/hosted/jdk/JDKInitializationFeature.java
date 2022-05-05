@@ -138,7 +138,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.security.krb5", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.pkcs", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.pkcs10", JDK_CLASS_REASON);
-        rci.initializeAtBuildTime("sun.security.pkcs11", "Core JDK classes are initialized at build time for better performance");
+        rci.initializeAtBuildTime("sun.security.pkcs11", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.pkcs12", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.provider", JDK_CLASS_REASON);
         rci.initializeAtBuildTime("sun.security.rsa", JDK_CLASS_REASON);
