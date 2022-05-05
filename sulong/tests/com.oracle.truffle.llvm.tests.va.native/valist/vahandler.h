@@ -39,8 +39,25 @@ struct A {
     double y;
 };
 
+struct Large {
+    float f1;
+    float f2;
+    float f3;
+    double d1;
+    double d2;
+    double d3;
+    int i1;
+    int i2;
+    int i3;
+    long l1;
+    long l2;
+    long l3;
+};
+
 double sumDoublesNative(int count, va_list args);
 
 double testVariousTypesNative(int count, va_list args);
+
+double testLargeStructNative(int count, va_list args);
 
 #endif // VAHANDLER_H
