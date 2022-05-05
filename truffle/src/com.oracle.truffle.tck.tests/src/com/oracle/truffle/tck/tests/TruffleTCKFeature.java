@@ -126,7 +126,7 @@ public class TruffleTCKFeature implements Feature {
     private static Collection<String> findTCKTests() {
         try {
             URL resource = TruffleTCKFeature.class.getResource("TruffleTCKFeature.class");
-            try (FileSystem fileSystem = FileSystems.newFileSystem(resource.toURI(), Map.of())) {
+            try (FileSystem fileSystem = "jar".equals(resource.getProtocol()) ? FileSystems.newFileSystem(resource.toURI(), Map.of()) : null) {
                 Path path = Path.of(resource.toURI());
                 try (Stream<Path> siblingResources = Files.list(path.getParent())) {
                     String packageName = TruffleTCKFeature.class.getPackageName();
