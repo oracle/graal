@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
 import com.oracle.truffle.llvm.runtime.LLVMLanguageFactory.InitializeContextNodeGen;
 import com.oracle.truffle.llvm.runtime.config.Configuration;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
@@ -63,12 +64,13 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
-import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.AggregateTLGlobalInPlaceNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
@@ -84,8 +86,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
-
-import com.oracle.truffle.llvm.runtime.LLVMContext.TLSInitializerAccess;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -143,13 +143,12 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     private ContextExtensionKey<?>[] contextExtensions;
-
-    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
-
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
     @CompilationFinal private ByteArraySupport cachedByteArraySupport;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
+
+    public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
 
@@ -211,14 +210,16 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
         final LLVMContext context;
         LLVMPointer[] sections = new LLVMPointer[10];
-        LLVMGlobalContainer[][] managedSections;
         final WeakReference<Thread> thread;
-        boolean isFinalized;
+        boolean isDisposed;
+        LLVMStack stack;
+        LLVMPointer localStorage;
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
             this.thread = new WeakReference<>(thread);
-            isFinalized = false;
+            isDisposed = false;
+            localStorage = LLVMNativePointer.createNull();
         }
 
         public void addSection(LLVMPointer sectionBase, BitcodeID bitcodeID) {
@@ -236,12 +237,39 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             return sections[index];
         }
 
-        public void setFinalized() {
-            isFinalized = true;
+        public void setDisposed() {
+            isDisposed = true;
         }
 
-        public boolean isFinalized() {
-            return isFinalized;
+        public boolean isDisposed() {
+            return isDisposed;
+        }
+
+        public LLVMPointer getThreadLocalStorage() {
+            return localStorage;
+        }
+
+        public void setThreadLocalStorage(LLVMPointer value) {
+            localStorage = value;
+        }
+
+        public void removeThreadLocalStorage() {
+            localStorage = LLVMNativePointer.createNull();
+        }
+
+        public LLVMStack getLLVMStack() {
+            return stack;
+        }
+
+        public void setLLVMStack(LLVMStack stack) {
+            assert this.stack == null;
+            this.stack = stack;
+        }
+
+        public LLVMStack removeLLVMStack() {
+            LLVMStack tmp = stack;
+            this.stack = null;
+            return tmp;
         }
     }
 
@@ -499,13 +527,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public void freeThreadLocalGlobal(LLVMThreadLocalValue threadLocalValue) {
         if (threadLocalValue != null) {
             synchronized (threadLocalValue) {
-                if (!threadLocalValue.isFinalized()) {
+                if (!threadLocalValue.isDisposed()) {
                     for (LLVMPointer section : threadLocalValue.sections) {
                         if (section != null) {
                             freeOpNode.execute(section);
                         }
                     }
-                    threadLocalValue.setFinalized();
+                    threadLocalValue.setDisposed();
                 }
             }
         }
@@ -527,7 +555,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                 assert !ctx.cleanupNecessary;
                 ctx.initialized = true;
                 ctx.cleanupNecessary = true;
-                Object[] args = new Object[]{ctx.getThreadingStack().getStack(), ctx.getApplicationArguments(), LLVMContext.getEnvironmentVariables(), LLVMContext.getRandomValues()};
+                Object[] args = new Object[]{ctx.getThreadingStack().getStack(this), ctx.getApplicationArguments(), LLVMContext.getEnvironmentVariables(), LLVMContext.getRandomValues()};
                 initContext.call(args);
             }
         }
@@ -695,7 +723,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
 
         LLVMThreadLocalValue threadLocalValue = this.contextThreadLocal.get(context.getEnv().getContext(), thread);
-        if (!threadLocalValue.isFinalized()) {
+        threadLocalValue.removeThreadLocalStorage();
+        if (!threadLocalValue.isDisposed()) {
             freeThreadLocalGlobal(threadLocalValue);
         }
 
