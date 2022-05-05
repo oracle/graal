@@ -127,7 +127,8 @@ double testLargeStructLLVM(int count, va_list args) {
     sum += large.l2;
     sum += large.l3;
     sum += va_arg(args, int);
-    printf("Large: %f, %f, %f, %f, %f, %f, %d, %d, %d, %ld, %ld, %ld\n", large.f1, large.f2, large.f3, large.d1, large.d2, large.d3, large.i1, large.i2, large.i3, large.l1, large.l2, large.l3);
+    printf("Large: %f, %f, %f, %f, %f, %f, %d, %d, %d, %ld, %ld, %ld\n", large.f1, large.f2, large.f3, large.d1, large.d2, large.d3, large.i1,
+           large.i2, large.i3, large.l1, large.l2, large.l3);
     return sum;
 }
 
