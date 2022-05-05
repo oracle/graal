@@ -1420,7 +1420,7 @@ public class CompileQueue {
         ensureCompiledForMethodPointerConstants(method, reason, result);
     }
 
-    final protected void ensureCompiledForMethodPointerConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
+    protected final void ensureCompiledForMethodPointerConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (DataPatch dataPatch : result.getDataPatches()) {
             Reference reference = dataPatch.reference;
             if (reference instanceof ConstantReference) {
