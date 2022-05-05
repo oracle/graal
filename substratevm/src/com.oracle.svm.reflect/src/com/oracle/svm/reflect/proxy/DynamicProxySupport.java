@@ -170,6 +170,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
             throw new GraalError((Throwable) clazzOrError);
         }
         Class<?> clazz = (Class<?>) clazzOrError;
+        ClassLoader commonClassLoader = getCommonClassLoader(interfaces);
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.
@@ -193,14 +194,14 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                     throw incompatibleClassLoaders(loader, interfaces);
                 }
             }
-            if (!ClassUtil.isSameOrParentLoader(commonLoader, loader) && getCommonClassLoader(interfaces) != loader) {
+            if (!ClassUtil.isSameOrParentLoader(commonLoader, loader) && commonClassLoader != loader) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
             boolean loaded = PredefinedClassesSupport.loadClassIfNotLoaded(commonLoader, null, clazz);
-            if (!loaded && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && getCommonClassLoader(interfaces) != loader) {
+            if (!loaded && !ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && commonClassLoader != loader) {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
-        } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && getCommonClassLoader(interfaces) != loader) {
+        } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader) && commonClassLoader != loader) {
             throw incompatibleClassLoaders(loader, interfaces);
         }
         return clazz;
