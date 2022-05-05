@@ -39,6 +39,7 @@ public final class CallTree extends Graph {
     private final GraphManager graphManager;
     private final CallNode root;
     private final TruffleTierContext context;
+    final boolean useSize;
     int expanded = 1;
     int inlined = 1;
     int frontierSize;
@@ -49,6 +50,7 @@ public final class CallTree extends Graph {
         this.policy = policy;
         this.context = context;
         this.graphManager = new GraphManager(partialEvaluator, postPartialEvaluationSuite, context);
+        useSize = context.options.get(PolyglotCompilerOptions.InliningUseSize);
         // Should be kept as the last call in the constructor, as this is an argument.
         this.root = CallNode.makeRoot(this, context);
     }

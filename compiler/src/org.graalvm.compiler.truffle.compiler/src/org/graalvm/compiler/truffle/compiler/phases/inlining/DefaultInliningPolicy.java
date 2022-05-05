@@ -48,7 +48,7 @@ final class DefaultInliningPolicy implements InliningPolicy {
         return compare;
     };
     private final OptionValues options;
-    private int expandedCount;
+    private int expanded;
 
     DefaultInliningPolicy(OptionValues options) {
         this.options = options;
@@ -112,6 +112,7 @@ final class DefaultInliningPolicy implements InliningPolicy {
     private void inline(CallTree tree) {
         String inlineOnly = options.get(PolyglotCompilerOptions.InlineOnly);
         final int inliningBudget = options.get(PolyglotCompilerOptions.InliningInliningBudget);
+        int inlinedSize = tree.getRoot().getSize();
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
@@ -122,11 +123,13 @@ final class DefaultInliningPolicy implements InliningPolicy {
                 candidate.inline();
                 continue;
             }
-            if (tree.getRoot().getIR().getNodeCount() + candidate.getIR().getNodeCount() > inliningBudget) {
+            int candidateCost = candidate.getSize();
+            if (inlinedSize + candidateCost > inliningBudget) {
                 break;
             }
             if (data(candidate).callDiff <= 0) {
                 candidate.inline();
+                inlinedSize += candidateCost;
                 updateQueue(candidate, inlineQueue, CallNode.State.Expanded);
             }
         }
@@ -135,10 +138,10 @@ final class DefaultInliningPolicy implements InliningPolicy {
     private void expand(CallTree tree) {
         final int expansionBudget = options.get(PolyglotCompilerOptions.InliningExpansionBudget);
         final int maximumRecursiveInliningValue = options.get(PolyglotCompilerOptions.InliningRecursionDepth);
-        expandedCount = tree.getRoot().getIR().getNodeCount();
+        expanded = tree.getRoot().getSize();
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
-        while ((candidate = expandQueue.poll()) != null && expandedCount < expansionBudget) {
+        while ((candidate = expandQueue.poll()) != null && expanded < expansionBudget) {
             if (candidate.getRecursionDepth() <= maximumRecursiveInliningValue && candidate.getDepth() <= MAX_DEPTH) {
                 expand(candidate, expandQueue);
             }
@@ -148,7 +151,7 @@ final class DefaultInliningPolicy implements InliningPolicy {
     private void expand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
         candidate.expand();
         if (candidate.getState() == CallNode.State.Expanded) {
-            expandedCount += candidate.getIR().getNodeCount();
+            expanded += candidate.getSize();
             updateQueue(candidate, expandQueue, CallNode.State.Cutoff);
         }
     }
