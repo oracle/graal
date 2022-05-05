@@ -162,7 +162,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         }
         @Specialization(guards = "self.isStoredOnHeap()")
         static void initializeOnHeapNative(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
-                       @Cached LLVMPointerOffsetStoreNode storeNode,
+                       @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode storeNode,
                        @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
             Object vaListInstance = self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
 
@@ -211,7 +211,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         @Specialization(guards = "self.isPointer()")
         static protected Object shiftNative(LLVMMaybeVaPointer self, Type type, Frame frame,
                         @Cached LLVMPointerOffsetLoadNode baseAddrLoadNode,
-                        @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode,
+                        @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode,
                         @Cached LLVMI32OffsetLoadNode i32OffsetLoadNode,
                         @Cached LLVMI64OffsetLoadNode i64OffsetLoadNode,
                         @Cached LLVMDoubleOffsetLoadNode doubleOffsetLoadNode) {
@@ -272,8 +272,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     static class Copy {
         @Specialization(guards = {"self.isStoredOnHeap()"})
         static void copyHeapNative(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
-                        @Cached LLVMPointerOffsetLoadNode offsetLoadNode,
-                        @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
+                        @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode offsetLoadNode,
+                        @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode offsetStoreNode) {
             LLVMPointer vaListPtr = offsetLoadNode.executeWithTarget(self.address, 0);
             offsetStoreNode.executeWithTarget(other.address, 0, vaListPtr);
         }
