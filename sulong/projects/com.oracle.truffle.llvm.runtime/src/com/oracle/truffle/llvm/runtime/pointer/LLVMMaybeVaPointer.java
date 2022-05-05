@@ -57,15 +57,14 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import static com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.*;
-import static com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.*;
-import static com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.*;
-import static com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.*;
 
 /**
  * On platforms such as on Windows VA lists objects are created by allocating a pointer sized object
@@ -158,7 +157,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
                         @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
             Object vaListInstance = self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary);
 
-            writeLibrary.writeGenericI64(((LLVMManagedPointer) self.address).getObject(), 0, vaListInstance);
+            writeLibrary.writeGenericI64((LLVMManagedPointer.cast(self.address)).getObject(), 0, vaListInstance);
         }
 
         @Specialization(guards = "self.isStoredOnHeap()")
@@ -211,7 +210,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     @ExportMessage
     static class Shift {
         @Specialization(guards = "self.isPointer()")
-        static protected Object shiftNative(LLVMMaybeVaPointer self, Type type, Frame frame,
+        static Object shiftNative(LLVMMaybeVaPointer self, Type type, Frame frame,
                         @Cached LLVMPointerOffsetLoadNode baseAddrLoadNode,
                         @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode,
                         @Cached LLVMI32OffsetLoadNode i32OffsetLoadNode,
@@ -242,7 +241,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "!self.isPointer()")
         @GenerateAOT.Exclude
-        static protected Object shiftStorage(LLVMMaybeVaPointer self, Type type, Frame frame,
+        static Object shiftStorage(LLVMMaybeVaPointer self, Type type, Frame frame,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary readLibrary) {
             assert self.wasVAListPointer;
 
@@ -277,8 +276,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
                         @CachedLibrary(limit = "1") LLVMManagedReadLibrary readLibrary,
                         @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLibrary) {
             assert self.isStoredOnHeap();
-            LLVMManagedPointer selfPtr = (LLVMManagedPointer) self.address;
-            LLVMManagedPointer otherPtr = (LLVMManagedPointer) other.address;
+            LLVMManagedPointer selfPtr = LLVMManagedPointer.cast(self.address);
+            LLVMManagedPointer otherPtr = LLVMManagedPointer.cast(other.address);
             Object vaListInstance = readLibrary.readGenericI64(selfPtr.getObject(), 0);
             writeLibrary.writeGenericI64(otherPtr.getObject(), 0, vaListInstance);
 
@@ -297,7 +296,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         @Specialization(guards = {"!self.isStoredOnHeap()", "other.isManagedStorage()"})
         static void copyManagedFromStackToHeap(LLVMMaybeVaPointer self, LLVMMaybeVaPointer other, @SuppressWarnings("unused") Frame frame,
                         @CachedLibrary(limit = "1") LLVMManagedWriteLibrary writeLibrary) {
-            LLVMManagedPointer otherPtr = (LLVMManagedPointer) other.address;
+            LLVMManagedPointer otherPtr = LLVMManagedPointer.cast(other.address);
             writeLibrary.writeGenericI64(otherPtr.getObject(), 0, self.vaList.getObject());
             other.vaList = self.vaList;
         }

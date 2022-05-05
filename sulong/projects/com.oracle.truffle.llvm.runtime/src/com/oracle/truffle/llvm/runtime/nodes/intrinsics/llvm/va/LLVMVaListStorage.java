@@ -1135,8 +1135,8 @@ public class LLVMVaListStorage implements TruffleObject {
         }
     }
 
-    public final static boolean UNPACK_32BIT_PRIMITIVES_IN_STRUCTS = true;
-    public final static boolean KEEP_32BIT_PRIMITIVES_IN_STRUCTS = false;
+    public static final boolean UNPACK_32BIT_PRIMITIVES_IN_STRUCTS = true;
+    public static final boolean KEEP_32BIT_PRIMITIVES_IN_STRUCTS = false;
 
     public static final class ArgumentListExpander extends LLVMNode {
         private final BranchProfile expansionBranchProfile;

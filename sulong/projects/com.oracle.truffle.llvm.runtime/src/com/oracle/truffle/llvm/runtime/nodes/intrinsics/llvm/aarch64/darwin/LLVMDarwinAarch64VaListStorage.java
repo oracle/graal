@@ -355,11 +355,11 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         }
 
         static boolean isGlobal(Object o) {
-            return ((LLVMManagedPointer) o).getObject() instanceof LLVMGlobalContainer;
+            return LLVMManagedPointer.cast(o).getObject() instanceof LLVMGlobalContainer;
         }
 
         static Object getGlobal(Object o) {
-            return ((LLVMManagedPointer) o).getObject();
+            return LLVMManagedPointer.cast(o).getObject();
         }
     }
 }
