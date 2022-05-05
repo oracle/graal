@@ -304,6 +304,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         // nop
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
     void copy(@SuppressWarnings("unused") Object dest, @SuppressWarnings("unused") Frame frame) {
         throw CompilerDirectives.shouldNotReachHere("should never be called directly");
@@ -329,7 +330,6 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         @GenerateAOT.Exclude
         Object extractFromGlobal(LLVMManagedPointer p,
                         @Bind("getGlobal(p)") Object global,
-                        @CachedLibrary("global") InteropLibrary interopLibrary,
                         @CachedLibrary("global") LLVMManagedReadLibrary readLibrary) {
             /* probe content of global storage */
             Object ret = readLibrary.readGenericI64(global, 0);

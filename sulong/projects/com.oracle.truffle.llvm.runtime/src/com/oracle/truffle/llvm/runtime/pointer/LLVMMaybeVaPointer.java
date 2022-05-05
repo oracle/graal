@@ -145,7 +145,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         return LLVMNativePointer.cast(address).asNative();
     }
 
-    private Object createVaListStorage() {
+    private static Object createVaListStorage() {
         return LLVMLanguage.getContext().getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).createActualVAListStorage();
     }
 
@@ -210,7 +210,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     @ExportMessage
     static class Shift {
         @Specialization(guards = "self.isPointer()")
-        static Object shiftNative(LLVMMaybeVaPointer self, Type type, Frame frame,
+        static Object shiftNative(LLVMMaybeVaPointer self, Type type, @SuppressWarnings("unused") Frame frame,
                         @Cached LLVMPointerOffsetLoadNode baseAddrLoadNode,
                         @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode,
                         @Cached LLVMI32OffsetLoadNode i32OffsetLoadNode,
@@ -241,7 +241,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "!self.isPointer()")
         @GenerateAOT.Exclude
-        static Object shiftStorage(LLVMMaybeVaPointer self, Type type, Frame frame,
+        static Object shiftStorage(LLVMMaybeVaPointer self, Type type, @SuppressWarnings("unused") Frame frame,
                         @CachedLibrary(limit = "3") LLVMManagedReadLibrary readLibrary) {
             assert self.wasVAListPointer;
 
