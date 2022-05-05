@@ -9,7 +9,7 @@ permalink: /reference-manual/graalvm-updater/
 
 * [Check Available Components](#check-available-components)
 * [Install Components on GraalVM Community](#install-components-on-graalvm-community)
-* [Install Components on GraalVM Enterprise](#install-components-on-graalVM-enterprise)
+* [Install Components on GraalVM Enterprise](#install-components-on-graalvm-enterprise)
 * [Install Components Manually](#install-components-manually)
 * [Install Components from Local Collection](#install-cmponents-from-local-collection)
 * [Uninstall Components](#uninstall-components)
