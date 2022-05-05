@@ -32,6 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -103,7 +104,11 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
-        HostedGraphKit kit = new HostedGraphKit(debug, providers, method);
+        // Needed to match type flows to invokes so invoked methods can be inlined in runtime
+        // compilations, see GraalFeature.processMethod() and MethodTypeFlowBuilder.uniqueKey()
+        boolean trackNodeSourcePosition = (purpose == Purpose.ANALYSIS);
+
+        HostedGraphKit kit = new HostedGraphKit(debug, providers, method, trackNodeSourcePosition);
         boolean isDeoptTarget = (method instanceof SharedMethod) && ((SharedMethod) method).isDeoptTarget();
 
         ResolvedJavaType factoryType = method.getDeclaringClass();
@@ -168,7 +173,9 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
 
     /** @see com.oracle.svm.hosted.phases.HostedGraphBuilderPhase */
     private static int invokeWithDeoptAndExceptionUnwind(HostedGraphKit kit, boolean isDeoptTarget, int initialNextDeoptIndex, ResolvedJavaMethod target, InvokeKind invokeKind, ValueNode... args) {
-        InvokeWithExceptionNode invoke = kit.startInvokeWithException(target, invokeKind, kit.getFrameState(), kit.bci(), args);
+        int bci = kit.bci();
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(target, invokeKind, kit.getFrameState(), bci, args);
+        invoke.setNodeSourcePosition(NodeSourcePosition.placeholder(kit.getGraph().method(), bci));
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
 
