@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Builder;
@@ -1827,7 +1828,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     AArch64.v6,
                     AArch64.v7
     };
-    static final Register[] AMD64_GPREG = {
+    static final Register[] AMD64_GPREG_LINUX = {
                     AMD64.rdi,
                     AMD64.rsi,
                     AMD64.rdx,
@@ -1835,7 +1836,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     AMD64.r8,
                     AMD64.r9
     };
-    static final Register[] AMD64_FREG = {
+    static final Register[] AMD64_FREG_LINUX = {
                     AMD64.xmm0,
                     AMD64.xmm1,
                     AMD64.xmm2,
@@ -1844,6 +1845,20 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     AMD64.xmm5,
                     AMD64.xmm6,
                     AMD64.xmm7
+    };
+    static final Register[] AMD64_GPREG_WINDOWS = {
+                    AMD64.rdx,
+                    AMD64.r8,
+                    AMD64.r9,
+                    AMD64.rdi,
+                    AMD64.rsi,
+                    AMD64.rcx
+    };
+    static final Register[] AMD64_FREG_WINDOWS = {
+                    AMD64.xmm0,
+                    AMD64.xmm1,
+                    AMD64.xmm2,
+                    AMD64.xmm3
     };
 
     class ParamLocationProducer {
@@ -1856,13 +1871,21 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         ParamLocationProducer(ResolvedJavaMethod method) {
             Architecture arch = ConfigurationValues.getTarget().arch;
+            assert arch instanceof AMD64 || arch instanceof AMD64 : "unexpected architecture";
+            OS os = OS.getCurrent();
+            assert os == OS.LINUX || os == OS.WINDOWS : "unexpected os";
             if (arch instanceof AArch64) {
+                assert os == OS.LINUX : "unexpected os/architecture";
                 gpregs = AARCH64_GPREG;
                 fregs = AARCH64_FREG;
             } else {
-                assert arch instanceof AMD64 : "must be";
-                gpregs = AMD64_GPREG;
-                fregs = AMD64_FREG;
+                if (os == OS.LINUX) {
+                    gpregs = AMD64_GPREG_LINUX;
+                    fregs = AMD64_FREG_LINUX;
+                } else {
+                    gpregs = AMD64_GPREG_WINDOWS;
+                    fregs = AMD64_FREG_WINDOWS;
+                }
             }
             nextGPRegIdx = 0;
             nextFPregIdx = 0;
