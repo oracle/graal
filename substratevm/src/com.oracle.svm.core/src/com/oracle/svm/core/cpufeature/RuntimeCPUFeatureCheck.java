@@ -65,7 +65,7 @@ public final class RuntimeCPUFeatureCheck {
      */
     public static Set<? extends Enum<?>> getSupportedFeatures(Architecture arch) {
         if (arch instanceof AMD64) {
-            return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512F);
+            return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512F, AMD64.CPUFeature.AVX512BW);
         } else {
             return Collections.emptySet();
         }
@@ -89,7 +89,7 @@ public final class RuntimeCPUFeatureCheck {
      */
     public static Set<? extends Enum<?>> getDefaultDisabledFeatures(Architecture arch) {
         if (arch instanceof AMD64) {
-            return EnumSet.of(AMD64.CPUFeature.AVX512F);
+            return EnumSet.of(AMD64.CPUFeature.AVX512F, AMD64.CPUFeature.AVX512BW);
         } else {
             return Collections.emptySet();
         }

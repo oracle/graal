@@ -940,15 +940,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     private enum EVEXFeatureAssertion {
+        /*
+         * With very few exceptions (namely, KMOV{B,D,Q}), all AVX512 instructions require AVX512F.
+         * For simplicity, include AVX512F in all AVX512 assertions, and mention it in the name of
+         * the assertion even though it is implied.
+         */
         AVX512F_ALL(EnumSet.of(AVX512F), EnumSet.of(AVX512F), EnumSet.of(AVX512F)),
         AVX512F_128ONLY(EnumSet.of(AVX512F), null, null),
         AVX512F_VL(EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F)),
-        AVX512CD_VL(EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD)),
-        AVX512DQ_VL(EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
-        AVX512BW_VL(EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW)),
+        AVX512F_CD_VL(EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD, AVX512VL), EnumSet.of(AVX512F, AVX512CD)),
+        AVX512F_DQ_ALL(EnumSet.of(AVX512F, AVX512DQ), EnumSet.of(AVX512F, AVX512DQ), EnumSet.of(AVX512F, AVX512DQ)),
+        AVX512F_DQ_VL(EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
+        AVX512F_BW_ALL(EnumSet.of(AVX512F, AVX512BW), EnumSet.of(AVX512F, AVX512BW), EnumSet.of(AVX512F, AVX512BW)),
+        AVX512F_BW_VL(EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW, AVX512VL), EnumSet.of(AVX512F, AVX512BW)),
         AVX512F_VL_256_512(null, EnumSet.of(AVX512F, AVX512VL), EnumSet.of(AVX512F)),
-        AVX512DQ_VL_256_512(null, EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
-        AVX512DQ_512ONLY(null, null, EnumSet.of(AVX512F, AVX512DQ)),
+        AVX512F_DQ_VL_256_512(null, EnumSet.of(AVX512F, AVX512DQ, AVX512VL), EnumSet.of(AVX512F, AVX512DQ)),
+        AVX512F_DQ_512ONLY(null, null, EnumSet.of(AVX512F, AVX512DQ)),
         AVX512F_512ONLY(null, null, EnumSet.of(AVX512F));
 
         private final EnumSet<CPUFeature> l128features;
@@ -990,6 +997,34 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    /**
+     * A {@link RegisterCategory} that is the union of other categories, used to express constraints
+     * like "a {@link AMD64#CPU} or {@link AMD64#MASK} register".
+     */
+    private static class UnionRegisterCategory extends RegisterCategory {
+        private final RegisterCategory[] categories;
+
+        UnionRegisterCategory(String name, RegisterCategory... categories) {
+            super(name);
+            this.categories = categories;
+        }
+
+        public boolean contains(Register r) {
+            for (RegisterCategory category : categories) {
+                if (r.getRegisterCategory().equals(category)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private static final UnionRegisterCategory CPU_OR_MASK = new UnionRegisterCategory("CPU_OR_MASK", CPU, MASK);
+
+    private static boolean categoryContains(RegisterCategory category, Register register) {
+        return register.getRegisterCategory().equals(category) || (category instanceof UnionRegisterCategory && ((UnionRegisterCategory) category).contains(register));
+    }
+
     private enum VEXOpAssertion {
         AVX1(CPUFeature.AVX, CPUFeature.AVX, null),
         AVX1_2(CPUFeature.AVX, CPUFeature.AVX2, null),
@@ -1015,25 +1050,27 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         AVX1_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
         AVX1_256ONLY_AVX512F_VL(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
         AVX1_128ONLY_AVX512F_128ONLY(CPUFeature.AVX, null, EVEXFeatureAssertion.AVX512F_128ONLY),
-        AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512BW_VL),
+        AVX1_AVX2_AVX512BW_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
         AVX1_AVX2_AVX512F_VL(CPUFeature.AVX, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
-        AVX2_AVX512BW_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512BW_VL),
+        AVX2_AVX512BW_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_BW_VL),
         AVX2_AVX512F_VL(CPUFeature.AVX2, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
-        AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512BW_VL),
+        AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_BW_VL),
         AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_VL),
         AVX512F_VL_256_512(null, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_VL_256_512),
-        AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512DQ_VL),
-        AVX512DQ_VL_256_512(null, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512DQ_VL_256_512),
-        AVX512DQ_512ONLY(null, null, EVEXFeatureAssertion.AVX512DQ_512ONLY),
+        AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_DQ_VL),
+        AVX512DQ_VL_256_512(null, CPUFeature.AVX512VL, EVEXFeatureAssertion.AVX512F_DQ_VL_256_512),
+        AVX512DQ_512ONLY(null, null, EVEXFeatureAssertion.AVX512F_DQ_512ONLY),
         AVX512F_512ONLY(null, null, EVEXFeatureAssertion.AVX512F_512ONLY),
         AVX_AVX512F_VL_256_512(null, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL),
         AVX2_AVX512F_VL_256_512(null, CPUFeature.AVX2, EVEXFeatureAssertion.AVX512F_VL),
-        AVX1_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512DQ_VL),
+        AVX1_AVX512DQ_VL(CPUFeature.AVX, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_DQ_VL),
 
-        AVX512F_MASK(null, null, null, EVEXFeatureAssertion.AVX512F_ALL, MASK, null, null, null),
-        MASK_XMM_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, XMM, XMM, null),
-        MASK_NULL_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512BW_VL, MASK, null, XMM, null),
-        MASK_NULL_XMM_AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512DQ_VL, MASK, null, XMM, null),
+        AVX512F_CPU_OR_MASK(CPUFeature.AVX512F, null, null, EVEXFeatureAssertion.AVX512F_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
+        AVX512DQ_CPU_OR_MASK(CPUFeature.AVX512DQ, null, null, EVEXFeatureAssertion.AVX512F_DQ_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
+        AVX512BW_CPU_OR_MASK(CPUFeature.AVX512BW, null, null, EVEXFeatureAssertion.AVX512F_BW_ALL, CPU_OR_MASK, null, CPU_OR_MASK, null),
+        MASK_XMM_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, XMM, XMM, null),
+        MASK_NULL_XMM_AVX512BW_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_BW_VL, MASK, null, XMM, null),
+        MASK_NULL_XMM_AVX512DQ_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_DQ_VL, MASK, null, XMM, null),
         MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM);
 
@@ -1080,13 +1117,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
                 GraalError.guarantee(l256feature != null && features.contains(l256feature), "emitting illegal 256 bit instruction, required feature: %s", l256feature);
             }
             if (r != null) {
-                GraalError.guarantee(r.getRegisterCategory().equals(rCategory), "expected r in category %s, got %s", rCategory, r);
+                GraalError.guarantee(categoryContains(rCategory, r), "expected r in category %s, got %s", rCategory, r);
             }
             if (v != null) {
-                GraalError.guarantee(v.getRegisterCategory().equals(vCategory), "expected v in category %s, got %s", vCategory, v);
+                GraalError.guarantee(categoryContains(vCategory, v), "expected v in category %s, got %s", vCategory, v);
             }
             if (m != null) {
-                GraalError.guarantee(m.getRegisterCategory().equals(mCategory), "expected m in category %s, got %s", mCategory, m);
+                GraalError.guarantee(categoryContains(mCategory, m), "expected m in category %s, got %s", mCategory, m);
             }
             if (imm8 != null) {
                 GraalError.guarantee(imm8.getRegisterCategory().equals(imm8Category), "expected imm8 in category %s, got %s", imm8Category, imm8);
@@ -1281,12 +1318,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     /**
+     * A general class of VEX-encoded move instructions. These support both RM and MR operand
+     * orders.
+     */
+    public abstract static class VexGeneralMoveOp extends VexRMOp {
+        protected VexGeneralMoveOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion, EVEXTuple evexTuple, int wEvex) {
+            super(opcode, pp, mmmmm, w, op, assertion, evexTuple, wEvex);
+        }
+
+        public abstract void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src);
+    }
+
+    /**
      * VEX-encoded move instructions.
      * <p>
      * These instructions have two opcodes: op is the forward move instruction with an operand order
      * of RM, and opReverse is the reverse move instruction with an operand order of MR.
      */
-    public static final class VexMoveOp extends VexRMOp {
+    public static final class VexMoveOp extends VexGeneralMoveOp {
         // @formatter:off
         public static final VexMoveOp VMOVDQA32 = new VexMoveOp("VMOVDQA32", P_66, M_0F, WIG, 0x6F, 0x7F, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexMoveOp VMOVDQA64 = new VexMoveOp("VMOVDQA64", P_66, M_0F, WIG, 0x6F, 0x7F, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
@@ -1310,6 +1359,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             this.opReverse = opReverse;
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
             GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
@@ -1918,21 +1968,24 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
-    public static final class VexMaskMoveOp extends VexOp {
+    /**
+     * Masked (i.e., conditional) SIMD loads and stores.
+     */
+    public static final class VexMaskedMoveOp extends VexOp {
         // @formatter:off
-        public static final VexMaskMoveOp VMASKMOVPS = new VexMaskMoveOp("VMASKMOVPS", P_66, M_0F38, W0, 0x2C, 0x2E);
-        public static final VexMaskMoveOp VMASKMOVPD = new VexMaskMoveOp("VMASKMOVPD", P_66, M_0F38, W0, 0x2D, 0x2F);
-        public static final VexMaskMoveOp VPMASKMOVD = new VexMaskMoveOp("VPMASKMOVD", P_66, M_0F38, W0, 0x8C, 0x8E, VEXOpAssertion.AVX2);
-        public static final VexMaskMoveOp VPMASKMOVQ = new VexMaskMoveOp("VPMASKMOVQ", P_66, M_0F38, W1, 0x8C, 0x8E, VEXOpAssertion.AVX2);
+        public static final VexMaskedMoveOp VMASKMOVPS = new VexMaskedMoveOp("VMASKMOVPS", P_66, M_0F38, W0, 0x2C, 0x2E);
+        public static final VexMaskedMoveOp VMASKMOVPD = new VexMaskedMoveOp("VMASKMOVPD", P_66, M_0F38, W0, 0x2D, 0x2F);
+        public static final VexMaskedMoveOp VPMASKMOVD = new VexMaskedMoveOp("VPMASKMOVD", P_66, M_0F38, W0, 0x8C, 0x8E, VEXOpAssertion.AVX2);
+        public static final VexMaskedMoveOp VPMASKMOVQ = new VexMaskedMoveOp("VPMASKMOVQ", P_66, M_0F38, W1, 0x8C, 0x8E, VEXOpAssertion.AVX2);
         // @formatter:on
 
         private final int opReverse;
 
-        private VexMaskMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse) {
+        private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse) {
             this(opcode, pp, mmmmm, w, op, opReverse, VEXOpAssertion.AVX1);
         }
 
-        private VexMaskMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
+        private VexMaskedMoveOp(String opcode, int pp, int mmmmm, int w, int op, int opReverse, VEXOpAssertion assertion) {
             super(opcode, pp, mmmmm, w, op, assertion);
             this.opReverse = opReverse;
         }
@@ -1949,6 +2002,101 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             boolean useEvex = asm.vexPrefix(src, mask, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(useEvex, size));
+        }
+    }
+
+    /**
+     * VEX-encoded mask move instructions to and from mask (K) registers.
+     */
+    public static final class VexMoveMaskOp extends VexGeneralMoveOp {
+        // @formatter:off
+        public static final VexMoveMaskOp KMOVW = new VexMoveMaskOp("KMOVW", P_,   P_,   M_0F, W0, W0, VEXOpAssertion.AVX512F_CPU_OR_MASK);
+        public static final VexMoveMaskOp KMOVB = new VexMoveMaskOp("KMOVB", P_66, P_66, M_0F, W0, W0, VEXOpAssertion.AVX512DQ_CPU_OR_MASK);
+        public static final VexMoveMaskOp KMOVQ = new VexMoveMaskOp("KMOVQ", P_,   P_F2, M_0F, W1, W1, VEXOpAssertion.AVX512BW_CPU_OR_MASK);
+        public static final VexMoveMaskOp KMOVD = new VexMoveMaskOp("KMOVD", P_66, P_F2, M_0F, W1, W0, VEXOpAssertion.AVX512BW_CPU_OR_MASK);
+        // @formatter:on
+
+        /*
+         * This family of instructions has a uniform set of four opcodes depending on whether the
+         * source and destination are a K register, memory, or a general purpose register.
+         */
+        // @formatter:off
+        private static final int OP_K_FROM_K_MEM = 0x90;
+        private static final int OP_MEM_FROM_K   = 0x91;
+        private static final int OP_K_FROM_CPU   = 0x92;
+        private static final int OP_CPU_FROM_K   = 0x93;
+        // @formatter:on
+
+        /** The value of the pp field if one of the operands is a general purpose register. */
+        private final int ppCPU;
+
+        /** The value of the w field if one of the operands is a general purpose register. */
+        private final int wCPU;
+
+        private VexMoveMaskOp(String opcode, int pp, int ppCPU, int mmmmm, int w, int wCPU, VEXOpAssertion assertion) {
+            super(opcode, pp, mmmmm, w, OP_K_FROM_K_MEM, assertion, EVEXTuple.INVALID, w);
+            this.ppCPU = ppCPU;
+            this.wCPU = wCPU;
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, src), "emitting invalid instruction");
+            GraalError.guarantee(!(inRC(CPU, dst) && inRC(CPU, src)), "source and destination can't both be CPU registers");
+            int actualOp = op(dst, src);
+            int actualPP = pp(dst, src);
+            int actualW = w(dst, src);
+            asm.vexPrefix(dst, Register.None, src, size, actualPP, mmmmm, actualW, wEvex, false, assertion.l128feature, assertion.l256feature);
+            asm.emitByte(actualOp);
+            asm.emitModRM(dst, src);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, src, null, null), "emitting invalid instruction");
+            GraalError.guarantee(inRC(MASK, src), "source must be a mask register");
+            asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+            asm.emitByte(OP_MEM_FROM_K);
+            asm.emitOperandHelper(src, dst, 0);
+        }
+
+        @Override
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
+            GraalError.guarantee(assertion.check(asm.getFeatures(), size, dst, null, null), "emitting invalid instruction");
+            GraalError.guarantee(inRC(MASK, dst), "destination must be a mask register");
+            asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
+            asm.emitByte(OP_K_FROM_K_MEM);
+            asm.emitOperandHelper(dst, src, 0);
+        }
+
+        private static int op(Register dst, Register src) {
+            if (inRC(MASK, dst)) {
+                if (inRC(MASK, src)) {
+                    return OP_K_FROM_K_MEM;
+                } else {
+                    assert inRC(CPU, src);
+                    return OP_K_FROM_CPU;
+                }
+            } else {
+                assert inRC(CPU, dst) && inRC(MASK, src);
+                return OP_CPU_FROM_K;
+            }
+        }
+
+        private int pp(Register dst, Register src) {
+            if (inRC(CPU, dst) || inRC(CPU, src)) {
+                return ppCPU;
+            } else {
+                return pp;
+            }
+        }
+
+        private int w(Register dst, Register src) {
+            if (inRC(CPU, dst) || inRC(CPU, src)) {
+                return wCPU;
+            } else {
+                return w;
+            }
         }
     }
 
@@ -4825,171 +4973,51 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void kmovb(Register dst, Register src) {
-        assert supports(AVX512DQ);
-        assert inRC(MASK, dst) || inRC(CPU, dst);
-        assert inRC(MASK, src) || inRC(CPU, src);
-        assert !(inRC(CPU, dst) && inRC(CPU, src));
+        VexMoveMaskOp.KMOVB.emit(this, AVXSize.XMM, dst, src);
+    }
 
-        if (inRC(MASK, dst)) {
-            if (inRC(MASK, src)) {
-                // kmovb(KRegister dst, KRegister src):
-                // Insn: KMOVB k1, k2/m16
-                // Code: VEX.L0.66.0F.W0 90 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_66, M_0F, W0, W0, true);
-                emitByte(0x90);
-                emitModRM(dst, src);
-            } else {
-                // kmovb(KRegister dst, Register src)
-                // Insn: KMOVB k1, r32
-                // Code: VEX.L0.66.0F.W0 92 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_66, M_0F, W0, W0, true);
-                emitByte(0x92);
-                emitModRM(dst, src);
-            }
-        } else {
-            if (inRC(MASK, src)) {
-                // kmovb(Register dst, KRegister src)
-                // Insn: KMOVB r32, k1
-                // Code: VEX.L0.66.0F.W0 93 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_66, M_0F, W0, W0, true);
-                emitByte(0x93);
-                emitModRM(dst, src);
-            } else {
-                throw GraalError.shouldNotReachHere();
-            }
-        }
+    public final void kmovb(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVB.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovb(Register dst, AMD64Address src) {
+        VexMoveMaskOp.KMOVB.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void kmovw(Register dst, Register src) {
-        assert supports(CPUFeature.AVX512F);
-        assert inRC(MASK, dst) || inRC(CPU, dst);
-        assert inRC(MASK, src) || inRC(CPU, src);
-        assert !(inRC(CPU, dst) && inRC(CPU, src));
+        VexMoveMaskOp.KMOVW.emit(this, AVXSize.XMM, dst, src);
+    }
 
-        if (inRC(MASK, dst)) {
-            if (inRC(MASK, src)) {
-                // kmovw(KRegister dst, KRegister src):
-                // Insn: KMOVW k1, k2/m16
-                // Code: VEX.L0.0F.W0 90 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W0, W0, true);
-                emitByte(0x90);
-                emitModRM(dst, src);
-            } else {
-                // kmovw(KRegister dst, Register src)
-                // Insn: KMOVW k1, r32
-                // Code: VEX.L0.0F.W0 92 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W0, W0, true);
-                emitByte(0x92);
-                emitModRM(dst, src);
-            }
-        } else {
-            if (inRC(MASK, src)) {
-                // kmovw(Register dst, KRegister src)
-                // Insn: KMOVW r32, k1
-                // Code: VEX.L0.0F.W0 93 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W0, W0, true);
-                emitByte(0x93);
-                emitModRM(dst, src);
-            } else {
-                throw GraalError.shouldNotReachHere();
-            }
-        }
+    public final void kmovw(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVW.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void kmovw(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX512F);
-        assert inRC(MASK, dst);
-
-        // kmovw(KRegister dst, M16 src):
-        // Insn: KMOVW k1, k2/m16
-        // Code: VEX.L0.0F.W0 90 /r
-        vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W0, W0, true, null, null);
-        emitByte(0x90);
-        emitOperandHelper(dst, src, 0);
+        VexMoveMaskOp.KMOVW.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void kmovd(Register dst, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, dst) || inRC(CPU, dst);
-        assert inRC(MASK, src) || inRC(CPU, src);
-        assert !(inRC(CPU, dst) && inRC(CPU, src));
+        VexMoveMaskOp.KMOVD.emit(this, AVXSize.XMM, dst, src);
+    }
 
-        if (inRC(MASK, dst)) {
-            if (inRC(MASK, src)) {
-                // kmovd(KRegister dst, KRegister src):
-                // Insn: KMOVD k1, k2/m32
-                // Code: VEX.L0.66.0F.W1 90 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_66, M_0F, W1, W1, true);
-                emitByte(0x90);
-                emitModRM(dst, src);
-            } else {
-                // kmovd(KRegister dst, Register src)
-                // Insn: KMOVD k1, r32
-                // Code: VEX.L0.F2.0F.W0 92 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W0, W0, true);
-                emitByte(0x92);
-                emitModRM(dst, src);
-            }
-        } else {
-            if (inRC(MASK, src)) {
-                // kmovd(Register dst, KRegister src)
-                // Insn: KMOVD r32, k1
-                // Code: VEX.L0.F2.0F.W0 93 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W0, W0, true);
-                emitByte(0x93);
-                emitModRM(dst, src);
-            } else {
-                throw GraalError.shouldNotReachHere();
-            }
-        }
+    public final void kmovd(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVD.emit(this, AVXSize.XMM, dst, src);
+    }
+
+    public final void kmovd(Register dst, AMD64Address src) {
+        VexMoveMaskOp.KMOVD.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void kmovq(Register dst, Register src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, dst) || inRC(CPU, dst);
-        assert inRC(MASK, src) || inRC(CPU, src);
-        assert !(inRC(CPU, dst) && inRC(CPU, src));
+        VexMoveMaskOp.KMOVQ.emit(this, AVXSize.XMM, dst, src);
+    }
 
-        if (inRC(MASK, dst)) {
-            if (inRC(MASK, src)) {
-                // kmovq(KRegister dst, KRegister src):
-                // Insn: KMOVQ k1, k2/m64
-                // Code: VEX.L0.0F.W1 90 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W1, W1, true);
-                emitByte(0x90);
-                emitModRM(dst, src);
-            } else {
-                // kmovq(KRegister dst, Register src)
-                // Insn: KMOVQ k1, r64
-                // Code: VEX.L0.F2.0F.W1 92 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W1, W1, true);
-                emitByte(0x92);
-                emitModRM(dst, src);
-            }
-        } else {
-            if (inRC(MASK, src)) {
-                // kmovq(Register dst, KRegister src)
-                // Insn: KMOVQ r64, k1
-                // Code: VEX.L0.F2.0F.W1 93 /r
-                vexPrefix(dst, Register.None, src, AVXSize.XMM, P_F2, M_0F, W1, W1, true);
-                emitByte(0x93);
-                emitModRM(dst, src);
-            } else {
-                throw GraalError.shouldNotReachHere();
-            }
-        }
+    public final void kmovq(AMD64Address dst, Register src) {
+        VexMoveMaskOp.KMOVQ.emit(this, AVXSize.XMM, dst, src);
     }
 
     public final void kmovq(Register dst, AMD64Address src) {
-        assert supports(CPUFeature.AVX512BW);
-        assert inRC(MASK, dst);
-
-        // kmovq(KRegister dst, M64 src):
-        // Insn: KMOVQ k1, k2/m64
-        // Code: VEX.L0.0F.W1 90 /r
-        vexPrefix(dst, Register.None, src, AVXSize.XMM, P_, M_0F, W1, W1, true, null, null);
-        emitByte(0x90);
-        emitOperandHelper(dst, src, 0);
+        VexMoveMaskOp.KMOVQ.emit(this, AVXSize.XMM, dst, src);
     }
 
     // Insn: KTESTD k1, k2

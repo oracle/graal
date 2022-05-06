@@ -111,6 +111,8 @@ public class RegisterAllocationConfig {
     /**
      * Gets the set of registers that can be used by the register allocator for a value of a
      * particular kind.
+     *
+     * @return {@code null} if there are no allocatable registers for the given kind
      */
     public AllocatableRegisters getAllocatableRegisters(PlatformKind kind) {
         PlatformKind.Key key = kind.getKey();
@@ -118,19 +120,24 @@ public class RegisterAllocationConfig {
             AllocatableRegisters val = categorized.get(key);
             return val;
         }
-        AllocatableRegisters ret = createAllocatableRegisters(registerConfig.filterAllocatableRegisters(kind, getAllocatableRegisters()), kind);
+        AllocatableRegisters ret = createAllocatableRegisters(registerConfig.filterAllocatableRegisters(kind, getAllocatableRegisters()));
         categorized.put(key, ret);
         return ret;
     }
 
     /**
      * Gets the {@link RegisterCategory} for the given {@link PlatformKind}.
+     *
+     * @return {@code null} if there are no allocatable registers for the given kind
      */
     public RegisterCategory getRegisterCategory(PlatformKind kind) {
         return getAllocatableRegisters(kind).allocatableRegisters[0].getRegisterCategory();
     }
 
-    protected AllocatableRegisters createAllocatableRegisters(RegisterArray registers, PlatformKind kind) {
+    private static AllocatableRegisters createAllocatableRegisters(RegisterArray registers) {
+        if (registers.size() == 0) {
+            return null;
+        }
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         for (Register reg : registers) {
@@ -142,10 +149,7 @@ public class RegisterAllocationConfig {
                 max = number;
             }
         }
-        // add more context to debug GR-38178
-        assert min <= max : String.format("min=%s, max=%s, kind=%s, registers=%s, getAllocatableRegisters()=%s", min, max, kind, registers, getAllocatableRegisters());
         return new AllocatableRegisters(registers, min, max);
-
     }
 
     /**
