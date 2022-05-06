@@ -50,6 +50,7 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
@@ -83,16 +84,16 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * </code>
  *
  */
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "address")
 @ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 0)
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
-public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
+public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implements LLVMPointer {
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
-    protected LLVMPointer address;
+    protected final LLVMPointer address;
 
     private long nativeOffset = 0;
     private LLVMManagedPointer vaList;
@@ -154,6 +155,39 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     private static Object createVaListStorage() {
         return LLVMLanguage.getContext().getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).createActualVAListStorage();
+    }
+
+    /* Implement LLVMPointer so that it can behave like a pointer in the fallback scenario */
+    @Override
+    @ExportMessage.Ignore
+    public boolean isNull() {
+        return address.isNull();
+    }
+
+    @Override
+    @ExportMessage.Ignore
+    public LLVMPointer copy() {
+        return address.copy();
+    }
+
+    @Override
+    public LLVMPointer increment(long offset) {
+        return address.increment(offset);
+    }
+
+    @Override
+    public LLVMInteropType getExportType() {
+        return address.getExportType();
+    }
+
+    @Override
+    public LLVMPointer export(LLVMInteropType newType) {
+        return address.export(newType);
+    }
+
+    @Override
+    public boolean isSame(LLVMPointer other) {
+        return address.isSame(other);
     }
 
     @ExportMessage
@@ -325,7 +359,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     void cleanup(@SuppressWarnings("unused") Frame frame) {
         // set this pointer to null
         vaList = null;
-        address = null;
+        // address = null;
     }
 
     @SuppressWarnings("static-method")
@@ -684,15 +718,33 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
-    public boolean isForeign() {
-        assert !isPointer();
-        return true;
+    static class IsForeign {
+        @Specialization(guards = {"!self.isPointer()"})
+        static boolean isForeignVaList(@SuppressWarnings("unused") LLVMMaybeVaPointer self) {
+            return true;
+        }
+
+        @Specialization
+        @GenerateAOT.Exclude
+        static boolean isForeign(LLVMMaybeVaPointer self,
+                @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
+            return foreigns.isForeign(self.address);
+        }
     }
 
     @ExportMessage
-    public Object asForeign() {
-        assert !isPointer();
-        return this;
+    static class AsForeign {
+        @Specialization(guards = {"!self.isPointer()"})
+        static Object asForeignVaList(LLVMMaybeVaPointer self) {
+            return self;
+        }
+
+        @Specialization
+        @GenerateAOT.Exclude
+        static Object asForeign(LLVMMaybeVaPointer self,
+                @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
+            return foreigns.asForeign(self.address);
+        }
     }
 
     @Override

@@ -74,3 +74,17 @@ int test_va_list_callback(int (*callback)(va_list *, void *), void *libHandle, .
 int test_va_list_callback4(int (*callback)(va_list *, void *), void *libHandle, int a0, int a1, int a2, void *saNative, void *saManaged) {
     return test_va_list_callback(callback, libHandle, a0, a1, a2, saNative, polyglot_as_StructA(saManaged));
 }
+
+int deref_chr_chr_ptr(char **ptr) {
+    return (int) **ptr;
+}
+
+int test_maybe_va_ptr(int (*callback)(char *)) {
+    char chr = 'A';
+    char *chr_ptr = &chr;
+    /* should be of type i8* which maps to the alias of va_list on some platforms (darwin-aarch64, windows-amd64) */
+    char **chr_chr_ptr = alloca(sizeof(char *));
+    chr_chr_ptr = &chr_ptr;
+
+    return callback(chr_chr_ptr);
+}
