@@ -94,8 +94,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Types types;
     private final Signatures signatures;
 
-    private long startupClockNanos = 0;
-
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
     // This field should be final, but creating a shape requires a fully-initialized instance of
     // TruffleLanguage.
@@ -173,13 +171,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        startupClockNanos = System.nanoTime();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        long elapsedTimeNanos = System.nanoTime() - startupClockNanos;
+        long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
         if (seconds > 10) {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", seconds);

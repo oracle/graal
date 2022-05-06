@@ -130,6 +130,7 @@ public final class EspressoContext {
 
     private String[] mainArguments;
     private String[] vmArguments;
+    private long startupClockNanos = 0;
 
     // region Debug
     private final TimerCollection timers;
@@ -391,6 +392,10 @@ public final class EspressoContext {
         return vmArguments;
     }
 
+    public long getStartupClockNanos() {
+        return startupClockNanos;
+    }
+
     private String[] buildVmArguments() {
         OptionMap<String> argsMap = getEnv().getOptions().get(EspressoOptions.VMArguments);
         if (argsMap == null) {
@@ -447,6 +452,7 @@ public final class EspressoContext {
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
         assert !this.initialized;
+        startupClockNanos = System.nanoTime();
 
         // Setup finalization support in the host VM.
         FinalizationSupport.ensureInitialized();
