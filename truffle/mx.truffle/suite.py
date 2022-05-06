@@ -84,10 +84,12 @@ suite = {
 
     "LIBFFI_SOURCES" : {
       "resource" : True,
-      "version" : "3.3",
-      # original: https://sourceware.org/pub/libffi/libffi-{version}.tar.gz
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz"],
-      "sha1" : "8df6cb570c8d6596a67d1c0773bf00650154f7aa",
+      "version" : "3.4.2",
+      "urls" : [
+        "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/libffi-{version}.tar.gz",
+        "https://github.com/libffi/libffi/releases/download/v{version}/libffi-{version}.tar.gz",
+      ],
+      "sha1" : "460882cfdb52a2bd13fc08edc540b242ae421033",
     },
 
     "ANTLR4": {
@@ -106,8 +108,8 @@ suite = {
     },
 
     "TRUFFLE_JCODINGS": {
-      "sha1" : "c88c640b82534bea6bdb0dfacf4035665ad91e26",
-      "version" : "1.0.56.6",
+      "sha1" : "61f6dfc53c3003e17b994c8f968e69d2544cf777",
+      "version" : "1.0.56.7",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
       "exports" : [],
       "license": ["MIT"],

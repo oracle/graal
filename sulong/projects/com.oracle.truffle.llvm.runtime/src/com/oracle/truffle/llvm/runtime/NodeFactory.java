@@ -66,6 +66,8 @@ import java.util.List;
  */
 public interface NodeFactory {
 
+    boolean isCfgOsrEnabled();
+
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
     LLVMExpressionNode createExtractElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode index);

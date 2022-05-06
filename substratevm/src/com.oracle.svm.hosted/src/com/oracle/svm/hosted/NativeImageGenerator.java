@@ -210,7 +210,6 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
-import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -626,8 +625,6 @@ public class NativeImageGenerator {
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtime);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
-            runtime.updateLazyState(hMetaAccess);
-
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
@@ -682,6 +679,13 @@ public class NativeImageGenerator {
                 }
             }
 
+            ProgressReporter.CenteredTextPrinter breakdownsPrinter = SubstrateOptions.BuildOutputBreakdowns.getValue()
+                            ? ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects())
+                            : null;
+            compileQueue.purge();
+
+            int numCompilations = codeCache.getCompilations().size();
+
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 bb.getHeartbeatCallback().run();
                 BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
@@ -704,9 +708,9 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
             reporter.printCreationEnd(image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
-                            codeCache.getCompilations().size(), image.getDebugInfoSize());
-            if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-                ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
+                            numCompilations, image.getDebugInfoSize());
+            if (breakdownsPrinter != null) {
+                breakdownsPrinter.reset().flushln();
             }
         }
     }
@@ -1248,7 +1252,7 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            TypeSnippets.registerLowerings(runtimeConfig, options, providers, lowerings);
+            TypeSnippets.registerLowerings(options, providers, lowerings);
             ExceptionSnippets.registerLowerings(options, providers, lowerings);
 
             if (hosted) {
@@ -1672,7 +1676,8 @@ public class NativeImageGenerator {
             } else if (LayoutEncoding.isPrimitiveArray(le)) {
                 System.out.format("primitive array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
                                 LayoutEncoding.getArrayIndexScale(le));
-            } else if (Continuation.isSupported() && LayoutEncoding.isStoredContinuation(le)) {
+            } else if (LayoutEncoding.isStoredContinuation(le)) {
+                // can exist as HostedType even if unreachable and continuations are disabled
                 System.out.print("stored continuation  ");
             } else {
                 throw VMError.shouldNotReachHere();

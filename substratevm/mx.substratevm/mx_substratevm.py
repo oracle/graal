@@ -128,17 +128,15 @@ def build_native_image_agent(native_image):
     return svmbuild_dir() + '/' + agentfile
 
 
-class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, dynamicimports, disable_libpolyglot, force_bash_launchers, skip_libraries, exclude_components, native_images')):
+class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, dynamicimports, exclude_components, native_images')):
     @classmethod
-    def build(cls, primary_suite_dir=None, dynamicimports=None, disable_libpolyglot=True, force_bash_launchers=True, skip_libraries=True,
+    def build(cls, primary_suite_dir=None, dynamicimports=None,
               exclude_components=None, native_images=None):
         dynamicimports = list(dynamicimports or [])
         for x, _ in mx.get_dynamic_imports():
             if x not in dynamicimports:
                 dynamicimports.append(x)
-        new_config = cls(primary_suite_dir, tuple(dynamicimports), disable_libpolyglot,
-                         force_bash_launchers if isinstance(force_bash_launchers, bool) else tuple(force_bash_launchers),
-                         skip_libraries if isinstance(skip_libraries, bool) else tuple(skip_libraries),
+        new_config = cls(primary_suite_dir, tuple(dynamicimports),
                          tuple(exclude_components or ()), tuple(native_images or ()))
         return new_config
 
@@ -146,22 +144,12 @@ class GraalVMConfig(collections.namedtuple('GraalVMConfig', 'primary_suite_dir, 
         args = ['--disable-installables=true']
         if self.dynamicimports:
             args += ['--dynamicimports', ','.join(self.dynamicimports)]
-        if self.disable_libpolyglot:
-            args += ['--disable-libpolyglot']
-        if self.force_bash_launchers:
-            if self.force_bash_launchers is True:
-                args += ['--force-bash-launchers=true']
-            else:
-                args += ['--force-bash-launchers=' + ','.join(self.force_bash_launchers)]
-        if self.skip_libraries:
-            if self.skip_libraries is True:
-                args += ['--skip-libraries=true']
-            else:
-                args += ['--skip-libraries=' + ','.join(self.skip_libraries)]
         if self.exclude_components:
             args += ['--exclude-components=' + ','.join(self.exclude_components)]
         if self.native_images:
             args += ['--native-images=' + ','.join(self.native_images)]
+        else:
+            args += ['--native-images=false']
         return args
 
 
@@ -1108,6 +1096,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             jar_distributions=jar_distributions,
             build_args=[
                 '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
+                '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,org.graalvm.jniutils,org.graalvm.graphio,com.oracle.truffle',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowFoldMethods',
                 '-H:+ReportExceptionStackTraces',

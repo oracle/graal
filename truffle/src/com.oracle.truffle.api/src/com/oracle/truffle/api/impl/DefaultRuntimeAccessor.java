@@ -67,6 +67,7 @@ final class DefaultRuntimeAccessor extends Accessor {
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
     static final EngineSupport ENGINE = ACCESSOR.engineSupport();
     static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final FrameSupport FRAME = ACCESSOR.framesSupport();
 
     private DefaultRuntimeAccessor() {
     }

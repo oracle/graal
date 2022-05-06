@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -89,6 +89,11 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     private static final byte FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
     private static final byte FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
     public static final byte FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
+    public static final byte FrameSlotKindStaticTag = 8; // FrameSlotKind.Static.tag
+
+    private static final byte FrameDescriptorNoStaticMode = 1; // FrameDescriptor.NO_STATIC_MODE
+    private static final byte FrameDescriptorAllStaticMode = 2; // FrameDescriptor.ALL_STATIC_MODe
+    private static final byte FrameDescriptorMixedStaticMode = FrameDescriptorNoStaticMode | FrameDescriptorAllStaticMode; // FrameDescriptor.MIXED_STATIC_MODE
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
     @Input ValueNode descriptor;
@@ -114,6 +119,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
     private final int frameSize;
     private final int indexedFrameSize;
     private final int auxiliarySize;
+    private final int staticMode;
 
     private final SpeculationReason intrinsifyAccessorsSpeculation;
 
@@ -133,6 +139,8 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             case NO_TYPE_MARKER:
             case INITIAL_TYPE_MARKER:
                 return FrameSlotKindLongTag;
+            case FrameSlotKindStaticTag:
+                return FrameSlotKindStaticTag;
         }
         throw new IllegalStateException("Unexpected frame slot kind tag: " + tag);
     }
@@ -235,8 +243,27 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         JavaConstant indexedTagsArray = constantReflection.readFieldValue(types.fieldFrameDescriptorIndexedSlotTags, frameDescriptor);
         this.indexedFrameSize = constantReflection.readArrayLength(indexedTagsArray);
 
+        JavaConstant staticModeValue = constantReflection.readFieldValue(types.fieldFrameDescriptorStaticMode, frameDescriptor);
+        this.staticMode = staticModeValue.asInt();
+
         byte[] indexedFrameSlotKindsCandidate = new byte[indexedFrameSize];
-        Arrays.fill(indexedFrameSlotKindsCandidate, FrameSlotKindLongTag);
+        if (staticMode == FrameDescriptorNoStaticMode) {
+            Arrays.fill(indexedFrameSlotKindsCandidate, FrameSlotKindLongTag);
+        } else if (staticMode == FrameDescriptorAllStaticMode) {
+            Arrays.fill(indexedFrameSlotKindsCandidate, FrameSlotKindStaticTag);
+        } else {
+            if (staticMode == FrameDescriptorMixedStaticMode) {
+                final int indexedTagsArrayLength = constantReflection.readArrayLength(indexedTagsArray);
+                for (int i = 0; i < indexedTagsArrayLength; i++) {
+                    final int slot = constantReflection.readArrayElement(indexedTagsArray, i).asInt();
+                    if (slot == FrameSlotKindStaticTag) {
+                        indexedFrameSlotKindsCandidate[i] = FrameSlotKindStaticTag;
+                    } else {
+                        indexedFrameSlotKindsCandidate[i] = FrameSlotKindLongTag;
+                    }
+                }
+            }
+        }
         this.indexedFrameSlotKinds = indexedFrameSlotKindsCandidate;
 
         this.auxiliarySize = constantReflection.readFieldValue(types.fieldFrameDescriptorAuxiliarySlotCount, frameDescriptor).asInt();
@@ -361,7 +388,21 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             ValueNode[] indexedTagArrayEntryState = new ValueNode[indexedFrameSize];
 
             Arrays.fill(indexedObjectArrayEntryState, frameDefaultValue);
-            Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(0));
+            if (staticMode == FrameDescriptorNoStaticMode) {
+                Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(0));
+            } else if (staticMode == FrameDescriptorAllStaticMode) {
+                Arrays.fill(indexedTagArrayEntryState, smallIntConstants.get(FrameSlotKindStaticTag));
+            } else {
+                if (staticMode == FrameDescriptorMixedStaticMode) {
+                    for (int slot = 0; slot < indexedFrameSize; slot++) {
+                        if (indexedFrameSlotKinds[slot] == FrameSlotKindStaticTag) {
+                            indexedTagArrayEntryState[slot] = smallIntConstants.get(FrameSlotKindStaticTag);
+                        } else {
+                            indexedTagArrayEntryState[slot] = smallIntConstants.get(0);
+                        }
+                    }
+                }
+            }
             Arrays.fill(indexedPrimitiveArrayEntryState, defaultLong);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(INDEXED_OBJECT_ARRAY), indexedObjectArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition, false);
             tool.createVirtualObject((VirtualObjectNode) virtualFrameArrays.get(INDEXED_PRIMITIVE_ARRAY), indexedPrimitiveArrayEntryState, Collections.<MonitorIdNode> emptyList(), sourcePosition,

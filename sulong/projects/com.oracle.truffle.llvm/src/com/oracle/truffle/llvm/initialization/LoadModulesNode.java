@@ -211,7 +211,7 @@ public final class LoadModulesNode extends LLVMRootNode {
     @SuppressWarnings("unchecked")
     private LLVMScopeChain loadModule(VirtualFrame frame, LLVMContext context) {
 
-        stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack());
+        stackAccess.executeEnter(frame, getContext().getThreadingStack().getStack(this));
         try {
             LLVMLoadingPhase phase;
             // instead of creating a llvm local scope, just create a llvm scope here, and then put

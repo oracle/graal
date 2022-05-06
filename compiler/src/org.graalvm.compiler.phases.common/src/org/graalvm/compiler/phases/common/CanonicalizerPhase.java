@@ -25,11 +25,11 @@
 package org.graalvm.compiler.phases.common;
 
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.CFG_SIMPLIFICATION;
-import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.FINAL_CANONICALIZATION;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.GVN;
 import static org.graalvm.compiler.phases.common.CanonicalizerPhase.CanonicalizerFeature.READ_CANONICALIZATION;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.CounterKey;
@@ -100,28 +100,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
          * Determines if the canonicalizer is allowed to perform global value numbering. See
          * {@link StructuredGraph#findDuplicate(Node)} for details.
          */
-        GVN,
-        /**
-         * Determines if the application of the canonicalizer is its "FINAL" one, i.e., after this
-         * application of the phase no further canonicalizations are made to a
-         * {@link StructuredGraph}. See {@link CanonicalizerTool#finalCanonicalization()} for more
-         * details.
-         */
-        FINAL_CANONICALIZATION(false);
-
-        /**
-         * Determines if the feature is enabled per default if an unrestricted
-         * {@link CanonicalizerPhase} is created.
-         */
-        final boolean enabledByDefault;
-
-        CanonicalizerFeature() {
-            this(true);
-        }
-
-        CanonicalizerFeature(boolean defaultValue) {
-            this.enabledByDefault = defaultValue;
-        }
+        GVN;
     }
 
     private static final int MAX_ITERATION_PER_NODE = 10;
@@ -134,8 +113,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     private static final CounterKey COUNTER_CUSTOM_SIMPLIFICATION_CONSIDERED_NODES = DebugContext.counter("CustomSimplificationConsideredNodes");
     private static final CounterKey COUNTER_GLOBAL_VALUE_NUMBERING_HITS = DebugContext.counter("GlobalValueNumberingHits");
 
-    private final EnumSet<CanonicalizerFeature> features;
-    private final CustomSimplification customSimplification;
+    protected final EnumSet<CanonicalizerFeature> features;
+    protected final CustomSimplification customSimplification;
 
     public interface CustomSimplification {
         /**
@@ -178,12 +157,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return new CanonicalizerPhase(customSimplification, newFeatures);
     }
 
-    public CanonicalizerPhase copyWithoutFurtherCanonicalizations() {
-        EnumSet<CanonicalizerFeature> newFeatures = EnumSet.copyOf(features);
-        newFeatures.add(FINAL_CANONICALIZATION);
-        return new CanonicalizerPhase(customSimplification, newFeatures);
-    }
-
     public static CanonicalizerPhase create() {
         return new CanonicalizerPhase(null, defaultFeatures());
     }
@@ -201,9 +174,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     private static EnumSet<CanonicalizerFeature> defaultFeatures() {
-        EnumSet<CanonicalizerFeature> features = EnumSet.allOf(CanonicalizerFeature.class);
-        features.removeIf(f -> !f.enabledByDefault);
-        return features;
+        return EnumSet.allOf(CanonicalizerFeature.class);
     }
 
     private static EnumSet<CanonicalizerFeature> defaultFeaturesWithout(CanonicalizerFeature feature) {
@@ -232,7 +203,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            mark are processed
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-        applyIncremental(graph, context, newNodesMark, true);
+        this.applyIncremental(graph, context, newNodesMark, true);
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark, boolean dumpGraph) {
@@ -244,7 +215,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            be an auto-grow node bitmap
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-        applyIncremental(graph, context, workingSet, true);
+        this.applyIncremental(graph, context, workingSet, true);
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
@@ -252,7 +223,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-        applyIncremental(graph, context, workingSet, newNodesMark, true);
+        this.applyIncremental(graph, context, workingSet, newNodesMark, true);
     }
 
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
@@ -263,7 +234,43 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return NodeView.DEFAULT;
     }
 
-    private final class Instance extends Phase {
+    @Override
+    public int hashCode() {
+        if (customSimplification == null) {
+            return Objects.hash(this.getClass().getName(), features.toString());
+        }
+
+        return Objects.hash(this.getClass().getName(), features.toString(),
+                        customSimplification.getClass().getName());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof CanonicalizerPhase)) {
+            return false;
+        }
+
+        CanonicalizerPhase phase = (CanonicalizerPhase) obj;
+
+        if (this.customSimplification == null && phase.customSimplification != null) {
+            return false;
+        }
+
+        if (this.customSimplification != null && phase.customSimplification == null) {
+            return false;
+        }
+
+        return this.getClass().equals(phase.getClass()) &&
+                        this.features.equals(phase.features) &&
+                        ((this.customSimplification == null && phase.customSimplification == null) ||
+                                        this.customSimplification.getClass().equals(phase.customSimplification.getClass()));
+    }
+
+    class Instance extends Phase {
 
         private final StructuredGraph initialGraph;
         private final CoreProviders context;
@@ -273,19 +280,25 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         private final Tool tool;
         private final DebugContext debug;
 
+        private final boolean isFinalCanonicalization;
+
         private Instance(StructuredGraph graph, CoreProviders context) {
-            this(graph, context, null, null);
+            this(graph, context, null, null, false);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-            this(graph, context, workingSet, null);
+            this(graph, context, workingSet, null, false);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-            this(graph, context, null, newNodesMark);
+            this(graph, context, null, newNodesMark, false);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
+            this(graph, context, workingSet, newNodesMark, false);
+        }
+
+        Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean isFinalCanonicalization) {
             this.initialGraph = graph;
             this.context = context;
             this.initWorkingSet = workingSet;
@@ -303,6 +316,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
             // FIXME figure out appropriate phase
             tool = new Tool(graph.getAssumptions(), graph.getOptions(), graph.isAfterStage(StageFlag.MID_TIER_LOWERING));
+            this.isFinalCanonicalization = isFinalCanonicalization;
         }
 
         @Override
@@ -318,10 +332,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
 
             processWorkSet(graph);
-
-            if (features.contains(FINAL_CANONICALIZATION)) {
-                graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
-            }
         }
 
         @SuppressWarnings("try")
@@ -669,7 +679,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
             @Override
             public boolean finalCanonicalization() {
-                return features.contains(FINAL_CANONICALIZATION);
+                return isFinalCanonicalization;
             }
 
             @Override

@@ -29,7 +29,6 @@ import java.util.Objects;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -111,10 +110,7 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
         ValueNode[] invokeArgs = new ValueNode[originalArgs.length + 1];
         invokeArgs[0] = newInstance;
         System.arraycopy(originalArgs, 0, invokeArgs, 1, originalArgs.length);
-        InvokeWithExceptionNode invoke = kit.createInvokeWithExceptionAndUnwind(universeTargetConstructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), invokeArgs);
-        if (support.inlineConstructor(universeTargetConstructor)) {
-            kit.inline(invoke, "Constructor in FactoryMethod", "FactoryMethod");
-        }
+        kit.createInvokeWithExceptionAndUnwind(universeTargetConstructor, InvokeKind.Special, kit.getFrameState(), kit.bci(), invokeArgs);
 
         if (throwAllocatedObject) {
             kit.append(new UnwindNode(newInstance));

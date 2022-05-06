@@ -56,6 +56,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
@@ -800,9 +801,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return new Method(declaringKlass.getKlassVersion(), getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
     }
 
-    public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
+    public MethodHandleIntrinsicNode spawnIntrinsicNode(EspressoLanguage language, Meta meta, Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
         assert isPolySignatureIntrinsic();
-        return getContext().getMethodHandleIntrinsics().createIntrinsicNode(this, accessingKlass, mname, signature);
+        return MethodHandleIntrinsics.createIntrinsicNode(language, meta, this, accessingKlass, mname, signature);
     }
 
     public Method forceSplit() {

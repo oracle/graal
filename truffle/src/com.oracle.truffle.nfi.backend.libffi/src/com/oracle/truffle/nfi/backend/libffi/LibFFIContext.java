@@ -66,6 +66,7 @@ class LibFFIContext {
 
     @CompilationFinal(dimensions = 1) final LibFFIType[] simpleTypeMap = new LibFFIType[NativeSimpleType.values().length];
     @CompilationFinal(dimensions = 1) final LibFFIType[] arrayTypeMap = new LibFFIType[NativeSimpleType.values().length];
+    @CompilationFinal(dimensions = 1) final LibFFIType[] varargsTypeMap = new LibFFIType[NativeSimpleType.values().length];
     @CompilationFinal LibFFIType cachedEnvType;
 
     private final HashMap<Long, ClosureNativePointer> nativePointerMap = new HashMap<>();
@@ -137,7 +138,14 @@ class LibFFIContext {
     void initialize() {
         loadNFILib();
         NativeAllocation.ensureGCThreadRunning();
+
         nativeContext = initializeNativeContext();
+        initializeVarargsPromotedType(NativeSimpleType.UINT8, NativeSimpleType.UINT32);
+        initializeVarargsPromotedType(NativeSimpleType.UINT16, NativeSimpleType.UINT32);
+        initializeVarargsPromotedType(NativeSimpleType.SINT8, NativeSimpleType.SINT32);
+        initializeVarargsPromotedType(NativeSimpleType.SINT16, NativeSimpleType.SINT32);
+        initializeVarargsPromotedType(NativeSimpleType.FLOAT, NativeSimpleType.DOUBLE);
+
         nativeEnv.remove();
     }
 
@@ -194,7 +202,7 @@ class LibFFIContext {
     }
 
     Object lookupSymbol(LibFFILibrary library, String name) {
-        return LibFFISymbol.create(language, library, name, lookup(nativeContext, library.handle, name));
+        return LibFFISymbol.create(library, name, lookup(nativeContext, library.handle, name));
     }
 
     LibFFIType lookupSimpleType(NativeSimpleType type) {
@@ -203,6 +211,10 @@ class LibFFIContext {
 
     LibFFIType lookupArrayType(NativeSimpleType type) {
         return arrayTypeMap[type.ordinal()];
+    }
+
+    LibFFIType lookupVarargsType(NativeSimpleType type) {
+        return varargsTypeMap[type.ordinal()];
     }
 
     @TruffleBoundary
@@ -218,7 +230,7 @@ class LibFFIContext {
         synchronized (language) {
             if (language.simpleTypeMap[idx] == null) {
                 assert language.arrayTypeMap[idx] == null;
-                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(language, simpleType, size, alignment);
+                language.simpleTypeMap[idx] = LibFFIType.createSimpleTypeInfo(simpleType, size, alignment);
                 language.arrayTypeMap[idx] = LibFFIType.createArrayTypeInfo(language.simpleTypeMap[pointerIdx], simpleType);
                 if (idx == pointerIdx) {
                     language.cachedEnvType = new EnvType(language.simpleTypeMap[pointerIdx]);
@@ -230,6 +242,20 @@ class LibFFIContext {
         if (idx == pointerIdx) {
             cachedEnvType = new LibFFIType(language.cachedEnvType, simpleTypeMap[pointerIdx].type);
         }
+    }
+
+    private void initializeVarargsPromotedType(NativeSimpleType simpleType, NativeSimpleType promotedType) {
+        int idx = simpleType.ordinal();
+        LibFFIType promoted = simpleTypeMap[promotedType.ordinal()];
+
+        assert varargsTypeMap[idx] == null : "initializeVarargsType called twice for " + simpleType;
+        synchronized (language) {
+            if (language.varargsTypeMap[idx] == null) {
+                language.varargsTypeMap[idx] = LibFFIType.createVarargsPromotedTypeInfo(simpleType, promoted.typeInfo);
+            }
+        }
+
+        varargsTypeMap[idx] = new LibFFIType(language.varargsTypeMap[idx], promoted.type);
     }
 
     private native long initializeNativeContext();

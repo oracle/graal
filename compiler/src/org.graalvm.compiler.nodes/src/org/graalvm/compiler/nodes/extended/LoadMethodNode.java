@@ -39,8 +39,10 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -52,7 +54,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Loads a method from the virtual method table of a given hub.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable {
+public final class LoadMethodNode extends FixedWithNextNode implements Lowerable, Canonicalizable, MemoryAccess {
 
     public static final NodeClass<LoadMethodNode> TYPE = NodeClass.create(LoadMethodNode.class);
     @Input ValueNode hub;
@@ -136,5 +138,10 @@ public final class LoadMethodNode extends FixedWithNextNode implements Lowerable
 
     public ResolvedJavaType getCallerType() {
         return callerType;
+    }
+
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return LocationIdentity.ANY_LOCATION;
     }
 }

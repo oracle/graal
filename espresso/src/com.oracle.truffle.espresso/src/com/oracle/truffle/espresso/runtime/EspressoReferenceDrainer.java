@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-class EspressoReferenceDrainer implements ContextAccess {
+final class EspressoReferenceDrainer implements ContextAccess {
     private final EspressoContext context;
     private volatile Thread hostToGuestReferenceDrainThread;
     private volatile ReferenceDrain drain;

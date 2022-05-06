@@ -959,7 +959,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 return -1;
             }
             int codePointBR = inputReadRaw(locals, iBR);
-            if (unicode && inputUTF16IsHighSurrogate(codePointBR) && inputBoundsCheck(inputIncRaw(iBR), backrefStart, backrefEnd)) {
+            if (isUTF16() && unicode && inputUTF16IsHighSurrogate(codePointBR) && inputBoundsCheck(inputIncRaw(iBR), backrefStart, backrefEnd)) {
                 int lowSurrogate = inputReadRaw(locals, inputIncRaw(iBR));
                 if (inputUTF16IsLowSurrogate(lowSurrogate)) {
                     codePointBR = inputUTF16ToCodePoint(codePointBR, lowSurrogate);
@@ -967,7 +967,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
                 }
             }
             int codePointI = inputReadRaw(locals, i);
-            if (unicode && inputUTF16IsHighSurrogate(codePointI) && inputBoundsCheck(inputIncRaw(i), 0, inputLength)) {
+            if (isUTF16() && unicode && inputUTF16IsHighSurrogate(codePointI) && inputBoundsCheck(inputIncRaw(i), 0, inputLength)) {
                 int lowSurrogate = inputReadRaw(locals, inputIncRaw(i));
                 if (inputUTF16IsLowSurrogate(lowSurrogate)) {
                     codePointI = inputUTF16ToCodePoint(codePointI, lowSurrogate);

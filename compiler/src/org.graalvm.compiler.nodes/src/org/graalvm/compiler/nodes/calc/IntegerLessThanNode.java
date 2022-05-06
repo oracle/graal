@@ -34,7 +34,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
@@ -42,6 +41,7 @@ import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -228,6 +228,24 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
                 }
             }
             return null;
+        }
+
+        @Override
+        protected boolean isMatchingBitExtendNode(ValueNode node) {
+            return node instanceof SignExtendNode;
+        }
+
+        @Override
+        protected boolean addCanOverflow(IntegerStamp a, IntegerStamp b) {
+            return IntegerStamp.addCanOverflow(a, b);
+        }
+
+        @Override
+        protected boolean leftShiftCanOverflow(IntegerStamp a, long shift) {
+            // leading zeros, adjusted to stamp bits
+            int leadingZeroForBits = Long.numberOfLeadingZeros(a.upMask()) - (Long.SIZE - a.getBits());
+            // one extra bit to avoid flipping the sign
+            return leadingZeroForBits - 1 < shift;
         }
 
         @Override

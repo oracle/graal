@@ -818,7 +818,10 @@ public final class Context implements AutoCloseable {
      *            {@link PolyglotException#isCancelled() cancelled}, else an
      *            {@link IllegalStateException} is thrown.
      * @see Engine#close() close an engine.
-     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws PolyglotException in case the close failed due to a guest language error, or, if
+     *             cancelIfExecuting is <code>false</code>, the exception is also thrown when the
+     *             context was {@link PolyglotException#isCancelled() cancelled} or the context was
+     *             {@link PolyglotException#isExit() exited} at request of the guest application.
      * @throws IllegalStateException if the context is still running and cancelIfExecuting is
      *             <code>false</code>
      * @since 19.0
@@ -843,7 +846,9 @@ public final class Context implements AutoCloseable {
      * For convenience, before the actual closing process begins, the close method leaves the
      * context on the current thread, if it was entered {@link #enter() explicitly}.
      *
-     * @throws PolyglotException in case the close failed due to a guest language error.
+     * @throws PolyglotException in case the close failed due to a guest language error, or the
+     *             context was {@link PolyglotException#isCancelled() cancelled} or the context was
+     *             {@link PolyglotException#isExit() exited} at request of the guest application.
      * @throws IllegalStateException if the context is currently executing on another thread.
      * @see Engine#close() close an engine.
      * @since 19.0

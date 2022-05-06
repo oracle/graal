@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,8 +77,6 @@ final class Lexer {
     private int curTokenStart;
     private int curTokenEnd;
 
-    private int mark;
-
     private Token nextToken;
     private int nextTokenStart;
 
@@ -126,15 +124,6 @@ final class Lexer {
 
     public NFIParserException fail(String message, Object... args) {
         throw fail(String.format(message, args));
-    }
-
-    public void mark() {
-        mark = nextTokenStart;
-    }
-
-    public String markedValue() {
-        int to = Math.min(curTokenEnd, source.length());
-        return source.subSequence(mark, to).toString();
     }
 
     private boolean atEnd() {

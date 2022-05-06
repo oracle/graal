@@ -27,14 +27,23 @@ package com.oracle.svm.hosted.config;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public class HybridLayoutSupport {
-    public boolean isHybrid(HostedType clazz) {
+    @Fold
+    public static HybridLayoutSupport singleton() {
+        return ImageSingletons.lookup(HybridLayoutSupport.class);
+    }
+
+    public boolean isHybrid(ResolvedJavaType clazz) {
         return clazz.isAnnotationPresent(Hybrid.class);
     }
 

@@ -29,6 +29,7 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -132,7 +133,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (field != null) {
             Object result = field.get(this.tryInitializeAndGetStatics());
             if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
-                return ((StaticObject) result).rawForeignObject();
+                EspressoLanguage language = EspressoLanguage.get(lookupFieldNode);
+                return ((StaticObject) result).rawForeignObject(language);
             }
             return result;
         }
@@ -325,9 +327,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
-            EspressoContext context = EspressoContext.get(toEspressoNode);
-            int length = getLength(arguments, toEspressoNode, context.getMeta());
-            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+            Meta meta = EspressoContext.get(toEspressoNode).getMeta();
+            int length = getLength(arguments, toEspressoNode, meta);
+            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, meta);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")

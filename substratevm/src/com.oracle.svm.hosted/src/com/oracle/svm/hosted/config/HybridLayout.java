@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted.config;
 
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Hybrid;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -35,6 +34,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Defines the layout for a hybrid class.
@@ -46,16 +46,16 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public class HybridLayout<T> {
 
-    public static boolean isHybrid(HostedType clazz) {
-        return ImageSingletons.lookup(HybridLayoutSupport.class).isHybrid(clazz);
+    public static boolean isHybrid(ResolvedJavaType clazz) {
+        return HybridLayoutSupport.singleton().isHybrid(clazz);
     }
 
     public static boolean isHybridField(HostedField field) {
-        return ImageSingletons.lookup(HybridLayoutSupport.class).isHybridField(field);
+        return HybridLayoutSupport.singleton().isHybridField(field);
     }
 
     public static boolean canHybridFieldsBeDuplicated(HostedType clazz) {
-        return ImageSingletons.lookup(HybridLayoutSupport.class).canHybridFieldsBeDuplicated(clazz);
+        return HybridLayoutSupport.singleton().canHybridFieldsBeDuplicated(clazz);
     }
 
     private final ObjectLayout layout;
@@ -69,7 +69,7 @@ public class HybridLayout<T> {
 
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout) {
         this.layout = layout;
-        HybridLayoutSupport utils = ImageSingletons.lookup(HybridLayoutSupport.class);
+        HybridLayoutSupport utils = HybridLayoutSupport.singleton();
         HybridLayoutSupport.HybridFields hybridFields = utils.findHybridFields(hybridClass);
         arrayField = hybridFields.arrayField;
         typeIDSlotsField = hybridFields.typeIDSlotsField;

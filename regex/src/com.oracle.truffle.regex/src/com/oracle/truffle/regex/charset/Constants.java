@@ -63,6 +63,8 @@ public final class Constants {
 
     public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0xffff);
 
+    public static final CodePointSet BMP_WITHOUT_LATIN1_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0100, 0xd7ff, 0xe000, 0xffff);
+
     public static final CodePointSet ASTRAL_SYMBOLS = CodePointSet.createNoDedup(0x010000, 0x10ffff);
 
     public static final CodePointSet SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdfff);

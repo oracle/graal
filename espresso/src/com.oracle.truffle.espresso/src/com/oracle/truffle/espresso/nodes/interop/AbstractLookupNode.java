@@ -30,11 +30,11 @@ import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.EspressoNode;
 
-public abstract class AbstractLookupNode extends Node {
+public abstract class AbstractLookupNode extends EspressoNode {
     public static final char METHOD_SELECTION_SEPARATOR = '/';
 
     abstract Method.MethodVersion[] getMethodArray(Klass k);

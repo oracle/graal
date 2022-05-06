@@ -207,6 +207,7 @@ public final class ObjectKlass extends Klass {
         }
         this.noConcreteSubclassesAssumption = getContext().getClassHierarchyOracle().createAssumptionForNewKlass(this);
         this.implementor = getContext().getClassHierarchyOracle().initializeImplementorForNewKlass(this);
+        getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         this.initState = LOADED;
         assert verifyTables();
     }
@@ -255,7 +256,7 @@ public final class ObjectKlass extends Klass {
     }
 
     private boolean verifyTables() {
-        Method.MethodVersion[] vtable = getKlassVersion().vtable;
+        Method.MethodVersion[] vtable = getKlassVersion().getVtable();
         if (vtable != null) {
             for (int i = 0; i < vtable.length; i++) {
                 if (isInterface()) {
@@ -944,12 +945,12 @@ public final class ObjectKlass extends Klass {
     // Exposed to LookupVirtualMethodNode
     public Method.MethodVersion[] getVTable() {
         assert !isInterface();
-        return getKlassVersion().vtable;
+        return getKlassVersion().getVtable();
     }
 
     public Method.MethodVersion[] getInterfaceMethodsTable() {
         assert isInterface();
-        return getKlassVersion().vtable;
+        return getKlassVersion().getVtable();
     }
 
     public Method.MethodVersion[][] getItable() {
@@ -1405,6 +1406,8 @@ public final class ObjectKlass extends Klass {
             removedField.removeByRedefintion();
         }
 
+        getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
+
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
@@ -1499,6 +1502,7 @@ public final class ObjectKlass extends Klass {
     public void swapKlassVersion(Ids<Object> ids) {
         KlassVersion oldVersion = klassVersion;
         klassVersion = oldVersion.replace(ids);
+        getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         incrementKlassRedefinitionCount();
         oldVersion.assumption.invalidate();
     }
@@ -1625,7 +1629,6 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         // used to create a redefined version
@@ -1729,7 +1732,6 @@ public final class ObjectKlass extends Klass {
             }
 
             this.declaredMethods = methods;
-            getContext().getClassHierarchyOracle().registerNewKlassVersion(this);
         }
 
         public KlassVersion replace(Ids<Object> ids) {
@@ -1811,6 +1813,10 @@ public final class ObjectKlass extends Klass {
 
         public int getModifiers() {
             return modifiers;
+        }
+
+        public Method.MethodVersion[] getVtable() {
+            return vtable;
         }
 
         @TruffleBoundary

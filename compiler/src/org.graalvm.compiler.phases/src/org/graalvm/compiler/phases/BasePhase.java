@@ -47,6 +47,7 @@ import org.graalvm.compiler.graph.Graph.NodeEvent;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -433,4 +434,28 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     public static @interface SharedGlobalPhaseState {
 
     }
+
+    /**
+     * Hashing a phase is used to implement and test phase plan serialization. Hashing a phase
+     * should take into account any fields that configure a phase. This will be done properly once a
+     * {@code PhaseInfo} annotation is introduced (c.f. {@link NodeInfo}). The hash code returned
+     * needs to be stable across VM executions.
+     */
+    @Override
+    public int hashCode() {
+        return this.getClass().getName().hashCode();
+    }
+
+    /**
+     * @see #hashCode
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        return getClass().equals(obj.getClass());
+    }
+
 }

@@ -66,7 +66,7 @@ public class DotExport {
                     replacement = "\\\\\"";
                     break;
                 case '\\':
-                    replacement = "\\\\\\\\";
+                    replacement = "";
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();

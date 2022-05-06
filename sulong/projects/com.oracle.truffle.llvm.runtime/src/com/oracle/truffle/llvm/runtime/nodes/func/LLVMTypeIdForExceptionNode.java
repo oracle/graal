@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,8 @@ public abstract class LLVMTypeIdForExceptionNode extends LLVMExpressionNode {
 
     @Specialization
     public Object doGeneric(LLVMPointer thrownTypeID) {
-        return (int) toComparableValue.executeWithTarget(thrownTypeID);
+        // The type id is equivalent to the catch selector, which must always be positive.
+        // See https://llvm.org/docs/ExceptionHandling.html#try-catch.
+        return Math.abs((int) toComparableValue.executeWithTarget(thrownTypeID));
     }
 }

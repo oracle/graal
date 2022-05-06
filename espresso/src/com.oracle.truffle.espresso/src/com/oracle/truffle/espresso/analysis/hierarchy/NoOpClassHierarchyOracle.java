@@ -31,7 +31,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  * class.
  */
 public final class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
-    protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
+    private static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
     public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {

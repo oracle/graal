@@ -44,7 +44,6 @@ import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
 import org.graalvm.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeoptimizationGroupingPhase;
@@ -56,7 +55,7 @@ import org.graalvm.compiler.phases.common.InsertGuardFencesPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.OptimizeDivPhase;
 import org.graalvm.compiler.phases.common.ReassociationPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
@@ -88,6 +87,7 @@ public class MidTier extends BaseTier<MidTierContext> {
         if (SpeculativeGuardMovement.getValue(options)) {
             appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new SpeculativeGuardMovementPhase()));
         }
+
         appendPhase(new GuardLoweringPhase());
 
         if (SpectrePHTBarriers.getValue(options) == GuardTargets || SpectrePHTBarriers.getValue(options) == NonDeoptGuardTargets) {
@@ -103,7 +103,7 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         appendPhase(new LoopSafepointInsertionPhase());
 
-        appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
+        appendPhase(new MidTierLoweringPhase(canonicalizer));
 
         if (GraalOptions.ConditionalElimination.getValue(options)) {
             appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));

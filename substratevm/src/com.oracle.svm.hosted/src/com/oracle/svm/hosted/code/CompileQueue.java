@@ -81,6 +81,7 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -135,8 +136,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
-import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
-import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -152,6 +151,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
+import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
@@ -479,6 +479,10 @@ public class CompileQueue {
         return compilations;
     }
 
+    public void purge() {
+        compilations.clear();
+    }
+
     public Collection<CompileTask> getCompilationTasks() {
         return compilations.values();
     }
@@ -711,7 +715,7 @@ public class CompileQueue {
     private boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
         if (invoke.getInvokeKind().isDirect()) {
             HostedMethod singleCallee = (HostedMethod) invoke.callTarget().targetMethod();
-            if (makeInlineDecision(invoke, singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
+            if (makeInlineDecision(singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
                 if (firstInline) {
                     graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before inlining");
                 }
@@ -724,18 +728,14 @@ public class CompileQueue {
         return false;
     }
 
-    private boolean makeInlineDecision(Invoke invoke, HostedMethod callee) {
+    private boolean makeInlineDecision(HostedMethod callee) {
         if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
             return false;
         }
-        if (callee.shouldBeInlined() || callerAnnotatedWith(invoke, AlwaysInlineAllCallees.class)) {
+        if (callee.shouldBeInlined()) {
             return true;
         }
         if (optionAOTTrivialInline && callee.compilationInfo.isTrivialMethod()) {
-            return true;
-        }
-        AlwaysInlineSelectCallees selectCallees = getCallerAnnotation(invoke, AlwaysInlineSelectCallees.class);
-        if (selectCallees != null && Arrays.stream(selectCallees.callees()).anyMatch(c -> c.equals(callee.getQualifiedName()))) {
             return true;
         }
         return false;
@@ -827,7 +827,7 @@ public class CompileQueue {
 
     private StructuredGraph transplantGraph(DebugContext debug, HostedMethod hMethod, CompileReason reason) {
         AnalysisMethod aMethod = hMethod.getWrapped();
-        StructuredGraph aGraph = aMethod.getAnalyzedGraph();
+        StructuredGraph aGraph = aMethod.decodeAnalyzedGraph(debug, null);
         if (aGraph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)") + ". Reachable from: " + reason);
         }
@@ -892,7 +892,10 @@ public class CompileQueue {
             newReplacement = hUniverse.lookup((AnalysisMethod) obj);
         } else if (obj instanceof AnalysisField) {
             newReplacement = hUniverse.lookup((AnalysisField) obj);
-
+        } else if (obj instanceof FieldLocationIdentity) {
+            ResolvedJavaField inner = ((FieldLocationIdentity) obj).getField();
+            assert inner instanceof AnalysisField;
+            newReplacement = new SubstrateFieldLocationIdentity((ResolvedJavaField) replaceAnalysisObjects(inner, node, replacements, hUniverse));
         } else if (obj.getClass() == ObjectStamp.class) {
             ObjectStamp stamp = (ObjectStamp) obj;
             if (stamp.type() == null) {

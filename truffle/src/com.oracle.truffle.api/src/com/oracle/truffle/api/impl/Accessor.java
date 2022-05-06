@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.impl;
 
+import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
+
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -77,9 +79,9 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
@@ -389,9 +391,25 @@ public abstract class Accessor {
 
         public abstract void leaveInternalContext(Node node, Object polyglotContext, Object prev);
 
+        public abstract Object[] enterContextAsPolyglotThread(Object polyglotContext);
+
+        public abstract void leaveContextAsPolyglotThread(Object polyglotContext, Object[] prev);
+
+        public abstract Object enterIfNeeded(Object polyglotContext);
+
+        public abstract void leaveIfNeeded(Object polyglotContext, Object prev);
+
         public abstract Object evalInternalContext(Node node, Object polyglotContext, Source source, boolean allowInternal);
 
+        public abstract void clearExplicitContextStack(Object polyglotContext);
+
+        public abstract void initiateCancelOrExit(Object polyglotContext, boolean exit, int exitCode, boolean resourceLimit, String message);
+
         public abstract void closeContext(Object polyglotContext, boolean force, Node closeLocation, boolean resourceExhaused, String resourceExhausedReason);
+
+        public abstract void closeContext(Object polyglotContext, boolean force, boolean resourceExhaused, String resourceExhausedReason);
+
+        public abstract void closeEngine(Object polyglotEngine, boolean force);
 
         public abstract void exitContext(Object polyglotContext, Node exitLocation, int exitCode);
 
@@ -624,6 +642,8 @@ public abstract class Accessor {
 
         public abstract Object getHostContext(Object valueContext);
 
+        public abstract Value asValue(Object polyglotContextImpl, Object guestValue);
+
         public abstract Object enterLanguageFromRuntime(TruffleLanguage<?> language);
 
         public abstract void leaveLanguageFromRuntime(TruffleLanguage<?> language, Object prev);
@@ -662,7 +682,7 @@ public abstract class Accessor {
 
         public abstract Map<String, String> readOptionsFromSystemProperties(Map<String, String> options);
 
-        public abstract AbstractHostService getHostService(Object polyglotEngineImpl);
+        public abstract AbstractHostLanguageService getHostService(Object polyglotEngineImpl);
 
         public abstract Handler getEngineLogHandler(Object polyglotEngineImpl);
 
@@ -943,6 +963,10 @@ public abstract class Accessor {
         public abstract void markMaterializeCalled(FrameDescriptor descriptor);
 
         public abstract boolean getMaterializeCalled(FrameDescriptor descriptor);
+
+        public abstract boolean usesAllStaticMode(FrameDescriptor descriptor);
+
+        public abstract boolean usesMixedStaticMode(FrameDescriptor descriptor);
     }
 
     public abstract static class ExceptionSupport extends Support {

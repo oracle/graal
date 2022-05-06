@@ -162,9 +162,12 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
+import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.MidTierLoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment;
 import org.graalvm.compiler.phases.common.SnippetFrameStateAssignment.NodeStateAssignment;
@@ -1165,7 +1168,7 @@ public class SnippetTemplate {
             }
             // (2)
             try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_HIGH_TIER", snippetCopy)) {
-                new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(snippetCopy, providers);
+                new HighTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -1178,7 +1181,7 @@ public class SnippetTemplate {
                 new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
-                    new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(snippetCopy, providers);
+                    new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
                     snippetCopy.setGuardsStage(GuardsStage.AFTER_FSA);
                     snippetCopy.disableFrameStateVerification();
                 } catch (Throwable e) {
@@ -1192,7 +1195,7 @@ public class SnippetTemplate {
                     new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
                     try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
                         // (6)
-                        new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(snippetCopy, providers);
+                        new LowTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
                     } catch (Throwable e) {
                         throw debug.handle(e);
                     }
@@ -1701,7 +1704,7 @@ public class SnippetTemplate {
         EconomicSet<LocationIdentity> kills = EconomicSet.create(Equivalence.DEFAULT);
         kills.addAll(memoryMap.getLocations());
 
-        if (replacee instanceof SingleMemoryKill) {
+        if (MemoryKill.isSingleMemoryKill(replacee)) {
             // check if some node in snippet graph also kills the same location
             LocationIdentity locationIdentity = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
             if (locationIdentity.isAny()) {
@@ -1711,7 +1714,7 @@ public class SnippetTemplate {
             assert kills.contains(locationIdentity) : replacee + " kills " + locationIdentity + ", but snippet doesn't contain a kill to this location";
             kills.remove(locationIdentity);
         }
-        assert !(replacee instanceof MultiMemoryKill) : replacee + " multi not supported (yet)";
+        assert !(MemoryKill.isMultiMemoryKill(replacee)) : replacee + " multi not supported (yet)";
 
         // remove ANY_LOCATION if it's just a kill by the start node
         if (memoryMap.getLastLocationAccess(any()) instanceof MemoryAnchorNode) {
@@ -1853,30 +1856,30 @@ public class SnippetTemplate {
      * know from which edge a memory usage is coming from.
      */
     private static void verifyWithExceptionNode(ValueNode node) {
-        if (node instanceof WithExceptionNode && node instanceof MemoryKill) {
+        if (node instanceof WithExceptionNode && MemoryKill.isMemoryKill(node)) {
             WithExceptionNode withExceptionNode = (WithExceptionNode) node;
             AbstractBeginNode exceptionEdge = withExceptionNode.exceptionEdge();
             if (exceptionEdge instanceof UnreachableBeginNode) {
                 // exception edge is unreachable - we are good
                 return;
             }
-            GraalError.guarantee(exceptionEdge instanceof MemoryKill, "The exception edge of %s is not a memory kill %s", node, exceptionEdge);
-            if (exceptionEdge instanceof SingleMemoryKill) {
+            GraalError.guarantee(MemoryKill.isMemoryKill(exceptionEdge), "The exception edge of %s is not a memory kill %s", node, exceptionEdge);
+            if (MemoryKill.isSingleMemoryKill(exceptionEdge)) {
                 SingleMemoryKill exceptionEdgeKill = (SingleMemoryKill) exceptionEdge;
                 if (exceptionEdgeKill.getKilledLocationIdentity().isAny()) {
                     // exception edge kills any - we are good
                     return;
                 }
                 // if the exception edge does not kill any, it must kill the same location
-                GraalError.guarantee(withExceptionNode instanceof SingleMemoryKill, "Not a single memory kill: %s", withExceptionNode);
+                GraalError.guarantee(MemoryKill.isSingleMemoryKill(withExceptionNode), "Not a single memory kill: %s", withExceptionNode);
                 SingleMemoryKill withExceptionKill = (SingleMemoryKill) withExceptionNode;
                 GraalError.guarantee(withExceptionKill.getKilledLocationIdentity().equals(exceptionEdgeKill.getKilledLocationIdentity()),
                                 "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentity(), exceptionEdgeKill,
                                 exceptionEdgeKill.getKilledLocationIdentity());
-            } else if (exceptionEdge instanceof MultiMemoryKill) {
+            } else if (MemoryKill.isMultiMemoryKill(exceptionEdge)) {
                 // for multi memory kills the locations must match
                 MultiMemoryKill exceptionEdgeKill = (MultiMemoryKill) exceptionEdge;
-                GraalError.guarantee(withExceptionNode instanceof MultiMemoryKill, "Not a single memory kill: %s", withExceptionNode);
+                GraalError.guarantee(MemoryKill.isMultiMemoryKill(exceptionEdge), "Not a single memory kill: %s", withExceptionNode);
                 MultiMemoryKill withExceptionKill = (MultiMemoryKill) withExceptionNode;
                 GraalError.guarantee(Arrays.equals(withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill.getKilledLocationIdentities()),
                                 "Kill locations do not match: %s (%s) vs %s (%s)", withExceptionKill, withExceptionKill.getKilledLocationIdentities(), exceptionEdgeKill,
@@ -2013,7 +2016,7 @@ public class SnippetTemplate {
             if (returnNode != null && !(replacee instanceof ControlSinkNode)) {
                 ReturnNode returnDuplicate = (ReturnNode) duplicates.get(returnNode);
                 returnValue = returnDuplicate.result();
-                if (returnValue == null && replacee.usages().isNotEmpty() && replacee instanceof MemoryKill) {
+                if (returnValue == null && replacee.usages().isNotEmpty() && MemoryKill.isMemoryKill(replacee)) {
                     replacer.replace(replacee, null);
                 } else {
                     assert returnValue != null || replacee.hasNoUsages();
@@ -2079,7 +2082,14 @@ public class SnippetTemplate {
                 if (replacee instanceof WithExceptionNode) {
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);
 
-                    WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode());
+                    LocationIdentity loc = null;
+                    if (MemoryKill.isSingleMemoryKill(replacee)) {
+                        loc = ((SingleMemoryKill) replacee).getKilledLocationIdentity();
+                    } else if (MemoryKill.isMultiMemoryKill(replacee)) {
+                        GraalError.unimplemented("Cannot use placeholder with exception with a multi memory node " + replacee);
+                    }
+
+                    WithExceptionNode newExceptionNode = replacee.graph().add(new PlaceholderWithExceptionNode(loc));
 
                     /*
                      * First attaching placeholder as predecessor of original WithExceptionNode next
@@ -2640,11 +2650,14 @@ public class SnippetTemplate {
  * CFG edges for select snippet lowerings.
  */
 @NodeInfo(size = NodeSize.SIZE_0, cycles = NodeCycles.CYCLES_0, cyclesRationale = "This node is immediately removed on next simplification pass")
-final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, SingleMemoryKill {
+final class PlaceholderWithExceptionNode extends WithExceptionNode implements Simplifiable, MultiMemoryKill {
     static final NodeClass<PlaceholderWithExceptionNode> TYPE = NodeClass.create(PlaceholderWithExceptionNode.class);
 
-    protected PlaceholderWithExceptionNode() {
+    private final LocationIdentity killedLocation;
+
+    protected PlaceholderWithExceptionNode(LocationIdentity killedLocation) {
         super(TYPE, StampFactory.forVoid());
+        this.killedLocation = killedLocation;
     }
 
     @Override
@@ -2656,8 +2669,12 @@ final class PlaceholderWithExceptionNode extends WithExceptionNode implements Si
     }
 
     @Override
-    public LocationIdentity getKilledLocationIdentity() {
-        return LocationIdentity.any();
+    public LocationIdentity[] getKilledLocationIdentities() {
+        if (killedLocation != null) {
+            return new LocationIdentity[]{killedLocation};
+        } else {
+            return MemoryKill.MULTI_KILL_NO_LOCATION;
+        }
     }
 }
 

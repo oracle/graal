@@ -45,8 +45,8 @@ import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
@@ -109,11 +109,11 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
             }
         }
         for (Node n : blockToNodesMap.get(block)) {
-            if (n instanceof MemoryKill) {
-                if (n instanceof SingleMemoryKill) {
+            if (MemoryKill.isMemoryKill(n)) {
+                if (MemoryKill.isSingleMemoryKill(n)) {
                     SingleMemoryKill single = (SingleMemoryKill) n;
                     processLocation(n, single.getKilledLocationIdentity(), currentState);
-                } else if (n instanceof MultiMemoryKill) {
+                } else if (MemoryKill.isMultiMemoryKill(n)) {
                     MultiMemoryKill multi = (MultiMemoryKill) n;
                     for (LocationIdentity location : multi.getKilledLocationIdentities()) {
                         processLocation(n, location, currentState);

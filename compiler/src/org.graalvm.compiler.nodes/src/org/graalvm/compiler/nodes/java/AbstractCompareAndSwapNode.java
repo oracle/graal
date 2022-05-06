@@ -26,7 +26,6 @@ package org.graalvm.compiler.nodes.java;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
-import static org.graalvm.word.LocationIdentity.any;
 
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -106,6 +105,6 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return any();
+        return ordersMemoryAccesses() ? LocationIdentity.ANY_LOCATION : location;
     }
 }

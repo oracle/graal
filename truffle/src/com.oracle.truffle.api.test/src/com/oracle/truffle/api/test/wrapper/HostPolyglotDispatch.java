@@ -62,7 +62,7 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
     @Override
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions, boolean boundEngine,
-                    MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+                    MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly, AbstractPolyglotHostService polyglotHostService) {
         String option = options.get("engine.SpawnRemote");
         if (option != null && Boolean.parseBoolean(option)) {
             options.remove("engine.SpawnRemote");
@@ -72,13 +72,13 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
             boolean onlyHostLanguage = true;
             Engine localEngine = getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream,
                             hostLanguage,
-                            onlyHostLanguage);
+                            onlyHostLanguage, polyglotHostService);
             long remoteEngine = getHostToGuest().remoteCreateEngine();
             HostEngine engine = new HostEngine(remoteEngine, localEngine);
             return getAPIAccess().newEngine(new HostEngineDispatch(this), engine);
         } else {
             return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
-                            false);
+                            false, polyglotHostService);
         }
     }
 

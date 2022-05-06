@@ -31,7 +31,8 @@
     environment+: if jvm_config_suffix != null then {
       JVM_CONFIG: jvm_config + jvm_config_suffix
     } else {},
-    targets: ["gate"]
+    targets: ["gate"],
+    python_version: "3"
   },
 
   weekly:: {
@@ -43,7 +44,6 @@
   # Configures env vars such that `mx unittest` persists results in a json file
   save_as_json:: {
     environment+: {
-      "MX_TEST_RESULTS_PATTERN" : "./es-XXX.json",
       "MX_TEST_RESULT_TAGS": "compiler"
     }
   },
@@ -89,6 +89,7 @@
     run+: [
       # blackbox jmh test
       ["mx", "benchmark", "jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS",
+             "--fail-fast",
              "--",
              "-Djmh.ignoreLock=true",
              "--jvm-config=" + jvm_config,
@@ -97,6 +98,7 @@
              ".*TestJMH.*" ],
       # whitebox jmh test
       ["mx", "benchmark", "jmh-whitebox:*",
+             "--fail-fast",
              "--",
              "-Djmh.ignoreLock=true",
              "--jvm-config=" + jvm_config,

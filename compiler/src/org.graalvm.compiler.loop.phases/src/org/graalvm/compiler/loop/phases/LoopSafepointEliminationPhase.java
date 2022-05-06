@@ -72,7 +72,7 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
         return false;
     }
 
-    private static boolean loopIsIn32BitRange(LoopEx loop) {
+    public static boolean loopIsIn32BitRange(LoopEx loop) {
         if (loop.counted().getStamp().getBits() <= 32) {
             return true;
         }
@@ -106,9 +106,9 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
     @Override
     protected final void run(StructuredGraph graph, MidTierContext context) {
         LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
-        loops.detectedCountedLoops();
+        loops.detectCountedLoops();
         for (LoopEx loop : loops.countedLoops()) {
-            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop))) {
+            if (loop.loop().getChildren().isEmpty() && (loop.loopBegin().isPreLoop() || loop.loopBegin().isPostLoop() || loopIsIn32BitRange(loop) || loop.loopBegin().isStripMinedInner())) {
                 boolean hasSafepoint = false;
                 for (LoopEndNode loopEnd : loop.loopBegin().loopEnds()) {
                     hasSafepoint |= loopEnd.canSafepoint();
@@ -126,7 +126,14 @@ public class LoopSafepointEliminationPhase extends BasePhase<MidTierContext> {
                         }
                     }
                     loop.loopBegin().disableSafepoint();
-                    onSafepointDisabledLoopBegin(loop);
+                    if (loop.loopBegin().isStripMinedInner()) {
+                        // graal strip mined this loop, trust the heuristics and remove the inner
+                        // loop safepoint
+                        loop.loopBegin().disableGuestSafepoint();
+                    } else {
+                        // let the shape of the loop decide whether a guest safepoint is needed
+                        onSafepointDisabledLoopBegin(loop);
+                    }
                 }
             }
         }

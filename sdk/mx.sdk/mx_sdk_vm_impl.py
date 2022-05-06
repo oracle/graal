@@ -113,6 +113,7 @@ _suite = mx.suite('sdk')
 """:type: mx.SourceSuite | mx.Suite"""
 
 _exe_suffix = mx.exe_suffix('')
+_cmd_suffix = mx.cmd_suffix('')
 """:type: str"""
 _lib_suffix = mx.add_lib_suffix("")
 _lib_prefix = mx.add_lib_prefix("")
@@ -1100,6 +1101,16 @@ def remove_exe_suffix(name, require_suffix=True):
         raise mx.abort("Missing exe suffix: " + name)
     return name
 
+def remove_cmd_or_exe_suffix(name, require_suffix=True):
+    if not _cmd_suffix and not _exe_suffix:
+        return name
+    elif name.endswith(_cmd_suffix):
+        return name[:-len(_cmd_suffix)]
+    elif name.endswith(_exe_suffix):
+        return name[:-len(_exe_suffix)]
+    elif require_suffix:
+        raise mx.abort("Missing cmd suffix: " + name)
+    return name
 
 def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
     result = libname
@@ -1187,7 +1198,7 @@ class GraalVmNativeProperties(GraalVmProject):
     def canonical_image_name(image_config):
         canonical_name = basename(image_config.destination)
         if isinstance(image_config, mx_sdk.LauncherConfig):
-            canonical_name = remove_exe_suffix(canonical_name)
+            canonical_name = remove_cmd_or_exe_suffix(canonical_name)
         elif isinstance(image_config, mx_sdk.LibraryConfig):
             canonical_name = remove_lib_prefix_suffix(canonical_name)
         return canonical_name
@@ -1196,7 +1207,7 @@ class GraalVmNativeProperties(GraalVmProject):
     def macro_name(image_config):
         macro_name = basename(image_config.destination)
         if isinstance(image_config, mx_sdk.LauncherConfig):
-            macro_name = remove_exe_suffix(macro_name) + '-launcher'
+            macro_name = remove_cmd_or_exe_suffix(macro_name) + '-launcher'
         elif isinstance(image_config, mx_sdk.LibraryConfig):
             macro_name = remove_lib_prefix_suffix(macro_name) + '-library'
         return macro_name
@@ -1264,7 +1275,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             image_config = self.subject.image_config
             build_args = [
                 '--no-fallback',
-                '--initialize-at-build-time=org,com,net,jdk,javax,java,sun,apple',
                 '-H:+AssertInitializationSpecifiedForAllClasses',
                 '-H:+EnforceMaxRuntimeCompileMethods',
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
@@ -3346,7 +3356,7 @@ mx.add_argument('--disable-polyglot', action='store_true', help='Disable the \'p
 mx.add_argument('--disable-installables', action='store', help='Disable the \'installable\' distributions for gu.'
                                                                'This can be a comma-separated list of disabled components short names or `true` to disable all installables.', default=None)
 mx.add_argument('--debug-images', action='store_true', help='Build native images in debug mode: \'-O0\' and with \'-ea\'.')
-mx.add_argument('--native-images', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) to build with Native Image.')
+mx.add_argument('--native-images', action='store', help='Comma-separated list of launchers and libraries (syntax: LAUNCHER_NAME or lib:polyglot or suite:NAME) to build with Native Image.')
 mx.add_argument('--force-bash-launchers', action='store', help='Force the use of bash launchers instead of native images.'
                                                                'This can be a comma-separated list of disabled launchers or `true` to disable all native launchers.', default=None)
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
@@ -3485,50 +3495,98 @@ def _with_native_image_inspect_project():
     return 'nii' in [c.short_name for c in registered_graalvm_components()]
 
 
+def _expand_native_images_list(only):
+    if isinstance(only, list):
+        native_images = []
+        for name in only:
+            if name.startswith('suite:'):
+                suite_name = name[len('suite:'):]
+                for c in registered_graalvm_components(stage1=False):
+                    if c.suite.name == suite_name:
+                        for config in _get_launcher_configs(c):
+                            native_images.append(_get_launcher_name(config))
+                        for config in _get_library_configs(c):
+                            native_images.append(_get_library_name(config))
+            else:
+                native_images.append(name)
+        return native_images
+    else:
+        return only
+
+
 def _force_bash_launchers(launcher):
     """
-    :type launcher: str | mx_sdk.AbstractNativeImageConfig
+    :type launcher: str | mx_sdk.LauncherConfig
     """
-    if isinstance(launcher, mx_sdk.AbstractNativeImageConfig):
-        launcher = launcher.destination
-    launcher = remove_exe_suffix(launcher, require_suffix=False)
-    launcher_name = basename(launcher)
+    launcher_name = _get_launcher_name(launcher)
 
-    only = _parse_cmd_arg('native_images')
-    if only is not None:
-        if isinstance(only, bool):
-            return not only
-        else:
-            return launcher_name not in only
+    forced = _parse_cmd_arg('force_bash_launchers')
+    default = has_vm_suite() or forced is not None # for compatibility with legacy behavior
+    only = _parse_cmd_arg('native_images', default_value=str(default))
+    only = _expand_native_images_list(only)
+    if isinstance(only, bool):
+        included = only
     else:
-        forced = _parse_cmd_arg('force_bash_launchers', default_value=str(not has_vm_suite()))
-        if isinstance(forced, bool):
-            return forced
-        else:
-            return launcher_name in forced
+        included = launcher_name in only
+
+    if forced is True:
+        included = False
+    elif isinstance(forced, list) and launcher_name in forced:
+        included = False
+
+    return not included
 
 
 def _skip_libraries(library):
     """
     :type library: str | mx_sdk.LibraryConfig
     """
-    if isinstance(library, mx_sdk.AbstractNativeImageConfig):
-        library = library.destination
-    library_name = remove_lib_prefix_suffix(basename(library), require_suffix_prefix=False)
+    library_name = _get_library_name(library)
 
-    only = _parse_cmd_arg('native_images')
-    if only is not None:
-        if isinstance(only, bool):
-            return not only
-        else:
-            only = [lib[4:] for lib in only if lib.startswith('lib:')]
-            return library_name not in only
+    skipped = _parse_cmd_arg('skip_libraries')
+    default = has_vm_suite() or skipped is not None # for compatibility with legacy behavior
+    only = _parse_cmd_arg('native_images', default_value=str(default))
+    only = _expand_native_images_list(only)
+    if isinstance(only, bool):
+        included = only
     else:
-        skipped = _parse_cmd_arg('skip_libraries', default_value=str(not has_vm_suite()))
-        if isinstance(skipped, bool):
-            return skipped
-        else:
-            return library_name in skipped
+        only = [lib[4:] for lib in only if lib.startswith('lib:')]
+        included = library_name in only
+
+    if skipped is True:
+        included = False
+    elif isinstance(skipped, list) and library_name in skipped:
+        included = False
+
+    return not included
+
+
+def _get_launcher_name(image_config):
+    """
+    :type launcher: str | mx_sdk.LauncherConfig
+    """
+    if isinstance(image_config, mx_sdk.LauncherConfig):
+        destination = image_config.destination
+    elif isinstance(image_config, str):
+        destination = image_config
+    else:
+        raise mx.abort('Unknown launcher config type: {}'.format(type(image_config)))
+
+    return basename(remove_exe_suffix(destination, require_suffix=False))
+
+
+def _get_library_name(image_config):
+    """
+    :type library: str | mx_sdk.LibraryConfig
+    """
+    if isinstance(image_config, mx_sdk.LibraryConfig):
+        destination = image_config.destination
+    elif isinstance(image_config, str):
+        destination = image_config
+    else:
+        raise mx.abort('Unknown library config type: {}'.format(type(image_config)))
+
+    return remove_lib_prefix_suffix(basename(destination), require_suffix_prefix=False)
 
 
 def _disabled_installables():

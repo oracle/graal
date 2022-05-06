@@ -29,7 +29,7 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * Node that simulates espresso statements for debugging support.
  */
-public final class EspressoStatementNode extends BaseEspressoStatementNode implements BciProvider {
+public final class EspressoStatementNode extends EspressoBaseStatementNode implements BciProvider {
 
     private final int startBci;
     private final int lineNumber;

@@ -114,6 +114,10 @@ public final class Log {
         printf(LOG_PRINTF, format, v1, v2, 0L);
     }
 
+    public static void printf(Word format, long v1, long v2, long v3) {
+        printf(LOG_PRINTF, format, v1, v2, v3);
+    }
+
     public static void print(float value) {
         if (Float.isNaN(value)) {
             print("NaN");

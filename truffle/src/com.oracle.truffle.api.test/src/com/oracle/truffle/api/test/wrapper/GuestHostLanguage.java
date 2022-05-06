@@ -49,11 +49,11 @@ final class GuestHostLanguage extends TruffleLanguage<GuestHostContext> {
 
     // not yet needed - but will be in the future
     @SuppressWarnings("unused") private final AbstractHostAccess access;
-    private final GuestToHostService service;
+    private final GuestToHostLanguageService service;
 
     GuestHostLanguage(AbstractPolyglotImpl polyglot, AbstractHostAccess access) {
         this.access = access;
-        this.service = new GuestToHostService(polyglot);
+        this.service = new GuestToHostLanguageService(polyglot);
     }
 
     @Override

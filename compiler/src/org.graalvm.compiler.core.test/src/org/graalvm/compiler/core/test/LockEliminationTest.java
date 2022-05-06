@@ -30,11 +30,10 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LockEliminationPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.junit.Test;
@@ -125,7 +124,7 @@ public class LockEliminationTest extends GraalCompilerTest {
         if (doEscapeAnalysis) {
             new PartialEscapePhase(true, canonicalizer, graph.getOptions()).apply(graph, context);
         }
-        new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+        new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
         return graph;
     }
 

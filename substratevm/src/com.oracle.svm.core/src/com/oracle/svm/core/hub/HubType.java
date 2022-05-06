@@ -32,9 +32,11 @@ public enum HubType {
     // instance hubs
     Instance(0),
     InstanceReference(1),
+
+    // special hubs
     StoredContinuation(2),
-    // other hubs
     Other(3),
+
     // array hubs
     TypeArray(4),
     ObjectArray(5);

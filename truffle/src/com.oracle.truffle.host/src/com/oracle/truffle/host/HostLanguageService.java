@@ -45,7 +45,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -58,13 +58,17 @@ import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
 import com.oracle.truffle.host.HostMethodScope.ScopedObject;
 import com.oracle.truffle.host.HostObject.GuestToHostCalls;
 
-public class HostLanguageService extends AbstractHostService {
+public class HostLanguageService extends AbstractHostLanguageService {
 
     final HostLanguage language;
 
     HostLanguageService(AbstractPolyglotImpl polyglot, HostLanguage language) {
         super(polyglot);
         this.language = language;
+    }
+
+    @Override
+    public void release() {
     }
 
     @Override

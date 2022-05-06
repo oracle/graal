@@ -119,7 +119,12 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
+public class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
+    public static class Factory {
+        public JNIJavaCallWrapperMethod create(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+            return new JNIJavaCallWrapperMethod(reflectMethod, callVariant, nonVirtual, metaAccess, nativeLibs);
+        }
+    }
 
     public enum CallVariant {
         VARARGS,
@@ -133,7 +138,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
     private final CallVariant callVariant;
     private final boolean nonVirtual;
 
-    public JNIJavaCallWrapperMethod(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
+    protected JNIJavaCallWrapperMethod(Executable reflectMethod, CallVariant callVariant, boolean nonVirtual, MetaAccessProvider metaAccess, NativeLibraries nativeLibs) {
         super(createName(reflectMethod, callVariant, nonVirtual),
                         metaAccess.lookupJavaType(JNIJavaCallWrappers.class),
                         createSignature(reflectMethod, callVariant, nonVirtual, metaAccess),
@@ -254,9 +259,11 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
             } else {
                 createdObjectOrNull = createNewObjectCall(metaAccess, kit, invokeMethod, state, args);
             }
+
             kit.elsePart();
             args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
             ValueNode unboxedReceiverOrNull = createMethodCall(kit, invokeMethod, invokeKind, state, args);
+
             AbstractMergeNode merge = kit.endIf();
             merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
             returnValue = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{createdObjectOrNull, unboxedReceiverOrNull}));
@@ -375,7 +382,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
      * or null/zero/false when an exception occurred (in which case the exception becomes a JNI
      * pending exception).
      */
-    private static ValueNode createMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
+    protected ValueNode createMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
         int bci = kit.bci();
         InvokeWithExceptionNode invoke = startInvokeWithRetainedException(kit, invokeMethod, invokeKind, state, bci, args);
         AbstractMergeNode invokeMerge = kit.endInvokeWithException();
@@ -396,7 +403,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
         return returnValue;
     }
 
-    private static InvokeWithExceptionNode startInvokeWithRetainedException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
+    protected static InvokeWithExceptionNode startInvokeWithRetainedException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
         ValueNode formerPendingException = kit.getAndClearPendingException();
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
 

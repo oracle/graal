@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import java.util.Objects;
+
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -69,5 +71,25 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
     @Override
     public float codeSizeIncrease() {
         return 2.0f;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.getClass().getName(), fullSchedule, canonicalizer);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+
+        if (!(obj instanceof IterativeConditionalEliminationPhase)) {
+            return false;
+        }
+
+        IterativeConditionalEliminationPhase phase = (IterativeConditionalEliminationPhase) obj;
+
+        return this.getClass().equals(phase.getClass()) && this.fullSchedule == phase.fullSchedule && this.canonicalizer.equals(phase.canonicalizer);
     }
 }

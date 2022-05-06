@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -110,7 +111,7 @@ final class HeapChunkProvider {
             noteFirstAllocationTime();
             result = (AlignedHeader) CommittedMemoryProvider.get().allocateAlignedChunk(chunkSize, HeapParameters.getAlignedHeapChunkAlignment());
             if (result.isNull()) {
-                throw ALIGNED_OUT_OF_MEMORY_ERROR;
+                throw OutOfMemoryUtil.reportOutOfMemoryError(ALIGNED_OUT_OF_MEMORY_ERROR);
             }
             log().string("  new chunk: ").zhex(result).newline();
 
@@ -272,7 +273,7 @@ final class HeapChunkProvider {
         noteFirstAllocationTime();
         UnalignedHeader result = (UnalignedHeader) CommittedMemoryProvider.get().allocateUnalignedChunk(chunkSize);
         if (result.isNull()) {
-            throw UNALIGNED_OUT_OF_MEMORY_ERROR;
+            throw OutOfMemoryUtil.reportOutOfMemoryError(UNALIGNED_OUT_OF_MEMORY_ERROR);
         }
 
         UnalignedHeapChunk.initialize(result, chunkSize);

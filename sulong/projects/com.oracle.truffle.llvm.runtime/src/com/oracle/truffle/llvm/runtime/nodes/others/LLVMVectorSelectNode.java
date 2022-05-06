@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,6 +54,12 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
     protected abstract int getVectorLength();
+
+    @Specialization
+    protected Object doOp(boolean condition, Object trueValue, Object elseValue,
+                    @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
+        return conditionProfile.profile(condition) ? trueValue : elseValue;
+    }
 
     public abstract static class LLVMI1VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization

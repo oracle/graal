@@ -258,9 +258,9 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.liveness.LivenessAnalysis;
 import com.oracle.truffle.espresso.bytecode.BytecodeLookupSwitch;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
@@ -1680,7 +1680,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private void arrayLength(VirtualFrame frame, int top, int curBCI) {
         StaticObject array = nullCheck(popObject(frame, top - 1));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
-            putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
+            putInt(frame, top - 1, InterpreterToVM.arrayLength(array, getLanguage()));
         } else {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // The array was released, it must be restored for the quickening.
@@ -1696,16 +1696,17 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int index = popInt(frame, top - 1);
         StaticObject array = nullCheck(popObject(frame, top - 2));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            EspressoLanguage language = getLanguage();
             // @formatter:off
             switch (loadOpcode) {
-                case BALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayByte(index, array, this));      break;
-                case SALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayShort(index, array, this));     break;
-                case CALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayChar(index, array, this));      break;
-                case IALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayInt(index, array, this));       break;
-                case FALOAD: putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(index, array, this));   break;
-                case LALOAD: putLong(frame, top - 2, getInterpreterToVM().getArrayLong(index, array, this));     break;
-                case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array, this)); break;
-                case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array, this));       break;
+                case BALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayByte(language, index, array, this));      break;
+                case SALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayShort(language, index, array, this));     break;
+                case CALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayChar(language, index, array, this));      break;
+                case IALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayInt(language, index, array, this));       break;
+                case FALOAD: putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(language, index, array, this));   break;
+                case LALOAD: putLong(frame, top - 2, getInterpreterToVM().getArrayLong(language, index, array, this));     break;
+                case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(language, index, array, this)); break;
+                case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(language, index, array, this));       break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
@@ -1728,15 +1729,16 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int index = popInt(frame, top - 1 - offset);
         StaticObject array = nullCheck(popObject(frame, top - 2 - offset));
         if (noForeignObjects.isValid() || array.isEspressoObject()) {
+            EspressoLanguage language = getLanguage();
             // @formatter:off
             switch (storeOpcode) {
-                case BASTORE: getInterpreterToVM().setArrayByte((byte) popInt(frame, top - 1), index, array, this);   break;
-                case SASTORE: getInterpreterToVM().setArrayShort((short) popInt(frame, top - 1), index, array, this); break;
-                case CASTORE: getInterpreterToVM().setArrayChar((char) popInt(frame, top - 1), index, array, this);   break;
-                case IASTORE: getInterpreterToVM().setArrayInt(popInt(frame, top - 1), index, array, this);           break;
-                case FASTORE: getInterpreterToVM().setArrayFloat(popFloat(frame, top - 1), index, array, this);       break;
-                case LASTORE: getInterpreterToVM().setArrayLong(popLong(frame, top - 1), index, array, this);         break;
-                case DASTORE: getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, this);     break;
+                case BASTORE: getInterpreterToVM().setArrayByte(language, (byte) popInt(frame, top - 1), index, array, this);   break;
+                case SASTORE: getInterpreterToVM().setArrayShort(language, (short) popInt(frame, top - 1), index, array, this); break;
+                case CASTORE: getInterpreterToVM().setArrayChar(language, (char) popInt(frame, top - 1), index, array, this);   break;
+                case IASTORE: getInterpreterToVM().setArrayInt(language, popInt(frame, top - 1), index, array, this);           break;
+                case FASTORE: getInterpreterToVM().setArrayFloat(language, popFloat(frame, top - 1), index, array, this);       break;
+                case LASTORE: getInterpreterToVM().setArrayLong(language, popLong(frame, top - 1), index, array, this);         break;
+                case DASTORE: getInterpreterToVM().setArrayDouble(language, popDouble(frame, top - 1), index, array, this);     break;
                 case AASTORE: referenceArrayStore(frame, top, index, array);     break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1762,7 +1764,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 }
             }
         }
-        refArrayStoreNode.arrayStore(getContext(), popObject(frame, top - 1), index, array);
+        refArrayStoreNode.arrayStore(getLanguage(), getContext().getMeta(), popObject(frame, top - 1), index, array);
     }
 
     private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount, boolean skipLivenessActions) {
@@ -2808,10 +2810,10 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
     }
 
-    static final class InstrumentationSupport extends Node {
+    static final class InstrumentationSupport extends EspressoNode {
         static final int NO_STATEMENT = -1;
 
-        @Children private final BaseEspressoStatementNode[] statementNodes;
+        @Children private final EspressoBaseStatementNode[] statementNodes;
         @Child private MapperBCI hookBCIToNodeIndex;
 
         private final EspressoContext context;
@@ -2831,7 +2833,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 Arrays.fill(seenLines, -1);
                 int maxSeenLine = -1;
 
-                this.statementNodes = new BaseEspressoStatementNode[entries.size()];
+                this.statementNodes = new EspressoBaseStatementNode[entries.size()];
                 this.hookBCIToNodeIndex = new MapperBCI(table);
 
                 for (int i = 0; i < entries.size(); i++) {
@@ -2977,7 +2979,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (statementNodes == null || index < 0) {
                 return null;
             }
-            BaseEspressoStatementNode node = statementNodes[index];
+            EspressoBaseStatementNode node = statementNodes[index];
             if (!(node instanceof WrapperNode)) {
                 return null;
             }

@@ -584,7 +584,9 @@ public final class TruffleContext implements AutoCloseable {
      * <p>
      * In case the context is in one of the following states
      * <ul>
-     * <li>the context is being closed
+     * <li>the context is being closed and the finalization stage has already begun
+     * ({@link TruffleLanguage#finalizeContext(Object)} is being executed for all language
+     * contexts).
      * <li>the context is already closed
      * <li>the context threads are being unwound as a part of the cancelling process
      * <li>the context threads are being unwound as a part of the hard exit process that comes after

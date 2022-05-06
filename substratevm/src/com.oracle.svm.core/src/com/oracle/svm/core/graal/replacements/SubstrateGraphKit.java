@@ -173,7 +173,7 @@ public class SubstrateGraphKit extends GraphKit {
         return startInvokeWithException(targetMethod, kind, frameState, bci(), arguments);
     }
 
-    public ValueNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
+    public InvokeWithExceptionNode createJavaCallWithExceptionAndUnwind(InvokeKind kind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
         return createInvokeWithExceptionAndUnwind(targetMethod, kind, frameState, bci(), arguments);
     }
 

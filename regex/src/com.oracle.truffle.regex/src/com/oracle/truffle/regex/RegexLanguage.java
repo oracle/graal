@@ -117,11 +117,21 @@ import com.oracle.truffle.regex.util.TruffleNull;
  * // result2.getStart(...) and result2.getEnd(...) are undefined
  * }
  * </pre>
+ * 
+ * Debug loggers: {@link com.oracle.truffle.regex.tregex.util.Loggers}.
  *
  * @see RegexOptions
  * @see RegexObject
+ * @see com.oracle.truffle.regex.tregex.util.Loggers
  */
-@TruffleLanguage.Registration(name = RegexLanguage.NAME, id = RegexLanguage.ID, characterMimeTypes = RegexLanguage.MIME_TYPE, version = "0.1", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, internal = true, interactive = false)
+@TruffleLanguage.Registration(name = RegexLanguage.NAME, //
+                id = RegexLanguage.ID, //
+                characterMimeTypes = RegexLanguage.MIME_TYPE, //
+                version = "0.1", //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
+                internal = true, //
+                interactive = false, //
+                website = "https://github.com/oracle/graal/tree/master/regex")
 @ProvidedTags(StandardTags.RootTag.class)
 public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexContext> {
 

@@ -53,8 +53,8 @@ final class NativePointer extends AbstractNativePointer {
         super(nativePointer);
     }
 
-    static Object create(LibFFILanguage language, long nativePointer) {
-        return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
+    static Object create(long nativePointer) {
+        return new NativePointer(nativePointer);
     }
 
     @ExportMessage(library = BackendNativePointerLibrary.class)

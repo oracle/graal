@@ -471,7 +471,7 @@ public final class GraalFeature implements Feature {
 
         if (!methods.containsKey(aMethod)) {
             methods.put(aMethod, new CallTreeNode(aMethod, aMethod, null, 0, ""));
-            config.registerAsInvoked(aMethod, true);
+            config.registerAsRoot(aMethod, true);
         }
 
         return sMethod;
@@ -580,7 +580,7 @@ public final class GraalFeature implements Feature {
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
             PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
-            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvoke(targetNode.invoke().bci());
+            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvokes().get(targetNode.invoke().bci());
 
             if (invokeFlow == null) {
                 continue;
@@ -677,9 +677,6 @@ public final class GraalFeature implements Feature {
             printDeepestLevelPath();
             throw VMError.shouldNotReachHere("Number of methods for runtime compilation exceeds the allowed limit: " + methods.size() + " > " + maxMethods);
         }
-
-        HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        runtimeConfigBuilder.updateLazyState(hMetaAccess);
 
         /*
          * Start fresh with a new GraphEncoder, since we are going to optimize all graphs now that

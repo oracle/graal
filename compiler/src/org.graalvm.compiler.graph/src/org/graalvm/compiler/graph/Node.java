@@ -857,7 +857,17 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     public final void replaceAtUsages(Node replacement, Predicate<Node> filter) {
-        replaceAtUsages(replacement, filter, false);
+        replaceAtUsages(replacement, filter, false, true);
+    }
+
+    /**
+     * For each use of {@code this} in another node, {@code n}, replace it with {@code replacement}
+     * if {@code filter == null} or {@code filter.test(n) == true}.
+     *
+     * @see #replaceAtUsages(Node)
+     */
+    public final void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean checkInvariants) {
+        replaceAtUsages(replacement, filter, false, checkInvariants);
     }
 
     /**
@@ -867,7 +877,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     public final void replaceAtUsagesAndDelete(Node replacement) {
-        replaceAtUsages(replacement, null, true);
+        replaceAtUsages(replacement, null, true, true);
         safeDelete();
     }
 
@@ -879,7 +889,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @see #replaceAtUsages(Node)
      */
     public final void replaceAtUsagesAndDelete(Node replacement, Predicate<Node> filter) {
-        replaceAtUsages(replacement, filter, true);
+        replaceAtUsages(replacement, filter, true, true);
         safeDelete();
     }
 
@@ -891,13 +901,13 @@ public abstract class Node implements Cloneable, Formattable {
      *            {@code this} from the graph after this method returns
      * @see #replaceAtUsages(Node)
      */
-    private void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean forDeletion) {
+    private void replaceAtUsages(Node replacement, Predicate<Node> filter, boolean forDeletion, boolean checkInvariants) {
         if (filter == null) {
             replaceAtAllUsages(replacement, forDeletion);
         } else {
             replaceAtMatchingUsages(replacement, filter, forDeletion);
         }
-        assert checkReplaceAtUsagesInvariants(replacement);
+        assert !checkInvariants || checkReplaceAtUsagesInvariants(replacement);
     }
 
     /**

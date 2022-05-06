@@ -819,7 +819,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
                 codePointLength = length;
             } else {
                 if (utf8Profile.profile(isUTF8(encoding))) {
-                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false);
+                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false, false);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 } else if (asciiBytesLatinProfile.profile(TStringGuards.isAsciiBytesOrLatin1(encoding))) {

@@ -29,12 +29,19 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -65,6 +72,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LazyToTruffleConverter;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMNodeUtils;
+import com.oracle.truffle.llvm.runtime.LLVMNodeUtils.LambdaLineWriter;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -82,18 +91,8 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-import org.graalvm.options.OptionValues;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import org.graalvm.options.OptionValues;
 
 public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
 
@@ -221,7 +220,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         info.setBlocks(blockNodes);
 
         int loopSuccessorSlot = -1;
-        if (options.get(SulongEngineOption.OSR_MODE) == SulongEngineOption.OSRMode.CFG && !options.get(SulongEngineOption.AOTCacheStore)) {
+        if (nodeFactory.isCfgOsrEnabled() && !options.get(SulongEngineOption.AOTCacheStore)) {
             LLVMControlFlowGraph cfg = new LLVMControlFlowGraph(method.getBlocks().toArray(FunctionDefinition.EMPTY));
             cfg.build();
 
@@ -241,7 +240,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         method.onAfterParse();
 
         if (printAST) {
-            printCompactTree(rootNode);
+            LLVMNodeUtils.printNodeAST(new LambdaLineWriter(LLVMContext::printAstLog), rootNode);
             LLVMContext.printAstLog("");
         }
 
@@ -266,50 +265,6 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
             }
         }
         return neededForDebug;
-    }
-
-    private static void printCompactTree(Node node) {
-        printCompactTree(node, null, 1);
-    }
-
-    private static void printCompactTree(NodeInterface node, String fieldName, int level) {
-        if (node == null) {
-            return;
-        }
-
-        LLVMContext.printAstLog(String.format("%s%s = %s", "  ".repeat(level), fieldName, node));
-
-        for (Class<?> c = node.getClass(); c != Object.class; c = c.getSuperclass()) {
-            Field[] fields = c.getDeclaredFields();
-            for (Field field : fields) {
-                if (Modifier.isStatic(field.getModifiers())) {
-                    continue;
-                }
-                if (NodeInterface.class.isAssignableFrom(field.getType())) {
-                    try {
-                        field.setAccessible(true);
-                        NodeInterface value = (NodeInterface) field.get(node);
-                        if (value != null) {
-                            printCompactTree(value, field.getName(), level + 1);
-                        }
-                    } catch (IllegalAccessException | RuntimeException e) {
-                        // ignore
-                    }
-                } else if (NodeInterface[].class.isAssignableFrom(field.getType())) {
-                    try {
-                        field.setAccessible(true);
-                        NodeInterface[] value = (NodeInterface[]) field.get(node);
-                        if (value != null) {
-                            for (int i = 0; i < value.length; i++) {
-                                printCompactTree(value[i], field.getName() + "[" + i + "]", level + 1);
-                            }
-                        }
-                    } catch (IllegalAccessException | RuntimeException e) {
-                        // ignore
-                    }
-                }
-            }
-        }
     }
 
     private void resolveLoops(LLVMBasicBlockNode[] nodes, LLVMControlFlowGraph cfg, int loopSuccessorSlot, int exceptionSlot, LLVMRuntimeDebugInformation info, OptionValues options) {

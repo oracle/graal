@@ -72,6 +72,7 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
@@ -290,7 +291,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * We must also generate the accessor for a method that was registered as queried
                  * and then registered again as accessed
                  */
-                methodAccessors.putIfAbsent(method, ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method));
+                SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
+                if (methodAccessors.putIfAbsent(method, accessor) == null) {
+                    access.rescanObject(accessor);
+                }
             }
         }
         for (AccessibleObject object : heapReflectionObjects) {
@@ -446,8 +450,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as unsafe-accessible, whether they have been explicitly registered or their
          * Field object is reachable in the image heap.
          */
-        ImageSingletons.lookup(ReflectionFeature.class).inspectAccessibleField(reflectField);
-
         if (!analysisField.isUnsafeAccessed() && !GuardedAnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
             analysisField.registerAsAccessed();
             analysisField.registerAsUnsafeAccessed();

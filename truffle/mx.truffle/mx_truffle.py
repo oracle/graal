@@ -699,7 +699,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           mx.join(self.out_dir, 'libffi-3.3'),
+                                                           mx.join(self.out_dir, 'libffi-3.4.2'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
@@ -714,6 +714,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                        mx.join('src', 'prep_cif.c'),
                                                        mx.join('src', 'raw_api.c'),
                                                        mx.join('src', 'types.c'),
+                                                       mx.join('src', 'tramp.c'),
                                                        mx.join('src', 'x86', 'ffiw64.c')],
                                                 '.S': [mx.join('src', 'x86', 'win64_intel.S')]})
         else:
@@ -735,17 +736,13 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
-                                                 mx.join(self.out_dir, 'libffi-3.3'))
+                                                 mx.join(self.out_dir, 'libffi-3.4.2'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
                               ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
                               'CPPFLAGS="-DNO_JAVA_RAW_API"',
                              ]
-            if mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64':
-                # configure wrongly autodetects as 'arm-apple-darwin20.0.0', see https://github.com/libffi/libffi/issues/571
-                # force it until it is fixed upstream, tracked in GR-35554
-                configure_args.append('--build=aarch64-apple-darwin20.0.0')
 
             self.delegate.buildEnv = dict(
                 SOURCES=mx.basename(self.delegate.dir),
@@ -769,12 +766,22 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
     @property
     def patches(self):
         """A list of patches that will be applied during a build."""
-        os_arch_dir = mx.join(self.source_dirs()[0], '{}-{}'.format(mx.get_os(), mx.get_arch()))
-        if mx.exists(os_arch_dir):
-            return [mx.join(os_arch_dir, patch) for patch in os.listdir(os_arch_dir)]
+        def patch_dir(d):
+            return mx.join(self.source_dirs()[0], d)
 
-        others_dir = mx.join(self.source_dirs()[0], 'others')
-        return [mx.join(others_dir, patch) for patch in os.listdir(others_dir)]
+        def get_patches(patchdir):
+            for patch in os.listdir(patchdir):
+                yield mx.join(patchdir, patch)
+
+        for p in get_patches(patch_dir('common')):
+            yield p
+        os_arch_dir = patch_dir('{}-{}'.format(mx.get_os(), mx.get_arch()))
+        if mx.exists(os_arch_dir):
+            for p in get_patches(os_arch_dir):
+                yield p
+        else:
+            for p in get_patches(patch_dir('others')):
+                yield p
 
     def getBuildTask(self, args):
         return LibffiBuildTask(args, self)

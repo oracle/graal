@@ -1,8 +1,9 @@
 local graal_common = import '../../common.jsonnet';
 local base = import '../ci.jsonnet';
+local base_json = import '../../common.json';
 
 local composable = (import "../../common-utils.libsonnet").composable;
-local sulong_deps = composable((import "../../common.json").sulong.deps);
+local sulong_deps = composable(base_json.sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
 
@@ -17,10 +18,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   local that = self,
 
   // platform-specific snippets
-  common: sulong_deps.common + {
+  common: base_json.deps.common + graal_common.mx + sulong_deps.common + {
+    python_version: '3',
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
-      MX_PYTHON_VERSION: "3",
     },
     setup+: [
       ['cd', base.suite_name],
@@ -191,7 +192,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     self.espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='hosted', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']),
 
   espresso_interpreter_benchmark(env, suite, host_jvm=null):
-    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '1']),
+    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '10']),
 
   scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', extra_args=[]):
     self.espresso_benchmark(

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
 
     private SymbolImpl ptr;
     private SymbolImpl value;
+    private Type valueType;
 
     private ReadModifyWriteInstruction(Type type, ReadModifyWriteOperator operator, boolean isVolatile, AtomicOrdering atomicOrdering, SynchronizationScope synchronizationScope) {
         super(type);
@@ -67,6 +68,10 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
 
     public SymbolImpl getValue() {
         return value;
+    }
+
+    public Type getValueType() {
+        return valueType;
     }
 
     public ReadModifyWriteOperator getOperator() {
@@ -95,11 +100,13 @@ public final class ReadModifyWriteInstruction extends ValueInstruction {
         }
     }
 
-    public static ReadModifyWriteInstruction fromSymbols(SymbolTable symbols, Type type, int ptr, int value, int opcode, boolean isVolatile, long atomicOrdering, long synchronizationScope) {
+    public static ReadModifyWriteInstruction fromSymbols(SymbolTable symbols, Type type, int ptr, Type valueType, int value, int opcode, boolean isVolatile, long atomicOrdering,
+                    long synchronizationScope) {
         final ReadModifyWriteOperator operator = ReadModifyWriteOperator.decode(opcode);
         final ReadModifyWriteInstruction inst = new ReadModifyWriteInstruction(type, operator, isVolatile, AtomicOrdering.decode(atomicOrdering), SynchronizationScope.decode(synchronizationScope));
         inst.ptr = symbols.getForwardReferenced(ptr, inst);
         inst.value = symbols.getForwardReferenced(value, inst);
+        inst.valueType = valueType;
         return inst;
     }
 }

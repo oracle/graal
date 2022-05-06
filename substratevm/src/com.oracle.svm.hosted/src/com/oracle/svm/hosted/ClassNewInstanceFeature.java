@@ -35,7 +35,7 @@ public class ClassNewInstanceFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(Object.class.getDeclaredConstructors()[0], true);
+        access.registerAsRoot(Object.class.getDeclaredConstructors()[0], true);
     }
 
 }

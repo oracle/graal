@@ -38,6 +38,12 @@ public final class GraalOptions {
     @Option(help = "Use compiler intrinsifications.", type = OptionType.Debug)
     public static final OptionKey<Boolean> Intrinsify = new OptionKey<>(true);
 
+    @Option(help = "Perform early global value numbering.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EarlyGVN = new OptionKey<>(true);
+
+    @Option(help = "Perform early loop invariant code motion.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> EarlyLICM = new OptionKey<>(true);
+
     @Option(help = "Inline calls with monomorphic type profile.", type = OptionType.Expert)
     public static final OptionKey<Boolean> InlineMonomorphicCalls = new OptionKey<>(true);
 

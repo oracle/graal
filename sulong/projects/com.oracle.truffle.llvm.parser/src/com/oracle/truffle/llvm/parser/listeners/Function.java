@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -125,7 +125,7 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_DEBUG_LOC = 35;
     private static final int INSTRUCTION_FENCE = 36;
     private static final int INSTRUCTION_CMPXCHG_OLD = 37;
-    private static final int INSTRUCTION_ATOMICRMW = 38;
+    private static final int INSTRUCTION_ATOMICRMW_OLD = 38;
     private static final int INSTRUCTION_RESUME = 39;
     private static final int INSTRUCTION_LANDINGPAD_OLD = 40;
     private static final int INSTRUCTION_LOADATOMIC = 41;
@@ -144,6 +144,7 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_UNOP = 56;
     private static final int INSTRUCTION_CALLBR = 57;
     private static final int INSTRUCTION_FREEZE = 58;
+    private static final int INSTRUCTION_ATOMICRMW = 59;
 
     private final FunctionDefinition function;
 
@@ -369,6 +370,9 @@ public final class Function implements ParserListener {
                 createCompareExchange(buffer, opCode);
                 break;
 
+            case INSTRUCTION_ATOMICRMW_OLD:
+                createAtomicReadModifyWriteOld(buffer);
+                break;
             case INSTRUCTION_ATOMICRMW:
                 createAtomicReadModifyWrite(buffer);
                 break;
@@ -731,7 +735,7 @@ public final class Function implements ParserListener {
         emit(StoreInstruction.fromSymbols(scope.getSymbols(), destination, source, align, isVolatile, atomicOrdering, synchronizationScope));
     }
 
-    private void createAtomicReadModifyWrite(RecordBuffer buffer) {
+    private void createAtomicReadModifyWriteOld(RecordBuffer buffer) {
         int ptr = readIndex(buffer);
         Type ptrType = readValueType(buffer, ptr);
         int value = readIndex(buffer);
@@ -742,7 +746,22 @@ public final class Function implements ParserListener {
 
         final Type type = Types.castToPointer(ptrType).getPointeeType();
 
-        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
+        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, null, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
+    }
+
+    private void createAtomicReadModifyWrite(RecordBuffer buffer) {
+        int ptr = readIndex(buffer);
+        Type ptrType = readValueType(buffer, ptr);
+        int value = readIndex(buffer);
+        Type valType = readValueType(buffer, value);
+        int opcode = buffer.readInt();
+        boolean isVolatile = buffer.readBoolean();
+        long atomicOrdering = buffer.read();
+        long synchronizationScope = buffer.read();
+
+        final Type type = Types.castToPointer(ptrType).getPointeeType();
+
+        emit(ReadModifyWriteInstruction.fromSymbols(scope.getSymbols(), type, ptr, valType, value, opcode, isVolatile, atomicOrdering, synchronizationScope));
     }
 
     private void createFence(RecordBuffer buffer) {

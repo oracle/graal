@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -39,7 +40,6 @@ import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -61,13 +61,15 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
 
     private final int loopSuccessorSlot;
 
+    private final SulongEngineOption.OSRMode osrMode;
     @CompilerDirectives.CompilationFinal private Object osrMetadata;
 
-    public LLVMDispatchBasicBlockNode(int exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, int loopSuccessorSlot, LocalVariableDebugInfo debugInfo) {
+    public LLVMDispatchBasicBlockNode(int exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, int loopSuccessorSlot, LocalVariableDebugInfo debugInfo, SulongEngineOption.OSRMode osrMode) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.loopSuccessorSlot = loopSuccessorSlot;
         this.debugInfo = debugInfo;
+        this.osrMode = osrMode;
     }
 
     @Override
@@ -98,8 +100,9 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
             CompilerAsserts.partialEvaluationConstant(basicBlockIndex);
             if (CompilerDirectives.hasNextTier()) {
                 if (basicBlockIndex <= counters.previousBasicBlockIndex) {
+                    TruffleSafepoint.poll(this);
                     counters.backEdgeCounter++;
-                    if (CompilerDirectives.inInterpreter() && LLVMContext.get(this).getOSRMode() == SulongEngineOption.OSRMode.BYTECODE && BytecodeOSRNode.pollOSRBackEdge(this)) {
+                    if (CompilerDirectives.inInterpreter() && osrMode == SulongEngineOption.OSRMode.BYTECODE && BytecodeOSRNode.pollOSRBackEdge(this)) {
                         returnValue = BytecodeOSRNode.tryOSR(this, basicBlockIndex, counters, null, frame);
                         if (returnValue != null) {
                             break outer;

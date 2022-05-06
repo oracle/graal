@@ -117,6 +117,10 @@ public final class NativeIsolate {
      * {@link NativeIsolate} has active threads the isolate is freed by the last leaving thread.
      */
     public boolean shutdown() {
+        NativeIsolateThread currentIsolateThread = attachedIsolateThread.get();
+        if (currentIsolateThread != null && currentIsolateThread.isNativeThread()) {
+            return false;
+        }
         boolean deferredClose = false;
         synchronized (this) {
             if (state == State.DISPOSED) {
@@ -200,6 +204,13 @@ public final class NativeIsolate {
             cleanHandles();
             cleaners.add(new Cleaner(cleanersQueue, cleanableObject, cleanupAction));
         }
+    }
+
+    /*
+     * Returns true if the isolate shutdown process has already begun or is finished.
+     */
+    public boolean isDisposed() {
+        return state == State.DISPOSED;
     }
 
     void lastLeave() {

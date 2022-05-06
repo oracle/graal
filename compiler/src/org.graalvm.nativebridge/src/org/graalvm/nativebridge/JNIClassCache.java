@@ -94,7 +94,7 @@ public final class JNIClassCache {
             if (jClass.isNull()) {
                 res = JNIClassData.INVALID;
             } else {
-                res = new JNIClassData(JNIUtil.NewGlobalRef(env, jClass, className));
+                res = new JNIClassData(JNIUtil.NewGlobalRef(env, jClass, "Class<" + className + ">"));
             }
             return res;
         }).jClassGlobal;

@@ -52,10 +52,9 @@ import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.SimpleMatchers;
-import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16Matchers;
+import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16Or32Matchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF16RawMatchers;
 import com.oracle.truffle.regex.tregex.nodes.dfa.Matchers.UTF8Matchers;
-import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
@@ -427,7 +426,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         CharMatcher[] latin1 = ((UTF16RawMatchers) matchers).getLatin1();
                         CharMatcher[] bmp = ((UTF16RawMatchers) matchers).getBmp();
                         if (latin1 != null && (bmp == null || codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
-                            CharMatcher[] byteMatchers = codeRange == TruffleString.CodeRange.ASCII && ascii != null ? ascii : latin1;
+                            CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
                             for (int i = 0; i < byteMatchers.length; i++) {
                                 if (match(byteMatchers, i, c)) {
                                     ip = transitionMatch(state, i);
@@ -445,52 +444,80 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         }
                     } else {
                         /*
-                         * UTF-16 on-the fly decoding
+                         * UTF-32 or UTF-16 on-the fly decoding
                          */
-                        assert matchers instanceof UTF16Matchers;
-                        assert getEncoding() == Encodings.UTF_16;
-                        UTF16Matchers utf16Matchers = (UTF16Matchers) matchers;
-                        CharMatcher[] ascii = utf16Matchers.getAscii();
-                        CharMatcher[] latin1 = utf16Matchers.getLatin1();
-                        CharMatcher[] bmp = utf16Matchers.getBmp();
-                        CharMatcher[] astral = utf16Matchers.getAstral();
+                        assert matchers instanceof UTF16Or32Matchers;
+                        UTF16Or32Matchers utf16Or32Matchers = (UTF16Or32Matchers) matchers;
+                        CharMatcher[] ascii = utf16Or32Matchers.getAscii();
+                        CharMatcher[] latin1 = utf16Or32Matchers.getLatin1();
+                        CharMatcher[] bmp = utf16Or32Matchers.getBmp();
+                        CharMatcher[] astral = utf16Or32Matchers.getAstral();
 
                         int c = inputReadRaw(locals);
                         inputIncNextIndexRaw(locals);
 
-                        if (codeRange.isSupersetOf(TruffleString.CodeRange.VALID) && state.utf16MustDecode() && inputUTF16IsHighSurrogate(c) &&
-                                        (codeRange == TruffleString.CodeRange.VALID || inputHasNext(locals, locals.getNextIndex()))) {
-                            getAstralProfile().enter();
-                            int c2 = inputReadRaw(locals, locals.getNextIndex());
-                            if (codeRange == TruffleString.CodeRange.VALID || inputUTF16IsLowSurrogate(c2)) {
-                                assert inputUTF16IsLowSurrogate(c2);
-                                locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
-                                if (astral != null) {
-                                    c = inputUTF16ToCodePoint(c, c2);
+                        if (isUTF16()) {
+                            if (codeRange.isSupersetOf(TruffleString.CodeRange.VALID) && state.utf16MustDecode() && inputUTF16IsHighSurrogate(c) &&
+                                            (codeRange == TruffleString.CodeRange.VALID || inputHasNext(locals, locals.getNextIndex()))) {
+                                getAstralProfile().enter();
+                                int c2 = inputReadRaw(locals, locals.getNextIndex());
+                                if (codeRange == TruffleString.CodeRange.VALID || inputUTF16IsLowSurrogate(c2)) {
+                                    assert inputUTF16IsLowSurrogate(c2);
+                                    locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
+                                    if (astral != null) {
+                                        c = inputUTF16ToCodePoint(c, c2);
+                                    }
                                 }
-                            }
-                            if (astral != null) {
-                                for (int i = 0; i < astral.length; i++) {
-                                    if (match(astral, i, c)) {
+                                if (astral != null) {
+                                    for (int i = 0; i < astral.length; i++) {
+                                        if (match(astral, i, c)) {
+                                            ip = transitionMatch(state, i);
+                                            continue outer;
+                                        }
+                                    }
+                                }
+                            } else if (latin1 != null && (bmp == null || codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
+                                CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
+                                for (int i = 0; i < byteMatchers.length; i++) {
+                                    if (match(byteMatchers, i, c)) {
+                                        ip = transitionMatch(state, i);
+                                        continue outer;
+                                    }
+                                }
+                            } else if (bmp != null && codeRange.isSupersetOf(TruffleString.CodeRange.BMP)) {
+                                getBMPProfile().enter();
+                                for (int i = 0; i < bmp.length; i++) {
+                                    if (match(bmp, i, c)) {
                                         ip = transitionMatch(state, i);
                                         continue outer;
                                     }
                                 }
                             }
-                        } else if (latin1 != null && (bmp == null || codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
-                            CharMatcher[] byteMatchers = codeRange == TruffleString.CodeRange.ASCII && ascii != null ? ascii : latin1;
-                            for (int i = 0; i < byteMatchers.length; i++) {
-                                if (match(byteMatchers, i, c)) {
-                                    ip = transitionMatch(state, i);
-                                    continue outer;
+                        } else {
+                            assert isUTF32();
+                            if (latin1 != null && (codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
+                                CharMatcher[] byteMatchers = asciiOrLatin1Matchers(codeRange, ascii, latin1);
+                                for (int i = 0; i < byteMatchers.length; i++) {
+                                    if (match(byteMatchers, i, c)) {
+                                        ip = transitionMatch(state, i);
+                                        continue outer;
+                                    }
                                 }
-                            }
-                        } else if (bmp != null && codeRange.isSupersetOf(TruffleString.CodeRange.BMP)) {
-                            getBMPProfile().enter();
-                            for (int i = 0; i < bmp.length; i++) {
-                                if (match(bmp, i, c)) {
-                                    ip = transitionMatch(state, i);
-                                    continue outer;
+                            } else if (bmp != null && (codeRange == TruffleString.CodeRange.BMP || (c <= 0xffff && (codeRange == TruffleString.CodeRange.VALID || !Character.isSurrogate((char) c))))) {
+                                getBMPProfile().enter();
+                                for (int i = 0; i < bmp.length; i++) {
+                                    if (match(bmp, i, c)) {
+                                        ip = transitionMatch(state, i);
+                                        continue outer;
+                                    }
+                                }
+                            } else if (astral != null && codeRange.isSupersetOf(TruffleString.CodeRange.VALID)) {
+                                getAstralProfile().enter();
+                                for (int i = 0; i < astral.length; i++) {
+                                    if (match(astral, i, c)) {
+                                        ip = transitionMatch(state, i);
+                                        continue outer;
+                                    }
                                 }
                             }
                         }
@@ -537,6 +564,10 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             return locals.getResultInt() == 0 ? locals.getCGData().currentResult : null;
         }
         return locals.getResultInt();
+    }
+
+    private static CharMatcher[] asciiOrLatin1Matchers(TruffleString.CodeRange codeRange, CharMatcher[] ascii, CharMatcher[] latin1) {
+        return codeRange == TruffleString.CodeRange.ASCII && ascii != null ? ascii : latin1;
     }
 
     private short initialStateSuccessor(TRegexDFAExecutorLocals locals, DFAAbstractStateNode curState, short[] successors, int i) {

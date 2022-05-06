@@ -735,8 +735,11 @@ public class UniverseBuilder {
                  * Methods with 1 implementations do not need a vtable because invokes can be done
                  * as direct calls without the need for a vtable. Methods with 0 implementations are
                  * unreachable.
+                 *
+                 * Methods manually registered as virtual root methods always need a vtable slot,
+                 * even if there are 0 or 1 implementations.
                  */
-                if (method.implementations.length > 1) {
+                if (method.implementations.length > 1 || method.wrapped.isVirtualRootMethod()) {
                     /*
                      * Find a suitable vtable slot for the method, taking the existing vtable
                      * assignments into account.
@@ -802,27 +805,28 @@ public class UniverseBuilder {
          * implementation method can have multiple slots because of interfaces. We compute the
          * intersection of the slot sets for all implementation methods.
          */
-        Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
-        for (HostedMethod impl : method.implementations) {
-            Set<Integer> implSlots = vtablesSlots.get(impl);
-            if (implSlots == null) {
-                resultSlots = null;
-                break;
+        if (method.implementations.length > 0) {
+            Set<Integer> resultSlots = vtablesSlots.get(method.implementations[0]);
+            for (HostedMethod impl : method.implementations) {
+                Set<Integer> implSlots = vtablesSlots.get(impl);
+                if (implSlots == null) {
+                    resultSlots = null;
+                    break;
+                }
+                resultSlots.retainAll(implSlots);
             }
-            resultSlots.retainAll(implSlots);
-        }
-        if (resultSlots != null && !resultSlots.isEmpty()) {
-            /*
-             * All implementations already have the same vtable slot assigned, so we can re-use
-             * that. If we have multiple candidates, we use the slot with the lowest number.
-             */
-            int resultSlot = Integer.MAX_VALUE;
-            for (int slot : resultSlots) {
-                resultSlot = Math.min(resultSlot, slot);
+            if (resultSlots != null && !resultSlots.isEmpty()) {
+                /*
+                 * All implementations already have the same vtable slot assigned, so we can re-use
+                 * that. If we have multiple candidates, we use the slot with the lowest number.
+                 */
+                int resultSlot = Integer.MAX_VALUE;
+                for (int slot : resultSlots) {
+                    resultSlot = Math.min(resultSlot, slot);
+                }
+                return resultSlot;
             }
-            return resultSlot;
         }
-
         /*
          * No slot found, we need to compute a new one. Check the whole subtype hierarchy for
          * constraints using bitset union, and then use the lowest slot number that is available in
@@ -998,6 +1002,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
     }
 }

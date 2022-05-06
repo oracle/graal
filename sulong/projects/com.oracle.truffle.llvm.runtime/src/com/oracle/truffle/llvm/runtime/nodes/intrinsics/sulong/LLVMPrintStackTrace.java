@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -87,6 +87,10 @@ public abstract class LLVMPrintStackTrace extends LLVMIntrinsic {
     }
 
     private static void fillStackTrace(SulongStackTrace stackTrace, Node node) {
+        if (node == null) {
+            return;
+        }
+
         LLVMBasicBlockNode block = NodeUtil.findParent(node, LLVMBasicBlockNode.class);
         LLVMFunctionStartNode f = NodeUtil.findParent(node, LLVMFunctionStartNode.class);
 

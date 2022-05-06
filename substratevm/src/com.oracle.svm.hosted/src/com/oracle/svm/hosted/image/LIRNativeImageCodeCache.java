@@ -30,10 +30,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.code.CompilationResult;
@@ -50,10 +48,8 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
 import com.oracle.svm.hosted.code.HostedPatcher;
-import com.oracle.svm.hosted.image.NativeImage.NativeTextSectionImpl;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
@@ -243,22 +239,23 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     public NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
-        return new NativeTextSectionImpl(buffer, objectFile, codeCache) {
-            @Override
-            protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
-                final int size = result == null ? 0 : result.getTargetCodeSize();
-                objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
-            }
-        };
+        return new NativeTextSectionImpl(buffer, objectFile, codeCache);
+    }
+
+    private static final class NativeTextSectionImpl extends NativeImage.NativeTextSectionImpl {
+        private NativeTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
+            super(buffer, objectFile, codeCache);
+        }
+
+        @Override
+        protected void defineMethodSymbol(String name, boolean global, ObjectFile.Element section, HostedMethod method, CompilationResult result) {
+            final int size = result == null ? 0 : result.getTargetCodeSize();
+            objectFile.createDefinedSymbol(name, section, method.getCodeAddressOffset(), size, true, global);
+        }
     }
 
     @Override
-    public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal) {
-        Stream<ObjectFile.Symbol> stream = StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false);
-        if (onlyGlobal) {
-            Set<String> globalHiddenSymbols = CGlobalDataFeature.singleton().getGlobalHiddenSymbols();
-            stream = stream.filter(symbol -> symbol.isGlobal() && !globalHiddenSymbols.contains(symbol.getName()));
-        }
-        return stream.filter(ObjectFile.Symbol::isDefined).collect(Collectors.toList());
+    public List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile) {
+        return StreamSupport.stream(objectFile.getSymbolTable().spliterator(), false).collect(Collectors.toList());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,15 @@ void old_style_handler_old(__attribute__((unused)) int signo) {
 
 void old_style_handler_new(__attribute__((unused)) int signo) {
 }
+
+#ifdef _WIN32
+
+// sigaction not supported on Windows
+int main(void) {
+    return 0;
+}
+
+#else
 
 int main(void) {
 #pragma clang diagnostic push
@@ -86,3 +95,5 @@ int main(void) {
 
     return 0;
 }
+
+#endif

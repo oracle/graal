@@ -65,10 +65,8 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
      * i.e., 'this' parameter, state must ONLY reflect those objects of the actual receiver that
      * generated the context for the method clone which it belongs to. A direct link would instead
      * transfer all the objects of compatible type from the actual receiver to the formal receiver.
-     * The formal receiver state for the non-initial parameters is updated through the
-     * FormalReceiverTypeFlow.addReceiverState method invoked directly from
-     * VirtualInvokeTypeFlow.update, SpecialInvokeTypeFlow.update or from
-     * InitialReceiverTypeFlow.update.
+     * The formal receiver state is updated through the FormalReceiverTypeFlow.addReceiverState
+     * method invoked directly from VirtualInvokeTypeFlow.update or SpecialInvokeTypeFlow.update.
      */
     @Override
     public boolean addState(PointsToAnalysis bb, TypeState add) {

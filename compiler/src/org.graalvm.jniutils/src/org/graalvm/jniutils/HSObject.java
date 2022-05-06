@@ -83,7 +83,7 @@ public class HSObject {
         if (checkingGlobalDuplicates(allowGlobalDuplicates)) {
             checkNonExistingGlobalReference(env, handle);
         }
-        this.handle = NewGlobalRef(env, handle, this.getClass().getSimpleName());
+        this.handle = NewGlobalRef(env, handle, this.getClass().getName());
         cleaner = new Cleaner(this, this.handle, allowGlobalDuplicates);
         CLEANERS.add(cleaner);
         next = null;

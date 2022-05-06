@@ -294,7 +294,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work
-        config.registerAsCompiled((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
+        config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
 
         GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
         SnippetReflectionProvider snippetReflection = graalFeature.getHostedProviders().getSnippetReflection();
@@ -352,7 +352,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsCompiled((AnalysisMethod) method, true);
+            config.registerAsRoot((AnalysisMethod) method, true);
         }
 
         /*

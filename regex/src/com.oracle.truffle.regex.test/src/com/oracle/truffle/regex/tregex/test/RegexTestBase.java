@@ -61,7 +61,7 @@ public abstract class RegexTestBase {
 
     @BeforeClass
     public static void setUp() {
-        context = Context.newBuilder().build();
+        context = Context.newBuilder().allowAllAccess(true).build();
         context.enter();
     }
 
