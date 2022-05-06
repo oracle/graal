@@ -144,8 +144,10 @@ public class VAListInteropTest extends InteropTestBase {
         @TruffleBoundary
         Object execute(Object... arguments) {
             try {
-                /* On darwin-aarch64 / windows-amd64 arguments[0] is a LLVMMaybeVaPointer, and in this
-                 * case must behave like a pointer */
+                /*
+                 * On darwin-aarch64 / windows-amd64 arguments[0] is a LLVMMaybeVaPointer, and in
+                 * this case must behave like a pointer
+                 */
                 return derefCharCharPtr.execute(arguments[0]).asInt();
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -155,7 +157,7 @@ public class VAListInteropTest extends InteropTestBase {
 
     @Test
     public void testTestMaybeVaPtr() {
-        Value res = testMaybeVaPtr.execute(new MaybeVaListCallback()) ;
+        Value res = testMaybeVaPtr.execute(new MaybeVaListCallback());
         Assert.assertEquals((int) 'A', res.asInt());
     }
 

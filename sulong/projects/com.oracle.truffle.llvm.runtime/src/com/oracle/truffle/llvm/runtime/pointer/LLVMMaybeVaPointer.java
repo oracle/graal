@@ -727,7 +727,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implemen
         @Specialization
         @GenerateAOT.Exclude
         static boolean isForeign(LLVMMaybeVaPointer self,
-                @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
+                        @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
             return foreigns.isForeign(self.address);
         }
     }
@@ -742,7 +742,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implemen
         @Specialization
         @GenerateAOT.Exclude
         static Object asForeign(LLVMMaybeVaPointer self,
-                @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
+                        @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
             return foreigns.asForeign(self.address);
         }
     }
