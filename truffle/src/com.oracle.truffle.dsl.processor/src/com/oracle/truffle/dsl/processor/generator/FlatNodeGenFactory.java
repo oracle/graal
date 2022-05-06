@@ -1630,7 +1630,7 @@ public class FlatNodeGenFactory {
         String constantName = ElementUtils.createConstantName(ElementUtils.getSimpleName(languageType) + "Lref");
         TypeElement languageReference = (TypeElement) types.TruffleLanguage_LanguageReference.asElement();
         DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(languageReference, Arrays.asList(languageType));
-        return lookupConstant(constants.languageReferences, constantName, (name) -> {
+        return lookupConstant(constants, constants.languageReferences, constantName, (name) -> {
             CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, name);
             newVar.createInitBuilder().startStaticCall(languageReference.asType(), "create").typeLiteral(languageType).end();
             return newVar;
@@ -1642,7 +1642,7 @@ public class FlatNodeGenFactory {
         String constantName = ElementUtils.createConstantName(ElementUtils.getSimpleName(languageType) + "Cref");
         TypeElement contextReference = (TypeElement) types.TruffleLanguage_ContextReference.asElement();
         DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(contextReference, Arrays.asList(NodeParser.findContextTypeFromLanguage(languageType)));
-        return lookupConstant(constants.languageReferences, constantName, (name) -> {
+        return lookupConstant(constants, constants.languageReferences, constantName, (name) -> {
             CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, name);
             newVar.createInitBuilder().startStaticCall(contextReference.asType(), "create").typeLiteral(languageType).end();
             return newVar;
@@ -1664,22 +1664,28 @@ public class FlatNodeGenFactory {
         String constantName = ElementUtils.createConstantName(libraryType.getSimpleName().toString());
         TypeElement resolvedLibrary = (TypeElement) ProcessorContext.getInstance().getTypes().LibraryFactory.asElement();
         DeclaredCodeTypeMirror constantType = new DeclaredCodeTypeMirror(resolvedLibrary, Arrays.asList(libraryType.asType()));
-        return lookupConstant(constants.libraries, constantName, (name) -> {
+        return lookupConstant(constants, constants.libraries, constantName, (name) -> {
             CodeVariableElement newVar = new CodeVariableElement(modifiers(PRIVATE, STATIC, FINAL), constantType, name);
             newVar.createInitBuilder().startStaticCall(resolvedLibrary.asType(), "resolve").typeLiteral(libraryType.asType()).end();
             return newVar;
         });
     }
 
-    private static CodeVariableElement lookupConstant(Map<String, CodeVariableElement> constants, String constantName, Function<String, CodeVariableElement> factory) {
+    private static CodeVariableElement lookupConstant(StaticConstants sc, Map<String, CodeVariableElement> constants, String constantName, Function<String, CodeVariableElement> factory) {
         String useConstantName = constantName + "_";
         while (true) {
             CodeVariableElement prev = constants.get(useConstantName);
             CodeVariableElement var = factory.apply(useConstantName);
+            if (sc.ignoreEnclosingType) {
+                var.setEnclosingElement(null);
+            }
             if (prev == null) {
                 constants.put(useConstantName, var);
                 return var;
             } else {
+                if (sc.ignoreEnclosingType) {
+                    prev.setEnclosingElement(null);
+                }
                 if (ElementUtils.variableEquals(prev, var)) {
                     return prev;
                 }

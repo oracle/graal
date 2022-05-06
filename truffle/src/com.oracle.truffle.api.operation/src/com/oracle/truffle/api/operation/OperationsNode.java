@@ -6,6 +6,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
@@ -195,72 +196,103 @@ public abstract class OperationsNode extends Node implements InstrumentableNode,
     // --------------- boxing elim -----------------------
 
     protected static Object expectObject(VirtualFrame frame, int slot) {
-        return frame.getObject(slot);
+        if (frame.isObject(slot)) {
+            return frame.getObject(slot);
+        } else {
+            // this should only happen in edge cases, when we have specialized to a generic case on
+            // one thread, but other threads have already executed the child with primitive return
+            // type
+            return frame.getValue(slot);
+        }
     }
 
     protected static byte expectByte(VirtualFrame frame, int slot) throws UnexpectedResultException {
-        Object value;
-        if (frame.isByte(slot)) {
-            return frame.getByte(slot);
-        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Byte) {
-            return (byte) value;
-        } else {
-            throw new UnexpectedResultException(frame.getValue(slot));
+        switch (frame.getTag(slot)) {
+            case FrameWithoutBoxing.BYTE_TAG:
+                return frame.getByte(slot);
+            case FrameWithoutBoxing.OBJECT_TAG:
+                Object value = frame.getObject(slot);
+                if (value instanceof Byte) {
+                    return (byte) value;
+                }
+                break;
         }
+
+        throw new UnexpectedResultException(frame.getValue(slot));
     }
 
     protected static boolean expectBoolean(VirtualFrame frame, int slot) throws UnexpectedResultException {
-        Object value;
-        if (frame.isBoolean(slot)) {
-            return frame.getBoolean(slot);
-        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Boolean) {
-            return (boolean) value;
-        } else {
-            throw new UnexpectedResultException(frame.getValue(slot));
+        switch (frame.getTag(slot)) {
+            case FrameWithoutBoxing.BOOLEAN_TAG:
+                return frame.getBoolean(slot);
+            case FrameWithoutBoxing.OBJECT_TAG:
+                Object value = frame.getObject(slot);
+                if (value instanceof Boolean) {
+                    return (boolean) value;
+                }
+                break;
         }
+
+        throw new UnexpectedResultException(frame.getValue(slot));
     }
 
     protected static int expectInt(VirtualFrame frame, int slot) throws UnexpectedResultException {
-        Object value;
-        if (frame.isInt(slot)) {
-            return frame.getInt(slot);
-        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Integer) {
-            return (int) value;
-        } else {
-            throw new UnexpectedResultException(frame.getValue(slot));
+        switch (frame.getTag(slot)) {
+            case FrameWithoutBoxing.INT_TAG:
+                return frame.getInt(slot);
+            case FrameWithoutBoxing.OBJECT_TAG:
+                Object value = frame.getObject(slot);
+                if (value instanceof Integer) {
+                    return (int) value;
+                }
+                break;
         }
+
+        throw new UnexpectedResultException(frame.getValue(slot));
     }
 
     protected static float expectFloat(VirtualFrame frame, int slot) throws UnexpectedResultException {
-        Object value;
-        if (frame.isFloat(slot)) {
-            return frame.getFloat(slot);
-        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Float) {
-            return (float) value;
-        } else {
-            throw new UnexpectedResultException(frame.getValue(slot));
+        switch (frame.getTag(slot)) {
+            case FrameWithoutBoxing.FLOAT_TAG:
+                return frame.getFloat(slot);
+            case FrameWithoutBoxing.OBJECT_TAG:
+                Object value = frame.getObject(slot);
+                if (value instanceof Float) {
+                    return (float) value;
+                }
+                break;
         }
+
+        throw new UnexpectedResultException(frame.getValue(slot));
     }
 
     protected static long expectLong(VirtualFrame frame, int slot) throws UnexpectedResultException {
-        Object value;
-        if (frame.isLong(slot)) {
-            return frame.getLong(slot);
-        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Long) {
-            return (long) value;
-        } else {
-            throw new UnexpectedResultException(frame.getValue(slot));
+        switch (frame.getTag(slot)) {
+            case FrameWithoutBoxing.LONG_TAG:
+                return frame.getLong(slot);
+            case FrameWithoutBoxing.OBJECT_TAG:
+                Object value = frame.getObject(slot);
+                if (value instanceof Long) {
+                    return (long) value;
+                }
+                break;
         }
+
+        throw new UnexpectedResultException(frame.getValue(slot));
     }
 
     protected static double expectDouble(VirtualFrame frame, int slot) throws UnexpectedResultException {
-        Object value;
-        if (frame.isDouble(slot)) {
-            return frame.getDouble(slot);
-        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Double) {
-            return (double) value;
-        } else {
-            throw new UnexpectedResultException(frame.getValue(slot));
+        switch (frame.getTag(slot)) {
+            case FrameWithoutBoxing.DOUBLE_TAG:
+                return frame.getDouble(slot);
+            case FrameWithoutBoxing.OBJECT_TAG:
+                Object value = frame.getObject(slot);
+                if (value instanceof Double) {
+                    return (double) value;
+                }
+                break;
         }
+
+        throw new UnexpectedResultException(frame.getValue(slot));
     }
 }

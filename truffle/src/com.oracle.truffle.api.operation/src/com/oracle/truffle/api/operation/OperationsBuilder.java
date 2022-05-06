@@ -209,8 +209,6 @@ public abstract class OperationsBuilder {
             numLocals = local.id + 1;
         }
 
-        System.out.printf(" -- created local: %d%n", local.id);
-
         return local;
     }
 

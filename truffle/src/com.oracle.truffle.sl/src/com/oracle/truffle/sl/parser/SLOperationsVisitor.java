@@ -3,10 +3,8 @@ package com.oracle.truffle.sl.parser;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Stack;
 
 import org.antlr.v4.runtime.Token;
@@ -48,7 +46,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 
 public class SLOperationsVisitor extends SLBaseVisitor {
 
-    private static final boolean DO_LOG_NODE_CREATION = true;
+    private static final boolean DO_LOG_NODE_CREATION = false;
 
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, SLSource source, SLOperationsBuilder builder) {
         return parseSLImpl(source, new SLOperationsVisitor(language, source, builder));
@@ -70,12 +68,10 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private static class LocalScope {
         private final LocalScope parent;
         private Map<TruffleString, OperationLocal> locals;
-        private Set<TruffleString> setLocals;
 
         LocalScope(LocalScope parent) {
             this.parent = parent;
             this.locals = new HashMap<>();
-            this.setLocals = new HashSet<>();
         }
 
         public OperationLocal get(TruffleString value) {
@@ -86,16 +82,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 return parent.get(value);
             } else {
                 return null;
-            }
-        }
-
-        public boolean isSet(TruffleString value) {
-            if (setLocals.contains(value)) {
-                return true;
-            } else if (parent != null) {
-                return parent.isSet(value);
-            } else {
-                return false;
             }
         }
 
@@ -204,12 +190,19 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         scope = new LocalScope(scope);
 
         FindLocalsVisitor helper = new FindLocalsVisitor();
+        helper.visitBlock(ctx);
+
+        for (Token result : helper.results) {
+            TruffleString localName = asTruffleString(result, false);
+            if (scope.get(localName) == null) {
+                scope.put(localName, b.createLocal());
+            }
+        }
 
         super.visitBlock(ctx);
 
-        scope = scope.parent;
-
         b.endBlock();
+        scope = scope.parent;
         return null;
     }
 
@@ -676,9 +669,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void buildMemberExpressionWriteBefore(Token ident, List<Member_expressionContext> members, int idx, Token errorToken) {
         if (idx == -1) {
             OperationLocal localIdx = scope.get(asTruffleString(ident, false));
-            if (localIdx == null) {
-                localIdx = b.createLocal();
-            }
+            assert localIdx != null;
             writeLocalsStack.push(localIdx);
 
             b.beginBlock();

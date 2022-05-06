@@ -55,6 +55,16 @@ public final class StaticConstants {
     public final Map<String, CodeVariableElement> contextReferences = new LinkedHashMap<>();
     public final Map<String, CodeVariableElement> languageReferences = new LinkedHashMap<>();
 
+    public final boolean ignoreEnclosingType;
+
+    public StaticConstants() {
+        this(false);
+    }
+
+    public StaticConstants(boolean ignoreEnclosingType) {
+        this.ignoreEnclosingType = ignoreEnclosingType;
+    }
+
     public void clear() {
         libraries.clear();
         contextReferences.clear();

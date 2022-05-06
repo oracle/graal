@@ -1,5 +1,6 @@
 package com.oracle.truffle.dsl.processor.operations;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -35,6 +36,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstructio
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction.DataKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
+import com.oracle.truffle.dsl.processor.parser.SpecializationGroup.TypeGuard;
 
 public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGeneratorPlugs {
     private final CodeVariableElement fldBc;
@@ -505,49 +507,55 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         // boxing elimination
-        if (!isVariadic && boxingSplits != null) {
+        if (!isVariadic && cinstr.numPopStatic() > 0) {
             boolean elseIf = false;
+            boolean[] needsElse = new boolean[]{true};
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
                 b.declaration("int", "type" + i, (CodeTree) null);
             }
 
-            for (BoxingSplit split : boxingSplits) {
-                List<SpecializationData> specializations = split.getGroup().collectSpecializations();
-                if (!specializations.contains(specialization)) {
-                    continue;
+            if (boxingSplits != null && !boxingSplits.isEmpty()) {
+                for (BoxingSplit split : boxingSplits) {
+                    elseIf = createBoxingSplitUnboxingThing(b, frameState, elseIf, specialization, split.getGroup().collectSpecializations(), split.getPrimitiveSignature(), needsElse);
+                }
+            } else {
+                TypeMirror[] primMirrors = new TypeMirror[cinstr.numPopStatic()];
+                List<SpecializationData> specs = cinstr.getData().getNodeData().getSpecializations();
+                for (SpecializationData spec : specs) {
+                    if (spec.isFallback()) {
+                        continue;
+                    }
+                    b.lineComment(Arrays.toString(primMirrors));
+                    for (int i = 0; i < primMirrors.length; i++) {
+                        TypeMirror paramType = spec.getParameters().get(i).getType();
+                        if (primMirrors[i] == null) {
+                            primMirrors[i] = paramType;
+                        } else if (!ElementUtils.typeEquals(primMirrors[i], paramType)) {
+                            // we only care about primitive types, so we do not care about type
+                            // compatibility
+                            primMirrors[i] = ProcessorContext.getInstance().getType(Object.class);
+                        }
+                    }
+
+                    b.lineComment(Arrays.toString(primMirrors));
                 }
 
-                elseIf = b.startIf(elseIf);
+                elseIf = createBoxingSplitUnboxingThing(b, frameState, elseIf, specialization, specs, primMirrors, needsElse);
+            }
 
-                b.startGroup();
-                CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), specializationStates.toArray());
-                if (!tree.isEmpty()) {
-                    b.tree(tree);
-                    b.string(" && ");
+            if (needsElse[0]) {
+                if (elseIf) {
+                    b.startElseBlock();
                 }
-                b.tree(multiState.createIsNotAny(frameState, specializationStates.toArray()));
-                b.end();
-                b.end().startBlock();
 
                 for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                    FrameKind frameType = getFrameType(split.getPrimitiveSignature()[i].getKind());
-                    b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
+                    b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(FrameKind.OBJECT)).end();
                 }
 
-                b.end();
-            }
-
-            if (elseIf) {
-                b.startElseBlock();
-            }
-
-            for (int i = 0; i < cinstr.numPopStatic(); i++) {
-                b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(FrameKind.OBJECT)).end();
-            }
-
-            if (elseIf) {
-                b.end();
+                if (elseIf) {
+                    b.end();
+                }
             }
 
             for (int i = 0; i < cinstr.numPopStatic(); i++) {
@@ -555,6 +563,65 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             }
         }
 
+    }
+
+    private boolean createBoxingSplitUnboxingThing(CodeTreeBuilder b, FrameState frameState, boolean elseIf, SpecializationData specialization, List<SpecializationData> specializations,
+                    TypeMirror[] primitiveMirrors, boolean[] needsElse) {
+        if (!specializations.contains(specialization)) {
+            return elseIf;
+        }
+
+        CodeTree tree = multiState.createContainsOnly(frameState, 0, -1, specializations.toArray(), specializationStates.toArray());
+        if (!tree.isEmpty()) {
+            b.startIf(elseIf);
+            b.tree(tree).end().startBlock();
+        } else {
+            needsElse[0] = false;
+        }
+
+        TypeSystemData tsData = cinstr.getData().getNodeData().getTypeSystem();
+        for (int i = 0; i < cinstr.numPopStatic(); i++) {
+            TypeMirror targetType = primitiveMirrors[i];
+            if (!tsData.hasImplicitSourceTypes(targetType)) {
+                FrameKind frameType = getFrameType(targetType.getKind());
+                b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
+            } else {
+                boolean elseIf2 = false;
+                List<TypeMirror> originalSourceTypes = new ArrayList<>(tsData.lookupSourceTypes(targetType));
+                for (TypeMirror sourceType : originalSourceTypes) {
+                    FrameKind frameType = getFrameType(sourceType.getKind());
+                    if (frameType == FrameKind.OBJECT) {
+                        continue;
+                    }
+
+                    TypeGuard typeGuard = new TypeGuard(targetType, i);
+
+                    elseIf2 = b.startIf(elseIf2);
+
+                    b.tree(multiState.createContainsOnly(frameState, originalSourceTypes.indexOf(sourceType), 1, new Object[]{typeGuard}, new Object[]{typeGuard}));
+
+                    b.end().startBlock();
+                    {
+                        b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
+                    }
+                    b.end();
+                }
+
+                if (elseIf2) {
+                    b.startElseBlock();
+                }
+                b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(FrameKind.OBJECT)).end();
+                if (elseIf2) {
+                    b.end();
+                }
+            }
+        }
+
+        if (!tree.isEmpty()) {
+            b.end();
+        }
+
+        return true;
     }
 
     public CodeTree createSetResultBoxed(CodeVariableElement varUnboxed) {

@@ -100,7 +100,7 @@ public class OperationsBytecodeCodeGenerator {
         builderBytecodeNodeType.add(ctor);
 
         {
-            StaticConstants staticConstants = new StaticConstants();
+            StaticConstants staticConstants = new StaticConstants(true);
             for (Instruction instr : m.getInstructions()) {
                 if (!(instr instanceof CustomInstruction)) {
                     continue;

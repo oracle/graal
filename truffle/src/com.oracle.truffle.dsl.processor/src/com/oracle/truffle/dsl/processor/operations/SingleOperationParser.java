@@ -289,12 +289,14 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return false;
     }
 
+    private static final String GENERIC_EXECUTE_NAME = "Generic";
+
     private CodeTypeElement createRegularNodeChild() {
 
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
-        result.add(createExecuteMethod("Generic", context.getType(Object.class)));
+        result.add(createExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object.class)));
 
         for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
             result.add(createExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
@@ -307,7 +309,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         CodeExecutableElement result = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), retType, "execute" + name);
         // result.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
 
-        if (!ElementUtils.isObject(retType) && !ElementUtils.isVoid(retType)) {
+        if (!GENERIC_EXECUTE_NAME.equals(name)) {
             result.addThrownType(types.UnexpectedResultException);
         }
         return result;
