@@ -90,7 +90,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
 public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implements LLVMPointer {
-    private static PlatformCapability capability;
+    private static PlatformCapability<?> capability;
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
