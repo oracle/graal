@@ -82,7 +82,7 @@ public class OperationsContext {
         createLoadStoreLocal();
         createReturn();
 
-        add(new Operation.Instrumentation(this, operationId++,
+        add(new Operation.InstrumentTag(this, operationId++,
                         add(new InstrumentationEnterInstruction(instructionId++)),
                         add(new InstrumentationExitInstruction(instructionId++)),
                         add(new InstrumentationExitInstruction(instructionId++, true)),

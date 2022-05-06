@@ -131,9 +131,9 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
     public abstract void endReturn();
 
-    public abstract void beginInstrumentation(Class<?> arg0);
+    public abstract void beginTag(Class<?> arg0);
 
-    public abstract void endInstrumentation();
+    public abstract void endTag();
 
     public abstract void beginSLAddOperation();
 
@@ -227,7 +227,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         private static final int OP_STORE_LOCAL = 13;
         private static final int OP_LOAD_LOCAL = 14;
         private static final int OP_RETURN = 15;
-        private static final int OP_INSTRUMENTATION = 16;
+        private static final int OP_TAG = 16;
         private static final int OP_SLADD_OPERATION = 17;
         private static final int OP_SLDIV_OPERATION = 18;
         private static final int OP_SLEQUAL_OPERATION = 19;
@@ -385,7 +385,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                     bci = doLeaveFinallyTry(bc, bci, data, exceptionHandlers);
                     break;
                 }
-                case OP_INSTRUMENTATION :
+                case OP_TAG :
                 {
                     int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
                     LE_BYTES.putShort(bc, bci, (short) INSTR_INSTRUMENT_LEAVE);
@@ -461,7 +461,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                     }
                     break;
                 }
-                case OP_INSTRUMENTATION :
+                case OP_TAG :
                 {
                     if (childIndex != 0) {
                         for (int i = 0; i < lastPush; i++) {
@@ -988,12 +988,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
         @SuppressWarnings("unused")
         @Override
-        public void beginInstrumentation(Class<?> arg0) {
+        public void beginTag(Class<?> arg0) {
             if (true) {
                 return;
             }
             doBeforeChild();
-            operationData = new BuilderOperationData(operationData, OP_INSTRUMENTATION, getCurStack(), 3, true, arg0);
+            operationData = new BuilderOperationData(operationData, OP_TAG, getCurStack(), 3, true, arg0);
             int curInstrumentId = doBeginInstrumentation((Class) arg0);
             BuilderOperationLabel startLabel = (BuilderOperationLabel) createLabel();
             BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
@@ -1010,16 +1010,16 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
         @SuppressWarnings("unused")
         @Override
-        public void endInstrumentation() {
+        public void endTag() {
             if (true) {
                 return;
             }
-            if (operationData.operationId != OP_INSTRUMENTATION) {
+            if (operationData.operationId != OP_TAG) {
                 throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
             }
             int numChildren = operationData.numChildren;
             if (numChildren < 0) {
-                throw new IllegalStateException("Instrumentation expected at least 0 children, got " + numChildren);
+                throw new IllegalStateException("Tag expected at least 0 children, got " + numChildren);
             }
             if (lastPush != 0) {
                 int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
@@ -4180,18 +4180,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                         LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY_OPERATION);
                                         int type0;
                                         int type1;
-                                        // [null, null]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
                                         type0 = FRAME_TYPE_OBJECT;
                                         type1 = FRAME_TYPE_OBJECT;
                                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4229,18 +4217,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                         LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY_OPERATION);
                                         int type0;
                                         int type1;
-                                        // [null, null]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
                                         type0 = FRAME_TYPE_OBJECT;
                                         type1 = FRAME_TYPE_OBJECT;
                                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4293,18 +4269,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                         }
                                         int type0;
                                         int type1;
-                                        // [null, null]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
                                         type0 = FRAME_TYPE_OBJECT;
                                         type1 = FRAME_TYPE_OBJECT;
                                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4334,18 +4298,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY_OPERATION);
                             int type0;
                             int type1;
-                            // [null, null]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object]
                             type0 = FRAME_TYPE_OBJECT;
                             type1 = FRAME_TYPE_OBJECT;
                             doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4389,18 +4341,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                         LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY_OPERATION);
                                         int type0;
                                         int type1;
-                                        // [null, null]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
                                         type0 = FRAME_TYPE_OBJECT;
                                         type1 = FRAME_TYPE_OBJECT;
                                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4437,18 +4377,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                         LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY_OPERATION);
                                         int type0;
                                         int type1;
-                                        // [null, null]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object]
                                         type0 = FRAME_TYPE_OBJECT;
                                         type1 = FRAME_TYPE_OBJECT;
                                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4822,18 +4750,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                     int type0;
                                     int type1;
                                     int type2;
-                                    // [null, null, null]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
                                     type0 = FRAME_TYPE_OBJECT;
                                     type1 = FRAME_TYPE_OBJECT;
                                     type2 = FRAME_TYPE_OBJECT;
@@ -4871,18 +4787,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                         int type0;
                                         int type1;
                                         int type2;
-                                        // [null, null, null]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                        // [java.lang.Object, java.lang.Object, java.lang.Object]
                                         type0 = FRAME_TYPE_OBJECT;
                                         type1 = FRAME_TYPE_OBJECT;
                                         type2 = FRAME_TYPE_OBJECT;
@@ -4931,18 +4835,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                     int type0;
                                     int type1;
                                     int type2;
-                                    // [null, null, null]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
                                     type0 = FRAME_TYPE_OBJECT;
                                     type1 = FRAME_TYPE_OBJECT;
                                     type2 = FRAME_TYPE_OBJECT;
@@ -4970,18 +4862,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             int type0;
                             int type1;
                             int type2;
-                            // [null, null, null]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
-                            // [java.lang.Object, java.lang.Object, java.lang.Object]
                             type0 = FRAME_TYPE_OBJECT;
                             type1 = FRAME_TYPE_OBJECT;
                             type2 = FRAME_TYPE_OBJECT;
@@ -5026,18 +4906,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                     int type0;
                                     int type1;
                                     int type2;
-                                    // [null, null, null]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
                                     type0 = FRAME_TYPE_OBJECT;
                                     type1 = FRAME_TYPE_OBJECT;
                                     type2 = FRAME_TYPE_OBJECT;
@@ -5075,18 +4943,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                     int type0;
                                     int type1;
                                     int type2;
-                                    // [null, null, null]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
-                                    // [java.lang.Object, java.lang.Object, java.lang.Object]
                                     type0 = FRAME_TYPE_OBJECT;
                                     type1 = FRAME_TYPE_OBJECT;
                                     type2 = FRAME_TYPE_OBJECT;
@@ -5477,8 +5333,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLFUNCTION_LITERAL_OPERATION);
                             }
                             int type0;
-                            // [null]
-                            // [com.oracle.truffle.api.strings.TruffleString]
                             type0 = FRAME_TYPE_OBJECT;
                             doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
                             lock.unlock();
@@ -5649,8 +5503,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             execute_node__ = (this);
                             bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 doExecute(VirtualFrame, Map<TruffleString, RootCallTarget>, Node) */);
                             int type0;
-                            // [null]
-                            // [com.oracle.truffle.api.frame.VirtualFrame]
                             type0 = FRAME_TYPE_OBJECT;
                             doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
                             lock.unlock();
@@ -5661,8 +5513,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                     }
                     bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 fallback(Object) */);
                     int type0;
-                    // [null]
-                    // [com.oracle.truffle.api.frame.VirtualFrame]
                     type0 = FRAME_TYPE_OBJECT;
                     doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
                     lock.unlock();

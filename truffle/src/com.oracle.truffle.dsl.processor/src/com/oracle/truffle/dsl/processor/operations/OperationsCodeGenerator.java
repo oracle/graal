@@ -24,6 +24,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.Operation.InstrumentTag;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
@@ -734,7 +735,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
                     CodeTreeBuilder b = metBegin.getBuilder();
 
-                    if (op.name.equals("Instrumentation")) {
+                    if (op instanceof InstrumentTag) {
                         // this needs to be placed here, at the very start
                         // of the begin/end methods
                         b.startIf();
@@ -782,7 +783,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                     // doAfterChild();
                     CodeTreeBuilder b = metEnd.getBuilder();
 
-                    if (op.name.equals("Instrumentation")) {
+                    if (op instanceof InstrumentTag) {
                         // this needs to be placed here, at the very start
                         // of the begin/end methods
                         b.startIf();

@@ -534,14 +534,16 @@ public abstract class Operation {
         }
     }
 
-    public static class Instrumentation extends Block {
+    public static class InstrumentTag extends Block {
         private final Instruction startInstruction;
         private final Instruction endInstruction;
         private final Instruction endVoidInstruction;
         private final Instruction leaveInstruction;
 
-        public Instrumentation(OperationsContext builder, int id, Instruction startInstruction, Instruction endInstruction, Instruction endVoidInstruction, Instruction leaveInstruction) {
-            super(builder, "Instrumentation", id);
+        public static final String NAME = "Tag";
+
+        public InstrumentTag(OperationsContext builder, int id, Instruction startInstruction, Instruction endInstruction, Instruction endVoidInstruction, Instruction leaveInstruction) {
+            super(builder, NAME, id);
             this.startInstruction = startInstruction;
             this.endInstruction = endInstruction;
             this.endVoidInstruction = endVoidInstruction;

@@ -526,7 +526,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                     if (spec.isFallback()) {
                         continue;
                     }
-                    b.lineComment(Arrays.toString(primMirrors));
                     for (int i = 0; i < primMirrors.length; i++) {
                         TypeMirror paramType = spec.getParameters().get(i).getType();
                         if (primMirrors[i] == null) {
@@ -537,8 +536,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
                             primMirrors[i] = ProcessorContext.getInstance().getType(Object.class);
                         }
                     }
-
-                    b.lineComment(Arrays.toString(primMirrors));
                 }
 
                 elseIf = createBoxingSplitUnboxingThing(b, frameState, elseIf, specialization, specs, primMirrors, needsElse);
