@@ -90,6 +90,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
 public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implements LLVMPointer {
+    private static PlatformCapability capability;
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
@@ -154,7 +155,11 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implemen
     }
 
     private static Object createVaListStorage() {
-        return LLVMLanguage.getContext().getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).createActualVAListStorage();
+        if (capability == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            capability = LLVMLanguage.getContext().getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class);
+        }
+        return capability.createActualVAListStorage();
     }
 
     /* Implement LLVMPointer so that it can behave like a pointer in the fallback scenario */
