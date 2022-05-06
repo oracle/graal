@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -90,7 +90,8 @@ public final class LazyFunctionParser {
             try {
                 parser.setupScope();
                 scanner.scanBlock(parser);
-                // In some cases, the SUBPROGRAM is not in the METADATA_BLOCK of a given function block and, instead,
+                // In some cases, the SUBPROGRAM is not in the METADATA_BLOCK of a given function
+                // block and, instead,
                 // it is emitted earlier and resides in the METADATA_BLOCK of the MODULE_BLOCK.
                 scope.getMetadata().accept(new MetadataVisitor() {
                     @Override

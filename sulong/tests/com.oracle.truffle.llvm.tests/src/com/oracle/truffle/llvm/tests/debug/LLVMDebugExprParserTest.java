@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,7 +70,8 @@ public final class LLVMDebugExprParserTest {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "testExpr");
 
-    // Use the no-optimization BC file as the evaluation of the debug expressions in the optimized one fails due to
+    // Use the no-optimization BC file as the evaluation of the debug expressions in the optimized
+    // one fails due to
     // missing variables removed during constant folding.
     private static final String CONFIGURATION = "bitcode-O0.bc";
 

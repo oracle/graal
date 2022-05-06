@@ -67,8 +67,9 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
     }
 
     /**
-     * This specialization may fail as long as the pointer is managed and the managed object does not support
-     * the toNative conversion. In such a case the doFallbackPointerAsComparable is used instead.
+     * This specialization may fail as long as the pointer is managed and the managed object does
+     * not support the toNative conversion. In such a case the doFallbackPointerAsComparable is used
+     * instead.
      */
     @Specialization(rewriteOn = LLVMException.class)
     protected int doPointer(LLVMPointer from,
@@ -78,7 +79,7 @@ public abstract class LLVMToI32Node extends LLVMExpressionNode {
 
     @Specialization
     protected int doFallbackPointerAsComparable(LLVMPointer from,
-                            @Cached ToComparableValue toComparableValue) {
+                    @Cached ToComparableValue toComparableValue) {
         return (int) toComparableValue.executeWithTarget(from);
     }
 

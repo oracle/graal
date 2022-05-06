@@ -68,7 +68,8 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
 
     @Override
     public Type getGlobalVAListType(Type type) {
-        return LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_14.equals(type) ? LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_14 : LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_12.equals(type) ? LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_12 : null;
+        return LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_14.equals(type) ? LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_14
+                        : LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_12.equals(type) ? LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_12 : null;
     }
 
     @Override

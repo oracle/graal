@@ -70,7 +70,7 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
 
     @Specialization
     protected boolean doFallbackPointerAsComparable(LLVMPointer from,
-                                                @Cached ToComparableValue toComparableValue) {
+                    @Cached ToComparableValue toComparableValue) {
         return toComparableValue.executeWithTarget(from) != 0L;
     }
 

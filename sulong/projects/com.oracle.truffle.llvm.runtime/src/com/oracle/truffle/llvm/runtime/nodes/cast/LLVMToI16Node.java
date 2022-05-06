@@ -72,10 +72,9 @@ public abstract class LLVMToI16Node extends LLVMExpressionNode {
 
     @Specialization
     protected short doFallbackPointerAsComparable(LLVMPointer from,
-                                                @Cached ToComparableValue toComparableValue) {
+                    @Cached ToComparableValue toComparableValue) {
         return (short) toComparableValue.executeWithTarget(from);
     }
-
 
     protected ForeignToLLVM createForeignToLLVM() {
         return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I16);

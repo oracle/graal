@@ -71,7 +71,7 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
 
     @Specialization
     protected byte doFallbackPointerAsComparable(LLVMPointer from,
-                                                @Cached ToComparableValue toComparableValue) {
+                    @Cached ToComparableValue toComparableValue) {
         return (byte) toComparableValue.executeWithTarget(from);
     }
 
