@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,22 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.annotate;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.test;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.Annotation;
 
-/**
- * Feature classes can use this annotation are unconditionally added when they are reachable on the
- * class path.
- */
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.TYPE})
-@Platforms(Platform.HOSTED_ONLY.class)
-public @interface AutomaticFeature {
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.svm.core.annotate.DuplicatedInNativeCode;
+
+public class NoHostedAnnotationsTest {
+
+    @DuplicatedInNativeCode
+    private static class TestClass {
+    }
+
+    @Test
+    public void test() {
+        // Checkstyle: allow direct annotation access
+        Annotation[] annotations = TestClass.class.getAnnotations();
+        // Checkstyle: disallow direct annotation access
+        Assert.assertEquals("The hosted annotation is present in runtime!", 0, annotations.length);
+    }
 }
