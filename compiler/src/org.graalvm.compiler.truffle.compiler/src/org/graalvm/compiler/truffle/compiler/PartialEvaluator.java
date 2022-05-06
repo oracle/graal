@@ -157,7 +157,6 @@ public abstract class PartialEvaluator {
                         (TruffleOptions.AOT && options.get(TraceTransferToInterpreter));
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         options.get(ExcludeAssertions));
-        TruffleStringStableFieldProviderProvider.initialize(getProviders().getMetaAccess(), getKnownTruffleTypes());
     }
 
     public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {

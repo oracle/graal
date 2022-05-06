@@ -41,9 +41,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaType classArrayUtils = lookupType("com.oracle.truffle.api.ArrayUtils");
     public final ResolvedJavaType classNode = lookupType("com.oracle.truffle.api.nodes.Node");
     public final ResolvedJavaType classRootNode = lookupType("com.oracle.truffle.api.nodes.RootNode");
-    public final ResolvedJavaType classTStringOps = lookupType("com.oracle.truffle.api.strings.TStringOps");
-    public final ResolvedJavaType classTruffleString = lookupType("com.oracle.truffle.api.strings.TruffleString");
-    public final ResolvedJavaType classAbstractTruffleString = lookupType("com.oracle.truffle.api.strings.AbstractTruffleString");
     public final ResolvedJavaType classMethodHandle = lookupType(MethodHandle.class);
 
     public final ResolvedJavaField fieldDescriptor = findField(classFrameClass, "descriptor");
@@ -82,9 +79,6 @@ public class KnownTruffleTypes extends AbstractKnownTruffleTypes {
     public final ResolvedJavaField fieldNodeParent = findField(classNode, "parent");
 
     public final ResolvedJavaField fieldStringValue = findField(lookupType(String.class), "value");
-
-    public final ResolvedJavaField fieldTruffleStringData = findField(classAbstractTruffleString, "data");
-    public final ResolvedJavaField fieldTruffleStringHash = findField(classAbstractTruffleString, "hashCode");
 
     public KnownTruffleTypes(MetaAccessProvider metaAccess) {
         super(metaAccess);

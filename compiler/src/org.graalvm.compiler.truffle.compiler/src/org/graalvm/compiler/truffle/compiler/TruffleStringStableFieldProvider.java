@@ -26,55 +26,92 @@ package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.StableFieldProvider;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.substitutions.AbstractKnownTruffleTypes;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class TruffleStringStableFieldProvider implements StableFieldProvider {
+/**
+ * A stable field provider to support constant folding of {@code TruffleString} objects.
+ */
+class TruffleStringStableFieldProvider implements StableFieldProvider {
 
     private final MetaAccessProvider metaAccess;
-    private final ResolvedJavaType truffleStringType;
-    private final ResolvedJavaField truffleStringDataField;
-    private final ResolvedJavaField truffleStringHashCodeField;
-    private final ResolvedJavaType byteArrayType;
 
-    public TruffleStringStableFieldProvider(
-                    MetaAccessProvider metaAccess,
-                    ResolvedJavaType truffleStringType,
-                    ResolvedJavaField truffleStringDataField,
-                    ResolvedJavaField truffleStringHashCodeField,
-                    ResolvedJavaType byteArrayType) {
+    /**
+     * Known types and fields related to {@code TruffleString}.
+     */
+    static class TruffleStringTypes extends AbstractKnownTruffleTypes {
+
+        final ResolvedJavaType truffleStringType;
+        final ResolvedJavaField truffleStringDataField;
+        final ResolvedJavaField truffleStringHashCodeField;
+
+        TruffleStringTypes(MetaAccessProvider metaAccess) {
+            super(metaAccess);
+            truffleStringType = lookupType("com.oracle.truffle.api.strings.TruffleString");
+            ResolvedJavaType classAbstractTruffleString = lookupType("com.oracle.truffle.api.strings.AbstractTruffleString");
+            truffleStringDataField = findField(classAbstractTruffleString, "data");
+            truffleStringHashCodeField = findField(classAbstractTruffleString, "hashCode");
+        }
+
+    }
+
+    private final ResolvedJavaType byteArrayType;
+    private TruffleStringTypes truffleStringTypes;
+
+    TruffleStringStableFieldProvider(MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
-        this.truffleStringType = truffleStringType;
-        this.truffleStringDataField = truffleStringDataField;
-        this.truffleStringHashCodeField = truffleStringHashCodeField;
-        this.byteArrayType = byteArrayType;
+        this.byteArrayType = metaAccess.lookupJavaType(byte[].class);
+    }
+
+    /**
+     * Returns access to known {@code TruffleString} types and fields if a Truffle runtime is
+     * available.
+     *
+     * @return {@code null} if there is no active Truffle runtime
+     */
+    private TruffleStringTypes getTruffleStringTypes() {
+        if (truffleStringTypes == null && TruffleCompilerRuntime.getRuntimeIfAvailable() != null) {
+            truffleStringTypes = new TruffleStringTypes(metaAccess);
+        }
+        return truffleStringTypes;
     }
 
     @Override
     public boolean maybeStableField(ResolvedJavaField field) {
-        return truffleStringDataField.equals(field) || truffleStringHashCodeField.equals(field);
+        TruffleStringTypes types = getTruffleStringTypes();
+        if (types == null) {
+            return false;
+        }
+        return types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field);
     }
 
     @Override
     public boolean isStableField(ResolvedJavaField field, ConstantFieldProvider.ConstantFieldTool<?> tool) {
-        if (truffleStringDataField.equals(field)) {
-            if (truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()))) {
+        TruffleStringTypes types = getTruffleStringTypes();
+        if (types == null) {
+            return false;
+        }
+        if (types.truffleStringDataField.equals(field)) {
+            if (types.truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()))) {
                 JavaConstant value = tool.readValue();
                 return value != null && byteArrayType.isAssignableFrom(metaAccess.lookupJavaType(value));
             }
         }
-        if (truffleStringHashCodeField.equals(field)) {
-            return truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()));
+        if (types.truffleStringHashCodeField.equals(field)) {
+            return types.truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()));
         }
         return false;
     }
 
     @Override
     public int getArrayDimension(ResolvedJavaField field) {
-        if (truffleStringDataField.equals(field)) {
+        TruffleStringTypes types = getTruffleStringTypes();
+        if (types != null && types.truffleStringDataField.equals(field)) {
             return 1;
         }
         return -1;

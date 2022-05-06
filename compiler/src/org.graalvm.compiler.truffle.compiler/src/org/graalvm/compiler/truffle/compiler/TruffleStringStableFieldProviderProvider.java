@@ -24,66 +24,17 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.StableFieldProvider;
 import org.graalvm.compiler.core.common.spi.StableFieldProviderProvider;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 @ServiceProvider(StableFieldProviderProvider.class)
 public class TruffleStringStableFieldProviderProvider implements StableFieldProviderProvider {
 
-    private static final StableFieldProvider DISABLED = new StableFieldProvider() {
-        @Override
-        public boolean maybeStableField(ResolvedJavaField field) {
-            return false;
-        }
-
-        @Override
-        public boolean isStableField(ResolvedJavaField field, ConstantFieldProvider.ConstantFieldTool<?> tool) {
-            return false;
-        }
-
-        @Override
-        public int getArrayDimension(ResolvedJavaField field) {
-            return -1;
-        }
-    };
-
-    private static final class StableFieldProviderProxy implements StableFieldProvider {
-
-        private StableFieldProvider delegate = DISABLED;
-
-        @Override
-        public boolean maybeStableField(ResolvedJavaField field) {
-            return delegate.maybeStableField(field);
-        }
-
-        @Override
-        public boolean isStableField(ResolvedJavaField field, ConstantFieldProvider.ConstantFieldTool<?> tool) {
-            return delegate.isStableField(field, tool);
-        }
-
-        @Override
-        public int getArrayDimension(ResolvedJavaField field) {
-            return delegate.getArrayDimension(field);
-        }
-    }
-
-    private static final StableFieldProviderProxy PROXY = new StableFieldProviderProxy();
-
     @Override
     public StableFieldProvider get(MetaAccessProvider metaAccess) {
-        return PROXY;
-    }
-
-    public static void initialize(MetaAccessProvider metaAccess, KnownTruffleTypes types) {
-        if (PROXY.delegate == DISABLED) {
-            PROXY.delegate = new TruffleStringStableFieldProvider(metaAccess,
-                            types.classTruffleString, types.fieldTruffleStringData, types.fieldTruffleStringHash, metaAccess.lookupJavaType(byte[].class));
-        }
+        return new TruffleStringStableFieldProvider(metaAccess);
     }
 }

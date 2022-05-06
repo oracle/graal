@@ -33,7 +33,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.TruffleStringStableFieldProviderProvider;
+import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.junit.Test;
 
@@ -54,7 +54,9 @@ public class TStringConstantFoldingTest extends TStringTest {
 
     @Override
     protected void before(ResolvedJavaMethod method) {
-        TruffleStringStableFieldProviderProvider.initialize(getMetaAccess(), knownTruffleTypes);
+        // Trigger Truffle initialization so that TruffleStringStableFieldProvider
+        // will do the expected constant folding of Truffle strings.
+        TruffleCompilerRuntime.getRuntime();
     }
 
     @Override
