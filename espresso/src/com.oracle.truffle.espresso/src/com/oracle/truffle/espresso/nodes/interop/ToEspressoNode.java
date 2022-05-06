@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -65,25 +66,24 @@ public abstract class ToEspressoNode extends EspressoNode {
         return object instanceof String;
     }
 
-    static boolean isString(Klass klass) {
-        return klass.getMeta().java_lang_String.equals(klass);
+    static boolean isString(Meta meta, Klass klass) {
+        return meta.java_lang_String.equals(klass);
     }
 
-    static boolean isStringCompatible(Klass klass) {
+    static boolean isStringCompatible(Meta meta, Klass klass) {
         // Accept String superclasses and superinterfaces.
-        return klass.isAssignableFrom(klass.getMeta().java_lang_String);
+        return klass.isAssignableFrom(meta.java_lang_String);
     }
 
-    static boolean isByteArray(Klass klass) {
-        return klass.getMeta()._byte_array.equals(klass);
+    static boolean isByteArray(Meta meta, Klass klass) {
+        return meta._byte_array.equals(klass);
     }
 
     static boolean isPrimitiveKlass(Klass klass) {
         return klass instanceof PrimitiveKlass;
     }
 
-    static boolean isForeignException(Klass klass) {
-        Meta meta = klass.getMeta();
+    static boolean isForeignException(Meta meta, Klass klass) {
         return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
     }
 
@@ -145,9 +145,9 @@ public abstract class ToEspressoNode extends EspressoNode {
         return execute(value.getGuestException(), klass);
     }
 
-    @Specialization(guards = "isStringCompatible(klass)")
-    Object doHostString(String value, ObjectKlass klass) {
-        return klass.getMeta().toGuestString(value);
+    @Specialization(guards = "isStringCompatible(meta, klass)")
+    Object doHostString(String value, ObjectKlass klass, @Bind("getMeta()") Meta meta) {
+        return meta.toGuestString(value);
     }
 
     @Specialization(guards = {
@@ -161,7 +161,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "isString(klass)",
+                    "isString(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isString(value)",
                     "!isHostString(value)",
@@ -169,10 +169,11 @@ public abstract class ToEspressoNode extends EspressoNode {
                     // "!isEspressoException(value)", // redundant
     })
     Object doForeignString(Object value, ObjectKlass klass,
-                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
         try {
             String hostString = interop.asString(value);
-            return klass.getMeta().toGuestString(hostString);
+            return meta.toGuestString(hostString);
         } catch (UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Contract violation: if isString returns true, asString must succeed.");
@@ -180,7 +181,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "isForeignException(klass)",
+                    "isForeignException(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.isException(value)",
                     "!isEspressoException(value)",
@@ -189,9 +190,10 @@ public abstract class ToEspressoNode extends EspressoNode {
     })
     Object doForeignException(Object value, ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Cached InitCheck initCheck) {
+                    @Cached InitCheck initCheck,
+                    @Bind("getMeta()") Meta meta) {
         initCheck.execute(klass);
-        return StaticObject.createForeignException(klass.getMeta(), value, interop);
+        return StaticObject.createForeignException(meta, value, interop);
     }
 
     @Specialization(guards = {
@@ -207,7 +209,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = {
-                    "isByteArray(klass)",
+                    "isByteArray(meta, klass)",
                     "!isStaticObject(value)",
                     "interop.hasBufferElements(value)",
                     "!interop.isNull(value)",
@@ -215,7 +217,8 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isEspressoException(value)",
     })
     Object doForeignBuffer(Object value, ArrayKlass klass,
-                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+                    @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Bind("getMeta()") Meta meta) {
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }
 
@@ -224,14 +227,15 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!interop.isNull(value)",
                     "!isHostString(value)",
                     "!isEspressoException(value)",
-                    "!isForeignException(klass)",
+                    "!isForeignException(meta, klass)",
                     "!klass.isAbstract()",
-                    "!isString(klass)"
+                    "!isString(meta, klass)"
     })
     Object doForeignConcreteClassWrapper(Object value, ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile errorProfile,
-                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
+                    @Cached InitCheck initCheck,
+                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         // Skip expensive checks for java.lang.Object.
         if (!klass.isJavaLangObject()) {
             try {
