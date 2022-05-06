@@ -31,6 +31,9 @@ The source code for this phase can be found in [TruffleHostInliningPhase](https:
 
 Truffle host inlining is applied when compiling a method annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
 The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
+If a method that is annotated with  `@BytecodeInterpreterSwitch` calls a method with the same annotation then the method is directly inlined as long as the cost of both methods do not exceed the budget.
+In other words, any such method will be treated by the inlining phase just as if they would be part of the root bytecode switch method.
+This allows bytecode interpreter switches to be composed of multiple methods if needed.
 
 Native image, during closed world analysis, computes all methods that are reachable for runtime compilation.
 Any potentially reachable method from `RootNode.execute(...)` is determined as runtime compilable.

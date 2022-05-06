@@ -29,6 +29,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,7 +42,9 @@ import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
+import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -115,6 +118,7 @@ public class HostInliningTest extends GraalCompilerTest {
         runTest("testExplorationDepth0Fail");
         runTest("testExplorationDepth1Fail");
         runTest("testExplorationDepth2Fail");
+        runTest("testBytecodeSwitchtoBytecodeSwitch");
     }
 
     @SuppressWarnings("try")
@@ -125,7 +129,9 @@ public class HostInliningTest extends GraalCompilerTest {
         if (depth != null) {
             explorationDepth = depth.value();
         }
-        OptionValues options = createHostInliningOptions(NODE_COST_LIMIT, explorationDepth);
+
+        NodeCostLimit nodeCostLimit = method.getAnnotation(NodeCostLimit.class);
+        OptionValues options = createHostInliningOptions(nodeCostLimit != null ? nodeCostLimit.value() : NODE_COST_LIMIT, explorationDepth);
         StructuredGraph graph = parseForCompile(method, options);
         try {
             // call it so all method are initialized
@@ -142,38 +148,45 @@ public class HostInliningTest extends GraalCompilerTest {
             new TruffleHostInliningPhase(createCanonicalizerPhase()).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);
-            Set<String> found = new HashSet<>();
-            for (InvokeNode invoke : graph.getNodes().filter(InvokeNode.class)) {
-                ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();
-                if (notInlined == null) {
-                    Assert.fail("Unexpected node type found in the graph: " + invoke);
-                } else {
-                    for (String expectedMethodName : notInlined.value()) {
-                        if (expectedMethodName.equals(invokedMethod.getName())) {
-                            if (found.contains(invokedMethod.getName())) {
-                                Assert.fail("Found multiple calls to " + invokedMethod.getName() + " but expected one.");
-                            }
-                            found.add(invokedMethod.getName());
-                        }
-                    }
-                    if (!found.contains(invokedMethod.getName())) {
-                        Assert.fail("Unexpected invoke found " + invoke + ". Expected one of " + Arrays.toString(notInlined.value()));
-                    }
-                }
-            }
-            if (notInlined != null) {
-                for (String expectedMethodName : notInlined.value()) {
-                    if (!found.contains(expectedMethodName)) {
-                        Assert.fail("Expected not inlinined method with name " + expectedMethodName + " but not found.");
-                    }
-                }
-            }
-
+            assertInvokesFound(graph, notInlined != null ? notInlined.value() : null);
         } catch (Throwable e) {
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "error graph");
             throw new AssertionError("Error validating graph " + graph, e);
         }
 
+    }
+
+    static void assertInvokesFound(StructuredGraph graph, String[] notInlined) {
+        Set<String> found = new HashSet<>();
+        List<Invoke> invokes = new ArrayList<>();
+        invokes.addAll(graph.getNodes().filter(InvokeNode.class).snapshot());
+        invokes.addAll(graph.getNodes().filter(InvokeWithExceptionNode.class).snapshot());
+
+        for (Invoke invoke : invokes) {
+            ResolvedJavaMethod invokedMethod = invoke.getTargetMethod();
+            if (notInlined == null) {
+                Assert.fail("Unexpected node type found in the graph: " + invoke);
+            } else {
+                for (String expectedMethodName : notInlined) {
+                    if (expectedMethodName.equals(invokedMethod.getName())) {
+                        if (found.contains(invokedMethod.getName())) {
+                            Assert.fail("Found multiple calls to " + invokedMethod.getName() + " but expected one.");
+                        }
+                        found.add(invokedMethod.getName());
+                    }
+                }
+                if (!found.contains(invokedMethod.getName())) {
+                    Assert.fail("Unexpected invoke found " + invoke + ". Expected one of " + Arrays.toString(notInlined));
+                }
+            }
+        }
+        if (notInlined != null) {
+            for (String expectedMethodName : notInlined) {
+                if (!found.contains(expectedMethodName)) {
+                    Assert.fail("Expected not inlinined method with name " + expectedMethodName + " but not found.");
+                }
+            }
+        }
     }
 
     @Override
@@ -198,39 +211,53 @@ public class HostInliningTest extends GraalCompilerTest {
 
     @BytecodeInterpreterSwitch
     private static int testBasicInlining(int value) {
-        nonTrivialMethod(); // inlined
+        trivialMethod(); // inlined
         for (int i = 0; i < value; i++) {
-            nonTrivialMethod(); // inlined
+            trivialMethod(); // inlined
         }
         try {
-            nonTrivialMethod(); // inlined
+            trivialMethod(); // inlined
         } finally {
-            nonTrivialMethod(); // inlined
+            trivialMethod(); // inlined
         }
         try {
-            nonTrivialMethod(); // inlined
+            trivialMethod(); // inlined
         } catch (Throwable t) {
-            nonTrivialMethod(); // inlined
+            trivialMethod(); // inlined
             throw t;
         }
-        nonTrivialMethod(); // inlined
+        trivialMethod(); // inlined
         return value;
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"nonTrivialMethod", "traceTransferToInterpreter"})
+    @ExpectNotInlined({"trivialMethod", "traceTransferToInterpreter"})
     private static int testDominatedDeopt(int value) {
         if (value == 1) {
             CompilerDirectives.transferToInterpreterAndInvalidate(); // inlined
-            nonTrivialMethod(); // cutoff
+            trivialMethod(); // cutoff
         }
         return value;
     }
 
-    static void nonTrivialMethod() {
+    static void trivialMethod() {
     }
 
-    static void otherNonTrivalMethod() {
+    static void otherTrivalMethod() {
+    }
+
+    /*
+     * Non trivial methods must have a cost >= 30.
+     */
+    static int nonTrivialMethod(int v) {
+        int sum = 0;
+        sum += (v / 2 + v / 3 + v + v / 4 + v / 5);
+        sum += (v / 6 + v / 7 + v + v / 8 + v / 9);
+        return sum;
+    }
+
+    static void trivalWithBoundary() {
+        truffleBoundary();
     }
 
     @BytecodeInterpreterSwitch
@@ -247,11 +274,11 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"propagateDeopt", "nonTrivialMethod"})
+    @ExpectNotInlined({"propagateDeopt", "trivialMethod"})
     private static int testPropagateDeopt(int value) {
         if (value == 1) {
             propagateDeopt(); // inlined
-            nonTrivialMethod(); // cutoff
+            trivialMethod(); // cutoff
         }
         return value;
     }
@@ -261,11 +288,11 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined({"nonTrivialMethod", "propagateDeoptLevelTwo"})
+    @ExpectNotInlined({"trivialMethod", "propagateDeoptLevelTwo"})
     private static int testPropagateDeoptTwoLevels(int value) {
         if (value == 1) {
             propagateDeoptLevelTwo(); // inlined
-            nonTrivialMethod(); // cutoff
+            trivialMethod(); // cutoff
         }
         return value;
     }
@@ -356,75 +383,75 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("nonTrivialMethod")
+    @ExpectNotInlined("trivialMethod")
     private static int testInInterpreter1(int value) {
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         if (CompilerDirectives.inInterpreter()) {
-            nonTrivialMethod(); // cutoff
+            trivialMethod(); // cutoff
         }
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         return value;
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("nonTrivialMethod")
+    @ExpectNotInlined("trivialMethod")
     private static int testInInterpreter2(int value) {
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         if (value == 24) {
-            otherNonTrivalMethod(); // inlined
+            otherTrivalMethod(); // inlined
             if (CompilerDirectives.inInterpreter()) {
                 if (value == 24) {
-                    nonTrivialMethod(); // cutoff
+                    trivialMethod(); // cutoff
                 }
             }
-            otherNonTrivalMethod(); // inlined
+            otherTrivalMethod(); // inlined
         }
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         return value;
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("nonTrivialMethod")
+    @ExpectNotInlined("trivialMethod")
     private static int testInInterpreter3(int value) {
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         if (CompilerDirectives.inInterpreter() && value == 24) {
-            nonTrivialMethod(); // cutoff
+            trivialMethod(); // cutoff
         }
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         return value;
     }
 
     @BytecodeInterpreterSwitch
     private static int testInInterpreter4(int value) {
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         if (CompilerDirectives.inInterpreter()) {
             if (CompilerDirectives.inCompiledCode()) {
-                nonTrivialMethod(); // dead
+                trivialMethod(); // dead
             }
         }
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         return value;
     }
 
     @BytecodeInterpreterSwitch
     private static int testInInterpreter5(int value) {
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         if (!CompilerDirectives.inInterpreter()) {
-            nonTrivialMethod(); // dead
+            trivialMethod(); // dead
         }
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         return value;
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("nonTrivialMethod")
+    @ExpectNotInlined("trivialMethod")
     private static int testInInterpreter6(int value) {
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         boolean condition = CompilerDirectives.inInterpreter();
         if (condition) {
-            nonTrivialMethod(); // cutoff
+            trivialMethod(); // cutoff
         }
-        otherNonTrivalMethod(); // inlined
+        otherTrivalMethod(); // inlined
         return value;
     }
 
@@ -467,18 +494,18 @@ public class HostInliningTest extends GraalCompilerTest {
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("nonTrivialMethod")
+    @ExpectNotInlined("trivialMethod")
     static int testInInterpreter10(int value) {
         if (!CompilerDirectives.inInterpreter()) {
             GraalDirectives.deoptimizeAndInvalidate();
             return -1;
         }
-        nonTrivialMethod();
+        trivialMethod();
         return value;
     }
 
     @BytecodeInterpreterSwitch
-    @ExpectNotInlined("nonTrivialMethod")
+    @ExpectNotInlined("trivialMethod")
     static int testInInterpreter11(int value) {
         if (!CompilerDirectives.inInterpreter()) {
             GraalDirectives.deoptimizeAndInvalidate();
@@ -486,7 +513,7 @@ public class HostInliningTest extends GraalCompilerTest {
         }
 
         if (value == 5) {
-            nonTrivialMethod();
+            trivialMethod();
             return 42;
         }
         return value;
@@ -496,7 +523,7 @@ public class HostInliningTest extends GraalCompilerTest {
     static int testInInterpreter12(int value) {
         if (!CompilerDirectives.inInterpreter()) {
             if (value == 5) {
-                nonTrivialMethod();
+                trivialMethod();
             }
             return 42;
         }
@@ -560,6 +587,69 @@ public class HostInliningTest extends GraalCompilerTest {
         return value;
     }
 
+    // bytecode dispatches should inline no matter the budget.
+    @NodeCostLimit(0)
+    @BytecodeInterpreterSwitch
+    @ExpectNotInlined({"nonTrivialMethod", "trivalWithBoundary"})
+    static int testBytecodeSwitchtoBytecodeSwitch(int value) {
+        int result = 0;
+        for (int i = 0; i < 8; i++) {
+            switch (i) {
+                case 0:
+                    result = 4;
+                    break;
+                case 1:
+                    result = 3;
+                    break;
+                case 2:
+                    result = 6;
+                    break;
+                default:
+                    result = bytecodeSwitchtoBytecodeSwitch1(value);
+                    break;
+            }
+        }
+        return result;
+    }
+
+    // methods with bytecode switch are always inlined into bytecode switches
+    @BytecodeInterpreterSwitch
+    static int bytecodeSwitchtoBytecodeSwitch1(int value) {
+        switch (value) {
+            case 3:
+                return 4;
+            case 4:
+                return 1;
+            case 5:
+                return 7;
+            default:
+                return bytecodeSwitchtoBytecodeSwitch3(value);
+        }
+    }
+
+    // methods with bytecode switch are always inlined into bytecode switches,
+    // also transitively.
+    @BytecodeInterpreterSwitch
+    static int bytecodeSwitchtoBytecodeSwitch3(int value) {
+        switch (value) {
+            case 6:
+                return 4;
+            case 7:
+                // not inlined, as not trivial (invokes >= 0)
+                trivalWithBoundary();
+                return 3;
+            case 8:
+                // this is not inlined its not trivial.
+                return nonTrivialMethod(value);
+            default:
+                /*
+                 * this call is still inlined because it is trivial.
+                 */
+                trivialMethod();
+                return -1;
+        }
+    }
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     @interface ExpectNotInlined {
@@ -569,6 +659,12 @@ public class HostInliningTest extends GraalCompilerTest {
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     @interface ExplorationDepth {
+        int value();
+    }
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.METHOD)
+    @interface NodeCostLimit {
         int value();
     }
 
