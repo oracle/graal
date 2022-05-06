@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.StableFieldProvider;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.substitutions.AbstractKnownTruffleTypes;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -37,27 +36,27 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * A stable field provider to support constant folding of {@code TruffleString} objects.
  */
-class TruffleStringStableFieldProvider implements StableFieldProvider {
+public class TruffleStringStableFieldProvider implements StableFieldProvider {
 
     private final MetaAccessProvider metaAccess;
 
     /**
      * Known types and fields related to {@code TruffleString}.
      */
-    static class TruffleStringTypes extends AbstractKnownTruffleTypes {
+    public static class TruffleStringTypes extends AbstractKnownTruffleTypes {
 
         final ResolvedJavaType truffleStringType;
+        final ResolvedJavaType classAbstractTruffleString;
         final ResolvedJavaField truffleStringDataField;
         final ResolvedJavaField truffleStringHashCodeField;
 
-        TruffleStringTypes(MetaAccessProvider metaAccess) {
+        public TruffleStringTypes(MetaAccessProvider metaAccess) {
             super(metaAccess);
             truffleStringType = lookupType("com.oracle.truffle.api.strings.TruffleString");
-            ResolvedJavaType classAbstractTruffleString = lookupType("com.oracle.truffle.api.strings.AbstractTruffleString");
+            classAbstractTruffleString = lookupType("com.oracle.truffle.api.strings.AbstractTruffleString");
             truffleStringDataField = findField(classAbstractTruffleString, "data");
             truffleStringHashCodeField = findField(classAbstractTruffleString, "hashCode");
         }
-
     }
 
     private final ResolvedJavaType byteArrayType;
@@ -69,13 +68,10 @@ class TruffleStringStableFieldProvider implements StableFieldProvider {
     }
 
     /**
-     * Returns access to known {@code TruffleString} types and fields if a Truffle runtime is
-     * available.
-     *
-     * @return {@code null} if there is no active Truffle runtime
+     * Returns access to known {@code TruffleString} types and fields.
      */
     private TruffleStringTypes getTruffleStringTypes() {
-        if (truffleStringTypes == null && TruffleCompilerRuntime.getRuntimeIfAvailable() != null) {
+        if (truffleStringTypes == null) {
             truffleStringTypes = new TruffleStringTypes(metaAccess);
         }
         return truffleStringTypes;
