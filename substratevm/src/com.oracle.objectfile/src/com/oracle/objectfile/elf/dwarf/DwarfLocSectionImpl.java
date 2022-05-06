@@ -530,7 +530,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    // register numbers used by DWARF for AArch64 registers
+    // Register numbers used by DWARF for AArch64 registers.
     public enum DwarfRegEncodingAArch64 {
         R0(0),
         R1(1),
@@ -606,7 +606,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    // map from compiler AArch64 register indices to corresponding dwarf AArch64 register index
+    // Map from compiler AArch64 register numbers to corresponding DWARF AArch64 register encoding.
+    // Register numbers for compiler general purpose and float registers occupy index ranges 0-31
+    // and 34-65 respectively. Table entries provided the corresponding number used by DWARF to
+    // identify the same register. Note that the table includes entries for ZR (32) and SP (33)
+    // even though we should not see those register numbers appearing in location values.
     private static final int[] GRAAL_AARCH64_TO_DWARF_REG_MAP = {
                     DwarfRegEncodingAArch64.R0.encoding,
                     DwarfRegEncodingAArch64.R1.encoding,
@@ -676,7 +680,9 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
                     DwarfRegEncodingAArch64.V31.encoding,
     };
 
-    // register numbers used by DWARF for AMD64 registers
+    // Register numbers used by DWARF for AMD64 registers. Note that the first 8 general
+    // purpose registers appear in a different order to that used by the compiler. For
+    // example the compiler number for RDX is 3 while the DWARF number for RDX is 1.
     public enum DwarfRegEncodingAMD64 {
         RAX(0),
         RDX(1),
@@ -718,7 +724,19 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    // map from compiler X86_64 register indices to corresponding dwarf AMD64 register index
+    // Map from compiler X86_64 register numbers to corresponding DWARF AMD64 register encoding.
+    // Register numbers for general purpose and float registers occupy index ranges 0-15 and 16-31
+    // respectively. Table entries provide the corresponding number used by DWARF to identify the
+    // same register. Note that the first 8 initialization expressions in the array initializer
+    // do not appear in ascending order of the enum tag declarations, That is because of the
+    // disparity
+    // between the compiler's chosen order for these 8 registers and DWARF's chosen order. The order
+    // of
+    // the initialization entries effectively encodes a permutation from the compiler register order
+    // to
+    // the DWARF register order. The access to the encoding field then completes the translation
+    // from
+    // DWARF register to the corresponding DWARF numbering.
     private static final int[] GRAAL_X86_64_TO_DWARF_REG_MAP = {
                     DwarfRegEncodingAMD64.RAX.encoding,
                     DwarfRegEncodingAMD64.RCX.encoding,
