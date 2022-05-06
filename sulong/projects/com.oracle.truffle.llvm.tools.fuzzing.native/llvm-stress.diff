@@ -30,7 +30,7 @@
 diff --git a/llvm-stress.cpp b/llvm-stress.cpp
 --- a/llvm-stress.cpp
 +++ b/llvm-stress.cpp
-@@ -164,8 +164,7 @@ Function *GenEmptyFunction(Module *M) {
+@@ -169,8 +169,7 @@ Function *GenEmptyFunction(Module *M) {
    };
  
    auto *FuncTy = FunctionType::get(Type::getVoidTy(Context), ArgsTy, false);
@@ -40,16 +40,16 @@ diff --git a/llvm-stress.cpp b/llvm-stress.cpp
    auto *Func = Function::Create(FuncTy, GlobalValue::ExternalLinkage, Name, M);
    Func->setCallingConv(CallingConv::C);
    return Func;
-@@ -711,7 +710,7 @@ static void IntroduceControlFlow(Function *F, Random &R) {
+@@ -722,7 +721,7 @@ static void IntroduceControlFlow(Function *F, Random &R) {
        BoolInst.push_back(&Instr);
    }
  
--  std::shuffle(BoolInst.begin(), BoolInst.end(), R);
-+  //std::shuffle(BoolInst.begin(), BoolInst.end(), R);
+-  llvm::shuffle(BoolInst.begin(), BoolInst.end(), R);
++  //llvm::shuffle(BoolInst.begin(), BoolInst.end(), R);
  
    for (auto *Instr : BoolInst) {
      BasicBlock *Curr = Instr->getParent();
-@@ -719,7 +718,8 @@ static void IntroduceControlFlow(Function *F, Random &R) {
+@@ -730,7 +729,8 @@ static void IntroduceControlFlow(Function *F, Random &R) {
      BasicBlock *Next = Curr->splitBasicBlock(Loc, "CF");
      Instr->moveBefore(Curr->getTerminator());
      if (Curr != &F->getEntryBlock()) {
