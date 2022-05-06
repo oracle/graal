@@ -158,7 +158,7 @@ public class VAListInteropTest extends InteropTestBase {
     @Test
     public void testTestMaybeVaPtr() {
         Value res = testMaybeVaPtr.execute(new MaybeVaListCallback());
-        Assert.assertEquals((int) 'A', res.asInt());
+        Assert.assertEquals('A', res.asInt());
     }
 
     public static class StructA {
