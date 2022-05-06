@@ -59,9 +59,10 @@ import com.oracle.svm.core.hub.LayoutEncoding;
  *
  * <p>
  * Hybrid objects have {@link HubType#Instance} but a {@link LayoutEncoding} like an array. This is
- * important to keep in mind because methods such as {@link Class#isArray()} will return
- * {@code false}, while methods such as {@link LayoutEncoding#isArray} will return {@code true} for
- * hybrid objects.
+ * important to keep in mind because methods such as {@link Class#isInstance} will return
+ * {@code true} and {@link Class#isArray()} will return {@code false}, while
+ * {@link LayoutEncoding#isPureInstance} will return {@code false} and
+ * {@link LayoutEncoding#isArrayLike} will return {@code true} and for hybrid objects.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

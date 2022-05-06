@@ -96,12 +96,11 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
 
         DynamicHub hub = KnownIntrinsics.readHub(original);
         int layoutEncoding = hub.getLayoutEncoding();
-        boolean hasArray = LayoutEncoding.isArray(layoutEncoding);
+        boolean isArrayLike = LayoutEncoding.isArrayLike(layoutEncoding);
 
         Object result;
-        if (hasArray) {
-            // Hybrids like pods have an array encoding, but a non-array hub type.
-            if (BranchProbabilityNode.probability(FAST_PATH_PROBABILITY, hub.isArray())) {
+        if (isArrayLike) {
+            if (BranchProbabilityNode.probability(FAST_PATH_PROBABILITY, LayoutEncoding.isArray(layoutEncoding))) {
                 int length = ArrayLengthNode.arrayLength(original);
                 Object newArray = java.lang.reflect.Array.newInstance(DynamicHub.toClass(hub.getComponentHub()), length);
                 if (LayoutEncoding.isObjectArray(layoutEncoding)) {
@@ -153,8 +152,8 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         }
 
         // copy remaining non-object data
-        if (!hasArray) {
-            int objectSize = UnsignedUtils.safeToInt(LayoutEncoding.getInstanceSize(layoutEncoding));
+        if (!isArrayLike) {
+            int objectSize = UnsignedUtils.safeToInt(LayoutEncoding.getPureInstanceSize(layoutEncoding));
             int primitiveDataSize = objectSize - curOffset;
             assert primitiveDataSize >= 0;
             assert curOffset >= 0;
@@ -182,9 +181,9 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             return false;
         }
         if (!type.isArray() && type instanceof SharedType) {
-            // Hybrids are instances with array encoding; cloning them virtually is not implemented.
+            // Hybrids are instances with array-like encoding; cloning virtually is unimplemented.
             int encoding = ((SharedType) type).getHub().getLayoutEncoding();
-            return !LayoutEncoding.isArray(encoding);
+            return !LayoutEncoding.isArrayLike(encoding);
         }
         return true;
     }

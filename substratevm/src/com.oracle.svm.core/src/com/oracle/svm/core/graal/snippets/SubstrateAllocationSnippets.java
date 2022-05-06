@@ -140,7 +140,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter FillContent fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
         // The hub was already verified by a ValidateNewInstanceClassNode.
-        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding());
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
@@ -168,7 +168,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     private static DynamicHub validateNewInstanceClass(DynamicHub hub) {
         if (probability(EXTREMELY_FAST_PATH_PROBABILITY, hub != null)) {
             DynamicHub nonNullHub = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, LayoutEncoding.isInstance(nonNullHub.getLayoutEncoding())) &&
+            if (probability(EXTREMELY_FAST_PATH_PROBABILITY, LayoutEncoding.isPureInstance(nonNullHub.getLayoutEncoding())) &&
                             probability(EXTREMELY_FAST_PATH_PROBABILITY, nonNullHub.isInstantiated())) {
                 return nonNullHub;
             }
@@ -212,7 +212,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     private static void instanceHubErrorStub(DynamicHub hub) throws InstantiationException {
         if (hub == null) {
             throw new NullPointerException("Allocation type is null.");
-        } else if (!LayoutEncoding.isInstance(hub.getLayoutEncoding())) {
+        } else if (!LayoutEncoding.isPureInstance(hub.getLayoutEncoding())) {
             throw new InstantiationException("Cannot allocate instance.");
         } else if (!hub.isInstantiated()) {
             throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
@@ -443,7 +443,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                 DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
 
                 ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
-                long size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();
+                long size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue();
 
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);

@@ -102,7 +102,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                     @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord size = LayoutEncoding.getInstanceSize(layoutEncoding);
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
         return formatObject(objectHeader, size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
     }

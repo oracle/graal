@@ -166,7 +166,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
                         DynamicHub hub = (DynamicHub) headerHub.toObject();
                         log.string("  class: ").string(hub.getName());
                         Object entryAsObject = objectEntry.toObject();
-                        if (LayoutEncoding.isArray(entryAsObject)) {
+                        if (LayoutEncoding.isArrayLike(entryAsObject)) {
                             int length = ArrayLengthNode.arrayLength(entryAsObject);
                             log.string("  length: ").signed(length);
                         }

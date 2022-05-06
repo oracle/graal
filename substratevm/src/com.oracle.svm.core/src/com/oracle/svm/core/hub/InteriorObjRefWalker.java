@@ -66,7 +66,7 @@ public class InteriorObjRefWalker {
         final Pointer objPointer = Word.objectToUntrackedPointer(obj);
 
         // Visit each Object reference in the array part of the Object.
-        if (LayoutEncoding.isObjectArray(layoutEncoding)) {
+        if (LayoutEncoding.isArrayLikeWithObjectElements(layoutEncoding)) {
             int length = ArrayLengthNode.arrayLength(obj);
             int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();

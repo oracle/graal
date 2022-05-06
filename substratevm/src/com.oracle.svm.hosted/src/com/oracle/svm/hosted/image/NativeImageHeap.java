@@ -332,7 +332,7 @@ public final class NativeImageHeap implements ImageHeap {
         assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0);
 
         HostedType filler = metaAccess.lookupJavaType(FillerObject.class);
-        UnsignedWord fillerSize = LayoutEncoding.getInstanceSize(filler.getHub().getLayoutEncoding());
+        UnsignedWord fillerSize = LayoutEncoding.getPureInstanceSize(filler.getHub().getLayoutEncoding());
         assert fillerSize.equal(minInstanceSize);
 
         assert minInstanceSize * 2 >= minArraySize : "otherwise, we might need more than one non-array object";
@@ -421,7 +421,7 @@ public final class NativeImageHeap implements ImageHeap {
                 assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
                 size = hybridLayout.getTotalSize(Array.getLength(hybridArray));
             } else {
-                size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();
+                size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue();
             }
 
             info = addToImageHeap(object, clazz, size, identityHashCode, reason);
@@ -561,7 +561,7 @@ public final class NativeImageHeap implements ImageHeap {
         if (type.isInstanceClass()) {
             HostedInstanceClass clazz = (HostedInstanceClass) type;
             assert !HybridLayout.isHybrid(clazz);
-            return LayoutEncoding.getInstanceSize(clazz.getHub().getLayoutEncoding()).rawValue();
+            return LayoutEncoding.getPureInstanceSize(clazz.getHub().getLayoutEncoding()).rawValue();
         } else if (type.isArray()) {
             return objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object));
         } else {

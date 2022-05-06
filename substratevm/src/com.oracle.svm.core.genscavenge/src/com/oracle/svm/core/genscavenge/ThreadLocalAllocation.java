@@ -294,7 +294,7 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
     private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk) {
-        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding());
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }
