@@ -2,20 +2,17 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.List;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
-import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
-import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -55,9 +52,7 @@ public interface NodeGeneratorPlugs {
 
     boolean createCallWrapInAMethod(FrameState frameState, CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters);
 
-    CodeTree createAssignExecuteChild(
-                    NodeData node, FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType, LocalVariable targetValue,
-                    TypeSystemData typeSystem, Function<FrameState, CodeTree> createExecuteAndSpecialize);
+    CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState);
 
     CodeTree createThrowUnsupportedChild(NodeExecutionData execution);
 
@@ -82,4 +77,5 @@ public interface NodeGeneratorPlugs {
     boolean isStateGuaranteed(boolean stateGuaranteed);
 
     StaticConstants createConstants();
+
 }

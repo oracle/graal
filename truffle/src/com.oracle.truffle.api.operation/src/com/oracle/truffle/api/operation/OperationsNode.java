@@ -10,6 +10,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -188,6 +189,78 @@ public abstract class OperationsNode extends Node implements InstrumentableNode,
             } else {
                 bc[bci + offset] |= bit;
             }
+        }
+    }
+
+    // --------------- boxing elim -----------------------
+
+    protected static Object expectObject(VirtualFrame frame, int slot) {
+        return frame.getObject(slot);
+    }
+
+    protected static byte expectByte(VirtualFrame frame, int slot) throws UnexpectedResultException {
+        Object value;
+        if (frame.isByte(slot)) {
+            return frame.getByte(slot);
+        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Byte) {
+            return (byte) value;
+        } else {
+            throw new UnexpectedResultException(frame.getValue(slot));
+        }
+    }
+
+    protected static boolean expectBoolean(VirtualFrame frame, int slot) throws UnexpectedResultException {
+        Object value;
+        if (frame.isBoolean(slot)) {
+            return frame.getBoolean(slot);
+        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Boolean) {
+            return (boolean) value;
+        } else {
+            throw new UnexpectedResultException(frame.getValue(slot));
+        }
+    }
+
+    protected static int expectInt(VirtualFrame frame, int slot) throws UnexpectedResultException {
+        Object value;
+        if (frame.isInt(slot)) {
+            return frame.getInt(slot);
+        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Integer) {
+            return (int) value;
+        } else {
+            throw new UnexpectedResultException(frame.getValue(slot));
+        }
+    }
+
+    protected static float expectFloat(VirtualFrame frame, int slot) throws UnexpectedResultException {
+        Object value;
+        if (frame.isFloat(slot)) {
+            return frame.getFloat(slot);
+        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Float) {
+            return (float) value;
+        } else {
+            throw new UnexpectedResultException(frame.getValue(slot));
+        }
+    }
+
+    protected static long expectLong(VirtualFrame frame, int slot) throws UnexpectedResultException {
+        Object value;
+        if (frame.isLong(slot)) {
+            return frame.getLong(slot);
+        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Long) {
+            return (long) value;
+        } else {
+            throw new UnexpectedResultException(frame.getValue(slot));
+        }
+    }
+
+    protected static double expectDouble(VirtualFrame frame, int slot) throws UnexpectedResultException {
+        Object value;
+        if (frame.isDouble(slot)) {
+            return frame.getDouble(slot);
+        } else if (frame.isObject(slot) && (value = frame.getObject(slot)) instanceof Double) {
+            return (double) value;
+        } else {
+            throw new UnexpectedResultException(frame.getValue(slot));
         }
     }
 }

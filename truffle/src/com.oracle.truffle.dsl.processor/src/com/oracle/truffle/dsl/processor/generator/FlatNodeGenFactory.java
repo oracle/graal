@@ -2758,14 +2758,6 @@ public class FlatNodeGenFactory {
 
     private CodeTree createAssignExecuteChild(FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
                     LocalVariable targetValue) {
-        if (plugs != null) {
-            CodeTree result = plugs.createAssignExecuteChild(
-                            node, originalFrameState, frameState, parent, execution, forType, targetValue, typeSystem,
-                            fs -> createCallExecuteAndSpecialize(forType, fs));
-            if (result != null) {
-                return result;
-            }
-        }
         CodeTreeBuilder builder = parent.create();
 
         ChildExecutionResult executeChild = createExecuteChild(builder, originalFrameState, frameState, execution, targetValue);
@@ -3190,6 +3182,9 @@ public class FlatNodeGenFactory {
     }
 
     private CodeTree callChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
+        if (plugs != null) {
+            return plugs.createCallChildExecuteMethod(execution, method, frameState);
+        }
         return callMethod(frameState, accessNodeField(execution), method.getMethod(), bindExecuteMethodParameters(execution, method, frameState));
     }
 

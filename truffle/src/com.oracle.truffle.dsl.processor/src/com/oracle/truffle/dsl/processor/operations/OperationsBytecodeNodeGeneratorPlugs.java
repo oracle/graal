@@ -4,7 +4,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import javax.lang.model.element.VariableElement;
@@ -19,10 +18,8 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.StateBitSet;
-import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
-import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
@@ -31,8 +28,6 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
-import com.oracle.truffle.dsl.processor.model.ImplicitCastData;
-import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.model.NodeExecutionData;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
@@ -63,7 +58,6 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private MultiStateBitSet multiState;
     private List<BoxingSplit> boxingSplits;
 
-    private static final boolean DO_BOXING_ELIM_IN_PE = true;
     private OperationsData m;
 
     OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
@@ -458,174 +452,19 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return OperationsData.convertToFrameType(type);
     }
 
-    private CodeTree createGetFrameSlot(FrameKind kind, int offset) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        b.startCall("$frame", "get" + kind.getFrameName());
-        b.string("$sp - " + offset);
-        b.end();
-
-        return b.build();
-    }
-
-    private static final String GET_OBJECT_OPT_NAME = "_getObjectValue";
-
-    private CodeTree createGetObjectOptimized(int offset, boolean first) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        if (first) {
-            b.startParantheses();
-            b.string(GET_OBJECT_OPT_NAME, " = ");
-            b.startCall("$frame", "getObject");
-            b.string("$sp - " + offset);
-            b.end();
-            b.end();
-        } else {
-            b.string(GET_OBJECT_OPT_NAME);
-        }
-
-        return b.build();
-    }
-
-    private static CodeTree createIsFrameSlot(FrameKind kind, int offset) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        b.startCall("$frame", "is" + kind.getFrameName());
-        b.string("$sp - " + offset);
-        b.end();
-
-        return b.build();
-    }
-
-    private CodeTree createCheckBoxedAndUnboxed(LocalVariable targetValue, int offset, FrameKind sourceKind, ImplicitCastData cast, TypeSystemData typeSystem) {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-
-        b.startIf(cast != null);
-        b.tree(createIsFrameSlot(sourceKind, offset)).end().startBlock();
-        {
-            // the unboxed type itself
-            b.startAssign(targetValue.getName());
-            if (cast != null) {
-                b.tree(TypeSystemCodeGenerator.invokeImplicitCast(typeSystem, cast, createGetFrameSlot(sourceKind, offset)));
-            } else {
-                b.tree(createGetFrameSlot(sourceKind, offset));
-            }
-            b.end();
-        }
-        b.end().startElseIf();
-        {
-            b.tree(createIsFrameSlot(FrameKind.OBJECT, offset));
-            b.string(" && ");
-            b.startParantheses().tree(createGetObjectOptimized(offset, cast == null)).string(" instanceof ", sourceKind.getTypeNameBoxed()).end();
-        }
-        b.end().startBlock();
-        {
-            // the unboxed type itself
-            b.startAssign(targetValue.getName());
-            if (cast != null) {
-                CodeTree getObjectTree = CodeTreeBuilder.createBuilder().cast(cast.getSourceType()).tree(createGetObjectOptimized(offset, false)).build();
-                b.tree(TypeSystemCodeGenerator.invokeImplicitCast(typeSystem, cast, getObjectTree));
-            } else {
-                b.cast(targetValue.getTypeMirror());
-                b.tree(createGetObjectOptimized(offset, false));
-            }
-            b.end();
-        }
-        b.end();
-
-        return b.build();
-    }
-
     @Override
-    public CodeTree createAssignExecuteChild(NodeData node, FrameState originalFrameState, FrameState frameState, CodeTreeBuilder parent, NodeExecutionData execution, ExecutableTypeData forType,
-                    LocalVariable targetValue, TypeSystemData typeSystem, Function<FrameState, CodeTree> createExecuteAndSpecialize) {
-        if (isVariadic) {
-            throw new AssertionError("variadic instructions should not have children");
-        }
-
+    public CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
         int childIndex = execution.getIndex();
         int offset = cinstr.numPopStatic() - childIndex;
 
-        CodeTreeBuilder b = parent.create();
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        b.tree(targetValue.createDeclaration(null));
+        FrameKind resultKind = getFrameType(method.getReturnType().getKind());
 
-        if (!DO_BOXING_ELIM_IN_PE) {
-            b.startIf().tree(GeneratorUtils.createInCompiledCode()).end().startBlock();
-            {
-                b.startAssign(targetValue.getName());
-                b.maybeCast(context.getType(Object.class), targetValue.getTypeMirror());
-                b.startCall("$frame", "getValue");
-                b.string("$sp - " + offset);
-                b.end(2);
-            }
-            b.end().startElseBlock();
-        }
-
-        FrameKind targetKind = getFrameType(targetValue.getTypeMirror().getKind());
-
-        if (targetKind == FrameKind.OBJECT) {
-            // the target is always boxed
-            b.startAssign(targetValue.getName()).tree(createGetFrameSlot(targetKind, offset)).end();
-        } else {
-            b.startBlock();
-            {
-                b.declaration("Object", GET_OBJECT_OPT_NAME, "null");
-                // the target is unboxed
-                b.tree(createCheckBoxedAndUnboxed(targetValue, offset, targetKind, null, typeSystem));
-                for (ImplicitCastData castData : typeSystem.lookupByTargetType(targetValue.getTypeMirror())) {
-                    FrameKind sourceFrameKind = getFrameType(castData.getSourceType().getKind());
-                    // one of the types it can be cast from
-                    if (sourceFrameKind == FrameKind.OBJECT) {
-                        // a boxed type, ignore it
-                        continue;
-                    }
-
-                    b.tree(createCheckBoxedAndUnboxed(targetValue, offset, sourceFrameKind, castData, typeSystem));
-                }
-                b.startElseBlock();
-                {
-
-                    b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-
-                    // slow path
-                    FrameState slowPathFrameState = frameState.copy();
-
-                    CodeTreeBuilder accessBuilder = b.create();
-                    accessBuilder.startCall("$frame", "getValue");
-                    accessBuilder.string("$sp - " + offset);
-                    accessBuilder.end();
-
-                    slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(accessBuilder.build()));
-
-                    int curOffset = offset;
-                    boolean found = false;
-
-                    for (NodeExecutionData otherExecution : node.getChildExecutions()) {
-                        if (found) {
-                            LocalVariable childEvaluatedValue = slowPathFrameState.createValue(otherExecution, context.getType(Object.class));
-                            b.declaration("Object", childEvaluatedValue.getName(), "$frame.getValue($sp - " + (--curOffset) + ")");
-                            slowPathFrameState.setValue(otherExecution, childEvaluatedValue);
-                        } else {
-                            // skip forward already evaluated
-                            found = execution == otherExecution;
-                        }
-                    }
-
-                    b.tree(createExecuteAndSpecialize.apply(slowPathFrameState));
-
-                }
-                b.end();
-            }
-            b.end();
-
-        }
-
-        if (!DO_BOXING_ELIM_IN_PE)
-
-        {
-            b.end();
-        }
+        b.startCall("expect" + resultKind.getFrameName());
+        b.string("$frame");
+        b.string("$sp - " + offset);
+        b.end();
 
         return b.build();
     }
