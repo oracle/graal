@@ -146,7 +146,8 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     @Specialization(guards = "isStringCompatible(meta, klass)")
-    Object doHostString(String value, ObjectKlass klass, @Bind("getMeta()") Meta meta) {
+    Object doHostString(String value, @SuppressWarnings("unused") ObjectKlass klass,
+                    @Bind("getMeta()") Meta meta) {
         return meta.toGuestString(value);
     }
 
@@ -168,7 +169,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     // !interop.isNull(value), // redundant
                     // "!isEspressoException(value)", // redundant
     })
-    Object doForeignString(Object value, ObjectKlass klass,
+    Object doForeignString(Object value, @SuppressWarnings("unused") ObjectKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Bind("getMeta()") Meta meta) {
         try {
@@ -218,7 +219,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     })
     Object doForeignBuffer(Object value, ArrayKlass klass,
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                    @Bind("getMeta()") Meta meta) {
+                    @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) {
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }
 
@@ -235,7 +236,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck,
-                    @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                    @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         // Skip expensive checks for java.lang.Object.
         if (!klass.isJavaLangObject()) {
             try {
