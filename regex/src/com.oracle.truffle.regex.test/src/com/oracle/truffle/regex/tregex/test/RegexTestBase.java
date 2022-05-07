@@ -106,7 +106,7 @@ public abstract class RegexTestBase {
     void test(String pattern, String flags, String options, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         Value compiledRegex = compileRegex(pattern, flags, options);
         Value result = execRegex(compiledRegex, input, fromIndex);
-        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+        validateResult("Pattern: /" + pattern + "/" + flags + "\nInput: " + input + "\nfromIndex: " + fromIndex + "\n",result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
     }
 
     void testBytes(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
@@ -124,10 +124,16 @@ public abstract class RegexTestBase {
     }
 
     private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        assertEquals(isMatch, result.getMember("isMatch").asBoolean());
+        validateResult("", result, groupCount, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    private static void validateResult(String message, Value result, int groupCount, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        boolean isMatchResult = result.getMember("isMatch").asBoolean();
+        assertEquals(message + "expected isMatch " + isMatch + " but was " + isMatchResult, isMatch, isMatchResult);
         if (isMatch) {
-            assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
-            for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
+            int expectedGroupCount = captureGroupBoundsAndLastGroup.length / 2;
+            assertEquals(message + "expected groupCount " + expectedGroupCount + " but was " + groupCount, expectedGroupCount, groupCount);
+            for (int i = 0; i < expectedGroupCount; i++) {
                 if (captureGroupBoundsAndLastGroup[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBoundsAndLastGroup[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
                     fail(result, captureGroupBoundsAndLastGroup);
                 }
@@ -165,17 +171,23 @@ public abstract class RegexTestBase {
     }
 
     private static void fail(Value result, int... captureGroupBoundsAndLastGroup) {
-        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBoundsAndLastGroup)).append(", actual: [");
+        StringBuilder sb = new StringBuilder("expected: \n");
+
         for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
-            if (i > 0) {
-                sb.append(", ");
-            }
-            sb.append(result.invokeMember("getStart", i).asInt());
-            sb.append(", ");
-            sb.append(result.invokeMember("getEnd", i).asInt());
+            sb.append("Capture Group ").append(i).append(": Start: ").append(captureGroupBoundsAndLastGroup[i * 2]).append(", End: ").append(captureGroupBoundsAndLastGroup[i * 2 + 1]).append("\n");
         }
-        sb.append(", ");
-        sb.append(result.getMember("lastGroup").asInt());
-        Assert.fail(sb.append("]").toString());
+
+        sb.append("actual: \n");
+
+//        append(Arrays.toString(captureGroupBoundsAndLastGroup)).append(", actual: [");
+        for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
+            sb.append("Capture Group ").append(i).append(": Start: ").append(result.invokeMember("getStart", i).asInt()).append(", End: ").append(result.invokeMember("getEnd", i).asInt()).append("\n");
+        }
+//        sb.append(", ");
+        if((captureGroupBoundsAndLastGroup.length & 1) != 0) {
+            sb.append("Expected lastGroup: ").append(captureGroupBoundsAndLastGroup[captureGroupBoundsAndLastGroup.length - 1]);
+            sb.append("\nActual lastGroup: ").append(result.getMember("lastGroup").asInt());
+        }
+        Assert.fail(sb.toString());
     }
 }

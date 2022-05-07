@@ -61,8 +61,6 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlags;
-import com.oracle.truffle.regex.tregex.parser.flavors.RubyRegexParser;
 import com.oracle.truffle.regex.util.TBitSet;
 
 import java.math.BigInteger;
@@ -70,6 +68,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -212,6 +211,9 @@ public final class JavaRegexParser implements RegexParser {
      */
     private int position;
 
+
+    private Token lastToken;
+
     /**
      * A {@link StringBuilder} hosting the resulting ECMAScript pattern.
      */
@@ -320,7 +322,7 @@ public final class JavaRegexParser implements RegexParser {
 
     private RegexLanguage language;
     private CompilationBuffer compilationBuffer;
-    private RegexASTBuilder astBuilder;
+    private final RegexASTBuilder astBuilder;
 
     /**
      * A reusable buffer for storing the codepoint contents of literal strings. We need to scan the
@@ -335,27 +337,6 @@ public final class JavaRegexParser implements RegexParser {
         // We will also need to set the sticky flag to properly reflect both the sticky flag in the
         // incoming regex flags and the any \G assertions used in the expression.
         return RegexFlags.builder().unicode(true).sticky(sticky).build();
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    public JavaRegexParser(RegexLanguage language, RegexSource inSource, CompilationBuffer compilationBuffer) {
-        this.inSource = inSource;
-        this.inPattern = inSource.getPattern();
-        this.inFlags = inSource.getFlags();
-        this.position = 0;
-        this.outPattern = new StringBuilder(inPattern.length());
-        this.compilationBuffer = compilationBuffer;
-        this.language = language;
-
-        this.groupStack = new ArrayDeque<>();
-        this.namedCaptureGroups = null;
-        this.groupIndex = 0;
-
-        this.globalFlags = new JavaFlags(inFlags);
-        this.flagsStack = new LinkedList<>();
-
-        System.out.println(inPattern);
-        System.out.println(this.inFlags);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -380,7 +361,6 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-//        return new JavaRegexParser(language, source, compilationBuffer);
         return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), compilationBuffer));
     }
 
@@ -462,35 +442,77 @@ public final class JavaRegexParser implements RegexParser {
             Token token = term();
             switch (token.kind) {
                 case caret: // TODO java version of it
-                    // (?:^|(?<=[\n])(?=.))
-                    pushGroup(); // (?:
-                    addCaret(); // ^
-                    nextSequence(); // |
-                    pushLookBehindAssertion(false); // (?<=
-                    addCharClass(CodePointSet.create('\n')); // [\n]
-                    popGroup(); // )
-                    pushLookAheadAssertion(false); // (?=
-                    addCharClass(inSource.getEncoding().getFullSet()); // .
-                    popGroup(); // )
-                    popGroup(); // )
-                    lastTerm = TermCategory.OtherAssertion;
+                    // (?:^|(?<=[\n])(?=.)) only, when multiline flag is set, otherwise just caret
+                    if (globalFlags.isMultiline()) {
+                        pushGroup(); // (?:
+                        addCaret(); // ^
+                        nextSequence(); // |
+                        pushLookBehindAssertion(false); // (?<=
+                        addCharClass(CodePointSet.create('\n')); // [\n]
+                        popGroup(); // )
+                        pushLookAheadAssertion(false); // (?=
+                        addCharClass(inSource.getEncoding().getFullSet()); // .
+                        popGroup(); // )
+                        popGroup(); // )
+                        lastTerm = TermCategory.OtherAssertion;
+                    } else {
+                        addCaret();
+                    }
                     break;
                 case dollar: // TODO java version of it
-                    // (?:$|(?=[\n]))
-                    pushGroup(); // (?:
-                    addDollar(); // $
-                    nextSequence(); // |
-                    pushLookAheadAssertion(false); // (?=
-                    addCharClass(CodePointSet.create('\n')); // [\n]
-                    popGroup(); // )
-                    popGroup(); // )
-                    lastTerm = TermCategory.OtherAssertion;
+                    // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
+                    if (globalFlags.isMultiline()) {
+                        pushGroup(); // (?:
+                        addDollar(); // $
+                        nextSequence(); // |
+                        pushLookAheadAssertion(false); // (?=
+                        addCharClass(CodePointSet.create('\n')); // [\n]
+                        popGroup(); // )
+                        popGroup(); // )
+                        lastTerm = TermCategory.OtherAssertion;
+                    } else {
+                        addDollar();
+                    }
                     break;
                 case wordBoundary:
                 case nonWordBoundary:
                 case backReference:
-                case quantifier:
                     break;
+                case quantifier:
+                    if (astBuilder.getCurTerm() == null) {
+                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                    }
+                    if (globalFlags.isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                    }
+                    if (astBuilder.getCurTerm().isLookBehindAssertion()) {
+                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                    }
+                    astBuilder.addQuantifier((Token.Quantifier) token);
+                    break;
+                case anchor:
+                    Token.Anchor anc = (Token.Anchor) token;
+                    switch (anc.getAncCps().getHi(0)) {
+                        case 'A':
+                            addCaret();
+                            break;
+                        case 'Z':
+                            // (?:$|(?=[\r\n]$))
+                            pushGroup(); // (?:
+                            addDollar(); // $
+                            nextSequence(); // |
+                            pushLookAheadAssertion(false); // (?=
+                            addCharClass(CodePointSet.create('\n', '\n', '\r', '\r')); // [\r\n]
+                            addDollar(); // $
+                            popGroup(); // )
+                            popGroup(); // )
+                            break;
+                        case 'z':
+                            addDollar();
+                            break;
+                        case 'G':
+                            bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
+                    }
                 case alternation:   // TODO already handled in function disjunction()
                     break;
                 case captureGroupBegin:
@@ -516,6 +538,7 @@ public final class JavaRegexParser implements RegexParser {
                     break;
 
             }
+            lastToken = token;
         }
     }
 
@@ -635,6 +658,7 @@ public final class JavaRegexParser implements RegexParser {
 //                        break stringLoop;
 //                    }
 //                    codepointsBuffer.add(fetchEscapedChar());
+                    // TODO: add the right escape-method
                     break;
                 case '[':
                 case '*':
@@ -743,15 +767,13 @@ public final class JavaRegexParser implements RegexParser {
 //                break;
             case '[':
                 return characterClass();
-//                lastTerm = TermCategory.Atom;
-//                break;
             case '*':
             case '+':
             case '?':
             case '{':
-                quantifier(ch);
-                return Token.createQuantifier(0, 0, false);   // TODO dummy Quantifier as it is already handled in quantifier(ch);
-//                break;
+//                quantifier(ch);
+//                return Token.createQuantifier(0, 0, false);   // TODO dummy Quantifier as it is already handled in quantifier(ch);
+                return parseQuantifier(ch);
             case '.':
 //                if (getLocalFlags().isMultiline()) {
 //                    addCharClass(inSource.getEncoding().getFullSet());
@@ -760,39 +782,14 @@ public final class JavaRegexParser implements RegexParser {
 //                }
 //                lastTerm = TermCategory.Atom;
                 return Token.createCharClass(Constants.DOT);    // TODO check for DotAll - flag ?
-//                break;
             case '(':
                 return parens();    // TODO group() does the closing bracket part already, no need for Token.createGroupEnd()
-//                break;
             case ')':
                 return Token.createGroupEnd();
             case '^':
-//                // (?:^|(?<=[\n])(?=.))
-//                pushGroup(); // (?:
-//                addCaret(); // ^
-//                nextSequence(); // |
-//                pushLookBehindAssertion(false); // (?<=
-//                addCharClass(CodePointSet.create('\n')); // [\n]
-//                popGroup(); // )
-//                pushLookAheadAssertion(false); // (?=
-//                addCharClass(inSource.getEncoding().getFullSet()); // .
-//                popGroup(); // )
-//                popGroup(); // )
-//                lastTerm = TermCategory.OtherAssertion;
                 return Token.createCaret();
-//                break;
             case '$':
-//                // (?:$|(?=[\n]))
-//                pushGroup(); // (?:
-//                addDollar(); // $
-//                nextSequence(); // |
-//                pushLookAheadAssertion(false); // (?=
-//                addCharClass(CodePointSet.create('\n')); // [\n]
-//                popGroup(); // )
-//                popGroup(); // )
-//                lastTerm = TermCategory.OtherAssertion;
                 return Token.createDollar();
-//                break;
             default:
 //                string(ch);
                 if (globalFlags.isIgnoreCase()) {
@@ -808,7 +805,6 @@ public final class JavaRegexParser implements RegexParser {
                 } else {
                     return Token.createCharClass(CodePointSet.create(ch), true);
                 }
-//                lastTerm = TermCategory.Atom;
         }
     }
 
@@ -830,33 +826,10 @@ public final class JavaRegexParser implements RegexParser {
         collectCharClass();
 //        buildCharClass();
         return Token.createCharClass(curCharClass.toCodePointSet(), curCharClass.matchesSingleChar());  // TODO maybe change to !invert && curCharClass.matchesSingleChar()
-
-//        System.out.println("Hello");
     }
 
     private void buildCharClass() {
         addCharClass(curCharClass.toCodePointSet());
-//        if (!silent) {
-//            if (getLocalFlags().isIgnoreCase()) {
-//                List<Pair<Integer, int[]>> multiCodePointExpansions = caseClosureMultiCodePoint();
-//                if (multiCodePointExpansions.size() > 0) {
-//                    pushGroup();
-//                    addCharClass(curCharClass.toCodePointSet());
-//                    for (Pair<Integer, int[]> pair : multiCodePointExpansions) {
-//                        nextSequence();
-//                        int from = pair.getLeft();
-//                        int[] to = pair.getRight();
-//                        boolean dropAsciiOnStart = !fullyFoldableCharacters.get().contains(from);
-//                        RubyCaseFolding.caseFoldUnfoldString(to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, astBuilder);
-//                    }
-//                    popGroup();
-//                } else {
-//                    addCharClass(curCharClass.toCodePointSet());
-//                }
-//            } else {
-//                addCharClass(curCharClass.toCodePointSet());
-//            }
-//        }
     }
 
     private void collectCharClass() {
@@ -915,9 +888,7 @@ public final class JavaRegexParser implements RegexParser {
                 ch = consumeChar();
                 switch (ch) {
                     case ']':
-                        if (lowerBound.isPresent()) {
-                            curCharClassAddCodePoint(lowerBound.get());
-                        }
+                        lowerBound.ifPresent(this::curCharClassAddCodePoint);
                         curCharClassAddCodePoint('-');
                         break classBody;
                     case '\\':
@@ -933,9 +904,7 @@ public final class JavaRegexParser implements RegexParser {
                         break;
                     case '&':
                         if (match("&")) {
-                            if (lowerBound.isPresent()) {
-                                curCharClassAddCodePoint(lowerBound.get());
-                            }
+                            lowerBound.ifPresent(this::curCharClassAddCodePoint);
                             curCharClassAddCodePoint('-');
                             charClassIntersection();
                             break classBody;
@@ -949,14 +918,12 @@ public final class JavaRegexParser implements RegexParser {
                 // if the right operand of a range operator was a nested char class, Ruby drops
                 // both the left operand and the range operator
                 if (!wasNestedCharClass) {
-                    if (!lowerBound.isPresent() || !upperBound.isPresent() || upperBound.get() < lowerBound.get()) {
+                    if (lowerBound.isEmpty() || upperBound.isEmpty() || upperBound.get() < lowerBound.get()) {
                         throw syntaxErrorAt(RbErrorMessages.badCharacterRange(inPattern.substring(rangeStart, position)), rangeStart);
                     }
                     curCharClassAddRange(lowerBound.get(), upperBound.get());
                 }
-            } else if (lowerBound.isPresent()) {
-                curCharClassAddCodePoint(lowerBound.get());
-            }
+            } else lowerBound.ifPresent(this::curCharClassAddCodePoint);
         }
 //        if (getLocalFlags().isIgnoreCase()) {
 //            caseClosure();
@@ -1048,10 +1015,7 @@ public final class JavaRegexParser implements RegexParser {
         if (!match(":")) {
             return PosixClassParseResult.TryNestedClass;
         }
-        boolean negated = false;
-        if (match("^")) {
-            negated = true;
-        }
+        boolean negated = match("^");
         String className = getMany(c -> c != '\\' && c != ':' && c != ']');
         if (className.length() > 20) {
             position = restorePosition;
@@ -1116,6 +1080,29 @@ public final class JavaRegexParser implements RegexParser {
 //            index = restoreIndex;
 //        }
         switch (ch) {
+            case 'A':
+            case 'Z':
+            case 'z':
+            case 'G':
+//                addCaret();
+                return Token.createAnchor(CodePointSet.create(ch));
+//            case 'Z':
+////                // (?:$|(?=[\r\n]$))
+////                pushGroup(); // (?:
+////                addDollar(); // $
+////                nextSequence(); // |
+////                pushLookAheadAssertion(false); // (?=
+////                addCharClass(NEWLINE_RETURN); // [\r\n]
+////                addDollar(); // $
+////                popGroup(); // )
+////                popGroup(); // )
+//                return Token.createAnchor("Z", CodePointSet.create('Z'));
+//            case 'z':
+////                addDollar();
+//                return Token.createAnchor("z", CodePointSet.create('z'));
+//            case 'G':
+////                bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
+//                return Token.createAnchor("G", CodePointSet.create('G'));
 //            case 'k':
 //                if (flags.isUnicode() || hasNamedCaptureGroups()) {
 //                    if (atEnd()) {
@@ -1156,41 +1143,6 @@ public final class JavaRegexParser implements RegexParser {
                     return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)));
                 }
         }
-
-
-//        if (assertionEscape()) {
-//            lastTerm = TermCategory.OtherAssertion;
-//        } else if (categoryEscape(false)) {
-//            lastTerm = TermCategory.Atom;
-//        } else if (backreference()) {
-//            lastTerm = TermCategory.Atom;
-//        } else if (namedBackreference()) {
-//            lastTerm = TermCategory.Atom;
-//        } else if (lineBreak()) {
-//            lastTerm = TermCategory.Atom;
-//        } else if (extendedGraphemeCluster()) {
-//            lastTerm = TermCategory.Atom;
-//        } else if (keepCommand()) {
-//            lastTerm = TermCategory.OtherAssertion;
-//        } else if (subexpressionCall()) {
-//            lastTerm = TermCategory.Atom;
-//        } else if (stringEscape()) {
-//            lastTerm = TermCategory.Atom;
-//        } else {
-//            // characterEscape has to come after assertionEscape because of the ambiguity of \b,
-//            // which (outside of character classes) is resolved in the favor of the assertion.
-//            // characterEscape also has to come after backreference because of the ambiguity between
-//            // backreferences and octal character escapes which must be resolved in favor of
-//            // backreferences
-//            Optional<Integer> characterEscape = characterEscape();
-//            if (characterEscape.isPresent()) {
-//                buildChar(characterEscape.get());
-//                lastTerm = TermCategory.Atom;
-//            } else {
-//                string(fetchEscapedChar());
-//                // NB: string sets lastTerm itself
-//            }
-//        }
     }
 
     private static boolean isPredefCharClass(int c) {
@@ -1199,6 +1151,7 @@ public final class JavaRegexParser implements RegexParser {
 
     // Note that the CodePointSet returned by this function has already been
     // case-folded and negated.
+    // TODO combine the other Escape and PredefCharClass Methods!!!
     private CodePointSet parsePredefCharClass(int c) {
         switch (c) {
             case 's':
@@ -1236,10 +1189,8 @@ public final class JavaRegexParser implements RegexParser {
             case 'd':
                 System.out.println(Constants.DIGITS.equals(UnicodeProperties.getProperty("Nd")) ? "True" : "False");
 //                return Constants.DIGITS;
-//            curCharClass.addSet(UnicodeProperties.getProperty("Nd"));
-                CodePointSet cps1 = UnicodeProperties.getProperty("Nd");
-                CodePointSet cps2 = Constants.DIGITS;
-                // TODO which one to use?
+                // TODO which one to use?       check if UNICODE_CHARACTER_CLASS flag is set (above when it is not set, below when it is set)
+                // dummy project, util with /d  und testen falls noch mehr unicodes unterstützt werden als 0 - 9
                 return UnicodeProperties.getProperty("Nd");
             case 'D':
                 return Constants.NON_DIGITS;
@@ -1295,6 +1246,8 @@ public final class JavaRegexParser implements RegexParser {
                 throw CompilerDirectives.shouldNotReachHere();
         }
     }
+
+    // TODO: do something like parseUnicodeEscapeChar() or parseUnicodeCharacterProperty() here too maybe?
 
     private int parseEscapeChar(int c, boolean inCharClass) throws RegexSyntaxException {
         if (inCharClass && c == 'b') {
@@ -1408,7 +1361,7 @@ public final class JavaRegexParser implements RegexParser {
      * <li>an octal escape sequence</li>
      * </ul>
      */
-    private Optional<Integer> characterEscape() {
+    private Optional<Integer> characterEscape() {   // TODO combine the other escape method with this one?
         int beginPos = position;
         switch (curChar()) {
             case 'x': {
@@ -1505,8 +1458,8 @@ public final class JavaRegexParser implements RegexParser {
                 return '\r';
             case 't':
                 return '\t';
-            case 'v':
-                return '\u000b';
+//            case 'v':
+//                return '\u000b';
             case 'c':
             case 'C': {
                 if (atEnd()) {
@@ -1643,47 +1596,6 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-//    private void characterClass() {
-//        string(consumeChar()); //emitSnippet("[");
-//        int start = position - 1;
-//        if (match("^")) {
-//            string(consumeChar());    // TODO find a way of emitting literal strings
-//        }
-//        int firstPosInside = position;
-//
-//        // allows nested Char Classes --> see https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html
-//        // allows classes like [[[abd[de]]&&[d]]] and so on but JavaScript does not
-//        // TODO how to go about that? https://stackoverflow.com/questions/6595477/is-there-a-javascript-regex-equivalent-to-the-intersection-operator-in-java
-//        // similar as Ruby nested classes?
-//        // for now I leave the nested classes be
-//
-//        // besides nested classes it should work the same as ECMA
-//        // so is there a need to make it like PythonFlavorProessor.java Lines 1173 - 1232?
-//        // or can I just pass it on?
-//
-//        // TODO RegexLexer verwenden und schauen ob man Codes von dort nehmen kann, RegexLexer = JSRegexParser und daher ähnlich zu JavaRegexParser
-//
-//        classBody:
-//        while (true) {
-//            if (atEnd()) {
-//                // throw syntaxErrorAtAbs()
-//            }
-//
-//            int ch = consumeChar();
-//            switch (ch) {
-//                case ']':
-//                    if (position != firstPosInside + 1) {
-//                        string(consumeChar()); //emitSnippet("]");
-//                        break classBody;
-//                    }
-//                    break;
-//                default:
-//                    string(consumeChar()); //emitChar(ch);
-//            }
-//
-//        }
-//    }
-
     private void bailOut(String reason) throws UnsupportedRegexException {
         if (!silent) {
             throw new UnsupportedRegexException(reason);
@@ -1802,153 +1714,271 @@ public final class JavaRegexParser implements RegexParser {
 
     // ---- Quantifier
 
-    private static final class Quantifier {
-        public static final int INFINITY = -1;
+    private static final EnumSet<Token.Kind> QUANTIFIER_PREV = EnumSet.of(Token.Kind.charClass, Token.Kind.groupEnd, Token.Kind.backReference);
 
-        public int lower;
-        public int upper;
-        public boolean greedy;
-
-        Quantifier(int lower, int upper, boolean greedy) {
-            this.lower = lower;
-            this.upper = upper;
-            this.greedy = greedy;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder output = new StringBuilder();
-            if (lower == 0 && upper == INFINITY) {
-                output.append("*");
-            } else if (lower == 1 && upper == INFINITY) {
-                output.append("+");
-            } else if (lower == 0 && upper == 1) {
-                output.append("?");
+    private Token parseQuantifier(int c) throws RegexSyntaxException {
+        int min;
+        int max = -1;
+        boolean greedy;
+        if (c == '{') {
+            final int resetIndex = position;
+            BigInteger literalMin = parseDecimal();
+            if (literalMin.compareTo(BigInteger.ZERO) < 0) {
+                return countedRepetitionSyntaxError(resetIndex);
+            }
+            min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
+            if (consumingLookahead(",}")) {
+                greedy = !consumingLookahead("?");
+            } else if (consumingLookahead("}")) {
+                max = min;
+                greedy = !consumingLookahead("?");
             } else {
-                output.append("{");
-                output.append(lower);
-                output.append(",");
-                if (upper != INFINITY) {
-                    output.append(upper);
+                BigInteger literalMax;
+                if (!consumingLookahead(",") || (literalMax = parseDecimal()).compareTo(BigInteger.ZERO) < 0 || !consumingLookahead("}")) {
+                    return countedRepetitionSyntaxError(resetIndex);
                 }
-                output.append("}");
+                max = literalMax.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMax.intValue() : -1;
+                greedy = !consumingLookahead("?");
+                if (literalMin.compareTo(literalMax) > 0) {
+                    throw syntaxErrorHere(ErrorMessages.QUANTIFIER_OUT_OF_ORDER);
+                }
             }
-            if (!greedy) {
-                output.append("?");
+        } else {
+            greedy = !consumingLookahead("?");
+            min = c == '+' ? 1 : 0;
+            if (c == '?') {
+                max = 1;
             }
-            return output.toString();
+        }
+        if (lastToken == null) {
+            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+        }
+        if (lastToken.kind == Token.Kind.quantifier) {
+            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_QUANTIFIER);
+        }
+        if (!QUANTIFIER_PREV.contains(lastToken.kind)) {
+            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+        }
+        return Token.createQuantifier(min, max, greedy);
+    }
+
+    private BigInteger parseDecimal() {
+        if (atEnd() || !isDecDigit(curChar())) {
+            return BigInteger.valueOf(-1);
+        }
+        return parseDecimal(BigInteger.ZERO);
+    }
+
+    private BigInteger parseDecimal(BigInteger firstDigit) {
+        BigInteger ret = firstDigit;
+        while (!atEnd() && isDecDigit(curChar())) {
+            ret = ret.multiply(BigInteger.TEN);
+            ret = ret.add(BigInteger.valueOf(consumeChar() - '0'));
+        }
+        return ret;
+    }
+
+    private Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
+        if (globalFlags.isUnicode()) {
+            throw syntaxErrorHere(ErrorMessages.INCOMPLETE_QUANTIFIER);
+        }
+        position = resetIndex;
+        return charClass('{');
+    }
+
+    private Token charClass(int codePoint) {
+        if (globalFlags.isIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.appendRange(codePoint, codePoint);
+            return charClass(false);
+        } else {
+            return Token.createCharClass(CodePointSet.create(codePoint), true);
         }
     }
 
-    private void quantifier(int ch) {
-        int start = position - 1;
-        Quantifier quantifier = parseQuantifier(ch);
-        if (quantifier != null) {
-            buildQuantifier(quantifier, start);
+    private Token charClass(CodePointSet codePointSet) {
+        if (globalFlags.isIgnoreCase()) {
+            curCharClass.clear();
+            curCharClass.addSet(codePointSet);
+            return charClass(false);
         } else {
-            string(consumeChar());
+            return Token.createCharClass(codePointSet);
         }
     }
+
+    private Token charClass(boolean invert) {
+        boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
+        if (globalFlags.isIgnoreCase()) {
+            CaseFoldTable.CaseFoldingAlgorithm caseFolding = globalFlags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+            CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
+        }
+        CodePointSet cps = curCharClass.toCodePointSet();
+        return Token.createCharClass(invert ? cps.createInverse(inSource.getEncoding()) : cps, wasSingleChar);
+    }
+
+    private boolean consumingLookahead(String match) {  // TODO: position messes things up here somehow, fix it
+        final boolean matches = lookahead(match);
+        if (matches) {
+//            position--;
+            advance(match.length());
+        }
+        return matches;
+    }
+
+    private boolean lookahead(String match) {
+        if (inPattern.length() - position < match.length()) {
+            return false;
+        }
+        return inPattern.regionMatches(position, match, 0, match.length());
+    }
+
+//    private static final class Quantifier {
+//        public static final int INFINITY = -1;
+//
+//        public int lower;
+//        public int upper;
+//        public boolean greedy;
+//
+//        Quantifier(int lower, int upper, boolean greedy) {
+//            this.lower = lower;
+//            this.upper = upper;
+//            this.greedy = greedy;
+//        }
+//
+//        @Override
+//        public String toString() {
+//            StringBuilder output = new StringBuilder();
+//            if (lower == 0 && upper == INFINITY) {
+//                output.append("*");
+//            } else if (lower == 1 && upper == INFINITY) {
+//                output.append("+");
+//            } else if (lower == 0 && upper == 1) {
+//                output.append("?");
+//            } else {
+//                output.append("{");
+//                output.append(lower);
+//                output.append(",");
+//                if (upper != INFINITY) {
+//                    output.append(upper);
+//                }
+//                output.append("}");
+//            }
+//            if (!greedy) {
+//                output.append("?");
+//            }
+//            return output.toString();
+//        }
+//    }
+
+//    private void quantifier(int ch) {
+//        int start = position - 1;
+//        Quantifier quantifier = parseQuantifier(ch);
+//        if (quantifier != null) {
+//            buildQuantifier(quantifier, start);
+//        } else {
+//            string(consumeChar());
+//        }
+//    }
 
     /**
      * Parses a quantifier whose first character is the argument {@code ch}.
      */
-    private Quantifier parseQuantifier(int ch) {
-        int start = position - 1;
-        if (ch == '{') {
-            if (match("}") || match(",}")) {
-                position = start;
-                return null;
-            } else {
-                Optional<BigInteger> lowerBound = Optional.empty();
-                Optional<BigInteger> upperBound = Optional.empty();
-                boolean canBeNonGreedy = true;
-                String lower = getMany(JavaRegexParser::isDecDigit);
-                if (!lower.isEmpty()) {
-                    lowerBound = Optional.of(new BigInteger(lower));
-                }
-                if (match(",")) {
-                    String upper = getMany(JavaRegexParser::isDecDigit);
-                    if (!upper.isEmpty()) {
-                        upperBound = Optional.of(new BigInteger(upper));
-                    }
-                } else {
-                    upperBound = lowerBound;
-                    canBeNonGreedy = false;
-                }
-                if (!match("}")) {
-                    position = start;
-                    return null;
-                }
-                if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
-                    throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
-                }
-                boolean greedy = true;
-                if (canBeNonGreedy && match("?")) {
-                    greedy = false;
-                }
-                return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
-                        upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
-                        greedy);
-            }
-        } else {
-            int lower;
-            int upper;
-            switch (ch) {
-                case '*':
-                    lower = 0;
-                    upper = Quantifier.INFINITY;
-                    break;
-                case '+':
-                    lower = 1;
-                    upper = Quantifier.INFINITY;
-                    break;
-                case '?':
-                    lower = 0;
-                    upper = 1;
-                    break;
-                default:
-                    throw new IllegalStateException("should not reach here");
-            }
-            boolean greedy = true;
-            if (match("?")) {
-                greedy = false;
-            } else if (match("+")) {
-                bailOut("possessive quantifiers not supported");
-            }
-            return new Quantifier(lower, upper, greedy);
-        }
-    }
+//    private Quantifier parseQuantifier(int ch) {
+//        int start = position - 1;
+//        if (ch == '{') {
+//            if (match("}") || match(",}")) {
+//                position = start;
+//                return null;
+//            } else {
+//                Optional<BigInteger> lowerBound = Optional.empty();
+//                Optional<BigInteger> upperBound = Optional.empty();
+//                boolean canBeNonGreedy = true;
+//                String lower = getMany(JavaRegexParser::isDecDigit);
+//                if (!lower.isEmpty()) {
+//                    lowerBound = Optional.of(new BigInteger(lower));
+//                }
+//                if (match(",")) {
+//                    String upper = getMany(JavaRegexParser::isDecDigit);
+//                    if (!upper.isEmpty()) {
+//                        upperBound = Optional.of(new BigInteger(upper));
+//                    }
+//                } else {
+//                    upperBound = lowerBound;
+//                    canBeNonGreedy = false;
+//                }
+//                if (!match("}")) {
+//                    position = start;
+//                    return null;
+//                }
+//                if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
+//                    throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
+//                }
+//                boolean greedy = true;
+//                if (canBeNonGreedy && match("?")) {
+//                    greedy = false;
+//                }
+//                return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
+//                        upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
+//                        greedy);
+//            }
+//        } else {
+//            int lower;
+//            int upper;
+//            switch (ch) {
+//                case '*':
+//                    lower = 0;
+//                    upper = Quantifier.INFINITY;
+//                    break;
+//                case '+':
+//                    lower = 1;
+//                    upper = Quantifier.INFINITY;
+//                    break;
+//                case '?':
+//                    lower = 0;
+//                    upper = 1;
+//                    break;
+//                default:
+//                    throw new IllegalStateException("should not reach here");
+//            }
+//            boolean greedy = true;
+//            if (match("?")) {
+//                greedy = false;
+//            } else if (match("+")) {
+//                bailOut("possessive quantifiers not supported");
+//            }
+//            return new Quantifier(lower, upper, greedy);
+//        }
+//    }
 
-    private void buildQuantifier(Quantifier quantifier, int start) {
-        switch (lastTerm) {
-            case None:
-                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
-            case LookAroundAssertion:
-                // A lookaround assertion might contain capture groups and thus have side effects.
-                // ECMAScript regular expressions do not accept extraneous empty matches. Therefore,
-                // an expression like /(?:(?=(a)))?/ would capture the 'a' in a capture group in
-                // Ruby but it would not do so in ECMAScript. To avoid this, we bail out on
-                // quantifiers on complex assertions (i.e. lookaround assertions), which might
-                // contain capture groups.
-                // NB: This could be made more specific. We could target only lookaround assertions
-                // which contain capture groups and only when the quantifier is actually optional
-                // (min = 0, such as ?, *, or {,x}).
-                bailOut("quantifiers on lookaround assertions not supported");
-                lastTerm = TermCategory.Quantifier;
-                break;
-            case Quantifier:
-            case OtherAssertion:
-                wrapCurTermInGroup();
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                lastTerm = TermCategory.Quantifier;
-                break;
-            case Atom:
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                lastTerm = TermCategory.Quantifier;
-                break;
-        }
-    }
+//    private void buildQuantifier(Quantifier quantifier, int start) {
+//        switch (lastTerm) {
+//            case None:
+//                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
+//            case LookAroundAssertion:
+//                // A lookaround assertion might contain capture groups and thus have side effects.
+//                // ECMAScript regular expressions do not accept extraneous empty matches. Therefore,
+//                // an expression like /(?:(?=(a)))?/ would capture the 'a' in a capture group in
+//                // Ruby but it would not do so in ECMAScript. To avoid this, we bail out on
+//                // quantifiers on complex assertions (i.e. lookaround assertions), which might
+//                // contain capture groups.
+//                // NB: This could be made more specific. We could target only lookaround assertions
+//                // which contain capture groups and only when the quantifier is actually optional
+//                // (min = 0, such as ?, *, or {,x}).
+//                bailOut("quantifiers on lookaround assertions not supported");
+//                lastTerm = TermCategory.Quantifier;
+//                break;
+//            case Quantifier:
+//            case OtherAssertion:
+//                wrapCurTermInGroup();
+//                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
+//                lastTerm = TermCategory.Quantifier;
+//                break;
+//            case Atom:
+//                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
+//                lastTerm = TermCategory.Quantifier;
+//                break;
+//        }
+//    }
 
     /**
      * Indicates whether a quantifier is coming up next.
@@ -1975,10 +2005,7 @@ public final class JavaRegexParser implements RegexParser {
                         if (match(",")) {
                             getMany(JavaRegexParser::isDecDigit);
                         }
-                        if (!match("}")) {
-                            return false;
-                        }
-                        return true;
+                        return match("}");
                     }
                 } finally {
                     position = oldPosition;
@@ -2061,10 +2088,12 @@ public final class JavaRegexParser implements RegexParser {
                 case 'd':
                 case 'u':
 //                case 'U': // TODO help :D, how is it done with the tokens?
+                    // use the InlineFlagToken, check if ":" or ")" and deal with it properly
+                    // or just use flags() and deal with it internally
+                    // --> still needed to be decided
                     flags(ch1);
 //                    registerCaptureGroup();
                     return Token.createGroupEnd();
-//                    break;
 
                 default:
                     throw syntaxErrorAt(RbErrorMessages.unknownExtension(ch1), position - 1);
@@ -2079,25 +2108,6 @@ public final class JavaRegexParser implements RegexParser {
     private boolean containsNamedCaptureGroups() {
         return namedCaptureGroups != null;
     }
-
-    private void registerCaptureGroup() {
-//        if (!identifiedAllGroups) {
-//            nGroups++;
-//        }
-    }
-//
-//    private void registerNamedCaptureGroup(String name) {
-//        if (!identifiedAllGroups) {
-//            if (namedCaptureGroups == null) {
-//                namedCaptureGroups = new HashMap<>();
-//            }
-//            if (namedCaptureGroups.containsKey(name)) {
-//                throw syntaxError(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
-//            }
-//            namedCaptureGroups.put(name, nGroups);
-//        }
-//        registerCaptureGroup();
-//    }
 
     /**
      * Just like {@code #lookahead}, but for lookbehind assertions.
@@ -2166,7 +2176,7 @@ public final class JavaRegexParser implements RegexParser {
             ch = consumeChar();
         }
 
-        // TOD necessary?
+        // TODO necessary?
         if (ch == ')') {
             openEndedLocalFlags(newFlags);
         } else {
