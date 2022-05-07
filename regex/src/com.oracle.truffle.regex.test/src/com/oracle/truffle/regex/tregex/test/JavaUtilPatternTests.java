@@ -316,7 +316,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
             sb.appendCodePoint(i);
             Matcher m = p.matcher(sb.toString());
             if(m.find()) {
-                System.out.println(sb.toString() + " has matched");
+//                System.out.println(sb.toString() + " has matched");
             }
         }
     }
