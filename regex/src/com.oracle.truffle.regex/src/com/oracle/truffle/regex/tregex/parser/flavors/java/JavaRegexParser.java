@@ -1160,38 +1160,19 @@ public final class JavaRegexParser implements RegexParser {
                 } else {
                     return Constants.WHITE_SPACE;
                 }
-
-
-//                curCharClassClear();
-//                curCharClassAddRange(0x000A, 0x000D);
-//                curCharClassAddRange(0x2000, 0x200A);
-//                curCharClassAddCodePoint(0x0020, 0x0085, 0x00A0, 0x1680, 0x180E, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000);
-//
-//
-//                System.out.println(curCharClass.toCodePointSet().equals(Constants.WHITE_SPACE) ? "True" : "False");
-//
-//                return curCharClass.toCodePointSet();
-
             case 'S':
                 if (inSource.getOptions().isU180EWhitespace()) {
                     return Constants.LEGACY_NON_WHITE_SPACE;
                 } else {
                     return Constants.NON_WHITE_SPACE;
                 }
-//                curCharClassClear();
-//                curCharClassAddRange(0x000A, 0x000D);
-//                curCharClassAddRange(0x2000, 0x200A);
-//                curCharClassAddCodePoint(0x0020, 0x0085, 0x00A0, 0x1680, 0x180E, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000);
-//                curCharClass.invert(inSource.getEncoding());
-//
-//                return curCharClass.toCodePointSet();
-
             case 'd':
-                System.out.println(Constants.DIGITS.equals(UnicodeProperties.getProperty("Nd")) ? "True" : "False");
-//                return Constants.DIGITS;
-                // TODO which one to use?       check if UNICODE_CHARACTER_CLASS flag is set (above when it is not set, below when it is set)
-                // dummy project, util with /d  und testen falls noch mehr unicodes unterstützt werden als 0 - 9
-                return UnicodeProperties.getProperty("Nd");
+                if (globalFlags.isUnicodeCharacterClass()) {
+                    return UnicodeProperties.getProperty("Nd");
+                } else {
+                    return Constants.DIGITS;
+                }
+//                return UnicodeProperties.getProperty("Nd");
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
@@ -1243,7 +1224,8 @@ public final class JavaRegexParser implements RegexParser {
                         0x3001, 0x10ffff
                 );
             default:
-                throw CompilerDirectives.shouldNotReachHere();
+                return null;
+//                throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
@@ -1258,9 +1240,9 @@ public final class JavaRegexParser implements RegexParser {
                 if (globalFlags.isUnicode() && !atEnd() && isDecDigit(curChar())) {
                     throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
                 }
-//                if (!globalFlags.isUnicode() && !atEnd() && isOctDigit(curChar())) {
-//                    return parseOctal(0);
-//                }
+                if (!globalFlags.isUnicode() && !atEnd() && isOctDigit(curChar())) {
+                    return parseOctal(0);
+                }
                 return '\0';
             case 't':
                 return '\t';
@@ -1295,10 +1277,10 @@ public final class JavaRegexParser implements RegexParser {
 //                }
 //                advance();
 //                return Character.toUpperCase(controlLetter) - ('A' - 1);
-//            case 'u':
+//            case 'u': // TODO do this
 //                final int unicodeEscape = parseUnicodeEscapeChar();
 //                return unicodeEscape < 0 ? c : unicodeEscape;
-//            case 'x':
+//            case 'x': // TODO do this
 //                final int value = parseHex(2, 2, 0xff, ErrorMessages.INVALID_ESCAPE);
 //                return value < 0 ? c : value;
 //            case '-':
@@ -1342,14 +1324,21 @@ public final class JavaRegexParser implements RegexParser {
      * escape sequence
      */
     private Optional<Integer> classEscape() {
-        if (categoryEscape(true)) {
+//        if (categoryEscape(true)) { // how it used to be
+//            return Optional.empty();
+//        }
+
+        if (parsePredefCharClass(curChar()) != null) {
+            System.out.println("TRUE");
             return Optional.empty();
         }
-        Optional<Integer> characterEscape = characterEscape();
+        // TODO try changing that
+        Optional<Integer> characterEscape = characterEscape(); // Optional.of(parseEscapeChar(curChar(), true));  //characterEscape();
         if (characterEscape.isPresent()) {
             return characterEscape;
         } else {
-            return Optional.of(fetchEscapedChar());
+//            return Optional.of(fetchEscapedChar()); // TODO how it used to be
+            return Optional.of(parseEscapeChar(consumeChar(), true));
         }
     }
 
@@ -1420,179 +1409,6 @@ public final class JavaRegexParser implements RegexParser {
             }
             default:
                 return Optional.empty();
-        }
-    }
-
-    /**
-     * Parses an escaped codepoint. This definition is distinct from {@link #characterEscape()},
-     * because the escape sequences below do not break strings (i.e. they can be found inside
-     * strings and should be case-unfolded along with their surroundings).
-     * <p>
-     * This method assumes that the leading backslash was already consumed.
-     * <p>
-     * This method handles the following escape sequences:
-     * <ul>
-     * <li>\a, \b, \e. \f, \n, \r, \t and \v</li>
-     * <li>\cX, \C-X and \M-X control characters</li>
-     * <li>syntax character escapes like \., \* or \\</li>
-     * <li>any superfluous uses of backslash, e.g. \: or \"</li>
-     * </ul>
-     *
-     * @return the escaped codepoint
-     */
-    private int fetchEscapedChar() {
-        int beginPos = position;
-        int ch = consumeChar();
-        switch (ch) {
-            case 'a':
-                return '\u0007';
-            case 'b':
-                return '\b';
-            case 'e':
-                return '\u001b';
-            case 'f':
-                return '\f';
-            case 'n':
-                return '\n';
-            case 'r':
-                return '\r';
-            case 't':
-                return '\t';
-//            case 'v':
-//                return '\u000b';
-            case 'c':
-            case 'C': {
-                if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_CONTROL, beginPos);
-                }
-                if (ch == 'C' && !match("-")) {
-                    throw syntaxErrorAt(RbErrorMessages.INVALID_CONTROL_CODE_SYNTAX, beginPos);
-                }
-                int c = consumeChar();
-                if (c == '?') {
-                    return 0177;
-                }
-                if (c == '\\') {
-                    c = fetchEscapedChar();
-                }
-                return c & 0x9f;
-            }
-            case 'M': {
-                if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_META, beginPos);
-                }
-                if (!match("-")) {
-                    throw syntaxErrorAt(RbErrorMessages.INVALID_META_CODE_SYNTAX, beginPos);
-                }
-                if (atEnd()) {
-                    throw syntaxErrorAt(RbErrorMessages.END_PATTERN_AT_META, beginPos);
-                }
-                int c = consumeChar();
-                if (c == '\\') {
-                    c = fetchEscapedChar();
-                }
-                return (c & 0xff) | 0x80;
-            }
-            default:
-                return ch;
-        }
-    }
-
-    /**
-     * Tries to parse a character class escape. The following character classes are available:
-     * <ul>
-     * <li>\d (digits)</li>
-     * <li>\D (non-digits)</li>
-     * <li>\d (hexadecimal digits)</li>
-     * <li>\D (not hexadecimal digits)</li>
-     * <li>\s (spaces)</li>
-     * <li>\S (non-spaces)</li>
-     * <li>\w (word characters)</li>
-     * <li>\W (non-word characters)</li>
-     * <li>\p{...} (Unicode properties)</li>
-     * </ul>
-     *
-     * @param inCharClass whether or not this escape was found in a character class
-     * @return {@code true} iff a category escape was found
-     */
-    private boolean categoryEscape(boolean inCharClass) {
-        int restorePosition = position;
-        switch (curChar()) {
-//            case 'd':
-//            case 'D':
-//            case 'h':
-//            case 'H':
-//            case 's':
-//            case 'S':
-//            case 'w':
-//            case 'W':
-//                char className = (char) curChar();
-//                advance();
-//                CodePointSet charSet;
-//                if (getLocalFlags().isAscii() || getLocalFlags().isDefault()) {
-//                    charSet = ASCII_CHAR_CLASSES.get(className);
-//                } else {
-//                    assert getLocalFlags().isUnicode();
-//                    charSet = getUnicodeCharClass('w');
-//                }
-//                if (inCharClass) {
-//                    curCharClass.addSet(charSet);
-//                    if (getLocalFlags().isIgnoreCase() && className != 'w' && className != 'W') {
-//                        fullyFoldableCharacters.addSet(charSet);
-//                    }
-//                } else {
-//                    addCharClass(charSet);
-//                }
-//                return true;
-//            case 'p':
-//            case 'P':
-//                boolean capitalP = curChar() == 'P';
-//                advance();
-//                if (match("{")) {
-//                    String propertySpec = getMany(c -> c != '}');
-//                    if (atEnd()) {
-//                        position = restorePosition;
-//                        return false;
-//                    } else {
-//                        advance();
-//                    }
-//                    boolean caret = propertySpec.startsWith("^");
-//                    boolean negative = (capitalP || caret) && (!capitalP || !caret);
-//                    if (caret) {
-//                        propertySpec = propertySpec.substring(1);
-//                    }
-//                    CodePointSet property;
-//                    if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
-//                        property = getUnicodePosixCharClass(propertySpec.toLowerCase());
-//                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
-//                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
-//                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
-//                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
-//                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
-//                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
-//                    } else {
-//                        bailOut("unsupported Unicode property " + propertySpec);
-//                        // So that the property variable is always written to.
-//                        property = CodePointSet.getEmpty();
-//                    }
-//                    if (negative) {
-//                        property = property.createInverse(Encodings.UTF_32);
-//                    }
-//                    if (inCharClass) {
-//                        curCharClass.addSet(property);
-//                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
-//                            fullyFoldableCharacters.addSet(property);
-//                        }
-//                    } else {
-//                        addCharClass(property);
-//                    }
-//                    return true;
-//                } else {
-//                    position = restorePosition;
-//                    return false;
-//                }
-            default:
-                return false;
         }
     }
 
