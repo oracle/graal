@@ -67,7 +67,7 @@ public class DFAGenBenchmark extends BenchmarkBase {
         public BenchState() {
             context = Context.newBuilder().build();
             context.enter();
-            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, '/' + reURL + '/');
+            tregexPattern = context.eval(TRegexTestDummyLanguage.ID, /*"Flavor=JavaUtilPattern" + */'/' + reURL + '/');
         }
 
         @TearDown
@@ -77,10 +77,10 @@ public class DFAGenBenchmark extends BenchmarkBase {
         }
     }
 
-    @Benchmark
-    public boolean javaPattern(BenchState state) {
-        return state.javaPattern.matcher(state.input).find();
-    }
+//    @Benchmark
+//    public boolean javaPattern(BenchState state) {
+//        return state.javaPattern.matcher(state.input).find();
+//    }
 
     @Benchmark
     public boolean tregex(BenchState state) {

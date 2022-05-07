@@ -52,6 +52,7 @@ import java.util.Objects;
 
 public class Token implements JsonConvertible {
 
+
     public enum Kind {
         caret,
         dollar,
@@ -65,7 +66,9 @@ public class Token implements JsonConvertible {
         lookAheadAssertionBegin,
         lookBehindAssertionBegin,
         groupEnd,
-        charClass
+        charClass,
+        inlineFlag,
+        anchor
     }
 
     private static final Token CARET = new Token(Kind.caret);
@@ -80,6 +83,11 @@ public class Token implements JsonConvertible {
     private static final Token LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(false);
     private static final Token NEGATIVE_LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(true);
     private static final Token GROUP_END = new Token(Kind.groupEnd);
+
+
+    public static Token createAnchor(CodePointSet ancCps) {
+        return new Anchor(ancCps);
+    }
 
     public static Token createCaret() {
         return CARET;
@@ -354,6 +362,26 @@ public class Token implements JsonConvertible {
         }
     }
 
+    public static class InlineFlagToken extends Token {
+
+        private final boolean remove;
+        private final String flags;
+
+        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags) {
+            super(kind);
+            this.remove = remove;
+            this.flags = flags;
+        }
+
+        public boolean isRemove() {
+            return remove;
+        }
+
+        public String getFlags() {
+            return flags;
+        }
+    }
+
     public static final class LookAheadAssertionBegin extends LookAroundAssertionBegin {
 
         public LookAheadAssertionBegin(boolean negated) {
@@ -365,6 +393,19 @@ public class Token implements JsonConvertible {
 
         public LookBehindAssertionBegin(boolean negated) {
             super(Token.Kind.lookBehindAssertionBegin, negated);
+        }
+    }
+
+    public static class Anchor extends Token {
+        private final CodePointSet ancCps;
+
+        protected Anchor(CodePointSet ancCps) {
+            super(Kind.anchor);
+            this.ancCps = ancCps;
+        }
+
+        public CodePointSet getAncCps() {
+            return ancCps;
         }
     }
 }
