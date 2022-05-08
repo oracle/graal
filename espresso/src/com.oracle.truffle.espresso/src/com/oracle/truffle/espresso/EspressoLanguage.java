@@ -310,29 +310,20 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return javaVersion;
     }
 
-    public EspressoOptions.SpecComplianceMode specComplianceMode() {
+    public EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
         return specComplianceMode;
     }
 
-    public EspressoOptions.LivenessAnalysisMode livenessAnalysisMode() {
+    public EspressoOptions.LivenessAnalysisMode getLivenessAnalysisMode() {
         return livenessAnalysisMode;
+    }
+
+    public EspressoOptions.VerifyMode getVerifyMode() {
+        return verifyMode;
     }
 
     public int livenessAnalysisMinimumLocals() {
         return livenessAnalysisMinimumLocals;
-    }
-
-    public boolean needsVerify(StaticObject classLoader) {
-        switch (verifyMode) {
-            case NONE:
-                return false;
-            case REMOTE:
-                return !StaticObject.isNull(classLoader);
-            case ALL:
-                return true;
-            default:
-                return true;
-        }
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

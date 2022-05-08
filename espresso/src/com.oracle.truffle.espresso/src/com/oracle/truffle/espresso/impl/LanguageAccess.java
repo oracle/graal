@@ -28,7 +28,6 @@ import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface LanguageAccess {
     EspressoLanguage getLanguage();
@@ -50,10 +49,6 @@ public interface LanguageAccess {
     }
 
     default EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
-        return getLanguage().specComplianceMode();
-    }
-
-    default boolean needsVerify(StaticObject loader) {
-        return getLanguage().needsVerify(loader);
+        return getLanguage().getSpecComplianceMode();
     }
 }

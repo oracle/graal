@@ -2496,7 +2496,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 getDeclaringKlass().getNameAsString());
             }
 
-            boolean enforceInitializerCheck = (getLanguage().specComplianceMode() == STRICT) ||
+            boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
                             // HotSpot enforces this only for >= Java 9 (v53) .class files.
                             field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
 
