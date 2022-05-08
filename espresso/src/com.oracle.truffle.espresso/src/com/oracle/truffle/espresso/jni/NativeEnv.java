@@ -201,6 +201,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
                 }
             }
         });
+
         return getNativeAccess().createNativeClosure(callback, lookupCallbackSignature());
     }
 
@@ -235,7 +236,6 @@ public abstract class NativeEnv extends ContextAccessImpl {
         TruffleObject nativeClosure = getNativeAccess().createNativeClosure(target, signature);
         nativeClosures.add(nativeClosure);
         return nativeClosure;
-
     }
 
     private static class NativeRootNode extends RootNode {

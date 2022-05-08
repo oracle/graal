@@ -112,6 +112,9 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
      */
     @TruffleBoundary
     void doExit(int code) {
+        if (!context.isInitialized()) {
+            return;
+        }
         getContext().getLogger().fine(() -> {
             StaticObject currentThread = getContext().getCurrentThread();
             String guestName = getThreadAccess().getThreadName(currentThread);

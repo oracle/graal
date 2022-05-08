@@ -35,6 +35,8 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -65,6 +67,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import org.graalvm.options.OptionValues;
 
 // TODO: Update website once Espresso has one
 @Registration(id = EspressoLanguage.ID, //
@@ -156,7 +159,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         initializeOptions(env);
-
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
@@ -175,7 +177,44 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
+        if (context.getEnv().isPreInitialization()) {
+            TruffleContext ctx = context.getEnv().newContextBuilder().initializeCreatorContext(true).build();
+            Object prev = ctx.enter(null);
+            try {
+                EspressoContext inner = EspressoContext.get(null);
+                // TODO (ivan-ristovic)
+                // inner.performPreInitialization();
+                // languageCache = inner.getLanguageCache();
+                // languageCache.logCacheStatus();
+            } finally {
+                ctx.leave(null, prev);
+                ctx.close();
+            }
+        } else {
+            context.initializeContext();
+        }
+    }
+
+    @Override
+    protected boolean patchContext(EspressoContext context, Env newEnv) {
+        if (!optionsAllowPreInitializedContext(context, newEnv)) {
+            return false;
+        }
+
+        // TODO (ivan-ristovic)
         context.initializeContext();
+        return true;
+    }
+
+    private boolean optionsAllowPreInitializedContext(EspressoContext context, Env newEnv) {
+        // TODO (ivan-ristovic)
+        return false;
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        // TODO (ivan-ristovic)
+        return true;
     }
 
     @Override

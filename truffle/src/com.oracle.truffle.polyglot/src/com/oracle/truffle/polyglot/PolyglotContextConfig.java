@@ -131,8 +131,8 @@ final class PolyglotContextConfig {
         final boolean useSystemExit;
 
         private PreinitConfig() {
-            this.nativeAccessAllowed = false;
-            this.createThreadAllowed = false;
+            this.nativeAccessAllowed = true;
+            this.createThreadAllowed = true;
             this.createProcessAllowed = false;
             this.originalOptions = Collections.emptyMap();
             this.polyglotAccess = PolyglotAccess.ALL; // TODO GR-14657 change this to NONE
