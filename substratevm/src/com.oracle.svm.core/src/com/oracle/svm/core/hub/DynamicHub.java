@@ -42,7 +42,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
@@ -383,16 +382,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
                     short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
                     CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
         assert this.vtable == null : "Initialization must be called only once";
-
-        // Sometimes, DynamicHub instance for proxy class is being created before the class is
-        // registered as predefined class
-        // In that case, DynamicProxy instance for proxy class has a class loader, and we have to
-        // change that class loader to
-        // com.oracle.svm.core.hub.DynamicHubCompanion#NO_CLASS_LOADER as we do for every class that
-        // is being registered as predefined
-//        if (Proxy.isProxyClass(hostedJavaClass) && PredefinedClassesSupport.isPredefined(hostedJavaClass)) {
-//            this.companion.setNoClassLoaderForProxyClass();
-//        }
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = NumUtil.safeToShort(monitorOffset);
