@@ -48,6 +48,7 @@ import java.util.function.Supplier;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.Hybrid;
@@ -67,7 +68,14 @@ import jdk.internal.org.objectweb.asm.Type;
 
 /** Support for preparing the creation of {@link Pod} objects during the image build. */
 public interface PodSupport {
+    static boolean isPresent() {
+        return ImageSingletons.contains(PodSupport.class);
+    }
+
     static PodSupport singleton() {
+        if (!ImageSingletons.contains(PodSupport.class)) {
+            throw UserError.abort("Pods are not available in this native image build. Only SerialGC currently supports pods.");
+        }
         return ImageSingletons.lookup(PodSupport.class);
     }
 
@@ -108,6 +116,11 @@ final class PodFeature implements PodSupport, Feature {
     private boolean sealed = false;
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return SubstrateOptions.UseSerialGC.getValue();
+    }
+
+    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PodSupport.class, this);
         ImageSingletons.add(Pod.RuntimeSupport.class, new Pod.RuntimeSupport());
@@ -133,11 +146,7 @@ final class PodFeature implements PodSupport, Feature {
 
     private static void registerPodAsInstantiated(BeforeAnalysisAccess access, PodSpec spec, PodInfo info) {
         access.registerAsInHeap(info.podClass);
-        runtimeSupport().registerPod(spec, info);
-    }
-
-    private static Pod.RuntimeSupport runtimeSupport() {
-        return ImageSingletons.lookup(Pod.RuntimeSupport.class);
+        Pod.RuntimeSupport.singleton().registerPod(spec, info);
     }
 
     @Override

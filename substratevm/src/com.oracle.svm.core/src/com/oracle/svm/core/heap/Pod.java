@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -124,11 +125,14 @@ public final class Pod<T> {
 
         private Builder(Class<?> superClass, Class<?> factoryInterface, Pod<T> superPod) {
             assert superPod == null || (superClass == null && factoryInterface == null);
+            if (!RuntimeSupport.isPresent()) {
+                throw new UnsupportedOperationException("Pods are not available in this native image. Only SerialGC currently supports pods.");
+            }
             if (superPod != null) {
                 this.podInfo = superPod.podInfo;
             } else if (superClass != null && factoryInterface != null) {
                 RuntimeSupport.PodSpec spec = new RuntimeSupport.PodSpec(superClass, factoryInterface);
-                this.podInfo = ImageSingletons.lookup(RuntimeSupport.class).getInfo(spec);
+                this.podInfo = RuntimeSupport.singleton().getInfo(spec);
                 if (this.podInfo == null) {
                     throw new IllegalArgumentException("Pod superclass/factory interface pair was not registered during image build: " + superClass + ", " + factoryInterface);
                 }
@@ -256,6 +260,16 @@ public final class Pod<T> {
     }
 
     public static final class RuntimeSupport {
+        @Fold
+        public static boolean isPresent() {
+            return ImageSingletons.contains(RuntimeSupport.class);
+        }
+
+        @Fold
+        public static RuntimeSupport singleton() {
+            return ImageSingletons.lookup(RuntimeSupport.class);
+        }
+
         @Retention(RetentionPolicy.RUNTIME)
         @Target(ElementType.TYPE)
         public @interface PodFactory {

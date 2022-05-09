@@ -62,6 +62,7 @@ import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
+import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.heap.PodReferenceMapDecoder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -110,7 +111,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
                 }
                 return newArray;
 
-            } else if (hub.isPodInstanceClass()) {
+            } else if (Pod.RuntimeSupport.isPresent() && hub.isPodInstanceClass()) {
                 result = PodReferenceMapDecoder.clone(original, hub, layoutEncoding);
 
             } else {

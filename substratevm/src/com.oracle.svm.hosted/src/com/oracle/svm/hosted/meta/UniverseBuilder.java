@@ -401,6 +401,18 @@ public class UniverseBuilder {
         layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0]);
     }
 
+    private static boolean mustReserveLengthField(HostedInstanceClass clazz) {
+        if (PodSupport.isPresent() && PodSupport.singleton().mustReserveLengthField(clazz.getJavaClass())) {
+            return true;
+        }
+        if (HybridLayout.isHybrid(clazz)) {
+            // A pod ancestor subclassing Object must have already reserved a length field, unless
+            // the pod subclasses Object itself, in which case we would have returned true earlier.
+            return !PodSupport.isPresent() || !PodSupport.singleton().isPodClass(clazz.getJavaClass());
+        }
+        return false;
+    }
+
     private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
@@ -414,10 +426,7 @@ public class UniverseBuilder {
             startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
-        PodSupport pods = PodSupport.singleton();
-        if ((HybridLayout.isHybrid(clazz) && !pods.isPodClass(clazz.getJavaClass())) || pods.mustReserveLengthField(clazz.getJavaClass())) {
-            // Reserve space for the array length field. For pods, the ancestor subclassing Object
-            // must have already reserved this space (unless the pod subclasses Object itself).
+        if (mustReserveLengthField(clazz)) {
             VMError.guarantee(startSize == layout.getArrayLengthOffset());
             int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
