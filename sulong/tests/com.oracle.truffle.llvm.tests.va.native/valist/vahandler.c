@@ -42,6 +42,16 @@ double sumDoublesNative(int count, va_list args) {
     return sum;
 }
 
+double sumDoublesNativeWithPtr(int count, va_list *args) {
+    double sum = 0;
+    for (int i = 0; i < count; ++i) {
+        double num = va_arg(*args, double);
+        printf("arg[%d]=%f\n", i, num);
+        sum += num;
+    }
+    return sum;
+}
+
 double testVariousTypesNative(int count, va_list args) {
     double sum = 0;
     int i = 0;

@@ -33,6 +33,7 @@
 #include <stdarg.h>
 
 typedef double (*vahandler)(int, va_list);
+typedef double (*vahandler_ptr)(int, va_list *);
 
 struct A {
     int x;
@@ -55,6 +56,8 @@ struct Large {
 };
 
 double sumDoublesNative(int count, va_list args);
+
+double sumDoublesNativeWithPtr(int count, va_list *args);
 
 double testVariousTypesNative(int count, va_list args);
 

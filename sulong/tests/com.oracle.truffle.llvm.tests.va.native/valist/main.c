@@ -53,6 +53,14 @@ double callVAHandlers(vahandler vaHandler1, vahandler vaHandler2, int count, ...
     return res1 + res2;
 }
 
+double callVAHandlerWithPtr(vahandler_ptr vaHandler, int count, ...) {
+    va_list args;
+    va_start(args, count);
+    double res = (*vaHandler)(count, &args);
+    va_end(args);
+    return res;
+}
+
 double callVAHandlerWithGlobalVAList(vahandler vaHandler, int count, ...) {
     va_start(globalVAList, count);
     double res = (*vaHandler)(count, globalVAList);
@@ -84,6 +92,16 @@ double sumDoublesLLVM(int count, va_list args) {
     double sum = 0;
     for (int i = 0; i < count; ++i) {
         double num = va_arg(args, double);
+        printf("arg[%d]=%f\n", i, num);
+        sum += num;
+    }
+    return sum;
+}
+
+double sumDoublesLLVMWithPtr(int count, va_list *args) {
+    double sum = 0;
+    for (int i = 0; i < count; ++i) {
+        double num = va_arg(*args, double);
         printf("arg[%d]=%f\n", i, num);
         sum += num;
     }
@@ -223,9 +241,14 @@ int main(void) {
     printf("Sum of doubles (LLVM)           : %f\n", callVAHandler(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Sum of ints (LLVM)              : %f\n", callVAHandler(sumIntsLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
 
+    printf("Sum of doubles with ptr (LLVM)  : %f\n",
+           callVAHandlerWithPtr(sumDoublesLLVMWithPtr, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+
 #ifndef NO_NATIVE_TESTS
     printf("Sum of doubles (native)         : %f\n",
            callVAHandler(sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+    printf("Sum of doubles with ptr (native): %f\n",
+           callVAHandlerWithPtr(sumDoublesNativeWithPtr, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
     printf("Sum of doubles (LLVM, native)   : %f\n",
            callVAHandlers(sumDoublesLLVM, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
     printf("Sum of doubles (native, LLVM)   : %f\n",
