@@ -101,7 +101,6 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private boolean wasVAListPointer = false;
     protected final LLVMPointer address;
 
-    private long nativeOffset = 0;
     private LLVMManagedPointer vaList;
 
     public static LLVMMaybeVaPointer createWithAlloca(LLVMPointer address, LLVMVAListNode allocaNode) {
@@ -231,29 +230,31 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         static Object shiftNative(LLVMMaybeVaPointer self, Type type, @SuppressWarnings("unused") Frame frame,
                         @Cached LLVMPointerOffsetLoadNode baseAddrLoadNode,
                         @Cached.Exclusive @Cached LLVMPointerOffsetLoadNode pointerOffsetLoadNode,
+                        @Cached.Exclusive @Cached LLVMPointerOffsetStoreNode pointerOffsetStoreNode,
                         @Cached LLVMI32OffsetLoadNode i32OffsetLoadNode,
                         @Cached LLVMI64OffsetLoadNode i64OffsetLoadNode,
                         @Cached LLVMDoubleOffsetLoadNode doubleOffsetLoadNode) {
             Object ret = null;
             LLVMPointer baseAddr = baseAddrLoadNode.executeWithTarget(self.address, 0);
             if (PrimitiveType.DOUBLE == type) {
-                ret = doubleOffsetLoadNode.executeWithTarget(baseAddr, self.nativeOffset);
+                ret = doubleOffsetLoadNode.executeWithTarget(baseAddr, 0);
             } else if (PrimitiveType.I32 == type) {
-                ret = i32OffsetLoadNode.executeWithTarget(baseAddr, self.nativeOffset);
+                ret = i32OffsetLoadNode.executeWithTarget(baseAddr, 0);
             } else if (PrimitiveType.I64 == type) {
                 try {
-                    ret = i64OffsetLoadNode.executeWithTarget(baseAddr, self.nativeOffset);
+                    ret = i64OffsetLoadNode.executeWithTarget(baseAddr, 0);
                 } catch (UnexpectedResultException e) {
                     CompilerDirectives.shouldNotReachHere();
                 }
             } else if (type instanceof PointerType) {
-                ret = pointerOffsetLoadNode.executeWithTarget(baseAddr, self.nativeOffset);
+                ret = pointerOffsetLoadNode.executeWithTarget(baseAddr, 0);
             } else {
                 CompilerDirectives.transferToInterpreter();
                 CompilerDirectives.shouldNotReachHere("MaybeVaPointer.shift: not implemented: " + type);
             }
 
-            self.nativeOffset += Long.BYTES;
+            pointerOffsetStoreNode.executeWithTarget(self.address, 0, baseAddr.increment(Long.BYTES));
+
             return ret;
         }
 
