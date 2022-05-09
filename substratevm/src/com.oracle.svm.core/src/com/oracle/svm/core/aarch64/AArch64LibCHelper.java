@@ -43,6 +43,7 @@ public class AArch64LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native void determineCPUFeatures(CPUFeatures features);
 
+    // Checkstyle: stop
     @CStruct
     @CContext(AArch64LibCHelperDirectives.class)
     public interface CPUFeatures extends PointerBase {
@@ -104,7 +105,7 @@ public class AArch64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fSTXRPREFETCH();
+        boolean fSTXR_PREFETCH();
 
         @AllowNarrowingCast
         @CField
@@ -112,6 +113,7 @@ public class AArch64LibCHelper {
 
         @AllowNarrowingCast
         @CField
-        boolean fDMBATOMICS();
+        boolean fDMB_ATOMICS();
     }
+    // Checkstyle: resume
 }

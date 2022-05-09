@@ -587,9 +587,9 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fSHA512 = 0;
   features->fSVE = 0;
   features->fSVE2 = 0;
-  features->fSTXRPREFETCH = 0;
+  features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
-  features->fDMBATOMICS = 0;
+  features->fDMB_ATOMICS = 0;
 }
 
 /*
@@ -673,9 +673,9 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fSHA512 = !!(auxv & HWCAP_SHA512);
   features->fSVE = !!(auxv & HWCAP_SVE);
   features->fSVE2 = !!(auxv2 & HWCAP2_SVE2);
-  features->fSTXRPREFETCH = 0;
+  features->fSTXR_PREFETCH = 0;
   features->fA53MAC = 0;
-  features->fDMBATOMICS = 0;
+  features->fDMB_ATOMICS = 0;
 
   //checking for features signaled in another way
 
@@ -714,9 +714,9 @@ void determineCPUFeatures(CPUFeatures* features) {
   if (_cpu == CPU_ARM && (_model == 0xd03 || _model2 == 0xd03))
     features->fA53MAC = 1;
   if (_cpu == CPU_ARM && (_model == 0xd07 || _model2 == 0xd07))
-    features->fSTXRPREFETCH = 1;
+    features->fSTXR_PREFETCH = 1;
   if (_cpu == CPU_CAVIUM && _model == 0xA1 && _variant == 0)
-    features->fDMBATOMICS = 1;
+    features->fDMB_ATOMICS = 1;
 }
 #endif
 

@@ -103,11 +103,11 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
             case "SVE2":
                 return cpuFeatures.fSVE2();
             case "STXR_PREFETCH":
-                return cpuFeatures.fSTXRPREFETCH();
+                return cpuFeatures.fSTXR_PREFETCH();
             case "A53MAC":
                 return cpuFeatures.fA53MAC();
             case "DMB_ATOMICS":
-                return cpuFeatures.fDMBATOMICS();
+                return cpuFeatures.fDMB_ATOMICS();
             default:
                 unknownFeatures.add(featureName);
                 return false;
