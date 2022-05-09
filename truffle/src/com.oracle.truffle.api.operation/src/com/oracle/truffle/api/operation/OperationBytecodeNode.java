@@ -1,21 +1,17 @@
 package com.oracle.truffle.api.operation;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
-import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
-public abstract class OperationsNode extends Node implements InstrumentableNode, BytecodeOSRNode {
+public abstract class OperationBytecodeNode extends Node implements BytecodeOSRNode {
 
     // The order of these must be the same as FrameKind in processor
     public static final int FRAME_TYPE_OBJECT = 0;
@@ -26,153 +22,63 @@ public abstract class OperationsNode extends Node implements InstrumentableNode,
     public static final int FRAME_TYPE_LONG = 5;
     public static final int FRAME_TYPE_DOUBLE = 6;
 
-    protected static final int VALUES_OFFSET = 0;
-
-    private static final OperationsBytesSupport LE_BYTES = OperationsBytesSupport.littleEndian();
-
-    private static FrameDescriptor createFrameDescriptor(int maxStack, int numLocals) {
-        FrameDescriptor.Builder b = FrameDescriptor.newBuilder(VALUES_OFFSET + maxStack + numLocals);
-
-        b.addSlots(numLocals + maxStack, FrameSlotKind.Illegal);
-
-        return b.build();
-    }
+    private static final ByteArraySupport LE_BYTES = ByteArraySupport.littleEndian();
 
     protected final int maxStack;
     protected final int maxLocals;
 
-    protected final Object parseContext;
-    protected int[][] sourceInfo;
-    protected Source[] sources;
-    protected final int buildOrder;
+    @CompilationFinal(dimensions = 1) protected final byte[] bc;
+    @CompilationFinal(dimensions = 1) protected final Object[] consts;
+    @Children protected final Node[] children;
+    @CompilationFinal(dimensions = 1) protected final BuilderExceptionHandler[] handlers;
+    @CompilationFinal(dimensions = 1) protected final ConditionProfile[] conditionProfiles;
 
-    protected OperationsNode(
-                    Object parseContext,
-                    int[][] sourceInfo,
-                    Source[] sources,
-                    int buildOrder,
-                    int maxStack,
-                    int maxLocals) {
-        this.buildOrder = buildOrder;
-        this.parseContext = parseContext;
-        this.sourceInfo = sourceInfo;
-        this.sources = sources;
-        this.maxLocals = maxLocals;
+    protected static final int VALUES_OFFSET = 0;
+
+    protected OperationBytecodeNode(int maxStack, int maxLocals, byte[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers, ConditionProfile[] conditionProfiles) {
         this.maxStack = maxStack;
+        this.maxLocals = maxLocals;
+        this.bc = bc;
+        this.consts = consts;
+        this.children = children;
+        this.handlers = handlers;
+        this.conditionProfiles = conditionProfiles;
     }
 
-    public FrameDescriptor createFrameDescriptor() {
-        return createFrameDescriptor(maxStack, maxLocals);
+    FrameDescriptor createFrameDescriptor() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        builder.addSlots(maxLocals, FrameSlotKind.Illegal);
+        builder.addSlots(maxStack, FrameSlotKind.Illegal);
+        return builder.build();
     }
 
-    public OperationsRootNode createRootNode(TruffleLanguage<?> language, String name) {
-        return new OperationsRootNode(language, this, name, false);
-    }
-
-    public OperationsRootNode createInternalRootNode(TruffleLanguage<?> language, String name) {
-        return new OperationsRootNode(language, this, name, true);
-    }
-
-    public final Object execute(VirtualFrame frame) {
+    Object execute(VirtualFrame frame) {
         return continueAt(frame, 0, maxLocals + VALUES_OFFSET);
     }
 
-    protected abstract Object continueAt(VirtualFrame frame, int index, int startSp);
+    protected abstract Object continueAt(VirtualFrame frame, int bci, int sp);
 
-    public abstract String dump();
-
-    protected final void copyReparsedInfo(OperationsNode other) {
-        this.sourceInfo = other.sourceInfo;
-        this.sources = other.sources;
-    }
-
-    protected final SourceSection getSourceSectionImpl() {
-        if (sourceInfo[0].length == 0) {
-            return null;
-        }
-
-        for (int i = 0; i < sourceInfo.length; i++) {
-            if (sourceInfo[1][i] >= 0) {
-                return sources[sourceInfo[3][i]].createSection(sourceInfo[1][i], sourceInfo[2][i]);
-            }
-        }
-
-        return null;
-    }
-
-    protected abstract SourceSection getSourceSectionAtBci(int bci);
-
-    protected final SourceSection getSourceSectionAtBciImpl(int bci) {
-        if (sourceInfo[0].length == 0) {
-            return null;
-        }
-
-        int i;
-        for (i = 0; i < sourceInfo[0].length; i++) {
-            if (sourceInfo[0][i] > bci) {
-                break;
-            }
-        }
-
-        if (i == 0) {
-            return null;
-        } else {
-            return sources[sourceInfo[3][i - 1]].createSection(sourceInfo[1][i - 1], sourceInfo[2][i - 1]);
-        }
-    }
-
-    public final Node createLocationNode(final int bci) {
-        return new Node() {
-            @Override
-            public SourceSection getSourceSection() {
-                return getSourceSectionAtBci(bci);
-            }
-
-            @Override
-            public SourceSection getEncapsulatingSourceSection() {
-                return getSourceSectionAtBci(bci);
-            }
-        };
-    }
-
-    @Override
-    public boolean isInstrumentable() {
+    boolean isInstrumented() {
         return false;
-    }
-
-    public WrapperNode createWrapper(ProbeNode probe) {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    protected static <T> T interlog(T arg, String reason) {
-        if (CompilerDirectives.inInterpreter()) {
-            System.out.printf("  >> %s %s%n", reason, arg);
-        }
-
-        return arg;
     }
 
     // OSR
 
-    @Override
+    @CompilationFinal private Object osrMetadata;
+
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
-        // we'll need a container object if we ever need to pass more than just the sp
-        // TODO needs workaround for arguments getting null on OSR
         return continueAt(osrFrame, target, (int) interpreterState);
     }
 
-    @CompilationFinal private Object osrMetadata;
+    public Object getOSRMetadata() {
+        return osrMetadata;
+    }
 
-    @Override
     public void setOSRMetadata(Object osrMetadata) {
         this.osrMetadata = osrMetadata;
     }
 
-    @Override
-    public Object getOSRMetadata() {
-        return osrMetadata;
-    }
+    // boxing elim
 
     protected static void setResultBoxedImpl(byte[] bc, int bci, int targetType, short[] descriptor) {
         int op = LE_BYTES.getShort(bc, bci) & 0xffff;
@@ -192,8 +98,6 @@ public abstract class OperationsNode extends Node implements InstrumentableNode,
             }
         }
     }
-
-    // --------------- boxing elim -----------------------
 
     protected static Object expectObject(VirtualFrame frame, int slot) {
         if (frame.isObject(slot)) {

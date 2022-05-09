@@ -8,7 +8,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
@@ -16,6 +15,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
+import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.test.example.BoxingOperations.ObjectProducer;
 
 public class BoxingOperationsTest {
@@ -24,7 +24,10 @@ public class BoxingOperationsTest {
     // than it needs to
 
     private static RootCallTarget parse(Consumer<BoxingOperationsBuilder> parser) {
-        return BoxingOperationsBuilder.parse(null, parser)[0].createRootNode(null, "test").getCallTarget();
+        return BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser) //
+                        .getNodes().get(0) //
+                        .createRootNode(null, "test") //
+                        .getCallTarget();
     }
 
     @Test
@@ -36,7 +39,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -53,7 +56,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -70,7 +73,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -87,7 +90,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -106,7 +109,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -135,7 +138,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -164,7 +167,7 @@ public class BoxingOperationsTest {
             b.endLongOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -193,7 +196,7 @@ public class BoxingOperationsTest {
             b.endStringOperator();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         for (int i = 0; i < 3; i++) {
@@ -264,7 +267,7 @@ class BoxingTypeSystem {
 
 @GenerateOperations(boxingEliminationTypes = {boolean.class, int.class, long.class})
 @SuppressWarnings("unused")
-class BoxingOperations {
+final class BoxingOperations {
     public static void parse(BoxingLanguage lang, Consumer<BoxingOperationsBuilder> data, BoxingOperationsBuilder builder) {
         data.accept(builder);
     }

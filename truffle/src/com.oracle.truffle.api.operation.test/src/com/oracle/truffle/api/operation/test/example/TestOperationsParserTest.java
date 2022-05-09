@@ -1,38 +1,30 @@
 package com.oracle.truffle.api.operation.test.example;
 
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationsNode;
-import com.oracle.truffle.api.operation.OperationsRootNode;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.operation.OperationNode;
 
 public class TestOperationsParserTest {
 
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
-        OperationsNode operationsNode = parseNode(builder);
-        System.out.println(operationsNode.dump());
+        OperationNode operationsNode = parseNode(builder);
+        System.out.println(operationsNode);
         return operationsNode.createRootNode(null, "TestFunction").getCallTarget();
     }
 
-    private static OperationsNode parseNode(Consumer<TestOperationsBuilder> builder) {
-        return TestOperationsBuilder.parse(null, builder)[0];
+    private static OperationNode parseNode(Consumer<TestOperationsBuilder> builder) {
+        return TestOperationsBuilder.create(OperationConfig.DEFAULT, builder).getNodes().get(0);
     }
 
     @Test
@@ -45,7 +37,7 @@ public class TestOperationsParserTest {
             b.endAddOperation();
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         Assert.assertEquals(42L, root.call(20L, 22L));
@@ -73,7 +65,7 @@ public class TestOperationsParserTest {
 
             b.endIfThenElse();
 
-            b.build();
+            b.publish();
         });
 
         Assert.assertEquals(42L, root.call(42L, 13L));
@@ -102,7 +94,7 @@ public class TestOperationsParserTest {
             b.emitLoadArgument(0);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         Assert.assertEquals(0L, root.call(-2L));
@@ -114,17 +106,6 @@ public class TestOperationsParserTest {
 
     @Test
     public void testSumLoop() {
-        //@formatter:off
-        String src = "(do"
-                   + "  (setlocal 0 0)"
-                   + "  (setlocal 1 0)"
-                   + "  (while"
-                   + "    (less (local 0) (arg 0))"
-                   + "    (do"
-                   + "      (inclocal 1 (local 0))"
-                   + "      (inclocal 0 1)))"
-                   + "  (return (local 1)))";
-        //@formatter:on
 
         // i = 0; j = 0;
         // while ( i < arg0 ) { j = j + i; i = i + 1; }
@@ -177,6 +158,7 @@ public class TestOperationsParserTest {
             b.emitLoadLocal(locJ);
             b.endReturn();
 
+            b.publish();
         });
 
         Assert.assertEquals(45L, root.call(10L));
@@ -207,7 +189,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(0L);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         Assert.assertEquals(1L, root.call(-1L));
@@ -262,7 +244,7 @@ public class TestOperationsParserTest {
             b.emitLoadLocal(local1);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         Assert.assertEquals(4950L, root.call());
@@ -311,7 +293,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(0L);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 2L);
@@ -353,7 +335,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(0L);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(true, root, 1L, 3L);
@@ -389,7 +371,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(3L);
             b.endAppenderOperation();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 2L, 1L);
@@ -445,7 +427,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(0L);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 3L, 5L);
@@ -504,7 +486,7 @@ public class TestOperationsParserTest {
             b.emitConstObject(0L);
             b.endReturn();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 2L, 4L);
@@ -564,7 +546,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTry();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 3L, 5L);
@@ -621,7 +603,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTry();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 3L, 4L);
@@ -687,7 +669,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTry();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 3L, 5L);
@@ -742,7 +724,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTry();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(true, root, 1L, 3L, 4L);
@@ -804,7 +786,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTry();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(true, root, 1L, 3L, 5L);
@@ -844,7 +826,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTryNoExcept();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(false, root, 1L, 3L);
@@ -882,7 +864,7 @@ public class TestOperationsParserTest {
             }
             b.endFinallyTryNoExcept();
 
-            b.build();
+            b.publish();
         });
 
         testOrdering(true, root, 1L);

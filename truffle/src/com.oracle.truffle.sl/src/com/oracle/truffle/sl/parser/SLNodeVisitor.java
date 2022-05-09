@@ -2,6 +2,7 @@ package com.oracle.truffle.sl.parser;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +14,7 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
@@ -76,7 +78,7 @@ import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.While_stateme
 
 public class SLNodeVisitor extends SLBaseVisitor {
 
-    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, SLSource source) {
+    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
         return parseSLImpl(source, new SLNodeVisitor(language, source));
     }
 
@@ -87,8 +89,8 @@ public class SLNodeVisitor extends SLBaseVisitor {
     private SLExpressionVisitor EXPRESSION_VISITOR = new SLExpressionVisitor();
     private int loopDepth = 0;
 
-    protected SLNodeVisitor(SLLanguage language, SLSource source) {
-        super(language, source);
+    protected SLNodeVisitor(SLLanguage language, Source source) {
+        super(language, source, new HashMap<>());
     }
 
     @Override
@@ -120,7 +122,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         scope = scope.parent;
         methodNodes.add(bodyNode);
         final int bodyEndPos = bodyNode.getSourceEndIndex();
-        final SourceSection functionSrc = source.getSource().createSection(functionStartPos, bodyEndPos - functionStartPos);
+        final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
         final SLStatementNode methodBlock = new SLBlockNode(methodNodes.toArray(new SLStatementNode[methodNodes.size()]));
         methodBlock.setSourceSection(functionStartPos, bodyEndPos - functionStartPos);
 

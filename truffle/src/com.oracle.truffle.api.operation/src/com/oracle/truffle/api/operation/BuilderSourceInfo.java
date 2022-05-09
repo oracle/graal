@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Stack;
 
+import com.oracle.truffle.api.operation.OperationNode.SourceInfo;
 import com.oracle.truffle.api.source.Source;
 
 public class BuilderSourceInfo {
@@ -94,7 +95,7 @@ public class BuilderSourceInfo {
         return sourceList.toArray(new Source[sourceList.size()]);
     }
 
-    public int[][] build() {
+    public SourceInfo build() {
         if (!sourceStack.isEmpty()) {
             throw new IllegalStateException("not all sources ended");
         }
@@ -138,11 +139,10 @@ public class BuilderSourceInfo {
             lastBci = curBci;
         }
 
-        return new int[][]{
+        return new SourceInfo(
                         Arrays.copyOf(bciArray, index),
-                        Arrays.copyOf(startArray, index),
-                        Arrays.copyOf(lengthArray, index),
                         Arrays.copyOf(sourceIndexArray, index),
-        };
+                        Arrays.copyOf(startArray, index),
+                        Arrays.copyOf(lengthArray, index));
     }
 }

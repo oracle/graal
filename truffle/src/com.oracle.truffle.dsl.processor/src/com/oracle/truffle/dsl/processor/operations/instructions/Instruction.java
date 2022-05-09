@@ -362,7 +362,7 @@ public abstract class Instruction {
         }
 
         if (n < inputs.length && inputs[n] == InputType.BRANCH_PROFILE) {
-            value = CodeTreeBuilder.singleString("numBranchProfiles++");
+            value = CodeTreeBuilder.singleString("createBranchProfile()");
         }
 
         if (n < inputs.length && inputs[n] == InputType.CONST_POOL) {
@@ -478,7 +478,6 @@ public abstract class Instruction {
 
         b.startAssign("int[] predecessorBcis");
         b.startCall("doBeforeEmitInstruction");
-        b.variable(vars.bci);
         b.tree(numPop);
         b.string(numPush == 0 ? "false" : "true");
         b.end(2);

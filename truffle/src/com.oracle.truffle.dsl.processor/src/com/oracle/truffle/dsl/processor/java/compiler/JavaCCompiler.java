@@ -40,14 +40,13 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
-import java.io.File;
-import java.lang.reflect.Method;
-import java.util.List;
-
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
+import java.io.File;
+import java.lang.reflect.Method;
+import java.util.List;
 
 public class JavaCCompiler extends AbstractCompiler {
 

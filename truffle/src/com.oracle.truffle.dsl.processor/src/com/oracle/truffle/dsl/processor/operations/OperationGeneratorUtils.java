@@ -50,8 +50,9 @@ public class OperationGeneratorUtils {
         return CodeTreeBuilder.createBuilder().cast(getTypes().BuilderOperationLabel).startCall("createLabel").end().build();
     }
 
+    @SuppressWarnings("unused")
     public static CodeTree createEmitLabel(BuilderVariables vars, CodeTree label) {
-        return CodeTreeBuilder.createBuilder().startStatement().startCall("doEmitLabel").variable(vars.bci).tree(label).end(2).build();
+        return CodeTreeBuilder.createBuilder().startStatement().startCall("doEmitLabel").tree(label).end(2).build();
     }
 
     public static CodeTree createEmitLabel(BuilderVariables vars, CodeVariableElement label) {

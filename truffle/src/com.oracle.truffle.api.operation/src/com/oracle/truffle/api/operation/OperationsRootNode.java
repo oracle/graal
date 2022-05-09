@@ -6,12 +6,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class OperationsRootNode extends RootNode {
 
-    @Child private OperationsNode node;
+    @Child private OperationNode node;
 
     private final String nodeName;
     private final boolean isInternal;
 
-    OperationsRootNode(TruffleLanguage<?> language, OperationsNode node, String nodeName, boolean isInternal) {
+    OperationsRootNode(TruffleLanguage<?> language, OperationNode node, String nodeName, boolean isInternal) {
         super(language, node.createFrameDescriptor());
         this.node = insert(node);
         this.nodeName = nodeName;

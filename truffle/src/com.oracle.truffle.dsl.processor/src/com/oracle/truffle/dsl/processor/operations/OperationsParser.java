@@ -13,7 +13,7 @@ import java.util.Set;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
-import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
@@ -42,25 +42,14 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         OperationsData data = new OperationsData(ProcessorContext.getInstance(), typeElement, generateOperationsMirror);
 
-        // find and bind parse method
-
-        ExecutableElement parseMethod = ElementUtils.findExecutableElement(typeElement, "parse");
-        if (parseMethod == null) {
-            data.addError(typeElement,
-                            "Parse method not found. You must provide a method named 'parse' with following signature: void parse({Language}, {Context}, %sBuilder)",
-                            typeElement.getSimpleName());
-            return data;
+        // check basic declaration properties
+        if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
+            data.addError(typeElement, "Operations class must be declared final.");
         }
 
-        if (parseMethod.getParameters().size() != 3) {
-            data.addError(parseMethod, "Parse method must have exactly three arguments: the language, source and the builder");
-            return data;
+        if (ElementUtils.findParentEnclosingType(typeElement).isPresent()) {
+            data.addError(typeElement, "Operations class must be a top-level class.");
         }
-
-        TypeMirror languageType = parseMethod.getParameters().get(0).asType();
-        TypeMirror contextType = parseMethod.getParameters().get(1).asType();
-
-        data.setParseContext(languageType, contextType, parseMethod);
 
         // find and bind type system
         AnnotationMirror typeSystemRefMirror = ElementUtils.findAnnotationMirror(typeElement, types.TypeSystemReference);

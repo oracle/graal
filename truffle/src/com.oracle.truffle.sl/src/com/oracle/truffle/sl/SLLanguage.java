@@ -70,7 +70,6 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
@@ -81,7 +80,6 @@ import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
-import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.SLUndefinedFunctionRootNode;
@@ -110,9 +108,8 @@ import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
-import com.oracle.truffle.sl.operations.SLOperationsBuilder;
 import com.oracle.truffle.sl.parser.SLNodeVisitor;
-import com.oracle.truffle.sl.parser.SLSource;
+import com.oracle.truffle.sl.parser.SLOperationsVisitor;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
@@ -346,14 +343,15 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             source = Source.newBuilder(language, sb.toString(), source.getName()).build();
         }
 
+        Map<TruffleString, RootCallTarget> targets;
         if (useOperations) {
-            OperationsNode[] operations = SLOperationsBuilder.parse(this, new SLSource(source));
-            return new SLOperationsRootNode(this, operations[operations.length - 1], null).getCallTarget();
+            targets = SLOperationsVisitor.parseSL(this, source);
         } else {
-            Map<TruffleString, RootCallTarget> targets = SLNodeVisitor.parseSL(this, new SLSource(source));
-            RootCallTarget rootTarget = targets.get(SLStrings.MAIN);
-            return new SLEvalRootNode(this, rootTarget, targets).getCallTarget();
+            targets = SLNodeVisitor.parseSL(this, source);
         }
+
+        RootCallTarget rootTarget = targets.get(SLStrings.MAIN);
+        return new SLEvalRootNode(this, rootTarget, targets).getCallTarget();
     }
 
     /**

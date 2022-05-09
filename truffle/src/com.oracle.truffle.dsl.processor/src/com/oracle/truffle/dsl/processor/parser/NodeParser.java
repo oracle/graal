@@ -2194,11 +2194,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
         List<Element> globalMembers = new ArrayList<>(members.size() + fields.size());
         globalMembers.addAll(fields);
         globalMembers.addAll(members);
+        globalMembers.add(new CodeVariableElement(types.Node, "this"));
         if (mode == ParseMode.OPERATION) {
-            globalMembers.add(new CodeVariableElement(types.OperationsNode, "this"));
             globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
-        } else {
-            globalMembers.add(new CodeVariableElement(types.Node, "this"));
         }
         DSLExpressionResolver originalResolver = new DSLExpressionResolver(context, node.getTemplateType(), globalMembers);
 

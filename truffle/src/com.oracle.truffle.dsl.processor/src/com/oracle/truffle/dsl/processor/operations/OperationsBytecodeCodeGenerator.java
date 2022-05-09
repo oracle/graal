@@ -22,7 +22,6 @@ import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
-import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -67,33 +66,19 @@ public class OperationsBytecodeCodeGenerator {
     public CodeTypeElement createBuilderBytecodeNode() {
         String namePrefix = withInstrumentation ? "Instrumentable" : "";
 
-        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", types.OperationsNode);
+        CodeTypeElement builderBytecodeNodeType = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, namePrefix + "BytecodeNode", types.OperationBytecodeNode);
 
         CodeVariableElement fldBc = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(byte.class)), "bc");
-        GeneratorUtils.addCompilationFinalAnnotation(fldBc, 1);
-        builderBytecodeNodeType.add(fldBc);
 
         CodeVariableElement fldConsts = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(context.getType(Object.class)), "consts");
-        GeneratorUtils.addCompilationFinalAnnotation(fldConsts, 1);
-        builderBytecodeNodeType.add(fldConsts);
 
         CodeVariableElement fldChildren = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.Node), "children");
-        fldChildren.addAnnotationMirror(new CodeAnnotationMirror(types.Node_Children));
-        builderBytecodeNodeType.add(fldChildren);
 
         CodeVariableElement fldHandlers = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.BuilderExceptionHandler), "handlers");
-        GeneratorUtils.addCompilationFinalAnnotation(fldHandlers, 1);
-        builderBytecodeNodeType.add(fldHandlers);
-
-        CodeVariableElement fldConditionBranches = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(ConditionProfile), "conditionProfiles");
-        GeneratorUtils.addCompilationFinalAnnotation(fldConditionBranches, 1);
-        builderBytecodeNodeType.add(fldConditionBranches);
 
         CodeVariableElement fldProbeNodes = null;
         if (withInstrumentation) {
             fldProbeNodes = new CodeVariableElement(MOD_PRIVATE_FINAL, arrayOf(types.OperationsInstrumentTreeNode), "instruments");
-            GeneratorUtils.addCompilationFinalAnnotation(fldProbeNodes, 1);
-            builderBytecodeNodeType.add(fldProbeNodes);
         }
 
         CodeExecutableElement ctor = GeneratorUtils.createConstructorUsingFields(Set.of(), builderBytecodeNodeType);
@@ -517,51 +502,25 @@ public class OperationsBytecodeCodeGenerator {
 
             b.end();
 
-            b.startIf().string("sourceInfo != null").end();
-            b.startBlock();
-            {
-                b.statement("sb.append(\"Source info:\\n\")");
-                b.startFor().string("int i = 0; i < sourceInfo[0].length; i++").end();
-                b.startBlock();
-
-                b.statement("sb.append(String.format(\"  bci=%04x, offset=%d, length=%d\\n\", sourceInfo[0][i], sourceInfo[1][i], sourceInfo[2][i]))");
-
-                b.end();
-            }
-            b.end();
+            // b.startIf().string("sourceInfo != null").end();
+            // b.startBlock();
+            // {
+            // b.statement("sb.append(\"Source info:\\n\")");
+            // b.startFor().string("int i = 0; i < sourceInfo[0].length; i++").end();
+            // b.startBlock();
+            //
+            // b.statement("sb.append(String.format(\" bci=%04x, offset=%d, length=%d\\n\",
+            // sourceInfo[0][i],
+            // sourceInfo[1][i], sourceInfo[2][i]))");
+            //
+            // b.end();
+            // }
+            // b.end();
 
             b.startReturn().string("sb.toString()").end();
 
             vars.bci = null;
 
-        }
-
-        {
-            CodeExecutableElement mGetSourceSection = GeneratorUtils.overrideImplement(types.Node, "getSourceSection");
-            builderBytecodeNodeType.add(mGetSourceSection);
-
-            CodeTreeBuilder b = mGetSourceSection.createBuilder();
-
-            b.tree(createReparseCheck());
-
-            b.startReturn();
-            b.startCall("this", "getSourceSectionImpl");
-            b.end(2);
-        }
-
-        {
-            CodeVariableElement pBci = new CodeVariableElement(context.getType(int.class), "bci");
-            CodeExecutableElement mGetSourceSectionAtBci = GeneratorUtils.overrideImplement(types.OperationsNode, "getSourceSectionAtBci");
-            builderBytecodeNodeType.add(mGetSourceSectionAtBci);
-
-            CodeTreeBuilder b = mGetSourceSectionAtBci.createBuilder();
-
-            b.tree(createReparseCheck());
-
-            b.startReturn();
-            b.startCall("this", "getSourceSectionAtBciImpl");
-            b.variable(pBci);
-            b.end(2);
         }
 
         {
@@ -582,26 +541,6 @@ public class OperationsBytecodeCodeGenerator {
         }
 
         return builderBytecodeNodeType;
-    }
-
-    private CodeTree createReparseCheck() {
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.startIf().string("sourceInfo == null").end();
-        b.startBlock();
-        {
-            b.startStatement();
-            b.string("OperationsNode reparsed = ");
-            b.startStaticCall(typBuilderImpl.asType(), "reparse");
-            b.startGroup().startCall("getRootNode").end().startCall(".getLanguage").typeLiteral(m.getLanguageType()).end(2);
-            b.startGroup().maybeCast(context.getType(Object.class), m.getParseContextType()).string("parseContext").end();
-            b.string("buildOrder");
-            b.end(2);
-
-            b.statement("copyReparsedInfo(reparsed)");
-        }
-        b.end();
-
-        return b.build();
     }
 
     private static TypeMirror arrayOf(TypeMirror el) {

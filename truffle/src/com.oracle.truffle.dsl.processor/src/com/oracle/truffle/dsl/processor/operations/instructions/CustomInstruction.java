@@ -105,7 +105,7 @@ public class CustomInstruction extends Instruction {
                     b.startCall("LE_BYTES", "putShort");
                     b.variable(vars.bc);
                     b.tree(index);
-                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).variable(vars.numChildNodes).end();
+                    b.startCall("createChildNodes").string("" + numChildNodes).end();
                     b.end();
                     break;
                 case CONST:
@@ -125,10 +125,6 @@ public class CustomInstruction extends Instruction {
 
         for (int i = 1; i < numConsts; i++) {
             b.startStatement().startCall(vars.consts, "reserve").end(2);
-        }
-
-        if (numChildNodes > 0) {
-            b.startStatement().variable(vars.numChildNodes).string(" += " + numChildNodes).end();
         }
 
         return b.build();

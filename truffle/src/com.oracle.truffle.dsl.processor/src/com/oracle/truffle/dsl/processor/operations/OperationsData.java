@@ -7,10 +7,8 @@ import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -23,10 +21,6 @@ public class OperationsData extends Template {
 
     private final List<SingleOperationData> operations = new ArrayList<>();
     private final OperationsContext context = new OperationsContext(this);
-
-    private TypeMirror languageType;
-    private TypeMirror parseContextType;
-    private ExecutableElement parseMethod;
 
     private boolean tracing;
     private OperationDecisions decisions;
@@ -45,24 +39,6 @@ public class OperationsData extends Template {
 
     public void addOperationData(SingleOperationData data) {
         operations.add(data);
-    }
-
-    public void setParseContext(TypeMirror languageType, TypeMirror parseContextType, ExecutableElement parseMethod) {
-        this.languageType = languageType;
-        this.parseContextType = parseContextType;
-        this.parseMethod = parseMethod;
-    }
-
-    public TypeMirror getLanguageType() {
-        return languageType;
-    }
-
-    public TypeMirror getParseContextType() {
-        return parseContextType;
-    }
-
-    public ExecutableElement getParseMethod() {
-        return parseMethod;
     }
 
     @Override

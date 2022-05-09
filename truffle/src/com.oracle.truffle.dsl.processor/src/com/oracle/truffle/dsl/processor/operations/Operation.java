@@ -7,7 +7,6 @@ import static com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtil
 
 import java.util.List;
 
-import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 
@@ -51,13 +50,10 @@ public abstract class Operation {
         public CodeVariableElement bc;
         public CodeVariableElement bci;
         public CodeVariableElement consts;
-        public CodeVariableElement exteptionHandlers;
         public CodeVariableElement operationData;
         public CodeVariableElement lastChildPushCount;
         public CodeVariableElement childIndex;
         public CodeVariableElement numChildren;
-        public CodeVariableElement keepingInstrumentation;
-        public CodeVariableElement numChildNodes;
 
         public ExecutionVariables asExecution() {
             ExecutionVariables result = new ExecutionVariables();
@@ -436,7 +432,7 @@ public abstract class Operation {
 
         @Override
         public CodeTree createEndCode(BuilderVariables vars) {
-            return createEmitLabel(vars, CodeTreeBuilder.singleString("((BuilderOperationLabel) " + vars.operationData.getName() + ".arguments[0])"));
+            return createEmitLabel(vars, CodeTreeBuilder.singleString("arg0"));
         }
 
         @Override
@@ -472,7 +468,7 @@ public abstract class Operation {
             b.startStatement().variable(varBeh).string(".startBci = ").variable(vars.bci).end();
             b.startStatement().variable(varBeh).string(".startStack = getCurStack()").end();
             b.startStatement().variable(varBeh).string(".exceptionIndex = (int)").variable(vars.operationData).string(".arguments[0]").end();
-            b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
+            b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
 
             b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
 
@@ -656,15 +652,7 @@ public abstract class Operation {
                 b.end(2);
             }
 
-            b.startStatement().variable(vars.operationData).string(".aux[" + AUX_CONTEXT + "] = ").startCall("doBeginFinallyTry");
-            b.variable(vars.bc);
-            b.variable(vars.bci);
-            b.variable(vars.exteptionHandlers);
-            b.end(2);
-
-            b.startAssign(vars.bc).startNewArray((ArrayType) vars.bc.asType(), CodeTreeBuilder.singleString("65535")).end(2);
-            b.startAssign(vars.bci).string("0").end();
-            b.startAssign(vars.exteptionHandlers).startNew(vars.exteptionHandlers.asType()).end(2);
+            b.startStatement().variable(vars.operationData).string(".aux[" + AUX_CONTEXT + "] = ").startCall("doBeginFinallyTry").end(2);
 
             return b.build();
         }
@@ -677,17 +665,7 @@ public abstract class Operation {
 
             b.startIf().variable(vars.childIndex).string(" == 0").end().startBlock();
             {
-                b.startStatement().startCall("doEndFinallyBlock0");
-                b.variable(vars.bc);
-                b.variable(vars.bci);
-                b.variable(vars.exteptionHandlers);
-                b.end(2);
-
-                b.startAssign(vars.bc).startCall("doFinallyRestoreBc").end(2);
-                b.startAssign(vars.bci).startCall("doFinallyRestoreBci").end(2);
-                b.startAssign(vars.exteptionHandlers).startCall("doFinallyRestoreExceptions").end(2);
-
-                b.startStatement().startCall("doEndFinallyBlock1").end(2);
+                b.startStatement().startCall("doEndFinallyBlock").end(2);
 
                 if (!noExcept) {
                     CodeVariableElement varBeh = new CodeVariableElement(getTypes().BuilderExceptionHandler, "beh");
@@ -700,7 +678,7 @@ public abstract class Operation {
                     b.startGroup().variable(vars.operationData).string(".aux[" + AUX_LOCAL + "]").end();
                     b.end();
                     b.end();
-                    b.startStatement().startCall(vars.exteptionHandlers, "add").variable(varBeh).end(2);
+                    b.startStatement().startCall("addExceptionHandler").variable(varBeh).end(2);
                     b.tree(createSetAux(vars, AUX_BEH, CodeTreeBuilder.singleVariable(varBeh)));
                 }
 
@@ -762,12 +740,7 @@ public abstract class Operation {
         }
 
         private static void emitLeaveCode(BuilderVariables vars, CodeTreeBuilder b) {
-            b.startAssign(vars.bci).startCall("doLeaveFinallyTry");
-            b.variable(vars.bc);
-            b.variable(vars.bci);
-            b.variable(vars.operationData);
-            b.variable(vars.exteptionHandlers);
-            b.end(2);
+            b.startStatement().startCall("doLeaveFinallyTry").variable(vars.operationData).end(2);
         }
 
         @Override

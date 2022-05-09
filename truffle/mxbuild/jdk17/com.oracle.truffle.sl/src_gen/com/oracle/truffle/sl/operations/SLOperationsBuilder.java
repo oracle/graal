@@ -30,21 +30,20 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.operation.BuilderExceptionHandler;
 import com.oracle.truffle.api.operation.BuilderOperationData;
 import com.oracle.truffle.api.operation.BuilderOperationLabel;
-import com.oracle.truffle.api.operation.BuilderSourceInfo;
+import com.oracle.truffle.api.operation.OperationBuilder;
+import com.oracle.truffle.api.operation.OperationBytecodeNode;
+import com.oracle.truffle.api.operation.OperationConfig;
+import com.oracle.truffle.api.operation.OperationInstrumentedBytecodeNode;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationsBuilder;
+import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationsBytesSupport;
-import com.oracle.truffle.api.operation.OperationsConstantPool;
-import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.ConcatNode;
 import com.oracle.truffle.api.strings.TruffleString.EqualNode;
 import com.oracle.truffle.api.strings.TruffleString.FromJavaStringNode;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.SLTypesGen;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
@@ -66,20 +65,22 @@ import com.oracle.truffle.sl.nodes.util.SLToTruffleStringNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.operations.SLOperations.SLEvalRootOperation;
 import com.oracle.truffle.sl.operations.SLOperations.SLInvokeOperation;
-import com.oracle.truffle.sl.parser.SLSource;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLObject;
 import java.lang.invoke.VarHandle;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
 
 @GeneratedBy(SLOperations.class)
-@SuppressWarnings("unused")
-public abstract class SLOperationsBuilder extends OperationsBuilder {
+@SuppressWarnings({"unused", "cast", "hiding", "unchecked", "rawtypes", "static-method"})
+public abstract class SLOperationsBuilder extends OperationBuilder {
+
+    protected SLOperationsBuilder(OperationNodes nodes, boolean isReparse, OperationConfig config) {
+        super(nodes, isReparse, config);
+    }
 
     public abstract void beginBlock();
 
@@ -195,20 +196,30 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
     public abstract void endSLInvokeOperation();
 
-    public static OperationsNode[] parse(SLLanguage language, SLSource context) {
-        BuilderImpl builder = new BuilderImpl(language, context, false, false);
-        SLOperations.parse(language, context, builder);
-        return builder.collect();
-    }
-
-    public static OperationsNode[] parseWithSourceInfo(SLLanguage language, SLSource context) {
-        BuilderImpl builder = new BuilderImpl(language, context, true, true);
-        SLOperations.parse(language, context, builder);
-        return builder.collect();
+    public static OperationNodes create(OperationConfig config, Consumer<SLOperationsBuilder> generator) {
+        OperationNodes nodes = new OperationNodesImpl(generator);
+        BuilderImpl builder = new BuilderImpl(nodes, false, config);
+        generator.accept(builder);
+        builder.finish();
+        return nodes;
     }
 
     @GeneratedBy(SLOperations.class)
-    @SuppressWarnings({"cast", "hiding", "unchecked", "rawtypes", "static-method"})
+    private static final class OperationNodesImpl extends OperationNodes {
+
+        OperationNodesImpl(Consumer<? extends OperationBuilder> parse) {
+            super(parse);
+        }
+
+        @Override
+        protected void reparseImpl(OperationConfig config, Consumer<?> parse, OperationNode[] nodes) {
+            BuilderImpl builder = new BuilderImpl(this, true, config);
+            ((Consumer) parse).accept(builder);
+            builder.finish();
+        }
+
+    }
+    @GeneratedBy(SLOperations.class)
     private static class BuilderImpl extends SLOperationsBuilder {
 
         private static final OperationsBytesSupport LE_BYTES = OperationsBytesSupport.littleEndian();
@@ -248,15 +259,15 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         private static final int INSTR_BRANCH_FALSE = 3;
         private static final int INSTR_THROW = 4;
         private static final int INSTR_LOAD_CONSTANT_OBJECT = 5;
-        private static final int INSTR_LOAD_CONSTANT_LONG = 6;
-        private static final int INSTR_LOAD_CONSTANT_BOOLEAN = 7;
+        private static final int INSTR_LOAD_CONSTANT_BOOLEAN = 6;
+        private static final int INSTR_LOAD_CONSTANT_LONG = 7;
         private static final int INSTR_LOAD_ARGUMENT_OBJECT = 8;
-        private static final int INSTR_LOAD_ARGUMENT_LONG = 9;
-        private static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 10;
+        private static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 9;
+        private static final int INSTR_LOAD_ARGUMENT_LONG = 10;
         private static final int INSTR_STORE_LOCAL = 11;
         private static final int INSTR_LOAD_LOCAL_OBJECT = 12;
-        private static final int INSTR_LOAD_LOCAL_LONG = 13;
-        private static final int INSTR_LOAD_LOCAL_BOOLEAN = 14;
+        private static final int INSTR_LOAD_LOCAL_BOOLEAN = 13;
+        private static final int INSTR_LOAD_LOCAL_LONG = 14;
         private static final int INSTR_RETURN = 15;
         private static final int INSTR_INSTRUMENT_ENTER = 16;
         private static final int INSTR_INSTRUMENT_EXIT_VOID = 17;
@@ -293,83 +304,30 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         // BYTE
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // INT
         null,
         // FLOAT
         null,
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1)},
         // DOUBLE
         null};
 
-        private final SLLanguage language;
-        private final SLSource parseContext;
-        private final boolean keepSourceInfo;
-        private final boolean keepInstrumentation;
-        private final BuilderSourceInfo sourceInfoBuilder;
-        byte[] bc = new byte[65535];
-        ArrayList<BuilderExceptionHandler> exceptionHandlers = new ArrayList<>();
-        int lastPush;
-        int bci;
-        int numChildNodes;
-        int numBranchProfiles;
-        ArrayList<OperationsNode> builtNodes = new ArrayList<>();
-        int nodeNumber = 0;
-        OperationsConstantPool constPool = new OperationsConstantPool();
+        int lastChildPush;
 
-        BuilderImpl(SLLanguage language, SLSource parseContext, boolean keepSourceInfo, boolean keepInstrumentation) {
-            this.language = language;
-            this.parseContext = parseContext;
-            this.keepSourceInfo = keepSourceInfo;
-            this.keepInstrumentation = keepInstrumentation;
-            if (keepSourceInfo) {
-                sourceInfoBuilder = new BuilderSourceInfo();
-            } else {
-                sourceInfoBuilder = null;
-            }
-            reset();
+        BuilderImpl(OperationNodes nodes, boolean isReparse, OperationConfig config) {
+            super(nodes, isReparse, config);
         }
 
         @Override
-        public void reset() {
-            super.reset();
-            bci = 0;
-            numChildNodes = 0;
-            numBranchProfiles = 0;
-            operationData = new BuilderOperationData(null, 0, 0, 0, false);
-            exceptionHandlers.clear();
-            constPool.reset();
-            if (keepSourceInfo) {
-                sourceInfoBuilder.reset();
-            }
+        protected OperationBytecodeNode createBytecode(int arg0, int arg1, byte[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5, ConditionProfile[] arg6) {
+            return new BytecodeNode(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
         }
 
         @Override
-        public OperationsNode buildImpl() {
-            labelPass(bc);
-            if (operationData.depth != 0) {
-                throw new IllegalStateException("Not all operations ended");
-            }
-            byte[] bcCopy = java.util.Arrays.copyOf(bc, bci);
-            Object[] cpCopy = constPool.getValues();
-            BuilderExceptionHandler[] handlers = exceptionHandlers.toArray(new BuilderExceptionHandler[0]);
-            int[][] sourceInfo = null;
-            Source[] sources = null;
-            if (keepSourceInfo) {
-                sourceInfo = sourceInfoBuilder.build();
-                sources = sourceInfoBuilder.buildSource();
-            }
-            OperationsNode result;
-            ConditionProfile[] condProfiles = new ConditionProfile[numBranchProfiles];
-            for (int i = 0; i < numBranchProfiles; i++) {
-                condProfiles[i] = ConditionProfile.createCountingProfile();
-            }
-            result = new BytecodeNode(parseContext, sourceInfo, sources, nodeNumber, createMaxStack(), numLocals, bcCopy, cpCopy, new Node[numChildNodes], handlers, condProfiles);
-            builtNodes.add(result);
-            nodeNumber++;
-            reset();
-            return result;
+        protected OperationInstrumentedBytecodeNode createInstrumentedBytecode(int arg0, int arg1, byte[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5, ConditionProfile[] arg6) {
+            throw new UnsupportedOperationException("not implemented");
         }
 
         @Override
@@ -377,17 +335,17 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             switch (data.operationId) {
                 case OP_FINALLY_TRY :
                 {
-                    bci = doLeaveFinallyTry(bc, bci, data, exceptionHandlers);
+                    doLeaveFinallyTry(data);
                     break;
                 }
                 case OP_FINALLY_TRY_NO_EXCEPT :
                 {
-                    bci = doLeaveFinallyTry(bc, bci, data, exceptionHandlers);
+                    doLeaveFinallyTry(data);
                     break;
                 }
                 case OP_TAG :
                 {
-                    int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                    int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                     LE_BYTES.putShort(bc, bci, (short) INSTR_INSTRUMENT_LEAVE);
                     LE_BYTES.putShort(bc, bci + 2, (short) (int) ((int) data.aux[0]));
                     createOffset(bci + 4, ((BuilderOperationLabel) data.aux[1]));
@@ -398,46 +356,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             }
         }
 
-        @Override
-        public void beginSource(Supplier<Source> supplier) {
-            if (!keepSourceInfo) {
-                return;
-            }
-            beginSource(supplier.get());
-        }
-
-        @Override
-        public void beginSource(Source source) {
-            if (!keepSourceInfo) {
-                return;
-            }
-            sourceInfoBuilder.beginSource(bci, source);
-        }
-
-        @Override
-        public void endSource() {
-            if (!keepSourceInfo) {
-                return;
-            }
-            sourceInfoBuilder.endSource(bci);
-        }
-
-        @Override
-        public void beginSourceSection(int start) {
-            if (!keepSourceInfo) {
-                return;
-            }
-            sourceInfoBuilder.beginSourceSection(bci, start);
-        }
-
-        @Override
-        public void endSourceSection(int length) {
-            if (!keepSourceInfo) {
-                return;
-            }
-            sourceInfoBuilder.endSourceSection(bci, length);
-        }
-
         @SuppressWarnings("unused")
         void doBeforeChild() {
             int childIndex = operationData.numChildren;
@@ -445,8 +363,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 case OP_BLOCK :
                 {
                     if (childIndex != 0) {
-                        for (int i = 0; i < lastPush; i++) {
-                            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        for (int i = 0; i < lastChildPush; i++) {
+                            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
@@ -464,8 +382,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 case OP_TAG :
                 {
                     if (childIndex != 0) {
-                        for (int i = 0; i < lastPush; i++) {
-                            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        for (int i = 0; i < lastChildPush; i++) {
+                            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
@@ -482,127 +400,127 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 case OP_IF_THEN :
                 {
                     if (childIndex == 0) {
-                        assert lastPush == 1;
+                        assert lastChildPush == 1;
                         BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
                         operationData.aux[0] = endLabel;
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH_FALSE);
                         createOffset(bci + 2, endLabel);
                         bc[bci + 4] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
-                        LE_BYTES.putShort(bc, bci + 5, (short) (int) numBranchProfiles++);
+                        LE_BYTES.putShort(bc, bci + 5, (short) (int) createBranchProfile());
                         bci = bci + 7;
                     } else {
-                        for (int i = 0; i < lastPush; i++) {
-                            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        for (int i = 0; i < lastChildPush; i++) {
+                            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
-                        doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[0]));
+                        doEmitLabel(((BuilderOperationLabel) operationData.aux[0]));
                     }
                     break;
                 }
                 case OP_IF_THEN_ELSE :
                 {
                     if (childIndex == 0) {
-                        assert lastPush == 1;
+                        assert lastChildPush == 1;
                         BuilderOperationLabel elseLabel = (BuilderOperationLabel) createLabel();
                         operationData.aux[0] = elseLabel;
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH_FALSE);
                         createOffset(bci + 2, elseLabel);
                         bc[bci + 4] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
-                        LE_BYTES.putShort(bc, bci + 5, (short) (int) numBranchProfiles++);
+                        LE_BYTES.putShort(bc, bci + 5, (short) (int) createBranchProfile());
                         bci = bci + 7;
                     } else if (childIndex == 1) {
-                        for (int i = 0; i < lastPush; i++) {
-                            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        for (int i = 0; i < lastChildPush; i++) {
+                            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
                         BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
                         operationData.aux[1] = endLabel;
                         calculateLeaves(operationData, (BuilderOperationLabel) endLabel);
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
                         createOffset(bci + 2, endLabel);
                         bci = bci + 4;
-                        doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[0]));
+                        doEmitLabel(((BuilderOperationLabel) operationData.aux[0]));
                     } else {
-                        for (int i = 0; i < lastPush; i++) {
-                            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        for (int i = 0; i < lastChildPush; i++) {
+                            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
-                        doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[1]));
+                        doEmitLabel(((BuilderOperationLabel) operationData.aux[1]));
                     }
                     break;
                 }
                 case OP_CONDITIONAL :
                 {
                     if (childIndex == 0) {
-                        assert lastPush == 1;
+                        assert lastChildPush == 1;
                         BuilderOperationLabel elseLabel = (BuilderOperationLabel) createLabel();
                         operationData.aux[0] = elseLabel;
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH_FALSE);
                         createOffset(bci + 2, elseLabel);
                         bc[bci + 4] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
-                        LE_BYTES.putShort(bc, bci + 5, (short) (int) numBranchProfiles++);
+                        LE_BYTES.putShort(bc, bci + 5, (short) (int) createBranchProfile());
                         bci = bci + 7;
                     } else if (childIndex == 1) {
-                        assert lastPush == 1;
+                        assert lastChildPush == 1;
                         BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
                         operationData.aux[1] = endLabel;
                         calculateLeaves(operationData, (BuilderOperationLabel) endLabel);
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
                         createOffset(bci + 2, endLabel);
                         bci = bci + 4;
-                        doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[0]));
+                        doEmitLabel(((BuilderOperationLabel) operationData.aux[0]));
                     } else {
-                        assert lastPush == 1;
-                        doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[1]));
+                        assert lastChildPush == 1;
+                        doEmitLabel(((BuilderOperationLabel) operationData.aux[1]));
                     }
                     break;
                 }
                 case OP_WHILE :
                 {
                     if (childIndex == 0) {
-                        assert lastPush == 1;
+                        assert lastChildPush == 1;
                         BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
                         operationData.aux[1] = endLabel;
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH_FALSE);
                         createOffset(bci + 2, endLabel);
                         bc[bci + 4] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
-                        LE_BYTES.putShort(bc, bci + 5, (short) (int) numBranchProfiles++);
+                        LE_BYTES.putShort(bc, bci + 5, (short) (int) createBranchProfile());
                         bci = bci + 7;
                     } else {
-                        for (int i = 0; i < lastPush; i++) {
-                            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                        for (int i = 0; i < lastChildPush; i++) {
+                            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
                         calculateLeaves(operationData, (BuilderOperationLabel) ((BuilderOperationLabel) operationData.aux[0]));
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
                         createOffset(bci + 2, ((BuilderOperationLabel) operationData.aux[0]));
                         bci = bci + 4;
-                        doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[1]));
+                        doEmitLabel(((BuilderOperationLabel) operationData.aux[1]));
                     }
                     break;
                 }
                 case OP_TRY_CATCH :
                 {
-                    for (int i = 0; i < lastPush; i++) {
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                    for (int i = 0; i < lastChildPush; i++) {
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                         bci = bci + 2;
                     }
                     if (childIndex == 0) {
                         ((BuilderExceptionHandler) operationData.aux[0]).endBci = bci;
                         calculateLeaves(operationData, (BuilderOperationLabel) ((BuilderOperationLabel) operationData.aux[1]));
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                        int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
                         createOffset(bci + 2, ((BuilderOperationLabel) operationData.aux[1]));
                         bci = bci + 4;
@@ -612,43 +530,40 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 }
                 case OP_FINALLY_TRY :
                 {
-                    for (int i = 0; i < lastPush; i++) {
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                    for (int i = 0; i < lastChildPush; i++) {
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                         bci = bci + 2;
                     }
                     if (childIndex == 0) {
-                        doEndFinallyBlock0(bc, bci, exceptionHandlers);
-                        bc = doFinallyRestoreBc();
-                        bci = doFinallyRestoreBci();
-                        exceptionHandlers = doFinallyRestoreExceptions();
-                        doEndFinallyBlock1();
+                        doEndFinallyBlock();
                         BuilderExceptionHandler beh = new BuilderExceptionHandler();
                         beh.startBci = bci;
                         beh.startStack = getCurStack();
                         beh.exceptionIndex = getLocalIndex(operationData.aux[2]);
-                        exceptionHandlers.add(beh);
+                        addExceptionHandler(beh);
                         operationData.aux[1] = beh;
                     }
                     break;
                 }
                 case OP_FINALLY_TRY_NO_EXCEPT :
                 {
-                    for (int i = 0; i < lastPush; i++) {
-                        int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+                    for (int i = 0; i < lastChildPush; i++) {
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
                         LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                         bci = bci + 2;
                     }
                     if (childIndex == 0) {
-                        doEndFinallyBlock0(bc, bci, exceptionHandlers);
-                        bc = doFinallyRestoreBc();
-                        bci = doFinallyRestoreBci();
-                        exceptionHandlers = doFinallyRestoreExceptions();
-                        doEndFinallyBlock1();
+                        doEndFinallyBlock();
                     }
                     break;
                 }
             }
+        }
+
+        @Override
+        protected int getBlockOperationIndex() {
+            return OP_BLOCK;
         }
 
         @SuppressWarnings("unused")
@@ -656,7 +571,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         public void beginBlock() {
             doBeforeChild();
             operationData = new BuilderOperationData(operationData, OP_BLOCK, getCurStack(), 0, false);
-            lastPush = 0;
+            lastChildPush = 0;
         }
 
         @SuppressWarnings("unused")
@@ -690,7 +605,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("IfThen expected 2 children, got " + numChildren);
             }
-            lastPush = 0;
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -712,7 +627,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 3) {
                 throw new IllegalStateException("IfThenElse expected 3 children, got " + numChildren);
             }
-            lastPush = 0;
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -734,7 +649,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 3) {
                 throw new IllegalStateException("Conditional expected 3 children, got " + numChildren);
             }
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -745,7 +660,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             doBeforeChild();
             operationData = new BuilderOperationData(operationData, OP_WHILE, getCurStack(), 2, false);
             BuilderOperationLabel startLabel = (BuilderOperationLabel) createLabel();
-            doEmitLabel(bci, startLabel);
+            doEmitLabel(startLabel);
             operationData.aux[0] = startLabel;
         }
 
@@ -759,7 +674,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("While expected 2 children, got " + numChildren);
             }
-            lastPush = 0;
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -773,7 +688,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             beh.startBci = bci;
             beh.startStack = getCurStack();
             beh.exceptionIndex = (int)operationData.arguments[0];
-            exceptionHandlers.add(beh);
+            addExceptionHandler(beh);
             operationData.aux[0] = beh;
             BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
             operationData.aux[1] = endLabel;
@@ -789,8 +704,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("TryCatch expected 2 children, got " + numChildren);
             }
-            doEmitLabel(bci, ((BuilderOperationLabel) operationData.aux[1]));
-            lastPush = 0;
+            doEmitLabel(((BuilderOperationLabel) operationData.aux[1]));
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -801,10 +716,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             doBeforeChild();
             operationData = new BuilderOperationData(operationData, OP_FINALLY_TRY, getCurStack(), 3, true);
             operationData.aux[2] = createParentLocal();
-            operationData.aux[0] = doBeginFinallyTry(bc, bci, exceptionHandlers);
-            bc = new byte[65535];
-            bci = 0;
-            exceptionHandlers = new ArrayList<BuilderExceptionHandler>();
+            operationData.aux[0] = doBeginFinallyTry();
         }
 
         @SuppressWarnings("unused")
@@ -818,11 +730,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 throw new IllegalStateException("FinallyTry expected 2 children, got " + numChildren);
             }
             int endBci = bci;
-            bci = doLeaveFinallyTry(bc, bci, operationData, exceptionHandlers);
+            doLeaveFinallyTry(operationData);
             BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
             {
                 calculateLeaves(operationData, (BuilderOperationLabel) endLabel);
-                int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                 LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
                 createOffset(bci + 2, endLabel);
                 bci = bci + 4;
@@ -830,15 +742,15 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             BuilderExceptionHandler beh = ((BuilderExceptionHandler) operationData.aux[1]);
             beh.endBci = endBci;
             beh.handlerBci = bci;
-            bci = doLeaveFinallyTry(bc, bci, operationData, exceptionHandlers);
+            doLeaveFinallyTry(operationData);
             {
-                int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+                int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                 LE_BYTES.putShort(bc, bci, (short) INSTR_THROW);
                 LE_BYTES.putShort(bc, bci + 2, (short) (int) getLocalIndex(operationData.aux[2]));
                 bci = bci + 4;
             }
-            doEmitLabel(bci, endLabel);
-            lastPush = 0;
+            doEmitLabel(endLabel);
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -848,10 +760,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         public void beginFinallyTryNoExcept() {
             doBeforeChild();
             operationData = new BuilderOperationData(operationData, OP_FINALLY_TRY_NO_EXCEPT, getCurStack(), 1, true);
-            operationData.aux[0] = doBeginFinallyTry(bc, bci, exceptionHandlers);
-            bc = new byte[65535];
-            bci = 0;
-            exceptionHandlers = new ArrayList<BuilderExceptionHandler>();
+            operationData.aux[0] = doBeginFinallyTry();
         }
 
         @SuppressWarnings("unused")
@@ -864,8 +773,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("FinallyTryNoExcept expected 2 children, got " + numChildren);
             }
-            bci = doLeaveFinallyTry(bc, bci, operationData, exceptionHandlers);
-            lastPush = 0;
+            doLeaveFinallyTry(operationData);
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -873,22 +782,21 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         @Override
         public void emitLabel(OperationLabel arg0) {
             doBeforeChild();
-            BuilderOperationData operationData = new BuilderOperationData(this.operationData, OP_LABEL, getCurStack(), 0, false, arg0);
-            doEmitLabel(bci, ((BuilderOperationLabel) operationData.arguments[0]));
-            lastPush = 0;
+            doEmitLabel(arg0);
+            lastChildPush = 0;
             doAfterChild();
         }
 
         @Override
         public void emitBranch(OperationLabel arg0) {
             doBeforeChild();
-            operationData = new BuilderOperationData(this.operationData, OP_BRANCH, getCurStack(), 0, false, arg0);
+            operationData = new BuilderOperationData(operationData, OP_BRANCH, getCurStack(), 0, false, arg0);
             calculateLeaves(operationData, (BuilderOperationLabel) operationData.arguments[0]);
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+            int[] predecessorBcis = doBeforeEmitInstruction(0, false);
             LE_BYTES.putShort(bc, bci, (short) INSTR_BRANCH);
             createOffset(bci + 2, operationData.arguments[0]);
             bci = bci + 4;
-            lastPush = 0;
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -896,12 +804,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         @Override
         public void emitConstObject(Object arg0) {
             doBeforeChild();
-            operationData = new BuilderOperationData(this.operationData, OP_CONST_OBJECT, getCurStack(), 0, false, arg0);
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, true);
+            operationData = new BuilderOperationData(operationData, OP_CONST_OBJECT, getCurStack(), 0, false, arg0);
+            int[] predecessorBcis = doBeforeEmitInstruction(0, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_CONSTANT_OBJECT);
             LE_BYTES.putShort(bc, bci + 2, (short) (int) constPool.add(arg0));
             bci = bci + 4;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -909,12 +817,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         @Override
         public void emitLoadArgument(int arg0) {
             doBeforeChild();
-            operationData = new BuilderOperationData(this.operationData, OP_LOAD_ARGUMENT, getCurStack(), 0, false, arg0);
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, true);
+            operationData = new BuilderOperationData(operationData, OP_LOAD_ARGUMENT, getCurStack(), 0, false, arg0);
+            int[] predecessorBcis = doBeforeEmitInstruction(0, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_ARGUMENT_OBJECT);
             LE_BYTES.putShort(bc, bci + 2, (short) (int) operationData.arguments[0]);
             bci = bci + 4;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -936,12 +844,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("StoreLocal expected 1 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
             LE_BYTES.putShort(bc, bci, (short) INSTR_STORE_LOCAL);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             LE_BYTES.putShort(bc, bci + 3, (short) (int) getLocalIndex(operationData.arguments[0]));
             bci = bci + 5;
-            lastPush = 0;
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -949,12 +857,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         @Override
         public void emitLoadLocal(OperationLocal arg0) {
             doBeforeChild();
-            operationData = new BuilderOperationData(this.operationData, OP_LOAD_LOCAL, getCurStack(), 0, false, arg0);
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, true);
+            operationData = new BuilderOperationData(operationData, OP_LOAD_LOCAL, getCurStack(), 0, false, arg0);
+            int[] predecessorBcis = doBeforeEmitInstruction(0, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_LOCAL_OBJECT);
             LE_BYTES.putShort(bc, bci + 2, (short) (int) getLocalIndex(operationData.arguments[0]));
             bci = bci + 4;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -977,11 +885,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 throw new IllegalStateException("Return expected 1 children, got " + numChildren);
             }
             calculateLeaves(operationData);
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, false);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, false);
             LE_BYTES.putShort(bc, bci, (short) INSTR_RETURN);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bci = bci + 3;
-            lastPush = 0;
+            lastChildPush = 0;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -989,7 +897,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
         @SuppressWarnings("unused")
         @Override
         public void beginTag(Class<?> arg0) {
-            if (true) {
+            if (!withInstrumentation) {
                 return;
             }
             doBeforeChild();
@@ -997,21 +905,21 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             int curInstrumentId = doBeginInstrumentation((Class) arg0);
             BuilderOperationLabel startLabel = (BuilderOperationLabel) createLabel();
             BuilderOperationLabel endLabel = (BuilderOperationLabel) createLabel();
-            doEmitLabel(bci, startLabel);
+            doEmitLabel(startLabel);
             operationData.aux[0] = curInstrumentId;
             operationData.aux[1] = startLabel;
             operationData.aux[2] = endLabel;
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+            int[] predecessorBcis = doBeforeEmitInstruction(0, false);
             LE_BYTES.putShort(bc, bci, (short) INSTR_INSTRUMENT_ENTER);
             LE_BYTES.putShort(bc, bci + 2, (short) (int) curInstrumentId);
             bci = bci + 4;
-            lastPush = 0;
+            lastChildPush = 0;
         }
 
         @SuppressWarnings("unused")
         @Override
         public void endTag() {
-            if (true) {
+            if (!withInstrumentation) {
                 return;
             }
             if (operationData.operationId != OP_TAG) {
@@ -1021,13 +929,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren < 0) {
                 throw new IllegalStateException("Tag expected at least 0 children, got " + numChildren);
             }
-            if (lastPush != 0) {
-                int[] predecessorBcis = doBeforeEmitInstruction(bci, 0, false);
+            if (lastChildPush != 0) {
+                int[] predecessorBcis = doBeforeEmitInstruction(0, false);
                 LE_BYTES.putShort(bc, bci, (short) INSTR_INSTRUMENT_EXIT_VOID);
                 LE_BYTES.putShort(bc, bci + 2, (short) (int) ((int) operationData.aux[0]));
                 bci = bci + 4;
             } else {
-                int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, true);
+                int[] predecessorBcis = doBeforeEmitInstruction(1, true);
                 LE_BYTES.putShort(bc, bci, (short) INSTR_INSTRUMENT_EXIT);
                 LE_BYTES.putShort(bc, bci + 2, (short) (int) ((int) operationData.aux[0]));
                 bc[bci + 4] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
@@ -1054,7 +962,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLAddOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLADD_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1065,10 +973,9 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             bc[bci + 4 + 1] = 0;
             bc[bci + 4 + 2] = 0;
             LE_BYTES.putShort(bc, bci + 4 + 3, (short) constPool.reserve());
-            LE_BYTES.putShort(bc, bci + 4 + 5, (short) numChildNodes);
-            numChildNodes += 3;
+            LE_BYTES.putShort(bc, bci + 4 + 5, createChildNodes(3));
             bci = bci + 11;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1090,7 +997,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLDivOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLDIV_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1100,7 +1007,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
             bci = bci + 6;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1122,7 +1029,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLEqualOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLEQUAL_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1131,12 +1038,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 1
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
-            LE_BYTES.putShort(bc, bci + 4 + 2, (short) numChildNodes);
+            LE_BYTES.putShort(bc, bci + 4 + 2, createChildNodes(3));
             LE_BYTES.putShort(bc, bci + 4 + 4, (short) constPool.reserve());
             bc[bci + 4 + 6] = 0;
-            numChildNodes += 3;
             bci = bci + 11;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1158,7 +1064,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLLessOrEqualOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLLESS_OR_EQUAL_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1167,7 +1073,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 0
             bc[bci + 4 + 0] = 0;
             bci = bci + 5;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1189,7 +1095,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLLessThanOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLLESS_THAN_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1198,7 +1104,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 0
             bc[bci + 4 + 0] = 0;
             bci = bci + 5;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1220,7 +1126,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("SLLogicalNotOperation expected 1 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLLOGICAL_NOT_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             // additionalData  = 1 bytes: [BITS]
@@ -1228,7 +1134,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 0
             bc[bci + 3 + 0] = 0;
             bci = bci + 4;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1250,7 +1156,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLMulOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLMUL_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1260,7 +1166,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
             bci = bci + 6;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1282,7 +1188,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLReadPropertyOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLREAD_PROPERTY_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1291,13 +1197,12 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 3
             bc[bci + 4 + 0] = 0;
             LE_BYTES.putShort(bc, bci + 4 + 1, (short) constPool.reserve());
-            LE_BYTES.putShort(bc, bci + 4 + 3, (short) numChildNodes);
+            LE_BYTES.putShort(bc, bci + 4 + 3, createChildNodes(6));
             bc[bci + 4 + 5] = 0;
             constPool.reserve();
             constPool.reserve();
-            numChildNodes += 6;
             bci = bci + 10;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1319,7 +1224,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 2) {
                 throw new IllegalStateException("SLSubOperation expected 2 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 2, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(2, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLSUB_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1329,7 +1234,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             bc[bci + 4 + 0] = 0;
             bc[bci + 4 + 1] = 0;
             bci = bci + 6;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1351,7 +1256,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 3) {
                 throw new IllegalStateException("SLWritePropertyOperation expected 3 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 3, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(3, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLWRITE_PROPERTY_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             bc[bci + 3] = predecessorBcis[1] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[1]);
@@ -1361,14 +1266,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 4
             bc[bci + 5 + 0] = 0;
             LE_BYTES.putShort(bc, bci + 5 + 1, (short) constPool.reserve());
-            LE_BYTES.putShort(bc, bci + 5 + 3, (short) numChildNodes);
+            LE_BYTES.putShort(bc, bci + 5 + 3, createChildNodes(7));
             bc[bci + 5 + 5] = 0;
             constPool.reserve();
             constPool.reserve();
             constPool.reserve();
-            numChildNodes += 7;
             bci = bci + 11;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1390,7 +1294,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("SLUnboxOperation expected 1 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLUNBOX_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             // additionalData  = 7 bytes: [BITS, BITS, CHILD, CONTINUATION, CONST, CONTINUATION, BITS]
@@ -1398,12 +1302,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 1
             bc[bci + 3 + 0] = 0;
             bc[bci + 3 + 1] = 0;
-            LE_BYTES.putShort(bc, bci + 3 + 2, (short) numChildNodes);
+            LE_BYTES.putShort(bc, bci + 3 + 2, createChildNodes(2));
             LE_BYTES.putShort(bc, bci + 3 + 4, (short) constPool.reserve());
             bc[bci + 3 + 6] = 0;
-            numChildNodes += 2;
             bci = bci + 10;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1425,7 +1328,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("SLFunctionLiteralOperation expected 1 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLFUNCTION_LITERAL_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             // additionalData  = 3 bytes: [BITS, CONST, CONTINUATION]
@@ -1434,7 +1337,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             bc[bci + 3 + 0] = 0;
             LE_BYTES.putShort(bc, bci + 3 + 1, (short) constPool.reserve());
             bci = bci + 6;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1456,7 +1359,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("SLToBooleanOperation expected 1 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLTO_BOOLEAN_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             // additionalData  = 1 bytes: [BITS]
@@ -1464,7 +1367,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 0
             bc[bci + 3 + 0] = 0;
             bci = bci + 4;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1486,7 +1389,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren != 1) {
                 throw new IllegalStateException("SLEvalRootOperation expected 1 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, 1, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(1, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLEVAL_ROOT_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             // additionalData  = 1 bytes: [BITS]
@@ -1494,7 +1397,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 0
             bc[bci + 3 + 0] = 0;
             bci = bci + 4;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
         }
@@ -1516,7 +1419,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             if (numChildren < 0) {
                 throw new IllegalStateException("SLInvokeOperation expected at least 0 children, got " + numChildren);
             }
-            int[] predecessorBcis = doBeforeEmitInstruction(bci, numChildren, true);
+            int[] predecessorBcis = doBeforeEmitInstruction(numChildren, true);
             LE_BYTES.putShort(bc, bci, (short) INSTR_C_SLINVOKE_OPERATION);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             LE_BYTES.putShort(bc, bci + 3, (short) (int) (numChildren - 1));
@@ -1525,21 +1428,14 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
             //   numConsts     = 3
             bc[bci + 5 + 0] = 0;
             LE_BYTES.putShort(bc, bci + 5 + 1, (short) constPool.reserve());
-            LE_BYTES.putShort(bc, bci + 5 + 3, (short) numChildNodes);
+            LE_BYTES.putShort(bc, bci + 5 + 3, createChildNodes(3));
             bc[bci + 5 + 5] = 0;
             constPool.reserve();
             constPool.reserve();
-            numChildNodes += 3;
             bci = bci + 11;
-            lastPush = 1;
+            lastChildPush = 1;
             operationData = operationData.parent;
             doAfterChild();
-        }
-
-        private static OperationsNode reparse(SLLanguage language, SLSource context, int buildOrder) {
-            BuilderImpl builder = new BuilderImpl(language, context, true, true);
-            SLOperations.parse(language, context, builder);
-            return builder.collect()[buildOrder];
         }
 
         /**
@@ -1573,13 +1469,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.constant.long
+         * load.constant.boolean
          *   Inputs:
          *     CONST_POOL
          *   Results:
          *     STACK_VALUE
          *
-         * load.constant.boolean
+         * load.constant.long
          *   Inputs:
          *     CONST_POOL
          *   Results:
@@ -1591,13 +1487,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.argument.long
+         * load.argument.boolean
          *   Inputs:
          *     ARGUMENT
          *   Results:
          *     STACK_VALUE
          *
-         * load.argument.boolean
+         * load.argument.long
          *   Inputs:
          *     ARGUMENT
          *   Results:
@@ -1615,13 +1511,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * load.local.long
+         * load.local.boolean
          *   Inputs:
          *     LOCAL
          *   Results:
          *     STACK_VALUE
          *
-         * load.local.boolean
+         * load.local.long
          *   Inputs:
          *     LOCAL
          *   Results:
@@ -2068,24 +1964,13 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
 
          */
         @GeneratedBy(SLOperations.class)
-        private static final class BytecodeNode extends OperationsNode implements Provider {
+        private static final class BytecodeNode extends OperationBytecodeNode implements Provider {
 
             private static final LibraryFactory<InteropLibrary> INTEROP_LIBRARY_ = LibraryFactory.resolve(InteropLibrary.class);
             private static final LibraryFactory<DynamicObjectLibrary> DYNAMIC_OBJECT_LIBRARY_ = LibraryFactory.resolve(DynamicObjectLibrary.class);
 
-            @CompilationFinal(dimensions = 1) private final byte[] bc;
-            @CompilationFinal(dimensions = 1) private final Object[] consts;
-            @Children private final Node[] children;
-            @CompilationFinal(dimensions = 1) private final BuilderExceptionHandler[] handlers;
-            @CompilationFinal(dimensions = 1) private final ConditionProfile[] conditionProfiles;
-
-            BytecodeNode(Object parseContext, int[][] sourceInfo, Source[] sources, int buildOrder, int maxStack, int maxLocals, byte[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers, ConditionProfile[] conditionProfiles) {
-                super(parseContext, sourceInfo, sources, buildOrder, maxStack, maxLocals);
-                this.bc = bc;
-                this.consts = consts;
-                this.children = children;
-                this.handlers = handlers;
-                this.conditionProfiles = conditionProfiles;
+            BytecodeNode(int maxStack, int maxLocals, byte[] bc, Object[] consts, Node[] children, BuilderExceptionHandler[] handlers, ConditionProfile[] conditionProfiles) {
+                super(maxStack, maxLocals, bc, consts, children, handlers, conditionProfiles);
             }
 
             @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
@@ -2152,16 +2037,16 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_CONSTANT_LONG :
+                            case INSTR_LOAD_CONSTANT_BOOLEAN :
                             {
-                                frame.setLong(sp, (long) consts[LE_BYTES.getShort(bc, bci + 2)]);
+                                frame.setBoolean(sp, (boolean) consts[LE_BYTES.getShort(bc, bci + 2)]);
                                 sp = sp + 1;
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_CONSTANT_BOOLEAN :
+                            case INSTR_LOAD_CONSTANT_LONG :
                             {
-                                frame.setBoolean(sp, (boolean) consts[LE_BYTES.getShort(bc, bci + 2)]);
+                                frame.setLong(sp, (long) consts[LE_BYTES.getShort(bc, bci + 2)]);
                                 sp = sp + 1;
                                 nextBci = bci + 4;
                                 break;
@@ -2174,11 +2059,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_ARGUMENT_LONG :
+                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
                             {
                                 Object value = frame.getArguments()[LE_BYTES.getShort(bc, bci + 2)];
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
+                                if (value instanceof Boolean) {
+                                    frame.setBoolean(sp, (boolean) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2186,11 +2071,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                            case INSTR_LOAD_ARGUMENT_LONG :
                             {
                                 Object value = frame.getArguments()[LE_BYTES.getShort(bc, bci + 2)];
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
+                                if (value instanceof Long) {
+                                    frame.setLong(sp, (long) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2213,11 +2098,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_LOCAL_LONG :
+                            case INSTR_LOAD_LOCAL_BOOLEAN :
                             {
                                 Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
+                                if (value instanceof Boolean) {
+                                    frame.setBoolean(sp, (boolean) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -2225,11 +2110,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_LOAD_LOCAL_BOOLEAN :
+                            case INSTR_LOAD_LOCAL_LONG :
                             {
                                 Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
+                                if (value instanceof Long) {
+                                    frame.setLong(sp, (long) value);
                                 } else {
                                     frame.setObject(sp, value);
                                 }
@@ -5948,11 +5833,11 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                         case INSTR_THROW :
                         case INSTR_LOAD_CONSTANT_OBJECT :
                         case INSTR_LOAD_ARGUMENT_OBJECT :
-                        case INSTR_LOAD_ARGUMENT_LONG :
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
+                        case INSTR_LOAD_ARGUMENT_LONG :
                         case INSTR_LOAD_LOCAL_OBJECT :
-                        case INSTR_LOAD_LOCAL_LONG :
                         case INSTR_LOAD_LOCAL_BOOLEAN :
+                        case INSTR_LOAD_LOCAL_LONG :
                         case INSTR_C_SLLOGICAL_NOT_OPERATION :
                         case INSTR_C_SLTO_BOOLEAN_OPERATION :
                         case INSTR_C_SLEVAL_ROOT_OPERATION :
@@ -5966,8 +5851,8 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci = bci + 7;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
+                        case INSTR_LOAD_CONSTANT_LONG :
                         {
                             LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_CONSTANT_OBJECT);
                             bci = bci + 4;
@@ -6020,7 +5905,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 }
             }
 
-            @Override
             public String dump() {
                 int bci = 0;
                 int instrIndex = 0;
@@ -6162,34 +6046,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_CONSTANT_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.constant.long               ");
-                            {
-                                Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
-                                sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
-                            }
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_CONSTANT_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6209,6 +6065,34 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.constant.boolean            ");
+                            {
+                                Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
+                                sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
+                            }
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_CONSTANT_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.constant.long               ");
                             {
                                 Object o = consts[LE_BYTES.getShort(bc, bci + 2)];
                                 sb.append(String.format("%s %s", o.getClass().getSimpleName(), o));
@@ -6243,31 +6127,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_ARGUMENT_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.argument.long               ");
-                            sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_ARGUMENT_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6287,6 +6146,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.argument.boolean            ");
+                            sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_ARGUMENT_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.argument.long               ");
                             sb.append(String.format("arg[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");
@@ -6343,31 +6227,6 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_LOAD_LOCAL_LONG :
-                        {
-                            sb.append(String.format("%02x ", bc[bci + 0]));
-                            sb.append(String.format("%02x ", bc[bci + 1]));
-                            sb.append(String.format("%02x ", bc[bci + 2]));
-                            sb.append(String.format("%02x ", bc[bci + 3]));
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("   ");
-                            sb.append("load.local.long                  ");
-                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
-                            sb.append(" -> ");
-                            sb.append("x");
-                            bci += 4;
-                            break;
-                        }
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6387,6 +6246,31 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.local.boolean               ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.local.long                  ");
                             sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");
@@ -7085,31 +6969,7 @@ public abstract class SLOperationsBuilder extends OperationsBuilder {
                 for (int i = 0; i < handlers.length; i++) {
                     sb.append(handlers[i] + "\n");
                 }
-                if (sourceInfo != null) {
-                    sb.append("Source info:\n");
-                    for (int i = 0; i < sourceInfo[0].length; i++) {
-                        sb.append(String.format("  bci=%04x, offset=%d, length=%d\n", sourceInfo[0][i], sourceInfo[1][i], sourceInfo[2][i]));
-                    }
-                }
                 return sb.toString();
-            }
-
-            @Override
-            public SourceSection getSourceSection() {
-                if (sourceInfo == null) {
-                    OperationsNode reparsed = BuilderImpl.reparse(getRootNode().getLanguage(SLLanguage.class), (SLSource) parseContext, buildOrder);
-                    copyReparsedInfo(reparsed);
-                }
-                return this.getSourceSectionImpl();
-            }
-
-            @Override
-            protected SourceSection getSourceSectionAtBci(int bci) {
-                if (sourceInfo == null) {
-                    OperationsNode reparsed = BuilderImpl.reparse(getRootNode().getLanguage(SLLanguage.class), (SLSource) parseContext, buildOrder);
-                    copyReparsedInfo(reparsed);
-                }
-                return this.getSourceSectionAtBciImpl(bci);
             }
 
             private static boolean SLAddOperation_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value, Object $child1Value) {

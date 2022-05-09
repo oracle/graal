@@ -1,6 +1,5 @@
 package com.oracle.truffle.sl.operations;
 
-import java.util.Collections;
 import java.util.Map;
 
 import com.oracle.truffle.api.Assumption;
@@ -24,7 +23,6 @@ import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
 import com.oracle.truffle.sl.nodes.expression.SLDivNode;
@@ -39,8 +37,6 @@ import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
-import com.oracle.truffle.sl.parser.SLOperationsVisitor;
-import com.oracle.truffle.sl.parser.SLSource;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -64,21 +60,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLUnboxNode.class)
 @OperationProxy(SLFunctionLiteralNode.class)
 @OperationProxy(SLToBooleanNode.class)
-public class SLOperations {
-
-    public static void parse(SLLanguage language, SLSource source, SLOperationsBuilder builder) {
-        Map<TruffleString, RootCallTarget> targets = SLOperationsVisitor.parseSL(language, source, builder);
-
-        // create the RootNode
-
-        builder.beginReturn();
-        builder.beginSLEvalRootOperation();
-        builder.emitConstObject(Collections.unmodifiableMap(targets));
-        builder.endSLEvalRootOperation();
-        builder.endReturn();
-
-        builder.build();
-    }
+public final class SLOperations {
 
     @Operation
     public static class SLEvalRootOperation {

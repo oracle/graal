@@ -1,40 +1,26 @@
 package com.oracle.truffle.api.operation.test.example;
 
 import java.util.List;
-import java.util.function.Consumer;
-
-import org.junit.Assert;
 
 import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
-import com.oracle.truffle.api.operation.OperationsNode;
 import com.oracle.truffle.api.operation.Variadic;
 
 @GenerateOperations
 @GenerateAOT
-public class TestOperations {
+public final class TestOperations {
 
     private static class TestException extends AbstractOperationsTruffleException {
 
         private static final long serialVersionUID = -9143719084054578413L;
 
-        public TestException(String string, OperationsNode node, int bci) {
+        public TestException(String string, Node node, int bci) {
             super(string, node, bci);
-        }
-    }
-
-    @SuppressWarnings({"unused", "unchecked"})
-    public static void parse(TestLanguage language, Object input, TestOperationsBuilder builder) {
-        if (input instanceof Consumer<?>) {
-            Consumer<TestOperationsBuilder> callback = (Consumer<TestOperationsBuilder>) input;
-            callback.accept(builder);
-        } else {
-            Assert.fail("invalid parser");
         }
     }
 
@@ -74,7 +60,7 @@ public class TestOperations {
     @GenerateAOT
     static class ThrowOperation {
         @Specialization
-        public static Object perform(@Bind("$bci") int bci, @Bind("this") OperationsNode node) {
+        public static Object perform(@Bind("$bci") int bci, @Bind("this") Node node) {
             throw new TestException("fail", node, bci);
         }
     }

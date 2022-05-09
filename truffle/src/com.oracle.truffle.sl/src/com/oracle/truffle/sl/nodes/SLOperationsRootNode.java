@@ -1,16 +1,16 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.operation.OperationsNode;
+import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 
 public class SLOperationsRootNode extends SLRootNode {
 
-    @Child private OperationsNode operationsNode;
+    @Child private OperationNode operationsNode;
 
-    public SLOperationsRootNode(SLLanguage language, OperationsNode operationsNode, TruffleString name) {
+    public SLOperationsRootNode(SLLanguage language, OperationNode operationsNode, TruffleString name) {
         super(language, operationsNode.createFrameDescriptor(), null, null, name);
         this.operationsNode = insert(operationsNode);
     }
