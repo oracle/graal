@@ -34,15 +34,19 @@ import java.util.List;
 public class ClangLike extends ClangLikeBase {
 
     public static void runClangXX(String[] args) {
-        new ClangLike(args, true, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangLike(args, ClangLikeBase.Tool.ClangXX, Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClang(String[] args) {
-        new ClangLike(args, false, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangLike(args, ClangLikeBase.Tool.Clang,  Arch.getCurrent(), NATIVE_PLATFORM).run();
     }
 
-    protected ClangLike(String[] args, boolean cxx, OS os, Arch arch, String platform) {
-        super(args, cxx, os, arch, platform);
+    public static void runClangCL(String[] args) {
+        new ClangLike(args, ClangLikeBase.Tool.ClangCL, Arch.getCurrent(), NATIVE_PLATFORM).run();
+    }
+
+    protected ClangLike(String[] args, ClangLikeBase.Tool tool, OS os, Arch arch, String platform) {
+        super(args, tool, os, arch, platform);
     }
 
     @Override
@@ -50,10 +54,14 @@ public class ClangLike extends ClangLikeBase {
         sulongArgs.add("-I" + getSulongHome().resolve(platform).resolve("include"));
         sulongArgs.add("-I" + getSulongHome().resolve("include"));
         // Add libc++ unconditionally as C++ might be compiled via clang [GR-23036]
-        sulongArgs.add("-stdlib=libc++");
+        if (this.tool != ClangLikeBase.Tool.ClangCL) {
+            sulongArgs.add("-stdlib=libc++");
+        }
         // Suppress warning because of libc++
         sulongArgs.add("-Wno-unused-command-line-argument");
-        super.getCompilerArgs(sulongArgs);
+        if (this.tool != ClangLikeBase.Tool.ClangCL) {
+            super.getCompilerArgs(sulongArgs);
+        }
     }
 
     @Override

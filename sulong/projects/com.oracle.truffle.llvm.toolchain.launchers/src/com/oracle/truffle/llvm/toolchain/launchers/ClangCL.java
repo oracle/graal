@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,34 +27,20 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.toolchain.launchers.darwin;
+package com.oracle.truffle.llvm.toolchain.launchers;
 
-import java.util.List;
+import static com.oracle.truffle.llvm.toolchain.launchers.common.Driver.OS;
 
 import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
-import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLikeBase;
+import com.oracle.truffle.llvm.toolchain.launchers.darwin.DarwinClangLike;
 
-public class DarwinClangLike extends ClangLike {
+public final class ClangCL {
 
-    protected DarwinClangLike(String[] args, ClangLikeBase.Tool tool, OS os, Arch arch, String platform) {
-        super(args, tool, os, arch, platform);
+    public static void main(String[] args) {
+        if (OS.getCurrent() == OS.DARWIN) {
+            DarwinClangLike.runClangCL(args);
+        } else {
+            ClangLike.runClangCL(args);
+        }
     }
-
-    public static void runClangXX(String[] args) {
-        new DarwinClangLike(args, ClangLikeBase.Tool.ClangXX, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
-    }
-
-    public static void runClang(String[] args) {
-        new DarwinClangLike(args, ClangLikeBase.Tool.Clang, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
-    }
-
-    public static void runClangCL(String[] args) {
-        new DarwinClangLike(args, ClangLikeBase.Tool.ClangCL, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
-    }
-
-    @Override
-    public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verb, boolean hlp, boolean earlyexit) {
-        DarwinLinker.runDriverWithSaveTemps(this, sulongArgs, userArgs, verb, hlp, earlyexit, "-Wl,", needLinkerFlags, outputFlagPos);
-    }
-
 }

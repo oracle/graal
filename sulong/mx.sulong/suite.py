@@ -834,11 +834,11 @@ suite = {
       "class" : "CMakeNinjaProject",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
-      "ninja_targets" : ["cxxabi", "cxx"],
-      "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
+      "ninja_targets" : ["cxx"],
+      "ninja_install_targets" : ["install-cxx"],
       "results" : ["native"],
       "cmakeConfig" : {
-        "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
+        "LLVM_ENABLE_RUNTIMES" : "libcxx",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",

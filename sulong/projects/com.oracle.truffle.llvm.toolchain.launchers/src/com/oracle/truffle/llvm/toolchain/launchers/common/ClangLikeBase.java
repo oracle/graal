@@ -43,6 +43,21 @@ import java.util.Objects;
 
 public abstract class ClangLikeBase extends Driver {
 
+    public enum Tool {
+        Clang,
+        ClangXX,
+        ClangCL;
+
+        public String getToolName() {
+            switch (this) {
+            case Clang: return "clang";
+            case ClangXX: return "clang++";
+            case ClangCL: return "clang-cl";
+            default: throw new  IllegalArgumentException("Unknown Tool " + this.toString());
+            }
+        }
+    }
+
     public static final String NATIVE_PLATFORM = "native";
     public static final String XCRUN = "/usr/bin/xcrun";
     /**
@@ -53,7 +68,7 @@ public abstract class ClangLikeBase extends Driver {
     protected final boolean needCompilerFlags;
     protected final boolean verbose;
     protected final boolean help;
-    protected final boolean cxx;
+    protected final Tool tool;
     protected final boolean earlyExit;
     protected final OS os;
     protected final Arch arch;
@@ -62,9 +77,9 @@ public abstract class ClangLikeBase extends Driver {
     protected final int outputFlagPos;
     protected final boolean nostdincxx;
 
-    protected ClangLikeBase(String[] args, boolean cxx, OS os, Arch arch, String platform) {
-        super(cxx ? "clang++" : "clang");
-        this.cxx = cxx;
+    protected ClangLikeBase(String[] args, Tool tool, OS os, Arch arch, String platform) {
+        super(tool.getToolName());
+        this.tool = tool;
         this.os = os;
         this.arch = arch;
         this.platform = platform;
