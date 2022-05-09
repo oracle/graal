@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVM
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.LLVMDoubleOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode.LLVMFloatOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode.LLVMI16OffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
@@ -71,8 +72,6 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.L
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-
-import static com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.*;
 
 /**
  * On platforms such as on Windows VA lists objects are created by allocating a pointer sized object
@@ -96,7 +95,6 @@ import static com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStore
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
 public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
-    private static PlatformCapability<?> capability;
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
     private boolean wasVAListPointer = false;
@@ -150,8 +148,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     @ExportMessage
     static class ToNative {
         @Specialization(guards = "!self.isStoredOnHeap()")
-        static void ToNativeVaList(LLVMMaybeVaPointer self,
-                                   @Cached LLVMPointerOffsetStoreNode storeAddressNode) {
+        static void toNativeVaList(LLVMMaybeVaPointer self,
+                        @Cached LLVMPointerOffsetStoreNode storeAddressNode) {
             assert self.vaList.getOffset() == 0;
             // triggers a toNative transition for vaList object
             storeAddressNode.executeWithTarget(self.address, 0, self.vaList.getObject());
@@ -159,8 +157,8 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = "!self.isPointer()")
-        static void ToNativeVaList(LLVMMaybeVaPointer self,
-                @CachedLibrary(limit = "1") InteropLibrary interopLibrary) {
+        static void toNativeVaList(LLVMMaybeVaPointer self,
+                        @CachedLibrary(limit = "1") InteropLibrary interopLibrary) {
             interopLibrary.toNative(self.address);
             self.vaList = null;
         }
