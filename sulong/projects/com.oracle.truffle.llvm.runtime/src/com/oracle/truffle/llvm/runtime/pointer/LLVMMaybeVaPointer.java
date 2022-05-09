@@ -198,11 +198,10 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             storeAddressNode.executeWithTarget(self.address, 0, vaListInstance);
         }
 
-        @Specialization(guards = "!self.isStoredOnHeap()")
+        @Specialization(guards = {"!self.isStoredOnHeap()", "!self.isManagedStorage()"})
         static void initializeStack(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
                         @Cached.Shared("storeAddressNode") @Cached LLVMPointerOffsetStoreNode storeAddressNode,
                         @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {
-            assert !self.isManagedStorage();
             self.initializeBase(realArguments, numberOfExplicitArguments, frame, vaListLibrary, storeAddressNode);
 
             /*
