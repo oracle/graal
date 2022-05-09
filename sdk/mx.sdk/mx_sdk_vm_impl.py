@@ -2730,6 +2730,14 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DLIBJVM_RELPATH=' + _libjvm_path,
         ]
 
+        # path to libjli - only needed on osx for AWT
+        if mx.is_darwin():
+            _libjli_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', mx.add_lib_suffix("libjli"))
+            _libjli_path = relpath(_libjli_path, start=_exe_dir)
+            _dynamic_cflags += [
+                '-DLIBJLI_RELPATH=' + _libjli_path,
+            ]
+
         # path to native image language library - this is set even if the library is not built, as it may be built after the fact
         if self.jvm_launcher:
             # since this distribution has no native library, we can only assume the default path: language_home/lib<lang>vm.so
