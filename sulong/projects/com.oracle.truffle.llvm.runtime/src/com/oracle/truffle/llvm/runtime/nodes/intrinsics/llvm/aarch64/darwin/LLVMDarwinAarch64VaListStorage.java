@@ -117,10 +117,10 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             if (o instanceof LLVMVarArgCompoundValue) {
                 stackSize += alignUp(((LLVMVarArgCompoundValue) o).getSize());
             } else {
-                stackSize += 8;
+                stackSize += Long.BYTES;
             }
         }
-        self.vaListStackPtr = stackAllocationNode.executeWithTarget(stackSize * Long.BYTES, frame);
+        self.vaListStackPtr = stackAllocationNode.executeWithTarget(stackSize, frame);
         self.nativized = false;
     }
 
