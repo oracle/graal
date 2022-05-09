@@ -390,9 +390,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         // change that class loader to
         // com.oracle.svm.core.hub.DynamicHubCompanion#NO_CLASS_LOADER as we do for every class that
         // is being registered as predefined
-        if (Proxy.isProxyClass(hostedJavaClass) && PredefinedClassesSupport.isPredefined(hostedJavaClass)) {
-            this.companion.setNoClassLoaderForProxyClass();
-        }
+//        if (Proxy.isProxyClass(hostedJavaClass) && PredefinedClassesSupport.isPredefined(hostedJavaClass)) {
+//            this.companion.setNoClassLoaderForProxyClass();
+//        }
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = NumUtil.safeToShort(monitorOffset);

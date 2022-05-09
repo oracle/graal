@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Proxy;
 import java.security.ProtectionDomain;
 
 import org.graalvm.nativeimage.Platform;
@@ -61,7 +62,7 @@ public final class DynamicHubCompanion {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
-        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
+        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) || Proxy.isProxyClass(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
     }
 
     String getPackageName(DynamicHub hub) {
@@ -84,10 +85,6 @@ public final class DynamicHubCompanion {
     void setClassLoader(ClassLoader loader) {
         VMError.guarantee(classLoader == NO_CLASS_LOADER && loader != NO_CLASS_LOADER);
         classLoader = loader;
-    }
-
-    void setNoClassLoaderForProxyClass() {
-        classLoader = NO_CLASS_LOADER;
     }
 
     ProtectionDomain getProtectionDomain() {
