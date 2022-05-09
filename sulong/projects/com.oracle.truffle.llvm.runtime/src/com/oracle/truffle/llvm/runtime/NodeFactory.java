@@ -200,6 +200,8 @@ public interface NodeFactory {
 
     LLVMExpressionNode createGetStackFromFrame();
 
+    boolean boxGlobals();
+
     LLVMStackAccess createStackAccess();
 
     void addStackSlots(FrameDescriptor.Builder builder);
