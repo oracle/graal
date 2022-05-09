@@ -41,12 +41,15 @@ import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import jdk.vm.ci.aarch64.AArch64;
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.PrimitiveConstant;
@@ -522,87 +525,98 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     private void initDwarfRegMap() {
         if (dwarfSections.elfMachine == ELFMachine.AArch64) {
             dwarfRegMap = GRAAL_AARCH64_TO_DWARF_REG_MAP;
-            dwarfStackRegister = DwarfRegEncodingAArch64.SP.encoding;
+            dwarfStackRegister = DwarfRegEncodingAArch64.SP.getDwarfEncoding();
         } else {
             assert dwarfSections.elfMachine == ELFMachine.X86_64 : "must be";
             dwarfRegMap = GRAAL_X86_64_TO_DWARF_REG_MAP;
-            dwarfStackRegister = DwarfRegEncodingAMD64.RSP.encoding;
+            dwarfStackRegister = DwarfRegEncodingAMD64.RSP.getDwarfEncoding();
         }
     }
 
-    // Register numbers used by DWARF for AArch64 registers.
+    // Register numbers used by DWARF for AArch64 registers encoded
+    // along with their respective GraalVM compiler number.
     public enum DwarfRegEncodingAArch64 {
-        R0(0),
-        R1(1),
-        R2(2),
-        R3(3),
-        R4(4),
-        R5(5),
-        R6(6),
-        R7(7),
-        R8(8),
-        R9(9),
-        R10(10),
-        R11(11),
-        R12(12),
-        R13(13),
-        R14(14),
-        R15(15),
-        R16(16),
-        R17(17),
-        R18(18),
-        R19(19),
-        R20(20),
-        R21(21),
-        R22(22),
-        R23(23),
-        R24(24),
-        R25(25),
-        R26(26),
-        R27(27),
-        R28(28),
-        R29(29),
-        R30(30),
-        R31(31),
-        ZR(96),
-        SP(31),
-        V0(64),
-        V1(65),
-        V2(66),
-        V3(67),
-        V4(68),
-        V5(69),
-        V6(70),
-        V7(71),
-        V8(72),
-        V9(73),
-        V10(74),
-        V11(75),
-        V12(76),
-        V13(77),
-        V14(78),
-        V15(79),
-        V16(80),
-        V17(81),
-        V18(82),
-        V19(83),
-        V20(84),
-        V21(85),
-        V22(86),
-        V23(87),
-        V24(88),
-        V25(89),
-        V26(90),
-        V27(91),
-        V28(92),
-        V29(93),
-        V30(94),
-        V31(95);
+        R0(0, AArch64.r0.number),
+        R1(1, AArch64.r1.number),
+        R2(2, AArch64.r2.number),
+        R3(3, AArch64.r3.number),
+        R4(4, AArch64.r4.number),
+        R5(5, AArch64.r5.number),
+        R6(6, AArch64.r6.number),
+        R7(7, AArch64.r7.number),
+        R8(8, AArch64.r8.number),
+        R9(9, AArch64.r9.number),
+        R10(10, AArch64.r10.number),
+        R11(11, AArch64.r11.number),
+        R12(12, AArch64.r12.number),
+        R13(13, AArch64.r13.number),
+        R14(14, AArch64.r14.number),
+        R15(15, AArch64.r15.number),
+        R16(16, AArch64.r16.number),
+        R17(17, AArch64.r17.number),
+        R18(18, AArch64.r18.number),
+        R19(19, AArch64.r19.number),
+        R20(20, AArch64.r20.number),
+        R21(21, AArch64.r21.number),
+        R22(22, AArch64.r22.number),
+        R23(23, AArch64.r23.number),
+        R24(24, AArch64.r24.number),
+        R25(25, AArch64.r25.number),
+        R26(26, AArch64.r26.number),
+        R27(27, AArch64.r27.number),
+        R28(28, AArch64.r28.number),
+        R29(29, AArch64.r29.number),
+        R30(30, AArch64.r30.number),
+        R31(31, AArch64.r31.number),
+        ZR(31, AArch64.zr.number),
+        SP(31, AArch64.sp.number),
+        V0(64, AArch64.v0.number),
+        V1(65, AArch64.r1.number),
+        V2(66, AArch64.v2.number),
+        V3(67, AArch64.v3.number),
+        V4(68, AArch64.v4.number),
+        V5(69, AArch64.v5.number),
+        V6(70, AArch64.v6.number),
+        V7(71, AArch64.v7.number),
+        V8(72, AArch64.v8.number),
+        V9(73, AArch64.v9.number),
+        V10(74, AArch64.v10.number),
+        V11(75, AArch64.v11.number),
+        V12(76, AArch64.v12.number),
+        V13(77, AArch64.v13.number),
+        V14(78, AArch64.v14.number),
+        V15(79, AArch64.v15.number),
+        V16(80, AArch64.v16.number),
+        V17(81, AArch64.v17.number),
+        V18(82, AArch64.v18.number),
+        V19(83, AArch64.v19.number),
+        V20(84, AArch64.v20.number),
+        V21(85, AArch64.v21.number),
+        V22(86, AArch64.v22.number),
+        V23(87, AArch64.v23.number),
+        V24(88, AArch64.v24.number),
+        V25(89, AArch64.v25.number),
+        V26(90, AArch64.v26.number),
+        V27(91, AArch64.v27.number),
+        V28(92, AArch64.v28.number),
+        V29(93, AArch64.v29.number),
+        V30(94, AArch64.v30.number),
+        V31(95, AArch64.v31.number);
 
-        public final int encoding;
+        private final int dwarfEncoding;
+        private final int graalEncoding;
 
-        DwarfRegEncodingAArch64(int encoding) {
-            this.encoding = encoding;
+        DwarfRegEncodingAArch64(int dwarfEncoding, int graalEncoding) {
+            this.dwarfEncoding = dwarfEncoding;
+            this.graalEncoding = graalEncoding;
+        }
+
+        public static int graalOrder(DwarfRegEncodingAArch64 e1, DwarfRegEncodingAArch64 e2) {
+            return Integer.compare(e1.graalEncoding, e2.graalEncoding);
+        }
+
+        public int getDwarfEncoding() {
+            return dwarfEncoding;
         }
     }
 
@@ -611,164 +625,69 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
     // and 34-65 respectively. Table entries provided the corresponding number used by DWARF to
     // identify the same register. Note that the table includes entries for ZR (32) and SP (33)
     // even though we should not see those register numbers appearing in location values.
-    private static final int[] GRAAL_AARCH64_TO_DWARF_REG_MAP = {
-                    DwarfRegEncodingAArch64.R0.encoding,
-                    DwarfRegEncodingAArch64.R1.encoding,
-                    DwarfRegEncodingAArch64.R2.encoding,
-                    DwarfRegEncodingAArch64.R3.encoding,
-                    DwarfRegEncodingAArch64.R4.encoding,
-                    DwarfRegEncodingAArch64.R5.encoding,
-                    DwarfRegEncodingAArch64.R6.encoding,
-                    DwarfRegEncodingAArch64.R7.encoding,
-                    DwarfRegEncodingAArch64.R8.encoding,
-                    DwarfRegEncodingAArch64.R9.encoding,
-                    DwarfRegEncodingAArch64.R10.encoding,
-                    DwarfRegEncodingAArch64.R11.encoding,
-                    DwarfRegEncodingAArch64.R12.encoding,
-                    DwarfRegEncodingAArch64.R13.encoding,
-                    DwarfRegEncodingAArch64.R14.encoding,
-                    DwarfRegEncodingAArch64.R15.encoding,
-                    DwarfRegEncodingAArch64.R16.encoding,
-                    DwarfRegEncodingAArch64.R17.encoding,
-                    DwarfRegEncodingAArch64.R18.encoding,
-                    DwarfRegEncodingAArch64.R19.encoding,
-                    DwarfRegEncodingAArch64.R20.encoding,
-                    DwarfRegEncodingAArch64.R21.encoding,
-                    DwarfRegEncodingAArch64.R22.encoding,
-                    DwarfRegEncodingAArch64.R23.encoding,
-                    DwarfRegEncodingAArch64.R24.encoding,
-                    DwarfRegEncodingAArch64.R25.encoding,
-                    DwarfRegEncodingAArch64.R26.encoding,
-                    DwarfRegEncodingAArch64.R27.encoding,
-                    DwarfRegEncodingAArch64.R28.encoding,
-                    DwarfRegEncodingAArch64.R29.encoding,
-                    DwarfRegEncodingAArch64.R30.encoding,
-                    DwarfRegEncodingAArch64.R31.encoding,
-                    DwarfRegEncodingAArch64.ZR.encoding,
-                    DwarfRegEncodingAArch64.SP.encoding,
-                    DwarfRegEncodingAArch64.V0.encoding,
-                    DwarfRegEncodingAArch64.V1.encoding,
-                    DwarfRegEncodingAArch64.V2.encoding,
-                    DwarfRegEncodingAArch64.V3.encoding,
-                    DwarfRegEncodingAArch64.V4.encoding,
-                    DwarfRegEncodingAArch64.V5.encoding,
-                    DwarfRegEncodingAArch64.V6.encoding,
-                    DwarfRegEncodingAArch64.V7.encoding,
-                    DwarfRegEncodingAArch64.V8.encoding,
-                    DwarfRegEncodingAArch64.V9.encoding,
-                    DwarfRegEncodingAArch64.V10.encoding,
-                    DwarfRegEncodingAArch64.V11.encoding,
-                    DwarfRegEncodingAArch64.V12.encoding,
-                    DwarfRegEncodingAArch64.V13.encoding,
-                    DwarfRegEncodingAArch64.V14.encoding,
-                    DwarfRegEncodingAArch64.V15.encoding,
-                    DwarfRegEncodingAArch64.V16.encoding,
-                    DwarfRegEncodingAArch64.V17.encoding,
-                    DwarfRegEncodingAArch64.V18.encoding,
-                    DwarfRegEncodingAArch64.V19.encoding,
-                    DwarfRegEncodingAArch64.V20.encoding,
-                    DwarfRegEncodingAArch64.V21.encoding,
-                    DwarfRegEncodingAArch64.V22.encoding,
-                    DwarfRegEncodingAArch64.V23.encoding,
-                    DwarfRegEncodingAArch64.V24.encoding,
-                    DwarfRegEncodingAArch64.V25.encoding,
-                    DwarfRegEncodingAArch64.V26.encoding,
-                    DwarfRegEncodingAArch64.V27.encoding,
-                    DwarfRegEncodingAArch64.V28.encoding,
-                    DwarfRegEncodingAArch64.V29.encoding,
-                    DwarfRegEncodingAArch64.V30.encoding,
-                    DwarfRegEncodingAArch64.V31.encoding,
-    };
+    private static final int[] GRAAL_AARCH64_TO_DWARF_REG_MAP = Arrays.stream(DwarfRegEncodingAArch64.values()).sorted(DwarfRegEncodingAArch64::graalOrder)
+                    .mapToInt(DwarfRegEncodingAArch64::getDwarfEncoding).toArray();
 
-    // Register numbers used by DWARF for AMD64 registers. Note that the first 8 general
-    // purpose registers appear in a different order to that used by the compiler. For
+    // Register numbers used by DWARF for AMD64 registers encoded
+    // along with their respective GraalVM compiler number. n.b. some of the initial
+    // 8 general purpose registers have different Dwarf and GraalVM encodings. For
     // example the compiler number for RDX is 3 while the DWARF number for RDX is 1.
     public enum DwarfRegEncodingAMD64 {
-        RAX(0),
-        RDX(1),
-        RCX(2),
-        RBX(3),
-        RSI(4),
-        RDI(5),
-        RBP(6),
-        RSP(7),
-        R8(8),
-        R9(9),
-        R10(10),
-        R11(11),
-        R12(12),
-        R13(13),
-        R14(14),
-        R15(15),
-        XMM0(17),
-        XMM1(18),
-        XMM2(19),
-        XMM3(20),
-        XMM4(21),
-        XMM5(22),
-        XMM6(23),
-        XMM7(24),
-        XMM8(25),
-        XMM9(26),
-        XMM10(27),
-        XMM11(28),
-        XMM12(29),
-        XMM13(30),
-        XMM14(31),
-        XMM15(32);
+        RAX(0, AMD64.rax.number),
+        RDX(1, AMD64.rdx.number),
+        RCX(2, AMD64.rcx.number),
+        RBX(3, AMD64.rbx.number),
+        RSI(4, AMD64.rsi.number),
+        RDI(5, AMD64.rdi.number),
+        RBP(6, AMD64.rbp.number),
+        RSP(7, AMD64.rsp.number),
+        R8(8, AMD64.r8.number),
+        R9(9, AMD64.r9.number),
+        R10(10, AMD64.r10.number),
+        R11(11, AMD64.r11.number),
+        R12(12, AMD64.r12.number),
+        R13(13, AMD64.r13.number),
+        R14(14, AMD64.r14.number),
+        R15(15, AMD64.r15.number),
+        XMM0(17, AMD64.xmm0.number),
+        XMM1(18, AMD64.xmm1.number),
+        XMM2(19, AMD64.xmm2.number),
+        XMM3(20, AMD64.xmm3.number),
+        XMM4(21, AMD64.xmm4.number),
+        XMM5(22, AMD64.xmm5.number),
+        XMM6(23, AMD64.xmm6.number),
+        XMM7(24, AMD64.xmm7.number),
+        XMM8(25, AMD64.xmm8.number),
+        XMM9(26, AMD64.xmm9.number),
+        XMM10(27, AMD64.xmm10.number),
+        XMM11(28, AMD64.xmm11.number),
+        XMM12(29, AMD64.xmm12.number),
+        XMM13(30, AMD64.xmm13.number),
+        XMM14(31, AMD64.xmm14.number),
+        XMM15(32, AMD64.xmm15.number);
 
-        public final int encoding;
+        private final int dwarfEncoding;
+        private final int graalEncoding;
 
-        DwarfRegEncodingAMD64(int encoding) {
-            this.encoding = encoding;
+        DwarfRegEncodingAMD64(int dwarfEncoding, int graalEncoding) {
+            this.dwarfEncoding = dwarfEncoding;
+            this.graalEncoding = graalEncoding;
+        }
+
+        public static int graalOrder(DwarfRegEncodingAMD64 e1, DwarfRegEncodingAMD64 e2) {
+            return Integer.compare(e1.graalEncoding, e2.graalEncoding);
+        }
+
+        public int getDwarfEncoding() {
+            return dwarfEncoding;
         }
     }
 
     // Map from compiler X86_64 register numbers to corresponding DWARF AMD64 register encoding.
     // Register numbers for general purpose and float registers occupy index ranges 0-15 and 16-31
     // respectively. Table entries provide the corresponding number used by DWARF to identify the
-    // same register. Note that the first 8 initialization expressions in the array initializer
-    // do not appear in ascending order of the enum tag declarations, That is because of the
-    // disparity
-    // between the compiler's chosen order for these 8 registers and DWARF's chosen order. The order
-    // of
-    // the initialization entries effectively encodes a permutation from the compiler register order
-    // to
-    // the DWARF register order. The access to the encoding field then completes the translation
-    // from
-    // DWARF register to the corresponding DWARF numbering.
-    private static final int[] GRAAL_X86_64_TO_DWARF_REG_MAP = {
-                    DwarfRegEncodingAMD64.RAX.encoding,
-                    DwarfRegEncodingAMD64.RCX.encoding,
-                    DwarfRegEncodingAMD64.RDX.encoding,
-                    DwarfRegEncodingAMD64.RBX.encoding,
-                    DwarfRegEncodingAMD64.RSP.encoding,
-                    DwarfRegEncodingAMD64.RBP.encoding,
-                    DwarfRegEncodingAMD64.RSI.encoding,
-                    DwarfRegEncodingAMD64.RDI.encoding,
-                    DwarfRegEncodingAMD64.R8.encoding,
-                    DwarfRegEncodingAMD64.R9.encoding,
-                    DwarfRegEncodingAMD64.R10.encoding,
-                    DwarfRegEncodingAMD64.R11.encoding,
-                    DwarfRegEncodingAMD64.R12.encoding,
-                    DwarfRegEncodingAMD64.R13.encoding,
-                    DwarfRegEncodingAMD64.R14.encoding,
-                    DwarfRegEncodingAMD64.R15.encoding,
-                    DwarfRegEncodingAMD64.XMM0.encoding,
-                    DwarfRegEncodingAMD64.XMM1.encoding,
-                    DwarfRegEncodingAMD64.XMM2.encoding,
-                    DwarfRegEncodingAMD64.XMM3.encoding,
-                    DwarfRegEncodingAMD64.XMM4.encoding,
-                    DwarfRegEncodingAMD64.XMM5.encoding,
-                    DwarfRegEncodingAMD64.XMM6.encoding,
-                    DwarfRegEncodingAMD64.XMM7.encoding,
-                    DwarfRegEncodingAMD64.XMM8.encoding,
-                    DwarfRegEncodingAMD64.XMM9.encoding,
-                    DwarfRegEncodingAMD64.XMM10.encoding,
-                    DwarfRegEncodingAMD64.XMM11.encoding,
-                    DwarfRegEncodingAMD64.XMM12.encoding,
-                    DwarfRegEncodingAMD64.XMM13.encoding,
-                    DwarfRegEncodingAMD64.XMM14.encoding,
-                    DwarfRegEncodingAMD64.XMM15.encoding,
-    };
+    // same register.
+    private static final int[] GRAAL_X86_64_TO_DWARF_REG_MAP = Arrays.stream(DwarfRegEncodingAMD64.values()).sorted(DwarfRegEncodingAMD64::graalOrder).mapToInt(DwarfRegEncodingAMD64::getDwarfEncoding)
+                    .toArray();
+
 }
