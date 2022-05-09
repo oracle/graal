@@ -1558,7 +1558,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private static final String[] DISABLED_PRIVILEGES = DISABLE_PRIVILEGES_VALUE.isEmpty() ? new String[0] : DISABLE_PRIVILEGES_VALUE.split(",");
 
     // reflectively read from TruffleBaseFeature
-    private static final boolean ALLOW_CREATE_PROCESS;
+    static final boolean ALLOW_CREATE_PROCESS;
     static final boolean ALLOW_ENVIRONMENT_ACCESS;
     static final boolean ALLOW_IO;
     static {
