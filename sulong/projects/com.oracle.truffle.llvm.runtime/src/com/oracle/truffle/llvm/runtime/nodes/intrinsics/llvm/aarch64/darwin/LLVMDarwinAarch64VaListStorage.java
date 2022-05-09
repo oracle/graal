@@ -280,7 +280,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
 
     @ExportMessage
     void cleanup(@SuppressWarnings("unused") Frame frame) {
-        // nop
+        throw CompilerDirectives.shouldNotReachHere("should only be called on LLVMMaybeVaPointer");
     }
 
     @SuppressWarnings("static-method")
