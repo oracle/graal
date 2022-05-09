@@ -89,7 +89,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 @ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 2)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, useForAOT = true, useForAOTPriority = 3)
-public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implements LLVMPointer {
+public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private static PlatformCapability<?> capability;
     private final Assumption allocVAPointerAssumption;
     private final LLVMVAListNode allocaNode;
@@ -160,39 +160,6 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject implemen
             capability = LLVMLanguage.getContext().getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class);
         }
         return capability.createActualVAListStorage();
-    }
-
-    /* Implement LLVMPointer so that it can behave like a pointer in the fallback scenario */
-    @Override
-    @ExportMessage.Ignore
-    public boolean isNull() {
-        return address.isNull();
-    }
-
-    @Override
-    @ExportMessage.Ignore
-    public LLVMPointer copy() {
-        return address.copy();
-    }
-
-    @Override
-    public LLVMPointer increment(long offset) {
-        return address.increment(offset);
-    }
-
-    @Override
-    public LLVMInteropType getExportType() {
-        return address.getExportType();
-    }
-
-    @Override
-    public LLVMPointer export(LLVMInteropType newType) {
-        return address.export(newType);
-    }
-
-    @Override
-    public boolean isSame(LLVMPointer other) {
-        return address.isSame(other);
     }
 
     @ExportMessage
