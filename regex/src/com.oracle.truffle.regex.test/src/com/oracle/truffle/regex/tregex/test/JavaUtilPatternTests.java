@@ -46,6 +46,7 @@ import java.util.regex.Pattern;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.util.EmptyArrays;
@@ -153,6 +154,8 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     public void posix2CC() {
         test("\\p{Digit}", 0, "1");
+        // TODO add block support?
+        test("\\p{gc=Nd}", 0, "234");
     }
 
     @Test
@@ -319,6 +322,8 @@ public class JavaUtilPatternTests extends RegexTestBase {
 //                System.out.println(sb.toString() + " has matched");
             }
         }
+
+        Assert.assertEquals(UnicodeProperties.getProperty("sc=Brai", true), UnicodeProperties.getProperty("Script=Brai", true));
     }
 
     void test(String pattern, int flags, String input) {
