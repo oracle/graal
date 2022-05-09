@@ -52,6 +52,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrar
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.nodes.memory.NativeProfiledMemMove;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVMDoubleOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI16LoadNode.LLVMI16OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI8LoadNode.LLVMI8OffsetLoadNode;
@@ -166,10 +168,20 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
         }
     }
 
-    @SuppressWarnings("static-method")
     @ExportMessage
-    short readI16(@SuppressWarnings("unused") long offset) {
-        throw CompilerDirectives.shouldNotReachHere();
+    static class ReadI16 {
+        @Specialization(guards = "vaList.isNativized()")
+        @GenerateAOT.Exclude // recursion cut
+        static short readNativeI16(LLVMDarwinAarch64VaListStorage vaList, long offset,
+                        @Cached LLVMI16OffsetLoadNode offsetLoadNode) {
+            return offsetLoadNode.executeWithTarget(vaList.vaListStackPtr, offset);
+        }
+
+        @Specialization(guards = "!vaList.isNativized()", limit = "1")
+        static short readI16Managed(LLVMDarwinAarch64VaListStorage vaList, long offset,
+                        @CachedLibrary("vaList.argsArea") LLVMManagedReadLibrary readLibrary) {
+            return readLibrary.readI16(vaList.argsArea, offset);
+        }
     }
 
     @ExportMessage
