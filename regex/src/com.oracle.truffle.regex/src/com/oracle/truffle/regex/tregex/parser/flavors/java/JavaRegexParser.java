@@ -61,6 +61,7 @@ import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.TBitSet;
 
 import java.math.BigInteger;
@@ -69,8 +70,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -93,6 +96,52 @@ public final class JavaRegexParser implements RegexParser {
     private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
 
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
+
+    // This map contains the character sets of POSIX character classes
+    private static final Map<String, CodePointSet> UNICODE_POSIX_CHAR_CLASSES;
+    // This is the same as above but restricted to ASCII.
+    private static final Map<String, CodePointSet> ASCII_POSIX_CHAR_CLASSES;
+
+    static {
+        CodePointSet asciiRange = CodePointSet.create(0x00, 0x7F);
+
+        UNICODE_POSIX_CHAR_CLASSES = new HashMap<>(5);
+        ASCII_POSIX_CHAR_CLASSES = new HashMap<>(5);
+
+        CompilationBuffer buffer = new CompilationBuffer(Encodings.UTF_32);
+
+        CodePointSet alpha = UnicodeProperties.getProperty("Alphabetic");
+        CodePointSet digit = UnicodeProperties.getProperty("General_Category=Decimal_Number");
+        CodePointSet space = UnicodeProperties.getProperty("White_Space");
+        CodePointSet xdigit = CodePointSet.create('0', '9', 'A', 'F', 'a', 'f');
+        CodePointSet word = alpha.union(UnicodeProperties.getProperty("General_Category=Nonspacing_Mark")).union(UnicodeProperties.getProperty("General_Category=Enclosing_Mark")).
+                union(UnicodeProperties.getProperty("General_Category=Spacing_Mark")).union(digit).union(UnicodeProperties.getProperty("General_Category=Connector_Punctuation"));
+        CodePointSet blank = UnicodeProperties.getProperty("General_Category=Space_Separator").union(CodePointSet.create('\t', '\t'));
+        CodePointSet cntrl = UnicodeProperties.getProperty("General_Category=Control");
+        CodePointSet graph = space.union(UnicodeProperties.getProperty("General_Category=Control")).union(UnicodeProperties.getProperty("General_Category=Surrogate")).union(
+                UnicodeProperties.getProperty("General_Category=Unassigned")).createInverse(Encodings.UTF_32);  //
+//        CodePointSet print = graph.union(blank).createIntersection(cntrl.createInverse(Encodings.UTF_32), buffer);  //
+
+//        UNICODE_POSIX_CHAR_CLASSES.put("alpha", alpha);
+        UNICODE_POSIX_CHAR_CLASSES.put("alnum", alpha.union(digit));  //
+//        UNICODE_POSIX_CHAR_CLASSES.put("blank", blank);
+//        UNICODE_POSIX_CHAR_CLASSES.put("cntrl", cntrl);
+//        UNICODE_POSIX_CHAR_CLASSES.put("digit", digit);
+        UNICODE_POSIX_CHAR_CLASSES.put("graph", graph); //
+//        UNICODE_POSIX_CHAR_CLASSES.put("lower", UnicodeProperties.getProperty("Lowercase"));
+        UNICODE_POSIX_CHAR_CLASSES.put("print", graph.union(blank).subtract(cntrl, buffer));    //
+//        UNICODE_POSIX_CHAR_CLASSES.put("punct", UnicodeProperties.getProperty("General_Category=Punctuation").union(UnicodeProperties.getProperty("General_Category=Symbol").subtract(alpha, buffer)));
+//        UNICODE_POSIX_CHAR_CLASSES.put("space", space);
+//        UNICODE_POSIX_CHAR_CLASSES.put("upper", UnicodeProperties.getProperty("Uppercase"));
+        UNICODE_POSIX_CHAR_CLASSES.put("xdigit", xdigit);   //
+
+        UNICODE_POSIX_CHAR_CLASSES.put("word", word);   //
+//        UNICODE_POSIX_CHAR_CLASSES.put("ascii", UnicodeProperties.getProperty("ASCII"));
+
+        for (Map.Entry<String, CodePointSet> entry : UNICODE_POSIX_CHAR_CLASSES.entrySet()) {
+            ASCII_POSIX_CHAR_CLASSES.put(entry.getKey(), asciiRange.createIntersectionSingleRange(entry.getValue()));
+        }
+    }
 
     /**
      * An enumeration of the possible grammatical categories of Ruby regex terms, for use with
@@ -488,7 +537,8 @@ public final class JavaRegexParser implements RegexParser {
                     if (astBuilder.getCurTerm().isLookBehindAssertion()) {
                         throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
                     }
-                    astBuilder.addQuantifier((Token.Quantifier) token);
+//                    astBuilder.addQuantifier((Token.Quantifier) token);
+                    addQuantifier((Token.Quantifier) token);
                     break;
                 case anchor:
                     Token.Anchor anc = (Token.Anchor) token;
@@ -844,10 +894,82 @@ public final class JavaRegexParser implements RegexParser {
             if (atEnd()) {
                 throw syntaxErrorAt(RbErrorMessages.UNTERMINATED_CHARACTER_SET, beginPos);
             }
+
+
             int rangeStart = position;
             Optional<Integer> lowerBound;
             boolean wasNestedCharClass = false;
             int ch = consumeChar();
+
+            int restorePosition = position;
+            if (ch == '\\') {
+//                advance();
+                int ch2 = consumeChar();
+                if (ch2 == 'P' || ch2 == 'p') {
+                    boolean capitalP = curChar() == 'P';
+                    ch2 = consumeChar();
+                    if (ch2 == '{') {
+                        String propertySpec = getMany(c -> c != '}');
+                        if (atEnd()) {
+                            position = restorePosition;
+                            break classBody;
+                        } else {
+                            advance();
+                        }
+                        boolean caret = propertySpec.startsWith("^");
+                        boolean negative = (capitalP || caret) && (!capitalP || !caret);
+                        if (caret) {
+                            propertySpec = propertySpec.substring(1);
+                        }
+                        CodePointSet property;
+                        propertySpec = parseUnicodeCharacterClass(propertySpec);
+                        if(UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec)) {
+                            property = getUnicodePosixCharClass(propertySpec.toLowerCase());
+                        }
+                        else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+                            property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
+                        } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+                            property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
+                        } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+                            property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+                        } else {
+                            bailOut("unsupported Unicode property " + propertySpec);
+                            // So that the property variable is always written to.
+                            property = CodePointSet.getEmpty();
+                        }
+//                    if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
+//                        property = getUnicodePosixCharClass(propertySpec.toLowerCase());
+//                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
+//                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
+//                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+//                    } else {
+//                        bailOut("unsupported Unicode property " + propertySpec);
+//                        // So that the property variable is always written to.
+//                        property = CodePointSet.getEmpty();
+//                    }
+                        if (negative) {
+                            property = property.createInverse(Encodings.UTF_32);
+                        }
+//                    if (inCharClass) {
+//                        curCharClass.addSet(property);
+//                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
+//                            fullyFoldableCharacters.addSet(property);
+//                        }
+//                    } else {
+//                        addCharClass(property);
+//                    }
+//                    return true;
+                        curCharClass.addSet(property);
+                    }
+                }
+
+                position = restorePosition;
+            }
+
+
             switch (ch) {
                 case ']':
                     if (position == firstPosInside + 1) {
@@ -1069,6 +1191,7 @@ public final class JavaRegexParser implements RegexParser {
             throw syntaxErrorAtEnd(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
         }
         int ch = consumeChar();
+        int restorePosition = position;
 //        if ('1' <= c && c <= '9') {
 //            final int restoreIndex = index;
 //            final int backRefNumber = (c - '0');
@@ -1129,6 +1252,70 @@ public final class JavaRegexParser implements RegexParser {
 //                return Token.createWordBoundary();
 //            case 'B':
 //                return Token.createNonWordBoundary();
+            case 'p':
+            case 'P':
+                retreat();
+                boolean capitalP = curChar() == 'P';
+                advance();
+                if (match("{")) {
+                    String propertySpec = getMany(c -> c != '}');
+                    if (atEnd()) {
+                        position = restorePosition;
+                        return Token.createCharClass(CodePointSet.getEmpty());
+                    } else {
+                        advance();
+                    }
+                    boolean caret = propertySpec.startsWith("^");
+                    boolean negative = (capitalP || caret) && (!capitalP || !caret);
+                    if (caret) {
+                        propertySpec = propertySpec.substring(1);
+                    }
+                    CodePointSet property;
+                    propertySpec = parseUnicodeCharacterClass(propertySpec);
+                    if(UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec)) {
+                        property = getUnicodePosixCharClass(propertySpec.toLowerCase());
+                    }
+                    else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
+                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
+                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+                    } else {
+                        bailOut("unsupported Unicode property " + propertySpec);
+                        // So that the property variable is always written to.
+                        property = CodePointSet.getEmpty();
+                    }
+//                    if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
+//                        property = getUnicodePosixCharClass(propertySpec.toLowerCase());
+//                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
+//                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
+//                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+//                    } else {
+//                        bailOut("unsupported Unicode property " + propertySpec);
+//                        // So that the property variable is always written to.
+//                        property = CodePointSet.getEmpty();
+//                    }
+                    if (negative) {
+                        property = property.createInverse(Encodings.UTF_32);
+                    }
+//                    if (inCharClass) {
+//                        curCharClass.addSet(property);
+//                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
+//                            fullyFoldableCharacters.addSet(property);
+//                        }
+//                    } else {
+//                        addCharClass(property);
+//                    }
+//                    return true;
+                    return Token.createCharClass(property);
+                } else {
+                    position = restorePosition;
+                    return Token.createCharClass(CodePointSet.getEmpty());
+                }
             default:
                 // Here we differentiate the case when parsing one of the six basic pre-defined
                 // character classes (\w, \W, \d, \D, \s, \S) and Unicode character property
@@ -1149,10 +1336,22 @@ public final class JavaRegexParser implements RegexParser {
         return PREDEFINED_CHAR_CLASSES.get(c);
     }
 
+    private static String parseUnicodeCharacterClass(String property) {
+        String propertyBegin = property.toLowerCase().substring(0, 2);
+        if(propertyBegin.equals("is") || propertyBegin.equals("in")) {
+            return property.substring(2);
+        }
+        else if(property.contains("=")) {
+            return property.substring(property.indexOf('=') + 1);
+        }
+        return property;
+    }
+
     // Note that the CodePointSet returned by this function has already been
     // case-folded and negated.
     // TODO combine the other Escape and PredefCharClass Methods!!!
     private CodePointSet parsePredefCharClass(int c) {
+        int restorePosition = position;
         switch (c) {
             case 's':
                 if (inSource.getOptions().isU180EWhitespace()) {
@@ -1176,13 +1375,19 @@ public final class JavaRegexParser implements RegexParser {
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
-                if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+                if (globalFlags.isUnicodeCharacterClass()) {    // TODO done right? https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html#UNICODE_CHARACTER_CLASS
+                    return UNICODE_POSIX_CHAR_CLASSES.get("word");
+                }
+                else if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.WORD_CHARS;
                 }
             case 'W':
-                if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+                if (globalFlags.isUnicodeCharacterClass()) {
+                    return UNICODE_POSIX_CHAR_CLASSES.get("word").createInverse(Encodings.UTF_32);
+                }
+                else if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
                     return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.NON_WORD_CHARS;
@@ -1223,10 +1428,81 @@ public final class JavaRegexParser implements RegexParser {
                         0x2060, 0x2fff,
                         0x3001, 0x10ffff
                 );
+//            case 'p':
+//            case 'P':
+//                boolean capitalP = curChar() == 'P';
+//                advance();
+//                if (match("{")) {
+//                    String propertySpec = getMany(ch -> ch != '}');
+//                    if (atEnd()) {
+//                        position = restorePosition;
+//                        return null;
+//                    } else {
+//                        advance();
+//                    }
+//                    boolean caret = propertySpec.startsWith("^");
+//                    boolean negative = (capitalP || caret) && (!capitalP || !caret);
+//                    if (caret) {
+//                        propertySpec = propertySpec.substring(1);
+//                    }
+//                    CodePointSet property;
+//                    if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
+//                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
+//                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+//                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+//                    } else {
+//                        bailOut("unsupported Unicode property " + propertySpec);
+//                        // So that the property variable is always written to.
+//                        property = CodePointSet.getEmpty();
+//                    }
+////                    if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec.toLowerCase())) {
+////                        property = getUnicodePosixCharClass(propertySpec.toLowerCase());
+////                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+////                        property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
+////                    } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
+////                        property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
+////                    } else if (UnicodeProperties.isSupportedProperty(propertySpec, true)) {
+////                        property = trimToEncoding(UnicodeProperties.getProperty(propertySpec, true));
+////                    } else {
+////                        bailOut("unsupported Unicode property " + propertySpec);
+////                        // So that the property variable is always written to.
+////                        property = CodePointSet.getEmpty();
+////                    }
+//                    if (negative) {
+//                        property = property.createInverse(Encodings.UTF_32);
+//                    }
+////                    if (inCharClass) {
+////                        curCharClass.addSet(property);
+////                        if (getLocalFlags().isIgnoreCase() && !propertySpec.equalsIgnoreCase("ascii")) {
+////                            fullyFoldableCharacters.addSet(property);
+////                        }
+////                    } else {
+////                        addCharClass(property);
+////                    }
+////                    return true;
+//                    return property;
+//                } else {
+//                    position = restorePosition;
+//                    return null;
+//                }
             default:
                 return null;
 //                throw CompilerDirectives.shouldNotReachHere();
         }
+    }
+
+    private CodePointSet getUnicodePosixCharClass(String className) {
+        if (inSource.getEncoding() == Encodings.ASCII) {
+            return ASCII_POSIX_CHAR_CLASSES.get(className);
+        }
+
+        return trimToEncoding(UNICODE_POSIX_CHAR_CLASSES.get(className));
+    }
+
+    private CodePointSet trimToEncoding(CodePointSet codePointSet) {
+        return inSource.getEncoding().getFullSet().createIntersectionSingleRange(codePointSet);
     }
 
     // TODO: do something like parseUnicodeEscapeChar() or parseUnicodeCharacterProperty() here too maybe?
@@ -1333,6 +1609,8 @@ public final class JavaRegexParser implements RegexParser {
             return Optional.empty();
         }
         // TODO try changing that
+
+
         Optional<Integer> characterEscape = characterEscape(); // Optional.of(parseEscapeChar(curChar(), true));  //characterEscape();
         if (characterEscape.isPresent()) {
             return characterEscape;
