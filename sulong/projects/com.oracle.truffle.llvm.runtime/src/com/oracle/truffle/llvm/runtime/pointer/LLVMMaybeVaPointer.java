@@ -50,11 +50,9 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
@@ -63,10 +61,17 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDoubleLoadNode.LLVM
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI32LoadNode.LLVMI32OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMI64LoadNode.LLVMI64OffsetLoadNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMPointerLoadNode.LLVMPointerOffsetLoadNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode.LLVMFloatOffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI16StoreNode.LLVMI16OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNode.LLVMI64OffsetStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI8StoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode.LLVMPointerOffsetStoreNode;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import static com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode.*;
 
 /**
  * On platforms such as on Windows VA lists objects are created by allocating a pointer sized object
@@ -551,9 +556,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, byte value,
-                        @CachedLibrary("self") LLVMManagedWriteLibrary location) {
+                        @Cached LLVMI8StoreNode.LLVMI8OffsetStoreNode storeNode) {
             self.nativeObjectAccess();
-            LLVMLanguage.get(location).getLLVMMemory().putI8(location, self.getAddress() + offset, value);
+            storeNode.executeWithTarget(self.address, offset, value);
         }
 
         @Specialization(guards = "!self.isPointer()")
@@ -569,9 +574,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, short value,
-                        @CachedLibrary("self") LLVMManagedWriteLibrary location) {
+                        @Cached LLVMI16OffsetStoreNode storeNode) {
             self.nativeObjectAccess();
-            LLVMLanguage.get(location).getLLVMMemory().putI16(location, self.getAddress() + offset, value);
+            storeNode.executeWithTarget(self.address, offset, value);
         }
 
         @Specialization(guards = "!self.isPointer()")
@@ -587,9 +592,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, int value,
-                        @CachedLibrary("self") LLVMManagedWriteLibrary location) {
+                        @Cached LLVMI32StoreNode.LLVMI32OffsetStoreNode storeNode) {
             self.nativeObjectAccess();
-            LLVMLanguage.get(location).getLLVMMemory().putI32(location, self.getAddress() + offset, value);
+            storeNode.executeWithTarget(self.address, offset, value);
         }
 
         @Specialization(guards = "!self.isPointer()")
@@ -605,9 +610,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, float value,
-                        @CachedLibrary("self") LLVMManagedWriteLibrary location) {
+                        @Cached LLVMFloatOffsetStoreNode storeNode) {
             self.nativeObjectAccess();
-            LLVMLanguage.get(location).getLLVMMemory().putFloat(location, self.getAddress() + offset, value);
+            storeNode.executeWithTarget(self.address, offset, value);
         }
 
         @Specialization(guards = "!self.isPointer()")
@@ -623,9 +628,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, double value,
-                        @CachedLibrary("self") LLVMManagedWriteLibrary location) {
+                        @Cached LLVMDoubleOffsetStoreNode storeNode) {
             self.nativeObjectAccess();
-            LLVMLanguage.get(location).getLLVMMemory().putDouble(location, self.getAddress() + offset, value);
+            storeNode.executeWithTarget(self.address, offset, value);
         }
 
         @Specialization(guards = "!self.isPointer()")
@@ -641,9 +646,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
         @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, long value,
-                        @CachedLibrary("self") LLVMManagedWriteLibrary location) {
+                        @Cached.Shared("storeNode") @Cached LLVMI64OffsetStoreNode storeNode) {
             self.nativeObjectAccess();
-            LLVMLanguage.get(location).getLLVMMemory().putI64(location, self.getAddress() + offset, value);
+            storeNode.executeWithTarget(self.address, offset, value);
         }
 
         @Specialization(guards = {"!self.isPointer()"})
@@ -671,15 +676,15 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             self.vaList = value;
         }
 
-        @Specialization(limit = "3", guards = "self.isPointer()")
+        @Specialization(guards = "self.isPointer()")
         static void writeNative(LLVMMaybeVaPointer self, long offset, Object value,
-                        @CachedLibrary("value") LLVMNativeLibrary toNative) {
+                        @Cached.Shared("storeNode") @Cached LLVMI64OffsetStoreNode storeNode) {
+            assert offset == 0;
             /*
              * No `self.nativeObjectAccess()` should be done here, a native va_list ptr can be
              * written here
              */
-            long ptr = toNative.toNativePointer(value).asNative();
-            LLVMLanguage.get(toNative).getLLVMMemory().putI64(toNative, self.getAddress() + offset, ptr);
+            storeNode.executeWithTargetGeneric(self.address, offset, value);
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
