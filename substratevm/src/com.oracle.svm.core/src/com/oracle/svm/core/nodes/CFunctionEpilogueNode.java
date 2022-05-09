@@ -55,16 +55,18 @@ public final class CFunctionEpilogueNode extends AbstractStateSplit implements L
     public CFunctionEpilogueNode(int oldThreadStatus) {
         super(TYPE, StampFactory.forVoid());
         this.oldThreadStatus = oldThreadStatus;
-        marker = new CFunctionEpilogueMarker();
     }
 
     @Override
     protected void afterClone(Node other) {
         super.afterClone(other);
-        marker = new CFunctionEpilogueMarker();
+        assert marker == null : "Marker must be unique";
     }
 
     public CFunctionEpilogueMarker getMarker() {
+        if (marker == null) {
+            marker = new CFunctionEpilogueMarker();
+        }
         return marker;
     }
 
