@@ -86,6 +86,10 @@ public final class DynamicHubCompanion {
         classLoader = loader;
     }
 
+    void setNoClassLoaderForProxyClass() {
+        classLoader = NO_CLASS_LOADER;
+    }
+
     ProtectionDomain getProtectionDomain() {
         if (protectionDomain == null) {
             protectionDomain = ProtectionDomainSupport.allPermDomain();
