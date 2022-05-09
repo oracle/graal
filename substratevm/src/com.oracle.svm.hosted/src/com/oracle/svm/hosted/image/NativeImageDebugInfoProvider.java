@@ -1871,7 +1871,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         ParamLocationProducer(ResolvedJavaMethod method) {
             Architecture arch = ConfigurationValues.getTarget().arch;
-            assert arch instanceof AMD64 || arch instanceof AMD64 : "unexpected architecture";
+            assert arch instanceof AMD64 || arch instanceof AArch64 : "unexpected architecture";
             OS os = OS.getCurrent();
             assert os == OS.LINUX || os == OS.WINDOWS : "unexpected os";
             if (arch instanceof AArch64) {
