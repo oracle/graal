@@ -67,10 +67,9 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
-@ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 5)
-@ExportLibrary(value = LLVMManagedWriteLibrary.class, useForAOT = true, useForAOTPriority = 4)
-@ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 3)
-@ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 2)
+@ExportLibrary(value = LLVMManagedReadLibrary.class, useForAOT = true, useForAOTPriority = 3)
+@ExportLibrary(value = LLVMVaListLibrary.class, useForAOT = true, useForAOTPriority = 2)
+@ExportLibrary(value = NativeTypeLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     // va_list is an alias for char*
@@ -145,10 +144,9 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
     }
 
     // LLVMManagedReadLibrary implementation
-    @ExportMessage(name = "isReadable")
-    @ExportMessage(name = "isWritable")
     @SuppressWarnings("static-method")
-    boolean isAccessible() {
+    @ExportMessage
+    boolean isReadable() {
         return true;
     }
 
@@ -236,37 +234,6 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
                         @CachedLibrary("vaList.argsArea") LLVMManagedReadLibrary readLibrary) {
             return readLibrary.readGenericI64(vaList.argsArea, offset);
         }
-    }
-
-    // LLVMManagedWriteLibrary implementation
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    void writeI8(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") byte value) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    void writeI16(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") short value) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    void writeI32(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") int value) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    void writeGenericI64(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") Object value) {
-        throw CompilerDirectives.shouldNotReachHere();
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    void writePointer(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") LLVMPointer value) {
-        throw CompilerDirectives.shouldNotReachHere();
     }
 
     @SuppressWarnings("static-method")
