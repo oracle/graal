@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,15 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.util.TRegexGuards;
 
+@ImportStatic(TRegexGuards.class)
 public abstract class InputIndexOfNode extends Node {
 
     public static InputIndexOfNode create() {
@@ -112,9 +115,5 @@ public abstract class InputIndexOfNode extends Node {
             }
         }
         return -1;
-    }
-
-    protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
     }
 }
