@@ -745,7 +745,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @SuppressWarnings("unused")
-    void printBytecodes(PrintStream out) {
+    public void printBytecodes(PrintStream out) {
         new BytecodeStream(getOriginalCode()).printBytecode(declaringKlass, out);
     }
 
