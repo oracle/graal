@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.amd64;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -39,9 +40,9 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
 import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
@@ -173,6 +174,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
                 divRemFixed = graph.add(new SignedRemNode(dividend, divisor, null));
             }
             divRemFixed.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
+            GraalError.guarantee(divRemFixed.canDeoptimize(), "Fixed representation must deopt since we replaced a 0 check");
             return divRemFixed;
         }
 
