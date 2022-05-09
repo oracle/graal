@@ -741,11 +741,6 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     @Override
     @TruffleBoundary
     public String toString() {
-        InteropLibrary interop = InteropLibrary.getUncached();
-        try {
-            return String.format("LLVMMaybeVAPointer (address = 0x%x, contents = %s)", interop.asPointer(address), vaList);
-        } catch (UnsupportedMessageException e) {
-            return "no string";
-        }
+        return String.format("LLVMMaybeVAPointer (address = %s, contents = %s)", address, vaList);
     }
 }
