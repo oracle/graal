@@ -148,9 +148,22 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     }
 
     @ExportMessage
-    void toNative() {
-        assert !wasVAListPointer;
-        CompilerDirectives.shouldNotReachHere();
+    static class ToNative {
+        @Specialization(guards = "!self.isStoredOnHeap()")
+        static void ToNativeVaList(LLVMMaybeVaPointer self,
+                                   @Cached LLVMPointerOffsetStoreNode storeAddressNode) {
+            assert self.vaList.getOffset() == 0;
+            // triggers a toNative transition for vaList object
+            storeAddressNode.executeWithTarget(self.address, 0, self.vaList.getObject());
+            self.vaList = null;
+        }
+
+        @Specialization(guards = "!self.isPointer()")
+        static void ToNativeVaList(LLVMMaybeVaPointer self,
+                @CachedLibrary(limit = "1") InteropLibrary interopLibrary) {
+            interopLibrary.toNative(self.address);
+            self.vaList = null;
+        }
     }
 
     public long getAddress() {
