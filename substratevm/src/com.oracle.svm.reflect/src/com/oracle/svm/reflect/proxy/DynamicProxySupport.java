@@ -201,7 +201,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
                 throw incompatibleClassLoaders(loader, interfaces);
             }
         } else if (!ClassUtil.isSameOrParentLoader(clazz.getClassLoader(), loader)) {
-                throw incompatibleClassLoaders(loader, interfaces);
+            throw incompatibleClassLoaders(loader, interfaces);
         }
         return clazz;
     }
