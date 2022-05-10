@@ -2732,7 +2732,10 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
 
         # path to libjli - only needed on osx for AWT
         if mx.is_darwin():
-            _libjli_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', mx.add_lib_suffix("libjli"))
+            _libjli_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib')
+            if mx_sdk_vm.base_jdk_version() < 17:
+                _libjli_path = join(_libjli_path, 'jli')
+            _libjli_path = join(_libjli_path, mx.add_lib_suffix("libjli"))
             _libjli_path = relpath(_libjli_path, start=_exe_dir)
             _dynamic_cflags += [
                 '-DLIBJLI_RELPATH=' + _libjli_path,
