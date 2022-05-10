@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -157,15 +157,15 @@ public final class ListInterop extends IterableInterop {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Object doCached(StaticObject receiver, int index,
+        static Object doDirectLookup(StaticObject receiver, int index,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
                         @Cached("doGetLookup(receiver)") Method method,
                         @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(receiver, index);
         }
 
-        @Specialization(replaces = "doCached")
-        static Object doUncached(StaticObject receiver, int index,
+        @Specialization(replaces = "doDirectLookup")
+        static Object doIndirectLookup(StaticObject receiver, int index,
                         @Cached.Exclusive @Cached IndirectCallNode invoke) {
             Method get = doGetLookup(receiver);
             return invoke.call(get.getCallTarget(), receiver, index);
@@ -199,15 +199,15 @@ public final class ListInterop extends IterableInterop {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static void doCached(StaticObject receiver, int index, Object value,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doSetLookup(receiver)") Method method,
-                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+        static void doDirectLookup(StaticObject receiver, int index, Object value,
+                                   @Cached("receiver.getKlass()") Klass cachedKlass,
+                                   @Cached("doSetLookup(receiver)") Method method,
+                                   @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
             invoke.execute(method, receiver, new Object[]{index, value});
         }
 
-        @Specialization(replaces = "doCached")
-        static void doUncached(StaticObject receiver, int index, Object value,
+        @Specialization(replaces = "doDirectLookup")
+        static void doIndirectLookup(StaticObject receiver, int index, Object value,
                         @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
             Method set = doSetLookup(receiver);
             invoke.execute(set, receiver, new Object[]{index, value});
@@ -241,18 +241,18 @@ public final class ListInterop extends IterableInterop {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static void doCached(StaticObject receiver, Object value,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doAddLookup(receiver)") Method method,
-                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+        static void doDirectLookup(StaticObject receiver, Object value,
+                                   @Cached("receiver.getKlass()") Klass cachedKlass,
+                                   @Cached("doAddLookup(receiver)") Method method,
+                                   @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
             invoke.execute(method, receiver, new Object[]{value});
         }
 
-        @Specialization(replaces = "doCached")
-        static void doUncached(StaticObject receiver, Object value,
+        @Specialization(replaces = "doDirectLookup")
+        static void doIndirectLookup(StaticObject receiver, Object value,
                         @Cached.Exclusive @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
-            Method set = doAddLookup(receiver);
-            invoke.execute(set, receiver, new Object[]{value});
+            Method add = doAddLookup(receiver);
+            invoke.execute(add, receiver, new Object[]{value});
         }
 
         static Method doAddLookup(StaticObject receiver) {
