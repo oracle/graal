@@ -122,7 +122,7 @@ public final class ListInterop extends IterableInterop {
         return true;
     }
 
-    // TODO: isArrayElementRemovable
+    // TODO(GR-38619): isArrayElementRemovable
 
     private static boolean boundsCheck(StaticObject receiver, long index,
                     LookupAndInvokeKnownMethodNode size) {
