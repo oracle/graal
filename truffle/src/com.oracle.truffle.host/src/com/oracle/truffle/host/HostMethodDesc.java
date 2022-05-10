@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -336,6 +336,11 @@ abstract class HostMethodDesc {
 
             protected abstract MethodHandle makeMethodHandle();
 
+            @TruffleBoundary
+            private MethodHandle makeMethodHandleBoundary() {
+                return makeMethodHandle();
+            }
+
             protected static MethodHandle adaptSignature(MethodHandle originalHandle, boolean isStatic, int parameterCount) {
                 MethodHandle adaptedHandle = originalHandle;
                 adaptedHandle = adaptedHandle.asType(adaptedHandle.type().changeReturnType(Object.class));
@@ -358,7 +363,7 @@ abstract class HostMethodDesc {
                         // because it is always initialized to the same value.
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                     }
-                    methodHandle = handle = makeMethodHandle();
+                    methodHandle = handle = makeMethodHandleBoundary();
                 }
                 CallTarget target = cache.methodHandleHostInvoke;
                 CompilerAsserts.partialEvaluationConstant(target);
