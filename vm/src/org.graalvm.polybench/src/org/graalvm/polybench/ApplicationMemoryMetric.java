@@ -24,26 +24,24 @@
  */
 package org.graalvm.polybench;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public final class AllocatedBytesMetric extends Metric {
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 
-    private double allocatedBefore;
-
-    private static double readFromPolyglotBindings() {
-        Value value = Context.getCurrent().getPolyglotBindings().getMember("getAllocatedBytes");
-        return value.execute().asLong();
-    }
-
-    @Override
-    public String name() {
-        return "allocated-bytes";
-    }
+/**
+ * This metric collects the maximum context heap used during the computation of the benchmark. The
+ * metric uses the number of thread allocated bytes to trigger the context heap computation
+ * regularly on a timer thread. The maximum context heap used will be reported for each iteration.
+ *
+ * This metric is currently only supported on JVM.
+ *
+ * This metric might be too slow for large heaps (>10GB). Use VisualVM or other memory inspection
+ * tools for debugging regressions measured by this metric.
+ */
+public final class ApplicationMemoryMetric extends Metric {
 
     @Override
     public String unit() {
@@ -59,11 +57,14 @@ public final class AllocatedBytesMetric extends Metric {
 
     @Override
     public void beforeIteration(boolean warmup, int iteration, Config config) {
-        allocatedBefore = readFromPolyglotBindings();
+        Context.getCurrent().getPolyglotBindings().getMember("startContextMemoryTracking").executeVoid();
     }
 
     @Override
     public Optional<Double> reportAfterIteration(Config config) {
-        return Optional.of(readFromPolyglotBindings() - allocatedBefore);
+        Value result = Context.getCurrent().getPolyglotBindings().getMember("stopContextMemoryTracking").execute();
+        long value = result.getMember("contextHeapMax").asLong();
+        return Optional.of((double) value);
     }
+
 }

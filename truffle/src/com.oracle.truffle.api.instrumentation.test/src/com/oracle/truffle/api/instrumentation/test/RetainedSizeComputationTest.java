@@ -162,7 +162,7 @@ public class RetainedSizeComputationTest {
             if (!TruffleOptions.AOT && !(Truffle.getRuntime() instanceof DefaultTruffleRuntime)) {
                 throw e;
             } else {
-                Assert.assertEquals("Polyglot context heap size calculation is not supported on current Truffle runtime.", e.getMessage());
+                Assert.assertEquals("Polyglot context heap size calculation is not supported on this platform.", e.getMessage());
             }
         }
     }

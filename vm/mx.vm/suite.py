@@ -118,9 +118,11 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "VISUALVM_JFLUID_HEAP",
             ],
             "requires": [
                 "java.logging",
+                "jdk.management",
             ],
         },
         "org.graalvm.polybench.micro" : {
@@ -173,7 +175,23 @@ suite = {
         "WARMUP_BENCHMARKS" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
             "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
-        }
+        },
+        "ORG_NETBEANS_API_ANNOTATIONS_COMMON" : {
+           "sha1" : "ef10fcaff10adfbedcc6058c965397ac47395ecf",
+            "maven" : {
+                "groupId" : "org.netbeans.api",
+                "artifactId" : "org-netbeans-api-annotations-common",
+                "version" : "RELEASE123",
+            },
+        },
+        "VISUALVM_JFLUID_HEAP" : {
+           "sha1" : "87d40d1d5cefabb1c3f67968f0a6b9980349c54d",
+            "maven" : {
+                "groupId" : "org.graalvm.visualvm.modules",
+                "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
+                "version" : "2.1.2",
+            },
+        },
     },
 
     "distributions": {
@@ -230,6 +248,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
+                 "VISUALVM_JFLUID_HEAP",
             ],
             "maven" : False,
         },
