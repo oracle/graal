@@ -1272,7 +1272,7 @@ public class TruffleSafepointTest {
 
     @Test
     public void testBigAllocationInLoop() {
-        final int loopCount = 1024;
+        final int loopCount = 1024 * 32;
         Object[] values = new Object[loopCount];
         CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
@@ -1294,13 +1294,13 @@ public class TruffleSafepointTest {
 
             setup.stopAndAwait();
             int count = counter.counter.get();
-            assertTrue(String.valueOf(count), count >= 10);
+            assertTrue(String.valueOf(count), count >= 5);
         }
     }
 
     @Test
     public void testSimpleAllocationInLoop() {
-        final int loopCount = 1024;
+        final int loopCount = 1024 * 32;
         Object[] values = new Object[loopCount];
         CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
@@ -1322,7 +1322,7 @@ public class TruffleSafepointTest {
 
             setup.stopAndAwait();
             int count = counter.counter.get();
-            assertTrue(String.valueOf(count), count >= 10);
+            assertTrue(String.valueOf(count), count >= 5);
         }
     }
 
