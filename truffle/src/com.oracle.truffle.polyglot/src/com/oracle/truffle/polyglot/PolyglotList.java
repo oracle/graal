@@ -104,7 +104,6 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
         return (T) cache.get.call(languageContext, guestObject, index);
     }
 
-
     @Override
     public boolean add(T element) {
         return (boolean) cache.add.call(languageContext, guestObject, element);
