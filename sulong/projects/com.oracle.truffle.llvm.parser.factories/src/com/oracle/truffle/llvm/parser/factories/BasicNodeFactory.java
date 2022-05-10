@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.UnaryOperation;
+import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -117,10 +118,10 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSmaxOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSminOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
@@ -370,8 +371,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 
 public class BasicNodeFactory implements NodeFactory {
 
@@ -2143,6 +2142,11 @@ public class BasicNodeFactory implements NodeFactory {
     public RepeatingNode createLoopDispatchNode(int exceptionValueSlot, List<? extends LLVMStatementNode> bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId,
                     int[] indexMapping, int[] successors, int successorSlot) {
         return new LLVMLoopDispatchNode(exceptionValueSlot, bodyNodes.toArray(new LLVMBasicBlockNode[bodyNodes.size()]), originalBodyNodes, headerId, indexMapping, successors, successorSlot);
+    }
+
+    @Override
+    public boolean boxGlobals() {
+        return true;
     }
 
     @Override
