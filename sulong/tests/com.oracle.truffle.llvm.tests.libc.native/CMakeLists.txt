@@ -37,7 +37,7 @@ elseif(APPLE)
    link_libraries(-lm)
    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-deprecated-declarations")
 else()
-   link_libraries(-lm -lrt)
+   link_libraries(-lm -lrt -pthreads)
 endif()
 
 include(SulongTestSuite)
