@@ -47,6 +47,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -371,15 +372,21 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                 Object key = args[ARGUMENT_OFFSET];
                 assert key instanceof Integer;
                 int index = (int) key;
+
+                if (index < 0) {
+                    error.enter();
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
+                }
                 Object value = toGuest.execute(languageContext, args[ARGUMENT_OFFSET + 1]);
                 try {
-                    int size = (int) interop.getArraySize(receiver);
+                    long size = interop.getArraySize(receiver);
                     if (interop.isArrayElementInsertable(receiver, size)) {
                         // shift elements to the right if any
-                        int cur = size;
+                        long cur = size;
                         while (cur > index) {
                             interop.writeArrayElement(receiver, cur, interop.readArrayElement(receiver, cur - 1));
                             cur--;
+                            TruffleSafepoint.poll(interop);
                         }
                         // write new element to list
                         interop.writeArrayElement(receiver, index, value);
