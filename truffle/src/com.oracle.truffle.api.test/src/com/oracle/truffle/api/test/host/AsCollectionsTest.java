@@ -139,6 +139,23 @@ public class AsCollectionsTest {
         } catch (IndexOutOfBoundsException ioobex) {
             // O.K.
         }
+
+        // Test add is unsupported
+        try {
+            interopList.add("d");
+            fail();
+        } catch (UnsupportedOperationException ex) {
+            // O.K.
+        }
+
+        // Test add is unsupported
+        try {
+            interopList.add(0, "e");
+            fail();
+        } catch (UnsupportedOperationException ex) {
+            // O.K.
+        }
+
         Object old = interopList.set(1, "bbb");
         assertEquals("b", old);
         assertEquals("bbb", interopList.get(1));
@@ -175,16 +192,37 @@ public class AsCollectionsTest {
         assertEquals("b", old);
         assertEquals("bbb", interopList.get(1));
 
+        // Test add out of bounds
+        try {
+            interopList.add(1000, "1000");
+            fail();
+        } catch (IndexOutOfBoundsException ioobex) {
+            // O.K.
+        }
+        try {
+            interopList.add(-1, "-1");
+            fail();
+        } catch (IndexOutOfBoundsException ioobex) {
+            // O.K.
+        }
+
+        // test add/append with no index given
         interopList.add("ccc");
         assertEquals("ccc", interopList.get(3));
 
-        interopList.add(1, "ddd");
-        assertEquals("a", interopList.get(0));
-        assertEquals("ddd", interopList.get(1));
-        assertEquals("bbb", interopList.get(2));
-        assertEquals("c", interopList.get(3));
-        assertEquals("ccc", interopList.get(4));
-
+        // test add minimum index
+        interopList.add(0, "ddd");
+        // test add in between index
+        interopList.add(1, "eee");
+        // test add maximum index
+        interopList.add(6, "fff");
+        assertEquals("ddd", interopList.get(0));
+        assertEquals("eee", interopList.get(1));
+        assertEquals("a", interopList.get(2));
+        assertEquals("bbb", interopList.get(3));
+        assertEquals("c", interopList.get(4));
+        assertEquals("ccc", interopList.get(5));
+        assertEquals("fff", interopList.get(6));
     }
 
     @Test
