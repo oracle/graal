@@ -927,9 +927,9 @@ suite = {
         "com.oracle.truffle.st"
       ],
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyle" : "com.oracle.truffle.sl",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle,SimpleLanguage",
+      "workingSets" : "Truffle",
       "testProject" : True,
       "jacoco" : "exclude",
     },
