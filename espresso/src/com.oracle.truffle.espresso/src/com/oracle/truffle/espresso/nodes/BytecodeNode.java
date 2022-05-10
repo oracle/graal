@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -2482,7 +2482,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 getDeclaringKlass().getNameAsString());
             }
 
-            boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||
+            boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
                             // HotSpot enforces this only for >= Java 9 (v53) .class files.
                             field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
 

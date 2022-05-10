@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -48,7 +49,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 public final class LivenessAnalysis {
 
@@ -127,8 +127,8 @@ public final class LivenessAnalysis {
     @SuppressWarnings("try")
     public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
 
-        EspressoContext context = methodVersion.getMethod().getContext();
-        if (!enableLivenessAnalysis(context, methodVersion)) {
+        EspressoLanguage language = methodVersion.getMethod().getLanguage();
+        if (!enableLivenessAnalysis(language, methodVersion)) {
             return NO_ANALYSIS;
         }
 
@@ -187,8 +187,8 @@ public final class LivenessAnalysis {
         }
     }
 
-    private static boolean enableLivenessAnalysis(EspressoContext context, Method.MethodVersion methodVersion) {
-        switch (context.LivenessAnalysisMode) {
+    private static boolean enableLivenessAnalysis(EspressoLanguage language, Method.MethodVersion methodVersion) {
+        switch (language.getLivenessAnalysisMode()) {
             case NONE:
                 return false;
             case ALL:
@@ -198,7 +198,7 @@ public final class LivenessAnalysis {
                  * Heuristic: Only enable liveness analysis when the number of locals exceeds a
                  * threshold. In practice, liveness analysis is only enabled for < 5% of methods.
                  */
-                return methodVersion.getMaxLocals() >= context.LivenessAnalysisMinimumLocals;
+                return methodVersion.getMaxLocals() >= language.livenessAnalysisMinimumLocals();
             }
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();

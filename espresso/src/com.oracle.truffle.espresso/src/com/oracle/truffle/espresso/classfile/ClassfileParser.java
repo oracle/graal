@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.classfile;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ABSTRACT;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_ANNOTATION;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITIVE;
@@ -55,6 +55,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -1213,7 +1214,7 @@ public final class ClassfileParser {
              * HotSpot does not perform this check. Enforcing the spec here break some applications
              * in the wild e.g. Intellij IDEA.
              */
-            if (context.SpecCompliancyMode == STRICT) {
+            if (context.getLanguage().getSpecComplianceMode() == STRICT) {
                 if (majorVersion >= JAVA_7_VERSION && innerClassInfo.innerNameIndex == 0 && outerClassIndex != 0) {
                     throw ConstantPool.classFormatError("InnerClassesAttribute: the value of the outer_class_info_index item must be zero if the value of the inner_name_index item is zero.");
                 }
@@ -1305,7 +1306,7 @@ public final class ClassfileParser {
     }
 
     private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
-        if (context.needsVerify(loader)) {
+        if (MethodVerifier.needsVerify(context.getLanguage(), loader)) {
             return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
         }
         stream.skip(attributeSize);
