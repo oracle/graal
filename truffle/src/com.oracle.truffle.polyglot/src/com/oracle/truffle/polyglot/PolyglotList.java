@@ -329,9 +329,9 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                             @Cached ToGuestValueNode toGuest,
                             @Cached BranchProfile error) {
                 Object value = toGuest.execute(languageContext, args[ARGUMENT_OFFSET]);
-                int size = 0;
+                long size = 0;
                 try {
-                    size = (int) interop.getArraySize(receiver);
+                    size = interop.getArraySize(receiver);
                     if (interop.isArrayElementInsertable(receiver, size)) {
                         interop.writeArrayElement(receiver, size, value);
                     } else {
@@ -343,12 +343,20 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                     throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "add");
                 } catch (UnsupportedTypeException e) {
                     error.enter();
-                    throw PolyglotInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, size, value);
+                    throw PolyglotInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, convertToIntOrMax(size), value);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, size);
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, convertToIntOrMax(size));
                 }
                 return true;
+            }
+
+            private static int convertToIntOrMax(long value) {
+                try {
+                    return Math.toIntExact(value);
+                } catch (ArithmeticException ex) {
+                    return Integer.MAX_VALUE;
+                }
             }
         }
 
