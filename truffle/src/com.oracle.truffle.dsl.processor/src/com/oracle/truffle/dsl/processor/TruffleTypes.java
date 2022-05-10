@@ -225,17 +225,20 @@ public class TruffleTypes {
     public final DeclaredType TypeSystemReference = c.getDeclaredType(TypeSystemReference_Name);
     public final DeclaredType UnsupportedSpecializationException = c.getDeclaredType(UnsupportedSpecializationException_Name);
 
-    // Operations DSL API
+    // Operation DSL API
     public static final String BuilderExceptionHandler_Name = "com.oracle.truffle.api.operation.BuilderExceptionHandler";
     public static final String BuilderOperationData_Name = "com.oracle.truffle.api.operation.BuilderOperationData";
     public static final String BuilderOperationLabel_Name = "com.oracle.truffle.api.operation.BuilderOperationLabel";
     public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
+    public static final String GenerateOperations_Metadata_Name = "com.oracle.truffle.api.operation.GenerateOperations.Metadata";
+    public static final String MetadataKey_Name = "com.oracle.truffle.api.operation.MetadataKey";
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
     public static final String OperationBytecodeNode_Name = "com.oracle.truffle.api.operation.OperationBytecodeNode";
     public static final String OperationConfig_Name = "com.oracle.truffle.api.operation.OperationConfig";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
     public static final String OperationLocal_Name = "com.oracle.truffle.api.operation.OperationLocal";
+    public static final String OperationNode_Name = "com.oracle.truffle.api.operation.OperationNode";
     public static final String OperationNodes_Name = "com.oracle.truffle.api.operation.OperationNodes";
     public static final String OperationProxy_Name = "com.oracle.truffle.api.operation.OperationProxy";
     public static final String OperationBuilder_Name = "com.oracle.truffle.api.operation.OperationBuilder";
@@ -249,11 +252,14 @@ public class TruffleTypes {
     public final DeclaredType BuilderOperationLabel = c.getDeclaredTypeOptional(BuilderOperationLabel_Name);
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
+    public final DeclaredType GenerateOperations_Metadata = c.getDeclaredTypeOptional(GenerateOperations_Metadata_Name);
+    public final DeclaredType MetadataKey = c.getDeclaredTypeOptional(MetadataKey_Name);
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
     public final DeclaredType OperationBytecodeNode = c.getDeclaredTypeOptional(OperationBytecodeNode_Name);
     public final DeclaredType OperationConfig = c.getDeclaredTypeOptional(OperationConfig_Name);
     public final DeclaredType OperationLabel = c.getDeclaredTypeOptional(OperationLabel_Name);
     public final DeclaredType OperationLocal = c.getDeclaredTypeOptional(OperationLocal_Name);
+    public final DeclaredType OperationNode = c.getDeclaredTypeOptional(OperationNode_Name);
     public final DeclaredType OperationNodes = c.getDeclaredTypeOptional(OperationNodes_Name);
     public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
     public final DeclaredType OperationBuilder = c.getDeclaredTypeOptional(OperationBuilder_Name);

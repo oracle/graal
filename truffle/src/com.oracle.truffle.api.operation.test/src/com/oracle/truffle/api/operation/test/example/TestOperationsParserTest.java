@@ -869,4 +869,41 @@ public class TestOperationsParserTest {
 
         testOrdering(true, root, 1L);
     }
+
+    @Test
+    public void testMetadata() {
+        final String value = "test data";
+
+        OperationNode node = parseNode(b -> {
+            b.setTestData(value);
+            b.publish();
+        });
+
+        Assert.assertEquals(value, node.getMetadata(TestOperations.TEST_DATA));
+        Assert.assertEquals(value, TestOperations.TEST_DATA.getValue(node));
+    }
+
+    @Test
+    public void testMetadataChange() {
+        final String value = "test data";
+
+        OperationNode node = parseNode(b -> {
+            b.setTestData("some old value");
+            b.setTestData(value);
+            b.publish();
+        });
+
+        Assert.assertEquals(value, node.getMetadata(TestOperations.TEST_DATA));
+        Assert.assertEquals(value, TestOperations.TEST_DATA.getValue(node));
+    }
+
+    @Test
+    public void testMetadataDefaultValue() {
+        OperationNode node = parseNode(b -> {
+            b.publish();
+        });
+
+        Assert.assertEquals(TestOperations.TEST_DATA.getDefaultValue(), node.getMetadata(TestOperations.TEST_DATA));
+        Assert.assertEquals(TestOperations.TEST_DATA.getDefaultValue(), TestOperations.TEST_DATA.getValue(node));
+    }
 }

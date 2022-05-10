@@ -6,6 +6,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -32,6 +33,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
     private ProcessorContext context;
     private OperationsData m;
 
+    private static final Set<Modifier> MOD_PUBLIC = Set.of(Modifier.PUBLIC);
     private static final Set<Modifier> MOD_PUBLIC_ABSTRACT = Set.of(Modifier.PUBLIC, Modifier.ABSTRACT);
     private static final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
     private static final Set<Modifier> MOD_PRIVATE = Set.of(Modifier.PRIVATE);
@@ -110,36 +112,73 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         CodeTypeElement typBuilderImpl = createBuilderImpl(typBuilder);
         typBuilder.add(typBuilderImpl);
 
-        {
-            CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
-            CodeVariableElement parParser = new CodeVariableElement(consumer(typBuilder.asType()), "generator");
-            CodeExecutableElement metCreate = new CodeExecutableElement(MOD_PUBLIC_STATIC, types.OperationNodes, "create");
-            metCreate.addParameter(parConfig);
-            metCreate.addParameter(parParser);
-            typBuilder.add(metCreate);
-
-            CodeTreeBuilder b = metCreate.getBuilder();
-
-            b.declaration(types.OperationNodes, "nodes", "new OperationNodesImpl(generator)");
-            b.startAssign("BuilderImpl builder").startNew(typBuilderImpl.asType());
-            {
-                b.string("nodes");
-                b.string("false"); // isReparse
-                b.variable(parConfig);
-            }
-            b.end(2);
-
-            b.startStatement().startCall("generator", "accept");
-            b.string("builder");
-            b.end(2);
-
-            b.startStatement().startCall("builder", "finish").end(2);
-
-            b.startReturn().string("nodes").end();
-
+        for (OperationMetadataData metadata : m.getMetadatas()) {
+            typBuilder.add(createSetMetadata(metadata, true));
         }
 
+        typBuilder.add(createCreateMethod(typBuilder, typBuilderImpl));
+
         return typBuilder;
+    }
+
+    private CodeExecutableElement createCreateMethod(CodeTypeElement typBuilder, CodeTypeElement typBuilderImpl) {
+        CodeVariableElement parConfig = new CodeVariableElement(types.OperationConfig, "config");
+        CodeVariableElement parParser = new CodeVariableElement(consumer(typBuilder.asType()), "generator");
+        CodeExecutableElement metCreate = new CodeExecutableElement(MOD_PUBLIC_STATIC, types.OperationNodes, "create");
+        metCreate.addParameter(parConfig);
+        metCreate.addParameter(parParser);
+
+        CodeTreeBuilder b = metCreate.getBuilder();
+
+        b.declaration(types.OperationNodes, "nodes", "new OperationNodesImpl(generator)");
+        b.startAssign("BuilderImpl builder").startNew(typBuilderImpl.asType());
+        {
+            b.string("nodes");
+            b.string("false"); // isReparse
+            b.variable(parConfig);
+        }
+        b.end(2);
+
+        b.startStatement().startCall("generator", "accept");
+        b.string("builder");
+        b.end(2);
+
+        b.startStatement().startCall("builder", "finish").end(2);
+
+        b.startReturn().string("nodes").end();
+
+        return metCreate;
+    }
+
+    CodeTypeElement createOperationNodeImpl() {
+        CodeTypeElement typOperationNodeImpl = GeneratorUtils.createClass(m, null, MOD_PRIVATE_STATIC_FINAL, "OperationNodeImpl", types.OperationNode);
+        typOperationNodeImpl.add(GeneratorUtils.createConstructorUsingFields(MOD_PRIVATE, typOperationNodeImpl));
+
+        if (!m.getMetadatas().isEmpty()) {
+            CodeExecutableElement staticInit = new CodeExecutableElement(MOD_STATIC, null, "<cinit>");
+            typOperationNodeImpl.add(staticInit);
+
+            CodeTreeBuilder initBuilder = staticInit.createBuilder();
+
+            for (OperationMetadataData metadata : m.getMetadatas()) {
+                String fieldName = metadata.getName();
+                CodeVariableElement fldMetadata = new CodeVariableElement(MOD_PRIVATE, metadata.getType(), fieldName);
+
+                typOperationNodeImpl.add(fldMetadata);
+
+                initBuilder.startStatement().startCall("setMetadataAccessor");
+                initBuilder.staticReference((VariableElement) metadata.getMessageElement());
+                initBuilder.startGroup();
+                {
+                    initBuilder.string("n -> ");
+                    initBuilder.startParantheses().cast(typOperationNodeImpl.asType()).string("n").end().string("." + fieldName);
+                }
+                initBuilder.end();
+                initBuilder.end(2);
+            }
+        }
+
+        return typOperationNodeImpl;
     }
 
     private CodeTypeElement createBuilderImpl(CodeTypeElement typBuilder) {
@@ -223,6 +262,9 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             typBuilderImpl.add(fldId);
         }
 
+        CodeTypeElement typOperationNodeImpl = createOperationNodeImpl();
+        typBuilderImpl.add(typOperationNodeImpl);
+
         CodeTypeElement builderBytecodeNodeType;
         CodeTypeElement builderInstrBytecodeNodeType;
         {
@@ -263,7 +305,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         vars.lastChildPushCount = fldLastPush;
         vars.consts = fldConstPool;
 
-        typBuilderImpl.add(createForwardingConstructorCall("BytecodeNode", "createBytecode"));
+        typBuilderImpl.add(createForwardingConstructorCall(typOperationNodeImpl, "createNode"));
+        typBuilderImpl.add(createForwardingConstructorCall(builderBytecodeNodeType, "createBytecode"));
         typBuilderImpl.add(createForwardingConstructorCall(null, "createInstrumentedBytecode"));
 
         typBuilderImpl.add(createDoLeave(vars));
@@ -293,8 +336,59 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             }
         }
 
+        for (OperationMetadataData metadata : m.getMetadatas()) {
+            CodeVariableElement fldMetadata = new CodeVariableElement(MOD_PRIVATE, metadata.getType(), "metadata_" + metadata.getName());
+            typBuilderImpl.add(fldMetadata);
+            typBuilderImpl.add(createSetMetadata(metadata, false));
+        }
+
+        typBuilderImpl.add(createMetadataReset());
+        typBuilderImpl.add(createMetadataSet(typOperationNodeImpl));
+
         return typBuilderImpl;
 
+    }
+
+    private CodeExecutableElement createMetadataReset() {
+        CodeExecutableElement method = GeneratorUtils.overrideImplement(types.OperationBuilder, "resetMetadata");
+        CodeTreeBuilder b = method.createBuilder();
+
+        for (OperationMetadataData metadata : m.getMetadatas()) {
+            b.startAssign("metadata_" + metadata.getName()).string("null").end();
+        }
+
+        return method;
+    }
+
+    private CodeExecutableElement createMetadataSet(CodeTypeElement typOperationNodeImpl) {
+        CodeExecutableElement method = GeneratorUtils.overrideImplement(types.OperationBuilder, "assignMetadata");
+        CodeTreeBuilder b = method.createBuilder();
+
+        b.startAssign(typOperationNodeImpl.getSimpleName() + " nodeImpl").cast(typOperationNodeImpl.asType()).string("node").end();
+
+        for (OperationMetadataData metadata : m.getMetadatas()) {
+            b.statement("nodeImpl." + metadata.getName() + " = metadata_" + metadata.getName());
+        }
+
+        return method;
+    }
+
+    private CodeExecutableElement createSetMetadata(OperationMetadataData metadata, boolean isAbstract) {
+        CodeVariableElement parValue = new CodeVariableElement(metadata.getType(), "value");
+        CodeExecutableElement method = new CodeExecutableElement(
+                        isAbstract ? MOD_PUBLIC_ABSTRACT : MOD_PUBLIC,
+                        context.getType(void.class), "set" + metadata.getName(),
+                        parValue);
+
+        if (isAbstract) {
+            return method;
+        }
+
+        CodeTreeBuilder b = method.createBuilder();
+
+        b.startAssign("metadata_" + metadata.getName()).variable(parValue).end();
+
+        return method;
     }
 
     private CodeExecutableElement createGetBlockOperationIndex(Operation op) {
@@ -305,12 +399,12 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         return result;
     }
 
-    private CodeExecutableElement createForwardingConstructorCall(String typeName, String methodName) {
+    private CodeExecutableElement createForwardingConstructorCall(TypeElement typeName, String methodName) {
         CodeExecutableElement result = GeneratorUtils.overrideImplement(types.OperationBuilder, methodName);
         CodeTreeBuilder b = result.getBuilder();
 
         if (typeName != null) {
-            b.startReturn().startNew(typeName);
+            b.startReturn().startNew(typeName.asType());
             for (VariableElement par : result.getParameters()) {
                 b.variable(par);
             }

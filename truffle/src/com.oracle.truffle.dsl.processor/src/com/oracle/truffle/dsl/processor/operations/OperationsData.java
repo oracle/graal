@@ -20,6 +20,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 public class OperationsData extends Template {
 
     private final List<SingleOperationData> operations = new ArrayList<>();
+    private final List<OperationMetadataData> metadatas = new ArrayList<>();
     private final OperationsContext context = new OperationsContext(this);
 
     private boolean tracing;
@@ -43,7 +44,11 @@ public class OperationsData extends Template {
 
     @Override
     protected List<MessageContainer> findChildContainers() {
-        return List.copyOf(operations);
+        ArrayList<MessageContainer> result = new ArrayList<>();
+        result.addAll(operations);
+        result.addAll(metadatas);
+
+        return result;
     }
 
     public void setTracing(boolean tracing) {
@@ -60,6 +65,10 @@ public class OperationsData extends Template {
 
     public Collection<SingleOperationData> getOperationData() {
         return operations;
+    }
+
+    public List<OperationMetadataData> getMetadatas() {
+        return metadatas;
     }
 
     public Collection<Operation> getOperations() {

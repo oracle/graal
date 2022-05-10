@@ -65,6 +65,8 @@ public abstract class OperationBuilder {
 
         numChildNodes = 0;
         numBranchProfiles = 0;
+
+        resetMetadata();
     }
 
     public final OperationNode publish() {
@@ -75,7 +77,8 @@ public abstract class OperationBuilder {
         OperationNode result;
         if (!isReparse) {
             SourceInfo sourceInfo = withSource ? sourceBuilder.build() : null;
-            result = new OperationNode(nodes, sourceInfo, publishBytecode());
+            result = createNode(nodes, sourceInfo, publishBytecode());
+            assignMetadata(result);
             assert buildIndex == builtNodes.size();
             builtNodes.add(result);
         } else {
@@ -128,6 +131,8 @@ public abstract class OperationBuilder {
             return createBytecode(maxStack, numLocals, bcCopy, consts, childrenCopy, handlers, conditionProfiles);
         }
     }
+
+    protected abstract OperationNode createNode(OperationNodes arg0, Object arg1, OperationBytecodeNode arg2);
 
     protected abstract OperationBytecodeNode createBytecode(int arg0, int arg1, byte[] arg2, Object[] arg3, Node[] arg4, BuilderExceptionHandler[] arg5, ConditionProfile[] arg6);
 
@@ -443,4 +448,10 @@ public abstract class OperationBuilder {
         // TODO
         return 0;
     }
+
+    // ------------------------ metadata ------------------------
+
+    protected abstract void resetMetadata();
+
+    protected abstract void assignMetadata(OperationNode node);
 }

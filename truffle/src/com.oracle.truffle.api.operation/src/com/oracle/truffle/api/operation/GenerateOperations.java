@@ -15,4 +15,10 @@ public @interface GenerateOperations {
     Class<?>[] boxingEliminationTypes() default {};
 
     boolean forceTracing() default false;
+
+    @Retention(RetentionPolicy.SOURCE)
+    @Target({ElementType.FIELD})
+    public @interface Metadata {
+        String value();
+    }
 }

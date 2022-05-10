@@ -1,5 +1,7 @@
 package com.oracle.truffle.api.operation;
 
+import java.util.function.Function;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -9,16 +11,16 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-public final class OperationNode extends Node {
+public abstract class OperationNode extends Node {
 
     private final OperationNodes nodes;
     @CompilationFinal private SourceInfo sourceInfo;
 
     @Child private OperationBytecodeNode bcNode;
 
-    OperationNode(OperationNodes nodes, SourceInfo sourceInfo, OperationBytecodeNode bcNode) {
+    protected OperationNode(OperationNodes nodes, Object sourceInfo, OperationBytecodeNode bcNode) {
         this.nodes = nodes;
-        this.sourceInfo = sourceInfo;
+        this.sourceInfo = (SourceInfo) sourceInfo;
         this.bcNode = bcNode;
     }
 
@@ -36,6 +38,10 @@ public final class OperationNode extends Node {
 
     public Object execute(VirtualFrame frame) {
         return bcNode.execute(frame);
+    }
+
+    public <T> T getMetadata(MetadataKey<T> key) {
+        return key.getValue(this);
     }
 
     // ------------------------------------ internal accessors ------------------------------------
@@ -57,6 +63,10 @@ public final class OperationNode extends Node {
         CompilerAsserts.neverPartOfCompilation();
         assert !hasSourceInfo() : "already have source info";
         this.sourceInfo = sourceInfo;
+    }
+
+    protected static <T> void setMetadataAccessor(MetadataKey<T> key, Function<OperationNode, T> getter) {
+        key.setGetter(getter);
     }
 
     // ------------------------------------ sources ------------------------------------

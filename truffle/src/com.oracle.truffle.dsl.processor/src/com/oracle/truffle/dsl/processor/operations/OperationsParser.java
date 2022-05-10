@@ -15,6 +15,7 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -49,6 +50,18 @@ public class OperationsParser extends AbstractParser<OperationsData> {
 
         if (ElementUtils.findParentEnclosingType(typeElement).isPresent()) {
             data.addError(typeElement, "Operations class must be a top-level class.");
+        }
+
+        // find all metadata
+        for (VariableElement ve : ElementFilter.fieldsIn(typeElement.getEnclosedElements())) {
+            if (ElementUtils.findAnnotationMirror(ve, types.GenerateOperations_Metadata) != null) {
+                OperationMetadataData metadataData = new OperationMetadataParser(data).parse(ve, false);
+                if (metadataData == null) {
+                    data.addError(ve, "Could not parse metadata");
+                } else {
+                    data.getMetadatas().add(metadataData);
+                }
+            }
         }
 
         // find and bind type system

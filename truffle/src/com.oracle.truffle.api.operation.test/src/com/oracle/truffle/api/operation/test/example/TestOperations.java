@@ -8,12 +8,17 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
 import com.oracle.truffle.api.operation.GenerateOperations;
+import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
+import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.Variadic;
 
-@GenerateOperations
 @GenerateAOT
+@GenerateOperations
 public final class TestOperations {
+
+    @Metadata("TestData") //
+    public static final MetadataKey<String> TEST_DATA = new MetadataKey<>("default value");
 
     private static class TestException extends AbstractOperationsTruffleException {
 
