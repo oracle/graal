@@ -870,7 +870,7 @@ public final class EspressoContext {
         return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm, name, group, managedByEspresso);
     }
 
-    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
+    public void disposeThread(Thread hostThread) {
         StaticObject guestThread = getGuestThreadFromHost(hostThread);
         if (guestThread == null) {
             return;

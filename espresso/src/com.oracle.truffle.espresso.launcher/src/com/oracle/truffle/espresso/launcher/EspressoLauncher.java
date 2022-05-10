@@ -495,6 +495,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         contextBuilder.allowCreateThread(true);
         // We use the host system exit for compatibility with the reference implementation.
         contextBuilder.useSystemExit(true);
+        contextBuilder.option("java.ExitHost", "true");
 
         try (Context context = contextBuilder.build()) {
 

@@ -261,7 +261,7 @@ final class EspressoShutdownHandler implements ContextAccess {
                     return str;
                 });
                 if (getContext().AllowHostExit) {
-                    // Needed until we can detach rogue threads from Truffle.
+                    // Needed until we can release rogue threads from Truffle (GR-28701).
                     getContext().getLogger().severe("Calling Host System.exit()...");
                     System.exit(getExitStatus());
 
