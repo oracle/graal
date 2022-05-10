@@ -156,7 +156,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             self.vaList = null;
         }
 
-        @Specialization(guards = "!self.isPointer()")
+        @Specialization(guards = {"self.isStoredOnHeap()", "!self.isPointer()"})
         static void toNativeVaList(LLVMMaybeVaPointer self,
                         @CachedLibrary(limit = "1") InteropLibrary interopLibrary) {
             interopLibrary.toNative(self.address);
@@ -186,7 +186,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             writeLibrary.writeGenericI64((LLVMManagedPointer.cast(self.address)).getObject(), 0, vaListInstance);
         }
 
-        @Specialization(guards = "self.isStoredOnHeap()")
+        @Specialization(guards = {"self.isStoredOnHeap()", "!self.isManagedStorage()"})
         static void initializeOnHeapNative(LLVMMaybeVaPointer self, Object[] realArguments, int numberOfExplicitArguments, Frame frame,
                         @Cached.Shared("storeAddressNode") @Cached LLVMPointerOffsetStoreNode storeAddressNode,
                         @CachedLibrary(limit = "3") LLVMVaListLibrary vaListLibrary) {

@@ -322,7 +322,7 @@ public final class LLVMDarwinAarch64VaListStorage extends LLVMVaListStorage {
             return LLVMMaybeVaPointer.createWithHeap(p);
         }
 
-        @Specialization(guards = "isManagedPointer(p)")
+        @Specialization(guards = {"isManagedPointer(p)", "!isGlobal(p)"})
         Object extractFromManaged(LLVMManagedPointer p) {
             assert p.getObject() instanceof LLVMMaybeVaPointer;
             return p.getObject();
