@@ -300,7 +300,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                 }
                 id = className.substring(lastIndex + 1);
             } else {
-                // TODO remove this hack for single character languages
+                // TODO GR-38632 remove this hack for single character languages
                 if (name.length() == 1) {
                     id = name;
                 } else {

@@ -126,7 +126,7 @@ final class PolyglotContextConfig {
             this.createThreadAllowed = false;
             this.createProcessAllowed = false;
             this.originalOptions = Collections.emptyMap();
-            this.polyglotAccess = PolyglotAccess.ALL; // TODO change this to NONE with GR-14657
+            this.polyglotAccess = PolyglotAccess.ALL; // TODO GR-14657 change this to NONE
             this.timeZone = null;
             this.allowValueSharing = true;
             this.useSystemExit = false;
@@ -189,7 +189,7 @@ final class PolyglotContextConfig {
                         System.err,
                         System.in,
                         false, // never any host lookup should be allowed in context preinit
-                        sharableConfig.polyglotAccess, // TODO change this to NONE with GR-14657
+                        sharableConfig.polyglotAccess, // TODO GR-14657 change this to NONE
                         sharableConfig.nativeAccessAllowed,
                         sharableConfig.createThreadAllowed,
                         false,
