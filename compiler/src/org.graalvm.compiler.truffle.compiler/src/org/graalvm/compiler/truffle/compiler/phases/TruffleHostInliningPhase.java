@@ -117,10 +117,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         this.canonicalizer = canonicalizer;
     }
 
-    protected InliningGraphCache createGraphCache() {
-        return new DefaultGraphCache();
-    }
-
     protected boolean isEnabledFor(ResolvedJavaMethod method) {
         return isBytecodeInterpreterSwitch(method);
     }
@@ -157,7 +153,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             return;
         }
 
-        runImpl(new InliningPhaseContext(highTierContext, graph, createGraphCache(), TruffleCompilerRuntime.getRuntimeIfAvailable(), isBytecodeInterpreterSwitch(method)));
+        runImpl(new InliningPhaseContext(highTierContext, graph, TruffleCompilerRuntime.getRuntimeIfAvailable(), isBytecodeInterpreterSwitch(method)));
     }
 
     private void runImpl(InliningPhaseContext context) {
@@ -241,7 +237,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
                         }
 
                         assert call.children == null && call.exploredIndex == -1 : "force shallow inline already explored";
-                        call.children = exploreGraph(context, null, call, context.lookupGraph(call.getTargetMethod()), round, sizeLimit, 0);
+                        call.children = exploreGraph(context, null, call, lookupGraph(context, call.getTargetMethod()), round, sizeLimit, 0);
                         newTargets.addAll(call.children);
 
                         graphSize += call.graphSize;
@@ -544,7 +540,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             targetMethod = callee.monomorphicTargetMethod;
         }
 
-        calleeGraph = context.lookupGraph(targetMethod);
+        calleeGraph = lookupGraph(context, targetMethod);
         assert calleeGraph != null : "There must be a graph available for an inlinable call.";
 
         callee.graphSize = NodeCostUtil.computeNodesSize(calleeGraph.getNodes());
@@ -859,7 +855,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    private static UnmodifiableEconomicMap<Node, Node> inline(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call) {
+    private UnmodifiableEconomicMap<Node, Node> inline(InliningPhaseContext context, EconomicSet<Node> canonicalizableNodes, CallTree call) {
         Invoke invoke = call.invoke;
         ResolvedJavaMethod targetMethod;
         if (invoke.getInvokeKind().isDirect()) {
@@ -874,13 +870,47 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
             InliningUtil.insertTypeGuard(context.highTierContext, invoke, resolvedType, speculationLog.speculate(speculationReason));
             InliningUtil.replaceInvokeCallTarget(invoke, context.graph, InvokeKind.Special, targetMethod);
         }
-        StructuredGraph inlineGraph = context.lookupGraph(targetMethod);
+        StructuredGraph inlineGraph = lookupGraph(context, targetMethod);
         AtomicReference<UnmodifiableEconomicMap<Node, Node>> duplicates = new AtomicReference<>();
         canonicalizableNodes.addAll(InliningUtil.inlineForCanonicalization(invoke, inlineGraph, true, targetMethod,
                         (d) -> duplicates.set(d),
                         "Truffle Host Inlining",
                         "Truffle Host Inlining"));
         return duplicates.get();
+    }
+
+    private StructuredGraph lookupGraph(InliningPhaseContext context, ResolvedJavaMethod method) {
+        StructuredGraph graph = context.graphCache.get(method);
+        if (graph == null) {
+            graph = parseGraph(context.highTierContext, context.graph, method);
+            context.graphCache.put(method, graph);
+        }
+        return graph;
+    }
+
+    @SuppressWarnings("try")
+    protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
+        DebugContext debug = graph.getDebug();
+        StructuredGraph newGraph = new StructuredGraph.Builder(graph.getOptions(), debug, graph.allowAssumptions())//
+                        .method(method).trackNodeSourcePosition(graph.trackNodeSourcePosition()) //
+                        .profileProvider(graph.getProfileProvider()) //
+                        .speculationLog(graph.getSpeculationLog()).build();
+
+        try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
+            if (!graph.isUnsafeAccessTrackingEnabled()) {
+                newGraph.disableUnsafeAccessTracking();
+            }
+            if (context.getGraphBuilderSuite() != null) {
+                context.getGraphBuilderSuite().apply(newGraph, context);
+            }
+            assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
+
+            new DeadCodeEliminationPhase(Optional).apply(newGraph);
+            canonicalizer.apply(newGraph, context);
+            return newGraph;
+        } catch (Throwable e) {
+            throw debug.handle(e);
+        }
     }
 
     private String printCallTree(InliningPhaseContext context, CallTree root) {
@@ -943,7 +973,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         }
     }
 
-    public static boolean shouldDenyTrivialInlining(@SuppressWarnings("unused") ResolvedJavaMethod caller, ResolvedJavaMethod callee) {
+    public static boolean shouldDenyTrivialInlining(ResolvedJavaMethod callee) {
         TruffleCompilerRuntime r = TruffleCompilerRuntime.getRuntimeIfAvailable();
         assert r != null;
         return (r.isBytecodeInterpreterSwitch(callee) || r.isTruffleBoundary(callee) || r.isInInterpreter(callee) || r.isTransferToInterpreterMethod(callee));
@@ -954,7 +984,7 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode[] args) {
             TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntimeIfAvailable();
-            if (rt != null && shouldDenyTrivialInlining(b.getMethod(), targetMethod)) {
+            if (rt != null && shouldDenyTrivialInlining(targetMethod)) {
                 /*
                  * We deny bytecode parser inlining for any method that is relevant for Truffle host
                  * inlining. This is important otherwise we might miss some PE boundaries during
@@ -967,38 +997,27 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
 
     }
 
-    /**
-     * Created through {@link TruffleHostInliningPhase#createGraphCache()}. Interface that allows to
-     * customize graph caching in subclasses. For example, on SVM all graphs are readily available
-     * do not need any caching. On HotSpot we need to parse the bytecodes, which is expensive and
-     * should not need to be repeated if a method is inlined multiple times per phase application.
-     */
-    public interface InliningGraphCache {
-
-        StructuredGraph lookup(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method);
-
-    }
-
     static final class InliningPhaseContext {
 
         final HighTierContext highTierContext;
         final StructuredGraph graph;
-        private final InliningGraphCache graphCache;
         final OptionValues options;
         final TruffleCompilerRuntime truffle;
         final boolean isBytecodeSwitch;
 
-        InliningPhaseContext(HighTierContext context, StructuredGraph graph, InliningGraphCache graphCache, TruffleCompilerRuntime truffle, boolean isBytecodeSwitch) {
+        /**
+         * Caches graphs for a single run of this phase. This is not just a performance optimization
+         * but also needed for correctness as invokes from individual graphs are remembered in the
+         * CallTree.
+         */
+        final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphCache = EconomicMap.create(Equivalence.DEFAULT);
+
+        InliningPhaseContext(HighTierContext context, StructuredGraph graph, TruffleCompilerRuntime truffle, boolean isBytecodeSwitch) {
             this.highTierContext = context;
             this.graph = graph;
             this.options = graph.getOptions();
-            this.graphCache = graphCache;
             this.truffle = truffle;
             this.isBytecodeSwitch = isBytecodeSwitch;
-        }
-
-        StructuredGraph lookupGraph(ResolvedJavaMethod method) {
-            return graphCache.lookup(highTierContext, graph, method);
         }
 
     }
@@ -1189,52 +1208,6 @@ public class TruffleHostInliningPhase extends AbstractInliningPhase {
         @Override
         public String toString() {
             return toString("", 1);
-        }
-
-    }
-
-    /**
-     * This cache only lives for a single run of this phase. While caching longer term would be
-     * possible it would be quite complicated to do because Graal graphs age rather quickly on
-     * HotSpot.
-     */
-    private final class DefaultGraphCache implements InliningGraphCache {
-
-        private final EconomicMap<ResolvedJavaMethod, StructuredGraph> graphs = EconomicMap.create(Equivalence.DEFAULT);
-
-        @Override
-        public StructuredGraph lookup(HighTierContext context, StructuredGraph parentGraph, ResolvedJavaMethod method) {
-            StructuredGraph graph = graphs.get(method);
-            if (graph == null) {
-                graph = parseBytecodes(context, parentGraph, method);
-                graphs.put(method, graph);
-            }
-            return graph;
-        }
-
-        @SuppressWarnings("try")
-        private StructuredGraph parseBytecodes(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
-            DebugContext debug = graph.getDebug();
-            StructuredGraph newGraph = new StructuredGraph.Builder(graph.getOptions(), debug, graph.allowAssumptions())//
-                            .method(method).trackNodeSourcePosition(graph.trackNodeSourcePosition()) //
-                            .profileProvider(graph.getProfileProvider()) //
-                            .speculationLog(graph.getSpeculationLog()).build();
-
-            try (DebugContext.Scope s = debug.scope("InlineGraph", newGraph)) {
-                if (!graph.isUnsafeAccessTrackingEnabled()) {
-                    newGraph.disableUnsafeAccessTracking();
-                }
-                if (context.getGraphBuilderSuite() != null) {
-                    context.getGraphBuilderSuite().apply(newGraph, context);
-                }
-                assert newGraph.start().next() != null : "graph needs to be populated by the GraphBuilderSuite " + method + ", " + method.canBeInlined();
-
-                new DeadCodeEliminationPhase(Optional).apply(newGraph);
-                canonicalizer.apply(newGraph, context);
-                return newGraph;
-            } catch (Throwable e) {
-                throw debug.handle(e);
-            }
         }
 
     }

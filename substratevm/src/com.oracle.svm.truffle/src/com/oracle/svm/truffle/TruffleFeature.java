@@ -796,7 +796,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
              * Make sure we do not make any decisions for non-runtime compiled methods.
              */
             return false;
-        } else if (TruffleHostInliningPhase.shouldDenyTrivialInlining(caller, callee)) {
+        } else if (TruffleHostInliningPhase.shouldDenyTrivialInlining(callee)) {
             return true;
         }
         return false;

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.truffle;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase.InliningGraphCache;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link BytecodeInterpreterSwitch}.
  */
 @Platforms(Platform.HOSTED_ONLY.class)
-public final class SubstrateTruffleHostInliningPhase extends TruffleHostInliningPhase implements InliningGraphCache {
+public final class SubstrateTruffleHostInliningPhase extends TruffleHostInliningPhase {
 
     private final TruffleFeature truffleFeature = ImageSingletons.lookup(TruffleFeature.class);
 
@@ -54,14 +54,8 @@ public final class SubstrateTruffleHostInliningPhase extends TruffleHostInlining
     }
 
     @Override
-    protected InliningGraphCache createGraphCache() {
-        // on SVM we have graphs readily available, no need to cache
-        return this;
-    }
-
-    @Override
-    public StructuredGraph lookup(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
-        return ((HostedMethod) method).compilationInfo.getGraph();
+    protected StructuredGraph parseGraph(HighTierContext context, StructuredGraph graph, ResolvedJavaMethod method) {
+        return ((HostedMethod) method).compilationInfo.createGraph(graph.getDebug(), CompilationIdentifier.INVALID_COMPILATION_ID, true);
     }
 
     /**
