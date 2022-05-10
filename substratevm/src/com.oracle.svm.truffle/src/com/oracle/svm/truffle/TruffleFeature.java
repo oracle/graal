@@ -498,14 +498,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
             return true;
         }
 
-        if (method.isSynchronized() && method.getName().equals("fillInStackTrace")) {
-            /*
-             * We do not want anything related to Throwable.fillInStackTrace in the image. For
-             * simplicity, we just check the method name and not the declaring class too, but it is
-             * unlikely that some non-exception method is called "fillInStackTrace".
-             */
-            return true;
-        }
         return blocklistMethods.contains(method);
     }
 
@@ -524,6 +516,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         blocklistMethod(metaAccess, Object.class, "toString");
         blocklistMethod(metaAccess, String.class, "valueOf", Object.class);
         blocklistMethod(metaAccess, String.class, "getBytes");
+        blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace");
         blocklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
         blocklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
         blocklistMethod(metaAccess, System.class, "getProperty", String.class);
