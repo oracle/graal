@@ -1690,7 +1690,7 @@ public final class JniEnv extends NativeEnv {
     @TruffleBoundary
     public void FatalError(@Pointer TruffleObject msgPtr, @Inject SubstitutionProfiler profiler) {
         String msg = NativeUtils.interopPointerToString(msgPtr);
-        PrintWriter writer = new PrintWriter(getContext().getEnv().err(), true);
+        PrintWriter writer = new PrintWriter(getContext().getLanguageEnv().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
         getContext().truffleExit(profiler, 1);

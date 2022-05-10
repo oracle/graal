@@ -64,7 +64,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
     }
 
     void initReferenceDrain() {
-        TruffleLanguage.Env env = getContext().getEnv();
+        TruffleLanguage.Env env = getContext().getLanguageEnv();
         Meta meta = getMeta();
 
         if (getJavaVersion().java8OrEarlier()) {
@@ -118,7 +118,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
     void shutdownAndWaitReferenceDrain() throws InterruptedException {
         if (hostToGuestReferenceDrainThread != null) {
             while (hostToGuestReferenceDrainThread.isAlive()) {
-                getContext().getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
+                getContext().getLanguageEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
                 hostToGuestReferenceDrainThread.interrupt();
                 hostToGuestReferenceDrainThread.join(10);
             }

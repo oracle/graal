@@ -322,7 +322,7 @@ public final class VM extends NativeEnv {
             disposeMokapotContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "disposeMokapotContext",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.POINTER));
 
-            if (jniEnv.getContext().EnableManagement) {
+            if (jniEnv.getContext().env().EnableManagement) {
                 management = new Management(getContext(), mokapotLibrary);
             } else {
                 management = null;
@@ -453,7 +453,7 @@ public final class VM extends NativeEnv {
         }
         try {
             if (management != null) {
-                assert getContext().EnableManagement;
+                assert getContext().env().EnableManagement;
                 management.dispose();
             }
             if (jvmti != null) {
@@ -818,7 +818,7 @@ public final class VM extends NativeEnv {
         StaticObject currentThread = context.getCurrentThread();
         State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
-            if (context.EnableManagement) {
+            if (context.env().EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
                 Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
@@ -844,7 +844,7 @@ public final class VM extends NativeEnv {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         } finally {
-            if (context.EnableManagement) {
+            if (context.env().EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
             }
         }
@@ -1321,9 +1321,9 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     public boolean JVM_DesiredAssertionStatus(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused, @JavaType(Class.class) StaticObject clazz) {
         if (StaticObject.isNull(clazz.getMirrorKlass(getMeta()).getDefiningClassLoader())) {
-            return EspressoOptions.EnableSystemAssertions.getValue(getMeta().getContext().getEnv().getOptions());
+            return EspressoOptions.EnableSystemAssertions.getValue(getMeta().getContext().getLanguageEnv().getOptions());
         }
-        return EspressoOptions.EnableAssertions.getValue(getMeta().getContext().getEnv().getOptions());
+        return EspressoOptions.EnableAssertions.getValue(getMeta().getContext().getLanguageEnv().getOptions());
     }
 
     @VmImpl(isJni = true)
@@ -2257,7 +2257,7 @@ public final class VM extends NativeEnv {
 
     private Map<String, String> buildPropertiesMap() {
         Map<String, String> map = new HashMap<>();
-        OptionValues options = getContext().getEnv().getOptions();
+        OptionValues options = getContext().getLanguageEnv().getOptions();
 
         // Set user-defined system properties.
         for (Map.Entry<String, String> entry : options.get(EspressoOptions.Properties).entrySet()) {
@@ -2406,7 +2406,7 @@ public final class VM extends NativeEnv {
         meta.java_lang_AssertionStatusDirectives_classEnabled.set(instance, meta._boolean.allocatePrimitiveArray(0));
         meta.java_lang_AssertionStatusDirectives_packages.set(instance, meta.java_lang_String.allocateReferenceArray(0));
         meta.java_lang_AssertionStatusDirectives_packageEnabled.set(instance, meta._boolean.allocatePrimitiveArray(0));
-        boolean ea = getContext().getEnv().getOptions().get(EspressoOptions.EnableAssertions);
+        boolean ea = getContext().getLanguageEnv().getOptions().get(EspressoOptions.EnableAssertions);
         meta.java_lang_AssertionStatusDirectives_deflt.set(instance, ea);
         return instance;
     }
@@ -3208,7 +3208,7 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public synchronized @Pointer TruffleObject JVM_GetManagement(int version) {
         EspressoContext context = getContext();
-        if (!context.EnableManagement) {
+        if (!context.env().EnableManagement) {
             getLogger().severe("JVM_GetManagement: Experimental support for java.lang.management native APIs is disabled.\n" +
                             "Use '--java.EnableManagement=true' to enable experimental support for j.l.management native APIs.");
             return RawPointer.nullInstance();

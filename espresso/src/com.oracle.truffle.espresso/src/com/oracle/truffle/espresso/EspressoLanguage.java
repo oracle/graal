@@ -36,7 +36,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -177,8 +176,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        if (context.getEnv().isPreInitialization()) {
-            TruffleContext ctx = context.getEnv().newContextBuilder().initializeCreatorContext(true).build();
+        if (context.getLanguageEnv().isPreInitialization()) {
+            TruffleContext ctx = context.getLanguageEnv().newContextBuilder().initializeCreatorContext(true).build();
             Object prev = ctx.enter(null);
             try {
                 EspressoContext inner = EspressoContext.get(null);
@@ -200,15 +199,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (!optionsAllowPreInitializedContext(context, newEnv)) {
             return false;
         }
-
-        // TODO (ivan-ristovic)
+        context.patchContext(newEnv);
         context.initializeContext();
         return true;
     }
 
     private boolean optionsAllowPreInitializedContext(EspressoContext context, Env newEnv) {
         // TODO (ivan-ristovic)
-        return false;
+        return true;
     }
 
     @Override

@@ -51,7 +51,7 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         this.appendix = appendix;
         Method target = (Method) method.getMeta().HIDDEN_VMTARGET.getHiddenObject(memberName);
         // Call the invoker java code spun for us.
-        if (getContext().SplitMethodHandles) {
+        if (getContext().env().SplitMethodHandles) {
             this.callNode = DirectCallNode.create(target.forceSplit().getCallTarget());
         } else {
             this.callNode = DirectCallNode.create(target.getCallTarget());

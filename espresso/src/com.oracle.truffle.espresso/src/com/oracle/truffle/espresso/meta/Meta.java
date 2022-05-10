@@ -395,7 +395,7 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS);
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
-        if (context.EnableManagement) {
+        if (context.env().EnableManagement) {
             HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
@@ -921,7 +921,7 @@ public final class Meta extends ContextAccessImpl {
         }
 
         // Load Espresso's Polyglot API.
-        boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+        boolean polyglotSupport = getContext().getLanguageEnv().getOptions().get(EspressoOptions.Polyglot);
         this.polyglot = polyglotSupport ? new PolyglotSupport() : null;
     }
 
@@ -1492,7 +1492,7 @@ public final class Meta extends ContextAccessImpl {
         public final Field ExceptionType_PARSE_ERROR;
 
         private PolyglotSupport() {
-            boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
+            boolean polyglotSupport = getContext().getLanguageEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
             // polyglot.jar is either on boot class path (JDK 8)
             // or defined by a platform module (JDK 11+)
