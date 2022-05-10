@@ -369,7 +369,8 @@ abstract class AbstractBridgeGenerator {
                 newArgs.add(jniEnvFieldName);
                 args = newArgs;
             }
-            CharSequence proxy = createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            CharSequence proxy = createProxy(builder, NativeToNativeBridgeGenerator.COMMON_START_POINT_FACTORY_NAME, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME,
+                            NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
             if (marshallerData.customDispatchFactory != null) {
                 CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
                                 marshallerData.customDispatchFactory.getSimpleName(), proxy);
@@ -387,7 +388,8 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory && !isNativeObject) {
                 args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[0])).build());
             }
-            CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            CharSequence proxy = createProxy(builder, NativeToNativeBridgeGenerator.COMMON_START_POINT_FACTORY_NAME, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME,
+                            NativeToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
             if (marshallerData.customDispatchFactory != null) {
                 CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.customDispatchFactory.getEnclosingElement().asType(),
                                 marshallerData.customDispatchFactory.getSimpleName(), proxy);
@@ -410,7 +412,7 @@ abstract class AbstractBridgeGenerator {
             return result;
         }
 
-        private CharSequence createProxy(CodeBuilder builder, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
+        private CharSequence createProxy(CodeBuilder builder, CharSequence commonFactoryMethod, CharSequence jniFactoryMethod, CharSequence nativeFactoryMethod, List<CharSequence> args) {
             boolean hasGeneratedFactory = !marshallerData.annotations.isEmpty();
             if (hasGeneratedFactory) {
                 CharSequence type = new CodeBuilder(builder).write(types.erasure(marshallerData.forType)).write("Gen").build();
@@ -418,8 +420,7 @@ abstract class AbstractBridgeGenerator {
                 boolean hasJNI = hasJNIFactory(marshallerData);
                 boolean hasNative = hasNativeFactory(marshallerData);
                 if (hasJNI && hasNative) {
-                    newInstanceBuilder.invokeStatic(cache.imageInfo, "inImageCode").write(" ? ").invoke(type, nativeFactoryMethod, args.toArray(new CharSequence[0])).write(" : ").invoke(type,
-                                    jniFactoryMethod, args.toArray(new CharSequence[0]));
+                    newInstanceBuilder.invoke(type, commonFactoryMethod, args.toArray(new CharSequence[0]));
                 } else if (hasJNI) {
                     newInstanceBuilder.invoke(type, jniFactoryMethod, args.toArray(new CharSequence[0]));
                 } else if (hasNative) {

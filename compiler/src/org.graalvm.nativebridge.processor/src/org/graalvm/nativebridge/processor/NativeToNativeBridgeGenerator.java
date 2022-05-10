@@ -28,35 +28,43 @@ import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
 import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.HotSpotToNativeDefinitionData;
 import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.TypeCache;
 
+import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 
 final class NativeToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
     static final String START_POINT_FACTORY_NAME = "createNativeToNative";
+    static final String COMMON_START_POINT_FACTORY_NAME = "create";
     private static final String START_POINT_SIMPLE_NAME = "NativeToNativeStartPoint";
     private static final String END_POINT_SIMPLE_NAME = "NativeToNativeEndPoint";
 
     private final HotSpotToNativeBridgeGenerator delegateGenerator;
+    private final TypeCache typeCache;
     private FactoryMethodInfo factoryMethod;
-    private boolean shared;
+    private boolean commonFactory;
+    private boolean sharedImplementation;
 
     NativeToNativeBridgeGenerator(AbstractBridgeParser parser, TypeCache typeCache, DefinitionData definitionData) {
         super(parser, definitionData);
         delegateGenerator = new HotSpotToNativeBridgeGenerator(parser, typeCache, definitionData,
                         new String[]{HotSpotToNativeBridgeGenerator.SHARED_START_POINT_SIMPLE_NAME, HotSpotToNativeBridgeGenerator.SHARED_END_POINT_SIMPLE_NAME},
                         new String[]{START_POINT_SIMPLE_NAME, END_POINT_SIMPLE_NAME});
+        this.typeCache = typeCache;
         this.factoryMethod = resolveFactoryMethod(START_POINT_FACTORY_NAME, START_POINT_SIMPLE_NAME, END_POINT_SIMPLE_NAME);
-        shared = false;
+        sharedImplementation = false;
     }
 
     @Override
     void configureMultipleDefinitions(List<DefinitionData> otherDefinitions) {
         Optional<DefinitionData> hotSpotToNativeOrNull = otherDefinitions.stream().filter((d) -> d instanceof HotSpotToNativeDefinitionData).findAny();
-        this.shared = hotSpotToNativeOrNull.isPresent() && isCompatible(types, (HotSpotToNativeDefinitionData) definitionData, (HotSpotToNativeDefinitionData) hotSpotToNativeOrNull.get());
-        if (shared) {
+        this.commonFactory = hotSpotToNativeOrNull.isPresent();
+        this.sharedImplementation = commonFactory && isCompatible(types, (HotSpotToNativeDefinitionData) definitionData, (HotSpotToNativeDefinitionData) hotSpotToNativeOrNull.get());
+        if (sharedImplementation) {
             delegateGenerator.setShared(true);
             factoryMethod = new FactoryMethodInfo(START_POINT_FACTORY_NAME, HotSpotToNativeBridgeGenerator.SHARED_START_POINT_SIMPLE_NAME, HotSpotToNativeBridgeGenerator.SHARED_END_POINT_SIMPLE_NAME,
                             factoryMethod.parameters, factoryMethod.superCallParameters);
@@ -67,11 +75,15 @@ final class NativeToNativeBridgeGenerator extends AbstractBridgeGenerator {
     void generateAPI(CodeBuilder builder, CharSequence targetClassSimpleName) {
         builder.lineEnd("");
         generateStartPointFactory(builder, factoryMethod);
+        if (commonFactory) {
+            builder.lineEnd("");
+            generateCommonFactory(builder);
+        }
     }
 
     @Override
     void generateImpl(CodeBuilder builder, CharSequence targetClassSimpleName) {
-        if (!shared) {
+        if (!sharedImplementation) {
             delegateGenerator.generateImpl(builder, targetClassSimpleName);
         }
     }
@@ -79,6 +91,24 @@ final class NativeToNativeBridgeGenerator extends AbstractBridgeGenerator {
     @Override
     MarshallerSnippets marshallerSnippets(AbstractBridgeParser.MarshallerData marshallerData) {
         throw new UnsupportedOperationException("Should not reach here");
+    }
+
+    private void generateCommonFactory(CodeBuilder builder) {
+        builder.methodStart(EnumSet.of(Modifier.STATIC), COMMON_START_POINT_FACTORY_NAME, definitionData.annotatedType,
+                        factoryMethod.parameters, Collections.emptyList());
+        CharSequence[] params = factoryMethod.parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
+        builder.indent();
+        builder.lineStart("if (").invokeStatic(typeCache.imageInfo, "inImageCode").write(")").lineEnd(" {");
+        builder.indent();
+        builder.lineStart("return ").invoke(null, START_POINT_FACTORY_NAME, params).lineEnd(";");
+        builder.dedent();
+        builder.line("} else {");
+        builder.indent();
+        builder.lineStart("return ").invoke(null, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, params).lineEnd(";");
+        builder.dedent();
+        builder.line("}");
+        builder.dedent();
+        builder.line("}");
     }
 
     static boolean isCompatible(Types types, HotSpotToNativeDefinitionData configuration1, HotSpotToNativeDefinitionData configuration2) {
