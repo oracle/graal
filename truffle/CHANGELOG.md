@@ -71,6 +71,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `IncompatibleLocationException`, `FinalLocationException`
 * GR-34894 Introduced `Location.isPrimitive()`, `Location.getConstantValue()`, and `Shape.makePropertyGetter(Object)`.
 * GR-39058 The Static Object Model offers preliminary support for field-based storage also on Native Image. 
+* GR-24927 A compilation error is emitted for methods annotated by a `@TruffleBoundary` annotation and taking a `Frame` parameter.
 
 ## Version 22.1.0
 

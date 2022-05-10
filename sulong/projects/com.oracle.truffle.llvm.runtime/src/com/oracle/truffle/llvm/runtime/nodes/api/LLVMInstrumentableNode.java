@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -144,10 +145,11 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
     public Object getScope(Frame frame, @SuppressWarnings("unused") boolean nodeEnter,
                     @CachedLibrary("this") NodeLibrary self) {
         LLVMContext ctx = LLVMContext.get(self);
+        MaterializedFrame materializedFrame = frame != null ? frame.materialize() : null;
         if (isLLDebugEnabled(ctx)) {
-            return LLVMDebuggerScopeFactory.createIRLevelScope(this, frame != null ? frame.materialize() : null, ctx);
+            return LLVMDebuggerScopeFactory.createIRLevelScope(this, materializedFrame, ctx);
         } else {
-            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, frame != null ? frame.materialize() : null, ctx);
+            return LLVMDebuggerScopeFactory.createSourceLevelScope(this, materializedFrame, ctx);
         }
     }
 
