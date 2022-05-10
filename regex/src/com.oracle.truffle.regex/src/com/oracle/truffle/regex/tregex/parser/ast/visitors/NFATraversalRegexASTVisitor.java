@@ -163,8 +163,8 @@ public abstract class NFATraversalRegexASTVisitor {
     private final int[] nodeVisitCount;
 
     private final List<CaptureGroupEvent> captureGroupEvents;
-    private final TBitSet captureGroupUpdates;
-    private final TBitSet captureGroupClears;
+    private TBitSet captureGroupUpdates;
+    private TBitSet captureGroupClears;
     private int lastGroup;
 
     private QuantifierGuardsLinkedList quantifierGuards = null;
@@ -526,7 +526,7 @@ public abstract class NFATraversalRegexASTVisitor {
     private void popCaptureGroupEvent() {
         assert !captureGroupEvents.isEmpty();
         CaptureGroupEvent poppedEvent = captureGroupEvents.remove(captureGroupEvents.size() - 1);
-        lastGroup = poppedEvent.undo(captureGroupUpdates, captureGroupClears, lastGroup);
+        poppedEvent.undo(this);
     }
 
     private boolean useQuantifierGuards() {
@@ -1113,7 +1113,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private static abstract class CaptureGroupEvent {
 
-        public abstract int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup);
+        public abstract void undo(NFATraversalRegexASTVisitor visitor);
 
         private static final class CaptureGroupUpdate extends CaptureGroupEvent {
 
@@ -1128,18 +1128,17 @@ public abstract class NFATraversalRegexASTVisitor {
             }
 
             @Override
-            public int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+            public void undo(NFATraversalRegexASTVisitor visitor) {
                 if (prevUpdate) {
-                    captureGroupUpdates.set(boundary);
+                    visitor.captureGroupUpdates.set(boundary);
                 } else {
-                    captureGroupUpdates.clear(boundary);
+                    visitor.captureGroupUpdates.clear(boundary);
                 }
                 if (prevClear) {
-                    captureGroupClears.set(boundary);
+                    visitor.captureGroupClears.set(boundary);
                 } else {
-                    captureGroupClears.clear(boundary);
+                    visitor.captureGroupClears.clear(boundary);
                 }
-                return lastGroup;
             }
         }
 
@@ -1154,12 +1153,9 @@ public abstract class NFATraversalRegexASTVisitor {
             }
 
             @Override
-            public int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-                captureGroupUpdates.clear();
-                captureGroupUpdates.union(prevUpdates);
-                captureGroupClears.clear();
-                captureGroupClears.union(prevClears);
-                return lastGroup;
+            public void undo(NFATraversalRegexASTVisitor visitor) {
+                visitor.captureGroupUpdates = prevUpdates;
+                visitor.captureGroupClears = prevClears;
             }
         }
 
@@ -1172,8 +1168,8 @@ public abstract class NFATraversalRegexASTVisitor {
             }
 
             @Override
-            public int undo(TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
-                return prevLastGroup;
+            public void undo(NFATraversalRegexASTVisitor visitor) {
+                visitor.lastGroup = prevLastGroup;
             }
         }
     }
