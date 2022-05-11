@@ -75,6 +75,11 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
+    public boolean isContextSensitiveAnalysis() {
+        return true;
+    }
+
+    @Override
     public BytecodeAnalysisContextPolicy contextPolicy() {
         return contextPolicy;
     }

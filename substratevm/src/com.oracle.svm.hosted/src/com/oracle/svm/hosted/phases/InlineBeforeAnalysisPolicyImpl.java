@@ -52,6 +52,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
@@ -77,7 +78,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * amount of inlining in a future version without breaking compatibility. This also means that we
  * must be conservative and only inline what is necessary for known use cases.
  */
-public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<InlineBeforeAnalysisPolicyImpl.CountersScope> {
+public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<InlineBeforeAnalysisPolicyImpl.CountersScope> {
 
     public static class Options {
         @Option(help = "Maximum number of computation nodes for method inlined before static analysis")//
@@ -94,7 +95,7 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
     private final int allowedInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
     private final int allowedDepth = Options.InlineBeforeAnalysisAllowedDepth.getValue();
 
-    static final class CountersScope implements InlineBeforeAnalysisPolicy.Scope {
+    protected static final class CountersScope implements InlineBeforeAnalysisPolicy.Scope {
         final CountersScope accumulated;
 
         int numNodes;
@@ -110,8 +111,15 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
         }
     }
 
+    protected boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return false;
+    }
+
     @Override
     protected boolean shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        if (alwaysInlineInvoke((AnalysisMetaAccess) b.getMetaAccess(), method)) {
+            return true;
+        }
         if (b.getDepth() > allowedDepth) {
             return false;
         }
@@ -175,7 +183,7 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected boolean processNode(CountersScope scope, Node node) {
+    protected boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, CountersScope scope, Node node) {
         if (node instanceof StartNode || node instanceof ParameterNode || node instanceof ReturnNode || node instanceof UnwindNode) {
             /* Infrastructure nodes that are not even visible to the policy. */
             throw VMError.shouldNotReachHere("Node must not be visible to policy: " + node.getClass().getTypeName());
@@ -193,6 +201,10 @@ public final class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPo
 
         if (node instanceof ConstantNode || node instanceof LogicConstantNode) {
             /* An unlimited number of constants is allowed. We like constants. */
+            return true;
+        }
+
+        if (alwaysInlineInvoke(metaAccess, method)) {
             return true;
         }
 
