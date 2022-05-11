@@ -112,8 +112,8 @@ final class DefaultInliningPolicy implements InliningPolicy {
     private void inline(CallTree tree) {
         String inlineOnly = options.get(PolyglotCompilerOptions.InlineOnly);
         final int inliningBudget = options.get(PolyglotCompilerOptions.InliningInliningBudget);
-        int inlinedSize = tree.getRoot().getSize();
         final PriorityQueue<CallNode> inlineQueue = getQueue(tree, CallNode.State.Expanded);
+        int rootSize = tree.getRoot().getSize();
         CallNode candidate;
         while ((candidate = inlineQueue.poll()) != null) {
             if (!InliningPolicy.acceptForInline(candidate, inlineOnly)) {
@@ -124,12 +124,15 @@ final class DefaultInliningPolicy implements InliningPolicy {
                 continue;
             }
             int candidateCost = candidate.getSize();
-            if (inlinedSize + candidateCost > inliningBudget) {
-                break;
+            if (rootSize + candidateCost > inliningBudget) {
+                rootSize = tree.getRoot().recalculateSize();
+                if (rootSize + candidateCost > inliningBudget) {
+                    break;
+                }
             }
             if (data(candidate).callDiff <= 0) {
                 candidate.inline();
-                inlinedSize += candidateCost;
+                rootSize += candidateCost;
                 updateQueue(candidate, inlineQueue, CallNode.State.Expanded);
             }
         }
