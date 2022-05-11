@@ -282,19 +282,29 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         private static final int INSTR_C_SLFUNCTION_LITERAL = 31;
         private static final int INSTR_C_SLTO_BOOLEAN = 32;
         private static final int INSTR_C_SLINVOKE = 33;
+        private static final int INSTR_C_SLUNBOX_Q_FROM_LONG = 34;
+        private static final int INSTR_C_SLADD_Q_ADD_LONG = 35;
+        private static final int INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 = 36;
+        private static final int INSTR_C_SLUNBOX_Q_FROM_BOOLEAN = 37;
+        private static final int INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN = 38;
+        private static final int INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 = 39;
+        private static final int INSTR_C_SLINVOKE_Q_DIRECT = 40;
+        private static final int INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM = 41;
+        private static final int INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 = 42;
+        private static final int INSTR_C_SLLESS_THAN_Q_LESS_THAN0 = 43;
         private static final short[][] BOXING_DESCRIPTORS = {
         // OBJECT
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // BYTE
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // INT
         null,
         // FLOAT
         null,
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (4 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (3 << 8) | 0x1), (short) (0x8000 | (5 << 8) | 0x1)},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // DOUBLE
         null};
 
@@ -1769,6 +1779,177 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
          *     Interop
          *     Fallback
          *
+         * c.SLUnbox.q.FromLong
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 BITS
+         *     2 BITS
+         *     3 CHILD
+         *     5 CONST
+         *   Specializations:
+         *     FromString
+         *     FromTruffleString
+         *     FromBoolean
+         *     FromLong
+         *     FromBigNumber
+         *     FromFunction0
+         *     FromFunction1
+         *     FromForeign0
+         *     FromForeign1
+         *     Fallback
+         *
+         * c.SLAdd.q.AddLong
+         *   Inputs:
+         *     STACK_VALUE
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 BITS
+         *     2 BITS
+         *     3 CHILD
+         *     5 CONST
+         *   Specializations:
+         *     AddLong
+         *     Add0
+         *     Add1
+         *     Fallback
+         *
+         * c.SLReadProperty.q.ReadSLObject0
+         *   Inputs:
+         *     STACK_VALUE
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 CONST
+         *     3 CHILD
+         *     5 BITS
+         *   Specializations:
+         *     ReadArray0
+         *     ReadArray1
+         *     ReadSLObject0
+         *     ReadSLObject1
+         *     ReadObject0
+         *     ReadObject1
+         *     Fallback
+         *
+         * c.SLUnbox.q.FromBoolean
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 BITS
+         *     2 BITS
+         *     3 CHILD
+         *     5 CONST
+         *   Specializations:
+         *     FromString
+         *     FromTruffleString
+         *     FromBoolean
+         *     FromLong
+         *     FromBigNumber
+         *     FromFunction0
+         *     FromFunction1
+         *     FromForeign0
+         *     FromForeign1
+         *     Fallback
+         *
+         * c.SLToBoolean.q.Boolean
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *   Specializations:
+         *     Boolean
+         *     Fallback
+         *
+         * c.SLLessOrEqual.q.LessOrEqual0
+         *   Inputs:
+         *     STACK_VALUE
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *   Specializations:
+         *     LessOrEqual0
+         *     LessOrEqual1
+         *     Fallback
+         *
+         * c.SLInvoke.q.Direct
+         *   Inputs:
+         *     STACK_VALUE
+         *     VARARG_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 CONST
+         *     3 CHILD
+         *     5 BITS
+         *   Specializations:
+         *     Direct
+         *     Indirect
+         *     Interop
+         *     Fallback
+         *
+         * c.SLFunctionLiteral.q.Perform
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 CONST
+         *   Specializations:
+         *     Perform
+         *     Fallback
+         *
+         * c.SLWriteProperty.q.WriteSLObject0
+         *   Inputs:
+         *     STACK_VALUE
+         *     STACK_VALUE
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *     1 CONST
+         *     3 CHILD
+         *     5 BITS
+         *   Specializations:
+         *     WriteArray0
+         *     WriteArray1
+         *     WriteSLObject0
+         *     WriteSLObject1
+         *     WriteObject0
+         *     WriteObject1
+         *     Fallback
+         *
+         * c.SLLessThan.q.LessThan0
+         *   Inputs:
+         *     STACK_VALUE
+         *     STACK_VALUE
+         *   Results:
+         *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *   Specializations:
+         *     LessThan0
+         *     LessThan1
+         *     Fallback
+         *
 
          */
         @GeneratedBy(SLOperations.class)
@@ -2040,6 +2221,83 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 nextBci = bci + 11;
                                 break;
                             }
+                            case INSTR_C_SLUNBOX_Q_FROM_LONG :
+                            {
+                                this.SLUnbox_q_FromLong_execute_(frame, bci, sp);
+                                sp = sp - 1 + 1;
+                                nextBci = bci + 10;
+                                break;
+                            }
+                            case INSTR_C_SLADD_Q_ADD_LONG :
+                            {
+                                this.SLAdd_q_AddLong_execute_(frame, bci, sp);
+                                sp = sp - 2 + 1;
+                                nextBci = bci + 11;
+                                break;
+                            }
+                            case INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 :
+                            {
+                                this.SLReadProperty_q_ReadSLObject0_execute_(frame, bci, sp);
+                                sp = sp - 2 + 1;
+                                nextBci = bci + 10;
+                                break;
+                            }
+                            case INSTR_C_SLUNBOX_Q_FROM_BOOLEAN :
+                            {
+                                this.SLUnbox_q_FromBoolean_execute_(frame, bci, sp);
+                                sp = sp - 1 + 1;
+                                nextBci = bci + 10;
+                                break;
+                            }
+                            case INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN :
+                            {
+                                this.SLToBoolean_q_Boolean_execute_(frame, bci, sp);
+                                sp = sp - 1 + 1;
+                                nextBci = bci + 4;
+                                break;
+                            }
+                            case INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                            {
+                                this.SLLessOrEqual_q_LessOrEqual0_execute_(frame, bci, sp);
+                                sp = sp - 2 + 1;
+                                nextBci = bci + 5;
+                                break;
+                            }
+                            case INSTR_C_SLINVOKE_Q_DIRECT :
+                            {
+                                int numVariadics = LE_BYTES.getShort(bc, bci + 3);
+                                Object input_0 = frame.getObject(sp - numVariadics - 1);
+                                Object[] input_1 = new Object[numVariadics];
+                                for (int varIndex = 0; varIndex < numVariadics; varIndex++) {
+                                    input_1[varIndex] = frame.getObject(sp - numVariadics + varIndex);
+                                }
+                                Object result = this.SLInvoke_q_Direct_execute_(frame, bci, sp, input_0, input_1);
+                                sp = sp - 1 - numVariadics + 1;
+                                frame.setObject(sp - 1, result);
+                                nextBci = bci + 11;
+                                break;
+                            }
+                            case INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM :
+                            {
+                                this.SLFunctionLiteral_q_Perform_execute_(frame, bci, sp);
+                                sp = sp - 1 + 1;
+                                nextBci = bci + 6;
+                                break;
+                            }
+                            case INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 :
+                            {
+                                this.SLWriteProperty_q_WriteSLObject0_execute_(frame, bci, sp);
+                                sp = sp - 3 + 1;
+                                nextBci = bci + 11;
+                                break;
+                            }
+                            case INSTR_C_SLLESS_THAN_Q_LESS_THAN0 :
+                            {
+                                this.SLLessThan_q_LessThan0_execute_(frame, bci, sp);
+                                sp = sp - 2 + 1;
+                                nextBci = bci + 5;
+                                break;
+                            }
                             default :
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
                                 throw CompilerDirectives.shouldNotReachHere("unknown opcode encountered");
@@ -2192,6 +2450,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             long $child1Value_ = (long) $child1Value;
                             bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 addLong(long, long) */);
                             bc[$bci + 4 + 2] = (byte) (state_1);
+                            if ((state_0 & 0b11110) == 0b10/* is-exact-state_0 addLong(long, long) */) {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLADD_Q_ADD_LONG);
+                            } else {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLADD);
+                            }
                             int type0;
                             int type1;
                             if ((state_0 & 0b11100) == 0 /* only-active addLong(long, long) */) {
@@ -2240,6 +2503,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 state_1 = (byte) (state_1 | (sLBigNumberCast1 << 0) /* set-implicit-state_1 1:SLBigNumber */);
                                 bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 add(SLBigNumber, SLBigNumber) */);
                                 bc[$bci + 4 + 2] = (byte) (state_1);
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLADD);
                                 int type0;
                                 int type1;
                                 type0 = FRAME_TYPE_OBJECT;
@@ -2262,6 +2526,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         consts[LE_BYTES.getShort(bc, $bci + 4 + 3) + 0] = s2_;
                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */);
                         bc[$bci + 4 + 2] = (byte) (state_1);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLADD);
                         int type0;
                         int type1;
                         type0 = FRAME_TYPE_OBJECT;
@@ -2280,6 +2545,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         fallback_bci__ = ($bci);
                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b10000 /* add-state_0 typeError(Object, Object, Node, int) */);
                         bc[$bci + 4 + 2] = (byte) (state_1);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLADD);
                         int type0;
                         int type1;
                         type0 = FRAME_TYPE_OBJECT;
@@ -3060,6 +3326,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
                             bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 lessOrEqual(long, long) */);
+                            if ((state_0 & 0b1110) == 0b10/* is-exact-state_0 lessOrEqual(long, long) */) {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0);
+                            } else {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_OR_EQUAL);
+                            }
                             int type0;
                             int type1;
                             if ((state_0 & 0b1100) == 0 /* only-active lessOrEqual(long, long) */) {
@@ -3092,6 +3363,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 state_0 = (byte) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
                                 state_0 = (byte) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
                                 bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 lessOrEqual(SLBigNumber, SLBigNumber) */);
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_OR_EQUAL);
                                 int type0;
                                 int type1;
                                 type0 = FRAME_TYPE_OBJECT;
@@ -3116,6 +3388,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         fallback_node__ = (this);
                         fallback_bci__ = ($bci);
                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_OR_EQUAL);
                         int type0;
                         int type1;
                         type0 = FRAME_TYPE_OBJECT;
@@ -3226,6 +3499,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         if ($child1Value instanceof Long) {
                             long $child1Value_ = (long) $child1Value;
                             bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 lessThan(long, long) */);
+                            if ((state_0 & 0b1110) == 0b10/* is-exact-state_0 lessThan(long, long) */) {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_THAN_Q_LESS_THAN0);
+                            } else {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_THAN);
+                            }
                             int type0;
                             int type1;
                             if ((state_0 & 0b1100) == 0 /* only-active lessThan(long, long) */) {
@@ -3258,6 +3536,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 state_0 = (byte) (state_0 | (sLBigNumberCast0 << 4) /* set-implicit-state_0 0:SLBigNumber */);
                                 state_0 = (byte) (state_0 | (sLBigNumberCast1 << 6) /* set-implicit-state_0 1:SLBigNumber */);
                                 bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 lessThan(SLBigNumber, SLBigNumber) */);
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_THAN);
                                 int type0;
                                 int type1;
                                 type0 = FRAME_TYPE_OBJECT;
@@ -3282,6 +3561,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         fallback_node__ = (this);
                         fallback_bci__ = ($bci);
                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 typeError(Object, Object, Node, int) */);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLLESS_THAN);
                         int type0;
                         int type1;
                         type0 = FRAME_TYPE_OBJECT;
@@ -3764,6 +4044,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         VarHandle.storeStoreFence();
                                         consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 0] = s0_;
                                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY);
                                         int type0;
                                         int type1;
                                         type0 = FRAME_TYPE_OBJECT;
@@ -3800,6 +4081,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 0] = null;
                                         state_0 = (byte) (state_0 & 0xfffffffd /* remove-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 readArray(Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY);
                                         int type0;
                                         int type1;
                                         type0 = FRAME_TYPE_OBJECT;
@@ -3847,6 +4129,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         VarHandle.storeStoreFence();
                                         consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 1] = s2_;
                                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                                        if ((state_0 & 0b1111110) == 0b1000/* is-exact-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0);
+                                        } else {
+                                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY);
+                                        }
                                         int type0;
                                         int type1;
                                         type0 = FRAME_TYPE_OBJECT;
@@ -3875,6 +4162,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 1] = null;
                             state_0 = (byte) (state_0 & 0xfffffff7 /* remove-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
                             bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b10000 /* add-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY);
                             int type0;
                             int type1;
                             type0 = FRAME_TYPE_OBJECT;
@@ -3917,6 +4205,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         VarHandle.storeStoreFence();
                                         consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 2] = s4_;
                                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b100000 /* add-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY);
                                         int type0;
                                         int type1;
                                         type0 = FRAME_TYPE_OBJECT;
@@ -3952,6 +4241,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 2] = null;
                                         state_0 = (byte) (state_0 & 0xffffffdf /* remove-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                         bc[$bci + 4 + 0] = state_0 = (byte) (state_0 | 0b1000000 /* add-state_0 readObject(Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLREAD_PROPERTY);
                                         int type0;
                                         int type1;
                                         type0 = FRAME_TYPE_OBJECT;
@@ -4323,6 +4613,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     VarHandle.storeStoreFence();
                                     consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0] = s0_;
                                     bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                    LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY);
                                     int type0;
                                     int type1;
                                     int type2;
@@ -4359,6 +4650,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                         consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0] = null;
                                         state_0 = (byte) (state_0 & 0xfffffffd /* remove-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
                                         bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 writeArray(Object, Object, Object, Node, int, InteropLibrary, InteropLibrary) */);
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY);
                                         int type0;
                                         int type1;
                                         int type2;
@@ -4402,6 +4694,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     VarHandle.storeStoreFence();
                                     consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 2] = s2_;
                                     bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                                    if ((state_0 & 0b1111110) == 0b1000/* is-exact-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */) {
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0);
+                                    } else {
+                                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY);
+                                    }
                                     int type0;
                                     int type1;
                                     int type2;
@@ -4428,6 +4725,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 2] = null;
                             state_0 = (byte) (state_0 & 0xfffffff7 /* remove-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
                             bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b10000 /* add-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */);
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY);
                             int type0;
                             int type1;
                             int type2;
@@ -4471,6 +4769,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     VarHandle.storeStoreFence();
                                     consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 3] = s4_;
                                     bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b100000 /* add-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY);
                                     int type0;
                                     int type1;
                                     int type2;
@@ -4507,6 +4806,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                     consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 3] = null;
                                     state_0 = (byte) (state_0 & 0xffffffdf /* remove-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
                                     bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b1000000 /* add-state_0 writeObject(Object, Object, Object, Node, int, InteropLibrary, SLToMemberNode) */);
+                                    LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLWRITE_PROPERTY);
                                     int type0;
                                     int type1;
                                     int type2;
@@ -4682,6 +4982,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         children[LE_BYTES.getShort(bc, $bci + 3 + 2) + 0] = super.insert((FromJavaStringNode.create()));
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 fromString(String, FromJavaStringNode) */);
                         bc[$bci + 3 + 1] = (byte) (state_1);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                         int type0;
                         type0 = FRAME_TYPE_OBJECT;
                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4694,6 +4995,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         TruffleString $child0Value_ = (TruffleString) $child0Value;
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 fromTruffleString(TruffleString) */);
                         bc[$bci + 3 + 1] = (byte) (state_1);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                         int type0;
                         type0 = FRAME_TYPE_OBJECT;
                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4706,6 +5008,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         boolean $child0Value_ = (boolean) $child0Value;
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 fromBoolean(boolean) */);
                         bc[$bci + 3 + 1] = (byte) (state_1);
+                        if ((state_0 & 0b11111110) == 0b1000/* is-exact-state_0 fromBoolean(boolean) */ && (state_1 & 0b11) == 0/* is-exact-state_1  */) {
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX_Q_FROM_BOOLEAN);
+                        } else {
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
+                        }
                         int type0;
                         if ((state_0 & 0b11110110) == 0 /* only-active fromBoolean(boolean) */ && (state_1 & 0b11) == 0 /* only-active  */) {
                             type0 = FRAME_TYPE_BOOLEAN;
@@ -4727,6 +5034,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         long $child0Value_ = (long) $child0Value;
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b10000 /* add-state_0 fromLong(long) */);
                         bc[$bci + 3 + 1] = (byte) (state_1);
+                        if ((state_0 & 0b11111110) == 0b10000/* is-exact-state_0 fromLong(long) */ && (state_1 & 0b11) == 0/* is-exact-state_1  */) {
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX_Q_FROM_LONG);
+                        } else {
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
+                        }
                         int type0;
                         if ((state_0 & 0b11101110) == 0 /* only-active fromLong(long) */ && (state_1 & 0b11) == 0 /* only-active  */) {
                             type0 = FRAME_TYPE_LONG;
@@ -4751,6 +5063,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             state_1 = (byte) (state_1 | (sLBigNumberCast0 << 2) /* set-implicit-state_1 0:SLBigNumber */);
                             bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b100000 /* add-state_0 fromBigNumber(SLBigNumber) */);
                             bc[$bci + 3 + 1] = (byte) (state_1);
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                             int type0;
                             type0 = FRAME_TYPE_OBJECT;
                             doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4764,6 +5077,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         SLFunction $child0Value_ = (SLFunction) $child0Value;
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b1000000 /* add-state_0 fromFunction(SLFunction) */);
                         bc[$bci + 3 + 1] = (byte) (state_1);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                         int type0;
                         type0 = FRAME_TYPE_OBJECT;
                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4776,6 +5090,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         SLNull $child0Value_ = SLTypes.asSLNull($child0Value);
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b10000000 /* add-state_0 fromFunction(SLNull) */);
                         bc[$bci + 3 + 1] = (byte) (state_1);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                         int type0;
                         type0 = FRAME_TYPE_OBJECT;
                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4805,6 +5120,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 consts[LE_BYTES.getShort(bc, $bci + 3 + 4) + 0] = s7_;
                                 bc[$bci + 3 + 0] = (byte) (state_0);
                                 bc[$bci + 3 + 1] = state_1 = (byte) (state_1 | 0b1 /* add-state_1 fromForeign(Object, InteropLibrary) */);
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                                 int type0;
                                 type0 = FRAME_TYPE_OBJECT;
                                 doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4829,6 +5145,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 state_1 = (byte) (state_1 & 0xfffffffe /* remove-state_1 fromForeign(Object, InteropLibrary) */);
                                 bc[$bci + 3 + 0] = (byte) (state_0);
                                 bc[$bci + 3 + 1] = state_1 = (byte) (state_1 | 0b10 /* add-state_1 fromForeign(Object, InteropLibrary) */);
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLUNBOX);
                                 int type0;
                                 type0 = FRAME_TYPE_OBJECT;
                                 doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4877,6 +5194,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             consts[LE_BYTES.getShort(bc, $bci + 3 + 1) + 0] = (SLFunctionLiteralNode.lookupFunctionCached($child0Value_, this));
                             node__ = (this);
                             bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 perform(TruffleString, SLFunction, Node) */);
+                            if ((state_0 & 0b10) == 0b10/* is-exact-state_0 perform(TruffleString, SLFunction, Node) */) {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM);
+                            } else {
+                                LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLFUNCTION_LITERAL);
+                            }
                             int type0;
                             type0 = FRAME_TYPE_OBJECT;
                             doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -4964,6 +5286,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     if ($child0Value instanceof Boolean) {
                         boolean $child0Value_ = (boolean) $child0Value;
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 doBoolean(boolean) */);
+                        if ((state_0 & 0b110) == 0b10/* is-exact-state_0 doBoolean(boolean) */) {
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN);
+                        } else {
+                            LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLTO_BOOLEAN);
+                        }
                         int type0;
                         if ((state_0 & 0b100) == 0 /* only-active doBoolean(boolean) */) {
                             type0 = FRAME_TYPE_BOOLEAN;
@@ -4987,6 +5314,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         fallback_node__ = (this);
                         fallback_bci__ = ($bci);
                         bc[$bci + 3 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 doFallback(Object, Node, int) */);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLTO_BOOLEAN);
                         int type0;
                         type0 = FRAME_TYPE_OBJECT;
                         doSetResultBoxed(bc, $bci, bc[$bci + 2], type0);
@@ -5079,6 +5407,11 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                                 VarHandle.storeStoreFence();
                                                 consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0] = s0_;
                                                 bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                                                if ((state_0 & 0b1110) == 0b10/* is-exact-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */) {
+                                                    LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLINVOKE_Q_DIRECT);
+                                                } else {
+                                                    LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLINVOKE);
+                                                }
                                             }
                                         }
                                     }
@@ -5095,6 +5428,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0] = null;
                         state_0 = (byte) (state_0 & 0xfffffffd /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
                         bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b100 /* add-state_0 doIndirect(SLFunction, Object[], IndirectCallNode) */);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLINVOKE);
                         lock.unlock();
                         hasLock = false;
                         return SLInvoke.doIndirect(arg0Value_, arg1Value, ((IndirectCallNode) children[LE_BYTES.getShort(bc, $bci + 5 + 3) + 1]));
@@ -5106,6 +5440,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         interop_node__ = (this);
                         interop_bci__ = ($bci);
                         bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b1000 /* add-state_0 doInterop(Object, Object[], InteropLibrary, Node, int) */);
+                        LE_BYTES.putShort(bc, $bci, (short) INSTR_C_SLINVOKE);
                         lock.unlock();
                         hasLock = false;
                         return SLInvoke.doInterop(arg0Value, arg1Value, ((InteropLibrary) children[LE_BYTES.getShort(bc, $bci + 5 + 3) + 2]), interop_node__, interop_bci__);
@@ -5143,6 +5478,271 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
+            private void SLUnbox_q_FromLong_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 3 + 0];
+                long $child0Value_;
+                try {
+                    $child0Value_ = expectLong($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    SLUnbox_executeAndSpecialize_($frame, $bci, $sp, ex.getResult());
+                    return;
+                }
+                assert ((state_0 & 0b10000) != 0 /* is-state_0 fromLong(long) */);
+                long value = SLUnboxNode.fromLong($child0Value_);
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
+                    $frame.setObject($sp - 1, value);
+                } else {
+                    $frame.setLong($sp - 1, value);
+                }
+                return;
+            }
+
+            private void SLAdd_q_AddLong_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 4 + 0];
+                long $child0Value_;
+                try {
+                    $child0Value_ = expectLong($frame, $sp - 2);
+                } catch (UnexpectedResultException ex) {
+                    Object $child1Value = expectObject($frame, $sp - 1);
+                    SLAdd_executeAndSpecialize_($frame, $bci, $sp, ex.getResult(), $child1Value);
+                    return;
+                }
+                long $child1Value_;
+                try {
+                    $child1Value_ = expectLong($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    SLAdd_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, ex.getResult());
+                    return;
+                }
+                assert ((state_0 & 0b10) != 0 /* is-state_0 addLong(long, long) */);
+                try {
+                    long value = SLAddNode.addLong($child0Value_, $child1Value_);
+                    if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
+                        $frame.setObject($sp - 2, value);
+                    } else {
+                        $frame.setLong($sp - 2, value);
+                    }
+                    return;
+                } catch (ArithmeticException ex) {
+                    // implicit transferToInterpreterAndInvalidate()
+                    Lock lock = getLock();
+                    lock.lock();
+                    try {
+                        bc[$bci + 4 + 1] = (byte) (bc[$bci + 4 + 1] | 0b1 /* add-exclude addLong(long, long) */);
+                        bc[$bci + 4 + 0] = (byte) (bc[$bci + 4 + 0] & 0xfffffffd /* remove-state_0 addLong(long, long) */);
+                    } finally {
+                        lock.unlock();
+                    }
+                    SLAdd_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $child1Value_);
+                    return;
+                }
+            }
+
+            @ExplodeLoop
+            private void SLReadProperty_q_ReadSLObject0_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 4 + 0];
+                Object $child0Value_ = expectObject($frame, $sp - 2);
+                Object $child1Value_ = expectObject($frame, $sp - 1);
+                assert (state_0 & 0b1000) != 0 /* is-state_0 readSLObject(SLObject, Object, Node, int, DynamicObjectLibrary, SLToTruffleStringNode) */;
+                if ($child0Value_ instanceof SLObject) {
+                    SLObject $child0Value__ = (SLObject) $child0Value_;
+                    SLReadProperty_ReadSLObject0Data s2_ = ((SLReadProperty_ReadSLObject0Data) consts[LE_BYTES.getShort(bc, $bci + 4 + 1) + 0]);
+                    while (s2_ != null) {
+                        if ((((DynamicObjectLibrary) children[LE_BYTES.getShort(bc, $bci + 4 + 3) + 0]).accepts($child0Value__))) {
+                            Node node__ = (this);
+                            int bci__ = ($bci);
+                            $frame.setObject($sp - 2, SLReadPropertyNode.readSLObject($child0Value__, $child1Value_, node__, bci__, ((DynamicObjectLibrary) children[LE_BYTES.getShort(bc, $bci + 4 + 3) + 0]), ((SLToTruffleStringNode) children[LE_BYTES.getShort(bc, $bci + 4 + 3) + 1])));
+                            return;
+                        }
+                        s2_ = s2_.next_;
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                SLReadProperty_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $child1Value_);
+                return;
+            }
+
+            private void SLUnbox_q_FromBoolean_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 3 + 0];
+                boolean $child0Value_;
+                try {
+                    $child0Value_ = expectBoolean($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    SLUnbox_executeAndSpecialize_($frame, $bci, $sp, ex.getResult());
+                    return;
+                }
+                assert ((state_0 & 0b1000) != 0 /* is-state_0 fromBoolean(boolean) */);
+                boolean value = SLUnboxNode.fromBoolean($child0Value_);
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
+                    $frame.setObject($sp - 1, value);
+                } else {
+                    $frame.setBoolean($sp - 1, value);
+                }
+                return;
+            }
+
+            private void SLToBoolean_q_Boolean_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 3 + 0];
+                boolean $child0Value_;
+                try {
+                    $child0Value_ = expectBoolean($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    SLToBoolean_executeAndSpecialize_($frame, $bci, $sp, ex.getResult());
+                    return;
+                }
+                assert (state_0 & 0b10) != 0 /* is-state_0 doBoolean(boolean) */;
+                boolean value = SLToBooleanNode.doBoolean($child0Value_);
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
+                    $frame.setObject($sp - 1, value);
+                } else {
+                    $frame.setBoolean($sp - 1, value);
+                }
+                return;
+            }
+
+            private void SLLessOrEqual_q_LessOrEqual0_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 4 + 0];
+                long $child0Value_;
+                try {
+                    $child0Value_ = expectLong($frame, $sp - 2);
+                } catch (UnexpectedResultException ex) {
+                    Object $child1Value = expectObject($frame, $sp - 1);
+                    SLLessOrEqual_executeAndSpecialize_($frame, $bci, $sp, ex.getResult(), $child1Value);
+                    return;
+                }
+                long $child1Value_;
+                try {
+                    $child1Value_ = expectLong($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    SLLessOrEqual_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, ex.getResult());
+                    return;
+                }
+                assert (state_0 & 0b10) != 0 /* is-state_0 lessOrEqual(long, long) */;
+                boolean value = SLLessOrEqualNode.lessOrEqual($child0Value_, $child1Value_);
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
+                    $frame.setObject($sp - 2, value);
+                } else {
+                    $frame.setBoolean($sp - 2, value);
+                }
+                return;
+            }
+
+            @ExplodeLoop
+            private Object SLInvoke_q_Direct_execute_(VirtualFrame $frame, int $bci, int $sp, Object arg0Value, Object[] arg1Value) {
+                byte state_0 = bc[$bci + 5 + 0];
+                assert (state_0 & 0b10) != 0 /* is-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */;
+                if (arg0Value instanceof SLFunction) {
+                    SLFunction arg0Value_ = (SLFunction) arg0Value;
+                    SLInvoke_DirectData s0_ = ((SLInvoke_DirectData) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0]);
+                    while (s0_ != null) {
+                        if (!Assumption.isValidAssumption((((Assumption) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 1])))) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            SLInvoke_q_Direct_removeDirect__($frame, $bci, $sp, s0_);
+                            return SLInvoke_executeAndSpecialize_($frame, $bci, $sp, arg0Value_, arg1Value);
+                        }
+                        if ((arg0Value_.getCallTarget() == ((RootCallTarget) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 2]))) {
+                            return SLInvoke.doDirect(arg0Value_, arg1Value, ((Assumption) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 1]), ((RootCallTarget) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 2]), ((DirectCallNode) children[LE_BYTES.getShort(bc, $bci + 5 + 3) + 0]));
+                        }
+                        s0_ = s0_.next_;
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLInvoke_executeAndSpecialize_($frame, $bci, $sp, arg0Value, arg1Value);
+            }
+
+            private void SLInvoke_q_Direct_removeDirect__(VirtualFrame $frame, int $bci, int $sp, Object s0_) {
+                Lock lock = getLock();
+                lock.lock();
+                try {
+                    SLInvoke_DirectData prev = null;
+                    SLInvoke_DirectData cur = ((SLInvoke_DirectData) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0]);
+                    while (cur != null) {
+                        if (cur == s0_) {
+                            if (prev == null) {
+                                consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0] = this.insert(cur.next_);
+                            } else {
+                                prev.next_ = prev.insertAccessor(cur.next_);
+                            }
+                            break;
+                        }
+                        prev = cur;
+                        cur = cur.next_;
+                    }
+                    if (consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0] == null) {
+                        bc[$bci + 5 + 0] = (byte) (bc[$bci + 5 + 0] & 0xfffffffd /* remove-state_0 doDirect(SLFunction, Object[], Assumption, RootCallTarget, DirectCallNode) */);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            private void SLFunctionLiteral_q_Perform_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 3 + 0];
+                Object $child0Value_ = expectObject($frame, $sp - 1);
+                assert (state_0 & 0b10) != 0 /* is-state_0 perform(TruffleString, SLFunction, Node) */;
+                if ($child0Value_ instanceof TruffleString) {
+                    TruffleString $child0Value__ = (TruffleString) $child0Value_;
+                    {
+                        Node node__ = (this);
+                        $frame.setObject($sp - 1, SLFunctionLiteralNode.perform($child0Value__, ((SLFunction) consts[LE_BYTES.getShort(bc, $bci + 3 + 1) + 0]), node__));
+                        return;
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                SLFunctionLiteral_executeAndSpecialize_($frame, $bci, $sp, $child0Value_);
+                return;
+            }
+
+            @ExplodeLoop
+            private void SLWriteProperty_q_WriteSLObject0_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 5 + 0];
+                Object $child0Value_ = expectObject($frame, $sp - 3);
+                Object $child1Value_ = expectObject($frame, $sp - 2);
+                Object $child2Value_ = expectObject($frame, $sp - 1);
+                assert (state_0 & 0b1000) != 0 /* is-state_0 writeSLObject(SLObject, Object, Object, DynamicObjectLibrary, SLToTruffleStringNode) */;
+                if ($child0Value_ instanceof SLObject) {
+                    SLObject $child0Value__ = (SLObject) $child0Value_;
+                    SLWriteProperty_WriteSLObject0Data s2_ = ((SLWriteProperty_WriteSLObject0Data) consts[LE_BYTES.getShort(bc, $bci + 5 + 1) + 0]);
+                    while (s2_ != null) {
+                        if ((((DynamicObjectLibrary) children[LE_BYTES.getShort(bc, $bci + 5 + 3) + 0]).accepts($child0Value__))) {
+                            $frame.setObject($sp - 3, SLWritePropertyNode.writeSLObject($child0Value__, $child1Value_, $child2Value_, ((DynamicObjectLibrary) children[LE_BYTES.getShort(bc, $bci + 5 + 3) + 0]), ((SLToTruffleStringNode) children[LE_BYTES.getShort(bc, $bci + 5 + 3) + 1])));
+                            return;
+                        }
+                        s2_ = s2_.next_;
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                SLWriteProperty_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, $child1Value_, $child2Value_);
+                return;
+            }
+
+            private void SLLessThan_q_LessThan0_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 4 + 0];
+                long $child0Value_;
+                try {
+                    $child0Value_ = expectLong($frame, $sp - 2);
+                } catch (UnexpectedResultException ex) {
+                    Object $child1Value = expectObject($frame, $sp - 1);
+                    SLLessThan_executeAndSpecialize_($frame, $bci, $sp, ex.getResult(), $child1Value);
+                    return;
+                }
+                long $child1Value_;
+                try {
+                    $child1Value_ = expectLong($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    SLLessThan_executeAndSpecialize_($frame, $bci, $sp, $child0Value_, ex.getResult());
+                    return;
+                }
+                assert (state_0 & 0b10) != 0 /* is-state_0 lessThan(long, long) */;
+                boolean value = SLLessThanNode.lessThan($child0Value_, $child1Value_);
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 RESULT-UNBOXED */) {
+                    $frame.setObject($sp - 2, value);
+                } else {
+                    $frame.setBoolean($sp - 2, value);
+                }
+                return;
+            }
+
             @Override
             public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
                 int bci = 0;
@@ -5164,6 +5764,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         case INSTR_C_SLLOGICAL_NOT :
                         case INSTR_C_SLTO_BOOLEAN :
+                        case INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN :
                         {
                             bci = bci + 4;
                             break;
@@ -5183,6 +5784,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         case INSTR_STORE_LOCAL :
                         case INSTR_C_SLLESS_OR_EQUAL :
                         case INSTR_C_SLLESS_THAN :
+                        case INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                        case INSTR_C_SLLESS_THAN_Q_LESS_THAN0 :
                         {
                             bci = bci + 5;
                             break;
@@ -5196,6 +5799,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         case INSTR_C_SLEQUAL :
                         case INSTR_C_SLWRITE_PROPERTY :
                         case INSTR_C_SLINVOKE :
+                        case INSTR_C_SLADD_Q_ADD_LONG :
+                        case INSTR_C_SLINVOKE_Q_DIRECT :
+                        case INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 :
                         {
                             bci = bci + 11;
                             break;
@@ -5204,12 +5810,16 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         case INSTR_C_SLMUL :
                         case INSTR_C_SLSUB :
                         case INSTR_C_SLFUNCTION_LITERAL :
+                        case INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM :
                         {
                             bci = bci + 6;
                             break;
                         }
                         case INSTR_C_SLREAD_PROPERTY :
                         case INSTR_C_SLUNBOX :
+                        case INSTR_C_SLUNBOX_Q_FROM_LONG :
+                        case INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 :
+                        case INSTR_C_SLUNBOX_Q_FROM_BOOLEAN :
                         {
                             bci = bci + 10;
                             break;
@@ -5987,6 +6597,270 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             bci += 11;
                             break;
                         }
+                        case INSTR_C_SLUNBOX_Q_FROM_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append(String.format("%02x ", bc[bci + 6]));
+                            sb.append(String.format("%02x ", bc[bci + 7]));
+                            sb.append(String.format("%02x ", bc[bci + 8]));
+                            sb.append(String.format("%02x ", bc[bci + 9]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLUnbox.q.FromLong             ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 10;
+                            break;
+                        }
+                        case INSTR_C_SLADD_Q_ADD_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append(String.format("%02x ", bc[bci + 6]));
+                            sb.append(String.format("%02x ", bc[bci + 7]));
+                            sb.append(String.format("%02x ", bc[bci + 8]));
+                            sb.append(String.format("%02x ", bc[bci + 9]));
+                            sb.append(String.format("%02x ", bc[bci + 10]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLAdd.q.AddLong                ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 3]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 11;
+                            break;
+                        }
+                        case INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append(String.format("%02x ", bc[bci + 6]));
+                            sb.append(String.format("%02x ", bc[bci + 7]));
+                            sb.append(String.format("%02x ", bc[bci + 8]));
+                            sb.append(String.format("%02x ", bc[bci + 9]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLReadProperty.q.ReadSLObject0 ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 3]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 10;
+                            break;
+                        }
+                        case INSTR_C_SLUNBOX_Q_FROM_BOOLEAN :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append(String.format("%02x ", bc[bci + 6]));
+                            sb.append(String.format("%02x ", bc[bci + 7]));
+                            sb.append(String.format("%02x ", bc[bci + 8]));
+                            sb.append(String.format("%02x ", bc[bci + 9]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLUnbox.q.FromBoolean          ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 10;
+                            break;
+                        }
+                        case INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLToBoolean.q.Boolean          ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLLessOrEqual.q.LessOrEqual0   ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 3]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 5;
+                            break;
+                        }
+                        case INSTR_C_SLINVOKE_Q_DIRECT :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append(String.format("%02x ", bc[bci + 6]));
+                            sb.append(String.format("%02x ", bc[bci + 7]));
+                            sb.append(String.format("%02x ", bc[bci + 8]));
+                            sb.append(String.format("%02x ", bc[bci + 9]));
+                            sb.append(String.format("%02x ", bc[bci + 10]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLInvoke.q.Direct              ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("**%d", LE_BYTES.getShort(bc, bci + 3)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 11;
+                            break;
+                        }
+                        case INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLFunctionLiteral.q.Perform    ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 6;
+                            break;
+                        }
+                        case INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append(String.format("%02x ", bc[bci + 6]));
+                            sb.append(String.format("%02x ", bc[bci + 7]));
+                            sb.append(String.format("%02x ", bc[bci + 8]));
+                            sb.append(String.format("%02x ", bc[bci + 9]));
+                            sb.append(String.format("%02x ", bc[bci + 10]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLWriteProperty.q.WriteSLObject0 ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 3]));
+                            sb.append(", ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 4]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 11;
+                            break;
+                        }
+                        case INSTR_C_SLLESS_THAN_Q_LESS_THAN0 :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("c.SLLessThan.q.LessThan0         ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 3]));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 5;
+                            break;
+                        }
                     }
                     sb.append("\n");
                 }
@@ -6050,6 +6924,37 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static boolean SLToBoolean_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value) {
                 if (((state_0 & 0b10)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                    return false;
+                }
+                return true;
+            }
+
+            private static boolean SLAdd_q_AddLong_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value, Object $child1Value) {
+                if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                    return false;
+                }
+                if (((state_0 & 0b1000)) == 0 /* is-not-state_0 add(Object, Object, SLToTruffleStringNode, SLToTruffleStringNode, ConcatNode) */ && (SLAddNode.isString($child0Value, $child1Value))) {
+                    return false;
+                }
+                return true;
+            }
+
+            private static boolean SLToBoolean_q_Boolean_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value) {
+                if (((state_0 & 0b10)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                    return false;
+                }
+                return true;
+            }
+
+            private static boolean SLLessOrEqual_q_LessOrEqual0_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, Object $child0Value, Object $child1Value) {
+                if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
+                    return false;
+                }
+                return true;
+            }
+
+            private static boolean SLLessThan_q_LessThan0_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, Object $child0Value, Object $child1Value) {
+                if (SLTypesGen.isImplicitSLBigNumber($child0Value) && SLTypesGen.isImplicitSLBigNumber($child1Value)) {
                     return false;
                 }
                 return true;

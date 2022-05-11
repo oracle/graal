@@ -619,9 +619,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
                         case REPLACE:
                             value = instr.boxingEliminationReplacement(kind).getName();
                             break;
-                        case SET_BIT:
-                            value = "(short) (0x8000 | (" + instr.boxingEliminationBitOffset() + " << 8) | 0x" + Integer.toHexString(instr.boxingEliminationBitMask()) + ")";
+                        case SET_BIT: {
+                            int bitOffset = instr.boxingEliminationBitOffset();
+                            int bitMask = instr.boxingEliminationBitMask();
+                            short shortValue = (short) (0x8000 | (bitOffset << 8) | bitMask);
+                            value = shortValue + " /* " + bitOffset + "," + Integer.toHexString(bitMask) + " */";
                             break;
+                        }
                         default:
                             throw new UnsupportedOperationException("unknown boxing behaviour: " + instr.boxingEliminationBehaviour());
                     }

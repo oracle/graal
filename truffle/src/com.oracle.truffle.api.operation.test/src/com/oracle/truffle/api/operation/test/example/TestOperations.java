@@ -31,7 +31,7 @@ public final class TestOperations {
 
     @Operation
     @GenerateAOT
-    static class AddOperation {
+    static final class AddOperation {
         @Specialization
         public static long add(long lhs, long rhs) {
             return lhs + rhs;
@@ -45,7 +45,7 @@ public final class TestOperations {
 
     @Operation
     @GenerateAOT
-    static class LessThanOperation {
+    static final class LessThanOperation {
         @Specialization
         public static boolean lessThan(long lhs, long rhs) {
             return lhs < rhs;
@@ -54,7 +54,7 @@ public final class TestOperations {
 
     @Operation
     @GenerateAOT
-    static class VeryComplexOperation {
+    static final class VeryComplexOperation {
         @Specialization
         public static long bla(long a1, @Variadic Object[] a2) {
             return a1 + a2.length;
@@ -63,7 +63,7 @@ public final class TestOperations {
 
     @Operation
     @GenerateAOT
-    static class ThrowOperation {
+    static final class ThrowOperation {
         @Specialization
         public static Object perform(@Bind("$bci") int bci, @Bind("this") Node node) {
             throw new TestException("fail", node, bci);
@@ -71,7 +71,7 @@ public final class TestOperations {
     }
 
     @Operation
-    static class AlwaysBoxOperation {
+    static final class AlwaysBoxOperation {
         @Specialization
         public static Object perform(Object value) {
             return value;
@@ -79,7 +79,7 @@ public final class TestOperations {
     }
 
     @Operation
-    static class AppenderOperation {
+    static final class AppenderOperation {
         @Specialization
         public static void perform(List<Object> list, Object value) {
             list.add(value);

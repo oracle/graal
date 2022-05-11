@@ -5,51 +5,51 @@
     {
         "specializations": ["FromLong"],
         "type": "Quicken",
-        "operation": "SLUnboxOperation"
+        "operation": "SLUnbox"
     },
     {
         "specializations": ["AddLong"],
         "type": "Quicken",
-        "operation": "SLAddOperation"
+        "operation": "SLAdd"
     },
     {
         "specializations": ["ReadSLObject0"],
         "type": "Quicken",
-        "operation": "SLReadPropertyOperation"
+        "operation": "SLReadProperty"
     },
     {
         "specializations": ["FromBoolean"],
         "type": "Quicken",
-        "operation": "SLUnboxOperation"
+        "operation": "SLUnbox"
     },
     {
         "specializations": ["Boolean"],
         "type": "Quicken",
-        "operation": "SLToBooleanOperation"
+        "operation": "SLToBoolean"
     },
     {
         "specializations": ["LessOrEqual0"],
         "type": "Quicken",
-        "operation": "SLLessOrEqualOperation"
+        "operation": "SLLessOrEqual"
     },
     {
         "specializations": ["Direct"],
         "type": "Quicken",
-        "operation": "SLInvokeOperation"
+        "operation": "SLInvoke"
     },
     {
         "specializations": ["Perform"],
         "type": "Quicken",
-        "operation": "SLFunctionLiteralOperation"
+        "operation": "SLFunctionLiteral"
     },
     {
         "specializations": ["WriteSLObject0"],
         "type": "Quicken",
-        "operation": "SLWritePropertyOperation"
+        "operation": "SLWriteProperty"
     },
     {
         "specializations": ["LessThan0"],
         "type": "Quicken",
-        "operation": "SLLessThanOperation"
+        "operation": "SLLessThan"
     }
 ]

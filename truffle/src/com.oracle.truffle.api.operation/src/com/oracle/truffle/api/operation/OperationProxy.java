@@ -1,6 +1,5 @@
 package com.oracle.truffle.api.operation;
 
-import java.beans.JavaBean;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;

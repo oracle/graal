@@ -35,17 +35,10 @@ import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
 public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
-    private static final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
     private final OperationsData parentData;
     private final AnnotationMirror proxyMirror;
 
     private final String NODE = "Node";
-
-    private Set<DeclaredType> OPERATION_PROXY_IGNORED_ANNOTATIONS = Set.of(
-                    types.GenerateOperations,
-                    types.OperationProxy,
-                    context.getDeclaredType("com.oracle.truffle.api.operation.OperationProxies"),
-                    types.Operation);
 
     public SingleOperationParser(OperationsData parentData) {
         this(parentData, null);
@@ -319,10 +312,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private boolean isVariadicParameter(VariableElement param) {
         return ElementUtils.findAnnotationMirror(param, types.Variadic) != null;
-    }
-
-    private static boolean isStaticAccessible(Element elem) {
-        return !elem.getModifiers().contains(Modifier.PRIVATE) && elem.getModifiers().contains(Modifier.STATIC);
     }
 
     private boolean isSpecializationFunction(ExecutableElement el) {

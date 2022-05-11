@@ -268,13 +268,10 @@ class BoxingTypeSystem {
 @GenerateOperations(boxingEliminationTypes = {boolean.class, int.class, long.class})
 @SuppressWarnings("unused")
 final class BoxingOperations {
-    public static void parse(BoxingLanguage lang, Consumer<BoxingOperationsBuilder> data, BoxingOperationsBuilder builder) {
-        data.accept(builder);
-    }
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class IntProducer {
+    public static final class IntProducer {
         @Specialization
         public static int produce() {
             return 1;
@@ -283,7 +280,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class BooleanProducer {
+    public static final class BooleanProducer {
         @Specialization
         public static boolean produce() {
             return true;
@@ -292,7 +289,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class RefAProducer {
+    public static final class RefAProducer {
         @Specialization
         public static ReferenceTypeA produce() {
             return new ReferenceTypeA();
@@ -301,7 +298,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class RefBProducer {
+    public static final class RefBProducer {
         @Specialization
         public static ReferenceTypeB produce() {
             return new ReferenceTypeB();
@@ -310,7 +307,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class ObjectProducer {
+    public static final class ObjectProducer {
 
         public static final short PRODUCE_INT = 0;
         public static final short PRODUCE_LONG = 1;
@@ -342,7 +339,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class SpecializedObjectProducer {
+    public static final class SpecializedObjectProducer {
 
         public static final short PRODUCE_INT = 0;
         public static final short PRODUCE_LONG = 1;
@@ -384,7 +381,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class LongOperator {
+    public static final class LongOperator {
         @Specialization
         public static long operate(long value) {
             return value;
@@ -393,7 +390,7 @@ final class BoxingOperations {
 
     @Operation
     @TypeSystemReference(BoxingTypeSystem.class)
-    public static class StringOperator {
+    public static final class StringOperator {
         @Specialization
         public static String operate(String value) {
             return value;
