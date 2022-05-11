@@ -76,7 +76,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
-import org.graalvm.word.UnsignedWord;
 
 class SubstrateTruffleOptions {
 
@@ -400,8 +399,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public long getStackOverflowLimit() {
         StackOverflowCheck.OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
-        UnsignedWord stackEnd = osSupport.lookupStackEnd();
-        return stackEnd.add(StackOverflowCheck.Options.StackYellowZoneSize.getValue() + StackOverflowCheck.Options.StackRedZoneSize.getValue()).rawValue();
+        StackOverflowCheck stackOverflowCheck = ImageSingletons.lookup(StackOverflowCheck.class);
+        return osSupport.lookupStackEnd().add(stackOverflowCheck.yellowAndRedZoneSize()).rawValue();
     }
 
     /**

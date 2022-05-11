@@ -477,7 +477,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
             return ProcessHandlers.newDefaultProcessHandler();
         } else {
-            throw PolyglotEngineException.illegalArgument("Cannot allowCreateProcess() because the privilege is removed at image build time");
+            return null;
         }
     }
 

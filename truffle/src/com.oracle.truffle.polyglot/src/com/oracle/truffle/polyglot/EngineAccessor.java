@@ -1235,6 +1235,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isCreateProcessAllowed() {
+            return PolyglotEngineImpl.ALLOW_CREATE_PROCESS;
+        }
+
+        @Override
         public String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey) {
             if (!(optionValues instanceof OptionValuesImpl)) {
                 throw new IllegalArgumentException(String.format("Only %s is supported.", OptionValuesImpl.class.getName()));
