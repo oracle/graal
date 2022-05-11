@@ -74,8 +74,8 @@ public class ExperimentMatcher {
             for (MethodMatching.MatchedExecutedMethod matchedExecutedMethod : matchedMethod.getMatchedExecutedMethods()) {
                 appendMatchedMethodSummary(sb, experiment1, experiment2, matchedExecutedMethod);
                 OptimizationMatching optimizationMatching = optimizationMatcher.match(
-                        matchedExecutedMethod.getMethod1().getOptimizations(),
-                        matchedExecutedMethod.getMethod2().getOptimizations()
+                        matchedExecutedMethod.getMethod1().getOptimizationsRecursive(),
+                        matchedExecutedMethod.getMethod2().getOptimizationsRecursive()
                 );
                 appendOptimizationSummary(sb, optimizationMatching);
             }
@@ -84,7 +84,7 @@ public class ExperimentMatcher {
                         .append(extraExecutedMethod.getExecutedMethod().getCompilationId())
                         .append(" only in experiment ").append(extraExecutedMethod.getExperimentId()).append('\n');
                 sb.append("Optimizations in experiment ").append(extraExecutedMethod.getExperimentId()).append('\n');
-                appendOptimizations(sb, extraExecutedMethod.getExecutedMethod().getOptimizations().stream());
+                appendOptimizations(sb, extraExecutedMethod.getExecutedMethod().getOptimizationsRecursive().stream());
             }
         }
 

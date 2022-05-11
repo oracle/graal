@@ -419,7 +419,7 @@ public final class DebugContext implements AutoCloseable {
 
     private final Description description;
 
-    private final CompilationListener compilationListener;
+    private CompilationListener compilationListener;
 
     /**
      * Gets a description of the computation associated with this debug context.
@@ -438,6 +438,14 @@ public final class DebugContext implements AutoCloseable {
      */
     public boolean hasCompilationListener() {
         return compilationListener != null;
+    }
+
+    /**
+     * Sets the compilation listener, which will be notified about subsequent inlinings and entered phases.
+     * @param compilationListener the new compilation listener
+     */
+    public void setCompilationListener(CompilationListener compilationListener) {
+        this.compilationListener = compilationListener;
     }
 
     private int compilerPhaseNesting = 0;

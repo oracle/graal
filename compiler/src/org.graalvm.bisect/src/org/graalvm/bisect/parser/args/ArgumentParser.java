@@ -108,6 +108,9 @@ public class ArgumentParser {
                     throw new UnknownArgumentException(arg);
                 }
             } else {
+                if (nextPositionalArg >= positionalArguments.size()) {
+                    throw new UnknownArgumentException(arg);
+                }
                 argument = positionalArguments.get(nextPositionalArg++);
             }
             index = argument.parse(args, index);

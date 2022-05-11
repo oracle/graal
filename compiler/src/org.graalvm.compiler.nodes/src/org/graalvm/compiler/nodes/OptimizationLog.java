@@ -24,9 +24,11 @@
  */
 package org.graalvm.compiler.nodes;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.CompilationListener;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
@@ -39,6 +41,7 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -47,7 +50,7 @@ import java.util.stream.Collectors;
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about optimizations performed
  * in a single compilation and dumps them to a JSON file.
  */
-public class OptimizationLog {
+public class OptimizationLog implements CompilationListener {
     /**
      * A special bci value meaning that no byte code index was found.
      */
@@ -76,9 +79,9 @@ public class OptimizationLog {
 
     /**
      * Represents one performed optimization stored in the optimization log. Additional properties are stored and
-     * immediately evaluated.
+     * immediately evaluated. This is a leaf node in the optimization tree.
      */
-    private static final class OptimizationEntryImpl implements OptimizationEntry {
+    private static final class OptimizationEntryImpl implements OptimizationEntry, OptimizationTreeNode {
         private final EconomicMap<String, Object> map;
 
         private OptimizationEntryImpl(String optimizationName, String eventName, int bci) {
@@ -88,7 +91,8 @@ public class OptimizationLog {
             map.put("bci", bci);
         }
 
-        private EconomicMap<String, Object> asJsonMap() {
+        @Override
+        public EconomicMap<String, Object> asJsonMap() {
             return map;
         }
 
@@ -122,12 +126,95 @@ public class OptimizationLog {
         }
     }
 
+    /**
+     * Represents a node in the tree of optimizations. The tree of optimizations consists of internal nodes
+     * (optimization phases) and leaf nodes (individual optimizations).
+     */
+    private interface OptimizationTreeNode {
+        /**
+         * Converts the optimization subtree to an object that can be formatted as JSON.
+         * @return a representation of the optimization subtree that can be formatted as JSON
+         */
+        EconomicMap<String, Object> asJsonMap();
+    }
+
+    /**
+     * Represents an optimization phase, which can trigger its own subphases and/or individual optimizations. It is a
+     * node in the tree of optimizations that holds its subphases and individual optimizations in the order they were
+     * performed.
+     */
+    private static final class OptimizationPhaseScope implements DebugContext.CompilerPhaseScope, OptimizationTreeNode {
+        private final OptimizationPhaseScope parentPhase;
+        private final OptimizationLog optimizationLog;
+        private final CharSequence phaseName;
+        private ArrayList<OptimizationTreeNode> children = null;
+
+        private OptimizationPhaseScope(OptimizationPhaseScope parentPhase, OptimizationLog optimizationLog, CharSequence phaseName) {
+            this.parentPhase = parentPhase;
+            this.optimizationLog = optimizationLog;
+            this.phaseName = phaseName;
+        }
+
+        /**
+         * Creates a subphase of this phase, sets it as the current phase and returns its instance.
+         * @param subphaseName the name of the newly created phase
+         * @return the newly created phase
+         */
+        private OptimizationPhaseScope enterSubphase(CharSequence subphaseName) {
+            OptimizationPhaseScope subphase = new OptimizationPhaseScope(this, optimizationLog, subphaseName);
+            if (children == null) {
+                children = new ArrayList<>();
+            }
+            children.add(subphase);
+            optimizationLog.currentPhase = subphase;
+            return subphase;
+        }
+
+        /**
+         * Adds a performed optimization to this phase.
+         * @param optimizationEntry the optimization entry to be added
+         */
+        private void addOptimizationEntry(OptimizationEntryImpl optimizationEntry) {
+            if (children == null) {
+                children = new ArrayList<>();
+            }
+            children.add(optimizationEntry);
+        }
+
+        /**
+         * Notifies the phase that it has ended. Sets the current phase to the parent phase of this phase.
+         */
+        @Override
+        public void close() {
+            optimizationLog.currentPhase = parentPhase;
+        }
+
+        @Override
+        public EconomicMap<String, Object> asJsonMap() {
+            EconomicMap<String, Object> map = EconomicMap.create();
+            map.put("phaseName", phaseName);
+            List<EconomicMap<String, Object>> optimizations = null;
+            if (children != null) {
+                optimizations = children.stream()
+                        .map(OptimizationTreeNode::asJsonMap)
+                        .collect(Collectors.toList());
+            }
+            map.put("optimizations", optimizations);
+            return map;
+        }
+    }
+
     private static final OptimizationEntryEmpty OPTIMIZATION_ENTRY_EMPTY = new OptimizationEntryEmpty();
     private final StructuredGraph graph;
     private static final AtomicBoolean nodeSourcePositionWarningEmitted = new AtomicBoolean();
-    private final ArrayList<OptimizationEntryImpl> optimizationEntries;
     private final String compilationId;
     private final boolean optimizationLogEnabled;
+
+    /**
+     * The most recently opened phase that was not closed. Initially, this is the root phase. If
+     * {@link #optimizationLogEnabled} is {@code false}, the field stays null.
+     */
+    private OptimizationPhaseScope currentPhase;
 
     /**
      * Constructs an optimization log bound with a given graph. Optimization {@link OptimizationEntry entries} are stored
@@ -145,12 +232,36 @@ public class OptimizationLog {
                         GraalOptions.TrackNodeSourcePosition.getName()
                 );
             }
-            optimizationEntries = new ArrayList<>();
             compilationId = parseCompilationId();
+            currentPhase = new OptimizationPhaseScope(null, this, "RootPhase");
         } else {
-            optimizationEntries = null;
             compilationId = null;
+            currentPhase = null;
         }
+    }
+
+    /**
+     * Returns {@code true} iff {@link GraalOptions#OptimizationLog optimization log} is enabled. This option concerns
+     * only the detailed JSON optimization log; {@link DebugContext#counter(CharSequence) counters},
+     * {@link DebugContext#dump(int, Object, String) dumping} and the textual {@link DebugContext#log(String) log} are
+     * controlled by their respective options.
+     * @return whether {@link GraalOptions#OptimizationLog optimization log} is enabled
+     */
+    public boolean isOptimizationLogEnabled() {
+        return optimizationLogEnabled;
+    }
+
+    @Override
+    public DebugContext.CompilerPhaseScope enterPhase(CharSequence name, int nesting) {
+        if (currentPhase == null) {
+            return null;
+        }
+        return currentPhase.enterSubphase(name);
+    }
+
+    @Override
+    public void notifyInlining(ResolvedJavaMethod caller, ResolvedJavaMethod callee, boolean succeeded, CharSequence message, int bci) {
+
     }
 
     /**
@@ -183,7 +294,7 @@ public class OptimizationLog {
         }
         if (optimizationLogEnabled) {
             OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, bci);
-            optimizationEntries.add(optimizationEntry);
+            currentPhase.addOptimizationEntry(optimizationEntry);
             return optimizationEntry;
         }
         return OPTIMIZATION_ENTRY_EMPTY;
@@ -244,7 +355,7 @@ public class OptimizationLog {
         String compilationMethodName = graph.compilationId().toString(CompilationIdentifier.Verbosity.NAME);
         map.put("compilationMethodName", compilationMethodName);
         map.put("compilationId", compilationId);
-        map.put("optimizations", optimizationEntries.stream().map(OptimizationEntryImpl::asJsonMap).collect(Collectors.toList()));
+        map.put("rootPhase", currentPhase.asJsonMap());
         return map;
     }
 

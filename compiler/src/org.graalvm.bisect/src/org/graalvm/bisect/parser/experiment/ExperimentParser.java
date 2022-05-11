@@ -37,7 +37,10 @@ import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.ExecutedMethodBuilder;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentImpl;
+import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
+import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.json.JSONParser;
 
 /**
@@ -119,18 +122,38 @@ public class ExperimentParser {
         builder.setCompilationMethodName(
                 expectString(log.get("compilationMethodName"), "root.compilationMethodName")
         );
-        List<Object> optimizationObjects = expectList(log.get("optimizations"), "root.optimizations");
-        for (Object optimizationObject : optimizationObjects) {
-            Map<String, Object> optimization = expectMap(optimizationObject, "root.optimizations[]");
-            String optimizationName = expectString(optimization.get("optimizationName"), "root.optimizations[].optimizationName");
-            String eventName = expectString(optimization.get("eventName"), "root.optimizations[].eventName");
-            int bci = expectInt(optimization.get("bci"), "root.optimizations[].bci");
-            optimization.remove("optimizationName");
-            optimization.remove("eventName");
-            optimization.remove("bci");
-            builder.addOptimization(new OptimizationImpl(optimizationName, eventName, bci, optimization));
-        }
+        Map<String, Object> rootPhase = expectMap(log.get("rootPhase"), "root.rootPhase");
+        builder.setRootPhase(parseOptimizationPhase(rootPhase));
         return builder;
+    }
+
+    private OptimizationPhase parseOptimizationPhase(Map<String, Object> log) throws ExperimentParserException {
+        String phaseName = expectString(log.get("phaseName"), "phase.phaseName");
+        OptimizationPhaseImpl optimizationPhase = new OptimizationPhaseImpl(phaseName);
+        List<Object> optimizations = expectListNullable(log.get("optimizations"), "phase.optimizations");
+        if (optimizations == null) {
+            return optimizationPhase;
+        }
+        for (Object optimization : optimizations) {
+            Map<String, Object> map = expectMap(optimization, "phase.optimizations[]");
+            Object subphaseName = map.get("phaseName");
+            if (subphaseName instanceof String) {
+                optimizationPhase.addChild(parseOptimizationPhase(map));
+            } else {
+                optimizationPhase.addChild(parseOptimization(map));
+            }
+        }
+        return optimizationPhase;
+    }
+
+    private Optimization parseOptimization(Map<String, Object> optimization) throws ExperimentParserException {
+        String optimizationName = expectString(optimization.get("optimizationName"), "optimization.optimizationName");
+        String eventName = expectString(optimization.get("eventName"), "optimization.eventName");
+        int bci = expectInt(optimization.get("bci"), "optimization.bci");
+        optimization.remove("optimizationName");
+        optimization.remove("eventName");
+        optimization.remove("bci");
+        return new OptimizationImpl(optimizationName, eventName, bci, optimization);
     }
 
     private static class ProftoolMethod {
@@ -215,5 +238,12 @@ public class ExperimentParser {
             return (List<Object>) object;
         }
         throw new ExperimentParserException("expected " + path + " to be an array", experimentFiles.getExperimentId());
+    }
+
+    private List<Object> expectListNullable(Object object, String path) throws ExperimentParserException {
+        if (object == null) {
+            return null;
+        }
+        return expectList(object, path);
     }
 }

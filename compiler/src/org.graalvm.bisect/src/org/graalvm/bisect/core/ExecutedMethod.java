@@ -25,6 +25,7 @@
 package org.graalvm.bisect.core;
 
 import org.graalvm.bisect.core.optimization.Optimization;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
 import java.util.List;
 
@@ -48,10 +49,18 @@ public interface ExecutedMethod {
     String getCompilationMethodName();
 
     /**
-     * Gets the list of optimizations applied to this method during compilation.
-     * @return the list of optimizations applied during compilation
+     * Gets the root optimization phase of this method, which holds all optimization phases applied in this compilation.
+     * @return the root optimization phase
      */
-    List<Optimization> getOptimizations();
+    OptimizationPhase getRootPhase();
+
+    /**
+     * Creates and returns a list of all optimizations performed during compilation of this method, preserving the order.
+     * @return the list of optimizations
+     */
+    default List<Optimization> getOptimizationsRecursive() {
+        return getRootPhase().getOptimizationsRecursive();
+    }
 
     /**
      * Gets the hot flag of the executed method. The hotness is not included in the proftool output.

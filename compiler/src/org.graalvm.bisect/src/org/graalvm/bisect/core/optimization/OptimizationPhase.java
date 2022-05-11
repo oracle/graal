@@ -24,41 +24,25 @@
  */
 package org.graalvm.bisect.core.optimization;
 
-import java.util.Map;
+import java.util.List;
 
-/**
- * Represents an optimization in a compiled method at a particular BCI.
- */
-public interface Optimization extends OptimizationTreeNode {
+public interface OptimizationPhase extends OptimizationTreeNode {
     /**
-     * Gets the name of this optimization. Corresponds to the name of the compiler phase or another class which
-     * performed this optimization.
-     * @return the name of this optimization
+     * Gets the name of the optimization phase.
+     * @return the name of the optimization phase
      */
-    String getOptimizationName();
+    String getName();
 
     /**
-     * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it should return a more
-     * specific description of the optimization.
-     * @return the name of the event that occurred
+     * Gets the list of optimization phases triggered inside this phase.
+     * @return the list of phases triggered by this phase
      */
-    String getEventName();
+    List<OptimizationTreeNode> getChildren();
 
     /**
-     * Gets the map of additional properties of this optimization, mapped by the name of the property.
-     * @return the map of additional properties
+     * Creates and returns a list of all optimizations performed directly in this phase and indirectly in its subphases,
+     * preserving the order.
+     * @return the list of direct and indirect optimizations
      */
-    Map<String, Object> getProperties();
-
-    /**
-     * Gets the bci of the position where the optimization was performed. The bci can come from a NodeSourcePosition
-     * of a given node or from a FrameState. The value {@link #NO_BCI} means that no fitting bci could be assigned.
-     * @return the byte code index of this optimization
-     */
-    int getBCI();
-
-    /**
-     * A special bci value meaning that no byte code index was found.
-     */
-    int NO_BCI = -1;
+    List<Optimization> getOptimizationsRecursive();
 }

@@ -24,25 +24,23 @@
  */
 package org.graalvm.bisect.core;
 
-import java.util.List;
-
-import org.graalvm.bisect.core.optimization.Optimization;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
 public class ExecutedMethodImpl implements ExecutedMethod {
     private final String compilationId;
     private final String compilationMethodName;
+    private final OptimizationPhase rootPhase;
     private final long period;
-    private final List<Optimization> optimizations;
     private boolean hot;
 
     public ExecutedMethodImpl(String compilationId,
                               String compilationMethodName,
-                              List<Optimization> optimizations,
+                              OptimizationPhase rootPhase,
                               long period) {
         this.compilationId = compilationId;
         this.compilationMethodName = compilationMethodName;
         this.period = period;
-        this.optimizations = optimizations;
+        this.rootPhase = rootPhase;
     }
 
     @Override
@@ -56,8 +54,8 @@ public class ExecutedMethodImpl implements ExecutedMethod {
     }
 
     @Override
-    public List<Optimization> getOptimizations() {
-        return optimizations;
+    public OptimizationPhase getRootPhase() {
+        return rootPhase;
     }
 
     @Override

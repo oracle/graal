@@ -30,6 +30,8 @@ import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.ExperimentImpl;
 import org.graalvm.bisect.core.HotMethodPolicy;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
+import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.junit.Test;
 
 import java.util.List;
@@ -40,11 +42,12 @@ import static org.junit.Assert.assertEquals;
 public class HotMethodPolicyTest {
     @Test
     public void testHotMethodPolicy() {
-        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", List.of(),5);
-        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", List.of(),35);
-        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", List.of(),30);
-        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", List.of(),20);
-        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "bar", List.of(),10);
+        OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
+        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", rootPhase,5);
+        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", rootPhase,35);
+        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", rootPhase,30);
+        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", rootPhase,20);
+        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "bar", rootPhase,10);
         List<ExecutedMethod> methods = List.of(foo1, foo2, foo3, bar1, baz1);
         Experiment experiment = new ExperimentImpl(methods, "1", ExperimentId.ONE, 100, 100);
         HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();

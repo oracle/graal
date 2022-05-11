@@ -24,10 +24,8 @@
  */
 package org.graalvm.bisect.core;
 
-import org.graalvm.bisect.core.optimization.Optimization;
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Builder for an executed method. Used during parsing to build a complete executed method.
@@ -61,6 +59,7 @@ public class ExecutedMethodBuilder {
     private String executionId;
     private String compilationId;
     private String compilationMethodName;
+    private OptimizationPhase rootPhase;
 
     /**
      * The period of execution of this method as reported by proftool. If not explicitly set, assume that the method was
@@ -68,15 +67,13 @@ public class ExecutedMethodBuilder {
      */
     private long period = 0;
 
-    private final List<Optimization> optimizations = new ArrayList<>();
-
     public ExecutedMethod build() {
         assert compilationId != null;
         assert compilationMethodName != null;
-        return new ExecutedMethodImpl(compilationId, compilationMethodName, optimizations, period);
+        return new ExecutedMethodImpl(compilationId, compilationMethodName, rootPhase, period);
     }
 
-    public void addOptimization(Optimization optimization) {
-        optimizations.add(optimization);
+    public void setRootPhase(OptimizationPhase rootPhase) {
+        this.rootPhase = rootPhase;
     }
 }

@@ -28,6 +28,8 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 
+import org.graalvm.bisect.core.optimization.OptimizationPhase;
+import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.matching.method.MethodMatcher;
 import org.graalvm.bisect.matching.method.MethodMatching;
 import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
@@ -41,16 +43,17 @@ import org.junit.Test;
 public class MethodMatcherTest {
     @Test
     public void testGreedyMethodMatcher() {
-        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", List.of(),1);
-        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", List.of(),2);
-        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", List.of(),3);
-        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", List.of(),3);
+        OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
+        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", rootPhase,1);
+        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", rootPhase,2);
+        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", rootPhase,3);
+        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", rootPhase,3);
         List<ExecutedMethod> methods1 = List.of(foo1, foo2, foo3, bar1);
         Experiment experiment1 = new ExperimentImpl(methods1, "1", ExperimentId.ONE, 100, 100);
 
-        ExecutedMethod foo4 = new ExecutedMethodImpl("foo4", "foo", List.of(),1);
-        ExecutedMethod bar2 = new ExecutedMethodImpl("bar2", "bar", List.of(),2);
-        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "baz", List.of(), 3);
+        ExecutedMethod foo4 = new ExecutedMethodImpl("foo4", "foo", rootPhase,1);
+        ExecutedMethod bar2 = new ExecutedMethodImpl("bar2", "bar", rootPhase,2);
+        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "baz", rootPhase, 3);
         List<ExecutedMethod> methods2 = List.of(foo4, bar2, baz1);
         Experiment experiment2 = new ExperimentImpl(methods2, "2", ExperimentId.TWO, 100, 100);
 

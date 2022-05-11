@@ -93,4 +93,11 @@ public class ArgumentParserTest {
         String[] args = new String[]{"foo", "--int"};
         programArguments.argumentParser.parse(args);
     }
+
+    @Test(expected = UnknownArgumentException.class)
+    public void testTooManyArguments() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
+        ProgramArguments programArguments = new ProgramArguments();
+        String[] args = new String[]{"foo", "bar"};
+        programArguments.argumentParser.parse(args);
+    }
 }
