@@ -31,12 +31,12 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.util.DuplicatedInNativeCode;
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.util.DuplicatedInNativeCode;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
 @DuplicatedInNativeCode
@@ -69,7 +69,8 @@ public class CodeReferenceMapDecoder {
              * The following code is copied from TypeReader.getUV() and .getSV() because we cannot
              * allocate a TypeReader here which, in addition to returning the read variable-sized
              * values, can keep track of the index in the byte array. Even with an instance of
-             * ReusableTypeReader, we would need to worry about this method being reentrant.
+             * UninterruptibleReusableTypeReader, we would need to worry about this method being
+             * reentrant.
              */
 
             // Size of gap in bytes (negative means the next pointer has derived pointers)

@@ -51,7 +51,9 @@ import com.oracle.svm.core.locks.ClassInstanceReplacer;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.locks.VMSemaphore;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.posix.PosixVMSemaphoreSupport;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
@@ -142,11 +144,11 @@ final class PthreadVMLockFeature implements InternalFeature {
 public final class PthreadVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = PthreadVMMutex[].class)//
-    protected PthreadVMMutex[] mutexes;
+    PthreadVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
     @UnknownObjectField(types = PthreadVMCondition[].class)//
-    protected PthreadVMCondition[] conditions;
+    PthreadVMCondition[] conditions;
 
     /**
      * Raw memory for the pthread lock structures. Since we know that native image objects are never
@@ -155,7 +157,7 @@ public final class PthreadVMLockSupport extends VMLockSupport {
      * {@link PthreadVMCondition#structOffset}.
      */
     @UnknownObjectField(types = byte[].class)//
-    protected byte[] pthreadStructs;
+    byte[] pthreadStructs;
 
     @Fold
     public static PthreadVMLockSupport singleton() {
@@ -180,12 +182,12 @@ public final class PthreadVMLockSupport extends VMLockSupport {
             }
         }
 
-        return true;
+        return PosixVMSemaphoreSupport.singleton().initialize();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
-    protected static void checkResult(int result, String functionName) {
+    public static void checkResult(int result, String functionName) {
         if (result != 0) {
             /*
              * Functions are called very early and late during our execution, so there is not much
@@ -208,19 +210,24 @@ public final class PthreadVMLockSupport extends VMLockSupport {
     public PthreadVMCondition[] getConditions() {
         return conditions;
     }
+
+    @Override
+    public VMSemaphore[] getSemaphores() {
+        return PosixVMSemaphoreSupport.singleton().getSemaphores();
+    }
 }
 
 final class PthreadVMMutex extends VMMutex {
 
-    protected UnsignedWord structOffset;
+    UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected PthreadVMMutex(String name) {
+    PthreadVMMutex(String name) {
         super(name);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected Pthread.pthread_mutex_t getStructPointer() {
+    Pthread.pthread_mutex_t getStructPointer() {
         return (Pthread.pthread_mutex_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
     }
 
@@ -270,15 +277,15 @@ final class PthreadVMMutex extends VMMutex {
 
 final class PthreadVMCondition extends VMCondition {
 
-    protected UnsignedWord structOffset;
+    UnsignedWord structOffset;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected PthreadVMCondition(PthreadVMMutex mutex) {
+    PthreadVMCondition(PthreadVMMutex mutex) {
         super(mutex);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    protected Pthread.pthread_cond_t getStructPointer() {
+    Pthread.pthread_cond_t getStructPointer() {
         return (Pthread.pthread_cond_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
     }
 
@@ -311,14 +318,14 @@ final class PthreadVMCondition extends VMCondition {
         PthreadConditionUtils.delayNanosToDeadlineTimespec(waitNanos, deadlineTimespec);
 
         mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
+        final int timedWaitResult = Pthread.pthread_cond_timedwait(getStructPointer(), ((PthreadVMMutex) getMutex()).getStructPointer(), deadlineTimespec);
         mutex.setOwnerToCurrentThread();
         /* If the timed wait timed out, then I am done blocking. */
-        if (timedwaitResult == Errno.ETIMEDOUT()) {
+        if (timedWaitResult == Errno.ETIMEDOUT()) {
             return 0L;
         }
         /* Check for other errors from the timed wait. */
-        PthreadVMLockSupport.checkResult(timedwaitResult, "pthread_cond_timedwait");
+        PthreadVMLockSupport.checkResult(timedWaitResult, "pthread_cond_timedwait");
         return PthreadConditionUtils.deadlineTimespecToDelayNanos(deadlineTimespec);
     }
 

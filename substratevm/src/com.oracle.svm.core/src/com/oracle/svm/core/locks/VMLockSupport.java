@@ -45,6 +45,12 @@ public abstract class VMLockSupport {
      */
     public abstract VMCondition[] getConditions();
 
+    /**
+     * Returns an array that contains all {@link VMSemaphore} objects that are present in the image
+     * or null if that information is not available.
+     */
+    public abstract VMSemaphore[] getSemaphores();
+
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override
         public int maxInvocationCount() {
