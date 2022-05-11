@@ -28,15 +28,17 @@ package com.oracle.svm.test.jfr;
 
 import org.junit.Test;
 
+import com.oracle.svm.core.jfr.JfrEvent;
+
 public class TestGCEvents extends JfrTest {
     @Override
     public String[] getTestedEvents() {
         return new String[]{
-                        "jdk.GarbageCollection",
-                        "jdk.GCPhasePause",
-                        "jdk.GCPhasePauseLevel1",
-                        "jdk.GCPhasePauseLevel2",
-                        "jdk.ExecuteVMOperation"
+                        JfrEvent.GarbageCollection.getName(),
+                        JfrEvent.GCPhasePauseEvent.getName(),
+                        JfrEvent.GCPhasePauseLevel1Event.getName(),
+                        JfrEvent.GCPhasePauseLevel2Event.getName(),
+                        JfrEvent.ExecuteVMOperation.getName()
         };
     }
 

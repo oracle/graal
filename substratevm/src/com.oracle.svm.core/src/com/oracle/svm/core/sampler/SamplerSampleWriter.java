@@ -39,6 +39,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 public final class SamplerSampleWriter {
 
     public static final long END_MARKER = -1;
+    public static final int IP_SIZE = Long.BYTES;
     public static final int END_MARKER_SIZE = Long.BYTES;
 
     private SamplerSampleWriter() {

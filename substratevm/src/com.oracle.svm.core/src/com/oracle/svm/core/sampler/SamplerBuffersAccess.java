@@ -38,6 +38,7 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrStackTraceRepository;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.ExecutionSampleEvent;
@@ -54,11 +55,27 @@ public final class SamplerBuffersAccess {
 
     @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
     public static void processSamplerBuffers() {
+        if (!HasJfrSupport.get()) {
+            /*
+             * This method will become reachable on WINDOWS during the building of JFR tests via
+             * com.oracle.svm.core.jfr.JfrChunkWriter.closeFile, and it will fail during
+             * InvocationPlugin call if we do not have this check.
+             * 
+             * Note that although we are building the JFR tests for Windows as well, they will not
+             * be executed because of guard in com.oracle.svm.test.jfr.JfrTest.checkForJFR.
+             *
+             * Once we have support for Windows, this check will become obsolete.
+             */
+            return;
+        }
+
+        SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(true);
         while (true) {
             /* Pop top buffer from stack of full buffers. */
             SamplerBuffer buffer = SubstrateSigprofHandler.singleton().fullBuffers().popBuffer();
             if (buffer.isNull()) {
                 /* No buffers to process. */
+                SubstrateSigprofHandler.singleton().setSignalHandlerGloballyDisabled(false);
                 return;
             }
 
@@ -72,8 +89,8 @@ public final class SamplerBuffersAccess {
         }
     }
 
-    @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.", callerMustBe = true)
-    private static void processSamplerBuffer(SamplerBuffer buffer) {
+    @Uninterruptible(reason = "All code that accesses a sampler buffer must be uninterruptible.")
+    public static void processSamplerBuffer(SamplerBuffer buffer) {
         Pointer end = buffer.getPos();
         Pointer current = SamplerBufferAccess.getDataStart(buffer);
         while (current.belowThan(end)) {
@@ -97,18 +114,19 @@ public final class SamplerBuffersAccess {
             long threadState = current.readLong(0);
             current = current.add(Long.BYTES);
 
-            CIntPointer isRecorded = StackValue.get(CIntPointer.class);
+            CIntPointer status = StackValue.get(CIntPointer.class);
             JfrStackTraceRepository stackTraceRepo = SubstrateJVM.getStackTraceRepo();
             stackTraceRepo.acquireLock();
             try {
-                long stackTraceId = stackTraceRepo.getStackTraceId(current, current.add(sampleSize), sampleHash, isRecorded);
-                if (isRecorded.read() == 1) {
+                long stackTraceId = stackTraceRepo.getStackTraceId(current, current.add(sampleSize), sampleHash, status, true);
+                if (JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SERIALIZED)) {
                     ExecutionSampleEvent.writeExecutionSample(sampleTick, buffer.getOwner(), stackTraceId, threadState);
                     /* Sample is already there, skip the rest of sample plus END_MARK symbol. */
                     current = current.add(sampleSize).add(SamplerSampleWriter.END_MARKER_SIZE);
                 } else {
+                    assert JfrStackTraceRepository.JfrStackTraceTableEntryStatus.get(status, JfrStackTraceRepository.JfrStackTraceTableEntryStatus.SHOULD_SERIALIZE);
                     /* Sample is not there. Start walking a stacktrace. */
-                    stackTraceRepo.serializeStackTraceHeader(stackTraceId, isTruncated, sampleSize / Long.BYTES);
+                    stackTraceRepo.serializeStackTraceHeader(stackTraceId, isTruncated, sampleSize / SamplerSampleWriter.IP_SIZE);
                     while (current.belowThan(end)) {
                         long ip = current.readLong(0);
                         if (ip == SamplerSampleWriter.END_MARKER) {
@@ -117,7 +135,7 @@ public final class SamplerBuffersAccess {
                             break;
                         } else {
                             visitFrame(ip);
-                            current = current.add(Long.BYTES);
+                            current = current.add(SamplerSampleWriter.IP_SIZE);
                         }
                     }
                 }
