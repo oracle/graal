@@ -54,6 +54,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         TypeElement te;
         String name;
+        SingleOperationData data;
 
         if (element == null) {
             if (proxyMirror == null) {
@@ -68,7 +69,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             te = context.getTypeElement((DeclaredType) proxyType);
 
-            AnnotationValue nameFromAnnot = ElementUtils.getAnnotationValue(proxyMirror, "name", false);
+            AnnotationValue nameFromAnnot = ElementUtils.getAnnotationValue(proxyMirror, "operationName", false);
 
             if (nameFromAnnot == null) {
                 String nameFromType = te.getSimpleName().toString();
@@ -82,6 +83,8 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 name = (String) nameFromAnnot.getValue();
             }
 
+            data = new SingleOperationData(context, null, proxyMirror, parentData, name);
+
         } else {
             if (proxyMirror != null) {
                 throw new AssertionError();
@@ -94,9 +97,9 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             te = (TypeElement) element;
             name = te.getSimpleName().toString();
-        }
 
-        SingleOperationData data = new SingleOperationData(context, te, ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), getAnnotationType()), parentData, name);
+            data = new SingleOperationData(context, te, null, parentData, name);
+        }
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
 
@@ -109,6 +112,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             if (te.getModifiers().contains(Modifier.PRIVATE)) {
                 data.addError("@Operation annotated class must not be declared private");
+            }
+
+            if (!ElementUtils.isObject(te.getSuperclass()) || !te.getInterfaces().isEmpty()) {
+                data.addError("@Operation annotated class must not extend/implement anything. Inheritance is not supported.");
             }
 
             for (Element el : te.getEnclosedElements()) {
@@ -169,7 +176,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         });
 
-        if (ElementUtils.isObject(clonedType.getSuperclass()) && proxyMirror == null) {
+        if (proxyMirror == null) {
             clonedType.setSuperClass(types.Node);
         }
 

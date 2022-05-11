@@ -3,6 +3,7 @@ package com.oracle.truffle.api.operation;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.source.Source;
@@ -52,23 +53,16 @@ public abstract class OperationNodes {
             return false;
         }
 
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         reparse(config);
-
         return true;
     }
 
-    /**
-     * Should look like:
-     *
-     * <pre>
-     * BuilderImpl builder = new BuilderImpl(this, true, config);
-     * parse.accept(builder);
-     * </pre>
-     */
-    @SuppressWarnings({"rawtypes", "hiding"})
+    @SuppressWarnings("hiding")
     protected abstract void reparseImpl(OperationConfig config, Consumer<?> parse, OperationNode[] nodes);
 
     void reparse(OperationConfig config) {
+        CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");
         reparseImpl(config, parse, nodes);
     }
 

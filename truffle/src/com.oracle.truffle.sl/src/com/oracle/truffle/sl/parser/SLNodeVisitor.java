@@ -79,18 +79,20 @@ import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.While_stateme
 public class SLNodeVisitor extends SLBaseVisitor {
 
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
-        return parseSLImpl(source, new SLNodeVisitor(language, source));
+        SLNodeVisitor visitor = new SLNodeVisitor(language, source);
+        parseSLImpl(source, visitor);
+        return visitor.functions;
     }
 
-    private LexicalScope scope;
     private FrameDescriptor.Builder frameDescriptorBuilder;
 
     private SLStatementVisitor STATEMENT_VISITOR = new SLStatementVisitor();
     private SLExpressionVisitor EXPRESSION_VISITOR = new SLExpressionVisitor();
     private int loopDepth = 0;
+    private final Map<TruffleString, RootCallTarget> functions = new HashMap<>();
 
     protected SLNodeVisitor(SLLanguage language, Source source) {
-        super(language, source, new HashMap<>());
+        super(language, source);
     }
 
     @Override
@@ -104,12 +106,14 @@ public class SLNodeVisitor extends SLBaseVisitor {
         frameDescriptorBuilder = FrameDescriptor.newBuilder();
         List<SLStatementNode> methodNodes = new ArrayList<>();
 
-        scope = new LexicalScope(scope);
-
-        int parameterCount = ctx.IDENTIFIER().size() - 1;
+        int parameterCount = enterFunction(ctx).size();
 
         for (int i = 0; i < parameterCount; i++) {
             Token paramToken = ctx.IDENTIFIER(i + 1).getSymbol();
+
+            TruffleString paramName = asTruffleString(paramToken, false);
+            int localIndex = frameDescriptorBuilder.addSlot(FrameSlotKind.Illegal, paramName, null);
+            assert localIndex == i;
 
             final SLReadArgumentNode readArg = new SLReadArgumentNode(i);
             readArg.setSourceSection(paramToken.getStartIndex(), paramToken.getText().length());
@@ -119,14 +123,13 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
         SLStatementNode bodyNode = STATEMENT_VISITOR.visitBlock(ctx.body);
 
-        scope = scope.parent;
+        exitFunction();
+
         methodNodes.add(bodyNode);
         final int bodyEndPos = bodyNode.getSourceEndIndex();
         final SourceSection functionSrc = source.createSection(functionStartPos, bodyEndPos - functionStartPos);
         final SLStatementNode methodBlock = new SLBlockNode(methodNodes.toArray(new SLStatementNode[methodNodes.size()]));
         methodBlock.setSourceSection(functionStartPos, bodyEndPos - functionStartPos);
-
-        assert scope == null : "Wrong scoping of blocks in parser";
 
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
         functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
@@ -135,7 +138,6 @@ public class SLNodeVisitor extends SLBaseVisitor {
         functions.put(functionName, rootNode.getCallTarget());
 
         frameDescriptorBuilder = null;
-        scope = null;
 
         return null;
     }
@@ -149,7 +151,11 @@ public class SLNodeVisitor extends SLBaseVisitor {
     private class SLStatementVisitor extends SimpleLanguageOperationsBaseVisitor<SLStatementNode> {
         @Override
         public SLStatementNode visitBlock(BlockContext ctx) {
-            scope = new LexicalScope(scope);
+            List<TruffleString> newLocals = enterBlock(ctx);
+
+            for (TruffleString newLocal : newLocals) {
+                frameDescriptorBuilder.addSlot(FrameSlotKind.Illegal, newLocal, null);
+            }
 
             int startPos = ctx.s.getStartIndex();
             int endPos = ctx.e.getStopIndex() + 1;
@@ -160,7 +166,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
                 bodyNodes.add(visitStatement(child));
             }
 
-            scope = scope.parent;
+            exitBlock();
 
             List<SLStatementNode> flattenedNodes = new ArrayList<>(bodyNodes.size());
             flattenBlocks(bodyNodes, flattenedNodes);
@@ -546,8 +552,8 @@ public class SLNodeVisitor extends SLBaseVisitor {
     private SLExpressionNode createRead(SLExpressionNode nameTerm) {
         final TruffleString name = ((SLStringLiteralNode) nameTerm).executeGeneric(null);
         final SLExpressionNode result;
-        final Integer frameSlot = scope.get(name);
-        if (frameSlot != null) {
+        final int frameSlot = getNameIndex(name);
+        if (frameSlot != -1) {
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
             result = SLFunctionLiteralNodeGen.create(new SLStringLiteralNode(name));
@@ -561,13 +567,9 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
         TruffleString name = assignmentName.executeGeneric(null);
 
-        Integer frameSlot = scope.get(name);
-        boolean newVariable = false;
-        if (frameSlot == null) {
-            frameSlot = frameDescriptorBuilder.addSlot(FrameSlotKind.Illegal, name, index);
-            scope.names.put(name, frameSlot);
-            newVariable = true;
-        }
+        int frameSlot = getNameIndex(name);
+        assert frameSlot != -1;
+        boolean newVariable = true;
         SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, assignmentName, newVariable);
 
         assert index != null || valueNode.hasSource();

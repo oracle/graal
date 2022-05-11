@@ -2,15 +2,17 @@ package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
-import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.CustomInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.DiscardInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.FrameKind;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.InputType;
 import com.oracle.truffle.dsl.processor.operations.instructions.InstrumentationEnterInstruction;
@@ -43,6 +45,8 @@ public class OperationsContext {
     private final Map<String, CustomInstruction> customInstructionNameMap = new HashMap<>();
     private final Map<String, SingleOperationData> opDataNameMap = new HashMap<>();
     private final OperationsData data;
+
+    private final Set<String> operationNames = new HashSet<>();
 
     public OperationsContext(OperationsData data) {
         this.data = data;
@@ -130,6 +134,7 @@ public class OperationsContext {
 
     public <T extends Operation> T add(T elem) {
         operations.add(elem);
+        operationNames.add(elem.name);
         return elem;
     }
 
@@ -142,6 +147,10 @@ public class OperationsContext {
     }
 
     public void processOperation(SingleOperationData opData) {
+
+        if (operationNames.contains(opData.getName())) {
+            opData.addError("Operation %s already defined", opData.getName());
+        }
 
         MethodProperties props = opData.getMainProperties();
 

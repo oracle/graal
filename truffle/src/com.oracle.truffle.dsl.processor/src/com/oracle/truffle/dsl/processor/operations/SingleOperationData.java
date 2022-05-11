@@ -5,11 +5,14 @@ import java.util.List;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -131,6 +134,25 @@ public class SingleOperationData extends Template {
 
     void setNodeData(NodeData data) {
         this.nodeData = data;
+    }
+
+    @Override
+    public AnnotationMirror getMessageAnnotation() {
+        return getTemplateTypeAnnotation();
+    }
+
+    @Override
+    public AnnotationValue getMessageAnnotationValue() {
+        return null;
+    }
+
+    @Override
+    public Element getMessageElement() {
+        if (getMessageAnnotation() != null) {
+            return parent.getMessageElement();
+        } else {
+            return getTemplateType();
+        }
     }
 
     @Override

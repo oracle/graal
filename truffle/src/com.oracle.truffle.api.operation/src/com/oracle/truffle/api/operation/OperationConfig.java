@@ -1,6 +1,6 @@
 package com.oracle.truffle.api.operation;
 
-public class OperationConfig {
+public final class OperationConfig {
 
     public static final OperationConfig DEFAULT = new OperationConfig(false, false);
     public static final OperationConfig WITH_SOURCE = new OperationConfig(true, false);

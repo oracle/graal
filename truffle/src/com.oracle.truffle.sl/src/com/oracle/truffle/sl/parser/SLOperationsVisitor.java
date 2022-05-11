@@ -17,10 +17,12 @@ import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLOperationsRootNode;
+import com.oracle.truffle.sl.operations.SLOperations;
 import com.oracle.truffle.sl.operations.SLOperationsBuilder;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.ArithmeticContext;
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.BlockContext;
@@ -50,77 +52,37 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
 
-    public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions, SLOperationsBuilder builder) {
-        return parseSLImpl(source, new SLOperationsVisitor(language, source, builder, functions));
+    public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
+        OperationNodes nodes = SLOperationsBuilder.create(OperationConfig.DEFAULT, builder -> {
+            SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, builder);
+            parseSLImpl(source, visitor);
+        });
+
+        for (OperationNode node : nodes.getNodes()) {
+            TruffleString name = node.getMetadata(SLOperations.METHOD_NAME);
+            SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node, name);
+            RootCallTarget callTarget = rootNode.getCallTarget();
+            functions.put(name, callTarget);
+        }
     }
 
     public static Map<TruffleString, RootCallTarget> parseSL(SLLanguage language, Source source) {
         Map<TruffleString, RootCallTarget> roots = new HashMap<>();
-        SLOperationsBuilder.create(OperationConfig.DEFAULT, b -> parseSL(language, source, roots, b));
-
+        parseSL(language, source, roots);
         return roots;
     }
 
-    private SLOperationsVisitor(SLLanguage language, Source source, SLOperationsBuilder builder, Map<TruffleString, RootCallTarget> functions) {
-        super(language, source, functions);
+    private SLOperationsVisitor(SLLanguage language, Source source, SLOperationsBuilder builder) {
+        super(language, source);
         this.b = builder;
     }
 
     private final SLOperationsBuilder b;
-    private LocalScope scope;
-
-    private static class LocalScope {
-        private final LocalScope parent;
-        private Map<TruffleString, OperationLocal> locals;
-
-        LocalScope(LocalScope parent) {
-            this.parent = parent;
-            this.locals = new HashMap<>();
-        }
-
-        public OperationLocal get(TruffleString value) {
-            OperationLocal result = locals.get(value);
-            if (result != null) {
-                return result;
-            } else if (parent != null) {
-                return parent.get(value);
-            } else {
-                return null;
-            }
-        }
-
-        public void put(TruffleString value, OperationLocal local) {
-            locals.put(value, local);
-        }
-
-    }
-
-    private static class FindLocalsVisitor extends SimpleLanguageOperationsBaseVisitor<Void> {
-        boolean entered = false;
-        List<Token> results = new ArrayList<>();
-
-        @Override
-        public Void visitBlock(BlockContext ctx) {
-            if (entered) {
-                return null;
-            }
-
-            entered = true;
-            return super.visitBlock(ctx);
-        }
-
-        @Override
-        public Void visitNameAccess(NameAccessContext ctx) {
-            if (ctx.member_expression().size() > 0 && ctx.member_expression(0) instanceof MemberAssignContext) {
-                results.add(ctx.IDENTIFIER().getSymbol());
-            }
-
-            return super.visitNameAccess(ctx);
-        }
-    }
 
     private OperationLabel breakLabel;
     private OperationLabel continueLabel;
+
+    private final ArrayList<OperationLocal> locals = new ArrayList<>();
 
     @Override
     public Void visit(ParseTree tree) {
@@ -133,7 +95,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitFunction(FunctionContext ctx) {
-        assert scope == null;
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
 
         b.setMethodName(name);
@@ -141,15 +102,14 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.beginSource(source);
         b.beginTag(StandardTags.RootTag.class);
 
-        scope = new LocalScope(null);
+        int numArguments = enterFunction(ctx).size();
 
-        for (int i = 1; i < ctx.IDENTIFIER().size(); i++) {
-            TruffleString paramName = asTruffleString(ctx.IDENTIFIER(i).getSymbol(), false);
-            OperationLocal idx = b.createLocal();
-            scope.put(paramName, idx);
+        for (int i = 0; i < numArguments; i++) {
+            OperationLocal argLocal = b.createLocal();
+            locals.add(argLocal);
 
-            b.beginStoreLocal(idx);
-            b.emitLoadArgument(i - 1);
+            b.beginStoreLocal(argLocal);
+            b.emitLoadArgument(i);
             b.endStoreLocal();
         }
 
@@ -157,11 +117,10 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         visit(ctx.body);
 
+        exitFunction();
+        locals.clear();
+
         b.endTag();
-
-        scope = scope.parent;
-
-        assert scope == null;
 
         b.beginReturn();
         b.emitConstObject(SLNull.SINGLETON);
@@ -182,10 +141,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             }
         }
 
-        SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node, name);
-
-        functions.put(name, rootNode.getCallTarget());
-
         return null;
     }
 
@@ -193,22 +148,16 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     public Void visitBlock(BlockContext ctx) {
         b.beginBlock();
 
-        scope = new LocalScope(scope);
-
-        FindLocalsVisitor helper = new FindLocalsVisitor();
-        helper.visitBlock(ctx);
-
-        for (Token result : helper.results) {
-            TruffleString localName = asTruffleString(result, false);
-            if (scope.get(localName) == null) {
-                scope.put(localName, b.createLocal());
-            }
+        int numLocals = enterBlock(ctx).size();
+        for (int i = 0; i < numLocals; i++) {
+            locals.add(b.createLocal());
         }
 
         super.visitBlock(ctx);
 
+        exitBlock();
+
         b.endBlock();
-        scope = scope.parent;
         return null;
     }
 
@@ -604,9 +553,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
     private void buildMemberExpressionRead(Token ident, List<Member_expressionContext> members, int idx) {
         if (idx == -1) {
-            OperationLocal localIdx = scope.get(asTruffleString(ident, false));
-            if (localIdx != null) {
-                b.emitLoadLocal(localIdx);
+            int localIdx = getNameIndex(ident);
+            if (localIdx != -1) {
+                b.emitLoadLocal(locals.get(localIdx));
             } else {
                 b.beginSLFunctionLiteral();
                 b.emitConstObject(asTruffleString(ident, false));
@@ -670,16 +619,16 @@ public class SLOperationsVisitor extends SLBaseVisitor {
      * </pre>
      */
 
-    private final Stack<OperationLocal> writeLocalsStack = new Stack<>();
+    private final Stack<Integer> writeLocalsStack = new Stack<>();
 
     private void buildMemberExpressionWriteBefore(Token ident, List<Member_expressionContext> members, int idx, Token errorToken) {
         if (idx == -1) {
-            OperationLocal localIdx = scope.get(asTruffleString(ident, false));
-            assert localIdx != null;
+            int localIdx = getNameIndex(ident);
+            assert localIdx != -1;
             writeLocalsStack.push(localIdx);
 
             b.beginBlock();
-            b.beginStoreLocal(localIdx);
+            b.beginStoreLocal(locals.get(localIdx));
             return;
         }
 
@@ -706,12 +655,12 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         }
     }
 
-    private void buildMemberExpressionWriteAfter(Token ident, @SuppressWarnings("unused") List<Member_expressionContext> members, int idx) {
+    @SuppressWarnings("unused")
+    private void buildMemberExpressionWriteAfter(Token ident, List<Member_expressionContext> members, int idx) {
         if (idx == -1) {
-            OperationLocal localIdx = writeLocalsStack.pop();
-            scope.put(asTruffleString(ident, false), localIdx);
+            int localIdx = writeLocalsStack.pop();
             b.endStoreLocal();
-            b.emitLoadLocal(localIdx);
+            b.emitLoadLocal(locals.get(localIdx));
             b.endBlock();
             return;
         }

@@ -19,6 +19,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 
 public class OperationsData extends Template {
 
+    private final Set<String> names = new HashSet<>();
     private final List<SingleOperationData> operations = new ArrayList<>();
     private final List<OperationMetadataData> metadatas = new ArrayList<>();
     private final OperationsContext context = new OperationsContext(this);
