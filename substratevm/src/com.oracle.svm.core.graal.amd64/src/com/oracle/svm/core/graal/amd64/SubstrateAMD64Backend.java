@@ -635,9 +635,9 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
-        public void emitConvertNullToZero(AllocatableValue result, Value value) {
+        public void emitConvertNullToZero(AllocatableValue result, AllocatableValue value) {
             if (useLinearPointerCompression()) {
-                append(new AMD64Move.ConvertNullToZeroOp(result, (AllocatableValue) value));
+                append(new AMD64Move.ConvertNullToZeroOp(result, value));
             } else {
                 emitMove(result, value);
             }
