@@ -1,15 +1,11 @@
 package com.oracle.truffle.sl.operations;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -19,11 +15,11 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.GenerateOperations;
+import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
+import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.Variadic;
-import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
-import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.nodes.expression.SLAddNode;
@@ -39,9 +35,7 @@ import com.oracle.truffle.sl.nodes.expression.SLSubNode;
 import com.oracle.truffle.sl.nodes.expression.SLWritePropertyNode;
 import com.oracle.truffle.sl.nodes.util.SLToBooleanNode;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
-import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
-import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLStrings;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
@@ -65,36 +59,11 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 public final class SLOperations {
 
     @Metadata("MethodName") //
-    public static final MetadataKey<String> METHOD_NAME = new MetadataKey<>("");
-
-    @Operation
-    public static class SLEvalRootOperation {
-
-        @Specialization
-        public static Object doExecute(
-                        VirtualFrame frame,
-                        Map<TruffleString, RootCallTarget> functions,
-                        @Bind("this") Node node) {
-            SLContext.get(node).getFunctionRegistry().register(functions);
-
-            RootCallTarget main = functions.get(SLStrings.MAIN);
-
-            if (main != null) {
-                return main.call(frame.getArguments());
-            } else {
-                return SLNull.SINGLETON;
-            }
-        }
-
-        @Fallback
-        public static Object fallback(Object functions) {
-            throw new RuntimeException("invalid functions: " + functions);
-        }
-    }
+    public static final MetadataKey<TruffleString> METHOD_NAME = new MetadataKey<>(SLStrings.EMPTY_STRING);
 
     @Operation
     @TypeSystemReference(SLTypes.class)
-    public static class SLInvokeOperation {
+    public static final class SLInvoke {
         @Specialization(limit = "3", //
                         guards = "function.getCallTarget() == cachedTarget", //
                         assumptions = "callTargetStable")

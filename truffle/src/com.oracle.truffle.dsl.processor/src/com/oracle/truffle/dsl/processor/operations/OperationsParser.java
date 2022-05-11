@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -25,6 +26,7 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleProcessorOptions;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.tools.utils.json.JSONArray;
@@ -103,24 +105,19 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         List<AnnotationMirror> opProxies = ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy);
 
         for (AnnotationMirror mir : opProxies) {
-            DeclaredType tgtType = (DeclaredType) ElementUtils.getAnnotationValue(mir, "value").getValue();
-
-            SingleOperationData opData = new SingleOperationParser(data, (TypeElement) tgtType.asElement()).parse(null, null);
+            SingleOperationData opData = new SingleOperationParser(data, mir).parse(null, null);
 
             if (opData != null) {
                 data.addOperationData(opData);
             } else {
-                data.addError("Could not generate operation: " + tgtType.asElement().getSimpleName());
+                data.addError(mir, ElementUtils.getAnnotationValue(mir, "value"), "Could not proxy operation");
             }
         }
 
-        boolean hasSome = false;
         for (TypeElement inner : operationTypes) {
             if (ElementUtils.findAnnotationMirror(inner, types.Operation) == null) {
                 continue;
             }
-
-            hasSome = true;
 
             SingleOperationData opData = new SingleOperationParser(data).parse(inner, false);
 
@@ -133,8 +130,11 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             opData.redirectMessagesOnGeneratedElements(data);
         }
 
-        if (!hasSome) {
+        if (opProxies.isEmpty() && operationTypes.isEmpty()) {
             data.addWarning("No operations found");
+        }
+
+        if (data.hasErrors()) {
             return data;
         }
 

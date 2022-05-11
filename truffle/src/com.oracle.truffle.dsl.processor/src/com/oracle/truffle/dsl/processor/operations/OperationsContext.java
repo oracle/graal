@@ -166,7 +166,7 @@ public class OperationsContext {
             CustomInstruction cinstr = customInstructionNameMap.get(quicken.getOperation());
             if (cinstr == null) {
                 // TODO line number or sth
-                data.addError("Invalid Quicken decision: undefined operation %s.", quicken.getOperation());
+                data.addWarning("Invalid Quicken decision: undefined operation %s.", quicken.getOperation());
                 continue;
             }
 

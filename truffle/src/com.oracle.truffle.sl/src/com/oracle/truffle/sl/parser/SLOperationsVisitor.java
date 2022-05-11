@@ -136,6 +136,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         assert scope == null;
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
 
+        b.setMethodName(name);
+
         b.beginSource(source);
         b.beginTag(StandardTags.RootTag.class);
 
@@ -257,9 +259,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         b.emitLabel(continueLabel);
         b.beginWhile();
 
-        b.beginSLToBooleanOperation();
+        b.beginSLToBoolean();
         visit(ctx.condition);
-        b.endSLToBooleanOperation();
+        b.endSLToBoolean();
 
         visit(ctx.body);
         b.endWhile();
@@ -280,18 +282,18 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         if (ctx.alt == null) {
             b.beginIfThen();
 
-            b.beginSLToBooleanOperation();
+            b.beginSLToBoolean();
             visit(ctx.condition);
-            b.endSLToBooleanOperation();
+            b.endSLToBoolean();
 
             visit(ctx.then);
             b.endIfThen();
         } else {
             b.beginIfThenElse();
 
-            b.beginSLToBooleanOperation();
+            b.beginSLToBoolean();
             visit(ctx.condition);
-            b.endSLToBooleanOperation();
+            b.endSLToBoolean();
 
             visit(ctx.then);
 
@@ -340,9 +342,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void logicalOrMiddle(OperationLocal localIdx) {
         b.endStoreLocal();
         b.beginConditional();
-        b.beginSLToBooleanOperation();
+        b.beginSLToBoolean();
         b.emitLoadLocal(localIdx);
-        b.endSLToBooleanOperation();
+        b.endSLToBoolean();
         b.emitLoadLocal(localIdx);
     }
 
@@ -402,9 +404,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     private void logicalAndMiddle(OperationLocal localIdx) {
         b.endStoreLocal();
         b.beginConditional();
-        b.beginSLToBooleanOperation();
+        b.beginSLToBoolean();
         b.emitLoadLocal(localIdx);
-        b.endSLToBooleanOperation();
+        b.endSLToBoolean();
     }
 
     private void logicalAndEnd(OperationLocal localIdx) {
@@ -422,7 +424,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         }
 
         b.beginTag(StandardTags.ExpressionTag.class);
-        b.beginSLUnboxOperation();
+        b.beginSLUnbox();
 
         OperationLocal[] tmpLocals = new OperationLocal[numTerms - 1];
         for (int i = 0; i < numTerms - 1; i++) {
@@ -442,7 +444,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             }
         }
 
-        b.endSLUnboxOperation();
+        b.endSLUnbox();
         b.endTag();
 
         return null;
@@ -455,54 +457,54 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         }
 
         b.beginTag(StandardTags.ExpressionTag.class);
-        b.beginSLUnboxOperation();
+        b.beginSLUnbox();
 
         switch (ctx.OP_COMPARE().getText()) {
             case "<":
-                b.beginSLLessThanOperation();
+                b.beginSLLessThan();
                 visit(ctx.arithmetic(0));
                 visit(ctx.arithmetic(1));
-                b.endSLLessThanOperation();
+                b.endSLLessThan();
                 break;
             case "<=":
-                b.beginSLLessOrEqualOperation();
+                b.beginSLLessOrEqual();
                 visit(ctx.arithmetic(0));
                 visit(ctx.arithmetic(1));
-                b.endSLLessOrEqualOperation();
+                b.endSLLessOrEqual();
                 break;
             case ">":
-                b.beginSLLogicalNotOperation();
-                b.beginSLLessOrEqualOperation();
+                b.beginSLLogicalNot();
+                b.beginSLLessOrEqual();
                 visit(ctx.arithmetic(0));
                 visit(ctx.arithmetic(1));
-                b.endSLLessOrEqualOperation();
-                b.endSLLogicalNotOperation();
+                b.endSLLessOrEqual();
+                b.endSLLogicalNot();
                 break;
             case ">=":
-                b.beginSLLogicalNotOperation();
-                b.beginSLLessThanOperation();
+                b.beginSLLogicalNot();
+                b.beginSLLessThan();
                 visit(ctx.arithmetic(0));
                 visit(ctx.arithmetic(1));
-                b.endSLLessThanOperation();
-                b.endSLLogicalNotOperation();
+                b.endSLLessThan();
+                b.endSLLogicalNot();
                 break;
             case "==":
-                b.beginSLEqualOperation();
+                b.beginSLEqual();
                 visit(ctx.arithmetic(0));
                 visit(ctx.arithmetic(1));
-                b.endSLEqualOperation();
+                b.endSLEqual();
                 break;
             case "!=":
-                b.beginSLLogicalNotOperation();
-                b.beginSLEqualOperation();
+                b.beginSLLogicalNot();
+                b.beginSLEqual();
                 visit(ctx.arithmetic(0));
                 visit(ctx.arithmetic(1));
-                b.endSLEqualOperation();
-                b.endSLLogicalNotOperation();
+                b.endSLEqual();
+                b.endSLLogicalNot();
                 break;
         }
 
-        b.endSLUnboxOperation();
+        b.endSLUnbox();
         b.endTag();
 
         return null;
@@ -513,16 +515,16 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         if (!ctx.OP_ADD().isEmpty()) {
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLUnboxOperation();
+            b.beginSLUnbox();
         }
 
         for (int i = ctx.OP_ADD().size() - 1; i >= 0; i--) {
             switch (ctx.OP_ADD(i).getText()) {
                 case "+":
-                    b.beginSLAddOperation();
+                    b.beginSLAdd();
                     break;
                 case "-":
-                    b.beginSLSubOperation();
+                    b.beginSLSub();
                     break;
             }
         }
@@ -534,16 +536,16 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
             switch (ctx.OP_ADD(i).getText()) {
                 case "+":
-                    b.endSLAddOperation();
+                    b.endSLAdd();
                     break;
                 case "-":
-                    b.endSLSubOperation();
+                    b.endSLSub();
                     break;
             }
         }
 
         if (!ctx.OP_ADD().isEmpty()) {
-            b.endSLUnboxOperation();
+            b.endSLUnbox();
             b.endTag();
         }
 
@@ -554,40 +556,40 @@ public class SLOperationsVisitor extends SLBaseVisitor {
     public Void visitTerm(TermContext ctx) {
         if (!ctx.OP_MUL().isEmpty()) {
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLUnboxOperation();
+            b.beginSLUnbox();
         }
         for (int i = ctx.OP_MUL().size() - 1; i >= 0; i--) {
             switch (ctx.OP_MUL(i).getText()) {
                 case "*":
-                    b.beginSLMulOperation();
+                    b.beginSLMul();
                     break;
                 case "/":
-                    b.beginSLDivOperation();
+                    b.beginSLDiv();
                     break;
             }
         }
 
-        b.beginSLUnboxOperation();
+        b.beginSLUnbox();
         visit(ctx.factor(0));
-        b.endSLUnboxOperation();
+        b.endSLUnbox();
 
         for (int i = 0; i < ctx.OP_MUL().size(); i++) {
-            b.beginSLUnboxOperation();
+            b.beginSLUnbox();
             visit(ctx.factor(i + 1));
-            b.endSLUnboxOperation();
+            b.endSLUnbox();
 
             switch (ctx.OP_MUL(i).getText()) {
                 case "*":
-                    b.endSLMulOperation();
+                    b.endSLMul();
                     break;
                 case "/":
-                    b.endSLDivOperation();
+                    b.endSLDiv();
                     break;
             }
         }
 
         if (!ctx.OP_MUL().isEmpty()) {
-            b.endSLUnboxOperation();
+            b.endSLUnbox();
             b.endTag();
         }
 
@@ -606,9 +608,9 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             if (localIdx != null) {
                 b.emitLoadLocal(localIdx);
             } else {
-                b.beginSLFunctionLiteralOperation();
+                b.beginSLFunctionLiteral();
                 b.emitConstObject(asTruffleString(ident, false));
-                b.endSLFunctionLiteralOperation();
+                b.endSLFunctionLiteral();
             }
             return;
         }
@@ -619,7 +621,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             MemberCallContext lastCtx = (MemberCallContext) last;
             b.beginTag(StandardTags.ExpressionTag.class);
             b.beginTag(StandardTags.CallTag.class);
-            b.beginSLInvokeOperation();
+            b.beginSLInvoke();
 
             buildMemberExpressionRead(ident, members, idx - 1);
 
@@ -627,7 +629,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 visit(arg);
             }
 
-            b.endSLInvokeOperation();
+            b.endSLInvoke();
             b.endTag();
             b.endTag();
         } else if (last instanceof MemberAssignContext) {
@@ -640,19 +642,19 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             MemberFieldContext lastCtx = (MemberFieldContext) last;
 
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLReadPropertyOperation();
+            b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             b.emitConstObject(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
-            b.endSLReadPropertyOperation();
+            b.endSLReadProperty();
             b.endTag();
         } else {
             MemberIndexContext lastCtx = (MemberIndexContext) last;
 
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLReadPropertyOperation();
+            b.beginSLReadProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             visit(lastCtx.expression());
-            b.endSLReadPropertyOperation();
+            b.endSLReadProperty();
             b.endTag();
         }
     }
@@ -691,14 +693,14 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             MemberFieldContext lastCtx = (MemberFieldContext) last;
 
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLWritePropertyOperation();
+            b.beginSLWriteProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             b.emitConstObject(asTruffleString(lastCtx.IDENTIFIER().getSymbol(), false));
         } else {
             MemberIndexContext lastCtx = (MemberIndexContext) last;
 
             b.beginTag(StandardTags.ExpressionTag.class);
-            b.beginSLWritePropertyOperation();
+            b.beginSLWriteProperty();
             buildMemberExpressionRead(ident, members, idx - 1);
             visit(lastCtx.expression());
         }
@@ -714,7 +716,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             return;
         }
 
-        b.endSLWritePropertyOperation();
+        b.endSLWriteProperty();
         b.endTag();
     }
 

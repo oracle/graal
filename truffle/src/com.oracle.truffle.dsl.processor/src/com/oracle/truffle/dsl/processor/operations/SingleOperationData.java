@@ -94,10 +94,10 @@ public class SingleOperationData extends Template {
         }
     }
 
-    public SingleOperationData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, OperationsData parent) {
+    public SingleOperationData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, OperationsData parent, String name) {
         super(context, templateType, annotation);
         this.parent = parent;
-        name = templateType.getSimpleName().toString();
+        this.name = name;
     }
 
     @Override
@@ -131,6 +131,14 @@ public class SingleOperationData extends Template {
 
     void setNodeData(NodeData data) {
         this.nodeData = data;
+    }
+
+    @Override
+    protected List<MessageContainer> findChildContainers() {
+        if (nodeData == null) {
+            return List.of();
+        }
+        return List.of(nodeData);
     }
 
 }

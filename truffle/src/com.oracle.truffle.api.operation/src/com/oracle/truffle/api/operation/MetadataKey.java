@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -9,7 +10,7 @@ public class MetadataKey<T> {
     @CompilationFinal private Function<OperationNode, T> getter;
 
     public MetadataKey(T defaultValue) {
-        this.defaultValue = defaultValue;
+        this.defaultValue = Objects.requireNonNull(defaultValue);
     }
 
     void setGetter(Function<OperationNode, T> getter) {

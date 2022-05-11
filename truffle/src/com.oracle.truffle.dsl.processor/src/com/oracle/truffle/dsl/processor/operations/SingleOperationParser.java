@@ -1,10 +1,13 @@
 package com.oracle.truffle.dsl.processor.operations;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
@@ -14,13 +17,10 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
-import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
-import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
@@ -37,7 +37,9 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private static final Set<Modifier> MOD_PUBLIC_STATIC = Set.of(Modifier.PUBLIC, Modifier.STATIC);
     private final OperationsData parentData;
-    private TypeElement proxyType;
+    private final AnnotationMirror proxyMirror;
+
+    private final String NODE = "Node";
 
     private Set<DeclaredType> OPERATION_PROXY_IGNORED_ANNOTATIONS = Set.of(
                     types.GenerateOperations,
@@ -46,71 +48,97 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                     types.Operation);
 
     public SingleOperationParser(OperationsData parentData) {
-        this.parentData = parentData;
+        this(parentData, null);
     }
 
-    public SingleOperationParser(OperationsData parentData, TypeElement proxyType) {
+    public SingleOperationParser(OperationsData parentData, AnnotationMirror proxyMirror) {
         this.parentData = parentData;
-        this.proxyType = proxyType;
+        this.proxyMirror = proxyMirror;
     }
 
     @Override
     protected SingleOperationData parse(Element element, List<AnnotationMirror> mirror) {
-        if (element != null && !(element instanceof TypeElement)) {
-            parentData.addError(element, "@Operation can only be attached to a type");
-            return null;
-        }
 
-        TypeElement te = (TypeElement) element;
+        TypeElement te;
+        String name;
 
-        if (proxyType != null) {
-            String name = proxyType.getSimpleName().toString();
-            if (name.endsWith("Node")) {
-                name = name.substring(0, name.length() - 4);
+        if (element == null) {
+            if (proxyMirror == null) {
+                throw new AssertionError();
             }
-            name += "Operation";
-            CodeTypeElement tgt = new CodeTypeElement(MOD_PUBLIC_STATIC, ElementKind.CLASS, null, name);
-            tgt.setEnclosingElement(proxyType.getEnclosingElement());
 
-            for (AnnotationMirror mir : parentData.getMessageElement().getAnnotationMirrors()) {
-                if (!OPERATION_PROXY_IGNORED_ANNOTATIONS.contains(mir.getAnnotationType())) {
-                    tgt.addAnnotationMirror(mir);
+            AnnotationValue proxyTypeValue = ElementUtils.getAnnotationValue(proxyMirror, "value");
+            TypeMirror proxyType = (TypeMirror) proxyTypeValue.getValue();
+            if (proxyType.getKind() != TypeKind.DECLARED) {
+                parentData.addError(proxyMirror, proxyTypeValue, "@OperationProxy'ed type must be a class, not %s", proxyType);
+            }
+
+            te = context.getTypeElement((DeclaredType) proxyType);
+
+            AnnotationValue nameFromAnnot = ElementUtils.getAnnotationValue(proxyMirror, "name", false);
+
+            if (nameFromAnnot == null) {
+                String nameFromType = te.getSimpleName().toString();
+                // strip the `Node' suffix
+                if (nameFromType.endsWith(NODE)) {
+                    name = nameFromType.substring(0, nameFromType.length() - NODE.length());
+                } else {
+                    name = nameFromType;
                 }
+            } else {
+                name = (String) nameFromAnnot.getValue();
             }
-            te = tgt;
+
+        } else {
+            if (proxyMirror != null) {
+                throw new AssertionError();
+            }
+
+            if (!(element instanceof TypeElement)) {
+                parentData.addError(element, "@Operation can only be attached to a type");
+                return null;
+            }
+
+            te = (TypeElement) element;
+            name = te.getSimpleName().toString();
         }
 
-        SingleOperationData data = new SingleOperationData(context, te, ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), getAnnotationType()), parentData);
+        SingleOperationData data = new SingleOperationData(context, te, ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), getAnnotationType()), parentData, name);
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
-        if (proxyType == null) {
+
+        if (proxyMirror == null) {
+            // @Operation annotated type
+
+            if (!te.getModifiers().containsAll(Set.of(Modifier.STATIC, Modifier.FINAL))) {
+                data.addError("@Operation annotated class must be declared static and final");
+            }
+
+            if (te.getModifiers().contains(Modifier.PRIVATE)) {
+                data.addError("@Operation annotated class must not be declared private");
+            }
+
             for (Element el : te.getEnclosedElements()) {
                 if (el.getModifiers().contains(Modifier.PRIVATE)) {
+                    // ignore everything private
                     continue;
                 }
+
                 if (el.getKind() != ElementKind.CONSTRUCTOR && !el.getModifiers().contains(Modifier.STATIC)) {
-                    data.addError(el, "Operations must not contain non-static members");
+                    data.addError(el, "@Operation annotated class must not contain non-static members");
                 }
-                if (el instanceof ExecutableElement) {
-                    ExecutableElement cel = (ExecutableElement) el;
-                    if (isOperationFunction(cel)) {
-                        operationFunctions.add(cel);
-                    }
-                }
+
+                operationFunctions.addAll(findSpecializations(te.getEnclosedElements()));
             }
         } else {
-            CodeTypeElement teClone = te instanceof CodeTypeElement ? (CodeTypeElement) te : CodeTypeElement.cloneShallow(te);
-            te = teClone;
+            // proxied node
 
-            for (Element el : CompilerFactory.getCompiler(proxyType).getEnclosedElementsInDeclarationOrder(proxyType)) {
-                if (el.getKind() == ElementKind.METHOD && isStaticAccessible(el)) {
-                    CodeExecutableElement cel = CodeExecutableElement.clone((ExecutableElement) el);
-                    cel.setEnclosingElement(el.getEnclosingElement());
-                    teClone.add(cel);
-                    if (isOperationFunction(cel)) {
-                        operationFunctions.add(cel);
-                    }
+            for (ExecutableElement cel : findSpecializations(te.getEnclosedElements())) {
+                if (!cel.getModifiers().contains(Modifier.STATIC)) {
+                    data.addError(cel, "@OperationProxy'ed class must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
                 }
+
+                operationFunctions.add(cel);
             }
         }
 
@@ -134,56 +162,64 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         data.setMainProperties(props);
 
-        CodeTypeElement clonedType;
-        if (te instanceof CodeTypeElement) {
-            clonedType = (CodeTypeElement) te;
-        } else {
-            clonedType = CodeTypeElement.cloneShallow(te);
+        CodeTypeElement clonedType = cloneTypeHierarchy(te, ct -> {
+            // remove NodeChild annotations
+            ct.getAnnotationMirrors().removeIf(m -> m.getAnnotationType().equals(types.NodeChild) || m.getAnnotationType().equals(types.NodeChildren));
 
-            clonedType.getEnclosedElements().clear();
-            for (Element e : CompilerFactory.getCompiler(te).getEnclosedElementsInDeclarationOrder(te)) {
-                if (e.getModifiers().contains(Modifier.PRIVATE) || !e.getModifiers().contains(Modifier.STATIC)) {
-                    continue;
-                }
+            // remove all non-static or private elements
+            // this includes all the execute methods
+            ct.getEnclosedElements().removeIf(e -> !e.getModifiers().contains(Modifier.STATIC) || e.getModifiers().contains(Modifier.PRIVATE));
 
-                CodeElement<? extends Element> ce;
-                if (e.getKind() == ElementKind.METHOD) {
-                    ce = CodeExecutableElement.clone((ExecutableElement) e);
-                } else if (e.getKind() == ElementKind.FIELD) {
-                    ce = CodeVariableElement.clone((VariableElement) e);
-                } else {
-                    throw new UnsupportedOperationException("unknown enclosed kind: " + e.getKind());
-                }
-
-                ce.setEnclosingElement(e.getEnclosingElement());
-                clonedType.add(ce);
+            if (!isVariadic) {
+                addBoxingEliminationNodeChildAnnotations(props, ct);
             }
+
+        });
+
+        if (ElementUtils.isObject(clonedType.getSuperclass()) && proxyMirror == null) {
+            clonedType.setSuperClass(types.Node);
         }
 
-        clonedType.setEnclosingElement(te.getEnclosingElement());
-        // clonedType.setSuperClass(new DeclaredCodeTypeMirror(createRegularNodeChild()));
-        clonedType.setSuperClass(types.Node);
-        // clonedType.setSuperClass(new DeclaredCodeTypeMirror(childType));
+        clonedType.add(createExecuteMethod(props, isVariadic));
 
-        if (!isVariadic) {
-            int i = 0;
-            CodeTypeElement childType = createRegularNodeChild();
-            CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
-            List<CodeAnnotationValue> anns = new ArrayList<>();
-            for (ParameterKind param : props.parameters) {
-                if (param == ParameterKind.STACK_VALUE) {
-                    CodeAnnotationMirror ann = new CodeAnnotationMirror(types.NodeChild);
-                    // CodeTypeElement childType = createRegularNodeChild();
-                    ann.setElementValue("value", new CodeAnnotationValue("$child" + i));
-                    ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(childType)));
-                    anns.add(new CodeAnnotationValue(ann));
-                    i++;
-                }
-            }
-            repAnnotation.setElementValue("value", new CodeAnnotationValue(anns));
-            clonedType.addAnnotationMirror(repAnnotation);
+        NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
+
+        if (nodeData == null) {
+            data.addError("Could not parse invalid node: " + te.getSimpleName());
+            return data;
         }
 
+        // replace the default node type system with Operations one if we have it
+        if (nodeData.getTypeSystem().isDefault() && parentData.getTypeSystem() != null) {
+            nodeData.setTypeSystem(parentData.getTypeSystem());
+        }
+
+        nodeData.redirectMessagesOnGeneratedElements(data);
+        data.setNodeData(nodeData);
+
+        return data;
+    }
+
+    private void addBoxingEliminationNodeChildAnnotations(MethodProperties props, CodeTypeElement ct) {
+        int i = 0;
+        CodeTypeElement childType = createRegularNodeChild();
+        CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
+        List<CodeAnnotationValue> anns = new ArrayList<>();
+        for (ParameterKind param : props.parameters) {
+            if (param == ParameterKind.STACK_VALUE) {
+                CodeAnnotationMirror ann = new CodeAnnotationMirror(types.NodeChild);
+                // CodeTypeElement childType = createRegularNodeChild();
+                ann.setElementValue("value", new CodeAnnotationValue("$child" + i));
+                ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(childType)));
+                anns.add(new CodeAnnotationValue(ann));
+                i++;
+            }
+        }
+        repAnnotation.setElementValue("value", new CodeAnnotationValue(anns));
+        ct.addAnnotationMirror(repAnnotation);
+    }
+
+    private CodeExecutableElement createExecuteMethod(MethodProperties props, boolean isVariadic) {
         CodeExecutableElement metExecute = new CodeExecutableElement(
                         Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
                         context.getType(props.returnsValue ? Object.class : void.class), "execute");
@@ -201,41 +237,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 i++;
             }
         }
-
-        clonedType.add(metExecute);
-
-        if (proxyType != null) {
-            // add all the constants
-            for (VariableElement el : ElementFilter.fieldsIn(proxyType.getEnclosedElements())) {
-                if (el.getModifiers().containsAll(Set.of(Modifier.STATIC, Modifier.FINAL))) {
-                    // CodeVariableElement cel = new CodeVariableElement(MOD_STATIC_FINAL,
-                    // el.asType(), el.getSimpleName().toString());
-                    // cel.createInitBuilder().staticReference(el);
-                    // clonedType.add(cel);
-                    clonedType.add(el);
-                }
-            }
-
-            clonedType.setSimpleName(proxyType.getSimpleName());
-            clonedType.setEnclosingElement(proxyType.getEnclosingElement());
-        }
-
-        NodeData nodeData = NodeParser.createOperationParser().parse(clonedType, false);
-
-        if (nodeData == null) {
-            data.addError(te, "Could not parse invalid node");
-            return data;
-        }
-
-        // replace the default node type system with Operations one if we have it
-        if (nodeData.getTypeSystem().isDefault() && parentData.getTypeSystem() != null) {
-            nodeData.setTypeSystem(parentData.getTypeSystem());
-        }
-
-        nodeData.redirectMessagesOnGeneratedElements(data);
-        data.setNodeData(nodeData);
-
-        return data;
+        return metExecute;
     }
 
     @Override
@@ -323,8 +325,26 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         return !elem.getModifiers().contains(Modifier.PRIVATE) && elem.getModifiers().contains(Modifier.STATIC);
     }
 
-    private boolean isOperationFunction(ExecutableElement el) {
+    private boolean isSpecializationFunction(ExecutableElement el) {
         return ElementUtils.findAnnotationMirror(el, types.Specialization) != null;
     }
 
+    private CodeTypeElement cloneTypeHierarchy(TypeElement element, Consumer<CodeTypeElement> mapper) {
+        CodeTypeElement result = CodeTypeElement.cloneShallow(element);
+        if (!ElementUtils.isObject(element.getSuperclass())) {
+            result.setSuperClass(cloneTypeHierarchy(context.getTypeElement((DeclaredType) element.getSuperclass()), mapper).asType());
+        }
+
+        mapper.accept(result);
+
+        return result;
+    }
+
+    private List<ExecutableElement> findSpecializations(Collection<? extends Element> elements) {
+        return elements.stream() //
+                        .filter(x -> x instanceof ExecutableElement) //
+                        .map(x -> (ExecutableElement) x) //
+                        .filter(this::isSpecializationFunction) //
+                        .toList();
+    }
 }

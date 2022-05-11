@@ -107,7 +107,7 @@ public class OperationDecisions {
                     decisions.quicken.add(q);
                     break;
                 default:
-                    messager.addError("Invalid optimization decision: '%s'", decision.getString("type"));
+                    messager.addWarning("Invalid optimization decision: '%s'", decision.getString("type"));
                     break;
             }
         }

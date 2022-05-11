@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation;
 
+import java.beans.JavaBean;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
@@ -11,4 +12,6 @@ import java.lang.annotation.Target;
 @Repeatable(OperationProxies.class)
 public @interface OperationProxy {
     Class<?> value();
+
+    String operationName() default "";
 }
