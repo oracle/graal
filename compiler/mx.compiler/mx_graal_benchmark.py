@@ -121,9 +121,6 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return rules
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
-
 def add_or_replace_arg(option_key, value, vm_option_list):
     """
     Determines if an option with the same key as option_key is already present in vm_option_list.
@@ -171,8 +168,11 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
             mx_benchmark.add_java_vm(
                 JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
 
+
 _graal_variants = [
+    ('no-tiered-comp', ['-XX:-TieredCompilation'], 0),
     ('economy', [], 0, 'economy'),
+    ('economy-no-tiered-comp', ['-XX:-TieredCompilation'], 0, 'economy'),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
@@ -191,6 +191,12 @@ build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', 
 # This behavior is the closest we can get to the -client vm configuration.
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
+
+
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default-no-tiered-comp', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler', '-XX:-TieredCompilation']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
+
 
 class DebugValueBenchmarkMixin(object):
 
