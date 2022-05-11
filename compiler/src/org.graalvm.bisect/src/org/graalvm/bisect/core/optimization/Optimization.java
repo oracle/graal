@@ -24,7 +24,11 @@
  */
 package org.graalvm.bisect.core.optimization;
 
+import org.graalvm.bisect.util.Writer;
+
+import java.util.Comparator;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Represents an optimization in a compiled method at a particular BCI.
@@ -61,4 +65,27 @@ public interface Optimization extends OptimizationTreeNode {
      * A special bci value meaning that no byte code index was found.
      */
     int NO_BCI = -1;
+
+    /**
+     * Writes a list of optimizations (including name, bci and properties) using the provided writer.
+     * @param writer the destination writer
+     * @param optimizations the list of optimizations to be written
+     */
+    static void writeOptimizations(Writer writer, Stream<Optimization> optimizations) {
+        optimizations
+                .sorted(Comparator.comparing(Optimization::getBCI))
+                .iterator()
+                .forEachRemaining(optimization -> {
+                    writer.writeln(optimization.getOptimizationName() + " "
+                            + optimization.getEventName() + " at bci " + optimization.getBCI());
+                    if (optimization.getProperties() == null) {
+                        return;
+                    }
+                    writer.increaseIndent();
+                    for (Map.Entry<String, Object> entry : optimization.getProperties().entrySet()) {
+                        writer.writeln(entry.getKey() + ": " + entry.getValue());
+                    }
+                    writer.decreaseIndent();
+                });
+    }
 }

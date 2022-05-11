@@ -56,10 +56,15 @@ public class ExecutedMethodBuilder {
         this.executionId = executionId;
     }
 
+    public void setExperiment(Experiment experiment) {
+        this.experiment = experiment;
+    }
+
     private String executionId;
     private String compilationId;
     private String compilationMethodName;
     private OptimizationPhase rootPhase;
+    private Experiment experiment;
 
     /**
      * The period of execution of this method as reported by proftool. If not explicitly set, assume that the method was
@@ -70,7 +75,8 @@ public class ExecutedMethodBuilder {
     public ExecutedMethod build() {
         assert compilationId != null;
         assert compilationMethodName != null;
-        return new ExecutedMethodImpl(compilationId, compilationMethodName, rootPhase, period);
+        assert experiment != null;
+        return new ExecutedMethodImpl(compilationId, compilationMethodName, rootPhase, period, experiment);
     }
 
     public void setRootPhase(OptimizationPhase rootPhase) {

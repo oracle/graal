@@ -34,6 +34,19 @@ import java.util.List;
  */
 public interface ExecutedMethod {
     /**
+     * Gets the experiment to which this executed method belongs.
+     * @return the experiment to which this executed method belongs
+     */
+    Experiment getExperiment();
+
+    /**
+     * Creates and returns a summary that specifies the execution time of this method relative to the total execution
+     * time and relative to the execution time of graal-compiled methods.
+     * @return a summary of the relative execution time
+     */
+    String createSummaryOfMethodExecution();
+
+    /**
      * Gets the compilation ID of the executed method as reported in the optimization log. Matches "compileId" in the
      * proftool output.
      * @return the compilation ID

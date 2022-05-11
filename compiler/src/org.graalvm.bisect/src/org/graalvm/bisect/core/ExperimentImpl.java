@@ -24,6 +24,8 @@
  */
 package org.graalvm.bisect.core;
 
+import org.graalvm.bisect.util.Writer;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,26 +37,20 @@ public class ExperimentImpl implements Experiment {
     private final ExperimentId experimentId;
     private final long totalPeriod;
     private final int totalProftoolMethods;
-    private final long graalPeriod;
+    private Long graalPeriod;
     private final Map<String, List<ExecutedMethod>> methodsByName;
 
     public ExperimentImpl(
-            List<ExecutedMethod> executedMethods,
             String executionId,
             ExperimentId experimentId,
             long totalPeriod,
             int totalProftoolMethods) {
-        this.executedMethods = executedMethods;
+        this.executedMethods = new ArrayList<>();
         this.executionId = executionId;
         this.experimentId = experimentId;
         this.totalPeriod = totalPeriod;
         this.totalProftoolMethods = totalProftoolMethods;
-        this.graalPeriod = executedMethods.stream().mapToLong(ExecutedMethod::getPeriod).sum();
         this.methodsByName = new HashMap<>();
-        for (ExecutedMethod method : executedMethods) {
-            List<ExecutedMethod> methods = methodsByName.computeIfAbsent(method.getCompilationMethodName(), k -> new ArrayList<>());
-            methods.add(method);
-        }
     }
 
     @Override
@@ -74,6 +70,10 @@ public class ExperimentImpl implements Experiment {
 
     @Override
     public long getGraalPeriod() {
+        if (graalPeriod != null) {
+            return graalPeriod;
+        }
+        graalPeriod = executedMethods.stream().mapToLong(ExecutedMethod::getPeriod).sum();
         return graalPeriod;
     }
 
@@ -100,14 +100,16 @@ public class ExperimentImpl implements Experiment {
     }
 
     @Override
-    public String createSummary() {
+    public void writeSummary(Writer writer) {
         String graalExecutionPercent = String.format("%.2f", (double) getGraalPeriod() / totalPeriod * 100);
         String graalHotExecutionPercent = String.format("%.2f", (double) countHotGraalPeriod() / totalPeriod * 100);
-        return  "Experiment " + experimentId + " with execution ID " + executionId + "\n" +
-                "    Collected optimization logs for " + executedMethods.size() + " methods\n" +
-                "    Collected proftool data for " + totalProftoolMethods + " methods\n" +
-                "    Graal-compiled methods account for " + graalExecutionPercent + "% of execution\n" +
-                "    " + countHotMethods() + " hot methods account for " + graalHotExecutionPercent + "% of execution\n";
+        writer.writeln("Experiment " + experimentId + " with execution ID " + executionId);
+        writer.increaseIndent();
+        writer.writeln("Collected optimization logs for " + executedMethods.size() + " methods");
+        writer.writeln("Collected proftool data for " + totalProftoolMethods + " methods");
+        writer.writeln("Graal-compiled methods account for " + graalExecutionPercent + "% of execution");
+        writer.writeln(countHotMethods() + " hot methods account for " + graalHotExecutionPercent + "% of execution");
+        writer.decreaseIndent();
     }
 
     private long countHotMethods() {
@@ -116,5 +118,17 @@ public class ExperimentImpl implements Experiment {
 
     private long countHotGraalPeriod() {
         return executedMethods.stream().filter(ExecutedMethod::isHot).mapToLong(ExecutedMethod::getPeriod).sum();
+    }
+
+    /**
+     * Add an executed method to this experiment. The executed method's experiment must be set to this instance.
+     * @param executedMethod the executed method to be added
+     */
+    public void addExecutedMethod(ExecutedMethod executedMethod) {
+        assert executedMethod.getExperiment() == this;
+        graalPeriod = null;
+        executedMethods.add(executedMethod);
+        List<ExecutedMethod> methods = methodsByName.computeIfAbsent(executedMethod.getCompilationMethodName(), k -> new ArrayList<>());
+        methods.add(executedMethod);
     }
 }

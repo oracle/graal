@@ -24,11 +24,11 @@
  */
 package org.graalvm.bisect.matching.optimization;
 
-import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.optimization.Optimization;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.bisect.core.ExperimentId;
+import org.graalvm.bisect.core.optimization.Optimization;
 
 /**
  * A mutable matching of optimizations between two compilations of the same method in two experiments.

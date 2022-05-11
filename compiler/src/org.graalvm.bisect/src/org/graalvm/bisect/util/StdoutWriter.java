@@ -22,23 +22,39 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.matching.method;
-
-import java.util.List;
+package org.graalvm.bisect.util;
 
 /**
- * Represents a matching between methods of two experiments and the matching of their respective compilations.
+ * An output writer that manages indentation and writes to the standard output.
  */
-public interface MethodMatching {
-    /**
-     * Gets the list of pairs of matched methods, each of which holds a matching of its compilations.
-     * @return the list of matched methods
-     */
-    List<MatchedMethod> getMatchedMethods();
+public class StdoutWriter implements Writer {
+    private int indentLevel = 0;
 
-    /**
-     * Gets the list of the methods that do not have a pair.
-     * @return the list of methods without a pair
-     */
-    List<ExtraMethod> getExtraMethods();
+    @Override
+    public void writeln(String output) {
+        printIndent();
+        System.out.println(output);
+    }
+
+    @Override
+    public void writeln() {
+        System.out.println();
+    }
+
+    @Override
+    public void increaseIndent() {
+        ++indentLevel;
+    }
+
+    @Override
+    public void decreaseIndent() {
+        assert indentLevel > 0;
+        --indentLevel;
+    }
+
+    private void printIndent() {
+        for (int i = 0; i < indentLevel; ++i) {
+            System.out.print("    ");
+        }
+    }
 }

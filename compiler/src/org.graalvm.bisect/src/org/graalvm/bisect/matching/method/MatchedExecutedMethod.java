@@ -1,0 +1,70 @@
+/*
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package org.graalvm.bisect.matching.method;
+
+import org.graalvm.bisect.util.Writer;
+import org.graalvm.bisect.core.ExecutedMethod;
+
+/**
+ * Represents a pair of two matched compilations (executions) of the same method.
+ */
+public class MatchedExecutedMethod {
+    /**
+     * Gets the matched executed method from the first experiment.
+     *
+     * @return the matched executed method from the first experiment
+     */
+    public ExecutedMethod getMethod1() {
+        return method1;
+    }
+
+    /**
+     * Gets the matched executed method from the second experiment.
+     *
+     * @return the matched executed method from the second experiment
+     */
+    public ExecutedMethod getMethod2() {
+        return method2;
+    }
+
+    private final ExecutedMethod method1;
+    private final ExecutedMethod method2;
+
+    MatchedExecutedMethod(ExecutedMethod method1, ExecutedMethod method2) {
+        this.method1 = method1;
+        this.method2 = method2;
+    }
+
+    /**
+     * Writes a string describing this pair of matched compilations.
+     * @param writer the destination writer
+     */
+    public void writeHeader(Writer writer) {
+        writer.writeln("Compilation " + method1.getCompilationId() + " (" + method1.createSummaryOfMethodExecution()
+                + ") in experiment" + method1.getExperiment().getExperimentId()
+                + "vs compilation " + method2.getCompilationId() + " (" + method2.createSummaryOfMethodExecution()
+                + ") in experiment" + method2.getExperiment().getExperimentId());
+    }
+}

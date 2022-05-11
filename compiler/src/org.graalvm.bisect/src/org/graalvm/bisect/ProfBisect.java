@@ -29,7 +29,13 @@ import java.io.IOException;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.HotMethodPolicy;
-import org.graalvm.bisect.matching.ExperimentMatcher;
+import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
+import org.graalvm.bisect.matching.method.MatchedExecutedMethod;
+import org.graalvm.bisect.matching.method.MatchedMethod;
+import org.graalvm.bisect.matching.method.MethodMatching;
+import org.graalvm.bisect.matching.tree.FlatTreeMatcher;
+import org.graalvm.bisect.matching.tree.TreeMatcher;
+import org.graalvm.bisect.matching.tree.TreeMatching;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentFilesImpl;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
@@ -41,6 +47,8 @@ import org.graalvm.bisect.parser.args.InvalidArgumentException;
 import org.graalvm.bisect.parser.args.MissingArgumentException;
 import org.graalvm.bisect.parser.args.StringArgument;
 import org.graalvm.bisect.parser.args.UnknownArgumentException;
+import org.graalvm.bisect.util.StdoutWriter;
+import org.graalvm.bisect.util.Writer;
 
 public class ProfBisect {
     public static void main(String[] args) {
@@ -83,6 +91,8 @@ public class ProfBisect {
             System.exit(1);
         }
 
+        Writer writer = new StdoutWriter();
+
         HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();
         hotMethodPolicy.setHotMethodMinLimit(hotMinArgument.getValue());
         hotMethodPolicy.setHotMethodMaxLimit(hotMaxArgument.getValue());
@@ -94,7 +104,8 @@ public class ProfBisect {
         ExperimentParser parser1 = new ExperimentParser(experimentFiles1);
         Experiment experiment1 = parseOrExit(parser1);
         hotMethodPolicy.markHotMethods(experiment1);
-        System.out.println(experiment1.createSummary());
+        experiment1.writeSummary(writer);
+        writer.writeln();
 
         ExperimentFiles experimentFiles2 = new ExperimentFilesImpl(
                 ExperimentId.TWO, proftoolArgument2.getValue(), optimizationLogArgument2.getValue()
@@ -102,11 +113,30 @@ public class ProfBisect {
         ExperimentParser parser2 = new ExperimentParser(experimentFiles2);
         Experiment experiment2 = parseOrExit(parser2);
         hotMethodPolicy.markHotMethods(experiment2);
-        System.out.println(experiment2.createSummary());
+        experiment2.writeSummary(writer);
+        writer.writeln();
 
-        ExperimentMatcher experimentMatcher = new ExperimentMatcher();
-        String summary = experimentMatcher.matchAndSummarize(experiment1, experiment2);
-        System.out.println(summary);
+        GreedyMethodMatcher matcher = new GreedyMethodMatcher();
+        MethodMatching matching = matcher.match(experiment1, experiment2);
+        TreeMatcher treeMatcher = new FlatTreeMatcher();
+
+        for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
+            matchedMethod.writeSummary(writer, experiment1, experiment2);
+            writer.increaseIndent();
+            for (MatchedExecutedMethod matchedExecutedMethod : matchedMethod.getMatchedExecutedMethods()) {
+                matchedExecutedMethod.writeHeader(writer);
+                TreeMatching treeMatching = treeMatcher.match(
+                        matchedExecutedMethod.getMethod1(),
+                        matchedExecutedMethod.getMethod2()
+                );
+                writer.increaseIndent();
+                treeMatching.writeSummary(writer);
+                writer.decreaseIndent();
+            }
+            matchedMethod.summarizeExtraExecutedMethods(writer);
+            writer.decreaseIndent();
+        }
+        matching.getExtraMethods().iterator().forEachRemaining(extraMethod -> extraMethod.writeHeader(writer));
     }
 
     private static Experiment parseOrExit(ExperimentParser parser) {

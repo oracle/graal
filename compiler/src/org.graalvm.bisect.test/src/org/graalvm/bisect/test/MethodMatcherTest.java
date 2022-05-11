@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
 import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
+import org.graalvm.bisect.matching.method.MatchedMethod;
 import org.graalvm.bisect.matching.method.MethodMatcher;
 import org.graalvm.bisect.matching.method.MethodMatching;
 import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
@@ -44,18 +45,23 @@ public class MethodMatcherTest {
     @Test
     public void testGreedyMethodMatcher() {
         OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
-        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", rootPhase,1);
-        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", rootPhase,2);
-        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", rootPhase,3);
-        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", rootPhase,3);
-        List<ExecutedMethod> methods1 = List.of(foo1, foo2, foo3, bar1);
-        Experiment experiment1 = new ExperimentImpl(methods1, "1", ExperimentId.ONE, 100, 100);
+        ExperimentImpl experiment1 = new ExperimentImpl("1", ExperimentId.ONE, 100, 100);
+        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", rootPhase,1, experiment1);
+        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", rootPhase,2, experiment1);
+        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", rootPhase,3, experiment1);
+        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", rootPhase,3, experiment1);
+        experiment1.addExecutedMethod(foo1);
+        experiment1.addExecutedMethod(foo2);
+        experiment1.addExecutedMethod(foo3);
+        experiment1.addExecutedMethod(bar1);
 
-        ExecutedMethod foo4 = new ExecutedMethodImpl("foo4", "foo", rootPhase,1);
-        ExecutedMethod bar2 = new ExecutedMethodImpl("bar2", "bar", rootPhase,2);
-        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "baz", rootPhase, 3);
-        List<ExecutedMethod> methods2 = List.of(foo4, bar2, baz1);
-        Experiment experiment2 = new ExperimentImpl(methods2, "2", ExperimentId.TWO, 100, 100);
+        ExperimentImpl experiment2 = new ExperimentImpl("2", ExperimentId.TWO, 100, 100);
+        ExecutedMethod foo4 = new ExecutedMethodImpl("foo4", "foo", rootPhase,1, experiment2);
+        ExecutedMethod bar2 = new ExecutedMethodImpl("bar2", "bar", rootPhase,2, experiment2);
+        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "baz", rootPhase, 3, experiment2);
+        experiment2.addExecutedMethod(foo4);
+        experiment2.addExecutedMethod(bar2);
+        experiment2.addExecutedMethod(baz1);
 
         MethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
@@ -76,7 +82,7 @@ public class MethodMatcherTest {
         // bar: bar2 extra
         // baz: baz extra
         assertEquals(1, matching.getMatchedMethods().size());
-        MethodMatching.MatchedMethod matchedFoo = matching.getMatchedMethods().get(0);
+        MatchedMethod matchedFoo = matching.getMatchedMethods().get(0);
         assertEquals("foo", matchedFoo.getCompilationMethodName());
         assertEquals(1, matchedFoo.getMatchedExecutedMethods().size());
         assertEquals("foo3", matchedFoo.getMatchedExecutedMethods().get(0).getMethod1().getCompilationId());

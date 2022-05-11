@@ -57,7 +57,7 @@ public class GreedyMethodMatcher implements MethodMatcher {
         MethodMatchingImpl matching = new MethodMatchingImpl();
 
         for (String compilationMethodName : SetUtil.intersection(methodMap1.keySet(), methodMap2.keySet())) {
-            MethodMatching.MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName);
+            MatchedMethod matchedMethod = matching.addMatchedMethod(compilationMethodName);
             IteratorUtil.zipLongest(
                     methodMap1.get(compilationMethodName)
                             .stream()
@@ -71,9 +71,9 @@ public class GreedyMethodMatcher implements MethodMatcher {
                 if (pair.bothNotNull()) {
                     matchedMethod.addMatchedExecutedMethod(pair.getLhs(), pair.getRhs());
                 } else if (pair.getLhs() == null) {
-                    matchedMethod.addExtraExecutedMethod(pair.getRhs(), experiment2.getExperimentId());
+                    matchedMethod.addExtraExecutedMethod(pair.getRhs());
                 } else {
-                    matchedMethod.addExtraExecutedMethod(pair.getLhs(), experiment1.getExperimentId());
+                    matchedMethod.addExtraExecutedMethod(pair.getLhs());
                 }
             });
         }

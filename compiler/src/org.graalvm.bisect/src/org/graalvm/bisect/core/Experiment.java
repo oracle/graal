@@ -24,6 +24,8 @@
  */
 package org.graalvm.bisect.core;
 
+import org.graalvm.bisect.util.Writer;
+
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +33,16 @@ import java.util.Map;
  * A parsed experiment consisting of all graal-compiled methods and metadata.
  */
 public interface Experiment {
+    /**
+     * Gets the experiment ID.
+     * @return the experiment ID
+     */
     ExperimentId getExperimentId();
+
+    /**
+     * Gets the execution ID.
+     * @return the execution ID
+     */
     String getExecutionId();
 
     /**
@@ -67,9 +78,8 @@ public interface Experiment {
     List<ExecutedMethod> getMethodsByName(String compilationMethodName);
 
     /**
-     * Creates a summary of the experiment. Includes the number of methods collected (proftool and optimization log),
+     * Writes a summary of the experiment. Includes the number of methods collected (proftool and optimization log),
      * relative period of graal-compiled methods, the number and relative period of hot methods.
-     * @return a summary of the experiment
      */
-    String createSummary();
+    void writeSummary(Writer writer);
 }

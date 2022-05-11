@@ -31,9 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
-import org.graalvm.bisect.core.ExecutedMethod;
 import org.graalvm.bisect.core.ExecutedMethodBuilder;
 import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentImpl;
@@ -99,17 +97,17 @@ public class ExperimentParser {
             }
         }
 
-        List<ExecutedMethod> methods = methodByCompilationId.values().stream()
-            .map(ExecutedMethodBuilder::build)
-            .collect(Collectors.toList());
-
-        return new ExperimentImpl(
-            methods,
-            proftoolLog.executionId,
-            experimentFiles.getExperimentId(),
-            proftoolLog.totalPeriod,
-            proftoolLog.code.size()
+        ExperimentImpl experiment = new ExperimentImpl(
+                proftoolLog.executionId,
+                experimentFiles.getExperimentId(),
+                proftoolLog.totalPeriod,
+                proftoolLog.code.size()
         );
+        for (ExecutedMethodBuilder builder : methodByCompilationId.values()) {
+            builder.setExperiment(experiment);
+            experiment.addExecutedMethod(builder.build());
+        }
+        return experiment;
     }
 
     private ExecutedMethodBuilder parseCompiledMethod(Reader optimizationLog)

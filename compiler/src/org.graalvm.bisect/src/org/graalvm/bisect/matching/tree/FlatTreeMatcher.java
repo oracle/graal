@@ -22,23 +22,30 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.matching.method;
+package org.graalvm.bisect.matching.tree;
 
-import java.util.List;
+import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.matching.optimization.OptimizationMatching;
+import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
 
 /**
- * Represents a matching between methods of two experiments and the matching of their respective compilations.
+ * Creates a matching of optimization trees by flattening them to lists of optimization.
  */
-public interface MethodMatching {
-    /**
-     * Gets the list of pairs of matched methods, each of which holds a matching of its compilations.
-     * @return the list of matched methods
-     */
-    List<MatchedMethod> getMatchedMethods();
+public class FlatTreeMatcher implements TreeMatcher {
+    final SetBasedOptimizationMatcher optimizationMatcher = new SetBasedOptimizationMatcher();
 
     /**
-     * Gets the list of the methods that do not have a pair.
-     * @return the list of methods without a pair
+     * Creates a matching of optimization trees by flattening them to lists of optimization.
+     * @param method1 the method from the first experiment
+     * @param method2 the method from the second experiment
+     * @return a description of matched and extra optimizations
      */
-    List<ExtraMethod> getExtraMethods();
+    @Override
+    public FlatTreeMatching match(ExecutedMethod method1, ExecutedMethod method2) {
+        OptimizationMatching optimizationMatching = optimizationMatcher.match(
+                method1.getOptimizationsRecursive(),
+                method2.getOptimizationsRecursive()
+        );
+        return new FlatTreeMatching(optimizationMatching);
+    }
 }

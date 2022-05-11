@@ -31,16 +31,31 @@ public class ExecutedMethodImpl implements ExecutedMethod {
     private final String compilationMethodName;
     private final OptimizationPhase rootPhase;
     private final long period;
+    private final Experiment experiment;
     private boolean hot;
 
     public ExecutedMethodImpl(String compilationId,
                               String compilationMethodName,
                               OptimizationPhase rootPhase,
-                              long period) {
+                              long period,
+                              Experiment experiment) {
         this.compilationId = compilationId;
         this.compilationMethodName = compilationMethodName;
         this.period = period;
         this.rootPhase = rootPhase;
+        this.experiment = experiment;
+    }
+
+    @Override
+    public Experiment getExperiment() {
+        return experiment;
+    }
+
+    @Override
+    public String createSummaryOfMethodExecution() {
+        String graalPercent = String.format("%.2f", (double) period / experiment.getGraalPeriod() * 100);
+        String totalPercent = String.format("%.2f", (double) period / experiment.getTotalPeriod() * 100);
+        return graalPercent + "% of graal execution, " + totalPercent + "% of total";
     }
 
     @Override

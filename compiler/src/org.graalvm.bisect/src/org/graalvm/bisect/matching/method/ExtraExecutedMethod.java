@@ -24,21 +24,29 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import java.util.List;
+import org.graalvm.bisect.util.Writer;
+import org.graalvm.bisect.core.ExecutedMethod;
 
 /**
- * Represents a matching between methods of two experiments and the matching of their respective compilations.
+ * Represents an executed method that was not matched with any method from the other experiment.
  */
-public interface MethodMatching {
-    /**
-     * Gets the list of pairs of matched methods, each of which holds a matching of its compilations.
-     * @return the list of matched methods
-     */
-    List<MatchedMethod> getMatchedMethods();
+public class ExtraExecutedMethod {
+    private final ExecutedMethod executedMethod;
+
+    ExtraExecutedMethod(ExecutedMethod executedMethod) {
+        this.executedMethod = executedMethod;
+    }
+
+    public ExecutedMethod getExecutedMethod() {
+        return executedMethod;
+    }
 
     /**
-     * Gets the list of the methods that do not have a pair.
-     * @return the list of methods without a pair
+     * Writes a string that describes that this compilation is unpaired.
+     * @param writer the destination writer
      */
-    List<ExtraMethod> getExtraMethods();
+    public void writeHeader(Writer writer) {
+        writer.writeln("Compilation " + executedMethod.getCompilationId() +
+                " only in experiment " + executedMethod.getExperiment().getExperimentId());
+    }
 }

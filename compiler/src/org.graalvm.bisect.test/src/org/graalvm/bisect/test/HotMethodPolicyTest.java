@@ -43,13 +43,13 @@ public class HotMethodPolicyTest {
     @Test
     public void testHotMethodPolicy() {
         OptimizationPhase rootPhase = new OptimizationPhaseImpl("RootPhase");
-        ExecutedMethod foo1 = new ExecutedMethodImpl("foo1", "foo", rootPhase,5);
-        ExecutedMethod foo2 = new ExecutedMethodImpl("foo2", "foo", rootPhase,35);
-        ExecutedMethod foo3 = new ExecutedMethodImpl("foo3", "foo", rootPhase,30);
-        ExecutedMethod bar1 = new ExecutedMethodImpl("bar1", "bar", rootPhase,20);
-        ExecutedMethod baz1 = new ExecutedMethodImpl("baz1", "bar", rootPhase,10);
-        List<ExecutedMethod> methods = List.of(foo1, foo2, foo3, bar1, baz1);
-        Experiment experiment = new ExperimentImpl(methods, "1", ExperimentId.ONE, 100, 100);
+        ExperimentImpl experiment = new ExperimentImpl("1", ExperimentId.ONE, 100, 100);
+        experiment.addExecutedMethod(new ExecutedMethodImpl("foo1", "foo", rootPhase,5, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("foo2", "foo", rootPhase,35, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("foo3", "foo", rootPhase,30, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("bar1", "bar", rootPhase,20, experiment));
+        experiment.addExecutedMethod(new ExecutedMethodImpl("baz1", "bar", rootPhase,10, experiment));
+
         HotMethodPolicy hotMethodPolicy = new HotMethodPolicy();
         hotMethodPolicy.markHotMethods(experiment);
 
@@ -58,7 +58,7 @@ public class HotMethodPolicyTest {
         hotMethodPolicy.setHotMethodPercentile(0.9);
 
         Set<String> hotMethods = Set.of("foo2", "foo3", "bar1");
-        for (ExecutedMethod method : methods) {
+        for (ExecutedMethod method : experiment.getExecutedMethods()) {
             assertEquals(hotMethods.contains(method.getCompilationId()), method.isHot());
         }
     }

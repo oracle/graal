@@ -22,23 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.matching.method;
+package org.graalvm.bisect.matching.tree;
 
-import java.util.List;
+import org.graalvm.bisect.core.ExecutedMethod;
 
 /**
- * Represents a matching between methods of two experiments and the matching of their respective compilations.
+ * Creates a matching of optimization trees.
  */
-public interface MethodMatching {
+public interface TreeMatcher {
     /**
-     * Gets the list of pairs of matched methods, each of which holds a matching of its compilations.
-     * @return the list of matched methods
+     * Matches the optimization trees of the provided methods.
+     * @param method1 the method from the first experiment
+     * @param method2 the method from the second experiment
+     * @return a description of the computed tree matching
      */
-    List<MatchedMethod> getMatchedMethods();
-
-    /**
-     * Gets the list of the methods that do not have a pair.
-     * @return the list of methods without a pair
-     */
-    List<ExtraMethod> getExtraMethods();
+    TreeMatching match(ExecutedMethod method1, ExecutedMethod method2);
 }
