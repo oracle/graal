@@ -95,7 +95,7 @@ public class NativeImageClassLoaderSupport {
     private final EconomicMap<URI, EconomicSet<String>> packages;
     private final EconomicSet<String> emptySet;
 
-    private final URLClassLoader classPathClassLoader;
+    final URLClassLoader classPathClassLoader;
     private final ClassLoader modulePathClassLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;

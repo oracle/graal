@@ -76,7 +76,23 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
-        return loader == imageClassLoader || loader instanceof NativeImageSystemClassLoader;
+        if (loader == imageClassLoader) {
+            /* Trivial case */
+            return true;
+        }
+        if (loader == classLoaderSupport.classPathClassLoader) {
+            /*
+             * If imageClassLoader is a module classloader (building image with non-empty
+             * NativeImageClassLoaderSupport.imagemp), the passed loader could also be our
+             * classLoaderSupport.classPathClassLoader (building image with non-empty
+             * NativeImageClassLoaderSupport.imagecp).
+             */
+            return true;
+        }
+        if (loader instanceof NativeImageSystemClassLoader) {
+            return true;
+        }
+        return false;
     }
 
     @Override
