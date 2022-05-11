@@ -42,6 +42,7 @@ import com.oracle.svm.core.util.VMError;
 public abstract class OptionOrigin {
 
     public static final OptionOrigin commandLineOptionOriginSingleton = new CommandLineOptionOrigin();
+    public static final String argFilePrefix = "argfile:";
 
     public URI container() {
         return null;
@@ -66,7 +67,7 @@ public abstract class OptionOrigin {
 
     public static OptionOrigin from(String origin) {
 
-        if (origin == null) {
+        if (origin == null || origin.startsWith(argFilePrefix)) {
             return commandLineOptionOriginSingleton;
         }
 
@@ -77,10 +78,6 @@ public abstract class OptionOrigin {
                 return macroOption;
             }
             throw VMError.shouldNotReachHere("Unsupported OptionOrigin: " + origin);
-        }
-        if (originURI.getScheme() == null) {
-            /* @argument files use path as origin */
-            return commandLineOptionOriginSingleton;
         }
         switch (originURI.getScheme()) {
             case "jar":
