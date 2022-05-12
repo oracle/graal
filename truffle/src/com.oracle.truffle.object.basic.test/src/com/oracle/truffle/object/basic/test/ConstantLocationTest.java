@@ -154,4 +154,19 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(false, library.containsKey(object2, "constant"));
     }
 
+    @Test
+    public void testGetConstantValue() {
+        Property property = shapeWithConstant.getProperty("constant");
+        Assert.assertTrue(property.getLocation().isConstant());
+        Assert.assertSame(value, property.getLocation().getConstantValue());
+
+        DynamicObject object = newInstance();
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        library.put(object, "other", "otherValue");
+
+        Property otherProperty = object.getShape().getProperty("other");
+        Assert.assertFalse(otherProperty.getLocation().isConstant());
+        Assert.assertNull(otherProperty.getLocation().getConstantValue());
+    }
 }

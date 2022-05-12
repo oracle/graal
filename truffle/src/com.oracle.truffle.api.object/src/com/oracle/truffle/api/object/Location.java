@@ -296,4 +296,19 @@ public abstract class Location {
     public boolean isPrimitive() {
         return this instanceof DoubleLocation || this instanceof IntLocation || this instanceof LongLocation || this instanceof BooleanLocation;
     }
+
+    /**
+     * If this is a constant location, returns the constant value bound to this location. Otherwise,
+     * returns null.
+     *
+     * @since 22.2
+     */
+    @SuppressWarnings("deprecation")
+    public Object getConstantValue() {
+        if (isConstant()) {
+            return get(null);
+        } else {
+            return null;
+        }
+    }
 }
