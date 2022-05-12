@@ -69,8 +69,6 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         this.allowedImplicitCasts = implicitCastFlags;
     }
 
-    protected abstract DynamicObject construct(Shape shape);
-
     protected abstract boolean isLegacyLayout();
 
     /** @since 0.17 or earlier */

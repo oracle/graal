@@ -63,7 +63,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectFactory;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -1064,7 +1063,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObject newInstance() {
-        return layout.newInstance(this);
+        throw DefaultLayout.unsupported();
     }
 
     /** @since 0.17 or earlier */
@@ -1161,48 +1160,6 @@ public abstract class ShapeImpl extends Shape {
             }
         }
         return true;
-    }
-
-    public static final class DynamicObjectFactoryImpl implements DynamicObjectFactory {
-        private final ShapeImpl shape;
-        @CompilationFinal(dimensions = 1) private final PropertyImpl[] instanceFields;
-        private static final PropertyImpl[] EMPTY = new PropertyImpl[0];
-
-        private DynamicObjectFactoryImpl(ShapeImpl shape, List<Property> properties) {
-            this.shape = shape;
-            this.instanceFields = properties.toArray(EMPTY);
-        }
-
-        public DynamicObject newInstance(Object... initialValues) {
-            assert initialValues.length == instanceFields.length : wrongArguments(initialValues.length);
-            CompilerAsserts.partialEvaluationConstant(shape);
-            DynamicObject store = shape.layout.construct(shape);
-            return fillValues(store, initialValues);
-        }
-
-        @ExplodeLoop
-        private DynamicObject fillValues(DynamicObject store, Object... initialValues) {
-            CompilerAsserts.partialEvaluationConstant(instanceFields.length);
-            for (int i = 0; i < instanceFields.length; i++) {
-                instanceFields[i].setInternal(store, initialValues[i]);
-            }
-            return store;
-        }
-
-        private String wrongArguments(int givenLength) {
-            String message = givenLength + " arguments given but the factory takes " + instanceFields.length + ": ";
-            for (int i = 0; i < instanceFields.length; i++) {
-                message += instanceFields[i].getKey();
-                if (i != instanceFields.length - 1) {
-                    message += ", ";
-                }
-            }
-            return message;
-        }
-
-        public Shape getShape() {
-            return shape;
-        }
     }
 
     /** @since 0.17 or earlier */

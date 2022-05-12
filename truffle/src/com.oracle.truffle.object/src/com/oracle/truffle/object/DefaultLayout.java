@@ -112,16 +112,6 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    public DynamicObject newInstance(Shape shape) {
-        throw unsupported();
-    }
-
-    @Override
-    protected DynamicObject construct(Shape shape) {
-        throw unsupported();
-    }
-
-    @Override
     protected boolean isLegacyLayout() {
         return false;
     }
