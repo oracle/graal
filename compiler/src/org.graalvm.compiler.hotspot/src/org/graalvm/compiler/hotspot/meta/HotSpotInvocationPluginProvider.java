@@ -22,14 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common.spi;
+package org.graalvm.compiler.hotspot.meta;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.spi.Replacements;
+
+import jdk.vm.ci.code.Architecture;
 
 /**
- * Allows installing additional {@link ConstantFieldProvider}s in {@link JavaConstantFieldProvider}
- * via a {@link org.graalvm.compiler.serviceprovider.ServiceProvider}.
+ * Allows adding additional invocation plugins to {@link HotSpotGraphBuilderPlugins} via
+ * {@link org.graalvm.compiler.serviceprovider.ServiceProvider}.
  */
-public interface StableFieldProviderProvider {
-    StableFieldProvider get(MetaAccessProvider metaAccess);
+public interface HotSpotInvocationPluginProvider {
+    void registerInvocationPlugins(Architecture architecture, InvocationPlugins plugins, Replacements replacements);
 }

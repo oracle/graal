@@ -117,11 +117,10 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleStringStableFieldProvider;
-import org.graalvm.compiler.truffle.compiler.TruffleStringStableFieldProvider.TruffleStringTypes;
+import org.graalvm.compiler.truffle.compiler.amd64.substitutions.AMD64TruffleInvocationPlugins;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
-import org.graalvm.compiler.truffle.compiler.substitutions.AbstractKnownTruffleTypes;
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -129,6 +128,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -223,6 +223,10 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
 
     boolean afterAnalysis;
 
+    private ResolvedJavaType truffleStringType;
+    private ResolvedJavaField truffleStringDataField;
+    private ResolvedJavaField truffleStringHashCodeField;
+
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
         blocklistViolations = new TreeSet<>(TruffleFeature::blocklistViolationComparator);
@@ -241,6 +245,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         new SubstrateThreadLocalHandshakeSnippets(options, providers, lowerings);
+    }
+
+    @Override
+    public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderConfiguration.Plugins plugins, ParsingReason reason) {
+        AMD64TruffleInvocationPlugins.register(providers.getLowerer().getTarget().arch, plugins.getInvocationPlugins(), providers.getReplacements());
     }
 
     @Override
@@ -337,7 +346,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         registerKnownTruffleFields(config, partialEvaluator.getKnownTruffleTypes());
-        registerKnownTruffleFields(config, new TruffleStringTypes(config.getMetaAccess()));
         TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getConfigPrototype();
@@ -481,7 +489,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
         }
     }
 
-    private static void registerKnownTruffleFields(BeforeAnalysisAccessImpl config, AbstractKnownTruffleTypes knownTruffleFields) {
+    private static void registerKnownTruffleFields(BeforeAnalysisAccessImpl config, KnownTruffleTypes knownTruffleFields) {
         for (Class<?> klass = knownTruffleFields.getClass(); klass != Object.class; klass = klass.getSuperclass()) {
             for (Field field : klass.getDeclaredFields()) {
                 if (Modifier.isPublic(field.getModifiers())) {

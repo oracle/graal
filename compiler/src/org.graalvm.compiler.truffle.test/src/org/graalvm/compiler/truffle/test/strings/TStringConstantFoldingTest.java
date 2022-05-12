@@ -26,111 +26,84 @@ package org.graalvm.compiler.truffle.test.strings;
 
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
-public class TStringConstantFoldingTest extends TStringTest {
-
-    final TruffleString a = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
-    final TruffleString b = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
-    final Object[] constantArgs = new Object[]{a, b};
-
-    final KnownTruffleTypes knownTruffleTypes = new KnownTruffleTypes(getMetaAccess());
-
-    @Override
-    protected void before(ResolvedJavaMethod method) {
-        // Trigger Truffle initialization so that TruffleStringStableFieldProvider
-        // will do the expected constant folding of Truffle strings.
-        TruffleCompilerRuntime.getRuntime();
-    }
-
-    @Override
-    protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        addConstantParameterBinding(conf, constantArgs);
-        return super.editGraphBuilderConfiguration(conf);
-    }
-
-    @Override
-    protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        return super.getCode(installedCodeOwner, graph, true, false, options);
-    }
+    static final TruffleString a = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
+    static final TruffleString b = TruffleString.fromByteArrayUncached(new byte[]{'a', 'b', 'c', 'd', 'e'}, UTF_8);
 
     @Test
     public void testRegionEquals() {
-        test("regionEquals", a, b);
-    }
+        assertConstant(true, new RootNode(null) {
 
-    static boolean regionEquals(TruffleString a, TruffleString b) {
-        return a.regionEqualByteIndexUncached(0, b, 0, a.byteLength(UTF_8), UTF_8);
+            @Child TruffleString.RegionEqualByteIndexNode node = TruffleString.RegionEqualByteIndexNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(a, 0, b, 0, a.byteLength(UTF_8), UTF_8);
+            }
+        });
     }
 
     @Test
     public void testEquals() {
-        test("tsEquals", a, b);
-    }
+        assertConstant(true, new RootNode(null) {
 
-    static boolean tsEquals(TruffleString a, TruffleString b) {
-        return a.equals(b);
+            @Child TruffleString.EqualNode node = TruffleString.EqualNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(a, b, UTF_8);
+            }
+        });
     }
 
     @Test
     public void testCompareTo() {
-        test("compareTo", a, b);
-    }
+        assertConstant(0, new RootNode(null) {
 
-    static int compareTo(TruffleString a, TruffleString b) {
-        return a.compareBytesUncached(b, UTF_8);
+            @Child TruffleString.CompareBytesNode node = TruffleString.CompareBytesNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(a, b, UTF_8);
+            }
+        });
     }
 
     @Test
     public void testIndexOf() {
-        test("indexOf", a, b);
-    }
+        assertConstant(1, new RootNode(null) {
 
-    static int indexOf(TruffleString a, @SuppressWarnings("unused") TruffleString b) {
-        return a.byteIndexOfCodePointUncached('b', 0, a.byteLength(UTF_8), UTF_8);
+            @Child TruffleString.ByteIndexOfCodePointNode node = TruffleString.ByteIndexOfCodePointNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(a, 'b', 0, a.byteLength(UTF_8), UTF_8);
+            }
+        });
     }
 
     @Test
     public void testIndexOfSubstring() {
-        test("indexOfSubstring", a, b);
-    }
+        assertConstant(1, new RootNode(null) {
 
-    static int indexOfSubstring(TruffleString a, TruffleString b) {
-        return a.byteIndexOfStringUncached(b, 0, a.byteLength(UTF_8), UTF_8);
-    }
+            @Child TruffleString.ByteIndexOfStringNode node = TruffleString.ByteIndexOfStringNode.create();
 
-    @Override
-    protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64) {
-            if (Math.max(GraalOptions.ArrayRegionEqualsConstantLimit.getValue(graph.getOptions()), GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) >= a.byteLength(UTF_8)) {
-                assertConstantReturn(graph);
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return node.execute(a, b, 0, a.byteLength(UTF_8), UTF_8);
             }
-        }
+        });
     }
 
-    @Override
-    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext graphBuilderContext, ResolvedJavaMethod method, ValueNode[] args) {
-        if (method.getDeclaringClass().getName().startsWith("Lcom/oracle/truffle/api/strings/") &&
-                        method.getAnnotationsByType(CompilerDirectives.TruffleBoundary.class).length == 0 &&
-                        !(method.getDeclaringClass().getUnqualifiedName().equals("TStringOps") && method.getName().startsWith("run"))) {
-            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
-        }
-        return super.bytecodeParserShouldInlineInvoke(graphBuilderContext, method, args);
+    private void assertConstant(Object expectedConstant, RootNode root) {
+        assertPartialEvalEquals(toRootNode((f) -> expectedConstant), root, new Object[0]);
     }
 }

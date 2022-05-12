@@ -37,12 +37,14 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MetricKey;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaMethod;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaType;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
+import org.graalvm.compiler.truffle.compiler.TruffleStringStableFieldProvider;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
 

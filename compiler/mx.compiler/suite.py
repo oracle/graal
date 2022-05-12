@@ -569,6 +569,9 @@ suite = {
         "jdk.unsupported", # sun.misc.Unsafe
         "java.management"
       ],
+      "uses" : [
+        "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider"
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
@@ -1584,6 +1587,11 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
         "org.graalvm.compiler.truffle.compiler.phases.inlining.InliningPolicyProvider"
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.services",
+        ],
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
@@ -1850,6 +1858,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.compiler.hotspot",
         "org.graalvm.compiler.hotspot.amd64",
       ],
@@ -2058,6 +2067,7 @@ suite = {
           "org.graalvm.compiler.hotspot.HotSpotGraalManagementRegistration",
           "org.graalvm.compiler.hotspot.HotSpotCodeCacheListener",
           "org.graalvm.compiler.hotspot.HotSpotBackendFactory",
+          "org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
           "org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory",
           "org.graalvm.compiler.options.OptionDescriptors",
           "org.graalvm.compiler.serviceprovider.JMXService",

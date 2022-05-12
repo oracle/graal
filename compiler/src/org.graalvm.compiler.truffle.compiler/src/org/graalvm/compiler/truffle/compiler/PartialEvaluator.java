@@ -145,7 +145,10 @@ public abstract class PartialEvaluator {
         this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
         this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
-        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(this.config.lastTier().providers().getConstantFieldProvider(), this.config.lastTier().providers().getMetaAccess());
+        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(
+                        this.config.lastTier().providers().getConstantFieldProvider(),
+                        this.config.lastTier().providers().getMetaAccess(),
+                        knownFields);
     }
 
     protected void initialize(OptionValues options) {

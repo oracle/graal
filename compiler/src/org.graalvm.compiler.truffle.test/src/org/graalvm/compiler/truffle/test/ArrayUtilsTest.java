@@ -41,7 +41,7 @@ public class ArrayUtilsTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        new AMD64TruffleInvocationPlugins().registerInvocationPlugins(getBackend().getTarget().arch, invocationPlugins, getReplacements());
+        AMD64TruffleInvocationPlugins.register(getBackend().getTarget().arch, invocationPlugins, getReplacements());
         super.registerInvocationPlugins(invocationPlugins);
     }
 

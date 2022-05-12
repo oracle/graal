@@ -24,10 +24,11 @@
  */
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.getArrayLocation;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.strideAsPowerOf2;
 
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -41,13 +42,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
-import org.graalvm.compiler.replacements.GraalInvocationPluginProvider;
-import org.graalvm.compiler.replacements.StrideUtil;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.truffle.api.nodes.Node;
@@ -58,11 +56,9 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-@ServiceProvider(GraalInvocationPluginProvider.class)
-public class AMD64TruffleInvocationPlugins implements GraalInvocationPluginProvider {
+public class AMD64TruffleInvocationPlugins {
 
-    @Override
-    public void registerInvocationPlugins(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
+    public static void register(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
         if (architecture instanceof AMD64) {
             registerArrayUtilsPlugins(plugins, replacements);
             registerTStringPlugins((AMD64) architecture, plugins, replacements);

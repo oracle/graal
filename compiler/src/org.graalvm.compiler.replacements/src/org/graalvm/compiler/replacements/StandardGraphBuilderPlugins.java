@@ -232,9 +232,6 @@ public class StandardGraphBuilderPlugins {
         registerMethodHandleImplPlugins(plugins, replacements);
         registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
-        for (GraalInvocationPluginProvider p : GraalServices.load(GraalInvocationPluginProvider.class)) {
-            p.registerInvocationPlugins(lowerer.getTarget().arch, plugins, replacements);
-        }
     }
 
     public static final Field STRING_VALUE_FIELD;

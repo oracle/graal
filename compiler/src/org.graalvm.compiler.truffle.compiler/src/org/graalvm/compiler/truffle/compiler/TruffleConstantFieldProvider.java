@@ -29,20 +29,26 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.ConstantFieldInfo;
+import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class TruffleConstantFieldProvider implements ConstantFieldProvider {
     private final ConstantFieldProvider graalConstantFieldProvider;
     private final MetaAccessProvider metaAccess;
+    private final KnownTruffleTypes types;
     private final ConcurrentHashMap<ResolvedJavaField, ConstantFieldInfo> cachedConstantFieldInfo;
+    private final ResolvedJavaType byteArrayType;
 
-    public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess) {
+    public TruffleConstantFieldProvider(ConstantFieldProvider graalConstantFieldProvider, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
         this.graalConstantFieldProvider = graalConstantFieldProvider;
         this.metaAccess = metaAccess;
+        this.types = types;
+        this.byteArrayType = metaAccess.lookupJavaType(byte[].class);
         this.cachedConstantFieldInfo = new ConcurrentHashMap<>();
     }
 
@@ -52,6 +58,28 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
         if (!isStaticField && tool.getReceiver().isNull()) {
             // can't be optimized
             return null;
+        }
+
+        // well-known internal fields of AbstractTruffleString
+        if (types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field)) {
+            // only applies to the immutable subclass TruffleString, not MutableTruffleString
+            if (types.truffleStringType.isAssignableFrom(metaAccess.lookupJavaType(tool.getReceiver()))) {
+                JavaConstant value = tool.readValue();
+                if (value != null) {
+                    if (types.truffleStringDataField.equals(field)) {
+                        // the "data" field is implicitly stable if it contains a byte array
+                        if (byteArrayType.isAssignableFrom(metaAccess.lookupJavaType(value))) {
+                            return tool.foldStableArray(value, 1, true);
+                        }
+                    } else {
+                        assert types.truffleStringHashCodeField.equals(field);
+                        // the "hashCode" field is stable if its value is not zero
+                        if (!value.isDefaultForKind()) {
+                            return tool.foldConstant(value);
+                        }
+                    }
+                }
+            }
         }
 
         boolean isArrayField = field.getType().isArray();
@@ -89,6 +117,11 @@ public class TruffleConstantFieldProvider implements ConstantFieldProvider {
             return readConstantFieldFast(field, tool);
         }
         return null;
+    }
+
+    @Override
+    public boolean maybeFinal(ResolvedJavaField field) {
+        return types.truffleStringDataField.equals(field) || types.truffleStringHashCodeField.equals(field) || graalConstantFieldProvider.maybeFinal(field);
     }
 
     private ConstantFieldInfo getConstantFieldInfo(ResolvedJavaField field) {

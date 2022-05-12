@@ -24,13 +24,11 @@
  */
 package org.graalvm.compiler.core.common.spi;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaType;
@@ -51,35 +49,21 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     protected JavaConstantFieldProvider(MetaAccessProvider metaAccess) {
         try {
             ResolvedJavaType stringType = metaAccess.lookupJavaType(String.class);
-            ResolvedJavaField[] stringFields = stringType.getInstanceFields(false);
-            ResolvedJavaField valueField = null;
-            ResolvedJavaField hashField = null;
-            for (ResolvedJavaField field : stringFields) {
-                if (field.getName().equals("value")) {
-                    valueField = field;
-                } else if (field.getName().equals("hash")) {
-                    hashField = field;
-                }
-            }
-            if (valueField == null) {
-                throw new GraalError("missing field value " + Arrays.toString(stringFields));
-            }
-            if (hashField == null) {
-                throw new GraalError("missing field hash " + Arrays.toString(stringFields));
-            }
-            stringValueField = valueField;
-            stringHashField = hashField;
-            ArrayList<StableFieldProvider> matchers = new ArrayList<>();
-            for (StableFieldProviderProvider p : GraalServices.load(StableFieldProviderProvider.class)) {
-                StableFieldProvider matcher = p.get(metaAccess);
-                if (matcher != null) {
-                    matchers.add(matcher);
-                }
-            }
-            stableFieldProviders = matchers.toArray(new StableFieldProvider[0]);
+            stringValueField = findField(stringType, "value");
+            stringHashField = findField(stringType, "hash");
         } catch (SecurityException e) {
             throw new GraalError(e);
         }
+    }
+
+    private static ResolvedJavaField findField(ResolvedJavaType type, String fieldName) {
+        ResolvedJavaField[] stringFields = type.getInstanceFields(false);
+        for (ResolvedJavaField field : stringFields) {
+            if (field.getName().equals(fieldName)) {
+                return field;
+            }
+        }
+        throw new GraalError("missing field \"" + fieldName + "\" " + Arrays.toString(stringFields));
     }
 
     @Override
@@ -99,33 +83,13 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         return null;
     }
 
-    @Override
-    public boolean maybeFinal(ResolvedJavaField field) {
-        for (StableFieldProvider matcher : stableFieldProviders) {
-            if (matcher.maybeStableField(field)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     protected <T> T foldStableArray(JavaConstant value, ResolvedJavaField field, ConstantFieldTool<T> tool) {
         return tool.foldStableArray(value, getArrayDimension(field), isDefaultStableField(field, tool));
     }
 
     private int getArrayDimension(ResolvedJavaField field) {
-        for (StableFieldProvider matcher : stableFieldProviders) {
-            int dimensions = matcher.getArrayDimension(field);
-            if (dimensions >= 0) {
-                return dimensions;
-            }
-        }
-        return getArrayDimension(field.getType());
-    }
-
-    private static int getArrayDimension(JavaType type) {
         int dimensions = 0;
-        JavaType componentType = type;
+        JavaType componentType = field.getType();
         while ((componentType = componentType.getComponentType()) != null) {
             dimensions++;
         }
@@ -160,11 +124,6 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         }
         if (field.equals(stringHashField)) {
             return true;
-        }
-        for (StableFieldProvider matcher : stableFieldProviders) {
-            if (matcher.isStableField(field, tool)) {
-                return true;
-            }
         }
         return false;
     }
@@ -209,7 +168,6 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
         return false;
     }
 
-    private final StableFieldProvider[] stableFieldProviders;
     private final ResolvedJavaField stringValueField;
     private final ResolvedJavaField stringHashField;
 
