@@ -257,11 +257,4 @@ public abstract class Property {
      */
     @Deprecated(since = "20.2")
     public abstract Property copyWithFlags(int newFlags);
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated(since = "20.2")
-    public abstract Property copyWithRelocatable(boolean newRelocatable);
 }

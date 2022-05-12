@@ -267,10 +267,4 @@ public final class PropertyImpl extends Property {
     public Property copyWithFlags(int newFlags) {
         return new PropertyImpl(key, location, newFlags);
     }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public Property copyWithRelocatable(boolean newRelocatable) {
-        return this;
-    }
 }
