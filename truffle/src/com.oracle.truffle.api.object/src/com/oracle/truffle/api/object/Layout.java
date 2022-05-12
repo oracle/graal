@@ -102,13 +102,6 @@ public abstract class Layout {
         IntToLong
     }
 
-    /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link Shape#newInstance()} instead
-     */
-    @Deprecated(since = "20.2")
-    public abstract DynamicObject newInstance(Shape shape);
-
     /** @since 0.8 or earlier */
     public abstract Class<? extends DynamicObject> getType();
 
