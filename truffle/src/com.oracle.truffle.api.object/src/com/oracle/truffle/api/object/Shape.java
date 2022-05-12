@@ -707,15 +707,6 @@ public abstract class Shape {
     }
 
     /**
-     * Append the property, relocating it to the next allocated location.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated(since = "20.2")
-    public abstract Shape append(Property oldProperty);
-
-    /**
      * Obtain an {@link Allocator} instance for the purpose of allocating locations.
      *
      * @since 0.8 or earlier
@@ -812,15 +803,6 @@ public abstract class Shape {
      * @since 0.8 or earlier
      */
     public abstract Object getSharedData();
-
-    /**
-     * Clone off a separate shape with new shared data.
-     *
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated(since = "20.2")
-    public abstract Shape createSeparateShape(Object sharedData);
 
     /**
      * Change the shape's type, yielding a new shape.

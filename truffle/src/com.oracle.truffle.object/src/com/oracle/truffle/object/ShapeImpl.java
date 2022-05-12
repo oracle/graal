@@ -841,13 +841,6 @@ public abstract class ShapeImpl extends Shape {
     }
 
     /** @since 0.17 or earlier */
-    @TruffleBoundary
-    @Override
-    public final ShapeImpl append(Property oldProperty) {
-        return addProperty(oldProperty.relocate(allocator().moveLocation(oldProperty.getLocation())));
-    }
-
-    /** @since 0.17 or earlier */
     @Override
     public final BaseAllocator allocator() {
         return getLayoutStrategy().createAllocator(this);
@@ -1031,7 +1024,6 @@ public abstract class ShapeImpl extends Shape {
      * @since 0.17 or earlier
      */
     @TruffleBoundary
-    @Override
     public final ShapeImpl createSeparateShape(Object newSharedData) {
         if (parent == null) {
             return cloneRoot(this, newSharedData);
