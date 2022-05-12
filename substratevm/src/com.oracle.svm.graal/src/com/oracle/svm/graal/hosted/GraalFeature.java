@@ -29,7 +29,6 @@ import static com.oracle.svm.core.util.VMError.guarantee;
 import java.lang.reflect.Executable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
@@ -143,6 +142,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.services.Services;
 
 /**
  * The main handler for running Graal in the Substrate VM at run time. This feature (and features it
@@ -313,7 +313,10 @@ public final class GraalFeature implements Feature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(DeoptimizationFeature.class, FieldsOffsetsFeature.class);
+        if (Services.IS_BUILDING_NATIVE_IMAGE) {
+            return List.of(FieldsOffsetsFeature.class);
+        }
+        return List.of(DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
     @Override
