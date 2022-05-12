@@ -1034,6 +1034,7 @@ public abstract class NFATraversalRegexASTVisitor {
         private final TBitSet captureGroupClears;
         private final int lastGroup;
         private final int index;
+        private final int hashCode;
 
         public DeduplicationKey(RegexASTNode targetNode, int index, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath, QuantifierGuardsLinkedList quantifierGuards, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
             this.nodesInvolved = lookAroundsOnPath.copy();
@@ -1044,6 +1045,7 @@ public abstract class NFATraversalRegexASTVisitor {
             this.captureGroupUpdates = captureGroupUpdates.copy();
             this.captureGroupClears = captureGroupClears.copy();
             this.lastGroup = lastGroup;
+            this.hashCode = calculateHashCode();
         }
 
         @Override
@@ -1055,9 +1057,13 @@ public abstract class NFATraversalRegexASTVisitor {
             return this.nodesInvolved.equals(other.nodesInvolved) && this.index == other.index && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.captureGroupUpdates.equals(other.captureGroupUpdates) && this.captureGroupClears.equals(other.captureGroupClears) && this.lastGroup == other.lastGroup;
         }
 
+        public int calculateHashCode() {
+            return Objects.hash(nodesInvolved, index, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
+        }
+
         @Override
         public int hashCode() {
-            return Objects.hash(nodesInvolved, index, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
+            return hashCode;
         }
     }
 
