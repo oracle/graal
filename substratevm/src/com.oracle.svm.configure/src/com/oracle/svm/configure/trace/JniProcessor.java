@@ -133,8 +133,8 @@ class JniProcessor extends AbstractProcessor {
             }
             case "NewObjectArray": {
                 expectSize(args, 0);
-                String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, true);
-                config.getOrCreateType(condition, arrayQualifiedJavaName);
+                /* Array class name is already in Class.forName format */
+                config.getOrCreateType(condition, clazz);
                 break;
             }
         }
