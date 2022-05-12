@@ -82,6 +82,7 @@ public abstract class Location {
      * @param shape the current shape of the object, which must contain this location
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public final Object get(DynamicObject store, Shape shape) {
         return get(store, store.getShape() == shape);
     }
@@ -94,6 +95,7 @@ public abstract class Location {
      * @see #get(DynamicObject, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public Object get(DynamicObject store, boolean condition) {
         return getInternal(store);
     }
@@ -103,6 +105,7 @@ public abstract class Location {
      *
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public final Object get(DynamicObject store) {
         return get(store, false);
     }
@@ -115,6 +118,7 @@ public abstract class Location {
      * @throws FinalLocationException for effectively final fields
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         setInternal(store, value);
     }
