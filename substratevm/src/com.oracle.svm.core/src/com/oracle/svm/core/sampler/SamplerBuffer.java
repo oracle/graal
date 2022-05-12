@@ -39,13 +39,13 @@ import org.graalvm.word.UnsignedWord;
 interface SamplerBuffer extends PointerBase {
 
     /**
-     * Returns a buffer that is next in the {@link SamplerBufferStack}, otherwise null.
+     * Returns the buffer that is next in the {@link SamplerBufferStack}, otherwise null.
      */
     @RawField
     SamplerBuffer getNext();
 
     /**
-     * Sets a buffer as a new head in the {@link SamplerBufferStack}.
+     * Sets the successor to this node in the {@link SamplerBufferStack}.
      */
     @RawField
     void setNext(SamplerBuffer buffer);

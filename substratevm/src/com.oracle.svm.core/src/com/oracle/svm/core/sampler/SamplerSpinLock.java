@@ -25,7 +25,6 @@
 
 package com.oracle.svm.core.sampler;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -35,13 +34,15 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * The custom implementation of spin lock that is async signal safe.
  * 
  * In some specific situations, the signal handler can interrupt execution while the same thread
- * already has the lock. Other spin lock implementations can deadlock in such a case. So it is
- * essential to check if the current thread is the owner of the lock, before acquiring it.
+ * already has the lock. This implementation will check and fatally fail while other spin locks
+ * implementations can deadlock in this case. So it is essential to check if the current thread is
+ * the owner of the lock, before acquiring it.
  */
 class SamplerSpinLock {
     private final UninterruptibleUtils.AtomicPointer<IsolateThread> owner;

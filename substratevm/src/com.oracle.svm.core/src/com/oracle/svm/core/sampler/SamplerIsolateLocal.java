@@ -58,12 +58,12 @@ class SamplerIsolateLocal implements IsolateListenerSupport.IsolateListener {
     @Override
     @Uninterruptible(reason = "The isolate teardown is in progress.")
     public void onIsolateTeardown() {
-        if (SubstrateSigprofHandler.isProfilingEnabled() && isKeySet()) {
+        if (SubstrateSigprofHandler.singleton().isProfilingEnabled() && isKeySet()) {
             /* Invalidate the isolate-specific key. */
             UnsignedWord oldKey = key;
             key = WordFactory.unsigned(0);
 
-            /* We need to manually call teardown because isKeySet will now return false. */
+            /* Manually disable sampling for the current thread (no other threads are remaining). */
             SamplerThreadLocal.teardown(CurrentIsolate.getCurrentThread());
 
             /* Now, it's safe to delete the isolate-specific key. */

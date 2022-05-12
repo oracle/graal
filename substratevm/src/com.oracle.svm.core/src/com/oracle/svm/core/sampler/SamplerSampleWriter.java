@@ -32,10 +32,13 @@ import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-class SamplerSampleWriter {
+final class SamplerSampleWriter {
 
     private static final int END_MARKER_SIZE = Long.BYTES;
     private static final long END_MARKER = -1;
+
+    private SamplerSampleWriter() {
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean putLong(SamplerSampleWriterData data, long value) {
@@ -86,7 +89,7 @@ class SamplerSampleWriter {
         }
 
         /* Pop first free buffer from the pool. */
-        SamplerBuffer newBuffer = SubstrateSigprofHandler.availableBuffers().popBuffer();
+        SamplerBuffer newBuffer = SubstrateSigprofHandler.singleton().availableBuffers().popBuffer();
         if (newBuffer.isNull()) {
             /* No available buffers on the pool. Fallback! */
             SamplerThreadLocal.increaseMissedSamples();
@@ -99,7 +102,7 @@ class SamplerSampleWriter {
 
         /* Put in the stack with other unprocessed buffers. */
         SamplerBuffer oldBuffer = data.getSamplerBuffer();
-        SubstrateSigprofHandler.fullBuffers().pushBuffer(oldBuffer);
+        SubstrateSigprofHandler.singleton().fullBuffers().pushBuffer(oldBuffer);
 
         /* Reinitialize data structure. */
         data.setSamplerBuffer(newBuffer);

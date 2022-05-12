@@ -50,7 +50,7 @@ class SamplerBufferStack {
     }
 
     /**
-     * Push a profiler buffer into the global linked list.
+     * Push the buffer into the linked-list.
      */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void pushBuffer(SamplerBuffer buffer) {
@@ -64,7 +64,7 @@ class SamplerBufferStack {
     }
 
     /**
-     * Pop a profiler buffer from the global linked list. Returns {@code null} if the list is empty.
+     * Pop the buffer from the linked-list. Returns {@code null} if the list is empty.
      */
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public SamplerBuffer popBuffer() {
@@ -81,9 +81,6 @@ class SamplerBufferStack {
         }
     }
 
-    /**
-     * Returns the lock that this stack is using.
-     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isLockedByCurrentThread() {
         return spinLock.isOwner();

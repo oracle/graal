@@ -185,23 +185,23 @@ public abstract class SubstrateSigprofHandler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static boolean isProfilingEnabled() {
-        return singleton().enabled;
+    boolean isProfilingEnabled() {
+        return enabled;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static SamplerBufferStack availableBuffers() {
-        return singleton().availableBuffers;
+    SamplerBufferStack availableBuffers() {
+        return availableBuffers;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static SamplerBufferStack fullBuffers() {
-        return singleton().fullBuffers;
+    SamplerBufferStack fullBuffers() {
+        return fullBuffers;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    static SubstrateThreadMXBean getSubstrateThreadMXBean() {
-        return singleton().threadMXBean;
+    SubstrateThreadMXBean substrateThreadMXBean() {
+        return threadMXBean;
     }
 
     /**
@@ -287,7 +287,7 @@ public abstract class SubstrateSigprofHandler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean prepareStackWalk(SamplerSampleWriterData data) {
-        if (availableBuffers().isLockedByCurrentThread() || fullBuffers().isLockedByCurrentThread()) {
+        if (singleton().availableBuffers().isLockedByCurrentThread() || singleton().fullBuffers().isLockedByCurrentThread()) {
             /*
              * The current thread already holds the stack lock, so we can't access it. It's way
              * better to lose one sample, then potentially the whole buffer.
@@ -299,7 +299,7 @@ public abstract class SubstrateSigprofHandler {
         SamplerBuffer buffer = SamplerThreadLocal.getThreadLocalBuffer();
         if (buffer.isNull()) {
             /* Pop first free buffer from the pool. */
-            buffer = availableBuffers().popBuffer();
+            buffer = singleton().availableBuffers().popBuffer();
             if (buffer.isNull()) {
                 /* No available buffers on the pool. Fallback! */
                 SamplerThreadLocal.increaseMissedSamples();
@@ -369,13 +369,13 @@ public abstract class SubstrateSigprofHandler {
          */
         @Uninterruptible(reason = "Prevent pollution of the current thread's thread local JFR buffer.")
         private void initialize() {
-            enabled = true;
             /*
              * Iterate all over all thread and initialize the thread-local storage of each thread.
              */
             for (IsolateThread thread = VMThreads.firstThread(); thread.isNonNull(); thread = VMThreads.nextThread(thread)) {
                 SamplerThreadLocal.initialize(thread);
             }
+            enabled = true;
         }
     }
 }

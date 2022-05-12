@@ -50,7 +50,7 @@ class SamplerThreadLocal implements ThreadListener {
     @Override
     @Uninterruptible(reason = "Only uninterruptible code may be executed before Thread.run.")
     public void beforeThreadRun(IsolateThread isolateThread, Thread javaThread) {
-        if (SubstrateSigprofHandler.isProfilingEnabled()) {
+        if (SubstrateSigprofHandler.singleton().isProfilingEnabled()) {
             initialize(isolateThread);
         }
     }
@@ -75,7 +75,7 @@ class SamplerThreadLocal implements ThreadListener {
     @Override
     @Uninterruptible(reason = "Only uninterruptible code may be executed after Thread.exit.")
     public void afterThreadExit(IsolateThread isolateThread, Thread javaThread) {
-        if (SubstrateSigprofHandler.isProfilingEnabled() && SamplerIsolateLocal.isKeySet()) {
+        if (SubstrateSigprofHandler.singleton().isProfilingEnabled() && SamplerIsolateLocal.isKeySet()) {
             teardown(isolateThread);
         }
     }
@@ -94,7 +94,7 @@ class SamplerThreadLocal implements ThreadListener {
 
         /* Adjust the number of buffers (including the thread-local buffer). */
         SamplerBuffer threadLocalBuffer = localBuffer.get(isolateThread);
-        SamplerBufferPool.adjustBufferCount(threadLocalBuffer);
+        SamplerBufferPool.releaseBufferAndAdjustCount(threadLocalBuffer);
         localBuffer.set(isolateThread, WordFactory.nullPointer());
     }
 

@@ -41,44 +41,59 @@ class SamplerBufferPool {
 
     private static final long THREAD_BUFFER_SIZE = Options.getThreadBufferSize();
 
-    private static final VMMutex mutex = new VMMutex("profilerBufferUtils");
+    private static final VMMutex mutex = new VMMutex("SamplerBufferPool");
 
     private static long bufferCount;
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    public static void adjustBufferCount(SamplerBuffer threadLocalBuffer) {
-        mutex.lockNoTransition();
-        try {
-            releaseThreadLocalBuffer(threadLocalBuffer);
-            adjustBufferCount0();
-        } finally {
-            mutex.unlock();
-        }
+    public static void releaseBufferAndAdjustCount(SamplerBuffer threadLocalBuffer) {
+        adjustBufferCount0(threadLocalBuffer);
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
     public static void adjustBufferCount() {
+        adjustBufferCount0(WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
+    private static void adjustBufferCount0(SamplerBuffer threadLocalBuffer) {
         mutex.lockNoTransition();
         try {
-            adjustBufferCount0();
+            releaseThreadLocalBuffer(threadLocalBuffer);
+            long diff = diff();
+            if (diff > 0) {
+                for (int i = 0; i < diff; i++) {
+                    allocateAndPush();
+                }
+            } else {
+                for (long i = diff; i < 0; i++) {
+                    if (!popAndFree()) {
+                        break;
+                    }
+                }
+            }
         } finally {
             mutex.unlock();
         }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    public static void adjustBufferCount0() {
-        long diff = diff();
-        if (diff > 0) {
-            for (int i = 0; i < diff; i++) {
-                allocateAndPush();
+    private static void releaseThreadLocalBuffer(SamplerBuffer buffer) {
+        /*
+         * buffer is null if the thread is not running yet, or we did not perform the stack walk for
+         * this thread during the run.
+         */
+        if (buffer.isNonNull()) {
+            if (SamplerBufferAccess.isEmpty(buffer)) {
+                /* We can free it right away. */
+                SamplerBufferAccess.free(buffer);
+            } else {
+                /* Put it in the stack with other unprocessed buffers. */
+                buffer.setFreeable(true);
+                SubstrateSigprofHandler.singleton().fullBuffers().pushBuffer(buffer);
             }
-        } else {
-            for (long i = diff; i < 0; i++) {
-                if (!popAndFree()) {
-                    break;
-                }
-            }
+            VMError.guarantee(bufferCount > 0);
+            bufferCount--;
         }
     }
 
@@ -89,42 +104,26 @@ class SamplerBufferPool {
         if (buffer.isNull()) {
             return;
         }
-        SubstrateSigprofHandler.availableBuffers().pushBuffer(buffer);
+        SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
         bufferCount++;
-    }
-
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.", mayBeInlined = true)
-    private static void releaseThreadLocalBuffer(SamplerBuffer buffer) {
-        /* buffer will be null if no stack walk were performed. */
-        if (buffer.isNonNull()) {
-            if (SamplerBufferAccess.isEmpty(buffer)) {
-                /* We can free it right away. */
-                SamplerBufferAccess.free(buffer);
-            } else {
-                /* Put it in the stack with other unprocessed buffers. */
-                buffer.setFreeable(true);
-                SubstrateSigprofHandler.fullBuffers().pushBuffer(buffer);
-            }
-            VMError.guarantee(bufferCount > 0);
-            bufferCount--;
-        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean popAndFree() {
         VMError.guarantee(bufferCount > 0);
-        SamplerBuffer buffer = SubstrateSigprofHandler.availableBuffers().popBuffer();
+        SamplerBuffer buffer = SubstrateSigprofHandler.singleton().availableBuffers().popBuffer();
         if (buffer.isNonNull()) {
             SamplerBufferAccess.free(buffer);
             bufferCount--;
+            return true;
+        } else {
             return false;
         }
-        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long diff() {
-        double diffD = SubstrateSigprofHandler.getSubstrateThreadMXBean().getThreadCount() * 1.5 - bufferCount;
+        double diffD = SubstrateSigprofHandler.singleton().substrateThreadMXBean().getThreadCount() * 1.5 - bufferCount;
         return (long) (diffD + 0.5);
     }
 }
