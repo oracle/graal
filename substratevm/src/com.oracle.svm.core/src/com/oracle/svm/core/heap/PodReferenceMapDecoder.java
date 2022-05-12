@@ -27,6 +27,7 @@ package com.oracle.svm.core.heap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -80,6 +81,12 @@ public final class PodReferenceMapDecoder {
         return result;
     }
 
+    /**
+     * We could optimize cloning if it turns out to be a bottleneck by avoiding this and passing the
+     * existing pod to {@link NewPodInstanceNode} (and its slow path), but this needs some
+     * duplication of nodes and snippets to avoid touching the {@link LocationIdentity} of extra
+     * objects in situations in which we don't need to.
+     */
     private static byte[] extractReferenceMap(Object obj, int layoutEncoding, int length) {
         UnsignedWord mapEndOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, length);
         UnsignedWord mapOffset = mapEndOffset;
@@ -114,11 +121,10 @@ public final class PodReferenceMapDecoder {
             nrefs = WordFactory.unsigned(Byte.toUnsignedInt(BarrieredAccess.readByte(copy, mapOffset.add(1))));
 
             // Copy references separately with the required barriers
-            UnsignedWord refBytes = nrefs.multiply(referenceSize);
-            JavaMemoryUtil.copyReferencesForward(original, refOffset, copy, refOffset, refBytes);
+            JavaMemoryUtil.copyReferencesForward(original, refOffset, copy, refOffset, nrefs);
 
             // Copy primitives in between
-            UnsignedWord primOffset = refOffset.add(refBytes);
+            UnsignedWord primOffset = refOffset.add(nrefs.multiply(referenceSize));
             UnsignedWord primBytes = gap.multiply(referenceSize);
             JavaMemoryUtil.copyForward(original, primOffset, copy, primOffset, primBytes);
 
@@ -127,6 +133,10 @@ public final class PodReferenceMapDecoder {
 
         // The loop above could be optimized for very long sequences of references or primitive
         // values encoded in multiple reference map entries, but those should be rare in practice.
+
+        // Copy primitives between last reference and reference map
+        UnsignedWord primBytes = mapOffset.subtract(refOffset);
+        JavaMemoryUtil.copyForward(original, refOffset, copy, refOffset, primBytes);
     }
 
     private PodReferenceMapDecoder() {

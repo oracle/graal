@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.replacements.AllocationSnippets;
 import org.graalvm.word.Pointer;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
@@ -45,11 +46,12 @@ public class FormatPodNode extends FixedWithNextNode implements Lowerable {
     @Input protected ValueNode referenceMap;
     @Input protected ValueNode rememberedSet;
     @Input protected ValueNode unaligned;
+    @Input protected ValueNode fillContents;
     @Input protected ValueNode fillStartOffset;
-    @Input protected ValueNode emitMemoryBarrier;
+    private final boolean emitMemoryBarrier;
 
-    public FormatPodNode(ValueNode memory, ValueNode hub, ValueNode arrayLength, ValueNode referenceMap,
-                    ValueNode rememberedSet, ValueNode unaligned, ValueNode fillStartOffset, ValueNode emitMemoryBarrier) {
+    public FormatPodNode(ValueNode memory, ValueNode hub, ValueNode arrayLength, ValueNode referenceMap, ValueNode rememberedSet,
+                    ValueNode unaligned, ValueNode fillContents, ValueNode fillStartOffset, boolean emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
@@ -57,6 +59,7 @@ public class FormatPodNode extends FixedWithNextNode implements Lowerable {
         this.referenceMap = referenceMap;
         this.rememberedSet = rememberedSet;
         this.unaligned = unaligned;
+        this.fillContents = fillContents;
         this.fillStartOffset = fillStartOffset;
         this.emitMemoryBarrier = emitMemoryBarrier;
     }
@@ -85,15 +88,19 @@ public class FormatPodNode extends FixedWithNextNode implements Lowerable {
         return unaligned;
     }
 
+    public ValueNode getFillContents() {
+        return fillContents;
+    }
+
     public ValueNode getFillStartOffset() {
         return fillStartOffset;
     }
 
-    public ValueNode getEmitMemoryBarrier() {
+    public boolean getEmitMemoryBarrier() {
         return emitMemoryBarrier;
     }
 
     @NodeIntrinsic
-    public static native Object formatPod(Pointer memory, Class<?> hub, int arrayLength, byte[] referenceMap,
-                    boolean rememberedSet, boolean unaligned, int fillStartOffset, boolean emitMemoryBarrier);
+    public static native Object formatPod(Pointer memory, Class<?> hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned,
+                    AllocationSnippets.FillContent fillContents, int fillStartOffset, @ConstantNodeParameter boolean emitMemoryBarrier);
 }

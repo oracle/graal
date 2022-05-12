@@ -84,10 +84,13 @@ public class LayoutEncoding {
     private static final int ARRAY_BASE_MASK = 0xfff;
     private static final int ARRAY_TAG_BITS = 3;
     private static final int ARRAY_TAG_SHIFT = Integer.SIZE - ARRAY_TAG_BITS;
-    private static final int ARRAY_TAG_PRIMITIVE_VALUE = 0b111;
-    private static final int ARRAY_TAG_HYBRID_PRIMITIVE_VALUE = 0b110;
-    private static final int ARRAY_TAG_HYBRID_OBJECT_VALUE = 0b101;
-    private static final int ARRAY_TAG_OBJECT_VALUE = 0b100;
+    private static final int ARRAY_TAG_IDENTITY_BIT = 0b100;
+    private static final int ARRAY_TAG_PRIMITIVE_BIT = 0b010;
+    private static final int ARRAY_TAG_PURE_BIT = 0b001; // means non-hybrid
+    private static final int ARRAY_TAG_PRIMITIVE_VALUE = ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PRIMITIVE_BIT | ARRAY_TAG_PURE_BIT; // 0b111
+    private static final int ARRAY_TAG_HYBRID_PRIMITIVE_VALUE = ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PRIMITIVE_BIT;               // 0b110
+    private static final int ARRAY_TAG_OBJECT_VALUE = ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PURE_BIT;                              // 0b101
+    private static final int ARRAY_TAG_HYBRID_OBJECT_VALUE = ARRAY_TAG_IDENTITY_BIT;                                            // 0b100
 
     public static int forPrimitive() {
         return PRIMITIVE_VALUE;
@@ -119,6 +122,7 @@ public class LayoutEncoding {
         int encoding = size;
         guaranteeEncoding(type, true, isPureInstance(encoding), "Instance type encoding denotes an instance");
         guaranteeEncoding(type, false, isArray(encoding) || isArrayLike(encoding), "Instance type encoding denotes an array-like object");
+        guaranteeEncoding(type, false, isHybrid(encoding), "Instance type encoding denotes a hybrid");
         guaranteeEncoding(type, false, isObjectArray(encoding) || isArrayLikeWithObjectElements(encoding), "Instance type encoding denotes an object array");
         guaranteeEncoding(type, false, isPrimitiveArray(encoding) || isArrayLikeWithPrimitiveElements(encoding), "Instance type encoding denotes a primitive array");
         guaranteeEncoding(type, true, getPureInstanceSize(encoding).equal(WordFactory.unsigned(size)), "Instance type encoding size matches type size");
@@ -144,6 +148,7 @@ public class LayoutEncoding {
 
         guaranteeEncoding(type, true, isArrayLike(encoding), "Array-like object encoding denotes an array-like object");
         guaranteeEncoding(type, !isHybrid, isArray(encoding), "Encoding denotes an array");
+        guaranteeEncoding(type, isHybrid, isHybrid(encoding), "Encoding denotes a hybrid");
         guaranteeEncoding(type, false, isPureInstance(encoding), "Array-like object encoding denotes an instance type");
         guaranteeEncoding(type, objectElements, isArrayLikeWithObjectElements(encoding), "Encoding denotes an array-like object with object elements");
         guaranteeEncoding(type, !objectElements, isArrayLikeWithPrimitiveElements(encoding), "Encoding denotes an array-like object with primitive elements");
@@ -180,16 +185,22 @@ public class LayoutEncoding {
         return WordFactory.unsigned(encoding);
     }
 
-    // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArray(int encoding) {
-        return isPrimitiveArray(encoding) || isObjectArray(encoding);
+        int mask = (ARRAY_TAG_IDENTITY_BIT | ARRAY_TAG_PURE_BIT) << ARRAY_TAG_SHIFT;
+        return (encoding & mask) == mask;
     }
 
-    // May be inlined because it does not deal in Pointers.
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArrayLike(int encoding) {
         return encoding < NEUTRAL_VALUE;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isHybrid(int encoding) {
+        int setBits = ARRAY_TAG_IDENTITY_BIT << ARRAY_TAG_SHIFT;
+        int mask = setBits | (ARRAY_TAG_PURE_BIT << ARRAY_TAG_SHIFT);
+        return (encoding & mask) == setBits;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -199,19 +210,17 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isObjectArray(int encoding) {
-        return encoding <= ~(~ARRAY_TAG_OBJECT_VALUE << ARRAY_TAG_SHIFT);
+        return (encoding >>> ARRAY_TAG_SHIFT) == ARRAY_TAG_OBJECT_VALUE;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArrayLikeWithPrimitiveElements(int encoding) {
-        int tag = (encoding >>> ARRAY_TAG_SHIFT);
-        return (tag == ARRAY_TAG_PRIMITIVE_VALUE || tag == ARRAY_TAG_HYBRID_PRIMITIVE_VALUE);
+        return UnsignedMath.aboveOrEqual(encoding, ARRAY_TAG_HYBRID_PRIMITIVE_VALUE << ARRAY_TAG_SHIFT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isArrayLikeWithObjectElements(int encoding) {
-        int tag = (encoding >>> ARRAY_TAG_SHIFT);
-        return (tag == ARRAY_TAG_OBJECT_VALUE || tag == ARRAY_TAG_HYBRID_OBJECT_VALUE);
+        return encoding <= ~(~ARRAY_TAG_OBJECT_VALUE << ARRAY_TAG_SHIFT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -135,7 +135,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            instance = formatPod(top, hub, arrayLength, referenceMap, false, false, afterArrayLengthOffset(),
+            instance = formatPod(top, hub, arrayLength, referenceMap, false, false, FillContent.WITH_ZEROES, afterArrayLengthOffset(),
                             emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
@@ -146,23 +146,24 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatPodSnippet(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, int fillStartOffset, boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
+    public Object formatPodSnippet(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned,
+                    FillContent fillContents, int fillStartOffset, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean supportsBulkZeroing,
+                    @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
 
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         byte[] refMapNonNull = (byte[]) PiNode.piCastNonNull(referenceMap, SnippetAnchorNode.anchor());
-        return formatPod(memory, hubNonNull, arrayLength, refMapNonNull, rememberedSet, unaligned, fillStartOffset,
+        return formatPod(memory, hubNonNull, arrayLength, refMapNonNull, rememberedSet, unaligned, fillContents, fillStartOffset,
                         emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
 
-    private Object formatPod(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, int fillStartOffset,
+    private Object formatPod(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, FillContent fillContents, int fillStartOffset,
                     boolean emitMemoryBarrier, boolean maybeUnroll, boolean supportsBulkZeroing, boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
 
         int layoutEncoding = hub.getLayoutEncoding();
         UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, arrayLength);
 
         Word objectHeader = encodeAsObjectHeader(hub, rememberedSet, unaligned);
-        Object instance = formatArray(objectHeader, allocationSize, arrayLength, memory, FillContent.WITH_ZEROES, fillStartOffset,
+        Object instance = formatArray(objectHeader, allocationSize, arrayLength, memory, fillContents, fillStartOffset,
                         false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
 
         int fromOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
@@ -341,8 +342,9 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 args.add("referenceMap", node.getReferenceMap());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("unaligned", node.getUnaligned());
+                args.add("fillContents", node.getFillContents());
                 args.add("fillStartOffset", node.getFillStartOffset());
-                args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
+                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", snippetCounters);

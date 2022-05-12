@@ -153,15 +153,14 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         }
 
         // copy remaining non-object data
-        if (!isArrayLike) {
-            int objectSize = UnsignedUtils.safeToInt(LayoutEncoding.getPureInstanceSize(layoutEncoding));
-            int primitiveDataSize = objectSize - curOffset;
-            assert primitiveDataSize >= 0;
-            assert curOffset >= 0;
-            JavaMemoryUtil.copyForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
-            curOffset += primitiveDataSize;
-            assert curOffset == objectSize;
-        }
+        int endOffset = isArrayLike ? LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding)
+                        : UnsignedUtils.safeToInt(LayoutEncoding.getPureInstanceSize(layoutEncoding));
+        int primitiveDataSize = endOffset - curOffset;
+        assert primitiveDataSize >= 0;
+        assert curOffset >= 0;
+        JavaMemoryUtil.copyForward(original, WordFactory.unsigned(curOffset), result, WordFactory.unsigned(curOffset), WordFactory.unsigned(primitiveDataSize));
+        curOffset += primitiveDataSize;
+        assert curOffset == endOffset;
 
         // reset monitor to uninitialized values
         int monitorOffset = hub.getMonitorOffset();
@@ -178,15 +177,15 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             return true;
         }
         ResolvedJavaType type = node.getConcreteType(alias.stamp(NodeView.DEFAULT));
-        if (type == null) {
-            return false;
-        }
-        if (!type.isArray() && type instanceof SharedType) {
+        if (type instanceof SharedType) {
             // Hybrids are instances with array-like encoding; cloning virtually is unimplemented.
             int encoding = ((SharedType) type).getHub().getLayoutEncoding();
-            return !LayoutEncoding.isArrayLike(encoding);
+            return !LayoutEncoding.isHybrid(encoding);
         }
-        return true;
+        if (type != null && type.isArray()) {
+            return true; // cannot be a hybrid
+        }
+        return false;
     }
 
     @NodeIntrinsic(value = ForeignCallNode.class)

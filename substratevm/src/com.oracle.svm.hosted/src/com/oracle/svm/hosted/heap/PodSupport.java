@@ -65,6 +65,7 @@ import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.org.objectweb.asm.ClassWriter;
 import jdk.internal.org.objectweb.asm.Type;
+import jdk.vm.ci.meta.JavaKind;
 
 /** Support for preparing the creation of {@link Pod} objects during the image build. */
 public interface PodSupport {
@@ -204,7 +205,7 @@ final class PodFeature implements PodSupport, Feature {
         int access = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC | ACC_FINAL;
         writer.visit(V11, access, className.replace('.', '/'), null, Type.getInternalName(superClass), null);
         var annotation = writer.visitAnnotation(Type.getDescriptor(Hybrid.class), true);
-        annotation.visit("arrayType", Type.getType(byte[].class));
+        annotation.visit("componentType", Type.getType(byte.class));
         annotation.visitEnd();
         writer.visitEnd();
         byte[] data = writer.toByteArray();
@@ -250,7 +251,11 @@ final class PodFeature implements PodSupport, Feature {
             impl.visitCode(); // substituted with custom graph
             impl.visitInsn(ACONST_NULL);
             impl.visitInsn(ARETURN);
-            impl.visitMaxs(1, method.getParameterCount() + 1);
+            int localSlots = 1; // spare slot needed by generated graph
+            for (Class<?> clazz : method.getParameterTypes()) {
+                localSlots += JavaKind.fromJavaClass(clazz).getSlotCount();
+            }
+            impl.visitMaxs(1, localSlots);
             impl.visitEnd();
         }
         writer.visitEnd();

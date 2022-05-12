@@ -128,7 +128,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
          * target. We must be careful to use values only from the frame state, so we keep the
          * allocated instance in a local and load it after each step during which a deopt can occur.
          */
-        int instanceLocal = method.getSignature().getParameterCount(true);
+        int instanceLocal = kit.getFrameState().localsSize() - 1; // reserved when generating class
         int nextDeoptIndex = startMethod(kit, isDeoptTarget, 0);
         instantiatePod(kit, providers, factoryType, podConcreteType, instanceLocal);
         if (isAnnotationPresent(DeoptTest.class)) {

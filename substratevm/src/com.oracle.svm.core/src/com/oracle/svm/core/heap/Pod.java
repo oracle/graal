@@ -177,6 +177,19 @@ public final class Pod<T> {
             guaranteeUnbuilt();
             built = true;
 
+            /*
+             * We layout the requested fields in the hybrid object's array part in a similar fashion
+             * as UniverseBuilder does for regular instance fields, putting reference fields at the
+             * beginning and trying to put narrow fields in alignment gaps between wider fields. The
+             * entire layout of a pod might look as follows:
+             *
+             * [ hub pointer | identity hashcode | array length | superclass instance fields |
+             * instance fields | monitor | pod fields (ref, short, byte, long) | pod reference map ]
+             *
+             * The array length part would provide the combined length of the pod fields and pod
+             * reference map excluding any alignment padding at their beginning or the object's end.
+             */
+
             Collections.sort(fields);
 
             UnsignedWord baseOffset = LayoutEncoding.getArrayBaseOffset(
@@ -346,6 +359,20 @@ public final class Pod<T> {
             bitset.set(index);
         }
 
+        /**
+         * Generates a reference map composed of unsigned byte pairs of {@code nrefs} (sequence of n
+         * references) and {@code gaps} (number of sequential reference-sized primitives). When a
+         * single lengthy sequence of references or primitives cannot be encoded in an unsigned
+         * byte, it is encoded in multiple pairs with either gaps or nrefs being 0. The reference
+         * map covers only the part of the array from the beginning until the last reference. The
+         * end of the reference map is indicated by a pair with {@code gaps} == 0, unless
+         * {@code nrefs} is 0xff which could also mean that the pair is part of an ongoing sequence,
+         * in which case an extra zero pair is added at the end.
+         *
+         * We try to place reference fields at the beginning, so the reference map begins with
+         * {@code nrefs} indicating the number of references right at the start of the array. If
+         * there are primitive fields at the beginning, this first value will be zero.
+         */
         byte[] encode() {
             if (bitset.isEmpty()) {
                 return new byte[]{0, 0};
@@ -354,7 +381,7 @@ public final class Pod<T> {
             ByteArrayOutputStream buffer = new ByteArrayOutputStream();
             int previous;
             int index = 0;
-            for (;;) { // assume references are placed first
+            for (;;) {
                 previous = index;
                 index = bitset.nextClearBit(previous);
                 int nrefs = index - previous;

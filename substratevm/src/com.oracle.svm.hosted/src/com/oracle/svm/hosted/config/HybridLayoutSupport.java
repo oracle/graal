@@ -78,13 +78,15 @@ public class HybridLayoutSupport {
         }
 
         HostedType arrayType;
-        boolean arrayTypeIsSet = (annotation.arrayType() != Hybrid.Array.class);
+        boolean arrayTypeIsSet = (annotation.componentType() != void.class);
         if (foundArrayField != null) {
             arrayType = foundArrayField.getType();
-            assert !arrayTypeIsSet || arrayType.equals(metaAccess.lookupJavaType(annotation.arrayType())) : "@Hybrid.arrayType must match the type of a @Hybrid.Array field when both are present";
+
+            assert !arrayTypeIsSet || arrayType.equals(metaAccess.lookupJavaType(annotation.componentType()).getArrayClass()) : //
+            "@Hybrid.componentType must match the type of a @Hybrid.Array field when both are present";
         } else {
-            assert arrayTypeIsSet : "@Hybrid.arrayType must be set when no @Hybrid.Array field is present (if present, ensure it is reachable)";
-            arrayType = (HostedArrayClass) metaAccess.lookupJavaType(annotation.arrayType());
+            assert arrayTypeIsSet : "@Hybrid.componentType must be set when no @Hybrid.Array field is present (if present, ensure it is reachable)";
+            arrayType = (HostedArrayClass) metaAccess.lookupJavaType(annotation.componentType()).getArrayClass();
         }
         assert arrayType.isArray();
         return new HybridInfo(arrayType, foundArrayField, foundTypeIDSlotsField);

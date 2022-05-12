@@ -31,7 +31,7 @@ import com.oracle.svm.core.annotate.Hybrid;
  *
  * For object layout and other implementation details, see {@link StoredContinuationImpl}.
  */
-@Hybrid(arrayType = byte[].class)
+@Hybrid(componentType = byte.class)
 public final class StoredContinuation {
     /** Must be allocated via {@link StoredContinuationImpl}. */
     private StoredContinuation() {

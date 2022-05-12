@@ -1671,7 +1671,7 @@ public class NativeImageGenerator {
             } else if (LayoutEncoding.isPureInstance(le)) {
                 System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceSize(le).rawValue());
             } else if (LayoutEncoding.isArrayLike(le)) {
-                String arrayType = LayoutEncoding.isArray(le) ? "array" : "array-like object";
+                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
                 String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
                 System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(),
                                 LayoutEncoding.getArrayIndexShift(le), LayoutEncoding.getArrayIndexScale(le));

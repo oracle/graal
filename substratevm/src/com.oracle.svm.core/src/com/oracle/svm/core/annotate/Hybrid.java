@@ -62,18 +62,18 @@ import com.oracle.svm.core.hub.LayoutEncoding;
  * important to keep in mind because methods such as {@link Class#isInstance} will return
  * {@code true} and {@link Class#isArray()} will return {@code false}, while
  * {@link LayoutEncoding#isPureInstance} will return {@code false} and
- * {@link LayoutEncoding#isArrayLike} will return {@code true} and for hybrid objects.
+ * {@link LayoutEncoding#isArrayLike} will return {@code true} for hybrid objects.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 public @interface Hybrid {
 
     /**
-     * The type of the array part of the hybrid class. Must be specified if no field annotated
-     * with @{@link Hybrid.Array} is declared, otherwise that field's type determines the type of
-     * the array part.
+     * The component type of the array part of the hybrid class. Must be specified if no field
+     * annotated with @{@link Hybrid.Array} is declared, otherwise that field's type determines the
+     * type of the array part.
      */
-    Class<?> arrayType() default Array.class;
+    Class<?> componentType() default void.class;
 
     /**
      * If {@code true}, allow the data in the hybrid fields to be duplicated between the hybrid
