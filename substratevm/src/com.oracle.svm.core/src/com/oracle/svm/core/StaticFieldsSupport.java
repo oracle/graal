@@ -134,25 +134,25 @@ public final class StaticFieldsSupport {
          * {@link StaticFieldBaseNode}, and {@link StaticFieldBaseNode} is lowered by calling
          * {@link StaticFieldsSupport#getStaticPrimitiveFields}. So why does this code work?
          *
-         * The intrinsification to the {@link StaticFieldBaseNode} is only effective for code executed
-         * at image run time. So when executed during AOT compilation, {@link StaticFieldBaseNode#lower}
-         * really invokes {@link StaticFieldsSupport#getStaticPrimitiveFields}, which returns the proper
-         * result.
+         * The intrinsification to the {@link StaticFieldBaseNode} is only effective for code
+         * executed at image run time. So when executed during AOT compilation,
+         * {@link StaticFieldBaseNode#lower} really invokes
+         * {@link StaticFieldsSupport#getStaticPrimitiveFields}, which returns the proper result.
          *
          * For an image that uses Graal as a JIT compiler, {@link StaticFieldBaseNode#lower} is
-         * reachable at run time. But it is AOT compiled, and lowering during that AOT compilation again
-         * invokes {@link StaticFieldsSupport#getStaticPrimitiveFields}.
+         * reachable at run time. But it is AOT compiled, and lowering during that AOT compilation
+         * again invokes {@link StaticFieldsSupport#getStaticPrimitiveFields}.
          *
-         * So in summary, this code works because there is proper "bootstrapping" during AOT compilation
-         * where the intrinsification is not applied.
+         * So in summary, this code works because there is proper "bootstrapping" during AOT
+         * compilation where the intrinsification is not applied.
          */
         @Override
         public void lower(LoweringTool tool) {
             if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
                 /*
-                 * Lowering to a ConstantNode must only happen after the memory graph has been built,
-                 * i.e., when the information that static fields are stored in an array is no longer
-                 * misleading alias analysis.
+                 * Lowering to a ConstantNode must only happen after the memory graph has been
+                 * built, i.e., when the information that static fields are stored in an array is no
+                 * longer misleading alias analysis.
                  */
                 return;
             }
