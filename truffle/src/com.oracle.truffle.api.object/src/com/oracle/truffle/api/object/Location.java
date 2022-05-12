@@ -237,7 +237,9 @@ public abstract class Location {
      * Returns {@code true} if this is a declared value location.
      *
      * @since 0.18
+     * @deprecated No longer needed. Declared locations can only be created with deprecated APIs.
      */
+    @Deprecated(since = "22.2")
     public boolean isDeclared() {
         return false;
     }
