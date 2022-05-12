@@ -79,23 +79,6 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         return clazz;
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    public final Shape createShape(com.oracle.truffle.api.object.ObjectType objectType, Object sharedData) {
-        return createShape(objectType, sharedData, 0);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public final Shape createShape(com.oracle.truffle.api.object.ObjectType objectType) {
-        return createShape(objectType, null);
-    }
-
-    @Override
-    public final Shape createShape(com.oracle.truffle.api.object.ObjectType objectType, Object sharedData, int flags) {
-        return newShape(objectType, sharedData, ShapeImpl.checkObjectFlags(flags), null);
-    }
-
     @Override
     protected final Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
         return newShape(dynamicType, sharedData, flags, null);

@@ -108,37 +108,6 @@ public abstract class Layout {
     /**
      * Create a root shape.
      *
-     * @param objectType that describes the object instance with this shape.
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "21.1")
-    public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType);
-
-    /**
-     * Create a root shape.
-     *
-     * @param objectType that describes the object instance with this shape.
-     * @param sharedData for language-specific use
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "21.1")
-    public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType, Object sharedData);
-
-    /**
-     * Create a root shape.
-     *
-     * @param objectType that describes the object instance with this shape.
-     * @param sharedData for language-specific use
-     * @param flags for language-specific use, must be in the range 0-255.
-     * @return new instance of a shape
-     * @since 0.8 or earlier
-     */
-    @Deprecated(since = "21.1")
-    public abstract Shape createShape(@SuppressWarnings("deprecation") ObjectType objectType, Object sharedData, int flags);
-
-    /**
-     * Create a root shape.
-     *
      * @since 20.2.0
      */
     @SuppressWarnings("unused")
