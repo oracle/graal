@@ -157,6 +157,8 @@ public abstract class NFATraversalRegexASTVisitor {
      * {@link CharacterClass} / {@link MatchFound} node is the same.
      */
     private final EconomicSet<DeduplicationKey> targetDeduplicationSet = EconomicSet.create();
+    private int deduplicationCalls = 0;
+    private static final int DEDUPLICATION_PERIOD = 10;
     private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
     private final StateSet<RegexAST, RegexASTNode> dollarsOnPath;
     private final StateSet<RegexAST, RegexASTNode> caretsOnPath;
@@ -880,6 +882,9 @@ public abstract class NFATraversalRegexASTVisitor {
     }
 
     private void deduplicateTarget() {
+        if (deduplicationCalls++ % DEDUPLICATION_PERIOD != 0) {
+            return;
+        }
         DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
         boolean isDuplicate = !targetDeduplicationSet.add(key);
         if (isDuplicate) {
