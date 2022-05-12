@@ -71,7 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * method above the limit. On the other hand, the inlining depth is generous because we do do not
  * need to limit it. Note that more experimentation is necessary to come up with the optimal
  * configuration.
- * 
+ *
  * Important: the implementation details of this class are publicly observable API. Since
  * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
  * constant arguments, reducing inlining can break customer code. This means we can never reduce the
@@ -116,7 +116,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
     public InlineBeforeAnalysisPolicyImpl(SVMHost hostVM) {
         this.hostVM = hostVM;
     }
-    
+
     protected boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") ResolvedJavaMethod method) {
         return false;
     }
@@ -215,12 +215,12 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
             /*
              * We never allow to inline any kind of allocations, because the machine code size is
              * large.
-             * 
+             *
              * With one important exception: we allow (and do not even count) arrays allocated with
              * length 0. Such allocations occur when a method has a Java vararg parameter but the
              * caller does not provide any vararg. Without this exception, important vararg usages
              * like Class.getDeclaredConstructor would not be considered for inlining.
-             * 
+             *
              * Note that we are during graph decoding, so usages of the node are not decoded yet. So
              * we cannot base the decision on a certain usage pattern of the allocation.
              */
