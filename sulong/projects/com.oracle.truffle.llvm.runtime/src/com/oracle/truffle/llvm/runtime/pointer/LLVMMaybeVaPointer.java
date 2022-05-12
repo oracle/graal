@@ -704,7 +704,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = "self.isPointer()")
-        static boolean isForeign(LLVMMaybeVaPointer self) {
+        static boolean isForeign(@SuppressWarnings("unused") LLVMMaybeVaPointer self) {
             return false;
         }
     }
@@ -717,7 +717,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = "self.isPointer()")
-        static Object asForeign(LLVMMaybeVaPointer self) {
+        static Object asForeign(@SuppressWarnings("unused") LLVMMaybeVaPointer self) {
             throw CompilerDirectives.shouldNotReachHere();
         }
     }
