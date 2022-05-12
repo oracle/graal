@@ -109,8 +109,6 @@ public class FactoryMethodSupport {
 final class FactoryMethodFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        if (!ImageSingletons.contains(FactoryMethodSupport.class)) {
-            ImageSingletons.add(FactoryMethodSupport.class, new FactoryMethodSupport());
-        }
+        ImageSingletons.add(FactoryMethodSupport.class, new FactoryMethodSupport());
     }
 }

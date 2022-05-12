@@ -72,7 +72,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getInstanceSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
-        return base().formatObject(objectHeader, size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
+        return alloc().formatObject(objectHeader, size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
     }
 
     @Snippet
@@ -83,9 +83,9 @@ final class GenScavengeAllocationSnippets implements Snippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        Object obj = base().formatArray(objectHeader, size, length, memory, fillContents, fillStartOffset,
+        Object obj = alloc().formatArray(objectHeader, size, length, memory, fillContents, fillStartOffset,
                         false, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
-        base().emitMemoryBarrierIf(emitMemoryBarrier);
+        alloc().emitMemoryBarrierIf(emitMemoryBarrier);
         return obj;
     }
 
@@ -102,15 +102,15 @@ final class GenScavengeAllocationSnippets implements Snippets {
          * because objects are immutable once filled and are then written only by GC.
          */
         int arrayLength = StoredContinuationImpl.PAYLOAD_OFFSET + payloadSize - byteArrayBaseOffset;
-        Object result = base().allocateArrayImpl(SubstrateAllocationSnippets.encodeAsTLABObjectHeader(byteArrayHub), arrayLength, byteArrayBaseOffset, 0,
+        Object result = alloc().allocateArrayImpl(SubstrateAllocationSnippets.encodeAsTLABObjectHeader(byteArrayHub), arrayLength, byteArrayBaseOffset, 0,
                         AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED,
                         SubstrateAllocationSnippets.afterArrayLengthOffset(), false, false, false, false, profilingData);
         UnsignedWord arrayHeader = ObjectHeaderImpl.readHeaderFromObject(result);
         Word header = encodeAsObjectHeader(hub, ObjectHeaderImpl.hasRememberedSet(arrayHeader), ObjectHeaderImpl.isUnalignedHeader(arrayHeader));
-        base().initializeObjectHeader(Word.objectToUntrackedPointer(result), header, false);
+        alloc().initializeObjectHeader(Word.objectToUntrackedPointer(result), header, false);
         ObjectAccess.writeObject(result, hub.getMonitorOffset(), null, LocationIdentity.init());
         StoredContinuationImpl.initializeNewlyAllocated(result, payloadSize);
-        base().emitMemoryBarrierIf(true);
+        alloc().emitMemoryBarrierIf(true);
         return PiNode.piCastToSnippetReplaceeStamp(result);
     }
 
@@ -119,7 +119,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
     }
 
     @Fold
-    static SubstrateAllocationSnippets base() {
+    static SubstrateAllocationSnippets alloc() {
         return ImageSingletons.lookup(SubstrateAllocationSnippets.class);
     }
 

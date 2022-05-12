@@ -51,7 +51,7 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSupport;
+import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.HeapFeature;
 import com.oracle.svm.core.image.ImageHeapLayouter;
@@ -76,7 +76,7 @@ class SerialGCFeature implements GraalFeature {
         HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
         ImageSingletons.add(RememberedSet.class, createRememberedSet());
-        ImageSingletons.add(SubstrateAllocationSupport.class, new GenScavengeAllocationSupport());
+        ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());

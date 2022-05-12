@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -511,7 +512,7 @@ public class UninterruptibleUtils {
         public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator) {
             int result = 0;
             for (int index = 0; index < string.length(); index++) {
-                char ch = JavaLangSubstitutions.charAt(string, index);
+                char ch = StringUtil.charAt(string, index);
                 result += modifiedUTF8Length(ch);
             }
 
@@ -529,7 +530,7 @@ public class UninterruptibleUtils {
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
             Pointer pos = buffer;
             for (int index = 0; index < string.length(); index++) {
-                pos = writeModifiedUTF8(pos, JavaLangSubstitutions.charAt(string, index));
+                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index));
             }
 
             if (addNullTerminator) {

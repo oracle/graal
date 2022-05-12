@@ -27,13 +27,13 @@ package com.oracle.svm.core.genscavenge.graal;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.genscavenge.ThreadLocalAllocation;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSupport;
+import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
-public class GenScavengeAllocationSupport implements SubstrateAllocationSupport {
+public class GenScavengeAllocationSupport implements GCAllocationSupport {
     private static final SnippetRuntime.SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
     private static final SnippetRuntime.SubstrateForeignCallDescriptor SLOW_NEW_ARRAY = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewArray", true);
     private static final SnippetRuntime.SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SnippetRuntime.SubstrateForeignCallDescriptor[]{SLOW_NEW_INSTANCE, SLOW_NEW_ARRAY};

@@ -335,12 +335,12 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Override
     protected final Object callNewInstanceStub(Word objectHeader) {
-        return callSlowNewInstance(config().getSlowNewInstanceStub(), objectHeader);
+        return callSlowNewInstance(gcAllocationSupport().getSlowNewInstanceStub(), objectHeader);
     }
 
     @Override
     protected final Object callNewArrayStub(Word objectHeader, int length, int fillStartOffset) {
-        return callSlowNewArray(config().getSlowNewArrayStub(), objectHeader, length, fillStartOffset);
+        return callSlowNewArray(gcAllocationSupport().getSlowNewArrayStub(), objectHeader, length, fillStartOffset);
     }
 
     @Override
@@ -364,37 +364,37 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
     @Override
     public boolean useTLAB() {
-        return config().useTLAB();
+        return gcAllocationSupport().useTLAB();
     }
 
     @Override
     protected boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray) {
-        return config().shouldAllocateInTLAB(size, isArray);
+        return gcAllocationSupport().shouldAllocateInTLAB(size, isArray);
     }
 
     @Override
     public Word getTLABInfo() {
-        return config().getTLABInfo();
+        return gcAllocationSupport().getTLABInfo();
     }
 
     @Override
     public Word readTlabTop(Word tlabInfo) {
-        return tlabInfo.readWord(config().tlabTopOffset(), TLAB_TOP_IDENTITY);
+        return tlabInfo.readWord(gcAllocationSupport().tlabTopOffset(), TLAB_TOP_IDENTITY);
     }
 
     @Override
     public Word readTlabEnd(Word tlabInfo) {
-        return tlabInfo.readWord(config().tlabEndOffset(), TLAB_END_IDENTITY);
+        return tlabInfo.readWord(gcAllocationSupport().tlabEndOffset(), TLAB_END_IDENTITY);
     }
 
     @Override
     public void writeTlabTop(Word tlabInfo, Word newTop) {
-        tlabInfo.writeWord(config().tlabTopOffset(), newTop, TLAB_TOP_IDENTITY);
+        tlabInfo.writeWord(gcAllocationSupport().tlabTopOffset(), newTop, TLAB_TOP_IDENTITY);
     }
 
     @Fold
-    static SubstrateAllocationSupport config() {
-        return ImageSingletons.lookup(SubstrateAllocationSupport.class);
+    static GCAllocationSupport gcAllocationSupport() {
+        return ImageSingletons.lookup(GCAllocationSupport.class);
     }
 
     public static class SubstrateAllocationProfilingData extends AllocationProfilingData {

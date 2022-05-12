@@ -28,7 +28,11 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
-public interface SubstrateAllocationSupport {
+/**
+ * Used to abstract the GC-specific part of the allocation functionality, e.g., how does the TLAB
+ * look like in detail.
+ */
+public interface GCAllocationSupport {
     ForeignCallDescriptor getSlowNewInstanceStub();
 
     ForeignCallDescriptor getSlowNewArrayStub();

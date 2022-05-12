@@ -709,17 +709,20 @@ final class Target_jdk_internal_loader_BootLoader {
 
 /** Dummy class to have a class with the file's name. */
 public final class JavaLangSubstitutions {
-    /**
-     * Returns a character from a string at {@code index} position based on the encoding format.
-     */
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static char charAt(String string, int index) {
-        Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
-        byte[] value = str.value;
-        if (str.isLatin1()) {
-            return (char) (value[index] & 0xFF);
-        } else {
-            return Target_java_lang_StringUTF16.getChar(value, index);
+
+    public static final class StringUtil {
+        /**
+         * Returns a character from a string at {@code index} position based on the encoding format.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static char charAt(String string, int index) {
+            Target_java_lang_String str = SubstrateUtil.cast(string, Target_java_lang_String.class);
+            byte[] value = str.value;
+            if (str.isLatin1()) {
+                return (char) (value[index] & 0xFF);
+            } else {
+                return Target_java_lang_StringUTF16.getChar(value, index);
+            }
         }
     }
 
