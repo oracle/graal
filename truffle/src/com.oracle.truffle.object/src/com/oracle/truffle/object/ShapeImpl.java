@@ -1069,12 +1069,6 @@ public abstract class ShapeImpl extends Shape {
 
     /** @since 0.17 or earlier */
     @Override
-    public final ShapeImpl reservePrimitiveExtensionArray() {
-        return this;
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public final Iterable<Property> getProperties() {
         return getPropertyList();
     }

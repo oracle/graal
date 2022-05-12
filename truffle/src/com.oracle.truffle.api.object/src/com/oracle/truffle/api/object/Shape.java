@@ -832,15 +832,6 @@ public abstract class Shape {
     public abstract Shape changeType(@SuppressWarnings("deprecation") ObjectType newOps);
 
     /**
-     * Reserve the primitive extension array field.
-     *
-     * @since 0.8 or earlier
-     * @deprecated It is unnecessary to call this method, it has no effect and always returns this.
-     */
-    @Deprecated(since = "20.2")
-    public abstract Shape reservePrimitiveExtensionArray();
-
-    /**
      * Create a new {@link DynamicObject} instance with this shape.
      *
      * @throws UnsupportedOperationException if this layout does not support construction
