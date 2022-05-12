@@ -45,7 +45,7 @@ interface SamplerBuffer extends PointerBase {
     SamplerBuffer getNext();
 
     /**
-     * Sets the successor to this node in the {@link SamplerBufferStack}.
+     * Sets the successor to this buffer in the {@link SamplerBufferStack}.
      */
     @RawField
     void setNext(SamplerBuffer buffer);

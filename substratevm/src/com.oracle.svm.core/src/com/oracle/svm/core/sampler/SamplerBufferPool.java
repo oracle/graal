@@ -63,7 +63,9 @@ class SamplerBufferPool {
             long diff = diff();
             if (diff > 0) {
                 for (int i = 0; i < diff; i++) {
-                    allocateAndPush();
+                    if (!allocateAndPush()) {
+                        break;
+                    }
                 }
             } else {
                 for (long i = diff; i < 0; i++) {
@@ -98,14 +100,16 @@ class SamplerBufferPool {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void allocateAndPush() {
+    private static boolean allocateAndPush() {
         VMError.guarantee(bufferCount >= 0);
         SamplerBuffer buffer = SamplerBufferAccess.allocate(WordFactory.unsigned(THREAD_BUFFER_SIZE));
-        if (buffer.isNull()) {
-            return;
+        if (buffer.isNonNull()) {
+            SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
+            bufferCount++;
+            return true;
+        } else {
+            return false;
         }
-        SubstrateSigprofHandler.singleton().availableBuffers().pushBuffer(buffer);
-        bufferCount++;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

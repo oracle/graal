@@ -233,7 +233,6 @@ public abstract class SubstrateSigprofHandler {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected abstract IsolateThread getThreadLocalKeyValue(UnsignedWord key);
 
-    /** Is sigprof handler called from native code? */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isIPInJavaCode(RegisterDumper.Context uContext) {
         Pointer ip = (Pointer) RegisterDumper.singleton().getIP(uContext);
@@ -243,9 +242,6 @@ public abstract class SubstrateSigprofHandler {
         return ip.aboveOrEqual(codeStart) && ip.belowOrEqual(codeStart.add(codeSize));
     }
 
-    /**
-     * Walk the current stacktrace using isolate thread local area and isolate heap base.
-     */
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     private static void doUninterruptibleStackWalk(RegisterDumper.Context uContext, boolean isIPInJavaCode) {
         CodePointer ip;
@@ -320,11 +316,6 @@ public abstract class SubstrateSigprofHandler {
     /** Called from the platform dependent sigprof handler to enter isolate. */
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected static void tryEnterIsolateAndDoWalk(RegisterDumper.Context uContext) {
-        if (!SamplerIsolateLocal.isKeySet()) {
-            /* The key is set for initial isolate only. */
-            return;
-        }
-
         Isolate isolate = SamplerIsolateLocal.getIsolate();
         if (isolate.isNull()) {
             /* It may happen that the initial isolate exited. */
@@ -335,6 +326,10 @@ public abstract class SubstrateSigprofHandler {
         WriteHeapBaseNode.writeCurrentVMHeapBase(isolate);
 
         /* We are keeping reference to isolate thread inside OS thread local area. */
+        if (!SamplerIsolateLocal.isKeySet()) {
+            /* The key becomes invalid during initial isolate teardown. */
+            return;
+        }
         UnsignedWord key = SamplerIsolateLocal.getKey();
         IsolateThread thread = singleton().getThreadLocalKeyValue(key);
         if (thread.isNull()) {
