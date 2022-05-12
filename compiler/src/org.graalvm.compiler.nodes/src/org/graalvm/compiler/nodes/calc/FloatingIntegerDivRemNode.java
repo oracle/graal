@@ -109,7 +109,7 @@ public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode
      * Determine if the division operation can potentially be a division by zero, i.e., the divisor
      * stamp can contain the value {@code 0}.
      */
-    private boolean canDivideByZero() {
+    protected boolean canDivideByZero() {
         IntegerStamp yStamp = (IntegerStamp) y.stamp(NodeView.DEFAULT);
         return yStamp.contains(0);
     }
