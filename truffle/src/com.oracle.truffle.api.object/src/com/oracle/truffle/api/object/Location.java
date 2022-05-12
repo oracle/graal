@@ -285,4 +285,15 @@ public abstract class Location {
     protected static boolean checkShape(DynamicObject store, Shape shape) {
         return store.getShape() == shape;
     }
+
+    /**
+     * Returns {@code true} if this location can only store primitive types and cannot contain any
+     * object references.
+     *
+     * @since 22.2
+     */
+    @SuppressWarnings("deprecation")
+    public boolean isPrimitive() {
+        return this instanceof DoubleLocation || this instanceof IntLocation || this instanceof LongLocation || this instanceof BooleanLocation;
+    }
 }

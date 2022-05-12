@@ -210,4 +210,22 @@ public class LocationTest extends AbstractParametrizedLibraryTest {
         library.removeKey(object, "a");
         Assert.assertFalse(library.containsKey(object, "a"));
     }
+
+    @Test
+    public void testLocationIsPrimitive() {
+        Shape.Allocator allocator = rootShape.allocator();
+
+        Location objectLocation = allocator.locationForType(Object.class);
+        Assert.assertFalse(objectLocation.isPrimitive());
+
+        Location intLocation = allocator.locationForType(int.class);
+        Assert.assertTrue(intLocation.isPrimitive());
+        Location doubleLocation = allocator.locationForType(double.class);
+        Assert.assertTrue(doubleLocation.isPrimitive());
+        Location longLocation = allocator.locationForType(long.class);
+        Assert.assertTrue(longLocation.isPrimitive());
+
+        Location constantLocation = allocator.constantLocation("constantValue");
+        Assert.assertFalse(constantLocation.isPrimitive());
+    }
 }
