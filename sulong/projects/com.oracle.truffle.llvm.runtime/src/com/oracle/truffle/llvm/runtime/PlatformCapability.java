@@ -29,11 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.reflect.Array;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
@@ -43,6 +38,11 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.lang.reflect.Array;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.util.List;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
@@ -75,6 +75,11 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     public void initializeThread(@SuppressWarnings("unused") LLVMContext context,
                     @SuppressWarnings("unused") Thread thread) {
         // Nothing needs to be done in Sulong for native thread initialization.
+    }
+
+    public void disposeThread(@SuppressWarnings("unused") LLVMContext context,
+                    @SuppressWarnings("unused") Thread thread) {
+        context.getpThreadContext().callDestructors(thread.getId());
     }
 
     @SuppressWarnings("unchecked")
