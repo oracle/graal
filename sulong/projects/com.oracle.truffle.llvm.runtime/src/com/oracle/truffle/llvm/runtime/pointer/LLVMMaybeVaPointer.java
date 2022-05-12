@@ -707,16 +707,14 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class IsForeign {
-        @Specialization(guards = {"!self.isPointer()"})
+        @Specialization(guards = "!self.isPointer()")
         static boolean isForeignVaList(@SuppressWarnings("unused") LLVMMaybeVaPointer self) {
             return true;
         }
 
-        @Specialization
-        @GenerateAOT.Exclude
-        static boolean isForeign(LLVMMaybeVaPointer self,
-                        @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
-            return foreigns.isForeign(self.address);
+        @Specialization(guards = "self.isPointer()")
+        static boolean isForeign(LLVMMaybeVaPointer self) {
+            return false;
         }
     }
 
@@ -727,11 +725,9 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             return self;
         }
 
-        @Specialization
-        @GenerateAOT.Exclude
-        static Object asForeign(LLVMMaybeVaPointer self,
-                        @CachedLibrary("self.address") LLVMAsForeignLibrary foreigns) {
-            return foreigns.asForeign(self.address);
+        @Specialization(guards = "self.isPointer()")
+        static Object asForeign(LLVMMaybeVaPointer self) {
+            throw CompilerDirectives.shouldNotReachHere();
         }
     }
 
