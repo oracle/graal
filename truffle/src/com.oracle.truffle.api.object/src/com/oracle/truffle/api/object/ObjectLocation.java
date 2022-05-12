@@ -45,6 +45,9 @@ package com.oracle.truffle.api.object;
  *
  * @since 0.8 or earlier
  * @deprecated no replacement.
+ * @see Location
+ * @see DynamicObjectLibrary#getOrDefault
+ * @see DynamicObjectLibrary#put
  */
 @Deprecated(since = "22.2")
 @SuppressWarnings("deprecation")

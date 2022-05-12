@@ -41,22 +41,27 @@
 package com.oracle.truffle.api.object;
 
 /**
- * Planned to be deprecated.
+ * Long-typed storage location.
  *
  * @since 0.8 or earlier
+ * @see Location
+ * @see DynamicObjectLibrary#getLongOrDefault
+ * @see DynamicObjectLibrary#putLong
  */
-@SuppressWarnings("deprecation")
+@Deprecated(since = "22.2")
 public interface LongLocation {
     /**
      * @see Location#get(DynamicObject, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     long getLong(DynamicObject store, Shape shape);
 
     /**
      * @see Location#get(DynamicObject, boolean)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     long getLong(DynamicObject store, boolean condition);
 
     /**
@@ -70,6 +75,7 @@ public interface LongLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     void setLong(DynamicObject store, long value, Shape shape) throws FinalLocationException;
 
     /**

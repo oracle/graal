@@ -41,22 +41,27 @@
 package com.oracle.truffle.api.object;
 
 /**
- * Planned to be deprecated.
+ * Double-typed storage location.
  *
  * @since 0.8 or earlier
+ * @see Location
+ * @see DynamicObjectLibrary#getDoubleOrDefault
+ * @see DynamicObjectLibrary#putDouble
  */
-@SuppressWarnings("deprecation")
+@Deprecated(since = "22.2")
 public interface DoubleLocation {
     /**
      * @see Location#get(DynamicObject, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     double getDouble(DynamicObject store, Shape shape);
 
     /**
      * @see Location#get(DynamicObject, boolean)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     double getDouble(DynamicObject store, boolean condition);
 
     /**
@@ -70,6 +75,7 @@ public interface DoubleLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     void setDouble(DynamicObject store, double value, Shape shape) throws FinalLocationException;
 
     /**
@@ -79,7 +85,9 @@ public interface DoubleLocation {
     @Deprecated(since = "22.2")
     void setDouble(DynamicObject store, double value, Shape oldShape, Shape newShape);
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     */
     @Deprecated(since = "22.2")
     Class<Double> getType();
 }

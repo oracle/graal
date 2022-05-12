@@ -41,22 +41,27 @@
 package com.oracle.truffle.api.object;
 
 /**
- * Planned to be deprecated.
+ * Boolean-typed storage location.
  *
  * @since 0.8 or earlier
+ * @see Location
+ * @see DynamicObjectLibrary#getOrDefault
+ * @see DynamicObjectLibrary#put
  */
-@SuppressWarnings("deprecation")
+@Deprecated(since = "22.2")
 public interface BooleanLocation {
     /**
      * @see Location#get(DynamicObject, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     boolean getBoolean(DynamicObject store, Shape shape);
 
     /**
      * @see Location#get(DynamicObject, boolean)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     boolean getBoolean(DynamicObject store, boolean condition);
 
     /**
@@ -70,6 +75,7 @@ public interface BooleanLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @Deprecated(since = "22.2")
     void setBoolean(DynamicObject store, boolean value, Shape shape) throws FinalLocationException;
 
     /**
