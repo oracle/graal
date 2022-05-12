@@ -212,18 +212,18 @@ public final class EspressoOptions {
         return new ArrayList<>(Arrays.asList(strings.split(File.pathSeparator)));
     }
 
-    public enum SpecCompliancyMode {
+    public enum SpecComplianceMode {
         STRICT,
         HOTSPOT
     }
 
-    private static final OptionType<SpecCompliancyMode> SPEC_COMPLIANCY_OPTION_TYPE = new OptionType<>("SpecCompliancy", new Function<String, SpecCompliancyMode>() {
+    private static final OptionType<SpecComplianceMode> SPEC_COMPLIANCE_OPTION_TYPE = new OptionType<>("SpecCompliance", new Function<String, SpecComplianceMode>() {
         @Override
-        public SpecCompliancyMode apply(String s) {
+        public SpecComplianceMode apply(String s) {
             try {
-                return SpecCompliancyMode.valueOf(s.toUpperCase());
+                return SpecComplianceMode.valueOf(s.toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("--java.SpecCompliancy: Mode can be 'strict' or 'hotspot'.");
+                throw new IllegalArgumentException("--java.SpecCompliance: Mode can be 'strict' or 'hotspot'.");
             }
         }
     });
@@ -232,7 +232,7 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "hotspot|strict") //
-    public static final OptionKey<SpecCompliancyMode> SpecCompliancy = new OptionKey<>(SpecCompliancyMode.HOTSPOT, SPEC_COMPLIANCY_OPTION_TYPE);
+    public static final OptionKey<SpecComplianceMode> SpecCompliance = new OptionKey<>(SpecComplianceMode.HOTSPOT, SPEC_COMPLIANCE_OPTION_TYPE);
 
     public enum VerifyMode {
         NONE,

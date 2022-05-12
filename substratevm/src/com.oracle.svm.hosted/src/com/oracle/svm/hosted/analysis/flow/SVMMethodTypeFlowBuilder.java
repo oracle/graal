@@ -173,7 +173,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
     }
 
     @Override
-    protected void delegateNodeProcessing(FixedNode n, MethodTypeFlowBuilder.TypeFlowsOfNodes state) {
+    protected boolean delegateNodeProcessing(FixedNode n, TypeFlowsOfNodes state) {
         if (n instanceof LoadVMThreadLocalNode) {
             LoadVMThreadLocalNode node = (LoadVMThreadLocalNode) n;
             Stamp stamp = node.stamp(NodeView.DEFAULT);
@@ -203,14 +203,18 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                     });
                 }
                 state.add(node, result);
+                return true;
             }
         } else if (n instanceof StoreVMThreadLocalNode) {
             StoreVMThreadLocalNode node = (StoreVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getValue());
+            return true;
         } else if (n instanceof CompareAndSetVMThreadLocalNode) {
             CompareAndSetVMThreadLocalNode node = (CompareAndSetVMThreadLocalNode) n;
             storeVMThreadLocal(state, node, node.getUpdate());
+            return true;
         }
+        return super.delegateNodeProcessing(n, state);
     }
 
     private void storeVMThreadLocal(TypeFlowsOfNodes state, ValueNode storeNode, ValueNode value) {

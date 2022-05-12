@@ -200,8 +200,8 @@ meth public static org.graalvm.polyglot.Engine$Builder newBuilder()
 meth public void close()
 meth public void close(boolean)
 supr java.lang.Object
-hfds EMPTY,currentAPI,dispatch,initializationException,receiver
-hcls APIAccessImpl,ImplHolder,PolyglotInvalid
+hfds EMPTY,ENGINES,currentAPI,dispatch,initializationException,receiver,shutdownHookInitialized
+hcls APIAccessImpl,EngineShutDownHook,ImplHolder,PolyglotInvalid
 
 CLSS public final org.graalvm.polyglot.Engine$Builder
  outer org.graalvm.polyglot.Engine

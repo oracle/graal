@@ -85,6 +85,10 @@ public class NestingAndPolyglotThreadCancellationTest {
             Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(DEFINE(foo,LOOP(infinity,STATEMENT)),SPAWN(foo))", "CancelSpawnedThread").build();
             context.eval(source);
             context.close(true);
+        } catch (PolyglotException pe) {
+            if (!pe.isCancelled()) {
+                throw pe;
+            }
         }
     }
 
@@ -97,7 +101,7 @@ public class NestingAndPolyglotThreadCancellationTest {
          */
         ExecutorService executorService = Executors.newFixedThreadPool(1);
         try {
-            Future<?> future;
+            Future<?> future = null;
             try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
                 context.initialize(InstrumentationTestLanguage.ID);
                 Source source = Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(DEFINE(foo,LOOP(infinity,BLOCK(SLEEP(100),STATEMENT))),SPAWN(foo),LOOP(infinity,STATEMENT),JOIN())",
@@ -145,6 +149,10 @@ public class NestingAndPolyglotThreadCancellationTest {
                     if (!pe.isCancelled()) {
                         throw pe;
                     }
+                }
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
                 }
             }
             future.get();
@@ -223,7 +231,13 @@ public class NestingAndPolyglotThreadCancellationTest {
                 context[0].close(true);
                 future.get();
             } finally {
-                context[0].close();
+                try {
+                    context[0].close();
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
+                    }
+                }
             }
         } finally {
             executorService.shutdownNow();
@@ -286,6 +300,10 @@ public class NestingAndPolyglotThreadCancellationTest {
                 });
                 future1.get();
                 future2.get();
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
+                }
             } finally {
                 executorService.shutdownNow();
                 executorService.awaitTermination(100, TimeUnit.SECONDS);

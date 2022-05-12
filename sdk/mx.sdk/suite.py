@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.318.0",
+  "mxversion" : "6.0.1",
   "name" : "sdk",
   "version" : "22.2.0",
   "release" : False,
@@ -105,8 +105,8 @@ suite = {
       }
     },
     "JLINE3" : {
-      "sha1" : "bac1579375a67379d8f308016138f9c37a646dd5",
-      "version" : "3.16.0.2",
+      "sha1" : "78571ca051ec786f4140c91661058ce56a45d433",
+      "version" : "3.16.0.3",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new",
       "requires" : ["java.logging"],

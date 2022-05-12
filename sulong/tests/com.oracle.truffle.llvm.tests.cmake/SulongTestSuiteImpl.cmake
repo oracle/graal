@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -203,6 +203,10 @@ function(add_sulong_test TEST)
     endif()
 
     # set the output name and directories
+    if (DEFINED SUFFIX)
+      # files such as .bc files override the suffix
+      set_target_properties(${TARGET} PROPERTIES SUFFIX ${SUFFIX})
+    endif()
     set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME ${OUTPUT})
     set_target_properties(${TARGET} PROPERTIES Fortran_MODULE_DIRECTORY ${OUTPUT_DIR}/${OUTPUT}.mod)
     set_target_properties(${TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})

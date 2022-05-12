@@ -138,6 +138,7 @@ The accepted values are:
 - `--engine.InlineAcrossTruffleBoundary` : Enable inlining across Truffle boundary
 - `--engine.InlineOnly=<name>,<name>,...` : Restrict inlined methods to ','-separated list of includes (or excludes prefixed with '~'). No restriction by default.
 - `--engine.InliningPolicy=<policy>` : Explicitly pick a inlining policy by name. If empty (default) the highest priority chosen by default.
+- `--engine.InliningUseSize` : Use the graph size as a cost model during inlining (default: false).
 - `--engine.InstrumentBoundaries` : Instrument Truffle boundaries and output profiling information to the standard output.
 - `--engine.InstrumentBoundariesPerInlineSite` : Instrument Truffle boundaries by considering different inlining sites as different branches.
 - `--engine.InstrumentBranches` : Instrument branches and output profiling information to the standard output.

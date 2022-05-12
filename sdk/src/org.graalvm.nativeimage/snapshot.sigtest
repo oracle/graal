@@ -571,8 +571,8 @@ supr java.lang.Object
 CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Publish
  outer org.graalvm.nativeimage.c.function.CEntryPoint
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish NotPublished
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolOnly
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolAndHeader
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolOnly
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish valueOf(java.lang.String)
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish[] values()
 supr java.lang.Enum<org.graalvm.nativeimage.c.function.CEntryPoint$Publish>

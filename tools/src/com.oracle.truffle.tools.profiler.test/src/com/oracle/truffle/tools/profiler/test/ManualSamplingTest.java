@@ -79,6 +79,7 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
 
     public ManualSamplingTest() {
         needsInstrumentEnv = true;
+        ignoreCancelOnClose = true;
     }
 
     @Test

@@ -26,14 +26,12 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -54,6 +52,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
@@ -61,6 +60,7 @@ import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
+import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -94,8 +94,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private final Types types;
     private final Signatures signatures;
 
-    private long startupClockNanos = 0;
-
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
     // This field should be final, but creating a shape requires a fully-initialized instance of
     // TruffleLanguage.
@@ -109,6 +107,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     private StaticShape<StaticObjectFactory> foreignShape;
 
     @CompilationFinal private JavaVersion javaVersion;
+
+    // region Options
+    @CompilationFinal private EspressoOptions.VerifyMode verifyMode;
+    @CompilationFinal private EspressoOptions.SpecComplianceMode specComplianceMode;
+    @CompilationFinal private EspressoOptions.LivenessAnalysisMode livenessAnalysisMode;
+    @CompilationFinal private int livenessAnalysisMinimumLocals;
+
+    private boolean optionsInitialized;
+    // endregion Options
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -144,21 +151,32 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
+        initializeOptions(env);
+
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
         return context;
     }
 
+    private void initializeOptions(final TruffleLanguage.Env env) {
+        if (!optionsInitialized) {
+            verifyMode = env.getOptions().get(EspressoOptions.Verify);
+            specComplianceMode = env.getOptions().get(EspressoOptions.SpecCompliance);
+            livenessAnalysisMode = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+            livenessAnalysisMinimumLocals = env.getOptions().get(EspressoOptions.LivenessAnalysisMinimumLocals);
+            optionsInitialized = true;
+        }
+    }
+
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        startupClockNanos = System.nanoTime();
         context.initializeContext();
     }
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        long elapsedTimeNanos = System.nanoTime() - startupClockNanos;
+        long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
         if (seconds > 10) {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} s", seconds);
@@ -206,7 +224,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             RootNode node = new ReferenceProcessNode(this);
             return node.getCallTarget();
         }
-        throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
+        throw new EspressoParseError(
+                        "Espresso cannot evaluate Java sources directly, only a few special commands are supported: " + GetBindingsNode.EVAL_NAME + " and " + ReferenceProcessNode.EVAL_NAME + "\n" +
+                                        "Use the \"" + ID + "\" language bindings to load guest Java classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {
@@ -290,6 +310,22 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public JavaVersion getJavaVersion() {
         return javaVersion;
+    }
+
+    public EspressoOptions.SpecComplianceMode getSpecComplianceMode() {
+        return specComplianceMode;
+    }
+
+    public EspressoOptions.LivenessAnalysisMode getLivenessAnalysisMode() {
+        return livenessAnalysisMode;
+    }
+
+    public EspressoOptions.VerifyMode getVerifyMode() {
+        return verifyMode;
+    }
+
+    public int livenessAnalysisMinimumLocals() {
+        return livenessAnalysisMinimumLocals;
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

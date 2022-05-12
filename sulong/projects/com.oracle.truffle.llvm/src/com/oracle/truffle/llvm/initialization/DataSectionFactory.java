@@ -58,6 +58,7 @@ public class DataSectionFactory {
         DataLayout dataLayout = result.getDataLayout();
         int globalsCount = result.getDefinedGlobals().size();
         int threadLocalGlobalsCount = result.getThreadLocalGlobals().size();
+        boolean boxGlobals = result.getRuntime().getNodeFactory().boxGlobals();
 
         this.globalOffsets = new int[globalsCount];
         this.threadLocalGlobalOffsets = new int[threadLocalGlobalsCount];
@@ -72,7 +73,7 @@ public class DataSectionFactory {
         for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
             Type type = global.getType().getPointeeType();
-            if (isSpecialGlobalSlot(type)) {
+            if (boxGlobals && isSpecialGlobalSlot(type)) {
                 globalOffsets[i] = -1; // pointer type
             } else {
                 // allocate at least one byte per global (to make the pointers unique)
@@ -174,7 +175,11 @@ public class DataSectionFactory {
      * foreign object.
      */
     private static boolean isSpecialGlobalSlot(Type type) {
-        return type instanceof PointerType;
+        if (type instanceof PointerType) {
+            return true;
+        } else {
+            return type == PrimitiveType.I64;
+        }
     }
 
     private static int getAlignment(DataLayout dataLayout, GlobalVariable global, Type type) {

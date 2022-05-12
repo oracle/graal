@@ -137,6 +137,13 @@
     }
   },
 
+  no_tiered_comp:: {
+    platform+:: "-no-tiered-comp",
+    environment+: {
+      "JVM_CONFIG"+: "-no-tiered-comp",
+    }
+  },
+
   avx2_mode:: {
     platform+:: "-avx2",
     environment+: {

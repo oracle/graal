@@ -1073,10 +1073,27 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
     jlink=False,
 ))
 
-jar_distributions = [
+libgraal_jar_distributions = [
     'substratevm:GRAAL_HOTSPOT_LIBRARY',
     'compiler:GRAAL_TRUFFLE_COMPILER_LIBGRAAL',
     'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
+
+libgraal_build_args = [
+    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,org.graalvm.jniutils,org.graalvm.graphio,com.oracle.truffle',
+    '-H:-UseServiceLoaderFeature',
+    '-H:+AllowFoldMethods',
+    '-H:+ReportExceptionStackTraces',
+    '-Djdk.vm.ci.services.aot=true',
+    '-Dtruffle.TruffleRuntime=',
+
+    # These 2 arguments provide walkable call stacks for a crash in libgraal
+    '-H:+PreserveFramePointer',
+    '-H:-DeleteLocalSymbols',
+
+    # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
+    '-H:-AllowVMInternalThreads',
+    '-R:-AutomaticReferenceHandling',
+]
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
@@ -1089,28 +1106,13 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     builder_jar_distributions=[],
     support_distributions=[],
+    priority=0,
     library_configs=[
         mx_sdk_vm.LibraryConfig(
             destination="<lib:jvmcicompiler>",
             jvm_library=True,
-            jar_distributions=jar_distributions,
-            build_args=[
-                '--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature',
-                '-H:-UseServiceLoaderFeature',
-                '-H:+AllowFoldMethods',
-                '-H:+ReportExceptionStackTraces',
-                '-Djdk.vm.ci.services.aot=true',
-                '-Dtruffle.TruffleRuntime=',
-
-                # These 2 arguments provide walkable call stacks for a crash in libgraal
-                '-H:+PreserveFramePointer',
-                '-H:-DeleteLocalSymbols',
-
-
-                # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
-                '-H:-AllowVMInternalThreads',
-                '-R:-AutomaticReferenceHandling',
-            ],
+            jar_distributions=libgraal_jar_distributions,
+            build_args=libgraal_build_args + ['--features=com.oracle.svm.graal.hotspot.libgraal.LibGraalFeature'],
         ),
     ],
     stability="supported",

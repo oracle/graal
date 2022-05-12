@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,12 +66,16 @@ import org.junit.rules.TestName;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.common.NullObject;
+import com.oracle.truffle.api.test.common.TestUtils;
 
 public class ContextExitTest {
     @Rule public TestName testNameRule = new TestName();
@@ -133,6 +139,10 @@ public class ContextExitTest {
             }
             for (Future<?> future : futures) {
                 future.get();
+            }
+        } catch (PolyglotException pe) {
+            if (!pe.isExit()) {
+                throw pe;
             }
         } finally {
             executorService.shutdownNow();
@@ -425,6 +435,10 @@ public class ContextExitTest {
                 });
                 future1.get();
                 future2.get();
+            } catch (PolyglotException pe) {
+                if (!pe.isExit()) {
+                    throw pe;
+                }
             } finally {
                 executorService.shutdownNow();
                 executorService.awaitTermination(100, TimeUnit.SECONDS);
@@ -511,6 +525,10 @@ public class ContextExitTest {
                 });
                 future1.get();
                 future2.get();
+            } catch (PolyglotException pe) {
+                if (!pe.isExit()) {
+                    throw pe;
+                }
             } finally {
                 executorService.shutdownNow();
                 executorService.awaitTermination(100, TimeUnit.SECONDS);
@@ -644,10 +662,221 @@ public class ContextExitTest {
                      */
                     callExitForContext2Latch.await();
                 }
+            } catch (PolyglotException pe) {
+                if (!pe.isExit()) {
+                    throw pe;
+                }
             } finally {
                 executorService.shutdownNow();
                 executorService.awaitTermination(100, TimeUnit.SECONDS);
             }
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class HardExitFromNaturalExitTestLanguage extends TruffleLanguage<HardExitFromNaturalExitTestLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(HardExitFromNaturalExitTestLanguage.class);
+
+        static class Context {
+            private final Env env;
+            private Thread t;
+
+            Context(Env env) {
+                this.env = env;
+            }
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            boolean spawnPolyglotThread = "SPAWNPOLYGLOTTHREAD".contentEquals(request.getSource().getCharacters());
+            return new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return evalBoundary();
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private Object evalBoundary() {
+                    if (spawnPolyglotThread) {
+                        Context ctx = CONTEXT_REF.get(null);
+                        ctx.t = ctx.env.createThread(new Runnable() {
+                            @Override
+                            @CompilerDirectives.TruffleBoundary
+                            public void run() {
+                                synchronized (this) {
+                                    try {
+                                        wait();
+                                        Assert.fail();
+                                    } catch (InterruptedException ie) {
+                                    }
+                                }
+                            }
+                        });
+                        ctx.t.start();
+                    }
+                    return NullObject.SINGLETON;
+                }
+
+            }.getCallTarget();
+        }
+
+        @Override
+        protected void finalizeContext(Context ctx) {
+            if (ctx.t != null) {
+                try {
+                    ctx.t.join();
+                } catch (InterruptedException ie) {
+                }
+            }
+        }
+
+        @Override
+        protected void exitContext(Context ctx, ExitMode exitMode, int exitCode) {
+            if (exitMode == ExitMode.NATURAL) {
+                ctx.env.getContext().closeExited(null, 42);
+            }
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        private static final ContextReference<Context> CONTEXT_REF = ContextReference.create(HardExitFromNaturalExitTestLanguage.class);
+    }
+
+    @Test
+    public void testHardExitFromNaturalExit() {
+        boolean exceptionThrown = false;
+        try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
+            context.eval(HardExitFromNaturalExitTestLanguage.ID, "");
+        } catch (PolyglotException pe) {
+            exceptionThrown = true;
+            if (!pe.isExit() || pe.getExitStatus() != 42) {
+                throw pe;
+            }
+        }
+        assertTrue(exceptionThrown);
+    }
+
+    @Test
+    public void testHardExitFromNaturalExitWithPolyglotThreadRunning() {
+        for (int i = 0; i < 100; i++) {
+            boolean exceptionThrown = false;
+            try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
+                context.eval(HardExitFromNaturalExitTestLanguage.ID, "SPAWNPOLYGLOTTHREAD");
+            } catch (PolyglotException pe) {
+                exceptionThrown = true;
+                if (!pe.isExit() || pe.getExitStatus() != 42) {
+                    throw pe;
+                }
+            }
+            assertTrue(exceptionThrown);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class HardExitDuringNaturalExitFromOtherThreadTestLanguage extends TruffleLanguage<HardExitDuringNaturalExitFromOtherThreadTestLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(HardExitDuringNaturalExitFromOtherThreadTestLanguage.class);
+
+        static class Context {
+            private final Env env;
+            private Thread t;
+            private final CountDownLatch tStartedLatch = new CountDownLatch(1);
+            private final CountDownLatch exitContextStartedLatch = new CountDownLatch(1);
+
+            Context(Env env) {
+                this.env = env;
+            }
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return evalBoundary();
+                }
+
+                @CompilerDirectives.TruffleBoundary
+                private Object evalBoundary() {
+                    Context ctx = CONTEXT_REF.get(null);
+                    ctx.t = ctx.env.createThread(new Runnable() {
+                        @Override
+                        @CompilerDirectives.TruffleBoundary
+                        public void run() {
+                            Context threadCtx = CONTEXT_REF.get(null);
+                            threadCtx.tStartedLatch.countDown();
+                            try {
+                                threadCtx.exitContextStartedLatch.await();
+                            } catch (InterruptedException ie) {
+                                throw new AssertionError(ie);
+                            }
+                            threadCtx.env.getContext().closeExited(null, 42);
+
+                        }
+                    });
+                    ctx.t.start();
+                    return NullObject.SINGLETON;
+                }
+
+            }.getCallTarget();
+        }
+
+        @Override
+        protected void finalizeContext(Context ctx) {
+            try {
+                ctx.t.join();
+            } catch (InterruptedException ie) {
+            }
+        }
+
+        @Override
+        protected void exitContext(Context ctx, ExitMode exitMode, int exitCode) {
+            if (exitMode == ExitMode.NATURAL) {
+                ctx.exitContextStartedLatch.countDown();
+                try {
+                    ctx.tStartedLatch.await();
+                    ctx.t.join();
+                } catch (InterruptedException ie) {
+                    throw new AssertionError(ie);
+                }
+            }
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        private static final ContextReference<Context> CONTEXT_REF = TruffleLanguage.ContextReference.create(HardExitDuringNaturalExitFromOtherThreadTestLanguage.class);
+    }
+
+    @Test
+    public void testHardExitDuringNaturalExitFromOtherThread() {
+        for (int i = 0; i < 100; i++) {
+            boolean exceptionThrown = false;
+            try (Context context = Context.newBuilder().allowCreateThread(true).build()) {
+                context.eval(HardExitDuringNaturalExitFromOtherThreadTestLanguage.ID, "");
+            } catch (PolyglotException pe) {
+                exceptionThrown = true;
+                if (!pe.isExit() || pe.getExitStatus() != 42) {
+                    throw pe;
+                }
+            }
+            assertTrue(exceptionThrown);
         }
     }
 }

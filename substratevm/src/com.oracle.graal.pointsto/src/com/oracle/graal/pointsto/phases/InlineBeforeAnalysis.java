@@ -215,7 +215,7 @@ class InlineBeforeAnalysisGraphDecoder<S extends InlineBeforeAnalysisPolicy.Scop
             if (graph.getDebug().isLogEnabled()) {
                 graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "  node " + node + ": " + methodScope.policyScope);
             }
-            if (!policy.processNode(methodScope.policyScope, node)) {
+            if (!policy.processNode(bb.getMetaAccess(), methodScope.method, methodScope.policyScope, node)) {
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv(repeat("  ", methodScope.inliningDepth) + "    abort!");
                 }

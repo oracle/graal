@@ -24,6 +24,14 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.k0;
+import static jdk.vm.ci.amd64.AMD64.k1;
+import static jdk.vm.ci.amd64.AMD64.k2;
+import static jdk.vm.ci.amd64.AMD64.k3;
+import static jdk.vm.ci.amd64.AMD64.k4;
+import static jdk.vm.ci.amd64.AMD64.k5;
+import static jdk.vm.ci.amd64.AMD64.k6;
+import static jdk.vm.ci.amd64.AMD64.k7;
 import static jdk.vm.ci.amd64.AMD64.r12;
 import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.r14;
@@ -37,6 +45,7 @@ import static jdk.vm.ci.amd64.AMD64.rcx;
 import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
+import static jdk.vm.ci.amd64.AMD64.valueRegistersAVX512;
 import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
@@ -60,6 +69,7 @@ import java.util.ArrayList;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
@@ -98,10 +108,25 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
     private final MetaAccessProvider metaAccess;
     private final boolean useBasePointer;
 
+    private static final RegisterArray MASK_REGISTERS = new RegisterArray(k0, k1, k2, k3, k4, k5, k6, k7);
+
     public SubstrateAMD64RegisterConfig(ConfigKind config, MetaAccessProvider metaAccess, TargetDescription target, boolean useBasePointer) {
         this.target = target;
         this.metaAccess = metaAccess;
         this.useBasePointer = useBasePointer;
+
+        boolean haveAVX512 = ((AMD64) target.arch).getFeatures().contains(AMD64.CPUFeature.AVX512F);
+        ArrayList<Register> regs;
+        if (haveAVX512) {
+            regs = new ArrayList<>(valueRegistersAVX512.asList());
+        } else {
+            regs = new ArrayList<>(valueRegistersSSE.asList());
+            if (SubstrateUtil.HOSTED && AMD64CalleeSavedRegisters.isRuntimeCompilationEnabled()) {
+                // The stub calling convention must be able to generate runtime checked code for
+                // saving and restoring mask registers.
+                regs.addAll(MASK_REGISTERS.asList());
+            }
+        }
 
         if (Platform.includedIn(Platform.WINDOWS.class)) {
             // This is the Windows 64-bit ABI for parameters.
@@ -114,7 +139,6 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // even though they are passed in registers.
             nativeParamsStackOffset = 4 * target.wordSize;
 
-            ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(ReservedRegisters.singleton().getFrameRegister());
             regs.remove(rbp);
             regs.remove(ReservedRegisters.singleton().getHeapBaseRegister());
@@ -128,7 +152,6 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             nativeParamsStackOffset = 0;
 
-            ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(ReservedRegisters.singleton().getFrameRegister());
             if (useBasePointer) {
                 regs.remove(rbp);

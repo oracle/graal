@@ -34,6 +34,8 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 /**
  * Mechanism to change the value of a field. Normally, field values in the native image heap of the
@@ -45,6 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
+@Platforms(Platform.HOSTED_ONLY.class)
 public @interface RecomputeFieldValue {
 
     enum Kind {
