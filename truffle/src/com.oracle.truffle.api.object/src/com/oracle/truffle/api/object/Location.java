@@ -83,7 +83,7 @@ public abstract class Location {
      * @since 0.8 or earlier
      */
     public final Object get(DynamicObject store, Shape shape) {
-        return get(store, checkShape(store, shape));
+        return get(store, store.getShape() == shape);
     }
 
     /**
@@ -273,7 +273,9 @@ public abstract class Location {
      * Equivalent to {@link Shape#check(DynamicObject)}.
      *
      * @since 0.8 or earlier
+     * @deprecated equivalent to {@code store.getShape() == shape}.
      */
+    @Deprecated(since = "22.2")
     protected static boolean checkShape(DynamicObject store, Shape shape) {
         return store.getShape() == shape;
     }
