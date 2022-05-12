@@ -1809,11 +1809,15 @@ abstract class DynamicObjectLibraryImpl {
 
         @Specialization
         static void doCached(DynamicObject object, Shape cachedShape,
-                        @Cached(value = "cachedShape.makeSharedShape()", allowUncached = true) Shape newShape) {
+                        @Cached(value = "makeSharedShape(cachedShape)", allowUncached = true) Shape newShape) {
             assert newShape != cachedShape &&
                             ((ShapeImpl) cachedShape).getObjectArrayCapacity() == ((ShapeImpl) newShape).getObjectArrayCapacity() &&
                             ((ShapeImpl) cachedShape).getPrimitiveArrayCapacity() == ((ShapeImpl) newShape).getPrimitiveArrayCapacity();
             ACCESS.setShape(object, newShape);
+        }
+
+        static Shape makeSharedShape(Shape inputShape) {
+            return ((ShapeImpl) inputShape).makeSharedShape();
         }
     }
 

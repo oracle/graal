@@ -919,7 +919,9 @@ public abstract class Shape {
      * @see #isShared()
      * @see DynamicObjectLibrary#markShared(DynamicObject)
      * @since 0.18
+     * @deprecated use {@link DynamicObjectLibrary#markShared(DynamicObject)} instead.
      */
+    @Deprecated(since = "22.2")
     public Shape makeSharedShape() {
         CompilerAsserts.neverPartOfCompilation();
         throw CompilerDirectives.shouldNotReachHere();
