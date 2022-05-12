@@ -302,7 +302,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 hostLanguageOnly,
                                 polyglotHostService);
             }
-            return getAPIAccess().newEngine(engineDispatch, impl);
+            return getAPIAccess().newEngine(engineDispatch, impl, !impl.hostLanguageOnly);
         } catch (Throwable t) {
             if (impl == null) {
                 throw PolyglotImpl.guestToHostException(this, t);

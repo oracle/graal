@@ -75,7 +75,7 @@ public class HostPolyglotDispatch extends AbstractPolyglotImpl {
                             onlyHostLanguage, polyglotHostService);
             long remoteEngine = getHostToGuest().remoteCreateEngine();
             HostEngine engine = new HostEngine(remoteEngine, localEngine);
-            return getAPIAccess().newEngine(new HostEngineDispatch(this), engine);
+            return getAPIAccess().newEngine(new HostEngineDispatch(this), engine, true);
         } else {
             return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
                             false, polyglotHostService);

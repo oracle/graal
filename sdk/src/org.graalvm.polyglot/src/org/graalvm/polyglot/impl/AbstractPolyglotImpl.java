@@ -151,7 +151,7 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver);
+        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines);
 
         public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine);
 
