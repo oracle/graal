@@ -251,11 +251,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             } else if (PrimitiveType.I32 == type) {
                 ret = i32OffsetLoadNode.executeWithTarget(baseAddr, 0);
             } else if (PrimitiveType.I64 == type) {
-                try {
-                    ret = i64OffsetLoadNode.executeWithTarget(baseAddr, 0);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.shouldNotReachHere();
-                }
+                ret = i64OffsetLoadNode.executeWithTargetGeneric(baseAddr, 0);
             } else if (type instanceof PointerType) {
                 ret = pointerOffsetLoadNode.executeWithTarget(baseAddr, 0);
             } else {
@@ -282,11 +278,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
             } else if (PrimitiveType.I32 == type) {
                 ret = readLibrary.readI32(vaListStorage, offset);
             } else if (PrimitiveType.I64 == type) {
-                try {
-                    ret = readLibrary.readI64(vaListStorage, offset);
-                } catch (UnexpectedResultException e) {
-                    CompilerDirectives.shouldNotReachHere();
-                }
+                ret = readLibrary.readGenericI64(vaListStorage, offset);
             } else if (type instanceof PointerType) {
                 ret = readLibrary.readPointer(vaListStorage, offset);
             } else {
