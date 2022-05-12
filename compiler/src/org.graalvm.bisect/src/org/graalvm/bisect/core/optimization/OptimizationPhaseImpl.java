@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
+import java.util.Objects;
 
 public class OptimizationPhaseImpl implements OptimizationPhase {
     private final String name;
@@ -74,5 +75,19 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
             }
         }
         return optimizations;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        if (!(object instanceof OptimizationPhaseImpl)) {
+            return false;
+        }
+        OptimizationPhaseImpl other = (OptimizationPhaseImpl) object;
+        return Objects.equals(name, other.name) && Objects.equals(children, other.children);
+    }
+
+    @Override
+    public int hashCode() {
+        return name.hashCode() + ((children == null) ? -1 : children.hashCode());
     }
 }

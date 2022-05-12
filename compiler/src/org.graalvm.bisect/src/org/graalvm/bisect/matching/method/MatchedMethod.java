@@ -139,7 +139,7 @@ public class MatchedMethod {
                     + extraExecutedMethod.getExecutedMethod().getExperiment().getExperimentId());
             Optimization.writeOptimizations(
                     writer,
-                    extraExecutedMethod.getExecutedMethod().getOptimizationsRecursive().stream()
+                    extraExecutedMethod.getExecutedMethod().getOptimizationsRecursive()
             );
         }
     }

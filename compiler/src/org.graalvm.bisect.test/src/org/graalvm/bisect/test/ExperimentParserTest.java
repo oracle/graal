@@ -29,6 +29,7 @@ import org.graalvm.bisect.core.Experiment;
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.OptimizationImpl;
 import org.graalvm.bisect.core.optimization.OptimizationPhase;
+import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
 import org.graalvm.bisect.parser.experiment.ExperimentFiles;
 import org.graalvm.bisect.parser.experiment.ExperimentParser;
 import org.graalvm.bisect.parser.experiment.ExperimentParserException;
@@ -90,18 +91,23 @@ public class ExperimentParserTest {
                             "    \"rootPhase\": {\n" +
                             "        \"phaseName\": \"RootPhase\",\n" +
                             "        \"optimizations\": [\n" +
-                            "            {\n" +
-                            "                \"optimizationName\": \"LoopTransformation\",\n" +
-                            "                \"eventName\": \"PartialUnroll\",\n" +
-                            "                \"bci\": 68\n," +
-                            "                \"unrollFactor\": 1\n" +
-                            "            },\n" +
-                            "            {\n" +
-                            "                \"phaseName\": \"EmptyPhase\",\n" +
-                            "                \"optimizations\": null\n" +
-                            "            }\n" +
-                            "        ]\n" +
-                            "    }\n" +
+                            "           {\n" +
+                            "               \"phaseName\": \"SomeTier\",\n" +
+                            "               \"optimizations\": [\n" +
+                            "                   {\n" +
+                            "                       \"optimizationName\": \"LoopTransformation\",\n" +
+                            "                       \"eventName\": \"PartialUnroll\",\n" +
+                            "                       \"bci\": 68\n," +
+                            "                       \"unrollFactor\": 1\n" +
+                            "                   },\n" +
+                            "                   {\n" +
+                            "                       \"phaseName\": \"EmptyPhase\",\n" +
+                            "                       \"optimizations\": null\n" +
+                            "                   }\n" +
+                            "               ]\n" +
+                            "           }\n" +
+                            "       ]\n" +
+                            "   }\n" +
                             "}"),
                     new StringReader("{\n" +
                             "    \"compilationId\": \"3677\",\n" +
@@ -141,31 +147,28 @@ public class ExperimentParserTest {
 
         for (ExecutedMethod executedMethod : experiment.getExecutedMethods()) {
             switch (executedMethod.getCompilationId()) {
-                case "2390":
-                    assertEquals("RootPhase", executedMethod.getRootPhase().getName());
-                    assertEquals(2, executedMethod.getRootPhase().getChildren().size());
-                    assertTrue(executedMethod.getRootPhase().getChildren().get(1) instanceof OptimizationPhase);
+                case "2390": {
                     assertEquals(
                             "java.util.HashMap$HashIterator.nextNode()",
                             executedMethod.getCompilationMethodName());
-                    assertEquals(
-                            Set.of(new OptimizationImpl("LoopTransformation", "PartialUnroll", 68, Map.of("unrollFactor", 1))),
-                            Set.copyOf(executedMethod.getOptimizationsRecursive())
-                    );
+                    OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
+                    OptimizationPhaseImpl someTier = new OptimizationPhaseImpl("SomeTier");
+                    rootPhase.addChild(someTier);
+                    someTier.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 68, Map.of("unrollFactor", 1)));
+                    someTier.addChild(new OptimizationPhaseImpl("EmptyPhase"));
+                    assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
-                case "3677":
-                    assertEquals("RootPhase", executedMethod.getRootPhase().getName());
+                }
+                case "3677": {
                     assertEquals(
                             "org.example.CopyBenchmarkSimple.singleByteZero(Blackhole, CopyBenchmarkSimple$Context)",
                             executedMethod.getCompilationMethodName());
-                    assertEquals(
-                            Set.of(
-                                    new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
-                                    new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, Map.of("unrollFactor", 2))
-                            ),
-                            Set.copyOf(executedMethod.getOptimizationsRecursive())
-                    );
+                    OptimizationPhaseImpl rootPhase = new OptimizationPhaseImpl("RootPhase");
+                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)));
+                    rootPhase.addChild(new OptimizationImpl("LoopTransformation", "PartialUnroll", -1, Map.of("unrollFactor", 2)));
+                    assertEquals(rootPhase, executedMethod.getRootPhase());
                     break;
+                }
                 default:
                     fail();
                     break;

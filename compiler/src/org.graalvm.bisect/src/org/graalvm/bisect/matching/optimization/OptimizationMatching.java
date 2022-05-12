@@ -34,54 +34,16 @@ import java.util.List;
  */
 public interface OptimizationMatching {
     /**
-     * Gets a list of optimizations with experiment IDs that were not matched with any other optimization from the other
+     * Gets a list of optimizations from an experiment that were not matched with any other optimization from the other
      * method.
+     * @param experimentId the experiment ID of the returned optimizations
      * @return a list of extra optimizations
      */
-    List<ExtraOptimization> getExtraOptimizations();
+    List<Optimization> getExtraOptimizations(ExperimentId experimentId);
 
     /**
      * Gets a list of optimization that were present in both compiled methods.
      * @return a list of optimizations present in both compiled methods
      */
     List<Optimization> getMatchedOptimizations();
-
-    /**
-     * Represents an optimization that was not matched with any other optimization in the other compiled method.
-     */
-    class ExtraOptimization {
-        /**
-         * Gets the ID of the experiment to which this optimization belongs.
-         * @return the ID of the experiment of this optimization
-         */
-        public ExperimentId getExperimentId() {
-            return experimentId;
-        }
-
-        public Optimization getOptimization() {
-            return optimization;
-        }
-
-        private final ExperimentId experimentId;
-        private final Optimization optimization;
-
-        ExtraOptimization(ExperimentId experimentId, Optimization optimization) {
-            this.experimentId = experimentId;
-            this.optimization = optimization;
-        }
-
-        @Override
-        public int hashCode() {
-            return experimentId.hashCode() + optimization.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (!(object instanceof ExtraOptimization)) {
-                return false;
-            }
-            ExtraOptimization other = (ExtraOptimization) object;
-            return experimentId == other.experimentId && optimization.equals(other.optimization);
-        }
-    }
 }

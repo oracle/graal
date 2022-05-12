@@ -30,7 +30,6 @@ import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.matching.optimization.OptimizationMatching;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Describes a matching of flattened optimization trees, which is a wrapper of {@link OptimizationMatching}.
@@ -56,7 +55,7 @@ public class FlatTreeMatching implements TreeMatching {
         }
         writer.writeln("Optimizations in both experiments");
         writer.increaseIndent();
-        Optimization.writeOptimizations(writer, optimizations.stream());
+        Optimization.writeOptimizations(writer, optimizations);
         writer.decreaseIndent();
     }
 
@@ -70,20 +69,13 @@ public class FlatTreeMatching implements TreeMatching {
             Writer writer,
             ExperimentId experimentId,
             OptimizationMatching optimizationMatching) {
-        List<OptimizationMatching.ExtraOptimization> optimizations = optimizationMatching
-                .getExtraOptimizations()
-                .stream()
-                .filter(match -> match.getExperimentId() == experimentId)
-                .collect(Collectors.toList());
+        List<Optimization> optimizations = optimizationMatching.getExtraOptimizations(experimentId);
         if (optimizations.isEmpty()) {
             return;
         }
         writer.writeln("Optimizations only in experiment " + experimentId);
         writer.increaseIndent();
-        Optimization.writeOptimizations(
-                writer,
-                optimizations.stream().map(OptimizationMatching.ExtraOptimization::getOptimization)
-        );
+        Optimization.writeOptimizations(writer, optimizations);
         writer.decreaseIndent();
     }
 }

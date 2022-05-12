@@ -26,18 +26,19 @@ package org.graalvm.bisect.matching.optimization;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
-import org.graalvm.bisect.util.SetUtil;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Creates a matching between optimizations of two executed methods based on set intersection/difference.
  */
 public class SetBasedOptimizationMatcher implements OptimizationMatcher {
     /**
-     * Creates a matching between optimizations of two executed methods coming from two experiments. The lists of
-     * optimizations are converted to two sets. The intersection is the list of matched optimizations. The difference
-     * of the two sets is the list of extra optimizations.
+     * Creates a matching between optimizations of two executed methods coming from two experiments.
+     * The set intersection is the list of matched optimizations. The intersection preserves the order of optimizations
+     * from the first experiment. The set difference of the two list of optimizations is the list of extra
+     * optimizations. The lists of extra optimizations preserve their original order.
      * @param optimizations1 a list of optimizations from a method in the first experiment
      * @param optimizations2 a list of optimizations from a method in the second experiment
      * @return an object that describes matched and extra optimizations
@@ -45,21 +46,27 @@ public class SetBasedOptimizationMatcher implements OptimizationMatcher {
     @Override
     public OptimizationMatching match(List<Optimization> optimizations1, List<Optimization> optimizations2) {
         OptimizationMatchingImpl matching = new OptimizationMatchingImpl();
-        analyzeExtraOptimizations(optimizations1, optimizations2, matching, ExperimentId.ONE);
-        analyzeExtraOptimizations(optimizations2, optimizations1, matching, ExperimentId.TWO);
-        for (Optimization optimization : SetUtil.intersection(optimizations1, optimizations2)) {
-            matching.addMatchedOptimization(optimization);
+        Set<Optimization> optimizationSet1 = Set.copyOf(optimizations1);
+        Set<Optimization> optimizationSet2 = Set.copyOf(optimizations2);
+        identifyExtraOptimizations(optimizations1, optimizationSet2, matching, ExperimentId.ONE);
+        identifyExtraOptimizations(optimizations2, optimizationSet1, matching, ExperimentId.TWO);
+        for (Optimization optimization : optimizations1) {
+            if (optimizationSet2.contains(optimization)) {
+                matching.addMatchedOptimization(optimization);
+            }
         }
         return matching;
     }
 
-    private static void analyzeExtraOptimizations(
-            List<Optimization> optimizations1,
-            List<Optimization> optimizations2,
+    private static void identifyExtraOptimizations(
+            List<Optimization> optimizations,
+            Set<Optimization> toRemoveSet,
             OptimizationMatchingImpl matching,
             ExperimentId lhsExperimentId) {
-        for (Optimization optimization : SetUtil.difference(optimizations1, optimizations2)) {
-            matching.addExtraOptimization(optimization, lhsExperimentId);
+        for (Optimization optimization : optimizations) {
+            if (!toRemoveSet.contains(optimization)) {
+                matching.addExtraOptimization(optimization, lhsExperimentId);
+            }
         }
     }
 }

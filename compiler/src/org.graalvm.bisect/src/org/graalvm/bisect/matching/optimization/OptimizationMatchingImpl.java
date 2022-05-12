@@ -25,7 +25,9 @@
 package org.graalvm.bisect.matching.optimization;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
@@ -34,12 +36,18 @@ import org.graalvm.bisect.core.optimization.Optimization;
  * A mutable matching of optimizations between two compilations of the same method in two experiments.
  */
 class OptimizationMatchingImpl implements OptimizationMatching {
-    private final ArrayList<ExtraOptimization> extraOptimizations = new ArrayList<>();
-    private final ArrayList<Optimization> matchedOptimizations = new ArrayList<>();
+    private final Map<ExperimentId, List<Optimization>> extraOptimizations = new HashMap<>();
+    private final List<Optimization> matchedOptimizations = new ArrayList<>();
+
+    OptimizationMatchingImpl() {
+        for (ExperimentId experimentId : ExperimentId.values()) {
+            extraOptimizations.put(experimentId, new ArrayList<>());
+        }
+    }
 
     @Override
-    public List<ExtraOptimization> getExtraOptimizations() {
-        return extraOptimizations;
+    public List<Optimization> getExtraOptimizations(ExperimentId experimentId) {
+        return extraOptimizations.get(experimentId);
     }
 
     @Override
@@ -48,8 +56,7 @@ class OptimizationMatchingImpl implements OptimizationMatching {
     }
 
     public void addExtraOptimization(Optimization optimization, ExperimentId experimentId) {
-        ExtraOptimization extraOptimization = new ExtraOptimization(experimentId, optimization);
-        extraOptimizations.add(extraOptimization);
+        extraOptimizations.get(experimentId).add(optimization);
     }
 
     public void addMatchedOptimization(Optimization optimization) {

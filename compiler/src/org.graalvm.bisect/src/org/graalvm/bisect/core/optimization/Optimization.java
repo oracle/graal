@@ -24,11 +24,10 @@
  */
 package org.graalvm.bisect.core.optimization;
 
-import org.graalvm.bisect.util.Writer;
-
-import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
+
+import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents an optimization in a compiled method at a particular BCI.
@@ -71,21 +70,18 @@ public interface Optimization extends OptimizationTreeNode {
      * @param writer the destination writer
      * @param optimizations the list of optimizations to be written
      */
-    static void writeOptimizations(Writer writer, Stream<Optimization> optimizations) {
-        optimizations
-                .sorted(Comparator.comparing(Optimization::getBCI))
-                .iterator()
-                .forEachRemaining(optimization -> {
-                    writer.writeln(optimization.getOptimizationName() + " "
-                            + optimization.getEventName() + " at bci " + optimization.getBCI());
-                    if (optimization.getProperties() == null) {
-                        return;
-                    }
-                    writer.increaseIndent();
-                    for (Map.Entry<String, Object> entry : optimization.getProperties().entrySet()) {
-                        writer.writeln(entry.getKey() + ": " + entry.getValue());
-                    }
-                    writer.decreaseIndent();
-                });
+    static void writeOptimizations(Writer writer, List<Optimization> optimizations) {
+        for (Optimization optimization : optimizations) {
+            writer.writeln(optimization.getOptimizationName() + " "
+                    + optimization.getEventName() + " at bci " + optimization.getBCI());
+            if (optimization.getProperties() == null) {
+                return;
+            }
+            writer.increaseIndent();
+            for (Map.Entry<String, Object> entry : optimization.getProperties().entrySet()) {
+                writer.writeln(entry.getKey() + ": " + entry.getValue());
+            }
+            writer.decreaseIndent();
+        }
     }
 }

@@ -28,7 +28,9 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.graalvm.bisect.core.ExperimentId;
 import org.graalvm.bisect.core.optimization.Optimization;
 import org.graalvm.bisect.matching.optimization.OptimizationMatcher;
 import org.graalvm.bisect.matching.optimization.SetBasedOptimizationMatcher;
@@ -40,20 +42,25 @@ import org.junit.Test;
 public class OptimizationMatcherTest {
     @Test
     public void testSetBasedOptimizationMatcher() {
-        List<Optimization> optimizations1 = List.of(
-                new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
-                new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 2)),
-                new OptimizationImpl("LoopTransformation", "PartialUnroll", 3, null),
-                new OptimizationImpl("LoopTransformation", "Peeling", 5, null)
-        );
-        List<Optimization> optimizations2 = List.of(
-                new OptimizationImpl("LoopTransformation", "PartialUnroll", 2, Map.of("unrollFactor", 1)),
-                new OptimizationImpl("LoopTransformation", "PartialUnroll", 5, null)
-        );
+        Optimization common1 = new OptimizationImpl("foo", "bar", 1, Map.of("prop", 1));
+        Optimization common2 = new OptimizationImpl("foo", "bar", 1, Map.of("prop", 2));
+
+        Optimization extra1 = new OptimizationImpl("foo", "bar", 1, null);
+        Optimization extra2 = new OptimizationImpl("foo", "bar", 2, Map.of("prop", 1));
+        Optimization extra3 = new OptimizationImpl("foo", "baz", 1, Map.of("prop", 1));
+        Optimization extra4 = new OptimizationImpl("baz", "bar", 1, Map.of("prop", 1));
+
+        List<Optimization> optimizations1 = List.of(extra1, common1, extra2, common2);
+        List<Optimization> optimizations2 = List.of(common1, common2, extra3, extra4);
+
+        List<Optimization> common = List.of(common1, common2);
+        List<Optimization> extraLhs = List.of(extra1, extra2);
+        List<Optimization> extraRhs = List.of(extra3, extra4);
+
         OptimizationMatcher matcher = new SetBasedOptimizationMatcher();
         OptimizationMatching matching = matcher.match(optimizations1, optimizations2);
-        assertEquals(1, matching.getMatchedOptimizations().size());
-        assertEquals(2, matching.getMatchedOptimizations().get(0).getBCI());
-        assertEquals(2, matching.getExtraOptimizations().size(), 4);
+        assertEquals(common, matching.getMatchedOptimizations());
+        assertEquals(extraLhs, matching.getExtraOptimizations(ExperimentId.ONE));
+        assertEquals(extraRhs, matching.getExtraOptimizations(ExperimentId.TWO));
     }
 }
