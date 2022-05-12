@@ -248,7 +248,6 @@ public abstract class Location {
      * Returns {@code true} if this is a value location.
      *
      * @see #isConstant()
-     * @see #isDeclared()
      * @since 0.18
      */
     public boolean isValue() {

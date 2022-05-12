@@ -162,9 +162,6 @@ public abstract class ShapeImpl extends Shape {
      *
      * @param parent predecessor shape
      * @param transitionFromParent direct transition from parent shape
-     *
-     * @see #ShapeImpl(com.oracle.truffle.api.object.Layout, ShapeImpl, Object, Object, PropertyMap,
-     *      Transition, BaseAllocator, int)
      */
     private ShapeImpl(com.oracle.truffle.api.object.Layout layout, ShapeImpl parent, Object objectType, Object sharedData, PropertyMap propertyMap, Transition transitionFromParent,
                     int objectArraySize, int objectFieldSize, int primitiveFieldSize, int primitiveArraySize, int flags, Assumption singleContextAssumption) {

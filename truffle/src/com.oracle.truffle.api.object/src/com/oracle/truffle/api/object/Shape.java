@@ -864,7 +864,7 @@ public abstract class Shape {
     public abstract Shape tryMerge(Shape other);
 
     /**
-     * Returns {@code true} if this shape is {@link Shape#makeSharedShape() shared}.
+     * Returns {@code true} if this shape is marked as shared.
      *
      * @see DynamicObjectLibrary#isShared(DynamicObject)
      * @see DynamicObjectLibrary#markShared(DynamicObject)
