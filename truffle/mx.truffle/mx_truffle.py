@@ -704,7 +704,8 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
             f.writelines(parser_before)
         with open(lexer, "w") as f:
             f.writelines(lexer_before)
-        mx.abort("Parser generated from " + grammar_path + " does not match content of " + parser_path + " or " + lexer_path)
+        mx.abort("Parser generated from " + grammar_path + " does not match content of " + parser_path + " or " + lexer_path + "." +
+            " Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
