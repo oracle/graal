@@ -675,14 +675,6 @@ public abstract class Shape {
     public abstract Property getLastProperty();
 
     /**
-     * @see #getFlags()
-     * @since 0.8 or earlier
-     * @deprecated no replacement, returns 0
-     */
-    @Deprecated(since = "20.2")
-    public abstract int getId();
-
-    /**
      * Returns the language-specific shape flags previously set using
      * {@link DynamicObjectLibrary#setShapeFlags(DynamicObject, int)} or
      * {@link Shape.Builder#shapeFlags(int)}. If no shape flags were explicitly set, the default of

@@ -254,12 +254,6 @@ public abstract class ShapeImpl extends Shape {
         return propertyMap.getLastProperty();
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    public final int getId() {
-        return getObjectFlags(flags);
-    }
-
     @Override
     public final int getFlags() {
         return getObjectFlags(flags);
