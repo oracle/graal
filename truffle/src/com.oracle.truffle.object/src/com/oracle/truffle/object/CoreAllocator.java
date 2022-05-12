@@ -224,7 +224,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     protected Location locationForValueUpcast(Object value, Location oldLocation, long putFlags) {
         assert !oldLocation.canStore(value);
 
-        if (oldLocation instanceof ConstantLocation && (Flags.isConstant(putFlags) || getLayout().isLegacyLayout())) {
+        if (oldLocation instanceof ConstantLocation && Flags.isConstant(putFlags)) {
             return constantLocation(value);
         } else if (oldLocation instanceof ValueLocation) {
             return locationForValue(value, false, value != null);

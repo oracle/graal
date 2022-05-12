@@ -47,7 +47,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
@@ -931,9 +930,6 @@ public abstract class ShapeImpl extends Shape {
         if (getDynamicType() == newObjectType) {
             return this;
         }
-        if (getLayout().isLegacyLayout() && !(newObjectType instanceof com.oracle.truffle.api.object.ObjectType)) {
-            throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
-        }
         ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
@@ -1074,29 +1070,7 @@ public abstract class ShapeImpl extends Shape {
     /** @since 0.17 or earlier */
     @Override
     public final DynamicObjectFactory createFactory() {
-        if (!layout.isLegacyLayout()) {
-            throw DefaultLayout.unsupported();
-        }
-
-        List<Property> properties = getPropertyListInternal(true);
-        List<Property> filtered = null;
-        for (ListIterator<Property> iterator = properties.listIterator(); iterator.hasNext();) {
-            Property property = iterator.next();
-            // skip non-instance fields
-            if (property.getLocation().isValue()) {
-                if (filtered == null) {
-                    filtered = new ArrayList<>();
-                    filtered.addAll(properties.subList(0, iterator.previousIndex()));
-                }
-            } else if (filtered != null) {
-                filtered.add(property);
-            }
-        }
-
-        if (filtered != null) {
-            properties = filtered;
-        }
-        return new DynamicObjectFactoryImpl(this, properties);
+        throw DefaultLayout.unsupported();
     }
 
     /** @since 0.17 or earlier */
