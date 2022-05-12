@@ -1249,6 +1249,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     // this node represents an inline call range so
                     // add a locationinfo to cover the range of the call
                     locationInfo = createCallLocationInfo((CallNode) node, callerInfo, frameSize);
+                } else if (isBadLeaf(node, callerInfo)) {
+                    locationInfo = createBadLeafLocationInfo(node, callerInfo, frameSize);
                 } else {
                     // this is leaf method code so add details of its range
                     locationInfo = createLeafLocationInfo(node, callerInfo, frameSize);
@@ -1402,6 +1404,38 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             debugContext.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
                             locationInfo.addressHi() - 1);
             return locationInfo;
+        }
+
+        private NativeImageDebugLocationInfo createBadLeafLocationInfo(FrameNode node, NativeImageDebugLocationInfo callerLocation, int framesize) {
+            assert !(node instanceof CallNode) : "bad leaf location cannot be a call node!";
+            assert callerLocation == null : "should only see bad leaf at top level!";
+            BytecodePosition pos = node.frame;
+            BytecodePosition callerPos = pos.getCaller();
+            assert callerPos != null : "bad leaf must have a caller";
+            assert callerPos.getCaller() == null : "bad leaf caller must be root method";
+            int startPos = node.getStartPos();
+            int endPos = node.getEndPos() + 1;
+            NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(callerPos, startPos, endPos, null, framesize);
+            debugContext.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
+                    locationInfo.addressHi() - 1);
+            return locationInfo;
+        }
+
+        private boolean isBadLeaf(FrameNode node, NativeImageDebugLocationInfo callerLocation) {
+            // Sometimes we see a leaf node marked as belonging to an inlined method
+            // that sits directly under the root method rather than under a call node.
+            // It needs replacing with a location info for the root method that covers
+            // the relevant code range.
+            if (callerLocation == null) {
+                BytecodePosition pos = node.frame;
+                BytecodePosition callerPos = pos.getCaller();
+                if (callerPos != null && callerPos.getMethod() != pos.getMethod()) {
+                    if (callerPos.getCaller() == null) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         /**
