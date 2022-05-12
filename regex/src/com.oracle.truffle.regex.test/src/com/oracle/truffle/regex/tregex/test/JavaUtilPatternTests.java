@@ -147,7 +147,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
     }
 
     @Test
-    public void posixCC() {  // TODO should throw an error
+    public void posixCC() {
         test("[\\p{Digit}\\p{Lower}]", 0, "2");
     }
 
@@ -173,9 +173,6 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("\\v", 0, "\n");     // TODO how to deal with \v and \h
         test("\\h", 0, "\t");
     }
-
-    // TODO how to see what matched and what not?
-    // maybe matches found are counted and compared to each other (java and javascript ones)?
 
     @Test
     public void stringAnchor() {
@@ -223,7 +220,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{2,}+a", 0, "aa");
     }
 
-    @Test // TODO how to do them effeciently?
+    @Test // TODO how to do them efficiently?
     public void unicodeTests() {
 
     }
@@ -243,7 +240,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     }
 
-    @Test(expected = Exception.class)  // TODO needs to fail
+    @Test(expected = Exception.class)
     public void backReferenceFail() {
         test("(abc|def)=\\1", 0, "abc=def");
         test("(abc|def)=\\1", 0, "def=abc");
@@ -254,7 +251,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a(?>bc|b)c", 0, "abcc");
     }
 
-    @Test(expected = Exception.class) // TODO needs to fail
+    @Test(expected = Exception.class)
     public void atomicGroupFail() {
         test("a(?>bc|b)c", 0, "abc");
     }
@@ -294,7 +291,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("(?dm)^.", 0, "a\rb\nc");
     }
 
-    @Test(expected = Exception.class)   // TODO needs to fail
+    @Test(expected = Exception.class)
     public void modeModifierFail() {
         test("te(?i)st", 0, "TEst");
         test("te(?i)st", 0, "TEST");
@@ -318,9 +315,9 @@ public class JavaUtilPatternTests extends RegexTestBase {
             StringBuilder sb = new StringBuilder();
             sb.appendCodePoint(i);
             Matcher m = p.matcher(sb.toString());
-            if(m.find()) {
+//            if(m.find()) {
 //                System.out.println(sb.toString() + " has matched");
-            }
+//            }
         }
 
         Assert.assertEquals(UnicodeProperties.getProperty("sc=Brai", true), UnicodeProperties.getProperty("Script=Brai", true));
@@ -370,6 +367,9 @@ public class JavaUtilPatternTests extends RegexTestBase {
         }
         if ((javaUtilPatternFlags & Pattern.UNICODE_CASE) != 0) {
             return "u";
+        }
+        if ((javaUtilPatternFlags & Pattern.UNICODE_CHARACTER_CLASS) != 0) {
+            return "U";
         }
 
         throw new UnsupportedOperationException();
