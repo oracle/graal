@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,22 +31,22 @@ package com.oracle.truffle.llvm.toolchain.launchers.common;
 
 import java.util.List;
 
-public class ClangLike extends ClangLikeBase {
+public class ClangCLLike extends ClangLikeBase {
 
     public static void runClangXX(String[] args) {
-        new ClangLike(args, ClangLikeBase.Tool.ClangXX, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangCLLike(args, ClangLikeBase.Tool.ClangXX, OS.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClang(String[] args) {
-        new ClangLike(args, ClangLikeBase.Tool.Clang, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangCLLike(args, ClangLikeBase.Tool.Clang,  OS.getCurrent(), NATIVE_PLATFORM).run();
     }
 
     public static void runClangCL(String[] args) {
-        new ClangLike(args, ClangLikeBase.Tool.ClangCL, OS.getCurrent(), Arch.getCurrent(), NATIVE_PLATFORM).run();
+        new ClangCLLike(args, ClangLikeBase.Tool.ClangCL, OS.getCurrent(), NATIVE_PLATFORM).run();
     }
 
-    protected ClangLike(String[] args, ClangLikeBase.Tool tool, OS os, Arch arch, String platform) {
-        super(args, tool, os, arch, platform);
+    protected ClangCLLike(String[] args, ClangLikeBase.Tool tool, OS os, String platform) {
+        super(args, tool, os, platform);
     }
 
     @Override
@@ -59,7 +59,6 @@ public class ClangLike extends ClangLikeBase {
         }
         // Suppress warning because of libc++
         sulongArgs.add("-Wno-unused-command-line-argument");
-        super.getCompilerArgs(sulongArgs);
     }
 
     @Override

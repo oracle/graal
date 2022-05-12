@@ -845,8 +845,12 @@ suite = {
         "LIBCXX_INCLUDE_TESTS": "NO",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
-        "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
-        "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
+        "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang-cl>",
+        "CMAKE_CXX_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang-cl>",
+        "CMAKE_LINKER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:lld-link>",
+        "CMAKE_C_FLAGS" : "-flto -gdwarf-5 -O1",
+        "CMAKE_CXX_FLAGS" : "-flto -gdwarf-5 -O1",
+        "CMAKE_SHARED_LINKER_FLAGS" : "/mllvm:--lto-embed-bitcode=optimized",
         "CMAKE_INSTALL_PREFIX" : "native",
         # workaround for build problem with cmake >=3.22
         # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
@@ -856,7 +860,6 @@ suite = {
         "sdk:LLVM_ORG_SRC",
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
         "sdk:LLVM_TOOLCHAIN",
-        "NATIVE_MODE_SUPPORT",
       ],
       "clangFormat" : False,
     },
