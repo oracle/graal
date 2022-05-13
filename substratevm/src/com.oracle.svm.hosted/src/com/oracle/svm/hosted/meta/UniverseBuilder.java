@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.meta;
 
 import java.io.Serializable;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -944,10 +943,9 @@ public class UniverseBuilder {
             }
 
             DynamicHub hub = type.getHub();
-            AnalysisType analysisType = type.getWrapped();
 
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
-                            vtable, referenceMapIndex, type.isInstantiated(), Proxy.isProxyClass(analysisType.getJavaClass()) && analysisType.isInHeap());
+                            vtable, referenceMapIndex, type.isInstantiated());
         }
     }
 

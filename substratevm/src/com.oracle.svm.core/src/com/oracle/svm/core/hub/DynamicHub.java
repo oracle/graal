@@ -42,6 +42,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.net.URL;
@@ -380,7 +381,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setData(int layoutEncoding, int typeID, int monitorOffset,
                     short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
-                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean proxyInHeap) {
+                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
         assert this.vtable == null : "Initialization must be called only once";
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
@@ -397,8 +398,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.referenceMapIndex = (int) referenceMapIndex;
         this.isInstantiated = isInstantiated;
 
-        if (proxyInHeap) {
-            companion.setClassLoaderProxy();
+        if (Proxy.isProxyClass(hostedJavaClass)) {
+            companion.setClassLoaderProxy(PredefinedClassesSupport.isPredefined(hostedJavaClass));
         }
     }
 
