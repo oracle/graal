@@ -1417,7 +1417,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             int endPos = node.getEndPos() + 1;
             NativeImageDebugLocationInfo locationInfo = new NativeImageDebugLocationInfo(callerPos, startPos, endPos, null, framesize);
             debugContext.log(DebugContext.DETAILED_LEVEL, "Embed leaf Location Info : %s depth %d (%d, %d)", locationInfo.name(), locationInfo.depth(), locationInfo.addressLo(),
-                    locationInfo.addressHi() - 1);
+                            locationInfo.addressHi() - 1);
             return locationInfo;
         }
 

@@ -458,6 +458,8 @@ def test():
     # As a result the breakpoint will be set at all println overrides.
     # expect "Breakpoint 1 at 0x[0-9a-f]+: java.io.PrintStream::println. ([0-9]+ locations)""
     exec_string = execute("break java.io.PrintStream::println")
+    # we cannot be sure how much inlining will happen so we
+    # specify a pattern for the number of locations
     rexp = r"Breakpoint %s at %s: java\.io\.PrintStream::println\. \(%s locations\)"%(digits_pattern, address_pattern, digits_pattern)
     checker = Checker('break println', rexp)
     checker.check(exec_string, skip_fails=False)
@@ -620,24 +622,30 @@ def test():
 
     execute("delete breakpoints")
     exec_string = execute("break Hello.java:173")
-    rexp = r"Breakpoint %s at %s: Hello\.java:173\. \(2 locations\)"%(digits_pattern, address_pattern)
+    # we cannot be sure how much inlining will happen so we
+    # specify a pattern for the number of locations
+    rexp = r"Breakpoint %s at %s: Hello\.java:173\. \(%s locations\)"%(digits_pattern, address_pattern, digits_pattern)
     checker = Checker('break Hello.java:173', rexp)
     checker.check(exec_string)
 
     execute("continue")
     exec_string = execute("backtrace 14")
+    # we cannot be sure exactly how much inlining happens
+    # which means the format of the frame display may vary from
+    # one build to the next. so we use a generic match after the
+    # first two pairs.
     rexp = [r"#0%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:173"%(spaces_pattern, arg_values_pattern),
             r"#1%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
             r"#2%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
             r"#3%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#4%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
-            r"#5%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#6%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
-            r"#7%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#8%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
-            r"#9%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#10%shello\.Hello::inlineTo %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
-            r"#11%shello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, arg_values_pattern),
+            r"#4%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
+            r"#5%shello\.Hello::inlineHere%s at hello/Hello\.java:165"%(wildcard_pattern, wildcard_pattern),
+            r"#6%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
+            r"#7%shello\.Hello::inlineHere%s at hello/Hello\.java:165"%(wildcard_pattern, wildcard_pattern),
+            r"#8%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
+            r"#9%shello\.Hello::inlineHere%s at hello/Hello\.java:165"%(wildcard_pattern, wildcard_pattern),
+            r"#10%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
+            r"#11%shello\.Hello::inlineHere%s at hello/Hello\.java:165"%(wildcard_pattern, wildcard_pattern),
             r"#12%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:146"%(spaces_pattern),
             r"#13%shello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:94"%(spaces_pattern, arg_values_pattern)]
     checker = Checker('backtrace in recursive inlineTo', rexp)
@@ -645,18 +653,24 @@ def test():
 
     execute("delete breakpoints")
     exec_string = execute("break Hello.java:179")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 179\."%(digits_pattern, address_pattern)
-    checker = Checker('break Hello.java:178', rexp)
+    # we cannot be sure how much inlining will happen so we
+    # specify a pattern for the number of locations
+    rexp = r"Breakpoint %s at %s: Hello\.java:179\. \(%s locations\)"%(digits_pattern, address_pattern, digits_pattern)
+    checker = Checker('break Hello.java:179', rexp)
     checker.check(exec_string)
 
     execute("continue 5")
     exec_string = execute("backtrace 8")
+    # we cannot be sure exactly how much inlining happens
+    # which means the format of the frame display may vary from
+    # one build to the next. so we use a generic match after the
+    # first two.
     rexp = [r"#0%shello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:179"%(spaces_pattern, arg_values_pattern),
             r"#1%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#2%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#3%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#4%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#5%s%s in hello\.Hello::inlineTailRecursion %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#2%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
+            r"#3%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
+            r"#4%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
+            r"#5%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
             r"#6%shello\.Hello::inlineFrom \(\) at hello/Hello\.java:147"%(spaces_pattern),
             r"#7%shello\.Hello::main\(java\.lang\.String\[\] \*\) %s at hello/Hello\.java:94"%(spaces_pattern, arg_values_pattern)]
     checker = Checker('backtrace in recursive inlineTo', rexp)
@@ -730,6 +744,8 @@ def test():
     execute("delete breakpoints");
 
     exec_string = execute("break hello.Hello::inlineReceiveConstants")
+    # we cannot be sure how much inlining will happen so we
+    # specify a pattern for the number of locations
     rexp = r"Breakpoint %s at %s: hello\.Hello::inlineReceiveConstants\. \(%s locations\)"%(digits_pattern, address_pattern, digits_pattern)
     checker = Checker('break hello.Hello::inlineReceiveConstants', rexp)
     checker.check(exec_string)
