@@ -133,7 +133,6 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -156,9 +155,6 @@ public final class GraalFeature implements Feature {
     public static class Options {
         @Option(help = "Print call tree of methods available for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompileMethods = new HostedOptionKey<>(false);
-
-        @Option(help = "Print truffle boundaries found during the analysis")//
-        public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
@@ -657,10 +653,6 @@ public final class GraalFeature implements Feature {
             printCallTree();
         }
 
-        if (Options.PrintStaticTruffleBoundaries.getValue()) {
-            printStaticTruffleBoundaries();
-        }
-
         int maxMethods = 0;
         for (String value : Options.MaxRuntimeCompileMethods.getValue().values()) {
             String numberStr = null;
@@ -828,30 +820,6 @@ public final class GraalFeature implements Feature {
             System.out.println();
             node = node.parent;
         }
-    }
-
-    private void printStaticTruffleBoundaries() {
-        HashSet<ResolvedJavaMethod> foundBoundaries = new HashSet<>();
-        int callSiteCount = 0;
-        int calleeCount = 0;
-        for (CallTreeNode node : methods.values()) {
-            StructuredGraph graph = node.graph;
-            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-                TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
-                if (truffleBoundary != null) {
-                    ++callSiteCount;
-                    if (foundBoundaries.contains(targetMethod)) {
-                        // nothing to do
-                    } else {
-                        foundBoundaries.add(targetMethod);
-                        System.out.println("Truffle boundary found: " + targetMethod);
-                        calleeCount++;
-                    }
-                }
-            }
-        }
-        System.out.println(String.format("Number of Truffle call boundaries: %d, number of unique called methods outside the boundary: %d", callSiteCount, calleeCount));
     }
 
     private void printCallTree() {
