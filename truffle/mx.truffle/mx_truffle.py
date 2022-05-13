@@ -922,15 +922,15 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='ICU4J',
     short_name='icu4j',
-    dir_name='truffle',
+    dir_name='icu4j',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    jar_distributions=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    truffle_jars=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
     installable=False,
     stability="supported",
 ))
