@@ -63,23 +63,7 @@ import argparse
 import shlex
 import json
 
-# Temporary imports and (re)definitions while porting mx from Python 2 to Python 3
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-    _unicode = unicode # pylint: disable=undefined-variable
-    def _decode(x):
-        return x
-    def _encode(x):
-        return x
-else:
-    from io import StringIO
-    _unicode = str
-    def _decode(x):
-        return x.decode()
-    def _encode(x):
-        return x.encode()
-
-_basestring = (str, _unicode)
+from io import StringIO
 
 _suite = mx.suite('compiler')
 
@@ -335,7 +319,7 @@ class BootstrapTest:
         self.args = args
         self.suppress = suppress
         self.tags = tags
-        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, _basestring) for x in tags)):
+        if tags is not None and (not isinstance(tags, list) or all(not isinstance(x, str) for x in tags)):
             mx.abort("Gate tag argument must be a list of strings, tag argument:" + str(tags))
 
     def run(self, tasks, extraVMarguments=None):
@@ -1120,7 +1104,7 @@ class GraalArchiveParticipant:
                 pass
             else:
                 provider = m.group(2)
-                for service in _decode(contents_supplier()).strip().split(os.linesep):
+                for service in (contents_supplier()).decode().strip().split(os.linesep):
                     assert service
                     version = m.group(1)
                     add_serviceprovider(service, provider, version)
