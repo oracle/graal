@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -363,7 +364,7 @@ public class DominatorBasedGlobalValueNumberingPhase extends BasePhase<CoreProvi
      * which they must not float
      */
     private static boolean canGVN(Node n) {
-        return !MemoryKill.isMemoryKill(n) && (n instanceof MemoryAccess || n instanceof FixedGuardNode) && !(n instanceof ControlFlowAnchored) && !(n instanceof AnchoringNode) &&
+        return !MemoryKill.isMemoryKill(n) && (n instanceof MemoryAccess || n instanceof FixedGuardNode || n instanceof FixedBinaryNode) && !(n instanceof ControlFlowAnchored) && !(n instanceof AnchoringNode) &&
                         !(n instanceof NodeWithIdentity);
     }
 

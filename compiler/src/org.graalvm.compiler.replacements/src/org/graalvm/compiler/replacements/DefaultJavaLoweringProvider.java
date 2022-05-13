@@ -74,8 +74,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
@@ -83,6 +85,10 @@ import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.SignedDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
+import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnpackEndianHalfNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -313,12 +319,30 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
+            } else if (n instanceof FloatingIntegerDivRemNode<?> && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+                lowerFloatingIntegerDivRem((FloatingIntegerDivRemNode<?>) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
                 // at the LIR level
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
         }
+    }
+
+    protected void lowerFloatingIntegerDivRem(FloatingIntegerDivRemNode<?> divRem, LoweringTool tool) {
+        FixedWithNextNode insertAfter = tool.lastFixedNode();
+        StructuredGraph graph = insertAfter.graph();
+        IntegerDivRemNode divRemFixed = null;
+        ValueNode dividend = divRem.getX();
+        ValueNode divisor = divRem.getY();
+        if (divRem instanceof SignedFloatingIntegerDivNode) {
+            divRemFixed = graph.add(new SignedDivNode(dividend, divisor, divRem.getGuard()));
+        } else if (divRem instanceof SignedFloatingIntegerRemNode) {
+            divRemFixed = graph.add(new SignedRemNode(dividend, divisor, divRem.getGuard()));
+        }
+        divRemFixed.setCanDeopt(false);
+        divRem.replaceAtUsagesAndDelete(divRemFixed);
+        graph.addAfterFixed(insertAfter, divRemFixed);
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
@@ -1247,10 +1271,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (n.getBoundsCheck() != null) {
             return n.getBoundsCheck();
         }
-
         StructuredGraph graph = n.graph();
         ValueNode arrayLength = readOrCreateArrayLength(n, array, tool, graph);
-
         LogicNode boundsCheck = IntegerBelowNode.create(n.index(), arrayLength, NodeView.DEFAULT);
         if (boundsCheck.isTautology()) {
             return null;

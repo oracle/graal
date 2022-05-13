@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 
 /**
@@ -52,7 +53,7 @@ import org.graalvm.compiler.nodes.spi.LoweringProvider;
  * guard.
  */
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode {
+public abstract class FloatingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode, Lowerable {
 
     @SuppressWarnings("rawtypes") public static final NodeClass<FloatingIntegerDivRemNode> TYPE = NodeClass.create(FloatingIntegerDivRemNode.class);
 
