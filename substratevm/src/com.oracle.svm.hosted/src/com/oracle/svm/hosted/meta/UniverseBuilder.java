@@ -943,7 +943,6 @@ public class UniverseBuilder {
             }
 
             DynamicHub hub = type.getHub();
-
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
                             vtable, referenceMapIndex, type.isInstantiated());
         }

@@ -26,6 +26,7 @@ package com.oracle.svm.core.hub;
 
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Proxy;
 import java.security.ProtectionDomain;
 
 import org.graalvm.nativeimage.Platform;
@@ -58,10 +59,17 @@ public final class DynamicHubCompanion {
     private Target_java_lang_Class_AnnotationData annotationData;
     private Constructor<?> cachedConstructor;
     private Class<?> newInstanceCallerCache;
+    private final Object classLoaderProxy;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
-        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
+        // Sometimes, DynamicHub for proxy class is created before that class is being
+        // registered as predefined. We assume that all proxy classes will be predefined.
+        // If the proxy class is not registered as predefined after the analysis
+        // (not all the proxies are created at runtime), we set class loader for that class on
+        // the loader that it class was originally loaded with when DynamicHub was created
+        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) || Proxy.isProxyClass(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
+        this.classLoaderProxy = Proxy.isProxyClass(hostedJavaClass) ? classLoader : NO_CLASS_LOADER;
     }
 
     String getPackageName(DynamicHub hub) {
@@ -87,7 +95,10 @@ public final class DynamicHubCompanion {
     }
 
     void setClassLoaderProxy(boolean predefined) {
-        classLoader = predefined ? NO_CLASS_LOADER : classLoader;
+        if (!predefined) {
+            VMError.guarantee(classLoader == NO_CLASS_LOADER && classLoaderProxy != NO_CLASS_LOADER);
+            classLoader = classLoaderProxy;
+        }
     }
 
     ProtectionDomain getProtectionDomain() {
