@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -301,7 +301,7 @@ final class LibFFISignature {
             if (retType instanceof LibFFIType.ObjectType) {
                 Object ret = ctx.executeObject(signature.cif, functionPointer, argBuffer.prim, argBuffer.getPatchCount(), argBuffer.patches, argBuffer.objects);
                 if (ret == null) {
-                    return NativePointer.create(ctx.language, 0);
+                    return NativePointer.NULL;
                 } else {
                     return ret;
                 }

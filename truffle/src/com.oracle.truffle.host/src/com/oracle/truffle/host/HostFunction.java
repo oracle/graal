@@ -103,8 +103,11 @@ final class HostFunction implements TruffleObject {
         if (obj == null) {
             return "null";
         }
-        String typeName = obj.getClass().getTypeName();
-        return typeName + "." + method.getName();
+        String declaringClassName = method.getDeclaringClassName();
+        if (declaringClassName == null) {
+            declaringClassName = obj.getClass().getName();
+        }
+        return declaringClassName + "." + method.getName();
     }
 
     @ExportMessage

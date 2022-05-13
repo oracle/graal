@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,25 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.backend.spi;
+package com.oracle.truffle.regex.util;
 
-/**
- * Interface providing helper methods for implementing NFI backends.
- */
-public abstract class NFIBackendTools {
+import com.oracle.truffle.api.strings.TruffleString;
 
-    /**
-     * Create an object wrapping a native symbol, fulfilling the contract of NFI symbols. Symbols
-     * passed into this method should implement the {@link NativeSymbolLibrary}.
-     *
-     * The returned object has an invocable member "bind" that can be used to bind NFI signatures to
-     * the symbol. It will also forward the {@link InteropLibrary#isPointer},
-     * {@link InteropLibrary#asPointer} and {@link InteropLibrary#toNative} messages to the wrapped
-     * symbol.
-     *
-     * Implementations of {@link NFIBackend} should use this method to create the symbols contained
-     * in a library. It may also be used for returning pointer values that can point to executable
-     * code.
-     */
-    public abstract Object createBindableSymbol(Object symbol);
+public final class TRegexGuards {
+
+    public static boolean neitherByteArrayNorString(Object obj) {
+        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
+    }
 }

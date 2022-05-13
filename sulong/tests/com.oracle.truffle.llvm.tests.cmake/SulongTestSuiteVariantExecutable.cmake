@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -66,10 +66,9 @@ endmacro()
 macro(setupOptions)
     # this must be called after compiler checks
 
-    if(SULONG_BUILD_SHARED_OBJECT)
-        set(OUTPUT "${SULONG_CURRENT_VARIANT}")
-    else()
-        set(OUTPUT "${SULONG_CURRENT_VARIANT}.bc")
+    set(OUTPUT "${SULONG_CURRENT_VARIANT}")
+    if(NOT SULONG_BUILD_SHARED_OBJECT)
+        set(SUFFIX ".bc")
     endif()
 
     string(APPEND CMAKE_C_FLAGS " ${EMBED_BC}")

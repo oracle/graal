@@ -23,8 +23,6 @@
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.renaissance,
     c.post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008,
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.specjvm2008,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjbb2005,
-    c.daily      + hw.x52 + jdk + cc.jargraal + bench.specjbb2005,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
@@ -84,7 +82,13 @@
   for suite in bench.groups.main_suites
   ],
 
-  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds,
+  local no_tiered_builds = [
+    c.weekly + hw.x52 + jdk + cc.libgraal + cc.no_tiered_comp + suite,
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ],
+
+  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds + no_tiered_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]

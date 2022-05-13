@@ -134,7 +134,7 @@ class SulongTestSuiteMixin(mx._with_metaclass(abc.ABCMeta, object)):
             for t in self.getTests():
                 t = t + self.getTestDirExt()
                 if self.buildRef:
-                    self.results.append(os.path.join(t, 'ref.out'))
+                    self.results.append(os.path.join(t, mx.exe_suffix('ref.out')))
                 for v in self.getVariants():
                     result_file = v + '.so' if self.buildSharedObject else v + '.bc'
                     self.results.append(os.path.join(t, result_file))
@@ -566,7 +566,8 @@ class SulongCMakeTestSuite(SulongTestSuiteMixin, mx_cmake.CMakeNinjaProject):  #
             self._testfile = os.path.join(self.out_dir, 'tests.cache')
             with mx.SafeFileCreation(self._testfile) as sfc, open(sfc.tmpPath, "w") as f:
                 mx.logv("Writing test file: " + self._testfile)
-                f.write('set(SULONG_TESTS {} CACHE FILEPATH "test files")'.format(';'.join(self.getTests())))
+                tests = ';'.join([x.replace('\\', '\\\\') for x in self.getTests()])
+                f.write('set(SULONG_TESTS {} CACHE FILEPATH "test files")'.format(tests))
         return self._testfile
 
     def _default_cmake_vars(self):

@@ -45,12 +45,16 @@ import java.util.function.Predicate;
 
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostService;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 
-public class GuestToHostService extends AbstractHostService {
+public class GuestToHostLanguageService extends AbstractHostLanguageService {
 
-    protected GuestToHostService(AbstractPolyglotImpl polyglot) {
+    protected GuestToHostLanguageService(AbstractPolyglotImpl polyglot) {
         super(polyglot);
+    }
+
+    @Override
+    public void release() {
     }
 
     @Override

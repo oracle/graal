@@ -98,6 +98,7 @@ import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
@@ -260,6 +261,9 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected static void shouldBeOptimizedAway() {
+    }
+
+    protected static void safepoint() {
     }
 
     protected Suites createSuites(OptionValues opts) {
@@ -1569,6 +1573,13 @@ public abstract class GraalCompilerTest extends GraalTest {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NotOptimizedNode());
+                return true;
+            }
+        });
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin("safepoint") {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.add(new SafepointNode());
                 return true;
             }
         });

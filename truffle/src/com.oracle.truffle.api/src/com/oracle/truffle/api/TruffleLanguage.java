@@ -697,9 +697,12 @@ public abstract class TruffleLanguage<C> {
      * non-deterministic and/or not respect the order specified by language dependencies.
      * <p>
      * In case {@link TruffleContext#closeExited(Node, int)} is called during a
-     * {@link ExitMode#NATURAL natural exit notification}, it is ignored. In case it is called
-     * during a {@link ExitMode#HARD hard exit notification}, it just throws the special
-     * {@link ThreadDeath} exit exception, which is then just logged as described above.
+     * {@link ExitMode#NATURAL natural exit} notification, natural exit notifications for remaining
+     * language contexts are not executed and the {@link ExitMode#HARD hard exit} process starts by
+     * executing {@link ExitMode#HARD hard exit} notifications. In case
+     * {@link TruffleContext#closeExited(Node, int)} is called during a {@link ExitMode#HARD hard
+     * exit} notification, it just throws the special {@link ThreadDeath} exit exception, which is
+     * then just logged as described above.
      * <p>
      * In case the underlying polyglot context is cancelled by e.g.
      * {@link TruffleContext#closeCancelled(Node, String)} during exit notifications, guest code

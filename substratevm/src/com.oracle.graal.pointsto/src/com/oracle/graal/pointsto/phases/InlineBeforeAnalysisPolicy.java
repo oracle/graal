@@ -24,6 +24,7 @@
  */
 package com.oracle.graal.pointsto.phases;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -84,7 +85,7 @@ public class InlineBeforeAnalysisPolicy<S extends InlineBeforeAnalysisPolicy.Sco
      * But usages have not been decoded yet, so the implementation must not base any decision on the
      * current list of usages. The list of usages is often but not always empty.
      */
-    protected boolean processNode(S scope, Node node) {
+    protected boolean processNode(AnalysisMetaAccess metaAccess, ResolvedJavaMethod method, S scope, Node node) {
         throw GraalError.unimplemented();
     }
 }

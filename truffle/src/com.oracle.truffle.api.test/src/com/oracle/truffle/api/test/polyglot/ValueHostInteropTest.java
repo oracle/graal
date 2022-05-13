@@ -461,6 +461,18 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         assertEquals(String.class, stringStatic.getMember("class").asHostObject());
     }
 
+    @Test
+    public void testClassStaticIdentity() {
+        // GR-38266: Static object should not be identical to class object.
+        // Note: Value.equals uses isIdentical.
+        Value stringClass = context.asValue(String.class);
+        Value stringStatic = stringClass.getMember("static");
+        assertFalse("static object should not be identical to class object", stringStatic.equals(stringClass) || stringClass.equals(stringStatic));
+        assertTrue(stringStatic.getMember("class").equals(stringClass));
+        assertTrue(context.asValue(String.class).equals(stringClass));
+        assertTrue(context.asValue(String.class).getMember("static").equals(stringStatic));
+    }
+
     /*
      * Referenced in proxys.json
      */

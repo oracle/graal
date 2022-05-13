@@ -113,6 +113,7 @@ _suite = mx.suite('sdk')
 """:type: mx.SourceSuite | mx.Suite"""
 
 _exe_suffix = mx.exe_suffix('')
+_cmd_suffix = mx.cmd_suffix('')
 """:type: str"""
 _lib_suffix = mx.add_lib_suffix("")
 _lib_prefix = mx.add_lib_prefix("")
@@ -1100,6 +1101,16 @@ def remove_exe_suffix(name, require_suffix=True):
         raise mx.abort("Missing exe suffix: " + name)
     return name
 
+def remove_cmd_or_exe_suffix(name, require_suffix=True):
+    if not _cmd_suffix and not _exe_suffix:
+        return name
+    elif name.endswith(_cmd_suffix):
+        return name[:-len(_cmd_suffix)]
+    elif name.endswith(_exe_suffix):
+        return name[:-len(_exe_suffix)]
+    elif require_suffix:
+        raise mx.abort("Missing cmd suffix: " + name)
+    return name
 
 def remove_lib_prefix_suffix(libname, require_suffix_prefix=True):
     result = libname
@@ -1187,7 +1198,7 @@ class GraalVmNativeProperties(GraalVmProject):
     def canonical_image_name(image_config):
         canonical_name = basename(image_config.destination)
         if isinstance(image_config, mx_sdk.LauncherConfig):
-            canonical_name = remove_exe_suffix(canonical_name)
+            canonical_name = remove_cmd_or_exe_suffix(canonical_name)
         elif isinstance(image_config, mx_sdk.LibraryConfig):
             canonical_name = remove_lib_prefix_suffix(canonical_name)
         return canonical_name
@@ -1196,7 +1207,7 @@ class GraalVmNativeProperties(GraalVmProject):
     def macro_name(image_config):
         macro_name = basename(image_config.destination)
         if isinstance(image_config, mx_sdk.LauncherConfig):
-            macro_name = remove_exe_suffix(macro_name) + '-launcher'
+            macro_name = remove_cmd_or_exe_suffix(macro_name) + '-launcher'
         elif isinstance(image_config, mx_sdk.LibraryConfig):
             macro_name = remove_lib_prefix_suffix(macro_name) + '-library'
         return macro_name
@@ -1264,7 +1275,6 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             image_config = self.subject.image_config
             build_args = [
                 '--no-fallback',
-                '--initialize-at-build-time=org,com,net,jdk,javax,java,sun,apple',
                 '-H:+AssertInitializationSpecifiedForAllClasses',
                 '-H:+EnforceMaxRuntimeCompileMethods',
                 '-Dorg.graalvm.version={}'.format(_suite.release_version()),
@@ -1652,12 +1662,16 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         return 'Building {}'.format(self.subject.name)
 
     def _config(self):
+        # Save the path and timestamp of the JDK image so that graalvm-jimage
+        # is rebuilt if the JDK at JAVA_HOME is rebuilt. The JDK image file is
+        # always updated when the JDK is rebuilt.
+        src_jimage = mx.TimeStampFile(join(_src_jdk.home, 'lib', 'modules'))
         return [
             'components: {}'.format(', '.join(sorted(_components_set()))),
             'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
             'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
-            'source JDK: {}'.format(_src_jdk.home),
+            'source jimage: {}'.format(src_jimage),
             'use_upgrade_module_path: {}'.format(mx.get_env('GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH', None))
         ]
 
@@ -2719,6 +2733,17 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_cflags += [
             '-DLIBJVM_RELPATH=' + _libjvm_path,
         ]
+
+        # path to libjli - only needed on osx for AWT
+        if mx.is_darwin():
+            _libjli_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib')
+            if mx_sdk_vm.base_jdk_version() < 17:
+                _libjli_path = join(_libjli_path, 'jli')
+            _libjli_path = join(_libjli_path, mx.add_lib_suffix("libjli"))
+            _libjli_path = relpath(_libjli_path, start=_exe_dir)
+            _dynamic_cflags += [
+                '-DLIBJLI_RELPATH=' + _libjli_path,
+            ]
 
         # path to native image language library - this is set even if the library is not built, as it may be built after the fact
         if self.jvm_launcher:

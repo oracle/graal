@@ -555,6 +555,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "The base inlining budget for language-agnostic inlining (default: 12000)", usageSyntax = "[1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(12_000);
 
+    @Option(help = "Use the graph size as a cost model during inlining (default: false).", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Boolean> InliningUseSize = new OptionKey<>(false);
+
     public static OptionDescriptors getDescriptors() {
         return new PolyglotCompilerOptionsOptionDescriptors();
     }

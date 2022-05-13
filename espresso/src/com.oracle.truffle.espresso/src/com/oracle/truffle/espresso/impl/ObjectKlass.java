@@ -649,7 +649,7 @@ public final class ObjectKlass extends Klass {
 
     private void verifyImpl() {
         CompilerAsserts.neverPartOfCompilation();
-        if (getContext().needsVerify(getDefiningClassLoader())) {
+        if (MethodVerifier.needsVerify(getLanguage(), getDefiningClassLoader())) {
             Meta meta = getMeta();
             if (getSuperKlass() != null && getSuperKlass().isFinalFlagSet()) {
                 throw meta.throwException(meta.java_lang_VerifyError);

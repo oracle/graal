@@ -54,11 +54,12 @@ import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotThreadInfo {
 
-    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null);
+    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null, false);
     private static final Object NULL_CLASS_LOADER = new Object();
 
     final PolyglotContextImpl context;
     @CompilationFinal private final TruffleWeakReference<Thread> thread;
+    final PolyglotContextImpl polyglotThreadOwnerContext;
 
     /*
      * Only modify if Thread.currentThread() == thread.get().
@@ -77,9 +78,23 @@ final class PolyglotThreadInfo {
     // only accessed from PolyglotFastThreadLocals
     final Object[] fastThreadLocals;
 
-    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
+    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
+        if (thread instanceof PolyglotThread) {
+            assert !polyglotThreadFirstEnter || ((PolyglotThread) thread).getOwnerContext() == context;
+            this.polyglotThreadOwnerContext = ((PolyglotThread) thread).getOwnerContext();
+        } else if (polyglotThreadFirstEnter) {
+            /*
+             * This branch is only for host thread created for a host call from a polyglot thread in
+             * a polyglot isolate. First enters for threads that are instances of PolyglotThread
+             * also have polyglotThreadFirstEnter == true, but they are handled by the first branch
+             * of this if statement.
+             */
+            this.polyglotThreadOwnerContext = context;
+        } else {
+            this.polyglotThreadOwnerContext = null;
+        }
         this.fastThreadLocals = context == null ? null : PolyglotFastThreadLocals.createFastThreadLocals(this);
     }
 
@@ -154,10 +169,7 @@ final class PolyglotThreadInfo {
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
-        if (getThread() instanceof PolyglotThread) {
-            return ((PolyglotThread) getThread()).isOwner(c);
-        }
-        return false;
+        return polyglotThreadOwnerContext == c;
     }
 
     /*

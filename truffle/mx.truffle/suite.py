@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.300.4",
+  "mxversion" : "6.0.1",
   "name" : "truffle",
   "version" : "22.2.0",
   "release" : False,
@@ -108,8 +108,8 @@ suite = {
     },
 
     "TRUFFLE_JCODINGS": {
-      "sha1" : "c88c640b82534bea6bdb0dfacf4035665ad91e26",
-      "version" : "1.0.56.6",
+      "sha1" : "61f6dfc53c3003e17b994c8f968e69d2544cf777",
+      "version" : "1.0.56.7",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/graalvm-shadowed-jcodings-{version}.jar"],
       "exports" : [],
       "license": ["MIT"],
@@ -142,10 +142,10 @@ suite = {
     },
 
     "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
-      "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115-src.jar"],
-      "sourceSha1" : "1da7c590b0582fb4c2e4de9b581c70407fa9108b",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
+      "sha1" : "bb27152e93770f4e0c993efd3e620133817e5edb",
+      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
+      "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",

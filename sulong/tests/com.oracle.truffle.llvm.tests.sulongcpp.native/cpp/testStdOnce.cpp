@@ -28,25 +28,27 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 #include <stdio.h>
-#include <pthread.h>
+#include <thread>
 #include <mutex>
 
 std::once_flag flag;
 
-void *thread(void *arg) {
+void thread() {
     std::call_once(flag, []() { printf("called once\n"); });
-    return 0;
 }
 
 int main() {
-    pthread_t threads[5];
-    for (int i = 0; i < 5; i++) {
-        pthread_create(&threads[i], NULL, thread, NULL);
-    }
+    std::thread t1(thread);
+    std::thread t2(thread);
+    std::thread t3(thread);
+    std::thread t4(thread);
+    std::thread t5(thread);
 
-    for (int i = 0; i < 5; i++) {
-        pthread_join(threads[i], NULL);
-    }
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
 
     return 0;
 }

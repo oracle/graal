@@ -49,6 +49,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -75,7 +76,13 @@ public class ExecutionBindingsDisposalTest {
     @After
     public void teardown() {
         if (context != null) {
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!pe.isCancelled()) {
+                    throw pe;
+                }
+            }
         }
     }
 

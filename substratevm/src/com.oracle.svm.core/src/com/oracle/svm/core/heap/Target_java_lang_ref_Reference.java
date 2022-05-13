@@ -29,7 +29,7 @@ import java.lang.ref.Reference;
 import java.lang.reflect.Field;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -165,10 +165,11 @@ public final class Target_java_lang_ref_Reference<T> {
     @KeepOriginal //
     protected native Object clone() throws CloneNotSupportedException;
 
+    /** Intrinsified to a {@link ReachabilityFenceNode}. */
     @Substitute //
     @SuppressWarnings("unused")
     static void reachabilityFence(Object ref) {
-        GraalDirectives.blackhole(ref);
+        throw VMError.shouldNotReachHere("Unreachable, intrinsified during bytecode parsing");
     }
 
     @KeepOriginal

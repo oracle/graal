@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -70,7 +70,14 @@ include(SulongCommon)
 
 # Default flags for C/C++
 set(SULONG_C_FLAGS "-g" CACHE STRING "Default C flags  (use CMAKE_C_FLAGS for setting additional flags)")
-set(SULONG_CXX_FLAGS "-std=c++11 -stdlib=libc++ -g" CACHE STRING "Default C++ flags (use CMAKE_CXX_FLAGS for setting additional flags)")
+
+if(WIN32)
+  set(CXX_VERSION "")
+else()
+  set(CXX_VERSION "-std=c++11")
+endif()
+
+set(SULONG_CXX_FLAGS "${CXX_VERSION} -stdlib=libc++ -g" CACHE STRING "Default C++ flags (use CMAKE_CXX_FLAGS for setting additional flags)")
 
 # Tools
 # -----
@@ -92,6 +99,11 @@ set(DRAGONEGG_LLVMAS "" CACHE STRING "llvm-as compatible with the DRAGONEGG LLVM
 # not set by default
 set(TOOLCHAIN_CLANG "" CACHE STRING "Toolchain Wrapper for clang used by the 'bitcode' variant")
 set(TOOLCHAIN_CLANGXX "" CACHE STRING "Toolchain Wrapper for clang++ used by the 'bitcode' variant")
+
+if(WIN32)
+    # On Windows this defaults to 260 and produces a lot of warnings
+    set(CMAKE_OBJECT_PATH_MAX 4096)
+endif()
 
 # Environment Variables
 # ---------------------

@@ -39,6 +39,7 @@ import org.graalvm.nativeimage.Platforms;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
+@Platforms(Platform.HOSTED_ONLY.class)
 public @interface ExcludeFromReferenceMap {
 
     /**

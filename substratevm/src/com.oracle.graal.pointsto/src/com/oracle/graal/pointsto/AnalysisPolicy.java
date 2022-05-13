@@ -66,6 +66,8 @@ public abstract class AnalysisPolicy {
         typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
     }
 
+    public abstract boolean isContextSensitiveAnalysis();
+
     public boolean aliasArrayTypeFlows() {
         return aliasArrayTypeFlows;
     }

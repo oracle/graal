@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,14 +41,28 @@ int mul(int a, int b) {
 int div(int a, int b) {
     return a / b;
 }
-
 int rem(int a, int b) {
     return a % b;
 }
 
+#ifdef _WIN32
+long arr[5];
+void init_arr() {
+    // Windows does not support function pointers as compile time constants.
+    arr[0] = (long) &add;
+    arr[1] = (long) &sub;
+    arr[2] = (long) &mul;
+    arr[3] = (long) &div;
+    arr[4] = (long) &rem;
+}
+#else
 long arr[5] = { (long) &add, (long) &sub, (long) &mul, (long) &div, (long) &rem };
+#endif
 
 int main() {
+#ifdef _WIN32
+    init_arr();
+#endif
     int i;
     int sum = 0;
     for (i = 0; i < 10000; i++) {

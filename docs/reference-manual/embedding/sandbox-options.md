@@ -79,16 +79,14 @@ try (Context context = Context.newBuilder("js")
                            .option("sandbox.MaxCPUTime", "500ms")
                            .option("sandbox.MaxCPUTimeCheckInterval", "5ms")
                        .build();) {
-    try {
-        context.eval("js", "while(true);");
-        assert false;
-    } catch (PolyglotException e) {
-        // triggered after 500ms;
-        // context is closed and can no longer be used
-        // error message: Maximum CPU time limit of 500ms exceeded.
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", "while(true);");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after 500ms;
+    // context is closed and can no longer be used
+    // error message: Maximum CPU time limit of 500ms exceeded.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```
 
@@ -120,17 +118,15 @@ try (Context context = Context.newBuilder("js")
                            .option("sandbox.MaxStatements", "2")
                            .option("sandbox.MaxStatementsIncludeInternal", "false")
                        .build();) {
-    try {
-        context.eval("js", "purpose = 41");
-        context.eval("js", "purpose++");
-        context.eval("js", "purpose++"); // triggers max statements
-        assert false;
-    } catch (PolyglotException e) {
-        // context is closed and can no longer be used
-        // error message: Maximum statements limit of 2 exceeded.
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", "purpose = 41");
+    context.eval("js", "purpose++");
+    context.eval("js", "purpose++"); // triggers max statements
+    assert false;
+} catch (PolyglotException e) {
+    // context is closed and can no longer be used
+    // error message: Maximum statements limit of 2 exceeded.
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```
 
@@ -178,16 +174,14 @@ try (Context context = Context.newBuilder("js")
                            .allowExperimentalOptions(true)
                            .option("sandbox.MaxHeapMemory", "100MB")
                        .build()) {
-    try {
-        context.eval("js", "var r = {}; var o = r; while(true) { o.o = {}; o = o.o; };");
-        assert false;
-    } catch (PolyglotException e) {
-        // triggered after the retained size is greater than 100MB;
-        // context is closed and can no longer be used
-        // error message: Maximum heap memory limit of 104857600 bytes exceeded. Current memory at least...
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", "var r = {}; var o = r; while(true) { o.o = {}; o = o.o; };");
+    assert false;
+} catch (PolyglotException e) {
+    // triggered after the retained size is greater than 100MB;
+    // context is closed and can no longer be used
+    // error message: Maximum heap memory limit of 104857600 bytes exceeded. Current memory at least...
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```
 
@@ -265,14 +259,12 @@ try (Context context = Context.newBuilder("js")
                            .allowExperimentalOptions(true)
                            .option("sandbox.MaxCPUTime", "500ms")
                        .build();) {
-    try {
-        context.eval("js", /*... initialization script ...*/);
-        context.resetLimits();
-        context.eval("js", /*... user script ...*/);
-        assert false;
-    } catch (PolyglotException e) {
-        assert e.isCancelled();
-        assert e.isResourceExhausted();
-    }
+    context.eval("js", /*... initialization script ...*/);
+    context.resetLimits();
+    context.eval("js", /*... user script ...*/);
+    assert false;
+} catch (PolyglotException e) {
+    assert e.isCancelled();
+    assert e.isResourceExhausted();
 }
 ```

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,10 +32,16 @@
 #include <time.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 #include <unistd.h>
 #include <string.h>
+
+#ifdef _WIN32
+#include <stdint.h>
+#include <Windows.h>
+#else
+#include <sys/time.h>
+#include <sys/resource.h>
+#endif
 
 #define measure_diff(clk_id) measure_diff_impl(clk_id, #clk_id)
 
@@ -48,6 +54,29 @@ int cmp(const void *a, const void *b) {
 void do_work() {
     qsort(array, 5, sizeof(int), &cmp);
 }
+
+#ifdef _WIN32
+typedef int clockid_t;
+#define CLOCK_REALTIME 0
+#define CLOCK_MONOTONIC 1
+int clock_gettime(clockid_t clk_id, struct timespec *ptime) {
+    uint64_t time;
+    switch (clk_id) {
+        case CLOCK_REALTIME:
+            GetSystemTimePreciseAsFileTime((LPFILETIME) &time);
+            break;
+        case CLOCK_MONOTONIC:
+            assert(QueryUnbiasedInterruptTime(&time));
+            break;
+        default:
+            fprintf(stderr, "Invalid clock id %d\n", clk_id);
+            break;
+    }
+    ptime->tv_sec = time / (int64_t) 1E7;
+    ptime->tv_nsec = (time * (int64_t) 1E2) % (int64_t) 1E9;
+    return 0;
+}
+#endif
 
 void measure_diff_impl(clockid_t clk_id, const char *clock_name) {
     struct timespec start = {}, finish = {};

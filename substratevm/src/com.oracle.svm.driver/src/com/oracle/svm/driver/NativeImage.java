@@ -309,6 +309,13 @@ public class NativeImage {
         }
 
         /**
+         * @return the name of the image generator main class.
+         */
+        public String getGeneratorMainClass() {
+            return DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX;
+        }
+
+        /**
          * @return relative path usage get resolved against this path (also default path for image
          *         building)
          */
@@ -1277,7 +1284,7 @@ public class NativeImage {
         if (config.modulePathBuild) {
             arguments.addAll(Arrays.asList("--module", DEFAULT_GENERATOR_MODULE_NAME + "/" + DEFAULT_GENERATOR_CLASS_NAME));
         } else {
-            arguments.add(DEFAULT_GENERATOR_CLASS_NAME + DEFAULT_GENERATOR_9PLUS_SUFFIX);
+            arguments.add(config.getGeneratorMainClass());
         }
         if (IS_AOT && OS.getCurrent().hasProcFS) {
             /*
