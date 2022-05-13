@@ -23,8 +23,6 @@
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.renaissance,
     c.post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008,
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.specjvm2008,
-    c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjbb2005,
-    c.daily      + hw.x52 + jdk + cc.jargraal + bench.specjbb2005,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
