@@ -380,7 +380,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setData(int layoutEncoding, int typeID, int monitorOffset,
                     short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
-                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
+                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean proxyInHeap) {
         assert this.vtable == null : "Initialization must be called only once";
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
@@ -396,6 +396,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         }
         this.referenceMapIndex = (int) referenceMapIndex;
         this.isInstantiated = isInstantiated;
+
+        if (proxyInHeap) {
+            companion.setClassLoaderProxy();
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
