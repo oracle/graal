@@ -112,7 +112,7 @@ public class CommonConstants {
     /**
      * Warns the user to rebuild the polyglot image and/or libraries.
      */
-    public static final boolean WARN_REBUILD_IMAGES = true;
+    public static final boolean WARN_REBUILD_IMAGES = false;
 
     /**
      * Component ID prefix for graalvm core components. The prefix will be stripped from the
