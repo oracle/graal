@@ -66,8 +66,6 @@ public class CommonConstants {
      * Relative path for the component storage.
      */
     public static final String PATH_COMPONENT_STORAGE = "lib/installer/components"; // NOI18N
-    // the trailing backspace is important !
-    public static final String PATH_POLYGLOT_REGISTRY = "lib/installer/components/polyglot/"; // NOI18N
 
     public static final String PATH_JRE_BIN = "bin/"; // NOI18N
 
@@ -108,11 +106,6 @@ public class CommonConstants {
 
     public static final String CAP_CATALOG_URL = "url"; // NOI18N
     public static final String CAP_CATALOG_LABEL = "label"; // NOI18N
-
-    /**
-     * Warns the user to rebuild the polyglot image and/or libraries.
-     */
-    public static final boolean WARN_REBUILD_IMAGES = false;
 
     /**
      * Component ID prefix for graalvm core components. The prefix will be stripped from the

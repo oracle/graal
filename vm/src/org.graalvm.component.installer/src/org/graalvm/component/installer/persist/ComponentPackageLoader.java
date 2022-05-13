@@ -266,7 +266,6 @@ public class ComponentPackageLoader implements Closeable, MetadataLoader {
 
     protected ComponentInfo loadExtendedMetadata(ComponentInfo base) {
         parse(
-                        () -> base.setPolyglotRebuild(parseHeader(BundleConstants.BUNDLE_POLYGLOT_PART, null).getBoolean(Boolean.FALSE)),
                         () -> base.setDistributionType(parseDistributionType()),
                         () -> loadWorkingDirectories(base),
                         () -> loadMessages(base),
