@@ -1429,7 +1429,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (callerLocation == null) {
                 BytecodePosition pos = node.frame;
                 BytecodePosition callerPos = pos.getCaller();
-                if (callerPos != null && callerPos.getMethod() != pos.getMethod()) {
+                if (callerPos != null && !callerPos.getMethod().equals(pos.getMethod())) {
                     if (callerPos.getCaller() == null) {
                         return true;
                     }
