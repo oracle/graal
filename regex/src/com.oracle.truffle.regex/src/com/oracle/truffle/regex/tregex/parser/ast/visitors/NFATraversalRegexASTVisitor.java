@@ -45,6 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -152,23 +153,57 @@ public abstract class NFATraversalRegexASTVisitor {
 
     /**
      * The exhaustive path traversal may result in some duplicate successors, e.g. on a regex like
-     * {@code /(a?|b?)(a?|b?)/}. We consider two successors as identical if they go through the same
-     * {@link PositionAssertion dollar-assertions} and {@link LookAroundAssertion}s, and their final
-     * {@link CharacterClass} / {@link MatchFound} node is the same.
+     * {@code /(a?|b?)(a?|b?)/}. In order to avoid a combinatorial explosion of duplicate
+     * successors, we prune the search for successors whenever we enter into a state that is
+     * equivalent to one visited before. In order for two traversal states to be considered
+     * equivalent, they must be equal in the following parameters:
+     * <ul>
+     * <li>the {@link #cur current node}</li>
+     * <li>the set of traversed {@link PositionAssertion dollar-assertions}</li>
+     * <li>the set of traversed {@link LookAroundAssertion}s</li>
+     * <li>the {@link QuantifierGuard}s incurred by the traversal</li>
+     * <li>the resulting {@link GroupBoundaries} (updates, clears, last group)</li>
+     * </ul>
      */
-    private final EconomicSet<DeduplicationKey> targetDeduplicationSet = EconomicSet.create();
+    private final EconomicSet<DeduplicationKey> pathDeduplicationSet = EconomicSet.create();
     private int deduplicationCalls = 0;
+    /**
+     * Deduplication is performed when {@link #cur the current node} is updated. In order to reduce
+     * this costly operation, we limit deduplication in two ways:
+     * <ul>
+     * <li>We only deduplicate when update {@link #cur the current node} to a {@link Sequence}. This
+     * is sufficient for our purposes since runaway traversals will need to regularly enter new
+     * {@link Sequence} nodes. NB: It also simplifies the equivalence test for
+     * {@link DeduplicationKey}, because if we considered {@link Group}s, we would need to
+     * distinguish the current alternative index stored in the last element of
+     * {@link #curPath}.</li>
+     * <li>We only try to deduplicate on every Nth update of {@link #cur the current node} to some
+     * {@link Sequence}. By setting a sufficiently small N, this allows us to still detect runaway
+     * traversals, albeit with a small delay, while also reducing the cost of the deduplication
+     * check significantly.</li>
+     * </ul>
+     */
     private static final int DEDUPLICATION_PERIOD = 10;
+
     private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
     private final StateSet<RegexAST, RegexASTNode> dollarsOnPath;
     private final StateSet<RegexAST, RegexASTNode> caretsOnPath;
     private final int[] nodeVisitCount;
 
-    private final List<CaptureGroupEvent> captureGroupEvents;
+    /**
+     * This is a stack of all the changes that have been made to {@link #captureGroupUpdates},
+     * {@link #captureGroupClears} and {@link #lastGroup} with enough metadata to backtrack on any
+     * of them.
+     */
+    private final List<CaptureGroupEvent> captureGroupEvents = new ArrayList<>();
     private TBitSet captureGroupUpdates;
     private TBitSet captureGroupClears;
-    private int lastGroup;
+    private int lastGroup = -1;
 
+    /**
+     * Quantifier guards are stored in an immutable linked list, which allows for cheap sharing of
+     * snapshots for the purposes of deduplication.
+     */
     private QuantifierGuardsLinkedList quantifierGuards = null;
     private QuantifierGuard[] quantifierGuardsResult = null;
     private final int[] quantifierGuardsLoop;
@@ -182,7 +217,6 @@ public abstract class NFATraversalRegexASTVisitor {
         this.dollarsOnPath = StateSet.create(ast);
         this.caretsOnPath = StateSet.create(ast);
         this.nodeVisitCount = new int[ast.getNumberOfStates()];
-        this.captureGroupEvents = new ArrayList<>();
         this.captureGroupUpdates = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.captureGroupClears = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.quantifierGuardsLoop = new int[ast.getQuantifierCount().getCount()];
@@ -211,22 +245,6 @@ public abstract class NFATraversalRegexASTVisitor {
 
     protected abstract boolean canTraverseLookArounds();
 
-    private void clearQuantifierGuards() {
-        quantifierGuards = null;
-    }
-
-    private void clearCaptureGroups() {
-        captureGroupEvents.clear();
-        captureGroupUpdates.clear();
-        captureGroupClears.clear();
-        lastGroup = -1;
-    }
-
-    private void pushQuantifierGuard(QuantifierGuard guard) {
-        assert useQuantifierGuards();
-        quantifierGuards = new QuantifierGuardsLinkedList(guard, quantifierGuards);
-    }
-
     protected void run(Term runRoot) {
         assert insideLoops.isEmpty();
         assert insideEmptyGuardGroup.isEmpty();
@@ -237,16 +255,19 @@ public abstract class NFATraversalRegexASTVisitor {
         assert nodeVisitsEmpty() : Arrays.toString(nodeVisitCount);
         assert Arrays.stream(quantifierGuardsLoop).allMatch(x -> x == 0);
         assert Arrays.stream(quantifierGuardsExited).allMatch(x -> x == 0);
+        assert quantifierGuards == null;
+        assert captureGroupEvents.isEmpty();
+        assert captureGroupUpdates.isEmpty();
+        assert captureGroupClears.isEmpty();
+        assert lastGroup == -1;
         root = runRoot;
-        clearCaptureGroups();
-        clearQuantifierGuards();
         if (useQuantifierGuards()) {
             if (root.isGroup() && !root.getParent().isSubtreeRoot()) {
                 Group emptyMatch = root.getParent().getParent().asGroup();
                 pushQuantifierGuard(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
             }
         }
-        targetDeduplicationSet.clear();
+        pathDeduplicationSet.clear();
         if (runRoot.isGroup() && runRoot.getParent().isSubtreeRoot()) {
             cur = runRoot;
         } else {
@@ -271,6 +292,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 insideLoops.clear();
                 insideEmptyGuardGroup.clear();
                 curPath.clear();
+                clearCaptureGroupData();
+                clearQuantifierGuards();
                 quantifierGuardsResult = null;
                 /*
                  * no need to clear nodeVisitedCount here, because !dollarsOnPath() &&
@@ -280,6 +303,12 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             quantifierGuardsResult = null;
             retreat();
+        }
+        if (useQuantifierGuards()) {
+            if (root.isGroup() && !root.getParent().isSubtreeRoot()) {
+                Group emptyMatch = root.getParent().getParent().asGroup();
+                popQuantifierGuard(QuantifierGuard.createExitEmptyMatch(emptyMatch.getQuantifier()));
+            }
         }
         done = false;
     }
@@ -317,22 +346,16 @@ public abstract class NFATraversalRegexASTVisitor {
             RegexASTNode target = curPath.isEmpty() ? null : pathGetNode(curPath.peek());
             if (useQuantifierGuards() && target != null && target.isGroup() && !target.getParent().isSubtreeRoot() && target.getParent().getParent().asGroup().hasQuantifier()) {
                 Group emptyMatch = target.getParent().getParent().asGroup();
+                // If the successor in an empty-match group, we will need to do 2 things:
+                // 1) Add a final enterEmptyMatch guard.
                 QuantifierGuard finalGuard = QuantifierGuard.createEnterEmptyMatch(emptyMatch.getQuantifier());
                 pushQuantifierGuard(finalGuard);
-                List<QuantifierGuard> quantifierGuardsResultBuffer = new ArrayList<>(quantifierGuards.getLength());
-                QuantifierGuardsLinkedList cur = quantifierGuards;
-                while (cur != null) {
-                    QuantifierGuard guard = cur.getGuard();
-                    if (guard.getKind() == QuantifierGuard.Kind.enterEmptyMatch || guard.getKind() == QuantifierGuard.Kind.exitEmptyMatch || guard.getQuantifier() != emptyMatch.getQuantifier()) {
-                        quantifierGuardsResultBuffer.add(guard);
-                    }
-                    cur = cur.getPrev();
-                }
+                // 2) Filter out any guards concerning the empty-match group, except for
+                // enterEmptyMatch and exitEmptyMatch.
+                quantifierGuardsResult = quantifierGuards.toArray(guard -> guard.getKind() == QuantifierGuard.Kind.enterEmptyMatch || guard.getKind() == QuantifierGuard.Kind.exitEmptyMatch ||
+                                guard.getQuantifier() != emptyMatch.getQuantifier());
+                // We do not forget to pop the final guard that was introduced above.
                 popQuantifierGuard(finalGuard);
-                quantifierGuardsResult = new QuantifierGuard[quantifierGuardsResultBuffer.size()];
-                for (int i = quantifierGuardsResultBuffer.size() - 1; i >= 0; i--) {
-                    quantifierGuardsResult[quantifierGuardsResult.length - i - 1] = quantifierGuardsResultBuffer.get(i);
-                }
             } else {
                 quantifierGuardsResult = quantifierGuards == null ? QuantifierGuard.NO_GUARDS : quantifierGuards.toArray();
             }
@@ -355,6 +378,12 @@ public abstract class NFATraversalRegexASTVisitor {
         return ast.createGroupBoundaries(captureGroupUpdates, captureGroupClears, lastGroup);
     }
 
+    /**
+     * Advances the traversal by diving into {@link #cur current node} in pursuit of the next
+     * successor.
+     * 
+     * @return {@code true} if a successor was reached in this step
+     */
     private boolean doAdvance() {
         // emptyLoopIterations tells us how many extra empty iterations of a loop do we admit.
         // In Ruby and Python, we admit 1, while in other dialects, we admit 0. This extra iteration
@@ -402,8 +431,7 @@ public abstract class NFATraversalRegexASTVisitor {
             // createGroupEnterPathElement initializes the group alternation index with 1, so we
             // don't have to increment it here, either.
             cur = group.getFirstAlternative();
-            deduplicateTarget();
-            return false;
+            return deduplicatePath();
         } else {
             curPath.add(createPathElement(cur));
             if (cur.isPositionAssertion()) {
@@ -445,29 +473,13 @@ public abstract class NFATraversalRegexASTVisitor {
         }
     }
 
-    private boolean isGroupExitOnPath(Group group) {
-        assert !curPath.isEmpty() && pathIsGroupEnter(curPath.peek()) && pathGetNode(curPath.peek()) == group;
-        return curPath.length() >= 2 && pathIsGroupExit(curPath.get(curPath.length() - 2)) && pathGetNode(curPath.get(curPath.length() - 2)) == group;
-    }
-
-    private void registerInsideLoop(Group group) {
-        insideLoops.put(group, insideLoops.get(group, 0) + 1);
-    }
-
-    private void unregisterInsideLoop(Group group) {
-        int depth = insideLoops.get(group, 0);
-        if (depth == 1) {
-            insideLoops.removeKey(group);
-        } else if (depth > 1) {
-            insideLoops.put(group, depth - 1);
-        }
-    }
-
-    private void addToVisitedSet(StateSet<RegexAST, RegexASTNode> visitedSet) {
-        nodeVisitCount[cur.getId()]++;
-        visitedSet.add(cur);
-    }
-
+    /**
+     * Advances past the given {@link Term} and updates {@link #cur the current node}.
+     * 
+     * @return {@true} if a successor was reached in this step (possible if
+     *         {@link #advanceEmptyGuard} returns {@code true} and we have the quantified group as
+     *         the successor)
+     */
     private boolean advanceTerm(Term term) {
         if (ast.isNFAInitialState(term) || (term.getParent().isSubtreeRoot() && (term.isPositionAssertion() || term.isMatchFound()))) {
             assert term.isPositionAssertion() || term.isMatchFound();
@@ -509,6 +521,13 @@ public abstract class NFATraversalRegexASTVisitor {
         return false;
     }
 
+    /**
+     * Advances past a {@link Group} with an empty-guard. This can produce a transition to the
+     * special empty-match state that is represented by setting the successor to the quantified
+     * group.
+     * 
+     * @return {@code true} if a successor (the quantified group) was reached in this step
+     */
     private boolean advanceEmptyGuard(Term curTerm) {
         Group parent = curTerm.getParent().getParent().asGroup();
         if (parent.hasNotUnrolledQuantifier() && parent.getQuantifier().getMin() > 0) {
@@ -522,24 +541,216 @@ public abstract class NFATraversalRegexASTVisitor {
         return retreat();
     }
 
-    private void popCaptureGroupEvent() {
-        assert !captureGroupEvents.isEmpty();
-        CaptureGroupEvent poppedEvent = captureGroupEvents.remove(captureGroupEvents.size() - 1);
-        poppedEvent.undo(this);
+    /**
+     * Backtrack through the traversal and find an unexplored alternative.
+     * 
+     * @return {@code true} if a successor was found in this step
+     */
+    private boolean retreat() {
+        while (!curPath.isEmpty()) {
+            long lastVisited = curPath.peek();
+            RegexASTNode node = pathGetNode(lastVisited);
+            if (pathIsGroup(lastVisited)) {
+                Group group = (Group) node;
+                if (pathIsGroupEnter(lastVisited) || pathIsGroupPassThrough(lastVisited)) {
+                    if (pathGroupHasNext(lastVisited)) {
+                        if (pathIsGroupPassThrough(lastVisited)) {
+                            // a passthrough node was changed to an enter node,
+                            // so we register the loop in insideLoops
+                            registerInsideLoop(group);
+                        }
+                        switchNextGroupAlternative(group);
+                        cur = pathGroupGetNext(lastVisited);
+                        return deduplicatePath();
+                    } else {
+                        if (pathIsGroupEnter(lastVisited)) {
+                            popGroupEnter(group);
+                        } else {
+                            assert pathIsGroupPassThrough(lastVisited);
+                            popGroupPassThrough(group);
+                        }
+                        assert noEmptyGuardGroupEnterOnPath(group);
+                        if (pathIsGroupEnter(lastVisited)) {
+                            // we only deregister the node from insideLoops if this was an enter
+                            // node, if it was a passthrough node, it was already deregistered when
+                            // it was transformed from an enter node in doAdvance
+                            unregisterInsideLoop(group);
+                        }
+                        insideEmptyGuardGroup.remove(group);
+                    }
+                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
+                                (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
+                    // In Ruby (and also in Python), when we finish an iteration of a loop, there is
+                    // an empty check. If we pass the empty check, we return to the beginning of the
+                    // loop where we get to make a non-deterministic choice whether we want to start
+                    // another iteration of the loop (so far the same as ECMAScript). However, if we
+                    // fail the empty check, we continue to the expression that follows the loop. We
+                    // implement this by introducing two transitions, one leading to the start of
+                    // the loop (empty check passes) and one escaping past the loop (empty check
+                    // fails). The two transitions are then annotated with complementary guards
+                    // (exitZeroWidth and escapeZeroWidth, respectively), so that at runtime, only
+                    // one of the two transitions will be admissible. The clause below lets us
+                    // generate the second transition by replacing the loop exit with a loop escape.
+                    switchExitToEscape(group);
+                    return advanceTerm(group);
+                } else {
+                    if (pathIsGroupExit(lastVisited)) {
+                        popGroupExit(group);
+                    } else {
+                        assert pathIsGroupEscape(lastVisited);
+                        popGroupEscape(group);
+                    }
+                }
+            } else {
+                curPath.pop();
+                if (canTraverseLookArounds() && node.isLookAroundAssertion()) {
+                    if (node.isLookAheadAssertion()) {
+                        leaveLookAhead(node.asLookAheadAssertion());
+                    }
+                    removeFromVisitedSet(lastVisited, lookAroundsOnPath);
+                } else if (node.isDollar()) {
+                    removeFromVisitedSet(lastVisited, dollarsOnPath);
+                } else if (node.isCaret()) {
+                    removeFromVisitedSet(lastVisited, caretsOnPath);
+                }
+            }
+        }
+        done = true;
+        return false;
     }
 
-    private boolean useQuantifierGuards() {
-        return !canTraverseLookArounds();
+    /**
+     * This should be called whenever {@link #cur} is set to some {@link Sequence}.
+     * 
+     * @return {@code true} if a successor was found in this step
+     */
+    private boolean deduplicatePath() {
+        // Deduplication checks are costly. Only perform them occasionally. This is sufficient
+        // to prevent combinatorial explosions and also cheap to do.
+        if (++deduplicationCalls % DEDUPLICATION_PERIOD != 0) {
+            return false;
+        }
+        DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
+        boolean isDuplicate = !pathDeduplicationSet.add(key);
+        if (isDuplicate) {
+            return retreat();
+        } else {
+            // We can return false, since this is only called when the current target node is a
+            // Sequence and these can never be successors.
+            return false;
+        }
     }
 
-    private void popQuantifierGuard(QuantifierGuard expectedGuard) {
-        assert useQuantifierGuards();
-        assert quantifierGuards != null;
-        QuantifierGuard droppedGuard = quantifierGuards.getGuard();
-        quantifierGuards = quantifierGuards.getPrev();
-        assert droppedGuard.equals(expectedGuard);
+    /**
+     * First field: (short) group alternation index. This value is used to iterate the alternations
+     * of groups referenced in a group-enter path element. <br>
+     * Since the same group can appear multiple times on the path, we cannot reuse {@link Group}'s
+     * implementation of {@link RegexASTVisitorIterable}. Therefore, every occurrence of a group on
+     * the path has its own index for iterating and back-tracking over its alternatives.
+     */
+    private static final int PATH_GROUP_ALT_INDEX_OFFSET = 0;
+    /**
+     * Second field: (int) id of the path element's {@link RegexASTNode}.
+     */
+    private static final int PATH_NODE_OFFSET = Short.SIZE;
+    /**
+     * Third field: group action. Every path element referencing a group must have one of three
+     * possible group actions:
+     * <ul>
+     * <li>group enter</li>
+     * <li>group exit</li>
+     * <li>group pass through</li>
+     * </ul>
+     */
+    private static final int PATH_GROUP_ACTION_OFFSET = Short.SIZE + Integer.SIZE;
+    private static final long PATH_GROUP_ACTION_ENTER = 1L << PATH_GROUP_ACTION_OFFSET;
+    private static final long PATH_GROUP_ACTION_EXIT = 1L << PATH_GROUP_ACTION_OFFSET + 1;
+    private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
+    private static final long PATH_GROUP_ACTION_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
+    private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_ESCAPE;
+
+    /**
+     * Create a new path element containing the given node.
+     */
+    private static long createPathElement(RegexASTNode node) {
+        return (long) node.getId() << PATH_NODE_OFFSET;
     }
 
+    private static int pathGetNodeId(long pathElement) {
+        return (int) (pathElement >>> PATH_NODE_OFFSET);
+    }
+
+    /**
+     * Get the {@link RegexASTNode} contained in the given path element.
+     */
+    private RegexASTNode pathGetNode(long pathElement) {
+        return ast.getState(pathGetNodeId(pathElement));
+    }
+
+    /**
+     * Get the group alternation index of the given path element.
+     */
+    private static int pathGetGroupAltIndex(long pathElement) {
+        return (short) (pathElement >>> PATH_GROUP_ALT_INDEX_OFFSET);
+    }
+
+    /**
+     * Returns {@code true} if the given path element has any group action set. Every path element
+     * containing a group must have one group action.
+     */
+    private static boolean pathIsGroup(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_ANY) != 0;
+    }
+
+    private static boolean pathIsGroupEnter(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_ENTER) != 0;
+    }
+
+    private static boolean pathIsGroupExit(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_EXIT) != 0;
+    }
+
+    private static boolean pathIsGroupPassThrough(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_PASS_THROUGH) != 0;
+    }
+
+    private static boolean pathIsGroupEscape(long pathElement) {
+        return (pathElement & PATH_GROUP_ACTION_ESCAPE) != 0;
+    }
+
+    /**
+     * Returns {@code true} if the path element's group alternation index is still in bounds.
+     */
+    private boolean pathGroupHasNext(long pathElement) {
+        return pathGetGroupAltIndex(pathElement) < ((Group) pathGetNode(pathElement)).size();
+    }
+
+    /**
+     * Returns the next alternative of the group contained in this path element. Does not increment
+     * the group alternation index!
+     */
+    private Sequence pathGroupGetNext(long pathElement) {
+        return ((Group) pathGetNode(pathElement)).getAlternatives().get(pathGetGroupAltIndex(pathElement));
+    }
+
+    private boolean isGroupExitOnPath(Group group) {
+        assert !curPath.isEmpty() && pathIsGroupEnter(curPath.peek()) && pathGetNode(curPath.peek()) == group;
+        return curPath.length() >= 2 && pathIsGroupExit(curPath.get(curPath.length() - 2)) && pathGetNode(curPath.get(curPath.length() - 2)) == group;
+    }
+
+    private boolean noEmptyGuardGroupEnterOnPath(Group group) {
+        if (!group.hasEmptyGuard()) {
+            return true;
+        }
+        for (int i = 0; i < curPath.length(); i++) {
+            if (pathGetNode(curPath.get(i)) == group && pathIsGroupEnter(curPath.get(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// Pushing and popping group elements to and from the path
     private void pushGroupEnter(Group group, int groupAltIndex) {
         curPath.add(createPathElement(group) | (groupAltIndex << PATH_GROUP_ALT_INDEX_OFFSET) | PATH_GROUP_ACTION_ENTER);
         // Capture groups
@@ -726,14 +937,6 @@ public abstract class NFATraversalRegexASTVisitor {
 
     private void pushGroupEscape(Group group) {
         curPath.add(createPathElement(group) | PATH_GROUP_ACTION_ESCAPE);
-        // Capture groups
-        // TODO: Maybe we don't need this in GROUP_ESCAPE?
-        if (group.isCapturing()) {
-            captureGroupUpdate(group.getBoundaryIndexEnd());
-            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
-                lastGroupUpdate(group.getGroupNumber());
-            }
-        }
         // Quantifier guards
         if (useQuantifierGuards()) {
             if (group.hasQuantifier()) {
@@ -768,15 +971,15 @@ public abstract class NFATraversalRegexASTVisitor {
                 }
             }
         }
-        // Capture groups
-        // TODO: Maybe we don't need this in GROUP_ESCAPE?
-        if (group.isCapturing()) {
-            if (ast.getOptions().getFlavor().usesLastGroupResultField() && group.getGroupNumber() != 0) {
-                popCaptureGroupEvent();
-            }
-            popCaptureGroupEvent();
-        }
         curPath.pop();
+    }
+
+    /// Capture group data handling
+    private void clearCaptureGroupData() {
+        captureGroupEvents.clear();
+        captureGroupUpdates.clear();
+        captureGroupClears.clear();
+        lastGroup = -1;
     }
 
     private void captureGroupUpdate(int boundary) {
@@ -796,204 +999,44 @@ public abstract class NFATraversalRegexASTVisitor {
         lastGroup = newLastGroup;
     }
 
-    private boolean retreat() {
-        while (!curPath.isEmpty()) {
-            long lastVisited = curPath.peek();
-            RegexASTNode node = pathGetNode(lastVisited);
-            if (pathIsGroup(lastVisited)) {
-                Group group = (Group) node;
-                if (pathIsGroupEnter(lastVisited) || pathIsGroupPassThrough(lastVisited)) {
-                    if (pathGroupHasNext(lastVisited)) {
-                        if (pathIsGroupPassThrough(lastVisited)) {
-                            // a passthrough node was changed to an enter node,
-                            // so we register the loop in insideLoops
-                            registerInsideLoop(group);
-                        }
-                        switchNextGroupAlternative(group);
-                        cur = pathGroupGetNext(lastVisited);
-                        deduplicateTarget();
-                        return false;
-                    } else {
-                        if (pathIsGroupEnter(lastVisited)) {
-                            popGroupEnter(group);
-                        } else {
-                            assert pathIsGroupPassThrough(lastVisited);
-                            popGroupPassThrough(group);
-                        }
-                        assert noEmptyGuardGroupEnterOnPath(group);
-                        if (pathIsGroupEnter(lastVisited)) {
-                            // we only deregister the node from insideLoops if this was an enter
-                            // node, if it was a passthrough node, it was already deregistered when
-                            // it was transformed from an enter node in doAdvance
-                            unregisterInsideLoop(group);
-                        }
-                        insideEmptyGuardGroup.remove(group);
-                    }
-                } else if (ast.getOptions().getFlavor().failingEmptyChecksDontBacktrack() && pathIsGroupExit(lastVisited) && group.hasQuantifier() && group.getQuantifier().hasZeroWidthIndex() &&
-                                (group.getFirstAlternative().isExpandedQuantifier() || group.getLastAlternative().isExpandedQuantifier())) {
-                    // In Ruby (and also in Python), when we finish an iteration of a loop, there is
-                    // an empty check. If we pass the empty check, we return to the beginning of the
-                    // loop where we get to make a non-deterministic choice as to whether we want to
-                    // start another iteration of the loop (so far the same as ECMAScript). However,
-                    // if we fail // the empty check, we continue to the expression that follows the
-                    // loop. We implement this by introducing two transitions, one leading to the
-                    // start of the loop (empty check passes) and one escaping past the loop (empty
-                    // check fails). The two transitions are then annotated with complementary
-                    // guards (exitZeroWidth and escapeZeroWidth, respectively), so that at runtime,
-                    // only one of the two transitions will be admissible. The clause below lets us
-                    // generate the second transition by replacing the loop exit with a loop escape.
-                    switchExitToEscape(group);
-                    // TODO: maybe replace with return advanceTerm(group) || retreat()
-                    if (!advanceTerm(group)) {
-                        return false;
-                    } else {
-                        retreat();
-                    }
-                } else {
-                    if (pathIsGroupExit(lastVisited)) {
-                        popGroupExit(group);
-                    } else {
-                        assert pathIsGroupEscape(lastVisited);
-                        popGroupEscape(group);
-                    }
-                }
-            } else {
-                curPath.pop();
-                if (canTraverseLookArounds() && node.isLookAroundAssertion()) {
-                    if (node.isLookAheadAssertion()) {
-                        leaveLookAhead(node.asLookAheadAssertion());
-                    }
-                    removeFromVisitedSet(lastVisited, lookAroundsOnPath);
-                } else if (node.isDollar()) {
-                    removeFromVisitedSet(lastVisited, dollarsOnPath);
-                } else if (node.isCaret()) {
-                    removeFromVisitedSet(lastVisited, caretsOnPath);
-                }
-            }
-        }
-        done = true;
-        return false;
+    private void popCaptureGroupEvent() {
+        assert !captureGroupEvents.isEmpty();
+        CaptureGroupEvent poppedEvent = captureGroupEvents.remove(captureGroupEvents.size() - 1);
+        poppedEvent.undo(this);
+    }
+
+    /// Quantifier guard data handling
+    private boolean useQuantifierGuards() {
+        return !canTraverseLookArounds();
+    }
+
+    private void clearQuantifierGuards() {
+        quantifierGuards = null;
+    }
+
+    private void pushQuantifierGuard(QuantifierGuard guard) {
+        assert useQuantifierGuards();
+        quantifierGuards = new QuantifierGuardsLinkedList(guard, quantifierGuards);
+    }
+
+    private void popQuantifierGuard(QuantifierGuard expectedGuard) {
+        assert useQuantifierGuards();
+        assert quantifierGuards != null;
+        QuantifierGuard droppedGuard = quantifierGuards.getGuard();
+        quantifierGuards = quantifierGuards.getPrev();
+        assert droppedGuard.equals(expectedGuard);
+    }
+
+    /// Visited set management
+    private void addToVisitedSet(StateSet<RegexAST, RegexASTNode> visitedSet) {
+        nodeVisitCount[cur.getId()]++;
+        visitedSet.add(cur);
     }
 
     private void removeFromVisitedSet(long pathElement, StateSet<RegexAST, RegexASTNode> visitedSet) {
         if (--nodeVisitCount[pathGetNodeId(pathElement)] == 0) {
             visitedSet.remove(pathGetNode(pathElement));
         }
-    }
-
-    private void deduplicateTarget() {
-        if (deduplicationCalls++ % DEDUPLICATION_PERIOD != 0) {
-            return;
-        }
-        DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
-        boolean isDuplicate = !targetDeduplicationSet.add(key);
-        if (isDuplicate) {
-            retreat();
-        }
-    }
-
-    /**
-     * First field: (short) group alternation index. This value is used to iterate the alternations
-     * of groups referenced in a group-enter path element. <br>
-     * Since the same group can appear multiple times on the path, we cannot reuse {@link Group}'s
-     * implementation of {@link RegexASTVisitorIterable}. Therefore, every occurrence of a group on
-     * the path has its own index for iterating and back-tracking over its alternatives.
-     */
-    private static final int PATH_GROUP_ALT_INDEX_OFFSET = 0;
-    /**
-     * Second field: (int) id of the path element's {@link RegexASTNode}.
-     */
-    private static final int PATH_NODE_OFFSET = Short.SIZE;
-    /**
-     * Third field: group action. Every path element referencing a group must have one of three
-     * possible group actions:
-     * <ul>
-     * <li>group enter</li>
-     * <li>group exit</li>
-     * <li>group pass through</li>
-     * </ul>
-     */
-    private static final int PATH_GROUP_ACTION_OFFSET = Short.SIZE + Integer.SIZE;
-    private static final long PATH_GROUP_ACTION_ENTER = 1L << PATH_GROUP_ACTION_OFFSET;
-    private static final long PATH_GROUP_ACTION_EXIT = 1L << PATH_GROUP_ACTION_OFFSET + 1;
-    private static final long PATH_GROUP_ACTION_PASS_THROUGH = 1L << PATH_GROUP_ACTION_OFFSET + 2;
-    private static final long PATH_GROUP_ACTION_ESCAPE = 1L << PATH_GROUP_ACTION_OFFSET + 3;
-    private static final long PATH_GROUP_ACTION_ANY = PATH_GROUP_ACTION_ENTER | PATH_GROUP_ACTION_EXIT | PATH_GROUP_ACTION_PASS_THROUGH | PATH_GROUP_ACTION_ESCAPE;
-
-    /**
-     * Create a new path element containing the given node.
-     */
-    private static long createPathElement(RegexASTNode node) {
-        return (long) node.getId() << PATH_NODE_OFFSET;
-    }
-
-    private static int pathGetNodeId(long pathElement) {
-        return (int) (pathElement >>> PATH_NODE_OFFSET);
-    }
-
-    /**
-     * Get the {@link RegexASTNode} contained in the given path element.
-     */
-    private RegexASTNode pathGetNode(long pathElement) {
-        return ast.getState(pathGetNodeId(pathElement));
-    }
-
-    /**
-     * Get the group alternation index of the given path element.
-     */
-    private static int pathGetGroupAltIndex(long pathElement) {
-        return (short) (pathElement >>> PATH_GROUP_ALT_INDEX_OFFSET);
-    }
-
-    /**
-     * Returns {@code true} if the given path element has any group action set. Every path element
-     * containing a group must have one group action.
-     */
-    private static boolean pathIsGroup(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_ANY) != 0;
-    }
-
-    private static boolean pathIsGroupEnter(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_ENTER) != 0;
-    }
-
-    private static boolean pathIsGroupExit(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_EXIT) != 0;
-    }
-
-    private static boolean pathIsGroupPassThrough(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_PASS_THROUGH) != 0;
-    }
-
-    private static boolean pathIsGroupEscape(long pathElement) {
-        return (pathElement & PATH_GROUP_ACTION_ESCAPE) != 0;
-    }
-
-    /**
-     * Returns {@code true} if the path element's group alternation index is still in bounds.
-     */
-    private boolean pathGroupHasNext(long pathElement) {
-        return pathGetGroupAltIndex(pathElement) < ((Group) pathGetNode(pathElement)).size();
-    }
-
-    /**
-     * Returns the next alternative of the group contained in this path element. Does not increment
-     * the group alternation index!
-     */
-    private Sequence pathGroupGetNext(long pathElement) {
-        return ((Group) pathGetNode(pathElement)).getAlternatives().get(pathGetGroupAltIndex(pathElement));
-    }
-
-    private boolean noEmptyGuardGroupEnterOnPath(Group group) {
-        if (!group.hasEmptyGuard()) {
-            return true;
-        }
-        for (int i = 0; i < curPath.length(); i++) {
-            if (pathGetNode(curPath.get(i)) == group && pathIsGroupEnter(curPath.get(i))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private boolean nodeVisitsEmpty() {
@@ -1003,6 +1046,20 @@ public abstract class NFATraversalRegexASTVisitor {
             }
         }
         return true;
+    }
+
+    /// insideLoops management
+    private void registerInsideLoop(Group group) {
+        insideLoops.put(group, insideLoops.get(group, 0) + 1);
+    }
+
+    private void unregisterInsideLoop(Group group) {
+        int depth = insideLoops.get(group, 0);
+        if (depth == 1) {
+            insideLoops.removeKey(group);
+        } else if (depth > 1) {
+            insideLoops.put(group, depth - 1);
+        }
     }
 
     @SuppressWarnings("unused")
@@ -1035,7 +1092,8 @@ public abstract class NFATraversalRegexASTVisitor {
         private final int lastGroup;
         private final int hashCode;
 
-        public DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath, QuantifierGuardsLinkedList quantifierGuards, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
+        DeduplicationKey(RegexASTNode targetNode, StateSet<RegexAST, RegexASTNode> lookAroundsOnPath, StateSet<RegexAST, RegexASTNode> dollarsOnPath,
+                        QuantifierGuardsLinkedList quantifierGuards, TBitSet captureGroupUpdates, TBitSet captureGroupClears, int lastGroup) {
             this.nodesInvolved = lookAroundsOnPath.copy();
             this.nodesInvolved.addAll(dollarsOnPath);
             this.nodesInvolved.add(targetNode);
@@ -1052,7 +1110,8 @@ public abstract class NFATraversalRegexASTVisitor {
                 return false;
             }
             DeduplicationKey other = (DeduplicationKey) obj;
-            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.captureGroupUpdates.equals(other.captureGroupUpdates) && this.captureGroupClears.equals(other.captureGroupClears) && this.lastGroup == other.lastGroup;
+            return this.nodesInvolved.equals(other.nodesInvolved) && Objects.equals(this.quantifierGuards, other.quantifierGuards) && this.captureGroupUpdates.equals(other.captureGroupUpdates) &&
+                            this.captureGroupClears.equals(other.captureGroupClears) && this.lastGroup == other.lastGroup;
         }
 
         public int calculateHashCode() {
@@ -1071,7 +1130,7 @@ public abstract class NFATraversalRegexASTVisitor {
         private final int length;
         private final int hashCode;
 
-        public QuantifierGuardsLinkedList(QuantifierGuard guard, QuantifierGuardsLinkedList prev) {
+        QuantifierGuardsLinkedList(QuantifierGuard guard, QuantifierGuardsLinkedList prev) {
             this.guard = guard;
             this.prev = prev;
             this.length = prev == null ? 1 : prev.length + 1;
@@ -1105,17 +1164,37 @@ public abstract class NFATraversalRegexASTVisitor {
         }
 
         public QuantifierGuard[] toArray() {
-            QuantifierGuard[] ret = new QuantifierGuard[getLength()];
+            QuantifierGuard[] result = new QuantifierGuard[getLength()];
             QuantifierGuardsLinkedList cur = this;
-            for (int i = ret.length - 1; i >= 0; i--) {
-                ret[i] = cur.getGuard();
+            for (int i = result.length - 1; i >= 0; i--) {
+                result[i] = cur.getGuard();
                 cur = cur.getPrev();
             }
-            return ret;
+            return result;
+        }
+
+        public QuantifierGuard[] toArray(Predicate<QuantifierGuard> filter) {
+            int resultSize = 0;
+            QuantifierGuardsLinkedList cur = this;
+            while (cur != null) {
+                if (filter.test(cur.getGuard())) {
+                    resultSize++;
+                }
+                cur = cur.getPrev();
+            }
+            QuantifierGuard[] result = new QuantifierGuard[resultSize];
+            cur = this;
+            while (cur != null) {
+                if (filter.test(cur.getGuard())) {
+                    result[--resultSize] = cur.getGuard();
+                }
+                cur = cur.getPrev();
+            }
+            return result;
         }
     }
 
-    private static abstract class CaptureGroupEvent {
+    private abstract static class CaptureGroupEvent {
 
         public abstract void undo(NFATraversalRegexASTVisitor visitor);
 
@@ -1125,7 +1204,7 @@ public abstract class NFATraversalRegexASTVisitor {
             private final boolean prevUpdate;
             private final boolean prevClear;
 
-            public CaptureGroupUpdate(int boundary, boolean prevUpdate, boolean prevClear) {
+            CaptureGroupUpdate(int boundary, boolean prevUpdate, boolean prevClear) {
                 this.boundary = boundary;
                 this.prevUpdate = prevUpdate;
                 this.prevClear = prevClear;
@@ -1151,7 +1230,7 @@ public abstract class NFATraversalRegexASTVisitor {
             private final TBitSet prevUpdates;
             private final TBitSet prevClears;
 
-            public CaptureGroupClears(TBitSet prevUpdates, TBitSet prevClears) {
+            CaptureGroupClears(TBitSet prevUpdates, TBitSet prevClears) {
                 this.prevUpdates = prevUpdates;
                 this.prevClears = prevClears;
             }
@@ -1167,7 +1246,7 @@ public abstract class NFATraversalRegexASTVisitor {
 
             private final int prevLastGroup;
 
-            public LastGroupUpdate(int prevLastGroup) {
+            LastGroupUpdate(int prevLastGroup) {
                 this.prevLastGroup = prevLastGroup;
             }
 

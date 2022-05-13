@@ -517,5 +517,13 @@ public class RubyTests extends RegexTestBase {
         // group updates are stored in quantifier guards and correctly pruning the traversal
         // relies on respecting the quantifier guards.
         test("(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())\\3\\5\\7", "", "", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1);
+        // This tests that it is OK to not update a looping capture group on a transition that
+        // escapes from it. This should be fine, because the last iteration to match the empty
+        // string in the loop will update the capture group and therefore not use the escape
+        // transition. The escape transition will only be taken after the next iteration, because
+        // only then the empty check will fail. At that point, it is OK not to update the capture
+        // group data, because it was already updated by the previous iteration.
+        test("()*", "", "", 0, true, 0, 0, 0, 0);
+        test("(a|)*", "", "a", 0, true, 0, 1, 1, 1);
     }
 }
