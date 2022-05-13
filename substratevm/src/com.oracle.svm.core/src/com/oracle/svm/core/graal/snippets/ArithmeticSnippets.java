@@ -28,9 +28,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
@@ -43,12 +45,14 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -76,7 +80,7 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             return Integer.MIN_VALUE;
         }
         GuardingNode guard = SnippetAnchorNode.anchor();
-        return safeDiv(x, PiNode.piCastNonZero(y, guard), guard);
+        return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()), guard);
     }
 
     @Snippet
@@ -84,11 +88,11 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
-            return Long.MIN_VALUE;
+        if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
+            return Integer.MIN_VALUE;
         }
         GuardingNode guard = SnippetAnchorNode.anchor();
-        return safeDiv(x, PiNode.piCastNonZero(y, guard), guard);
+        return safeDiv(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()), guard);
     }
 
     @Snippet
@@ -97,10 +101,10 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             zeroCheck(y);
         }
         if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
-            return 0;
+            return Integer.MIN_VALUE;
         }
         GuardingNode guard = SnippetAnchorNode.anchor();
-        return safeRem(x, PiNode.piCastNonZero(y, guard), guard);
+        return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()), guard);
     }
 
     @Snippet
@@ -108,11 +112,11 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
         if (needsZeroCheck) {
             zeroCheck(y);
         }
-        if (needsBoundsCheck && x == Long.MIN_VALUE && y == -1) {
-            return 0;
+        if (needsBoundsCheck && x == Integer.MIN_VALUE && y == -1) {
+            return Integer.MIN_VALUE;
         }
         GuardingNode guard = SnippetAnchorNode.anchor();
-        return safeRem(x, PiNode.piCastNonZero(y, guard), guard);
+        return safeRem(x, PiNode.piCastNonZero(y, SnippetAnchorNode.anchor()), guard);
     }
 
     @Snippet
@@ -250,14 +254,30 @@ public abstract class ArithmeticSnippets extends SubstrateTemplates implements S
             args.add("x", node.getX());
             args.add("y", node.getY());
 
+            if (node.graph().getDebug().isDumpEnabledForMethod()) {
+                TTY.printf("");
+            }
+
             IntegerStamp yStamp = (IntegerStamp) node.getY().stamp(NodeView.DEFAULT);
             boolean needsZeroCheck = node.canDeoptimize() && (node.getZeroGuard() == null && yStamp.contains(0));
             args.addConst("needsZeroCheck", needsZeroCheck);
+            GuardingNode zeroGuard = node.getZeroGuard();
             if (node instanceof SignedDivNode || node instanceof SignedRemNode) {
                 args.addConst("needsBoundsCheck", needsSignedBoundsCheck);
+
+                UnmodifiableEconomicMap<Node, Node> duplicates = template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+                if (zeroGuard != null) {
+                    for (Node originalNode : duplicates.getKeys()) {
+                        if (originalNode instanceof FloatingIntegerDivRemNode<?>) {
+                            FloatingIntegerDivRemNode<?> divRem = (FloatingIntegerDivRemNode<?>) duplicates.get(originalNode);
+                            divRem.setGuard(MultiGuardNode.combine(zeroGuard, divRem.getGuard()));
+                        }
+                    }
+                }
+            } else {
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
 
-            template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
         }
     }
 
