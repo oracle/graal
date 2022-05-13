@@ -110,6 +110,9 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             } else {
                 data.addError(mir, ElementUtils.getAnnotationValue(mir, "value"), "Could not proxy operation");
             }
+
+            opData.redirectMessages(data);
+            opData.redirectMessagesOnGeneratedElements(data);
         }
 
         for (TypeElement inner : operationTypes) {

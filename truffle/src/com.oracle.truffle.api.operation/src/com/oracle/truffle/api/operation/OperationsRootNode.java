@@ -3,6 +3,7 @@ package com.oracle.truffle.api.operation;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 public class OperationsRootNode extends RootNode {
 
@@ -63,6 +64,16 @@ public class OperationsRootNode extends RootNode {
     // // return new OperationsWrapperNode(probe);
     // return null;
     // }
+
+    @Override
+    public SourceSection getSourceSection() {
+        return node.getSourceSection();
+    }
+
+    @Override
+    public SourceSection getEncapsulatingSourceSection() {
+        return node.getSourceSection();
+    }
 
     @Override
     public String toString() {

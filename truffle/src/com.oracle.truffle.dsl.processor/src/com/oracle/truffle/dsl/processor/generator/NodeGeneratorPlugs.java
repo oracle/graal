@@ -8,6 +8,7 @@ import javax.lang.model.type.TypeMirror;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ReportPolymorphismAction;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -77,5 +78,7 @@ public interface NodeGeneratorPlugs {
     boolean isStateGuaranteed(boolean stateGuaranteed);
 
     StaticConstants createConstants();
+
+    ReportPolymorphismAction createReportPolymorhoismAction(ReportPolymorphismAction original);
 
 }

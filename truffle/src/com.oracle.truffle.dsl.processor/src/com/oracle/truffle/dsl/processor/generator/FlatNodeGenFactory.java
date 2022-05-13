@@ -1125,11 +1125,11 @@ public class FlatNodeGenFactory {
         return b.build();
     }
 
-    private static final class ReportPolymorphismAction {
+    public static final class ReportPolymorphismAction {
         final boolean polymorphism;
         final boolean megamorphism;
 
-        ReportPolymorphismAction(boolean polymorphism, boolean megamorphism) {
+        public ReportPolymorphismAction(boolean polymorphism, boolean megamorphism) {
             this.polymorphism = polymorphism;
             this.megamorphism = megamorphism;
         }
@@ -2156,6 +2156,9 @@ public class FlatNodeGenFactory {
         }
 
         ReportPolymorphismAction reportPolymorphismAction = reportPolymorphismAction(node, reachableSpecializations);
+        if (plugs != null) {
+            reportPolymorphismAction = plugs.createReportPolymorhoismAction(reportPolymorphismAction);
+        }
 
         if (needsSpecializeLocking) {
             builder.startTryBlock();

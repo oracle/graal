@@ -135,7 +135,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             for (ExecutableElement cel : findSpecializations(te.getEnclosedElements())) {
                 if (!cel.getModifiers().contains(Modifier.STATIC)) {
-                    data.addError(cel, "@OperationProxy'ed class must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
+                    data.addError("@OperationProxy'ed class must have all its specializations static. Use @Bind(\"this\") parameter if you need a Node instance.");
                 }
 
                 operationFunctions.add(cel);
@@ -164,7 +164,9 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         CodeTypeElement clonedType = cloneTypeHierarchy(te, ct -> {
             // remove NodeChild annotations
-            ct.getAnnotationMirrors().removeIf(m -> m.getAnnotationType().equals(types.NodeChild) || m.getAnnotationType().equals(types.NodeChildren));
+            ct.getAnnotationMirrors().removeIf(m -> ElementUtils.typeEquals(m.getAnnotationType(), types.NodeChild) || ElementUtils.typeEquals(m.getAnnotationType(), types.NodeChildren));
+            // remove GenerateUncached annotations - we do not care
+            ct.getAnnotationMirrors().removeIf(m -> ElementUtils.typeEquals(m.getAnnotationType(), types.GenerateUncached));
 
             // remove all non-static or private elements
             // this includes all the execute methods

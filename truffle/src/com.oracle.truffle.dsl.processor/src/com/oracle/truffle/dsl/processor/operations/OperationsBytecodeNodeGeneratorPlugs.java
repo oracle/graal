@@ -18,6 +18,7 @@ import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.BoxingSplit
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.FrameState;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.LocalVariable;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.MultiStateBitSet;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.ReportPolymorphismAction;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.StateBitSet;
 import com.oracle.truffle.dsl.processor.generator.NodeGeneratorPlugs;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
@@ -245,6 +246,12 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         return b.build();
+    }
+
+    @Override
+    public ReportPolymorphismAction createReportPolymorhoismAction(ReportPolymorphismAction original) {
+        // TODO maybe this would be needed at some point?
+        return new ReportPolymorphismAction(false, false);
     }
 
     @Override
@@ -578,7 +585,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
         TypeSystemData tsData = cinstr.getData().getNodeData().getTypeSystem();
         for (int i = 0; i < cinstr.numPopStatic(); i++) {
-            TypeMirror targetType = primitiveMirrors[i];
+            TypeMirror targetType = i < primitiveMirrors.length ? primitiveMirrors[i] : context.getType(Object.class);
             if (!tsData.hasImplicitSourceTypes(targetType)) {
                 FrameKind frameType = getFrameType(targetType.getKind());
                 b.startAssign("type" + i).tree(OperationGeneratorUtils.toFrameTypeConstant(frameType)).end();
