@@ -375,19 +375,19 @@ class GraalVmComponent(object):
 
 class GraalVmTruffleComponent(GraalVmComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, truffle_jars,
-                 include_in_polyglot=True, standalone_dir_name=None, standalone_dependencies=None, **kwargs):
+                 include_in_polyglot=None, standalone_dir_name=None, standalone_dependencies=None, **kwargs):
         """
         :param list[str] truffle_jars: JAR distributions that should be on the classpath for the language implementation.
-        :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images.
+        :param bool include_in_polyglot: whether this component is included in `--language:all` or `--tool:all` and should be part of polyglot images (deprecated).
         :param str standalone_dir_name: name for the standalone archive and directory inside
         :param dict[str, (str, list[str])] standalone_dependencies: dict of dependent components to include in the standalone in the form {component name: (relative path, excluded_paths)}.
         """
         super(GraalVmTruffleComponent, self).__init__(suite, name, short_name, license_files, third_party_license_files,
                                                       jar_distributions=truffle_jars, **kwargs)
-        self.include_in_polyglot = include_in_polyglot
+        if include_in_polyglot is not None:
+            mx.warn('"include_in_polyglot" is deprecated. Please drop all uses.')
         self.standalone_dir_name = standalone_dir_name or '{}-<version>-<graalvm_os>-<arch>'.format(self.dir_name)
         self.standalone_dependencies = standalone_dependencies or {}
-        assert isinstance(self.include_in_polyglot, bool)
         assert isinstance(self.standalone_dependencies, dict)
 
 
