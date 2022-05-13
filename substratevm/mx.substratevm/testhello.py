@@ -633,11 +633,11 @@ def test():
     # we cannot be sure exactly how much inlining happens
     # which means the format of the frame display may vary from
     # one build to the next. so we use a generic match after the
-    # first two pairs.
+    # first pair.
     rexp = [r"#0%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:173"%(spaces_pattern, arg_values_pattern),
             r"#1%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
-            r"#2%shello\.Hello::inlineTo\(int\) %s at hello/Hello\.java:171"%(spaces_pattern, arg_values_pattern),
-            r"#3%s%s in hello\.Hello::inlineHere %s at hello/Hello\.java:165"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#2%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
+            r"#3%shello\.Hello::inlineHere%s at hello/Hello\.java:165"%(wildcard_pattern, wildcard_pattern),
             r"#4%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
             r"#5%shello\.Hello::inlineHere%s at hello/Hello\.java:165"%(wildcard_pattern, wildcard_pattern),
             r"#6%shello\.Hello::inlineTo%s at hello/Hello\.java:171"%(wildcard_pattern, wildcard_pattern),
@@ -664,9 +664,9 @@ def test():
     # we cannot be sure exactly how much inlining happens
     # which means the format of the frame display may vary from
     # one build to the next. so we use a generic match after the
-    # first two.
+    # first one.
     rexp = [r"#0%shello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:179"%(spaces_pattern, arg_values_pattern),
-            r"#1%s%s in hello\.Hello::inlineTailRecursion\(int\) %s at hello/Hello\.java:182"%(spaces_pattern, address_pattern, arg_values_pattern),
+            r"#1%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
             r"#2%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
             r"#3%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
             r"#4%shello\.Hello::inlineTailRecursion%s at hello/Hello\.java:182"%(wildcard_pattern, wildcard_pattern),
