@@ -99,7 +99,7 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
     private boolean wasVAListPointer = false;
     protected final LLVMPointer address;
 
-    private LLVMManagedPointer vaList;
+    protected LLVMManagedPointer vaList;
 
     public static LLVMMaybeVaPointer createWithAlloca(LLVMPointer address, LLVMVAListNode allocaNode) {
         return new LLVMMaybeVaPointer(address, allocaNode, null);
@@ -354,25 +354,27 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class GetArraySize {
-        @Specialization(guards = "!self.isPointer()")
-        static long getArraySizeVaList(LLVMMaybeVaPointer self) {
-            return ((LLVMVaListStorage) self.vaList.getObject()).getArraySize();
+        @Specialization(limit = "1", guards = "!self.isPointer()")
+        static long getArraySizeVaList(LLVMMaybeVaPointer self,
+                        @CachedLibrary("self.vaList.getObject()") InteropLibrary interopLibrary) throws UnsupportedMessageException {
+            return interopLibrary.getArraySize(self.vaList.getObject());
         }
     }
 
     @ExportMessage
     static class IsArrayElementReadable {
-        @Specialization(guards = "!self.isPointer()")
-        static boolean isArrayElementReadableVaList(LLVMMaybeVaPointer self, long index) {
-            return ((LLVMVaListStorage) self.vaList.getObject()).isArrayElementReadable(index);
+        @Specialization(limit = "1", guards = "!self.isPointer()")
+        static boolean isArrayElementReadableVaList(LLVMMaybeVaPointer self, long index,
+                        @CachedLibrary("self.vaList.getObject()") InteropLibrary interopLibrary) {
+            return interopLibrary.isArrayElementReadable(self.vaList.getObject(), index);
         }
     }
 
     @ExportMessage
     static class ReadArrayElement {
-        @Specialization(guards = "!self.isPointer()")
+        @Specialization(limit = "1", guards = "!self.isPointer()")
         static Object readArrayElementVaList(LLVMMaybeVaPointer self, long index,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) throws InvalidArrayIndexException, UnsupportedMessageException {
+                        @CachedLibrary("self.vaList.getObject()") InteropLibrary interop) throws InvalidArrayIndexException, UnsupportedMessageException {
             return interop.readArrayElement(self.vaList.getObject(), index);
         }
     }
@@ -392,25 +394,27 @@ public final class LLVMMaybeVaPointer extends LLVMInternalTruffleObject {
 
     @ExportMessage
     static class GetMembers {
-        @Specialization(guards = "!self.isPointer()")
-        static Object getMembers(LLVMMaybeVaPointer self, boolean includeInternal) {
-            return ((LLVMVaListStorage) self.vaList.getObject()).getMembers(includeInternal);
+        @Specialization(limit = "1", guards = "!self.isPointer()")
+        static Object getMembers(LLVMMaybeVaPointer self, boolean includeInternal,
+                        @CachedLibrary("self.vaList.getObject()") InteropLibrary interopLibrary) throws UnsupportedMessageException {
+            return interopLibrary.getMembers(self.vaList.getObject(), includeInternal);
         }
     }
 
     @ExportMessage
     static class IsMemberInvocable {
-        @Specialization(guards = "!self.isPointer()")
-        static boolean isMemberInvocable(LLVMMaybeVaPointer self, String member) {
-            return ((LLVMVaListStorage) self.vaList.getObject()).isMemberInvocable(member);
+        @Specialization(limit = "1", guards = "!self.isPointer()")
+        static boolean isMemberInvocable(LLVMMaybeVaPointer self, String member,
+                        @CachedLibrary("self.vaList.getObject()") InteropLibrary interopLibrary) {
+            return interopLibrary.isMemberInvocable(self.vaList.getObject(), member);
         }
     }
 
     @ExportMessage
     static class InvokeMember {
-        @Specialization(guards = "!self.isPointer()")
+        @Specialization(limit = "1", guards = "!self.isPointer()")
         static Object invokeMember(LLVMMaybeVaPointer self, String member, Object[] arguments,
-                        @CachedLibrary(limit = "3") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
+                        @CachedLibrary("self.vaList.getObject()") InteropLibrary interop) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
             return interop.invokeMember(self.vaList.getObject(), member, arguments);
         }
     }
