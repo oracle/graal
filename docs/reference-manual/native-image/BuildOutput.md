@@ -29,7 +29,7 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
 [6/7] Compiling methods...    [**]                               (3.7s @ 2.38GB)
 [7/7] Creating image...                                          (2.1s @ 1.04GB)
    3.69MB (27.19%) for code area:    6,955 compilation units
-   5.86MB (43.18%) for image heap:   80,528 objects
+   5.86MB (43.18%) for image heap:   80,528 objects and 5 resources
    3.05MB (22.46%) for debug info generated in 1.0s
  997.25KB ( 7.18%) for other data
   13.57MB in total
@@ -133,11 +133,14 @@ The code area contains machine code produced by the Graal compiler for all reach
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
 
 #### <a name="glossary-image-heap"></a>Image Heap
-The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes.
+The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
 The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [reflection metadata](#glossary-reflection-metadata), nor [graph encodings](#glossary-graph-encodings).
 Therefore, this can also include `byte[]` objects from application code.
+
+##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
+The total size of all `byte[]` objects used for storing resources (e.g., files accessed via `Class.getResource()`) within the native image. The number of resources is shown in the [Image Heap](#glossary-image-heap) section.
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).

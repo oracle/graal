@@ -68,6 +68,8 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
@@ -389,8 +391,9 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).println();
+        int numResources = Resources.singleton().resources().size();
         l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
-                        .doclink("image heap", "#glossary-image-heap").a(": %,8d objects", numHeapObjects).println();
+                        .doclink("image heap", "#glossary-image-heap").a(":%,8d objects and %,d resources", numHeapObjects, numResources).println();
         if (debugInfoSize > 0) {
             DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
                             .doclink("debug info", "#glossary-debug-info");
@@ -501,6 +504,16 @@ public class ProgressReporter {
             if (metadataByteLength > 0) {
                 classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-reflection-metadata"), metadataByteLength);
                 remainingBytes -= metadataByteLength;
+            }
+            long resourcesByteLength = 0;
+            for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+                for (byte[] resource : resourceList.getData()) {
+                    resourcesByteLength += resource.length;
+                }
+            }
+            if (resourcesByteLength > 0) {
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
+                remainingBytes -= resourcesByteLength;
             }
             if (graphEncodingByteLength > 0) {
                 classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
