@@ -195,10 +195,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static final int DECLARES_DEFAULT_METHODS_FLAG_BIT = 6;
     /** Is this a Sealed Class. */
     private static final int IS_SEALED_FLAG_BIT = 7;
-    /**
-     * Has the type been discovered as instantiated by the static analysis?
-     */
-    private boolean isInstantiated;
+
+    private byte instantiationFlags;
+
+    /** Has the type been discovered as instantiated by the static analysis? */
+    private static final int IS_INSTANTIATED_BIT = 0;
+    /** Can this class be instantiated as an instance. */
+    private static final int CAN_INSTANTIATE_AS_INSTANCE_BIT = 1;
 
     /**
      * Boolean value or exception that happened at image-build time.
@@ -364,12 +367,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private int makeFlag(int flagBit, boolean value) {
+    private static int makeFlag(int flagBit, boolean value) {
         int flagMask = 1 << flagBit;
         return value ? flagMask : 0;
     }
 
-    private boolean isFlagSet(int flagBit) {
+    private static boolean isFlagSet(byte flags, int flagBit) {
         int flagMask = 1 << flagBit;
         return (flags & flagMask) != 0;
     }
@@ -398,7 +401,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
         this.referenceMapIndex = (int) referenceMapIndex;
-        this.isInstantiated = isInstantiated;
+        this.instantiationFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
+                        makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, isInstantiated && isInstanceClass() && !LayoutEncoding.isSpecial(layoutEncoding)));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -501,11 +505,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public boolean hasDefaultMethods() {
-        return isFlagSet(HAS_DEFAULT_METHODS_FLAG_BIT);
+        return isFlagSet(flags, HAS_DEFAULT_METHODS_FLAG_BIT);
     }
 
     public boolean declaresDefaultMethods() {
-        return isFlagSet(DECLARES_DEFAULT_METHODS_FLAG_BIT);
+        return isFlagSet(flags, DECLARES_DEFAULT_METHODS_FLAG_BIT);
     }
 
     public ClassInitializationInfo getClassInitializationInfo() {
@@ -571,7 +575,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     public boolean isInstantiated() {
-        return isInstantiated;
+        return isFlagSet(instantiationFlags, IS_INSTANTIATED_BIT);
+    }
+
+    public boolean canInstantiateAsInstance() {
+        return isFlagSet(instantiationFlags, CAN_INSTANTIATE_AS_INSTANCE_BIT);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -633,13 +641,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean isInterface() {
-        return isFlagSet(IS_INTERFACE_FLAG_BIT);
+        return isFlagSet(flags, IS_INTERFACE_FLAG_BIT);
     }
 
     @Substitute
     @Override
     public boolean isPrimitive() {
-        return isFlagSet(IS_PRIMITIVE_FLAG_BIT);
+        return isFlagSet(flags, IS_PRIMITIVE_FLAG_BIT);
     }
 
     @Substitute
@@ -767,19 +775,19 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isHidden() {
-        return isFlagSet(IS_HIDDEN_FLAG_BIT);
+        return isFlagSet(flags, IS_HIDDEN_FLAG_BIT);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isRecord() {
-        return isFlagSet(IS_RECORD_FLAG_BIT);
+        return isFlagSet(flags, IS_RECORD_FLAG_BIT);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK17OrLater.class)
     public boolean isSealed() {
-        return isFlagSet(IS_SEALED_FLAG_BIT);
+        return isFlagSet(flags, IS_SEALED_FLAG_BIT);
     }
 
     @Substitute
@@ -1192,7 +1200,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public boolean desiredAssertionStatus() {
-        return isFlagSet(ASSERTION_STATUS_FLAG_BIT);
+        return isFlagSet(flags, ASSERTION_STATUS_FLAG_BIT);
     }
 
     @Substitute //

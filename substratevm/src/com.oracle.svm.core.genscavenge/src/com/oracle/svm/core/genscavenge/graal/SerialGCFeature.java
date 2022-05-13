@@ -28,6 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -50,15 +51,16 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
+import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.HeapFeature;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
 import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticFeature
-class HeapFeature implements GraalFeature {
+class SerialGCFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.UseSerialGC.getValue();
@@ -66,15 +68,15 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class);
+        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class, HeapFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         HeapImpl heap = new HeapImpl(SubstrateOptions.getPageSize());
         ImageSingletons.add(Heap.class, heap);
-        ImageSingletons.add(SubstrateAllocationSnippets.class, new GenScavengeAllocationSnippets());
         ImageSingletons.add(RememberedSet.class, createRememberedSet());
+        ImageSingletons.add(GCAllocationSupport.class, new GenScavengeAllocationSupport());
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
@@ -91,7 +93,12 @@ class HeapFeature implements GraalFeature {
             barrierSnippets.registerLowerings(lowerings);
         }
 
-        GenScavengeAllocationSnippets.registerLowering(options, providers, lowerings);
+        SubstrateAllocationSnippets allocationSnippets = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
+        SubstrateAllocationSnippets.Templates templates = new SubstrateAllocationSnippets.Templates(options, providers, allocationSnippets);
+        templates.registerLowering(lowerings);
+
+        GenScavengeAllocationSnippets.Templates genScavengeTemplates = new GenScavengeAllocationSnippets.Templates(options, providers, templates);
+        genScavengeTemplates.registerLowering(lowerings);
     }
 
     @Override
@@ -120,7 +127,7 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        GenScavengeAllocationSnippets.registerForeignCalls(foreignCalls);
+        GenScavengeAllocationSupport.registerForeignCalls(foreignCalls);
     }
 
     private static RememberedSet createRememberedSet() {

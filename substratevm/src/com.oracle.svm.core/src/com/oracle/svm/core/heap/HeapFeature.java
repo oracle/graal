@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,38 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.meta;
+package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.JavaType;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 
-public class HotSpotMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+@AutomaticFeature
+public class HeapFeature implements GraalFeature {
     @Override
-    public JavaKind getStorageKind(JavaType type) {
-        return type.getJavaKind();
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(SubstrateAllocationSnippets.class)) {
+            ImageSingletons.add(SubstrateAllocationSnippets.class, new SubstrateAllocationSnippets());
+        }
     }
 
     @Override
-    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
-        /*
-         * The HotSpot lowering of DynamicNewInstanceNode includes an explicit is-initialized check
-         * and deoptimizes, but the lowering of NewInstanceNode does not. So we must not constant
-         * fold a non-initialized instance allocation.
-         */
-        return type.isArray() || type.isInitialized();
-    }
-
-    @Override
-    public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
-        return true;
-    }
-
-    @Override
-    public boolean canVirtualize(ResolvedJavaType instanceType) {
-        return true;
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        ImageSingletons.lookup(SubstrateAllocationSnippets.class).registerForeignCalls(foreignCalls);
     }
 }

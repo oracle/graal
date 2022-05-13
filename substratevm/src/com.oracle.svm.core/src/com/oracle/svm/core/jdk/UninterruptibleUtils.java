@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import com.oracle.svm.core.jdk.JavaLangSubstitutions.StringUtil;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -510,26 +511,12 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int modifiedUTF8Length(java.lang.String string, boolean addNullTerminator) {
             int result = 0;
-            boolean isLatin1 = JavaLangSubstitutions.isLatin1(string);
-            byte[] value = JavaLangSubstitutions.getBytes(string);
             for (int index = 0; index < string.length(); index++) {
-                char ch = charAt(isLatin1, value, index);
+                char ch = StringUtil.charAt(string, index);
                 result += modifiedUTF8Length(ch);
             }
 
             return result + (addNullTerminator ? 1 : 0);
-        }
-
-        /**
-         * Returns a character from a string at {@code index} position based on the encoding format.
-         */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static char charAt(boolean isLatin1, byte[] value, int index) {
-            if (isLatin1) {
-                return (char) (value[index] & 0xFF);
-            } else {
-                return Target_java_lang_StringUTF16.getChar(value, index);
-            }
         }
 
         /**
@@ -542,10 +529,8 @@ public class UninterruptibleUtils {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static Pointer toModifiedUTF8(java.lang.String string, Pointer buffer, Pointer bufferEnd, boolean addNullTerminator) {
             Pointer pos = buffer;
-            boolean isLatin1 = JavaLangSubstitutions.isLatin1(string);
-            byte[] value = JavaLangSubstitutions.getBytes(string);
             for (int index = 0; index < string.length(); index++) {
-                pos = writeModifiedUTF8(pos, charAt(isLatin1, value, index));
+                pos = writeModifiedUTF8(pos, StringUtil.charAt(string, index));
             }
 
             if (addNullTerminator) {

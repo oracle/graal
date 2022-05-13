@@ -992,4 +992,9 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw VMError.shouldNotReachHere();
     }
+
+    @Override
+    public boolean canVirtualize(ResolvedJavaType instanceType) {
+        return true;
+    }
 }

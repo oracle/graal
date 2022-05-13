@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.StreamSupport;
 
+import com.oracle.svm.hosted.meta.HostedType;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -113,7 +114,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.util.ReflectionUtil;
@@ -458,6 +458,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         @Override
         public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
             throw VMError.shouldNotReachHere();
+        }
+
+        @Override
+        public boolean canVirtualize(ResolvedJavaType instanceType) {
+            return true;
         }
     }
 
