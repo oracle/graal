@@ -1677,7 +1677,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", i, name, type.getName(), slot);
                     JavaValue value = (slot < frame.numLocals ? frame.getLocalValue(slot) : Value.ILLEGAL);
                     JavaKind storageKind = (slot < frame.numLocals ? frame.getLocalValueKind(slot) : JavaKind.Illegal);
-                    debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value.toString(), storageKind.toString());
+                    debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
                     int bciStart = l.getStartBCI();
                     int line = (lineNumberTable != null ? lineNumberTable.getLineNumber(bciStart) : -1);
                     // only add the local if the kinds match
@@ -1686,7 +1686,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                                     (isPseudoObjectType(type, ownerType) && kind == JavaKind.Object && storageKind == JavaKind.Long)) {
                         localInfos.add(new NativeImageDebugLocalValueInfo(name, value, framesize, storageKind, type, slot, line));
                     } else if (storageKind != JavaKind.Illegal) {
-                        debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind().toString());
+                        debugContext.log(DebugContext.DETAILED_LEVEL, "  value kind incompatible with var kind %s!", type.getJavaKind());
                     }
                 }
             }
@@ -1710,7 +1710,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 assert kind == JavaKind.Object : "must be an object";
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
-                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value.toString(), storageKind.toString());
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
                 localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, ownerType, slot, line));
                 slot += storageKind.getSlotCount();
                 localIdx++;
@@ -1723,7 +1723,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 JavaKind storageKind = isPseudoObjectType(paramType, ownerType) ? JavaKind.Long : kind;
                 NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
-                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value.toString(), storageKind.toString());
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
                 localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, paramType, slot, line));
                 slot += storageKind.getSlotCount();
                 localIdx++;
@@ -1810,7 +1810,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (this.hi != that.lo) {
                 return null;
             }
-            if (method != that.method) {
+            if (!method.equals(that.method)) {
                 return null;
             }
             if (line() != that.line()) {
