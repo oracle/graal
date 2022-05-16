@@ -54,6 +54,7 @@ import static org.junit.Assert.fail;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.math.BigInteger;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.ByteBuffer;
@@ -1944,6 +1945,16 @@ public class HostAccessTest {
         TruffleTestAssumptions.assumeNotAOT();
         try (Context c = Context.newBuilder().allowAllAccess(true).build()) {
             assertEquals(RETURNED_STRING, evalTestLanguage(c, ArgAdapterInstantiationTestLanguage.class, "argument constructor adapter success").asString());
+        }
+    }
+
+    @Test
+    public void testHostFunctionDisplayName() {
+        try (Context cxt = Context.newBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup((s) -> true).build()) {
+            assertEquals(BigInteger.class.getName() + ".valueOf", cxt.asValue(BigInteger.class).getMember("static").getMember("valueOf").toString());
+            assertEquals(Class.class.getName() + ".getName", cxt.asValue(BigInteger.class).getMember("getName").toString());
+            assertEquals(BigInteger.class.getName() + ".add", cxt.asValue(BigInteger.ZERO).getMember("add").toString());
+            assertEquals(int[].class.getName() + ".clone", cxt.asValue(new int[0]).getMember("clone").toString());
         }
     }
 }

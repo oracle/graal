@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -546,9 +546,10 @@ public class ValueAssert {
                     assertTrue(msg, value.isHostObject());
                     Object hostObject = value.asHostObject();
                     assertFalse(hostObject instanceof Proxy);
+                    boolean isStaticClass = false;
                     if (hasHostAccess && hostObject != null && value.hasMembers() && !java.lang.reflect.Proxy.isProxyClass(hostObject.getClass())) {
                         if (hostObject instanceof Class) {
-                            boolean isStaticClass = value.hasMember("class");
+                            isStaticClass = value.hasMember("class");
                             if (isStaticClass) {
                                 assertClassMembers(value, (Class<?>) hostObject, true);
                             } else {
@@ -566,7 +567,11 @@ public class ValueAssert {
                             }
                         }
                     }
-                    assertEquals(Value.asValue(hostObject), value);
+                    if (isStaticClass) {
+                        assertNotEquals(Value.asValue(hostObject), value);
+                    } else {
+                        assertEquals(Value.asValue(hostObject), value);
+                    }
                     assertEquals(Value.asValue(hostObject).hashCode(), value.hashCode());
 
                     break;

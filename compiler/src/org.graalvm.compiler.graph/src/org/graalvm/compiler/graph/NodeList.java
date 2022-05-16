@@ -287,7 +287,7 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     }
 
     void minimizeSize() {
-        nodes = Graph.trimArrayToNewSize(nodes, size, Node.EMPTY_ARRAY);
+        nodes = Graph.trimArrayToNewSize(nodes, size);
     }
 
     @Override

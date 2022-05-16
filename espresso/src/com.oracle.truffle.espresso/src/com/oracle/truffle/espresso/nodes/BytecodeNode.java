@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.nodes;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.STRICT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AALOAD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.AASTORE;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.ACONST_NULL;
@@ -505,10 +505,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     public static int popInt(VirtualFrame frame, int slot) {
         int result = frame.getInt(slot);
-        if (CompilerDirectives.inCompiledCode()) {
-            // Avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
-        }
+        // Avoid keeping track of popped slots in FrameStates.
+        clear(frame, slot);
         return result;
     }
 
@@ -526,37 +524,31 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     public static StaticObject popObject(VirtualFrame frame, int slot) {
         // nulls-out the slot, use peekObject to read only
         Object result = frame.getObject(slot);
-        frame.clear(slot);
+        clear(frame, slot);
         assert result instanceof StaticObject;
         return (StaticObject) result;
     }
 
     public static float popFloat(VirtualFrame frame, int slot) {
         float result = frame.getFloat(slot);
-        if (CompilerDirectives.inCompiledCode()) {
-            // Avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
-        }
+        // Avoid keeping track of popped slots in FrameStates.
+        clear(frame, slot);
         return result;
     }
 
     public static long popLong(VirtualFrame frame, int slot) {
         long result = frame.getLong(slot);
-        if (CompilerDirectives.inCompiledCode()) {
-            // Avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
-            frame.clear(slot - 1);
-        }
+        // Avoid keeping track of popped slots in FrameStates.
+        clear(frame, slot);
+        clear(frame, slot - 1);
         return result;
     }
 
     public static double popDouble(VirtualFrame frame, int slot) {
         double result = frame.getDouble(slot);
-        if (CompilerDirectives.inCompiledCode()) {
-            // Avoid keeping track of popped slots in FrameStates.
-            frame.clear(slot);
-            frame.clear(slot - 1);
-        }
+        // Avoid keeping track of popped slots in FrameStates.
+        clear(frame, slot);
+        clear(frame, slot - 1);
         return result;
     }
 
@@ -565,7 +557,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
      */
     private static Object popReturnAddressOrObject(VirtualFrame frame, int slot) {
         Object result = frame.getObject(slot);
-        frame.clear(slot);
+        clear(frame, slot);
         assert result instanceof StaticObject || result instanceof ReturnAddress;
         return result;
     }
@@ -588,18 +580,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     public static void putLong(VirtualFrame frame, int slot, long value) {
-        if (CompilerDirectives.inCompiledCode()) {
-            // Avoid keeping track of partial slots in FrameStates.
-            frame.clear(slot);
-        }
+        // Avoid keeping track of partial slots in FrameStates.
+        clear(frame, slot);
         frame.setLong(slot + 1, value);
     }
 
     public static void putDouble(VirtualFrame frame, int slot, double value) {
-        if (CompilerDirectives.inCompiledCode()) {
-            // Avoid keeping track of partial slots in FrameStates.
-            frame.clear(slot);
-        }
+        // Avoid keeping track of partial slots in FrameStates.
+        clear(frame, slot);
         frame.setDouble(slot + 1, value);
     }
 
@@ -730,18 +718,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         getRoot(); // force initialization of root node since we need it in OSR
     }
 
-    /**
-     * Override the default implementation of this method to ensure the primitive and ref arrays can
-     * be scalar replaced. Also, clear locals in the parent frame since they won't be used again.
-     */
     @Override
-    public void copyIntoOSRFrame(VirtualFrame frame, VirtualFrame parentFrame, int target) {
-        BytecodeOSRNode.super.copyIntoOSRFrame(frame, parentFrame, target);
+    public void copyIntoOSRFrame(VirtualFrame frame, VirtualFrame parentFrame, int target, Object entryMetadata) {
+        BytecodeOSRNode.super.copyIntoOSRFrame(frame, parentFrame, target, entryMetadata);
         setBCI(frame, target);
     }
 
     @Override
-    @ExplodeLoop
     public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
         BytecodeOSRNode.super.restoreParentFrame(osrFrame, parentFrame);
         setBCI(parentFrame, getBci(osrFrame));
@@ -771,7 +754,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int statementIndex = InstrumentationSupport.NO_STATEMENT;
         int nextStatementIndex = startStatementIndex;
         boolean skipEntryInstrumentation = isOSR;
-        boolean skipLivenessActions = isOSR;
+        boolean skipLivenessActions = false;
 
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
@@ -1081,6 +1064,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DCMPL: putInt(frame, top - 4, compareDoubleLess(popDouble(frame, top - 1), popDouble(frame, top - 3))); break;
                     case DCMPG: putInt(frame, top - 4, compareDoubleGreater(popDouble(frame, top - 1), popDouble(frame, top - 3))); break;
 
+                    // @formatter:on
                     case IFEQ: // fall through
                     case IFNE: // fall through
                     case IFLT: // fall through
@@ -1260,14 +1244,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         curBCI = targetBCI;
                         continue loop;
                     }
-                    // @formatter:off
 
                     case IRETURN: // fall through
                     case LRETURN: // fall through
                     case FRETURN: // fall through
                     case DRETURN: // fall through
                     case ARETURN: // fall through
-                    case RETURN : {
+                    case RETURN: {
                         if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                             LoopNode.reportLoopCount(this, loopCount.value);
                         }
@@ -1277,7 +1260,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         }
                         return returnValue;
                     }
-
+                    // @formatter:off
                     // TODO(peterssen): Order shuffled.
                     case GETSTATIC : // fall through
                     case GETFIELD  : top += getField(frame, top,
@@ -1346,6 +1329,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             case DSTORE: setLocalDouble(frame, bs.readLocalIndex2(curBCI), popDouble(frame, top - 1)); break;
                             case ASTORE: setLocalObjectOrReturnAddress(frame, bs.readLocalIndex2(curBCI), popReturnAddressOrObject(frame, top - 1)); break;
                             case IINC: setLocalInt(frame, bs.readLocalIndex2(curBCI), getLocalInt(frame, bs.readLocalIndex2(curBCI)) + bs.readIncrement2(curBCI)); break;
+                    // @formatter:on
                             case RET: {
                                 int targetBCI = getLocalReturnAddress(frame, bs.readLocalIndex2(curBCI));
                                 livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
@@ -1387,7 +1371,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         continue loop;
                     }
 
-                    case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, bs.readCPI2(curBCI)), bs.readUByte(curBCI + 3)); break;
+                    case MULTIANEWARRAY:
+                        top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, bs.readCPI2(curBCI)), bs.readUByte(curBCI + 3));
+                        break;
 
                     case BREAKPOINT:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1400,7 +1386,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case QUICK: {
                         // Force a volatile read of the opcode.
                         if (bs.currentVolatileBC(curBCI) != QUICK) {
-                            // Possible case of read reordering. Retry handling the bytecode to make sure we get a correct CPI.
+                            // Possible case of read reordering. Retry handling the bytecode to make
+                            // sure we get a correct CPI.
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             continue loop;
                         }
@@ -1420,7 +1407,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
-                // @formatter:on
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 if (instrument != null && e instanceof EspressoException) {
                     instrument.notifyExceptionAt(frame, e, statementIndex);
@@ -1805,7 +1791,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     // don't send an instrumentation event.
                     beforeTransfer = null;
                 }
-
+                livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
                 Object osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
                 if (osrResult != null) {
                     throw new EspressoOSRReturnException(osrResult);
@@ -2496,7 +2482,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 getDeclaringKlass().getNameAsString());
             }
 
-            boolean enforceInitializerCheck = (getContext().SpecCompliancyMode == STRICT) ||
+            boolean enforceInitializerCheck = (getLanguage().getSpecComplianceMode() == STRICT) ||
                             // HotSpot enforces this only for >= Java 9 (v53) .class files.
                             field.getDeclaringKlass().getMajorVersion() >= ClassfileParser.JAVA_9_VERSION;
 

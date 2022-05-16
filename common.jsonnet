@@ -9,7 +9,7 @@
   local downloads = common_json.downloads,
 
   mx:: {
-    packages +: {
+    packages+: {
       mx: mx_version
     }
   },
@@ -114,8 +114,7 @@
     catch_files +: common_json.catch_files,
     logs +: [
       "*.bgv",
-      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
-      "*/es-*.json"
+      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*"
     ]
   },
 

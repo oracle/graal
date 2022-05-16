@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 
@@ -319,7 +320,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             args.poll();
             headArg = headArg.substring(1);
             Path argFile = Paths.get(headArg);
-            NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(argFile.toString());
+            NativeImage.NativeImageArgsProcessor processor = nativeImage.new NativeImageArgsProcessor(OptionOrigin.argFilePrefix + argFile);
             readArgFile(argFile).forEach(processor::accept);
             List<String> leftoverArgs = processor.apply(false);
             if (leftoverArgs.size() > 0) {

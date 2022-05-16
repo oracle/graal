@@ -42,6 +42,9 @@ _suite = mx.suite('vm')
 """:type: mx.SourceSuite | mx.Suite"""
 
 
+gu_build_args = [] # externalized to simplify extensions
+
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='Component installer',
@@ -65,7 +68,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
             dir_jars=True,
             main_class="org.graalvm.component.installer.ComponentInstaller",
             link_at_build_time=False,
-            build_args=[],
+            build_args=gu_build_args,
             # Please see META-INF/native-image in the project for custom build options for native-image
             is_sdk_launcher=True,
             custom_launcher_script="mx.vm/gu.cmd" if mx.is_windows() else None,

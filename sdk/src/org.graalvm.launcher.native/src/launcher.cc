@@ -109,6 +109,12 @@
     #include <mach-o/dyld.h>
     #include <sys/syslimits.h>
     #include <sys/stat.h>
+
+    #ifndef LIBJLI_RELPATH
+        #error path to jli library undefined
+    #endif
+    #define LIBJLI_RELPATH_STR STR(LIBJLI_RELPATH)
+
 #elif defined (_WIN32)
     #include <windows.h>
     #include <libloaderapi.h>
@@ -188,6 +194,19 @@ std::string exe_directory() {
     free(path);
     return exeDir;
 }
+
+#if defined (__APPLE__)
+/* Load libjli - this is needed on osx for libawt, which uses JLI_* methods.
+ * If the GraalVM libjli is not loaded, the osx linker will look up the symbol
+ * via the JavaRuntimeSupport.framework (JRS), which will fall back to the
+ * system JRE and fail if none is installed
+ */
+void *load_jli_lib(std::string exeDir) {
+    std::stringstream libjliPath;
+    libjliPath << exeDir << DIR_SEP_STR << LIBJLI_RELPATH_STR;
+    return dlopen(libjliPath.str().c_str(), RTLD_NOW);
+}
+#endif
 
 /* load the language library (either native library or libjvm) and return a
  * pointer to the JNI_CreateJavaVM function */
@@ -361,6 +380,15 @@ int main(int argc, char *argv[]) {
             jvmMode = true;
         }
     }
+
+#if defined (__APPLE__)
+    if (jvmMode) {
+        if (!load_jli_lib(exeDir)) {
+            std::cerr << "Loading libjli failed." << std::endl;
+            return -1;
+        }
+    }
+#endif
 
     /* parse VM args */
     JavaVM *vm;

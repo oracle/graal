@@ -32,8 +32,12 @@ import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
@@ -43,6 +47,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_OP_stack_value;
 
 /**
  * A class from which all DWARF debug sections inherit providing common behaviours.
@@ -211,6 +217,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
+    protected int putRelocatableInfoOffset(long l, byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * Mark address so it is relocated relative to the start of the text segment.
+         */
+        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.DW_INFO_SECTION_NAME, l);
+        pos = putLong(0, buffer, pos);
+        return pos;
+    }
+
     protected int putRelocatableHeapOffset(long l, byte[] buffer, int p) {
         int pos = p;
         /*
@@ -323,6 +339,14 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         }
     }
 
+    protected int writeAttrLocList(int offset, byte[] buffer, int pos) {
+        if (buffer == null) {
+            return pos + putInt(offset, scratch, 0);
+        } else {
+            return putInt(offset, buffer, pos);
+        }
+    }
+
     @SuppressWarnings("unused")
     protected int writeAttrData8(long value, byte[] buffer, int pos) {
         if (buffer == null) {
@@ -374,6 +398,104 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return pos + putSLEB(0, scratch, 0);
         } else {
             return putSLEB(0, buffer, pos);
+        }
+    }
+
+    /*
+     * Write a heap location expression preceded by a ULEB block size count as appropriate for an
+     * attribute with FORM exprloc.
+     */
+    protected int writeHeapLocationExprLoc(long offset, byte[] buffer, int p) {
+        int pos = p;
+        /*
+         * We have to size the DWARF location expression by writing it to the scratch buffer so we
+         * can write its size as a ULEB before the expression itself.
+         */
+        int size = writeHeapLocation(offset, null, 0);
+
+        if (buffer == null) {
+            /* Add ULEB size to the expression size. */
+            return pos + putULEB(size, scratch, 0) + size;
+        } else {
+            /* Write the size and expression into the output buffer. */
+            pos = putULEB(size, buffer, pos);
+            return writeHeapLocation(offset, buffer, pos);
+        }
+    }
+
+    /*
+     * Write a heap location expression preceded by a ULEB block size count as appropriate for
+     * location list in the debug_loc section.
+     */
+    protected int writeHeapLocationLocList(long offset, byte[] buffer, int p) {
+        int pos = p;
+        if (buffer == null) {
+            pos += putShort((short) 0, scratch, 0);
+            pos += writeHeapLocation(offset, buffer, 0);
+            return pos + putByte(DW_OP_stack_value, scratch, 0);
+        } else {
+            short len = 0;
+            int lenPos = pos;
+            // write dummy length
+            pos = putShort(len, buffer, pos);
+            pos = writeHeapLocation(offset, buffer, pos);
+            pos = putByte(DW_OP_stack_value, buffer, pos);
+            // backpatch length
+            len = (short) (pos - (lenPos + 2));
+            putShort(len, buffer, lenPos);
+            return pos;
+        }
+    }
+
+    /*
+     * Write a bare heap location expression as appropriate for a single location.
+     */
+    protected int writeHeapLocation(long offset, byte[] buffer, int p) {
+        if (dwarfSections.useHeapBase()) {
+            return writeHeapLocationBaseRelative(offset, buffer, p);
+        } else {
+            return writeHeapLocationRelocatable(offset, buffer, p);
+        }
+    }
+
+    private int writeHeapLocationBaseRelative(long offset, byte[] buffer, int p) {
+        int pos = p;
+        /* Write a location rebasing the offset relative to the heapbase register. */
+        byte regOp = (byte) (DwarfDebugInfo.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
+        if (buffer == null) {
+            /* Add ULEB size to the expression size. */
+            pos += putByte(regOp, scratch, 0);
+            return pos + putSLEB(offset, scratch, 0);
+        } else {
+            /* Write the size and expression into the output buffer. */
+            pos = putByte(regOp, buffer, pos);
+            return putSLEB(offset, buffer, pos);
+        }
+    }
+
+    private int writeHeapLocationRelocatable(long offset, byte[] buffer, int p) {
+        int pos = p;
+        /* Write a relocatable address relative to the heap section start. */
+        byte regOp = DwarfDebugInfo.DW_OP_addr;
+        if (buffer == null) {
+            return pos + 9;
+        } else {
+            pos = putByte(regOp, buffer, pos);
+            return putRelocatableHeapOffset(offset, buffer, pos);
+        }
+    }
+
+    protected static String formatValue(DebugInfoProvider.DebugLocalValueInfo value) {
+        switch (value.localKind()) {
+            case REGISTER:
+                return "REG:" + value.regIndex();
+            case STACKSLOT:
+                return "STACK:" + value.stackSlot();
+            case CONSTANT:
+                return "CONST:" + value.constantValue() + "[" + Long.toHexString(value.heapOffset()) + "]";
+            case UNDEFINED:
+            default:
+                return "-";
         }
     }
 
@@ -612,5 +734,27 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return 0;
         }
         return dwarfSections.getAbstractInlineMethodIndex(classEntry, methodName);
+    }
+
+    protected void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setMethodLocalIndex(methodEntry, localInfo, index);
+    }
+
+    protected int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getMethodLocalIndex(methodEntry, localInfo);
+    }
+
+    protected void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
+        dwarfSections.setRangeLocalIndex(range, localInfo, index);
+    }
+
+    protected int getRangeLocalIndex(Range range, DebugLocalInfo localInfo) {
+        if (!contentByteArrayCreated()) {
+            return 0;
+        }
+        return dwarfSections.getRangeLocalIndex(range, localInfo);
     }
 }

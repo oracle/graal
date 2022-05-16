@@ -1061,12 +1061,12 @@ public class Graph {
 
         if (minimizeSize) {
             /* Trim the array of all alive nodes itself. */
-            nodes = trimArrayToNewSize(nodes, nextId, Node.EMPTY_ARRAY);
+            nodes = trimArrayToNewSize(nodes, nextId);
             /* Remove deleted nodes from the linked list of Node.typeCacheNext. */
             recomputeIterableNodeLists();
             /* Trim node arrays used within each node. */
             for (Node node : nodes) {
-                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount, Node.EMPTY_ARRAY);
+                node.extraUsages = trimArrayToNewSize(node.extraUsages, node.extraUsagesCount);
                 node.getNodeClass().getInputEdges().minimizeSize(node);
                 node.getNodeClass().getSuccessorEdges().minimizeSize(node);
             }
@@ -1074,8 +1074,8 @@ public class Graph {
         return true;
     }
 
-    static <T> T[] trimArrayToNewSize(T[] input, int newSize, T[] emptyArray) {
-        assert emptyArray.length == 0;
+    static Node[] trimArrayToNewSize(Node[] input, int newSize) {
+        assert input.getClass() == Node[].class;
         if (input.length == newSize) {
             return input;
         }
@@ -1084,9 +1084,9 @@ public class Graph {
         }
 
         if (newSize == 0) {
-            return emptyArray;
+            return Node.EMPTY_ARRAY;
         } else {
-            return Arrays.copyOf(input, newSize);
+            return Arrays.copyOf(input, newSize, Node[].class);
         }
     }
 

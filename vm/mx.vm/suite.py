@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
     "version" : "22.2.0",
-    "mxversion" : "5.317.12",
+    "mxversion" : "6.0.1",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "2223df3bfd955f3d73762e0645d818227fa1ef80",
+                "version": "f185d0db613185384c9c5aafc521eb367c09cb89",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "2223df3bfd955f3d73762e0645d818227fa1ef80",
+                "version": "f185d0db613185384c9c5aafc521eb367c09cb89",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "c1f3f64591fb36e2165e5ea7a9124e765921f8dd",
+                "version": "c859b6af595f29a5a4bcb2fc2bcb1a7f9fcd4842",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -118,9 +118,11 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "VISUALVM_JFLUID_HEAP",
             ],
             "requires": [
                 "java.logging",
+                "jdk.management",
             ],
         },
         "org.graalvm.polybench.micro" : {
@@ -173,7 +175,23 @@ suite = {
         "WARMUP_BENCHMARKS" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/polybench/warmup-benchmarks-0.4.tar.gz"],
             "sha1" : "302f81578d470b0941679ce9b21987c035eee6f6"
-        }
+        },
+        "ORG_NETBEANS_API_ANNOTATIONS_COMMON" : {
+           "sha1" : "ef10fcaff10adfbedcc6058c965397ac47395ecf",
+            "maven" : {
+                "groupId" : "org.netbeans.api",
+                "artifactId" : "org-netbeans-api-annotations-common",
+                "version" : "RELEASE123",
+            },
+        },
+        "VISUALVM_JFLUID_HEAP" : {
+           "sha1" : "87d40d1d5cefabb1c3f67968f0a6b9980349c54d",
+            "maven" : {
+                "groupId" : "org.graalvm.visualvm.modules",
+                "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
+                "version" : "2.1.2",
+            },
+        },
     },
 
     "distributions": {
@@ -230,6 +248,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
+                 "VISUALVM_JFLUID_HEAP",
             ],
             "maven" : False,
         },

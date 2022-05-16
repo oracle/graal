@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -53,6 +54,7 @@ import com.oracle.svm.core.genscavenge.UnalignedHeapChunk.UnalignedHeader;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
+import com.oracle.svm.core.heap.OutOfMemoryUtil;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
@@ -108,11 +110,21 @@ public final class ThreadLocalAllocation {
         @RawField
         void setAllocationTop(Pointer top, LocationIdentity topIdentity);
 
+        @RawFieldOffset
+        static int offsetOfAllocationTop() {
+            throw VMError.unimplemented(); // replaced
+        }
+
         @RawField
         Word getAllocationEnd(LocationIdentity endIdentity);
 
         @RawField
         void setAllocationEnd(Pointer end, LocationIdentity endIdentity);
+
+        @RawFieldOffset
+        static int offsetOfAllocationEnd() {
+            throw VMError.unimplemented(); // replaced
+        }
     }
 
     /*
@@ -241,7 +253,8 @@ public final class ThreadLocalAllocation {
              */
             GCImpl.getPolicy().ensureSizeParametersInitialized();
             if (size.aboveOrEqual(GCImpl.getPolicy().getMaximumHeapSize())) {
-                throw new OutOfMemoryError("Array allocation too large.");
+                OutOfMemoryError outOfMemoryError = new OutOfMemoryError("Array allocation too large.");
+                throw OutOfMemoryUtil.reportOutOfMemoryError(outOfMemoryError);
             }
 
             Object result = slowPathNewArrayWithoutAllocating(hub, length, size, fillStartOffset);

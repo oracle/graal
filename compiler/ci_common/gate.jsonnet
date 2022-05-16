@@ -31,7 +31,8 @@
     environment+: if jvm_config_suffix != null then {
       JVM_CONFIG: jvm_config + jvm_config_suffix
     } else {},
-    targets: ["gate"]
+    targets: ["gate"],
+    python_version: "3"
   },
 
   weekly:: {
@@ -43,7 +44,6 @@
   # Configures env vars such that `mx unittest` persists results in a json file
   save_as_json:: {
     environment+: {
-      "MX_TEST_RESULTS_PATTERN" : "./es-XXX.json",
       "MX_TEST_RESULT_TAGS": "compiler"
     }
   },

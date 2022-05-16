@@ -140,7 +140,6 @@
       CLANG_LLVM_LINK: "llvm-link",
       CLANG_LLVM_DIS: "llvm-dis",
       CLANG_LLVM_OPT: "opt",
-      MX_TEST_RESULTS_PATTERN: "es-XXX.json",
       MX_TEST_RESULT_TAGS: "sulong",
     },
   },

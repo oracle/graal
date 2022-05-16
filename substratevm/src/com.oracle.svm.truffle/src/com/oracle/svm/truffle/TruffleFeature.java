@@ -137,6 +137,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.hosted.GraalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.truffle.api.SubstrateThreadLocalHandshake;
@@ -148,6 +149,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -372,6 +374,22 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
         /* Ensure org.graalvm.polyglot.io.IOHelper.IMPL is initialized. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("org.graalvm.polyglot.io.IOHelper");
+
+        /* Support for deprecated bytecode osr frame transfer: GR-38296 */
+        config.registerSubtypeReachabilityHandler((acc, klass) -> {
+            DuringAnalysisAccessImpl impl = (DuringAnalysisAccessImpl) acc;
+            /* Pass known reachable classes to the initializer: it will decide there what to do. */
+            Boolean modified = TruffleBaseFeature.invokeStaticMethod(
+                            "org.graalvm.compiler.truffle.runtime.BytecodeOSRRootNode",
+                            "initializeClassUsingDeprecatedFrameTransfer",
+                            Collections.singleton(Class.class),
+                            klass);
+            if (modified != null && modified) {
+                if (!impl.concurrentReachabilityHandlers()) {
+                    impl.requireAnalysisIteration();
+                }
+            }
+        }, BytecodeOSRNode.class);
     }
 
     static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
@@ -480,14 +498,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
             return true;
         }
 
-        if (method.isSynchronized() && method.getName().equals("fillInStackTrace")) {
-            /*
-             * We do not want anything related to Throwable.fillInStackTrace in the image. For
-             * simplicity, we just check the method name and not the declaring class too, but it is
-             * unlikely that some non-exception method is called "fillInStackTrace".
-             */
-            return true;
-        }
         return blocklistMethods.contains(method);
     }
 
@@ -506,6 +516,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         blocklistMethod(metaAccess, Object.class, "toString");
         blocklistMethod(metaAccess, String.class, "valueOf", Object.class);
         blocklistMethod(metaAccess, String.class, "getBytes");
+        blocklistMethod(metaAccess, Throwable.class, "fillInStackTrace");
         blocklistMethod(metaAccess, Throwable.class, "initCause", Throwable.class);
         blocklistMethod(metaAccess, Throwable.class, "addSuppressed", Throwable.class);
         blocklistMethod(metaAccess, System.class, "getProperty", String.class);

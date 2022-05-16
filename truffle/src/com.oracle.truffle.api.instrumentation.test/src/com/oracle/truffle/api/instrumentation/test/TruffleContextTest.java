@@ -110,6 +110,8 @@ public class TruffleContextTest extends AbstractPolyglotTest {
     public TruffleContextTest() {
         needsLanguageEnv = true;
         needsInstrumentEnv = true;
+        ignoreCancelOnClose = true;
+        ignoreExitOnClose = true;
     }
 
     @After

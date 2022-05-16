@@ -58,15 +58,15 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
         return new AssemblyBuffer(in);
     }
 
-    public static OutputAssembler createOutputAssembler(ByteBuffer out) {
+    public static AssemblyBuffer createOutputAssembler(ByteBuffer out) {
         return new AssemblyBuffer(out);
     }
 
-    public static OutputAssembler createOutputAssembler(ByteOrder order) {
+    public static AssemblyBuffer createOutputAssembler(ByteOrder order) {
         return new AssemblyBuffer(order);
     }
 
-    public static OutputAssembler createOutputAssembler() {
+    public static AssemblyBuffer createOutputAssembler() {
         return new AssemblyBuffer();
     }
 
@@ -280,23 +280,24 @@ public class AssemblyBuffer implements InputDisassembler, OutputAssembler {
             }
 
             // grow and replace
-            ByteBuffer nbuf = ByteBuffer.allocate(newCap);
-            nbuf.order(ByteOrder.nativeOrder());
-            byte[] old = new byte[pos];
-            buf.rewind();
-            buf.get(old);
-            nbuf.put(old);
-            buf = nbuf;
+            buf = ByteBuffer.wrap(Arrays.copyOf(buf.array(), newCap));
+            buf.order(ByteOrder.nativeOrder());
+            buf.position(pos);
         }
     }
 
     @Override
     public byte[] getBlob() {
-        int len = buf.position();
-        byte[] bytes = new byte[len];
-        buf.position(0);
-        buf.get(bytes);
-        return bytes;
+        return getBlob(false);
+    }
+
+    public byte[] getBlob(boolean consume) {
+        byte[] array = buf.array();
+        int position = buf.position();
+        if (consume) {
+            buf = null;
+        }
+        return Arrays.copyOf(array, position);
     }
 
     @Override

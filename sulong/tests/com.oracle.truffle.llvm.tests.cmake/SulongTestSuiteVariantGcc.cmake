@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -59,7 +59,8 @@ macro(setupOptions)
 
     string(APPEND CMAKE_C_FLAGS " ${DRAGONEGG_FLAGS}")
 
-    set(OUTPUT "${SULONG_CURRENT_VARIANT}.bc")
+    set(OUTPUT "${SULONG_CURRENT_VARIANT}")
+    set(SUFFIX ".bc")
 
     # set optimization levels
     set(OPT_LEVELS "O0;O1;O2;O3")

@@ -294,7 +294,8 @@ public class SVMHost extends HostVM {
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
         return config.withRetainLocalVariables(retainLocalVariables())
-                        .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()));
+                        .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
+                        .withFullInfopoints(SubstrateOptions.GenerateDebugInfo.getValue() > 0);
     }
 
     private boolean retainLocalVariables() {

@@ -1215,7 +1215,7 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
         return "large"
 
     def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
-        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        skip_patterns = super(ScalaDacapoLargeBenchmarkSuite, self).flakySuccessPatterns()
         if "specs" in benchmarks:
             skip_patterns += [
                 re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
@@ -1888,7 +1888,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return benchmarks
 
     def completeBenchmarkList(self, bmSuiteArgs):
-        return sorted([bench for bench in _renaissanceConfig.keys()])
+        return sorted(bench for bench in _renaissanceConfig)
 
     def defaultSuiteVersion(self):
         #  return self.availableSuiteVersions()[-1]

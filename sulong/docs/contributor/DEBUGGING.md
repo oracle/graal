@@ -101,3 +101,16 @@ mx --dynamicimport /tools -d lli --inspect ...
 That way, it is possible to for example step through a C program to the
 interesting point, and then enable a breakpoint in the Java debugger, so it will
 suspend on the next "step" command in the Chrome Inspector, or vice versa.
+
+## Detail Formatters
+
+Editors such as Eclipse support the specification of custom code formatters. The
+`LLVMNodeUtils` class provides methods for printing the stack trace and AST of
+any `LLVMNode`. The follow steps configure this in Eclipse:
+
+1. Open Window -> Preferences
+2. Go to Java -> Debug -> Detail Formatters
+3. Add a new entry
+   1. Set the qualified type name to `com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode`
+   2. Set the snippet to
+      `com.oracle.truffle.llvm.runtime.LLVMNodeUtils.stackTraceAndAST(this)`

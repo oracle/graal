@@ -145,13 +145,14 @@ public class ContextPauseTest {
                     }
                     executorService.shutdownNow();
                     Assert.assertTrue(executorService.awaitTermination(100, TimeUnit.SECONDS));
-
-                } catch (Throwable t) {
+                } catch (PolyglotException pe) {
+                    if (!pe.isCancelled()) {
+                        throw pe;
+                    }
+                } finally {
                     executorService.shutdownNow();
-
                     // shorter timeout to show errors more quickly
                     executorService.awaitTermination(1, TimeUnit.SECONDS);
-                    throw t;
                 }
             }
         }

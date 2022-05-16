@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -31,4 +31,11 @@
 cmake_minimum_required(VERSION 3.10)
 project(${SULONG_PROJECT_NAME} LANGUAGES NONE)
 
+if(WIN32)
+  include_directories(include/win)
+else()
+  link_libraries(-lm)
+endif()
+
 include(SulongTestSuite)
+

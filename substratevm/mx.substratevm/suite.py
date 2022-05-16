@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "5.316.15",
+    "mxversion": "6.0.1",
     "name": "substratevm",
     "version" : "22.2.0",
     "release" : False,
@@ -794,6 +794,9 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.ref",
                     "sun.nio.ch",
+                ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
                 ],
             },
             "checkstyle" : "com.oracle.svm.hosted",

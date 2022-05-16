@@ -380,7 +380,7 @@ public class ProgressReporter {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
+    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeCacheSize,
                     int numCompilations, int debugInfoSize) {
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
@@ -389,9 +389,8 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).println();
-        long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
         l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
-                        .doclink("image heap", "#glossary-image-heap").a(":%,8d classes and %,d objects", numInstantiatedClasses, numHeapObjects).println();
+                        .doclink("image heap", "#glossary-image-heap").a(": %,8d objects", numHeapObjects).println();
         if (debugInfoSize > 0) {
             DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
                             .doclink("debug info", "#glossary-debug-info");
@@ -412,7 +411,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
+    public CenteredTextPrinter createBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
         Map<String, Long> codeBreakdown = calculateCodeBreakdown(compilationTasks);
         Map<String, Long> heapBreakdown = calculateHeapBreakdown(heapObjects);
         l().printLineSeparator();
@@ -458,9 +457,8 @@ public class ProgressReporter {
                         .jumpToMiddle()
                         .a("      ... ").a(numHeapBreakdownItems - printedCodeSizeEntries.size()).a(" additional object types").flushln();
 
-        new CenteredTextPrinter().dim()
-                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)")
-                        .reset().flushln();
+        return new CenteredTextPrinter().dim()
+                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)");
     }
 
     private static Map<String, Long> calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {

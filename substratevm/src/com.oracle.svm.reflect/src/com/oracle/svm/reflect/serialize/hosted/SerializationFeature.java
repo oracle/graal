@@ -492,10 +492,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             RuntimeReflection.register(ReflectionUtil.lookupConstructor(targetConstructorClass));
         }
 
-        if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
-            RuntimeReflection.register(ReflectionUtil.lookupConstructor(serializationTargetClass, (Class<?>[]) null));
-        }
-
         RecordSupport recordSupport = RecordSupport.singleton();
         if (recordSupport.isRecord(serializationTargetClass)) {
             /* Serialization for records uses the canonical record constructor directly. */
@@ -506,6 +502,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
              * available at run time.
              */
             RuntimeReflection.register(recordSupport.getRecordComponentAccessorMethods(serializationTargetClass));
+        } else if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
+            RuntimeReflection.register(ReflectionUtil.lookupConstructor(serializationTargetClass, (Class<?>[]) null));
         }
 
         RuntimeReflection.register(serializationTargetClass);
@@ -566,6 +564,11 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         if (Externalizable.class.isAssignableFrom(serializationTargetClass)) {
             try {
                 Constructor<?> externalizableConstructor = getExternalizableConstructor(serializationTargetClass);
+
+                if (externalizableConstructor == null) {
+                    externalizableConstructor = getExternalizableConstructor(Object.class);
+                }
+
                 return externalizableConstructor.getDeclaringClass();
             } catch (Exception e) {
                 throw VMError.shouldNotReachHere(e);
@@ -581,7 +584,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         Class<?> targetConstructorClass;
         if (Modifier.isAbstract(serializationTargetClass.getModifiers())) {
             targetConstructor = stubConstructor;
-            targetConstructorClass = targetConstructor.getDeclaringClass();
         } else {
             if (customTargetConstructorClass == serializationTargetClass) {
                 /* No custom constructor needed. Simply use existing no-arg constructor. */

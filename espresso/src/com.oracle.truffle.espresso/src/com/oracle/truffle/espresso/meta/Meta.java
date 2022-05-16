@@ -22,7 +22,7 @@
  */
 package com.oracle.truffle.espresso.meta;
 
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.HOTSPOT;
+import static com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode.HOTSPOT;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.ALL;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_16_OR_HIGHER;
 import static com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange.VERSION_17_OR_HIGHER;
@@ -39,7 +39,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoOptions;
-import com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode;
+import com.oracle.truffle.espresso.EspressoOptions.SpecComplianceMode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -2140,7 +2140,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a boolean.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2157,7 +2157,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a byte.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2174,7 +2174,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a short.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2191,7 +2191,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a char.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2208,7 +2208,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to an int.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2225,7 +2225,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a float.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2242,7 +2242,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a double.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2259,7 +2259,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will take the lower bits that fit in the primitive type or fill upper bits with 0. If the
      * conversion is not possible, throws {@link EspressoError}.
      *
@@ -2276,7 +2276,7 @@ public final class Meta implements ContextAccess {
     /**
      * Converts a Object value to a StaticObject.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will return StaticObject.NULL when the Object value is not a StaticObject. If the conversion
      * is not possible, throws {@link EspressoError}.
      */
@@ -2290,7 +2290,7 @@ public final class Meta implements ContextAccess {
     /**
      * Bitwise conversion from a boxed value to a long.
      *
-     * In {@link SpecCompliancyMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
+     * In {@link SpecComplianceMode#HOTSPOT HotSpot} compatibility-mode, the conversion is lax and
      * will fill the upper bits with 0. If the conversion is not possible, throws
      * {@link EspressoError}.
      *
@@ -2299,7 +2299,7 @@ public final class Meta implements ContextAccess {
      */
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private long tryBitwiseConversionToLong(Object value, boolean defaultIfNull) {
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
+        if (getLanguage().getSpecComplianceMode() == HOTSPOT) {
             // Checkstyle: stop
             // @formatter:off
             if (value instanceof Boolean)   return ((boolean) value) ? 1 : 0;
@@ -2324,7 +2324,7 @@ public final class Meta implements ContextAccess {
     @CompilerDirectives.TruffleBoundary(allowInlining = true)
     private StaticObject hotSpotMaybeNull(Object value) {
         assert !(value instanceof StaticObject);
-        if (getContext().SpecCompliancyMode == HOTSPOT) {
+        if (getLanguage().getSpecComplianceMode() == HOTSPOT) {
             return StaticObject.NULL;
         }
         throw EspressoError.shouldNotReachHere("Unexpected object:" + value);

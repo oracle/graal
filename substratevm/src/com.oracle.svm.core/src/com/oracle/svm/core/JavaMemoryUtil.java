@@ -545,7 +545,7 @@ public final class JavaMemoryUtil {
 
     @IntrinsicCandidate
     @Uninterruptible(reason = "Arrays must not move")
-    private static void copyPrimitiveArrayForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
+    public static void copyPrimitiveArrayForward(Object fromArray, UnsignedWord fromOffset, Object toArray, UnsignedWord toOffset, UnsignedWord size) {
         Pointer fromPtr = Word.objectToUntrackedPointer(fromArray).add(fromOffset);
         Pointer toPtr = Word.objectToUntrackedPointer(toArray).add(toOffset);
         copyPrimitiveArrayForward(fromPtr, toPtr, size);

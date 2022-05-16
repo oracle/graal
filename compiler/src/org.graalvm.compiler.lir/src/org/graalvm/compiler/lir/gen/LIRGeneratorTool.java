@@ -37,6 +37,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.VirtualStackSlot;
@@ -296,6 +297,18 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     Value emitUncompress(Value pointer, CompressEncoding encoding, boolean nonNull);
 
     default void emitConvertNullToZero(AllocatableValue result, Value input) {
+        if (LIRValueUtil.isJavaConstant(input)) {
+            if (LIRValueUtil.asJavaConstant(input).isNull()) {
+                emitMoveConstant(result, JavaConstant.forPrimitiveInt(input.getPlatformKind().getSizeInBytes() * Byte.SIZE, 0L));
+            } else {
+                emitMove(result, input);
+            }
+        } else {
+            emitConvertNullToZero(result, (AllocatableValue) input);
+        }
+    }
+
+    default void emitConvertNullToZero(AllocatableValue result, AllocatableValue input) {
         emitMove(result, input);
     }
 

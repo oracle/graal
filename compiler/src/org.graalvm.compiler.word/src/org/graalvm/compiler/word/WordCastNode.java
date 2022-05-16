@@ -200,7 +200,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             if (stamp.equals(StampFactory.object())) {
                 generator.getLIRGeneratorTool().emitConvertZeroToNull(result, value);
             } else if (!trackedPointer && !((AbstractPointerStamp) input.stamp(NodeView.DEFAULT)).nonNull()) {
-                generator.getLIRGeneratorTool().emitConvertNullToZero(result, value);
+                generator.getLIRGeneratorTool().emitConvertNullToZero(result, (AllocatableValue) value);
             } else {
                 generator.getLIRGeneratorTool().emitMove(result, value);
             }

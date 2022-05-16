@@ -435,7 +435,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
         build_deps = []
         unittests_file = None
         if unit_tests:
-            build_options = build_options + ['-ea']
+            build_options = build_options + ['-ea', '-esa']
             unittest_deps = []
             unittests_file = join(image_dir, 'unittest.tests')
             mx_unittest._run_tests(unit_tests,

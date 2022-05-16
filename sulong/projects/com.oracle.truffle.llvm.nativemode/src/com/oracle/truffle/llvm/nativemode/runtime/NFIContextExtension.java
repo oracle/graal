@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -476,13 +476,10 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
-    private static Object bindNativeFunction(Object symbol, String signature) {
+    private Object bindNativeFunction(Object symbol, String signature) {
         CompilerAsserts.neverPartOfCompilation();
-        try {
-            return INTEROP.invokeMember(symbol, "bind", signature);
-        } catch (InteropException ex) {
-            throw new IllegalStateException(ex);
-        }
+        Source sigSource = Source.newBuilder("nfi", signature, SIGNATURE_SOURCE_NAME).build();
+        return SignatureLibrary.getUncached().bind(getCachedSignature(sigSource), symbol);
     }
 
     @Override

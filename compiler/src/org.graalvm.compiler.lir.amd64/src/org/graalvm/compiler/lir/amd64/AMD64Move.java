@@ -569,7 +569,14 @@ public class AMD64Move {
         if (asRegister(input).equals(asRegister(result))) {
             return;
         }
-        assert asRegister(result).getRegisterCategory().equals(asRegister(input).getRegisterCategory());
+        if (!kind.isMask()) {
+            /*
+             * Non-mask moves are only allowed within a category. Mask moves are also allowed
+             * between a mask register and a CPU register (but not between two CPU registers). The
+             * definitions of the kmov[bwdq] instructions check all those constraints on mask moves.
+             */
+            assert asRegister(result).getRegisterCategory().equals(asRegister(input).getRegisterCategory());
+        }
         switch (kind) {
             case BYTE:
             case WORD:
@@ -584,6 +591,18 @@ public class AMD64Move {
                 break;
             case DOUBLE:
                 masm.movdbl(asRegister(result, AMD64Kind.DOUBLE), asRegister(input, AMD64Kind.DOUBLE));
+                break;
+            case MASK8:
+                masm.kmovb(asRegister(result), asRegister(input));
+                break;
+            case MASK16:
+                masm.kmovw(asRegister(result), asRegister(input));
+                break;
+            case MASK32:
+                masm.kmovd(asRegister(result), asRegister(input));
+                break;
+            case MASK64:
+                masm.kmovq(asRegister(result), asRegister(input));
                 break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
@@ -614,6 +633,18 @@ public class AMD64Move {
             case V128_QWORD:
                 masm.movdqu(dest, input);
                 break;
+            case MASK8:
+                masm.kmovb(dest, input);
+                break;
+            case MASK16:
+                masm.kmovw(dest, input);
+                break;
+            case MASK32:
+                masm.kmovd(dest, input);
+                break;
+            case MASK64:
+                masm.kmovq(dest, input);
+                break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
@@ -621,6 +652,11 @@ public class AMD64Move {
 
     public static void stack2reg(AMD64Kind kind, CompilationResultBuilder crb, AMD64MacroAssembler masm, Register result, Value input) {
         AMD64Address src = (AMD64Address) crb.asAddress(input);
+        /*
+         * Mask moves from memory can't target CPU registers directly. If such a move is needed, use
+         * a general purpose move instead. Note that mask moves have zero extending semantics.
+         */
+        boolean isMaskToCPU = kind.isMask() && !result.getRegisterCategory().equals(AMD64.MASK);
         switch (kind) {
             case BYTE:
                 masm.movsbl(result, src);
@@ -642,6 +678,34 @@ public class AMD64Move {
                 break;
             case V128_QWORD:
                 masm.movdqu(result, src);
+                break;
+            case MASK8:
+                if (isMaskToCPU) {
+                    masm.movzbl(result, src);
+                } else {
+                    masm.kmovb(result, src);
+                }
+                break;
+            case MASK16:
+                if (isMaskToCPU) {
+                    masm.movzwl(result, src);
+                } else {
+                    masm.kmovw(result, src);
+                }
+                break;
+            case MASK32:
+                if (isMaskToCPU) {
+                    masm.movl(result, src);
+                } else {
+                    masm.kmovd(result, src);
+                }
+                break;
+            case MASK64:
+                if (isMaskToCPU) {
+                    masm.movq(result, src);
+                } else {
+                    masm.kmovq(result, src);
+                }
                 break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);

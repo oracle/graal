@@ -1,8 +1,9 @@
 local graal_common = import '../../common.jsonnet';
 local base = import '../ci.jsonnet';
+local base_json = import '../../common.json';
 
 local composable = (import "../../common-utils.libsonnet").composable;
-local sulong_deps = composable((import "../../common.json").sulong.deps);
+local sulong_deps = composable(base_json.sulong.deps);
 
 local _version_suffix(java_version) = if java_version == 8 then '' else '-java' + java_version;
 
@@ -17,10 +18,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   local that = self,
 
   // platform-specific snippets
-  common: sulong_deps.common + {
+  common: base_json.deps.common + graal_common.mx + sulong_deps.common + {
+    python_version: '3',
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
-      MX_PYTHON_VERSION: "3",
     },
     setup+: [
       ['cd', base.suite_name],

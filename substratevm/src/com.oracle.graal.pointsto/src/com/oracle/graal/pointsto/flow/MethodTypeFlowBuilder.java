@@ -728,7 +728,10 @@ public class MethodTypeFlowBuilder {
             processedNodes.mark(n);
 
             // Note: the state is the typeFlows which was passed to the constructor.
-            if (n instanceof LoopEndNode) {
+            if (delegateNodeProcessing(n, state)) {
+                // processed by subclass
+                return;
+            } else if (n instanceof LoopEndNode) {
                 LoopEndNode end = (LoopEndNode) n;
                 LoopBeginNode merge = end.loopBegin();
                 int predIdx = merge.phiPredecessorIndex(end);
@@ -1176,7 +1179,7 @@ public class MethodTypeFlowBuilder {
                                     invoke.stateAfter(), invoke.stateAfter().outerFrameState());
                     MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
-                    processMethodInvocation(invoke.asFixedNode(), target.invokeKind(), invoke.bci(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
+                    processMethodInvocation(state, invoke.asFixedNode(), target.invokeKind(), invoke.bci(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
                 }
 
             } else if (n instanceof ObjectClone) {
@@ -1215,150 +1218,8 @@ public class MethodTypeFlowBuilder {
                  * above.
                  */
                 MacroInvokable node = (MacroInvokable) n;
-                processMethodInvocation(n, node.getInvokeKind(), node.bci(), (PointsToAnalysisMethod) node.getTargetMethod(), node.getArguments());
-
-            } else {
-                delegateNodeProcessing(n, state);
+                processMacroInvokable(state, node, true);
             }
-        }
-
-        private void processMethodInvocation(ValueNode invoke, InvokeKind invokeKind, int bci, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
-            // check if the call is allowed
-            AnalysisMethod callerMethod = methodFlow.getMethod();
-            bb.isCallAllowed(bb, callerMethod, targetMethod, invoke.getNodeSourcePosition());
-
-            Object key = uniqueKey(invoke);
-            BytecodeLocation location = BytecodeLocation.create(key, methodFlow.getMethod());
-
-            /*
-             * Collect the parameters builders into an array so that we don't capture the `state`
-             * reference in the closure.
-             */
-            boolean targetIsStatic = Modifier.isStatic(targetMethod.getModifiers());
-
-            TypeFlowBuilder<?>[] actualParametersBuilders = new TypeFlowBuilder<?>[arguments.size()];
-            for (int i = 0; i < actualParametersBuilders.length; i++) {
-                ValueNode actualParam = arguments.get(i);
-                if (actualParam.getStackKind() == JavaKind.Object) {
-                    TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
-                    actualParametersBuilders[i] = paramBuilder;
-                    paramBuilder.markAsBuildingAnActualParameter();
-                    if (i == 0 && !targetIsStatic) {
-                        paramBuilder.markAsBuildingAnActualReceiver();
-                    }
-                    /*
-                     * Actual parameters must not be removed. They are linked when the callee is
-                     * analyzed, hence, although they might not have any uses, cannot be removed
-                     * during parsing.
-                     */
-                    typeFlowGraphBuilder.registerSinkBuilder(paramBuilder);
-                }
-            }
-
-            TypeFlowBuilder<InvokeTypeFlow> invokeBuilder = TypeFlowBuilder.create(bb, invoke, InvokeTypeFlow.class, () -> {
-
-                TypeFlow<?>[] actualParameters = new TypeFlow<?>[actualParametersBuilders.length];
-                for (int i = 0; i < actualParameters.length; i++) {
-                    actualParameters[i] = actualParametersBuilders[i] != null ? actualParametersBuilders[i].get() : null;
-                }
-
-                /*
-                 * Initially the actual return is null. It will be set by the actual return builder
-                 * below only when the returned value is actually used, i.e., the actual return
-                 * builder is materialized.
-                 */
-                ActualReturnTypeFlow actualReturn = null;
-                /*
-                 * Get the receiver type from the invoke, it may be more precise than the method
-                 * declaring class.
-                 */
-                AnalysisType receiverType = null;
-                if (invokeKind.hasReceiver()) {
-                    receiverType = (AnalysisType) StampTool.typeOrNull(arguments.get(0));
-                    if (receiverType == null) {
-                        receiverType = targetMethod.getDeclaringClass();
-                    }
-                }
-
-                /*
-                 * The invokeLocation is used for all sorts of call stack printing (for error
-                 * messages and diagnostics), so we must have a non-null BytecodePosition.
-                 */
-                BytecodePosition invokeLocation = invoke.getNodeSourcePosition();
-                if (invokeLocation == null) {
-                    invokeLocation = new BytecodePosition(null, invoke.graph().method(), bci);
-                }
-
-                InvokeTypeFlow invokeFlow = null;
-                switch (invokeKind) {
-                    case Static:
-                        invokeFlow = new StaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-                        break;
-                    case Special:
-                        invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-                        break;
-                    case Virtual:
-                    case Interface:
-                        invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-                        break;
-                    default:
-                        throw shouldNotReachHere();
-                }
-
-                methodFlow.addInvoke(key, invokeFlow);
-                if (bb.strengthenGraalGraphs()) {
-                    methodFlow.addNodeFlow(bb, invoke, invokeFlow);
-                }
-                return invokeFlow;
-            });
-
-            if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Virtual || invokeKind == InvokeKind.Interface) {
-                invokeBuilder.addObserverDependency(actualParametersBuilders[0]);
-            }
-
-            if (invoke.asNode().getStackKind() == JavaKind.Object) {
-                /* Create the actual return builder. */
-                AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
-                TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
-                    InvokeTypeFlow invokeFlow = invokeBuilder.get();
-                    ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invokeFlow.source, returnType);
-                    methodFlow.addMiscEntry(actualReturn);
-                    /*
-                     * Only set the actual return in the invoke when it is materialized, i.e., it is
-                     * used by other flows.
-                     */
-                    invokeFlow.setActualReturn(actualReturn);
-                    actualReturn.setInvokeFlow(invokeFlow);
-                    return actualReturn;
-                });
-
-                ObjectStamp stamp = (ObjectStamp) invoke.stamp(NodeView.DEFAULT);
-                if (stamp.nonNull() && !returnType.equals(stamp.type()) && returnType.isAssignableFrom(stamp.type())) {
-                    /*
-                     * If the invoke stamp has a more precise type than the return type use that to
-                     * filter the returned values. This can happen for example for MacroInvokable
-                     * nodes when more concrete stamp information can be inferred for example from
-                     * parameter types. In that case the Graal graph optimizations may decide to
-                     * remove a checkcast that would normally follow the invoke, so we need to
-                     * introduce the filter to avoid loosing precision.
-                     */
-                    TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
-                        FilterTypeFlow filterFlow = new FilterTypeFlow(invoke, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
-                        methodFlow.addMiscEntry(filterFlow);
-                        return filterFlow;
-                    });
-                    filterBuilder.addUseDependency(actualReturnBuilder);
-                    actualReturnBuilder = filterBuilder;
-                }
-
-                if (bb.strengthenGraalGraphs()) {
-                    typeFlowGraphBuilder.registerSinkBuilder(actualReturnBuilder);
-                }
-                state.add(invoke.asNode(), actualReturnBuilder);
-            }
-
-            /* Invokes must not be removed. */
-            typeFlowGraphBuilder.registerSinkBuilder(invokeBuilder);
         }
 
         /**
@@ -1442,8 +1303,163 @@ public class MethodTypeFlowBuilder {
     }
 
     @SuppressWarnings("unused")
-    protected void delegateNodeProcessing(FixedNode n, TypeFlowsOfNodes state) {
+    protected boolean delegateNodeProcessing(FixedNode n, TypeFlowsOfNodes state) {
         // Hook for subclasses to do their own processing.
+        return false;
+    }
+
+    protected void processMacroInvokable(TypeFlowsOfNodes state, MacroInvokable macro, boolean installResult) {
+        processMethodInvocation(state, macro.asNode(), macro.getInvokeKind(), macro.bci(), (PointsToAnalysisMethod) macro.getTargetMethod(), macro.getArguments(), installResult);
+    }
+
+    protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, int bci, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
+        processMethodInvocation(state, invoke, invokeKind, bci, targetMethod, arguments, true);
+    }
+
+    protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, int bci, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments,
+                    boolean installResult) {
+        // check if the call is allowed
+        AnalysisMethod callerMethod = methodFlow.getMethod();
+        bb.isCallAllowed(bb, callerMethod, targetMethod, invoke.getNodeSourcePosition());
+
+        Object key = uniqueKey(invoke);
+        BytecodeLocation location = BytecodeLocation.create(key, methodFlow.getMethod());
+
+        /*
+         * Collect the parameters builders into an array so that we don't capture the `state`
+         * reference in the closure.
+         */
+        boolean targetIsStatic = Modifier.isStatic(targetMethod.getModifiers());
+
+        TypeFlowBuilder<?>[] actualParametersBuilders = new TypeFlowBuilder<?>[arguments.size()];
+        for (int i = 0; i < actualParametersBuilders.length; i++) {
+            ValueNode actualParam = arguments.get(i);
+            if (actualParam.getStackKind() == JavaKind.Object) {
+                TypeFlowBuilder<?> paramBuilder = state.lookup(actualParam);
+                actualParametersBuilders[i] = paramBuilder;
+                paramBuilder.markAsBuildingAnActualParameter();
+                if (i == 0 && !targetIsStatic) {
+                    paramBuilder.markAsBuildingAnActualReceiver();
+                }
+                /*
+                 * Actual parameters must not be removed. They are linked when the callee is
+                 * analyzed, hence, although they might not have any uses, cannot be removed during
+                 * parsing.
+                 */
+                typeFlowGraphBuilder.registerSinkBuilder(paramBuilder);
+            }
+        }
+
+        TypeFlowBuilder<InvokeTypeFlow> invokeBuilder = TypeFlowBuilder.create(bb, invoke, InvokeTypeFlow.class, () -> {
+
+            TypeFlow<?>[] actualParameters = new TypeFlow<?>[actualParametersBuilders.length];
+            for (int i = 0; i < actualParameters.length; i++) {
+                actualParameters[i] = actualParametersBuilders[i] != null ? actualParametersBuilders[i].get() : null;
+            }
+
+            /*
+             * Initially the actual return is null. It will be set by the actual return builder
+             * below only when the returned value is actually used, i.e., the actual return builder
+             * is materialized.
+             */
+            ActualReturnTypeFlow actualReturn = null;
+            /*
+             * Get the receiver type from the invoke, it may be more precise than the method
+             * declaring class.
+             */
+            AnalysisType receiverType = null;
+            if (invokeKind.hasReceiver()) {
+                receiverType = (AnalysisType) StampTool.typeOrNull(arguments.get(0));
+                if (receiverType == null) {
+                    receiverType = targetMethod.getDeclaringClass();
+                }
+            }
+
+            /*
+             * The invokeLocation is used for all sorts of call stack printing (for error messages
+             * and diagnostics), so we must have a non-null BytecodePosition.
+             */
+            BytecodePosition invokeLocation = invoke.getNodeSourcePosition();
+            if (invokeLocation == null) {
+                invokeLocation = new BytecodePosition(null, invoke.graph().method(), bci);
+            }
+
+            InvokeTypeFlow invokeFlow = null;
+            switch (invokeKind) {
+                case Static:
+                    invokeFlow = new StaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    break;
+                case Special:
+                    invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    break;
+                case Virtual:
+                case Interface:
+                    invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    break;
+                default:
+                    throw shouldNotReachHere();
+            }
+
+            methodFlow.addInvoke(key, invokeFlow);
+            if (bb.strengthenGraalGraphs()) {
+                methodFlow.addNodeFlow(bb, invoke, invokeFlow);
+            }
+            return invokeFlow;
+        });
+
+        if (invokeKind == InvokeKind.Special || invokeKind == InvokeKind.Virtual || invokeKind == InvokeKind.Interface) {
+            invokeBuilder.addObserverDependency(actualParametersBuilders[0]);
+        }
+
+        if (invoke.asNode().getStackKind() == JavaKind.Object) {
+            /* Create the actual return builder. */
+            AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
+            TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
+                InvokeTypeFlow invokeFlow = invokeBuilder.get();
+                ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invokeFlow.source, returnType);
+                methodFlow.addMiscEntry(actualReturn);
+                /*
+                 * Only set the actual return in the invoke when it is materialized, i.e., it is
+                 * used by other flows.
+                 */
+                invokeFlow.setActualReturn(actualReturn);
+                actualReturn.setInvokeFlow(invokeFlow);
+                return actualReturn;
+            });
+
+            ObjectStamp stamp = (ObjectStamp) invoke.stamp(NodeView.DEFAULT);
+            if (stamp.nonNull() && !returnType.equals(stamp.type()) && returnType.isAssignableFrom(stamp.type())) {
+                /*
+                 * If the invoke stamp has a more precise type than the return type use that to
+                 * filter the returned values. This can happen for example for MacroInvokable nodes
+                 * when more concrete stamp information can be inferred for example from parameter
+                 * types. In that case the Graal graph optimizations may decide to remove a
+                 * checkcast that would normally follow the invoke, so we need to introduce the
+                 * filter to avoid loosing precision.
+                 */
+                TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
+                    FilterTypeFlow filterFlow = new FilterTypeFlow(invoke, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                    methodFlow.addMiscEntry(filterFlow);
+                    return filterFlow;
+                });
+                filterBuilder.addUseDependency(actualReturnBuilder);
+                actualReturnBuilder = filterBuilder;
+            }
+
+            if (bb.strengthenGraalGraphs()) {
+                typeFlowGraphBuilder.registerSinkBuilder(actualReturnBuilder);
+            }
+            if (installResult) {
+                /*
+                 * Some MacroInvokable nodes may have an optimized result, but we still need process
+                 * to the invocation.
+                 */
+                state.add(invoke.asNode(), actualReturnBuilder);
+            }
+        }
+
+        /* Invokes must not be removed. */
+        typeFlowGraphBuilder.registerSinkBuilder(invokeBuilder);
     }
 
     /**

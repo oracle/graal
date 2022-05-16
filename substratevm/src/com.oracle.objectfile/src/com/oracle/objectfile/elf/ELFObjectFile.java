@@ -35,6 +35,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.objectfile.elf.dwarf.DwarfLocSectionImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -1172,6 +1173,7 @@ public class ELFObjectFile extends ObjectFile {
         DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
         DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();
         DwarfFrameSectionImpl frameSectionImpl = dwarfSections.getFrameSectionImpl();
+        DwarfLocSectionImpl elfLocSectionImpl = dwarfSections.getLocSectionImpl();
         DwarfInfoSectionImpl elfInfoSectionImpl = dwarfSections.getInfoSectionImpl();
         DwarfARangesSectionImpl elfARangesSectionImpl = dwarfSections.getARangesSectionImpl();
         DwarfLineSectionImpl elfLineSectionImpl = dwarfSections.getLineSectionImpl();
@@ -1179,6 +1181,7 @@ public class ELFObjectFile extends ObjectFile {
         newUserDefinedSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
         newUserDefinedSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
         newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
+        newUserDefinedSection(elfLocSectionImpl.getSectionName(), elfLocSectionImpl);
         newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
         newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
         newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
@@ -1195,6 +1198,7 @@ public class ELFObjectFile extends ObjectFile {
         elfAbbrevSectionImpl.getOrCreateRelocationElement(0);
         frameSectionImpl.getOrCreateRelocationElement(0);
         elfInfoSectionImpl.getOrCreateRelocationElement(0);
+        elfLocSectionImpl.getOrCreateRelocationElement(0);
         elfARangesSectionImpl.getOrCreateRelocationElement(0);
         elfLineSectionImpl.getOrCreateRelocationElement(0);
         /* Ok now we can populate the debug info model. */

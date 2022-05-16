@@ -47,6 +47,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
@@ -81,6 +82,7 @@ import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -99,6 +101,8 @@ import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedFoldInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -114,18 +118,19 @@ import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FixReadsPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -166,6 +171,7 @@ import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.diagnostic.HostedHeapDumpFeature;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -219,7 +225,7 @@ public class CompileQueue {
 
     private SnippetReflectionProvider snippetReflection;
     private final FeatureHandler featureHandler;
-    private final OptionValues compileOptions;
+    protected final OptionValues compileOptions;
 
     private volatile boolean inliningProgress;
 
@@ -321,9 +327,6 @@ public class CompileQueue {
 
         @Override
         public void run(DebugContext debug) {
-            if (method.compilationInfo.graph != null) {
-                method.compilationInfo.graph.resetDebug(debug);
-            }
             result = doCompile(debug, method, compilationIdentifier, reason);
         }
 
@@ -425,8 +428,14 @@ public class CompileQueue {
                 method.wrapped.setAnalyzedGraph(null);
             }
 
+            if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
+                ImageSingletons.lookup(HostedHeapDumpFeature.class).beforeInlining();
+            }
             try (ProgressReporter.ReporterClosable ac = reporter.printInlining()) {
                 inlineTrivialMethods(debug);
+            }
+            if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
+                ImageSingletons.lookup(HostedHeapDumpFeature.class).afterInlining();
             }
 
             assert suitesNotCreated();
@@ -439,6 +448,9 @@ public class CompileQueue {
         }
         if (printMethodHistogram) {
             printMethodHistogram();
+        }
+        if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
+            ImageSingletons.lookup(HostedHeapDumpFeature.class).compileQueueAfterCompilation();
         }
     }
 
@@ -477,6 +489,10 @@ public class CompileQueue {
 
     public Map<HostedMethod, CompileTask> getCompilations() {
         return compilations;
+    }
+
+    public void purge() {
+        compilations.clear();
     }
 
     public Collection<CompileTask> getCompilationTasks() {
@@ -620,24 +636,17 @@ public class CompileQueue {
         ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason());
     }
 
-    protected void checkTrivial(HostedMethod method) {
-        if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
+    private static boolean checkTrivial(HostedMethod method, StructuredGraph graph) {
+        if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(graph)) {
             method.compilationInfo.setTrivialMethod(true);
+            return true;
+        } else {
+            return false;
         }
     }
 
     @SuppressWarnings("try")
     protected void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
-        for (HostedMethod method : universe.getMethods()) {
-            try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
-                if (method.compilationInfo.getGraph() != null) {
-                    checkTrivial(method);
-                }
-            } catch (Throwable e) {
-                throw debug.handle(e);
-            }
-        }
-
         int round = 0;
         do {
             ProgressReporter.singleton().reportStageProgress();
@@ -646,10 +655,12 @@ public class CompileQueue {
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
 
                 executor.init();
-                universe.getMethods().stream().filter(method -> method.compilationInfo.getGraph() != null).forEach(method -> executor.execute(new TrivialInlineTask(method)));
-
-                universe.getMethods().stream().map(method -> method.compilationInfo.getDeoptTargetMethod()).filter(Objects::nonNull).forEach(
-                                deoptTargetMethod -> executor.execute(new TrivialInlineTask(deoptTargetMethod)));
+                universe.getMethods().stream()
+                                .filter(method -> method.compilationInfo.getCompilationGraph() != null)
+                                .forEach(method -> executor.execute(new TrivialInlineTask(method)));
+                universe.getMethods().stream()
+                                .map(method -> method.compilationInfo.getDeoptTargetMethod()).filter(Objects::nonNull)
+                                .forEach(deoptTargetMethod -> executor.execute(new TrivialInlineTask(deoptTargetMethod)));
                 executor.start();
                 executor.complete();
                 executor.shutdown();
@@ -657,71 +668,79 @@ public class CompileQueue {
         } while (inliningProgress);
     }
 
-    @SuppressWarnings("try")
-    private void doInlineTrivial(DebugContext debug, final HostedMethod method) {
-        /*
-         * Make a copy of the graph to avoid concurrency problems. Graph manipulations are not
-         * thread safe, and another thread can concurrently inline this method.
-         */
-        final StructuredGraph graph = (StructuredGraph) method.compilationInfo.getGraph().copy(debug);
+    class TrivialInliningPlugin implements InlineInvokePlugin {
 
-        try (DebugContext.Scope s = debug.scope("InlineTrivial", graph, method, this)) {
+        boolean inlinedDuringDecoding;
 
-            try {
-
-                try (Indent in = debug.logAndIndent("do inline trivial in %s", method)) {
-
-                    boolean inlined = false;
-                    for (Invoke invoke : graph.getInvokes()) {
-                        if (invoke instanceof InvokeNode) {
-                            throw VMError.shouldNotReachHere("Found InvokeNode without exception edge: invocation of " +
-                                            invoke.callTarget().targetMethod().format("%H.%n(%p)") + " in " + (graph.method() == null ? graph.toString() : graph.method().format("%H.%n(%p)")));
-                        }
-
-                        if (invoke.getInlineControl() == Invoke.InlineControl.Normal) {
-                            inlined |= tryInlineTrivial(graph, invoke, !inlined);
-                        }
-                    }
-
-                    if (inlined) {
-                        Providers providers = runtimeConfig.lookupBackend(method).getProviders();
-                        CanonicalizerPhase.create().apply(graph, providers);
-
-                        /*
-                         * Publish the new graph, it can be picked up immediately by other threads
-                         * trying to inline this method.
-                         */
-                        graph.minimizeSize();
-                        method.compilationInfo.setGraph(graph);
-                        checkTrivial(method);
-                        inliningProgress = true;
-                    }
-                }
-            } catch (Throwable ex) {
-                GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
-                error.addContext("method: " + method.format("%r %H.%n(%p)"));
-                throw error;
+        @Override
+        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+            if (makeInlineDecision((HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
+                inlinedDuringDecoding = true;
+                return InlineInfo.createStandardInlineInfo(method);
+            } else {
+                return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
-
-        } catch (Throwable e) {
-            throw debug.handle(e);
         }
     }
 
-    private boolean tryInlineTrivial(StructuredGraph graph, Invoke invoke, boolean firstInline) {
-        if (invoke.getInvokeKind().isDirect()) {
-            HostedMethod singleCallee = (HostedMethod) invoke.callTarget().targetMethod();
-            if (makeInlineDecision(singleCallee) && InliningUtilities.recursionDepth(invoke, singleCallee) == 0) {
-                if (firstInline) {
-                    graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "Before inlining");
-                }
-                InliningUtil.inline(invoke, singleCallee.compilationInfo.getGraph(), true, singleCallee);
+    class InliningGraphDecoder extends PEGraphDecoder {
 
-                graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After inlining %s with trivial callee %s", invoke, singleCallee.getQualifiedName());
-                return true;
+        InliningGraphDecoder(StructuredGraph graph, Providers providers, TrivialInliningPlugin inliningPlugin) {
+            super(AnalysisParsedGraph.HOST_ARCHITECTURE, graph, providers, null,
+                            null,
+                            new InlineInvokePlugin[]{inliningPlugin},
+                            null, null, null, null,
+                            new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), true);
+        }
+
+        @Override
+        protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, boolean trackNodeSourcePosition) {
+            return ((HostedMethod) method).compilationInfo.getCompilationGraph().getEncodedGraph();
+        }
+    }
+
+    @SuppressWarnings("try")
+    private void doInlineTrivial(DebugContext debug, HostedMethod method) {
+        /*
+         * Before doing any work, check if there is any potential for inlining.
+         *
+         * Note that we do not have information about the recursive inlining depth, but that is OK
+         * because in that case we just over-estimate the inlining potential, i.e., we do the
+         * decoding just to find out that nothing could be inlined.
+         */
+        boolean inliningPotential = false;
+        for (var invokeInfo : method.compilationInfo.getCompilationGraph().getInvokeInfos()) {
+            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(invokeInfo.getTargetMethod())) {
+                inliningPotential = true;
+                break;
             }
         }
-        return false;
+        if (!inliningPotential) {
+            return;
+        }
+
+        var providers = runtimeConfig.lookupBackend(method).getProviders();
+        var graph = method.compilationInfo.createGraph(debug, CompilationIdentifier.INVALID_COMPILATION_ID, false);
+        try (var s = debug.scope("InlineTrivial", graph, method, this)) {
+            var inliningPlugin = new TrivialInliningPlugin();
+            var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
+            decoder.decode(method, false, graph.trackNodeSourcePosition());
+
+            if (inliningPlugin.inlinedDuringDecoding) {
+                CanonicalizerPhase.create().apply(graph, providers);
+                /*
+                 * Publish the new graph, it can be picked up immediately by other threads trying to
+                 * inline this method. This can be a minor source of non-determinism in inlining
+                 * decisions.
+                 */
+                method.compilationInfo.encodeGraph(graph);
+                if (checkTrivial(method, graph)) {
+                    inliningProgress = true;
+                }
+            }
+        } catch (Throwable ex) {
+            throw debug.handle(ex);
+        }
     }
 
     private boolean makeInlineDecision(HostedMethod callee) {
@@ -1105,13 +1124,11 @@ public class CompileQueue {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
                 }
 
-                method.compilationInfo.setGraph(graph);
-                afterParse(method);
+                afterParse(method, graph);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
-                afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
-                assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
+                afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
+                assert GraphOrder.assertSchedulableGraph(graph);
 
-                graph.minimizeSize();
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
                 if (!parseOnce) {
                     UninterruptibleAnnotationChecker.checkAfterParsing(method, graph);
@@ -1135,6 +1152,10 @@ public class CompileQueue {
                         ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
+
+                method.compilationInfo.encodeGraph(graph);
+                method.compilationInfo.setCompileOptions(compileOptions);
+                checkTrivial(method, graph);
 
             } catch (Throwable ex) {
                 GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
@@ -1172,7 +1193,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("unused")
-    protected void afterParse(HostedMethod method) {
+    protected void afterParse(HostedMethod method, StructuredGraph graph) {
     }
 
     protected OptionValues getCustomizedOptions(DebugContext debug) {
@@ -1257,9 +1278,13 @@ public class CompileQueue {
         if (!mustNotAllocateCallee(caller) && mustNotAllocate(callee)) {
             return false;
         }
-        if (!callee.canBeInlined()) {
-            return false;
-        }
+        /*
+         * Note that we do not check callee.canBeInlined() yet. Otherwise a @NeverInline annotation
+         * on a virtual target method would also prevent inlining of a concrete implementation
+         * method (after a later de-virtualization of the invoke) that is not annotated
+         * with @NeverInline. It is the responsibility of every inlining phase to check
+         * canBeInlined().
+         */
         return invoke.useForInlining();
     }
 
@@ -1310,18 +1335,6 @@ public class CompileQueue {
         }
         compilationInfo.inCompileQueue = true;
 
-        if (compilationInfo.specializedArguments != null) {
-            // Do the specialization: replace the argument locals with the constant arguments.
-            StructuredGraph graph = compilationInfo.graph;
-
-            int idx = 0;
-            for (ConstantNode argument : compilationInfo.specializedArguments) {
-                ParameterNode local = graph.getParameter(idx++);
-                if (local != null) {
-                    local.replaceAndDelete(ConstantNode.forConstant(argument.asJavaConstant(), runtimeConfig.getProviders().getMetaAccess(), graph));
-                }
-            }
-        }
         executor.execute(task);
         method.setCompiled();
     }
@@ -1352,10 +1365,19 @@ public class CompileQueue {
         try {
             SubstrateBackend backend = config.lookupBackend(method);
 
-            StructuredGraph graph = method.compilationInfo.graph;
-            VMError.guarantee(graph != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
-            /* Operate on a copy, to keep the original graph intact for later inlining. */
-            graph = graph.copyWithIdentifier(compilationIdentifier, debug);
+            VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
+            StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
+
+            if (method.compilationInfo.specializedArguments != null) {
+                // Do the specialization: replace the argument locals with the constant arguments.
+                int idx = 0;
+                for (ConstantNode argument : method.compilationInfo.specializedArguments) {
+                    ParameterNode local = graph.getParameter(idx++);
+                    if (local != null) {
+                        local.replaceAndDelete(ConstantNode.forConstant(argument.asJavaConstant(), runtimeConfig.getProviders().getMetaAccess(), graph));
+                    }
+                }
+            }
 
             /* Check that graph is in good shape before compilation. */
             assert GraphOrder.assertSchedulableGraph(graph);
@@ -1384,7 +1406,7 @@ public class CompileQueue {
                 method.compilationInfo.numNodesAfterCompilation = graph.getNodeCount();
 
                 if (method.compilationInfo.isDeoptTarget()) {
-                    assert verifyDeoptTarget(method, result);
+                    assert verifyDeoptTarget(method, graph, result);
                 }
                 ensureCalleesCompiled(method, reason, result);
 
@@ -1457,18 +1479,18 @@ public class CompileQueue {
         lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
     }
 
-    private static boolean verifyDeoptTarget(HostedMethod method, CompilationResult result) {
+    private static boolean verifyDeoptTarget(HostedMethod method, StructuredGraph graph, CompilationResult result) {
         Map<Long, BytecodeFrame> encodedBciMap = new HashMap<>();
 
         /*
          * All deopt targets must have a graph.
          */
-        assert method.compilationInfo.graph != null : "Deopt target must have a graph.";
+        assert graph != null : "Deopt target must have a graph.";
 
         /*
          * No deopt targets can have a StackValueNode in the graph.
          */
-        assert method.compilationInfo.graph.getNodes(StackValueNode.TYPE).isEmpty() : "No stack value nodes must be present in deopt target.";
+        assert graph.getNodes(StackValueNode.TYPE).isEmpty() : "No stack value nodes must be present in deopt target.";
 
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint.debugInfo != null) {

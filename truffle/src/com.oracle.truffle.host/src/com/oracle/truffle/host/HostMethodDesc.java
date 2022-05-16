@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,8 @@ import com.oracle.truffle.api.nodes.Node;
 abstract class HostMethodDesc {
 
     abstract String getName();
+
+    abstract String getDeclaringClassName();
 
     abstract SingleMethod[] getOverloads();
 
@@ -164,6 +166,11 @@ abstract class HostMethodDesc {
         @Override
         public String getName() {
             return getReflectionMethod().getName();
+        }
+
+        @Override
+        String getDeclaringClassName() {
+            return getReflectionMethod().getDeclaringClass().getName();
         }
 
         @Override
@@ -329,6 +336,11 @@ abstract class HostMethodDesc {
 
             protected abstract MethodHandle makeMethodHandle();
 
+            @TruffleBoundary
+            private MethodHandle makeMethodHandleBoundary() {
+                return makeMethodHandle();
+            }
+
             protected static MethodHandle adaptSignature(MethodHandle originalHandle, boolean isStatic, int parameterCount) {
                 MethodHandle adaptedHandle = originalHandle;
                 adaptedHandle = adaptedHandle.asType(adaptedHandle.type().changeReturnType(Object.class));
@@ -351,7 +363,7 @@ abstract class HostMethodDesc {
                         // because it is always initialized to the same value.
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                     }
-                    methodHandle = handle = makeMethodHandle();
+                    methodHandle = handle = makeMethodHandleBoundary();
                 }
                 CallTarget target = cache.methodHandleHostInvoke;
                 CompilerAsserts.partialEvaluationConstant(target);
@@ -432,6 +444,11 @@ abstract class HostMethodDesc {
             }
 
             @Override
+            String getDeclaringClassName() {
+                return null;
+            }
+
+            @Override
             public String toString() {
                 return "Method[clone]";
             }
@@ -474,6 +491,11 @@ abstract class HostMethodDesc {
         @Override
         public String getName() {
             return getOverloads()[0].getName();
+        }
+
+        @Override
+        String getDeclaringClassName() {
+            return getOverloads()[0].getDeclaringClassName();
         }
 
         @Override

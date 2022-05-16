@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,25 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.nfi.NFIType.TypeCachedState;
+import static org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
 
-@GenerateLibrary
-@GenerateAOT
-abstract class NFITypeLibrary extends Library {
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
-    public abstract Object convertToNative(TypeCachedState state, NFIType type, Object value);
+/**
+ * Polyglot host service is needed for polyglot isolates. In case it is used for a non-isolated
+ * engine, DefaultPolyglotHostService is used. Since there is no host side in terms of polyglot
+ * isolates, all operations are no-op.
+ */
+class DefaultPolyglotHostService extends AbstractPolyglotHostService {
+    DefaultPolyglotHostService(AbstractPolyglotImpl polyglot) {
+        super(polyglot);
+    }
 
-    public abstract Object convertFromNative(TypeCachedState state, NFIType type, Object value);
+    @Override
+    public void patch(AbstractPolyglotHostService otherService) {
+    }
 
-    private static final LibraryFactory<NFITypeLibrary> FACTORY = LibraryFactory.resolve(NFITypeLibrary.class);
+    @Override
+    public void notifyClearExplicitContextStack(Object contextReceiver) {
+    }
 
-    public static LibraryFactory<NFITypeLibrary> getFactory() {
-        return FACTORY;
+    @Override
+    public void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message) {
+    }
+
+    @Override
+    public void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message) {
+    }
+
+    @Override
+    public void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting) {
     }
 }

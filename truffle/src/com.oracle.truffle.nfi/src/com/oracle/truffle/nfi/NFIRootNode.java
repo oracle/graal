@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -58,6 +57,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LoadLibraryNodeGen;
 import com.oracle.truffle.nfi.NFIRootNodeFactory.LookupAndBindNodeGen;
 import com.oracle.truffle.nfi.NativeSource.ParsedLibrary;
+import com.oracle.truffle.nfi.SignatureRootNode.BuildSignatureNode;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackend;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 
@@ -66,22 +67,23 @@ class NFIRootNode extends RootNode {
     abstract static class LookupAndBindNode extends Node {
 
         private final String name;
-        private final String signature;
+        @Child BuildSignatureNode signature;
 
-        LookupAndBindNode(String name, String signature) {
+        LookupAndBindNode(String name, BuildSignatureNode signature) {
             this.name = name;
             this.signature = signature;
         }
 
-        abstract Object execute(Object library);
+        abstract Object execute(API api, Object library);
 
         @Specialization(limit = "1")
-        Object doLookupAndBind(Object library,
+        Object doLookupAndBind(API api, Object library,
                         @CachedLibrary("library") InteropLibrary libInterop,
-                        @Shared("symInterop") @CachedLibrary(limit = "1") InteropLibrary symInterop) {
+                        @CachedLibrary(limit = "1") SignatureLibrary signatures) {
             try {
                 Object symbol = libInterop.readMember(library, name);
-                return symInterop.invokeMember(symbol, "bind", signature);
+                Object sig = signature.execute(api);
+                return signatures.bind(sig, symbol);
             } catch (InteropException ex) {
                 CompilerDirectives.transferToInterpreter();
                 throw new NFIPreBindException(ex.getMessage(), this);
@@ -144,15 +146,15 @@ class NFIRootNode extends RootNode {
     @Override
     @ExplodeLoop
     public Object execute(VirtualFrame frame) {
-        NFIBackend backend = NFIContext.get(this).getBackend(backendId);
+        API api = NFIContext.get(this).getAPI(backendId);
 
-        Object library = loadLibrary.execute(backend);
+        Object library = loadLibrary.execute(api.backend);
         if (lookupAndBind.length == 0) {
             return library;
         } else {
             NFILibrary ret = new NFILibrary(library);
             for (LookupAndBindNode l : lookupAndBind) {
-                ret.preBindSymbol(l.name, l.execute(library));
+                ret.preBindSymbol(l.name, l.execute(api, library));
             }
             return ret;
         }
