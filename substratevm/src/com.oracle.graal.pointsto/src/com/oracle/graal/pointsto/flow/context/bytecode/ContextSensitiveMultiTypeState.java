@@ -77,6 +77,10 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         PointsToStats.registerTypeState(bb, this);
     }
 
+    protected BitSet bitSet() {
+        return typesBitSet;
+    }
+
     /**
      * Returns an array of all type ids from the {@link #objects} array. This mitigates the CPU
      * cache misses when iterating over all AnalysisObject and dereferencing the type field over and

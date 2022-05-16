@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow.context.free;
+package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -52,11 +52,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.typestate.MultiTypeState;
-import com.oracle.graal.pointsto.typestate.PointsToStats;
-import com.oracle.graal.pointsto.typestate.SingleTypeState;
-import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
