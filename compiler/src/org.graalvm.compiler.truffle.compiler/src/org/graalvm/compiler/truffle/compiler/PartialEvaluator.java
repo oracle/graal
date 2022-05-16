@@ -28,7 +28,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Exclu
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ForceFrameLivenessAnalysis;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalGraphSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
@@ -38,7 +38,6 @@ import java.net.URI;
 import java.nio.Buffer;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -47,6 +46,8 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
@@ -76,6 +77,7 @@ import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
@@ -110,8 +112,9 @@ import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPl
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.options.OptionValues;
 
+import com.oracle.truffle.api.TruffleOptions;
+
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
@@ -534,10 +537,10 @@ public abstract class PartialEvaluator {
                         sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
     }
 
+    @SuppressWarnings("try")
     public void doGraphPE(Request request, InlineInvokePlugin inlineInvokePlugin, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         (ReplacementsImpl) providers.getReplacements(),
-                        new NodeLimitControlPlugin(request.options.get(MaximumGraalNodeCount)),
                         inlineInvokePlugin
         };
         PEGraphDecoder decoder = createGraphDecoder(request,
@@ -548,7 +551,11 @@ public abstract class PartialEvaluator {
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(request.task.inliningData()),
                         graphCache);
-        decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+        GraphSizeListener listener = new GraphSizeListener(request.options, request.graph);
+        try (Graph.NodeEventScope ignored = request.graph.trackNodeEvents(listener)) {
+            decoder.decode(request.graph.method(), request.graph.isSubstitution(), request.graph.trackNodeSourcePosition());
+        }
+        assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
     }
 
     @SuppressWarnings("try")
@@ -717,27 +724,52 @@ public abstract class PartialEvaluator {
 
     }
 
-    private static final class NodeLimitControlPlugin implements InlineInvokePlugin {
+    /**
+     * Keeps track of the approximate graph size when nodes are added and removed and if this size
+     * goes over the allowed limit (MaximumGraalGraphSize) checks the actual size and bails out if
+     * the graph is actually too big.
+     */
+    private static final class GraphSizeListener extends Graph.NodeEventListener {
+        private final int graphSizeLimit;
+        private final StructuredGraph graph;
+        private int graphSize;
 
-        NodeLimitControlPlugin(int nodeLimit) {
-            this.nodeLimit = nodeLimit;
+        private GraphSizeListener(OptionValues options, StructuredGraph graph) {
+            this.graphSizeLimit = options.get(MaximumGraalGraphSize);
+            this.graph = graph;
+            this.graphSize = NodeCostUtil.computeGraphSize(graph);
         }
 
-        private final int nodeLimit;
+        @Override
+        public void nodeAdded(Node node) {
+            increaseSizeAndCheckLimit(node);
+        }
+
+        private void increaseSizeAndCheckLimit(Node node) {
+            graphSize += node.estimatedNodeSize().value;
+            checkLimit();
+        }
+
+        private void checkLimit() {
+            if (graphSize > graphSizeLimit) {
+                throw new GraphTooBigBailoutException(
+                                "Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Graph Size: " + graphSize + ". Limit: " + graphSizeLimit + ".");
+            }
+        }
 
         @Override
-        public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            final StructuredGraph graph = b.getGraph();
-            if (graph.getNodeCount() > nodeLimit) {
-                try {
-                    throw b.bailout("Graph too big to safely compile. Node count: " + graph.getNodeCount() + ". Limit: " + nodeLimit);
-                } catch (BailoutException e) {
-                    // wrap it to detect it later
-                    throw new GraphTooBigBailoutException(e);
-                }
-            }
-            // Continue onto other plugins.
-            return null;
+        public void beforeDecodingFields(Node node) {
+            graphSize -= node.estimatedNodeSize().value;
+        }
+
+        @Override
+        public void afterDecodingFields(Node node) {
+            increaseSizeAndCheckLimit(node);
+        }
+
+        @Override
+        public void nodeRemoved(Node node) {
+            graphSize -= node.estimatedNodeSize().value;
         }
     }
 }

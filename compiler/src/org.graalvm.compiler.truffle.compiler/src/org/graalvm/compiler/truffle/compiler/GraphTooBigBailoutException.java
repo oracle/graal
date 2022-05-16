@@ -26,13 +26,11 @@ package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 
-import jdk.vm.ci.code.BailoutException;
-
 @SuppressWarnings("serial")
 public final class GraphTooBigBailoutException extends PermanentBailoutException {
 
-    GraphTooBigBailoutException(BailoutException cause) {
-        super(cause, "%s", cause.getMessage());
+    GraphTooBigBailoutException(String message) {
+        super(message);
     }
 
 }

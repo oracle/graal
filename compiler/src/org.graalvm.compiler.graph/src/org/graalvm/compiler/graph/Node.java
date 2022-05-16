@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEventListener;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
@@ -1420,7 +1421,28 @@ public abstract class Node implements Cloneable, Formattable, NodeInterface {
         getNodeClass().pushInputs(this, stack);
     }
 
-    public NodeSize estimatedNodeSize() {
+    public final NodeSize estimatedNodeSize() {
+        try {
+            return dynamicNodeSizeEstimate();
+        } catch (Exception e) {
+            throw GraalError.shouldNotReachHere(e, "Exception during node cost estimation");
+        }
+    }
+
+    /**
+     * Node subclasses should override this method if they need to specify a dynamically calculated
+     * {@link NodeSize} value. If the node size is static please use {@link NodeInfo#size()}.
+     *
+     * NOTE: When overriding this method, make sure that *all* field reads are null checked (even if
+     * Java semantics seemingly make the value of the field non-null). This is necessary because
+     * node size estimates are needed even during graph decoding which, for some nodes, first
+     * reflectively creates a stub and then later, reflectively, populates its fields. This method
+     * could be invoked between these two points. For this reason, when overriding this method
+     * assume that all fields can and will be null.
+     *
+     * @return The estimated node size for this node.
+     */
+    protected NodeSize dynamicNodeSizeEstimate() {
         return nodeClass.size();
     }
 

@@ -174,7 +174,7 @@ public final class LoopEndNode extends AbstractEndNode {
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (loopBegin() == null) {
+        if (!(loopBegin instanceof LoopBeginNode) || loopBegin() == null) {
             return CYCLES_UNKNOWN;
         }
         if (canSafepoint()) {
@@ -185,13 +185,13 @@ public final class LoopEndNode extends AbstractEndNode {
     }
 
     @Override
-    public NodeSize estimatedNodeSize() {
-        if (loopBegin() == null) {
+    protected NodeSize dynamicNodeSizeEstimate() {
+        if (!(loopBegin instanceof LoopBeginNode)) {
             return SIZE_UNKNOWN;
         }
         if (canSafepoint()) {
             return SIZE_2;
         }
-        return super.estimatedNodeSize();
+        return super.dynamicNodeSizeEstimate();
     }
 }

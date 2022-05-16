@@ -27,9 +27,11 @@ package org.graalvm.compiler.truffle.test;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
@@ -98,6 +100,30 @@ public class NodeLimitTest extends PartialEvaluationTest {
     }
 
     private static class TestRootNode extends RootNode {
+        // Used to introduce allocation during PE to increase the size of the graph
+        private static class MyClass {
+            int[] array = new int[100];
+
+            MyClass() {
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = value();
+                }
+            }
+
+            @CompilerDirectives.TruffleBoundary
+            private static int value() {
+                return 1;
+            }
+
+            public int sum() {
+                int sum = 0;
+                for (int i : array) {
+                    sum += i;
+                }
+                return sum;
+            }
+        }
+
         // Used as a black hole for filler code
         @SuppressWarnings("unused") private int global;
         @SuppressWarnings("unused") private int globalI;
@@ -114,7 +140,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
 
         protected void foo() {
             for (; globalI < 1000; globalI++) {
-                global += globalI;
+                global += new MyClass().sum();
             }
 
         }
@@ -143,12 +169,12 @@ public class NodeLimitTest extends PartialEvaluationTest {
     private int getBaselineGraphNodeCount(RootNode rootNode) {
         final OptimizedCallTarget baselineGraphTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
         final StructuredGraph baselineGraph = partialEval(baselineGraphTarget, new Object[]{}, getCompilationId(baselineGraphTarget));
-        return baselineGraph.getNodeCount();
+        return NodeCostUtil.computeGraphSize(baselineGraph);
     }
 
     @SuppressWarnings("try")
     private void peRootNode(int nodeLimit, Supplier<RootNode> rootNodeFactory) {
-        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalNodeCount", Integer.toString(nodeLimit)).build());
+        setupContext(Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option("engine.MaximumGraalGraphSize", Integer.toString(nodeLimit)).build());
         RootCallTarget target = Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
         final Object[] arguments = {1};
         partialEval((OptimizedCallTarget) target, arguments, getCompilationId(target));

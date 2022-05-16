@@ -466,8 +466,11 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Maximum number of instrumentation counters available.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> InstrumentationTableSize = new OptionKey<>(10000);
 
-    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", category = OptionCategory.INTERNAL)
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes. ", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use MaximumGraalGraphSize.")
     public static final OptionKey<Integer> MaximumGraalNodeCount = new OptionKey<>(400000);
+
+    @Option(help = "Stop partial evaluation when the graph exceeded this size (default: 150000).", category = OptionCategory.INTERNAL) //
+    public static final OptionKey<Integer> MaximumGraalGraphSize = new OptionKey<>(150_000);
 
     @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Integer> MaximumInlineNodeCount = new OptionKey<>(150000);

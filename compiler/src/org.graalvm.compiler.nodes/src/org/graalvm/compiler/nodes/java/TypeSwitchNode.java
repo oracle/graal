@@ -100,7 +100,7 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
 
     @Override
     public int keyCount() {
-        return keys.length;
+        return keys == null ? 0 : keys.length;
     }
 
     @Override
