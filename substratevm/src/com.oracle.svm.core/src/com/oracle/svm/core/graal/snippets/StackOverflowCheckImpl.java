@@ -270,6 +270,11 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         }
     }
 
+    @Override
+    public UnsignedWord getStackOverflowBoundary() {
+        return stackBoundaryTL.get();
+    }
+
     /**
      * Throw a cached {@link StackOverflowError} (without a stack trace) when we know statically
      * that the method with the stack overflow check must never allocate.

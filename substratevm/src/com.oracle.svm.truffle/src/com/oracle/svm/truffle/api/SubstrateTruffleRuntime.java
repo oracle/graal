@@ -398,9 +398,8 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public long getStackOverflowLimit() {
-        StackOverflowCheck.OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
         StackOverflowCheck stackOverflowCheck = ImageSingletons.lookup(StackOverflowCheck.class);
-        return osSupport.lookupStackEnd().add(stackOverflowCheck.yellowAndRedZoneSize()).rawValue();
+        return stackOverflowCheck.getStackOverflowBoundary().rawValue();
     }
 
     /**
