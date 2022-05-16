@@ -3,6 +3,7 @@ layout: docs
 toc_group: tools
 link_title: Debugging and Monitoring Tools
 permalink: /tools/
+redirect_from: /docs/tools/
 ---
 
 # GraalVM Debugging and Monitoring Tools
