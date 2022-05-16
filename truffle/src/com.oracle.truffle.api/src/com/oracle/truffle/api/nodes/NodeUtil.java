@@ -902,7 +902,8 @@ public final class NodeUtil {
             return "";
         }
         if (section.getSource() == null) {
-            // TODO we can remove this block if SourceSection#createUnavailable was removed, because
+            // TODO GR-38632 we can remove this block if SourceSection#createUnavailable was
+            // removed, because
             // then source cannot become null anymore.
             return "source: <unknown>";
         }
@@ -967,7 +968,8 @@ public final class NodeUtil {
         }
 
         if (sourceSection.getSource() == null) {
-            // TODO we can remove this block if SourceSection#createUnavailable was removed, because
+            // TODO GR-38632 we can remove this block if SourceSection#createUnavailable was
+            // removed, because
             // then source cannot become null anymore.
             return "at <Unknown>";
         } else {

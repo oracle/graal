@@ -381,10 +381,12 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         return ir.getNodeCount();
     }
 
-    public void recalculateSize() {
+    public int recalculateSize() {
         if (getCallTree().useSize) {
             graphSize = NodeCostUtil.computeGraphSize(ir);
+            return graphSize;
         }
+        return ir.getNodeCount();
     }
 
     public Object getPolicyData() {

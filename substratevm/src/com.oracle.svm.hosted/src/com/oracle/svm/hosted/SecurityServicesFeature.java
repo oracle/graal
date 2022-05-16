@@ -199,6 +199,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     private Field constructorCacheField;
     private Field classRefField;
 
+    private Class<?> jceSecurityClass;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
@@ -308,7 +310,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         loader = access.getImageClassLoader();
-        verificationCacheCleaner = constructVerificationCacheCleaner();
+        jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
+        verificationCacheCleaner = constructVerificationCacheCleaner(jceSecurityClass);
 
         /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
         access.ensureInitialized("java.security.cert.TrustAnchor");
@@ -689,7 +692,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             /* Trigger initialization of lazy field java.security.Provider.entrySet. */
             provider.entrySet();
             try {
-                Method getVerificationResult = ReflectionUtil.lookupMethod(loader.findClassOrFail("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
+                Method getVerificationResult = ReflectionUtil.lookupMethod(jceSecurityClass, "getVerificationResult", Provider.class);
                 /*
                  * Trigger initialization of JceSecurity.verificationResults used by
                  * JceSecurity.canUseProvider() at runtime to check whether a provider is properly
@@ -805,15 +808,29 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @SuppressWarnings("unchecked")
-    private Function<Object, Object> constructVerificationCacheCleaner() {
+    private Function<Object, Object> constructVerificationCacheCleaner(Class<?> jceSecurity) {
         /*
          * For JDK 11, the verification cache is a Provider -> Verification result IdentityHashMap.
          */
         if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return obj -> {
-                Map<Provider, Object> original = (Map<Provider, Object>) obj;
-                Map<Provider, Object> verificationResults = new IdentityHashMap<>(original);
-
+                Map<Provider, Object> verificationResults;
+                synchronized (jceSecurity) {
+                    /*
+                     * Need to synchronize the iteration of JceSecurity.verificationResults. In the
+                     * original implementation verificationResults is always accessed and modified
+                     * via the static synchronized JceSecurity.getVerificationResult().
+                     * 
+                     * Note that even if the value of the JceSecurity.verificationResults may be
+                     * modified concurrently it doesn't affect the correctness of the substitution.
+                     * Its value is never cached (by using RecomputeFieldValue.disableCaching) and
+                     * it will eventually reach a stable state, and it will be snapshotted. The
+                     * synchronization ensures that early reads of the field, that may happen
+                     * concurrently while verification results are still being added to the cache,
+                     * don't result in a ConcurrentModificationException.
+                     */
+                    verificationResults = new IdentityHashMap<>((Map<Provider, Object>) obj);
+                }
                 verificationResults.keySet().removeIf(this::shouldRemoveProvider);
 
                 return verificationResults;

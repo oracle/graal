@@ -902,6 +902,7 @@ public class UniverseBuilder {
             hUniverse.bb.getHeartbeatCallback().run();
 
             int layoutHelper;
+            boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
@@ -912,8 +913,10 @@ public class UniverseBuilder {
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
                     layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                    canInstantiateAsInstance = type.isInstantiated() && HybridLayout.canInstantiateAsInstance(type);
                 } else {
                     layoutHelper = LayoutEncoding.forPureInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
+                    canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
             } else if (type.isArray()) {
@@ -953,8 +956,8 @@ public class UniverseBuilder {
             }
 
             DynamicHub hub = type.getHub();
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
-                            vtable, referenceMapIndex, type.isInstantiated());
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(),
+                            type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance);
         }
     }
 

@@ -34,7 +34,6 @@ import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Iterator;
@@ -47,7 +46,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
     /**
      * Line header section always contains fixed number of bytes.
      */
-    private static final int DW_LN_HEADER_SIZE = 27;
+    private static final int DW_LN_HEADER_SIZE = 28;
     /**
      * Current generator follows C++ with line base -5.
      */
@@ -57,7 +56,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      */
     private static final int DW_LN_LINE_RANGE = 14;
     /**
-     * Current generator uses opcode base of 13 which must equal DW_LNS_define_file + 1.
+     * Current generator uses opcode base of 13 which must equal DW_LNS_set_isa + 1.
      */
     private static final int DW_LN_OPCODE_BASE = 13;
 
@@ -108,6 +107,16 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
      * Increment address 1 ushort arg.
      */
     private static final byte DW_LNS_fixed_advance_pc = 9;
+
+    /*
+     * Increment address 1 ushort arg.
+     */
+    @SuppressWarnings("unused") private static final byte DW_LNS_set_prologue_end = 10;
+
+    /*
+     * Increment address 1 ushort arg.
+     */
+    @SuppressWarnings("unused") private static final byte DW_LNS_set_epilogue_begin = 11;
 
     /*
      * Extended opcodes defined by DWARF 2.
@@ -180,9 +189,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>uint16 version</code>
          *
-         * <li><code>uint32 prologue_length</code>
+         * <li><code>uint32 header_length</code>
          *
          * <li><code>uint8 min_insn_length</code>
+         *
+         * <li><code>uint8 max_operations_per_instruction</code>
          *
          * <li><code>uint8 default_is_stmt</code>
          *
@@ -191,8 +202,6 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
          * <li><code>uint8 line_range</code>
          *
          * <li><code>uint8 opcode_base</code>
-         *
-         * <li><code>uint8 li_opcode_base</code>
          *
          * <li><code>uint8[opcode_base-1] standard_opcode_lengths</code>
          *
@@ -318,7 +327,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 2 ubyte version is always 2.
          */
-        pos = putShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+        pos = putShort(DwarfDebugInfo.DW_VERSION_4, buffer, pos);
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
@@ -326,6 +335,10 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         pos = putInt(prologueSize, buffer, pos);
         /*
          * 1 ubyte min instruction length is always 1.
+         */
+        pos = putByte((byte) 1, buffer, pos);
+        /*
+         * 1 ubyte max operations per instruction is always 1.
          */
         pos = putByte((byte) 1, buffer, pos);
         /*
@@ -365,11 +378,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         putByte((byte) 0, buffer, pos + 7);
         /* DW_LNS_fixed_advance_pc */
         putByte((byte) 1, buffer, pos + 8);
-        /* DW_LNS_end_sequence */
+        /* DW_LNS_set_prologue_end */
         putByte((byte) 0, buffer, pos + 9);
-        /* DW_LNS_set_address */
+        /* DW_LNS_set_epilogue_begin */
         putByte((byte) 0, buffer, pos + 10);
-        /* DW_LNS_define_file */
+        /* DW_LNS_set_isa */
         pos = putByte((byte) 1, buffer, pos + 11);
         return pos;
     }
@@ -439,6 +452,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] primary class %s", pos, primaryClassName);
         log(context, "  [0x%08x] primary class file %s", pos, primaryFileName);
         for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
+
             Range primaryRange = primaryEntry.getPrimary();
             // the primary method might be a substitution and not in the primary class file
             FileEntry fileEntry = primaryRange.getFileEntry();
@@ -450,32 +464,29 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             String file = fileEntry.getFileName();
             int fileIdx = classEntry.localFilesIdx(fileEntry);
             /*
-             * Each primary represents a method i.e. a contiguous sequence of subranges. we write
-             * the default state at the start of each sequence because we always post an
-             * end_sequence when we finish all the subranges in the method.
+             * Each primary represents a method i.e. a contiguous sequence of subranges. For normal
+             * methods we expect the first leaf range to start at offset 0 covering the method
+             * prologue. In that case we can rely on it to set the initial file, line and address
+             * for the state machine. Otherwise we need to default the initial state and copy it to
+             * the file.
              */
             long line = primaryRange.getLine();
-            if (line < 0) {
-                Iterator<Range> iterator = primaryEntry.leafRangeIterator();
-                if (iterator.hasNext()) {
-                    final Range subRange = iterator.next();
-                    line = subRange.getLine();
-                    /*
-                     * If line gets successfully retrieved from subrange get file index from there
-                     * since the line might be from a different file for inlined methods
-                     */
-                    if (line > 0) {
-                        FileEntry subFileEntry = subRange.getFileEntry();
-                        if (subFileEntry != null) {
-                            fileIdx = classEntry.localFilesIdx(subFileEntry);
-                        }
+            long address = primaryRange.getLo();
+            Range prologueRange = prologueLeafRange(primaryEntry);
+            if (prologueRange != null) {
+                // use the line for the range and use its file if available
+                line = prologueRange.getLine();
+                if (line > 0) {
+                    FileEntry firstFileEntry = prologueRange.getFileEntry();
+                    if (firstFileEntry != null) {
+                        fileIdx = classEntry.localFilesIdx(firstFileEntry);
                     }
                 }
             }
             if (line < 0) {
+                // never emit a negative line
                 line = 0;
             }
-            long address = primaryRange.getLo();
 
             /*
              * Set state for primary.
@@ -490,7 +501,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             pos = writeSetFileOp(context, file, fileIdx, buffer, pos);
             pos = writeSetBasicBlockOp(context, buffer, pos);
             /*
-             * Address is currently 0.
+             * Address is currently at offset 0.
              */
             pos = writeSetAddressOp(context, address, buffer, pos);
             /*
@@ -501,7 +512,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             }
             pos = writeCopyOp(context, buffer, pos);
 
-            /*
+            /*-
              * On AArch64 gdb expects to see a line record at the start of the method and a second
              * one at the end of the prologue marking the point where the method code begins for
              * real. If we don't provide it then gdb will skip to the second line record when we
@@ -511,15 +522,20 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
              * frame height is first adjusted. This should normally be no more a few instructions in
              * total.
              */
+            /*-
+             * Disabled modulo further testing -- as we are now adding DWARF4 prologue start and end markers
             if (isAArch64() && !primaryEntry.getFrameSizeInfos().isEmpty()) {
                 DebugFrameSizeChange frameSizeChange = primaryEntry.getFrameSizeInfos().get(0);
                 assert frameSizeChange.getType() == DebugFrameSizeChange.Type.EXTEND;
                 long addressDelta = frameSizeChange.getOffset();
                 if (addressDelta < 16 && (primaryRange.getLo() + addressDelta) < primaryRange.getHi()) {
-                    /*
-                     * we should be able to write this with a special opcode as the prologue should
-                     * only be a few instructions
-                     */
+            
+             */
+            /*-
+             * we should be able to write this with a special opcode as the prologue should
+             * only be a few instructions
+             */
+            /*-
                     byte opcode = isSpecialOpcode(addressDelta, 0);
                     assert opcode != DW_LNS_undefined;
                     pos = writeSpecialOpcode(context, opcode, buffer, pos);
@@ -527,10 +543,16 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                     address += addressDelta;
                 }
             }
+            */
             /*
              * Now write a row for each subrange lo and hi.
              */
             Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+            if (prologueRange != null) {
+                // skip already processed range
+                Range first = iterator.next();
+                assert first == prologueRange;
+            }
             while (iterator.hasNext()) {
                 Range subrange = iterator.next();
                 assert subrange.getLo() >= primaryRange.getLo();
@@ -573,11 +595,11 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
                     file = subfile;
                     fileIdx = subFileIdx;
                 }
+                long lineDelta = subLine - line;
+                long addressDelta = subAddressLo - address;
                 /*
                  * Check if we can advance line and/or address in one byte with a special opcode.
                  */
-                long lineDelta = subLine - line;
-                long addressDelta = subAddressLo - address;
                 byte opcode = isSpecialOpcode(addressDelta, lineDelta);
                 if (opcode != DW_LNS_undefined) {
                     /*
@@ -658,6 +680,17 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] primary class processed %s", pos, primaryClassName);
 
         return pos;
+    }
+
+    private static Range prologueLeafRange(PrimaryEntry primaryEntry) {
+        Iterator<Range> iterator = primaryEntry.leafRangeIterator();
+        if (iterator.hasNext()) {
+            Range range = iterator.next();
+            if (range.getLo() == primaryEntry.getPrimary().getLo()) {
+                return range;
+            }
+        }
+        return null;
     }
 
     private int writeCopyOp(DebugContext context, byte[] buffer, int p) {

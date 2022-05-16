@@ -205,6 +205,16 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
         return length;
     }
 
+    public void setSource(ValueNode value) {
+        updateUsages(this.src, value);
+        this.src = value;
+    }
+
+    public void setSourcePosition(ValueNode value) {
+        updateUsages(this.srcPos, value);
+        this.srcPos = value;
+    }
+
     public static boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
         assert length >= 0;
         return position >= 0 && position <= virtualObject.entryCount() - length;

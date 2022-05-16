@@ -57,6 +57,11 @@ public class HybridLayoutSupport {
         return clazz.getAnnotation(Hybrid.class).canHybridFieldsBeDuplicated();
     }
 
+    public boolean canInstantiateAsInstance(HostedType clazz) {
+        assert isHybrid(clazz) : "Can only be called on hybrid types";
+        return false;
+    }
+
     /** Determines characteristics of a hybrid class. */
     protected HybridInfo inspectHybrid(HostedInstanceClass hybridClass, MetaAccessProvider metaAccess) {
         Hybrid annotation = hybridClass.getAnnotation(Hybrid.class);

@@ -1662,12 +1662,16 @@ class GraalVmJImageBuildTask(mx.ProjectBuildTask):
         return 'Building {}'.format(self.subject.name)
 
     def _config(self):
+        # Save the path and timestamp of the JDK image so that graalvm-jimage
+        # is rebuilt if the JDK at JAVA_HOME is rebuilt. The JDK image file is
+        # always updated when the JDK is rebuilt.
+        src_jimage = mx.TimeStampFile(join(_src_jdk.home, 'lib', 'modules'))
         return [
             'components: {}'.format(', '.join(sorted(_components_set()))),
             'include sources: {}'.format(_include_sources_str()),
             'strip jars: {}'.format(mx.get_opts().strip_jars),
             'vendor-version: {}'.format(graalvm_vendor_version(get_final_graalvm_distribution())),
-            'source JDK: {}'.format(_src_jdk.home),
+            'source jimage: {}'.format(src_jimage),
             'use_upgrade_module_path: {}'.format(mx.get_env('GRAALVM_JIMAGE_USE_UPGRADE_MODULE_PATH', None))
         ]
 
@@ -2729,6 +2733,17 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _dynamic_cflags += [
             '-DLIBJVM_RELPATH=' + _libjvm_path,
         ]
+
+        # path to libjli - only needed on osx for AWT
+        if mx.is_darwin():
+            _libjli_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib')
+            if mx_sdk_vm.base_jdk_version() < 17:
+                _libjli_path = join(_libjli_path, 'jli')
+            _libjli_path = join(_libjli_path, mx.add_lib_suffix("libjli"))
+            _libjli_path = relpath(_libjli_path, start=_exe_dir)
+            _dynamic_cflags += [
+                '-DLIBJLI_RELPATH=' + _libjli_path,
+            ]
 
         # path to native image language library - this is set even if the library is not built, as it may be built after the fact
         if self.jvm_launcher:

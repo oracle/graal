@@ -56,6 +56,10 @@ public class HybridLayout<T> {
         return HybridLayoutSupport.singleton().canHybridFieldsBeDuplicated(clazz);
     }
 
+    public static boolean canInstantiateAsInstance(HostedType clazz) {
+        return HybridLayoutSupport.singleton().canInstantiateAsInstance(clazz);
+    }
+
     private final ObjectLayout layout;
     private final HostedType arrayType;
     private final HostedField arrayField;

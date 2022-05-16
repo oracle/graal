@@ -68,7 +68,7 @@ public abstract class AllocationSnippets implements Snippets {
         return verifyOop(result);
     }
 
-    protected Object allocateArrayImpl(Word hub,
+    public Object allocateArrayImpl(Word hub,
                     int length,
                     int arrayBaseOffset,
                     int log2ElementSize,
@@ -259,7 +259,7 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatObject(Word hub,
+    public Object formatObject(Word hub,
                     UnsignedWord size,
                     Word memory,
                     FillContent fillContents,
@@ -280,7 +280,7 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatArray(Word hub,
+    public Object formatArray(Word hub,
                     UnsignedWord allocationSize,
                     int length,
                     Word memory,
@@ -386,7 +386,7 @@ public abstract class AllocationSnippets implements Snippets {
         }
     }
 
-    protected static class AllocationSnippetCounters {
+    public static class AllocationSnippetCounters {
         public AllocationSnippetCounters(SnippetCounter.Group.Factory factory) {
             Group allocations = factory.createSnippetCounterGroup("Allocations");
             unrolledInit = new SnippetCounter(allocations, "tlabSeqInit", "TLAB alloc with unrolled zeroing");

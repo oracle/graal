@@ -173,6 +173,11 @@ public class LayoutEncoding {
         return encoding == ABSTRACT_VALUE;
     }
 
+    /** Note that this method does not consider hybrids special. */
+    public static boolean isSpecial(int encoding) {
+        return encoding >= NEUTRAL_VALUE && encoding <= LAST_SPECIAL_VALUE;
+    }
+
     /** Tests if an encoding denotes a pure instance object, i.e. not a hybrid object or array. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isPureInstance(int encoding) {

@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.300.4",
+  "mxversion" : "6.0.1",
   "name" : "truffle",
   "version" : "22.2.0",
   "release" : False,
@@ -142,10 +142,10 @@ suite = {
     },
 
     "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115.jar"],
-      "sha1" : "7987931963f4fa995fa515273d70116725d0e37f",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20201115-src.jar"],
-      "sourceSha1" : "1da7c590b0582fb4c2e4de9b581c70407fa9108b",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320.jar"],
+      "sha1" : "bb27152e93770f4e0c993efd3e620133817e5edb",
+      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
+      "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
     },
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
@@ -336,7 +336,7 @@ suite = {
         "mx:JUNIT",
         "sdk:POLYGLOT_TCK"
       ],
-      "checkstyle" : "com.oracle.truffle.sl",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
       "workingSets" : "SimpleLanguage,Test",
       "jacoco" : "exclude",
@@ -872,7 +872,7 @@ suite = {
         "jdk.unsupported", # GR-36880
       ],
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -883,7 +883,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
-      "checkstyle" : "com.oracle.truffle.sl",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -899,7 +899,7 @@ suite = {
       "requires" : [
         "java.logging",
       ],
-      "checkstyle" : "com.oracle.truffle.sl",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
@@ -927,9 +927,9 @@ suite = {
         "com.oracle.truffle.st"
       ],
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle,SimpleLanguage",
+      "workingSets" : "Truffle",
       "testProject" : True,
       "jacoco" : "exclude",
     },

@@ -184,7 +184,7 @@ public final class SpecializationGroup {
             if (!guardMatch.getExpression().findBoundVariables().isEmpty()) {
                 iterator.remove();
             }
-            // TODO we need to be smarter here with bound parameters.
+            // TODO GR-38632 we need to be smarter here with bound parameters.
         }
 
         if (typeGuardsMatches.isEmpty() && guardMatches.isEmpty()) {

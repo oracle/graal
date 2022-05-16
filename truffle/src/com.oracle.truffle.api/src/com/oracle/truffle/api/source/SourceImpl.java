@@ -193,7 +193,7 @@ final class SourceImpl extends Source {
         final boolean interactive;
         final boolean cached;
         final boolean embedderSource;
-        // TODO remove legacy field with deprecated Source builders.
+        // TODO GR-38632 remove legacy field with deprecated Source builders.
         volatile Integer cachedHashCode;
 
         Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean embedderSource) {

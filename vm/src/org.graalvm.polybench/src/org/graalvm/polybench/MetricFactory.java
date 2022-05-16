@@ -50,6 +50,16 @@ public class MetricFactory {
             case "allocated-bytes":
                 config.metric = new AllocatedBytesMetric();
                 break;
+            case "metaspace-memory":
+                config.metric = new MetaspaceMemoryMetric();
+                config.warmupIterations = 0;
+                config.iterations = 10;
+                break;
+            case "application-memory":
+                config.metric = new ApplicationMemoryMetric();
+                config.warmupIterations = 0;
+                config.iterations = 10;
+                break;
             default:
                 String className = classNameFor(name);
                 try {
@@ -64,6 +74,7 @@ public class MetricFactory {
                     throw failureException(name, e);
                 }
         }
+
     }
 
     private static IllegalArgumentException failureException(String name, Exception e) {

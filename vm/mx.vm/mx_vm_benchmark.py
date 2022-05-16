@@ -226,7 +226,7 @@ class NativeImageVM(GraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
-               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
         match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
@@ -309,15 +309,12 @@ class NativeImageVM(GraalVm):
 
         if matching.group("analysis_context_sensitivity") is not None:
             context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
-            if context_sensitivity == "insens":
-                mx.logv("analysis context sensitivity 'insens' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "insens"
-            elif context_sensitivity == "allocsens":
-                mx.logv("analysis context sensitivity 'allocsens' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "allocsens"
-            elif context_sensitivity == "1obj":
-                mx.logv("analysis context sensitivity '1obj' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "_1obj"
+            if context_sensitivity in ["insens", "allocsens"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = context_sensitivity
+            elif context_sensitivity in ["1obj", "2obj1h", "3obj2h", "4obj3h"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = "_{}".format(context_sensitivity)
             else:
                 mx.abort("Unknown analysis context sensitivity: {}".format(context_sensitivity))
 
@@ -1108,12 +1105,12 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.iteration": ("<iteration>", int),
                 }, startPattern=r"::: Running :::")
             ]
-        elif metric_name == "allocated-memory":
+        elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
             rules += [
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
-                    "metric.name": "allocated-memory",
+                    "metric.name": metric_name,
                     "metric.unit": ("<unit>", str),
                     "metric.value": ("<value>", float),
                     "metric.type": "numeric",
@@ -1135,11 +1132,21 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 })
             ]
         rules += [
-            mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
+            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmarks[0],
                 "metric.name": "context-eval-time",
                 "metric.value": ("<delta>", float),
-                "metric.unit": "ms",
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0
+            }),
+            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmarks[0],
+                "metric.name": "context-init-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
                 "metric.score-function": "id",
                 "metric.better": "lower",
@@ -1263,11 +1270,14 @@ def register_graalvm_vms():
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
     # Inlining before analysis is done by default
-    analysis_context_sensitivity = ['insens', 'allocsens', '1obj']
+    analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
     analysis_context_sensitivity_no_inline = ['{}-{}'.format(analysis_component, 'no-inline') for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity = ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity += ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity_no_inline]
+
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline + pgo_aot_inline_context_sensitivity:
                 final_config_name = '{}-{}'.format(main_config, config_suffix)
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break

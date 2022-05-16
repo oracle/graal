@@ -69,6 +69,11 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
+    public boolean isContextSensitiveAnalysis() {
+        return false;
+    }
+
+    @Override
     public DefaultAnalysisContextPolicy contextPolicy() {
         return contextPolicy;
     }

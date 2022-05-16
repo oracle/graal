@@ -166,7 +166,7 @@ class LibGraalOptions {
     static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
 }
 
-public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
+public class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 

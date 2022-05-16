@@ -33,6 +33,7 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
@@ -144,6 +145,7 @@ import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
@@ -203,6 +205,7 @@ public class StandardGraphBuilderPlugins {
                     boolean arrayEqualsSubstitution,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
+        registerReferencePlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
         registerStrictMathPlugins(plugins);
@@ -1098,6 +1101,17 @@ public class StandardGraphBuilderPlugins {
                     Stamp stamp = StampFactory.objectNonNull(TypeReference.createTrusted(b.getAssumptions(), b.getMetaAccess().lookupJavaType(Class.class)));
                     b.addPush(JavaKind.Object, new GetClassNode(stamp, object));
                 }
+                return true;
+            }
+        });
+    }
+
+    private static void registerReferencePlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Reference.class);
+        r.register(new InvocationPlugin("reachabilityFence", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode value) {
+                b.add(ReachabilityFenceNode.create(value));
                 return true;
             }
         });

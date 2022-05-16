@@ -97,13 +97,15 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
         for (ElementInfo child : children) {
             if (child instanceof AccessorInfo) {
                 AccessorInfo accessorInfo = (AccessorInfo) child;
-                if (firstAccessorInfo == null) {
-                    firstAccessorInfo = accessorInfo;
-                } else {
-                    if (accessorInfo.hasLocationIdentityParameter() != firstAccessorInfo.hasLocationIdentityParameter()) {
-                        addError("All accessors for a field must agree on LocationIdentity parameter", firstAccessorInfo, accessorInfo);
-                    } else if (accessorInfo.hasUniqueLocationIdentity() != firstAccessorInfo.hasUniqueLocationIdentity()) {
-                        addError("All accessors for a field must agree on @" + UniqueLocationIdentity.class.getSimpleName() + " annotation", firstAccessorInfo, accessorInfo);
+                if (accessorInfo.getAccessorKind() != AccessorInfo.AccessorKind.OFFSET) {
+                    if (firstAccessorInfo == null) {
+                        firstAccessorInfo = accessorInfo;
+                    } else {
+                        if (accessorInfo.hasLocationIdentityParameter() != firstAccessorInfo.hasLocationIdentityParameter()) {
+                            addError("All accessors for a field must agree on LocationIdentity parameter", firstAccessorInfo, accessorInfo);
+                        } else if (accessorInfo.hasUniqueLocationIdentity() != firstAccessorInfo.hasUniqueLocationIdentity()) {
+                            addError("All accessors for a field must agree on @" + UniqueLocationIdentity.class.getSimpleName() + " annotation", firstAccessorInfo, accessorInfo);
+                        }
                     }
                 }
             }

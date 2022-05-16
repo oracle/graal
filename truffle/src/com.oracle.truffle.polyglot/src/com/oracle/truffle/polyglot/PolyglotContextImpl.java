@@ -1942,19 +1942,15 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     }
 
     long calculateHeapSize(long stopAtBytes, AtomicBoolean calculationCancelled) {
-        try {
-            ObjectSizeCalculator localObjectSizeCalculator;
-            synchronized (this) {
-                localObjectSizeCalculator = objectSizeCalculator;
-                if (localObjectSizeCalculator == null) {
-                    localObjectSizeCalculator = new ObjectSizeCalculator();
-                    objectSizeCalculator = localObjectSizeCalculator;
-                }
+        ObjectSizeCalculator localObjectSizeCalculator;
+        synchronized (this) {
+            localObjectSizeCalculator = objectSizeCalculator;
+            if (localObjectSizeCalculator == null) {
+                localObjectSizeCalculator = new ObjectSizeCalculator();
+                objectSizeCalculator = localObjectSizeCalculator;
             }
-            return localObjectSizeCalculator.calculateObjectSize(getContextHeapRoots(), stopAtBytes, calculationCancelled);
-        } catch (UnsupportedOperationException e) {
-            throw new UnsupportedOperationException("Polyglot context heap size calculation is not supported on current Truffle runtime.", e);
         }
+        return localObjectSizeCalculator.calculateObjectSize(getContextHeapRoots(), stopAtBytes, calculationCancelled);
     }
 
     private Object[] getContextHeapRoots() {
