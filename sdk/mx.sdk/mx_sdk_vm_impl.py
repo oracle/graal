@@ -996,12 +996,9 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
         self.subject_distribution = subject_distribution
 
     def _walk_layout(self):
-        if not self._layout_initialized:
-            root_contents = []
-            self.layout = {
-                './': root_contents
-            }
-            for dep_name in getattr(self.subject_distribution, 'buildDependencies', []):
+        def _add(dep_names, layout):
+            root_contents = layout['./']
+            for dep_name in dep_names:
                 dep = mx.dependency(dep_name)
                 if isinstance(dep, mx.JARDistribution):
                     if dep.is_stripped():
@@ -1010,7 +1007,15 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                     if dep.debug_file():
                         source_type = 'skip' if isinstance(dep.native_image_config, mx_sdk.LibraryConfig) and _skip_libraries(dep.native_image_config) else 'dependency'
                         root_contents += [source_type + ':{}:{}/*.debug'.format(dep.suite.name, dep.name)]
-                        self.layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
+                        layout[dep.native_image_name + '-sources/'] = source_type + ':{}:{}/sources'.format(dep.suite.name, dep.name)
+                elif isinstance(dep, GraalVmJImage):
+                    _add(dep.deps, layout)
+
+        if not self._layout_initialized:
+            self.layout = {
+                './': []
+            }
+            _add(getattr(self.subject_distribution, 'buildDependencies', []), self.layout)
             self._layout_initialized = True
         return super(DebuginfoDistribution, self)._walk_layout()
 
