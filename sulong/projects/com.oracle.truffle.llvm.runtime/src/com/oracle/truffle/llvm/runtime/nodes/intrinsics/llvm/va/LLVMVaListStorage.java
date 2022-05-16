@@ -1144,6 +1144,7 @@ public class LLVMVaListStorage implements TruffleObject {
         private final BranchProfile expansionBranchProfile;
         private final ConditionProfile noExpansionProfile;
         private @Child ArgumentExpander expander;
+        private final boolean cached;
 
         private static final ArgumentListExpander uncached_unpack32 = new ArgumentListExpander(false, true);
         private static final ArgumentListExpander uncached_no_unpack32 = new ArgumentListExpander(false, false);
@@ -1156,6 +1157,12 @@ public class LLVMVaListStorage implements TruffleObject {
             } else {
                 expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.getUncached() : ArgumentExpanderNodeGen.getUncached();
             }
+            this.cached = cached;
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return cached;
         }
 
         public static ArgumentListExpander create(boolean unpack32) {
