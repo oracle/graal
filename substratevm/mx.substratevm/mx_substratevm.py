@@ -1095,7 +1095,7 @@ libgraal_build_args = [
     '-R:-AutomaticReferenceHandling',
 ]
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='LibGraal',
     short_name='lg',
@@ -1117,7 +1117,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     stability="supported",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
