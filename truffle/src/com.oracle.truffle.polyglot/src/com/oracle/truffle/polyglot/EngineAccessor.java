@@ -111,6 +111,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -1712,6 +1713,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Context getPolyglotContextAPI(Object polyglotContextImpl) {
             return ((PolyglotContextImpl) polyglotContextImpl).api;
+        }
+
+        @Override
+        public EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
+            return PolyglotFastThreadLocals.getEncapsulatingNodeReference(invalidateOnNull);
         }
     }
 
