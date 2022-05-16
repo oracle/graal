@@ -43,6 +43,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.debug.DebugOptions;
@@ -955,6 +956,7 @@ public class ProgressReporter {
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
+        private AtomicBoolean isCancelled = new AtomicBoolean();
 
         T start(BuildStage stage) {
             assert activeBuildStage == null;
@@ -970,12 +972,16 @@ public class ProgressReporter {
         }
 
         private void startPeriodicProgress() {
+            isCancelled.set(false);
             periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
                 int countdown;
                 int numPrints;
 
                 @Override
                 public void run() {
+                    if (isCancelled.get()) {
+                        return;
+                    }
                     if (--countdown < 0) {
                         reportProgress();
                         countdown = ++numPrints > 2 ? numPrints * 2 : numPrints;
@@ -1011,6 +1017,7 @@ public class ProgressReporter {
 
         void end(double totalTime) {
             if (activeBuildStage.hasPeriodicProgress) {
+                isCancelled.set(true);
                 periodicPrintingTask.cancel(false);
             }
             if (activeBuildStage.hasProgressBar) {
