@@ -80,41 +80,41 @@ public class DeoptimizationGroupingPhase extends BasePhase<MidTierContext> {
             if (cfg == null) {
                 cfg = ControlFlowGraph.compute(graph, true, true, false, false);
             }
-            AbstractMergeNode merge = graph.add(new MergeNode());
-            EndNode firstEnd = graph.add(new EndNode());
-            ValueNode actionAndReason = first.getActionAndReason(context.getMetaAccess());
-            ValueNode speculation = first.getSpeculation(context.getMetaAccess());
-            PhiNode reasonActionPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(actionAndReason.getStackKind()), merge));
-            PhiNode speculationPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(speculation.getStackKind()), merge));
-            merge.addForwardEnd(firstEnd);
-            reasonActionPhi.addInput(actionAndReason);
-            speculationPhi.addInput(speculation);
-            first.replaceAtPredecessor(firstEnd);
-            exitLoops(first, firstEnd, cfg);
-            DynamicDeoptimizeNode dynamicDeopt;
             try (DebugCloseable position = first.withNodeSourcePosition()) {
-                dynamicDeopt = new DynamicDeoptimizeNode(reasonActionPhi, speculationPhi);
+                AbstractMergeNode merge = graph.add(new MergeNode());
+                EndNode firstEnd = graph.add(new EndNode());
+                ValueNode actionAndReason = first.getActionAndReason(context.getMetaAccess());
+                ValueNode speculation = first.getSpeculation(context.getMetaAccess());
+                PhiNode reasonActionPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(actionAndReason.getStackKind()), merge));
+                PhiNode speculationPhi = graph.addWithoutUnique(new ValuePhiNode(StampFactory.forKind(speculation.getStackKind()), merge));
+                merge.addForwardEnd(firstEnd);
+                reasonActionPhi.addInput(actionAndReason);
+                speculationPhi.addInput(speculation);
+                first.replaceAtPredecessor(firstEnd);
+                exitLoops(first, firstEnd, cfg);
+                DynamicDeoptimizeNode dynamicDeopt = new DynamicDeoptimizeNode(reasonActionPhi, speculationPhi);
                 merge.setNext(graph.add(dynamicDeopt));
-            }
-            List<AbstractDeoptimizeNode> obsoletes = new LinkedList<>();
-            obsoletes.add(first);
 
-            do {
-                AbstractDeoptimizeNode deopt = iterator.next();
-                EndNode newEnd = graph.add(new EndNode());
-                merge.addForwardEnd(newEnd);
-                reasonActionPhi.addInput(deopt.getActionAndReason(context.getMetaAccess()));
-                speculationPhi.addInput(deopt.getSpeculation(context.getMetaAccess()));
-                deopt.replaceAtPredecessor(newEnd);
-                exitLoops(deopt, newEnd, cfg);
-                obsoletes.add(deopt);
-            } while (iterator.hasNext());
+                List<AbstractDeoptimizeNode> obsoletes = new LinkedList<>();
+                obsoletes.add(first);
 
-            dynamicDeopt.setStateBefore(fs);
-            for (AbstractDeoptimizeNode obsolete : obsoletes) {
-                obsolete.safeDelete();
+                do {
+                    AbstractDeoptimizeNode deopt = iterator.next();
+                    EndNode newEnd = graph.add(new EndNode());
+                    merge.addForwardEnd(newEnd);
+                    reasonActionPhi.addInput(deopt.getActionAndReason(context.getMetaAccess()));
+                    speculationPhi.addInput(deopt.getSpeculation(context.getMetaAccess()));
+                    deopt.replaceAtPredecessor(newEnd);
+                    exitLoops(deopt, newEnd, cfg);
+                    obsoletes.add(deopt);
+                } while (iterator.hasNext());
+
+                dynamicDeopt.setStateBefore(fs);
+                for (AbstractDeoptimizeNode obsolete : obsoletes) {
+                    obsolete.safeDelete();
+                }
+                graph.getOptimizationLog().report(getClass(), "DeoptimizationGrouping", first);
             }
-            graph.getOptimizationLog().report(getClass(), "DeoptimizationGrouping", first);
         }
     }
 
