@@ -90,7 +90,7 @@ public final class ListInterop extends IterableInterop {
         int listSize = (int) size.execute(receiver, EMPTY_ARGS);
         if (!boundsCheck(index, listSize)) {
             // append new element if allowed
-            if (boundsCheckForAdd(index, listSize)) {
+            if (index == listSize) {
                 listAdd.listAdd(receiver, value, error);
                 return;
             } else {
@@ -131,10 +131,6 @@ public final class ListInterop extends IterableInterop {
 
     private static boolean boundsCheck(long index, int size) {
         return 0 <= index && index < size;
-    }
-
-    private static boolean boundsCheckForAdd(long index, int size) {
-        return 0 <= index && index <= size;
     }
 
     @GenerateUncached
