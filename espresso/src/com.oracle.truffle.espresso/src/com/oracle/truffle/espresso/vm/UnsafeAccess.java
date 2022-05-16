@@ -53,7 +53,7 @@ public final class UnsafeAccess {
     }
 
     public static void checkAllowed(Meta meta) {
-        if (!meta.getContext().env().NativeAccessAllowed) {
+        if (!meta.getContext().getEspressoEnv().NativeAccessAllowed) {
             throw meta.throwExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot perform unsafe operations unless the Context allows native access");
         }
     }

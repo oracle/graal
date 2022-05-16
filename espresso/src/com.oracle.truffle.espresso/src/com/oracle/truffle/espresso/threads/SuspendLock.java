@@ -94,7 +94,7 @@ public final class SuspendLock {
     private void suspendHandshake() {
         boolean wasInterrupted = false;
         shouldSuspend = true;
-        access.getContext().getLanguageEnv().submitThreadLocal(new Thread[]{access.getHost(thread)}, new SuspendAction(this));
+        access.getContext().getEnv().submitThreadLocal(new Thread[]{access.getHost(thread)}, new SuspendAction(this));
         while (!isSuspended()) {
             shouldSuspend = true;
             try {

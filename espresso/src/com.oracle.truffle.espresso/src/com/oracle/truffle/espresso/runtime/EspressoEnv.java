@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
@@ -42,7 +43,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public final class ContextEnvironment {
+public final class EspressoEnv {
     private final TruffleLanguage.Env env;
     private final String[] vmArguments;
 
@@ -67,6 +68,8 @@ public final class ContextEnvironment {
 
     // region Options
     // Checkstyle: stop field name check
+
+    public final EspressoLanguageCache.Options languageCacheOptions;
 
     // Performance control
     public final boolean InlineFieldAccessors;
@@ -96,7 +99,7 @@ public final class ContextEnvironment {
     // Checkstyle: resume field name check
     // endregion Options
 
-    public ContextEnvironment(EspressoContext context, TruffleLanguage.Env env) {
+    public EspressoEnv(EspressoContext context, TruffleLanguage.Env env) {
         this.env = env;
 
         this.threadRegistry = new EspressoThreadRegistry(context);
@@ -111,6 +114,8 @@ public final class ContextEnvironment {
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
         this.shouldReportVMEvents = JDWPOptions != null;
         this.eventListener = new VMEventListenerImpl();
+
+        this.languageCacheOptions = new EspressoLanguageCache.Options(env);
 
         this.InlineFieldAccessors = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
@@ -164,7 +169,7 @@ public final class ContextEnvironment {
         }
     }
 
-    public TruffleLanguage.Env languageEnv() {
+    public TruffleLanguage.Env env() {
         return env;
     }
 
@@ -217,7 +222,7 @@ public final class ContextEnvironment {
     }
 
     private String[] buildVmArguments(TruffleLogger logger) {
-        OptionMap<String> argsMap = languageEnv().getOptions().get(EspressoOptions.VMArguments);
+        OptionMap<String> argsMap = env().getOptions().get(EspressoOptions.VMArguments);
         if (argsMap == null) {
             return new String[0];
         }

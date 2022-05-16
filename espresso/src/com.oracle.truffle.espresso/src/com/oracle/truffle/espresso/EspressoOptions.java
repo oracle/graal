@@ -483,6 +483,16 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> ExposeNativeJavaVM = new OptionKey<>(false);
 
+    @Option(help = "Enables ParserKlass caching for the pre-initialized context (if invoked during image build) " +
+                    "or ignores the existing ParserKlass cache (if invoked at runtime).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseParserKlassCache = new OptionKey<>(true);
+
+    @Option(help = "Enables LinkedKlass caching for the pre-initialized context (if invoked during image build) " +
+                    "or ignores the existing LinkedKlass cache (if invoked at runtime).", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseLinkedKlassCache = new OptionKey<>(true);
+
     private static final OptionType<Long> SIZE_OPTION_TYPE = new OptionType<>("Size", new Function<String, Long>() {
         private static final int K = 1024;
 

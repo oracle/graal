@@ -55,6 +55,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
@@ -66,6 +67,7 @@ import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
+import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 // TODO: Update website once Espresso has one
@@ -92,10 +94,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String FILE_EXTENSION = ".class";
 
-    private final Utf8ConstantTable utf8Constants;
-    private final Names names;
-    private final Types types;
-    private final Signatures signatures;
+    @CompilationFinal private Utf8ConstantTable utf8Constants;
+    @CompilationFinal private Names names;
+    @CompilationFinal private Types types;
+    @CompilationFinal private Signatures signatures;
 
     private final StaticProperty arrayProperty = new DefaultStaticProperty("array");
     // This field should be final, but creating a shape requires a fully-initialized instance of
@@ -122,6 +124,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     // region allocation tracking
     @CompilationFinal private final Assumption noAllocationTracking = Assumption.create("Espresso no allocation tracking assumption");
+    // endregion allocation tracking
+
+    @CompilationFinal private EspressoLanguageCache languageCache;
 
     private final ContextThreadLocal<EspressoThreadLocalState> threadLocalState = createContextThreadLocal((context, thread) -> new EspressoThreadLocalState(context));
 
@@ -140,6 +145,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         this.names = new Names(symbols);
         this.types = new Types(symbols);
         this.signatures = new Signatures(symbols, types);
+
+        this.languageCache = new EspressoLanguageCache();
     }
 
     @Override
@@ -158,6 +165,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         initializeOptions(env);
+
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
@@ -176,15 +184,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeContext(final EspressoContext context) throws Exception {
-        if (context.getLanguageEnv().isPreInitialization()) {
-            TruffleContext ctx = context.getLanguageEnv().newContextBuilder().initializeCreatorContext(true).build();
+        if (context.getEnv().isPreInitialization()) {
+            // Spawn Espresso VM in an inner context. Creating a context in this way also
+            // initializes it.
+            TruffleContext ctx = context.getEnv().newContextBuilder().initializeCreatorContext(true).build();
             Object prev = ctx.enter(null);
             try {
+                // Retrieve caches and options and store them in the pre-initialized language
+                // instance.
                 EspressoContext inner = EspressoContext.get(null);
-                // TODO (ivan-ristovic)
-                // inner.performPreInitialization();
-                // languageCache = inner.getLanguageCache();
-                // languageCache.logCacheStatus();
+                extractDataFrom(inner.getLanguage());
+                languageCache.logCacheStatus();
             } finally {
                 ctx.leave(null, prev);
                 ctx.close();
@@ -194,9 +204,20 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         }
     }
 
+    private void extractDataFrom(EspressoLanguage other) {
+        javaVersion = other.javaVersion;
+        utf8Constants = other.getUtf8ConstantTable();
+        names = other.getNames();
+        types = other.getTypes();
+        signatures = other.getSignatures();
+        languageCache = other.getLanguageCache();
+    }
+
     @Override
     protected boolean patchContext(EspressoContext context, Env newEnv) {
-        if (!optionsAllowPreInitializedContext(context, newEnv)) {
+        // This check has to be done manually as long as language uses exclusive context sharing
+        // policy.
+        if (!areOptionsCompatible(context.getEnv().getOptions(), newEnv.getOptions())) {
             return false;
         }
         context.patchContext(newEnv);
@@ -204,19 +225,24 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return true;
     }
 
-    private boolean optionsAllowPreInitializedContext(EspressoContext context, Env newEnv) {
-        // TODO (ivan-ristovic)
-        return true;
+    @Override
+    protected boolean areOptionsCompatible(OptionValues oldOptions, OptionValues newOptions) {
+        return isOptionCompatible(newOptions, oldOptions, EspressoOptions.Verify) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.SpecCompliance) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals);
     }
 
-    @Override
-    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-        // TODO (ivan-ristovic)
-        return true;
+    private static boolean isOptionCompatible(OptionValues oldOptions, OptionValues newOptions, OptionKey<?> option) {
+        return oldOptions.get(option).equals(newOptions.get(option));
     }
 
     @Override
     protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
+        if (!context.isInitialized()) {
+            return;
+        }
+
         if (exitMode == ExitMode.NATURAL) {
             // Make sure current thread is no longer considered alive by guest code.
             if (context.getVM().DetachCurrentThread(context) == JNI_OK) {
@@ -394,6 +420,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public void invalidateAllocationTrackingDisabled() {
         noAllocationTracking.invalidate();
+    }
+
+    public EspressoLanguageCache getLanguageCache() {
+        return languageCache;
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

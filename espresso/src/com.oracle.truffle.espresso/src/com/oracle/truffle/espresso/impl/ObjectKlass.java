@@ -241,7 +241,7 @@ public final class ObjectKlass extends Klass {
 
     private void addSubType(ObjectKlass objectKlass) {
         // We only build subtypes model iff jdwp is enabled
-        if (getContext().env().JDWPOptions != null) {
+        if (getContext().getEspressoEnv().JDWPOptions != null) {
             if (subTypes == null) {
                 synchronized (this) {
                     // double-checked locking

@@ -94,7 +94,7 @@ public final class Target_sun_misc_Signal {
         if (StaticObject.isNull(signal)) {
             throw meta.throwNullPointerException();
         }
-        if (!meta.getContext().env().EnableSignals) {
+        if (!meta.getContext().getEspressoEnv().EnableSignals) {
             logger.fine(() -> "failed to setup handler for " + asHostSignal(signal, meta) + ": signal handling is disabled ");
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Signal API is disabled");
         }
@@ -166,14 +166,14 @@ public final class Target_sun_misc_Signal {
         @Override
         public void handle(Signal sig) {
             // the VM will call this on an un-attached thread
-            Object prev = meta.getContext().getLanguageEnv().getContext().enter(null);
+            Object prev = meta.getContext().getEnv().getContext().enter(null);
             try {
                 int iTableIndex = meta.sun_misc_SignalHandler_handle.getITableIndex();
                 Method handleMethod = ((ObjectKlass) guestHandler.getKlass()).itableLookup(meta.sun_misc_SignalHandler, iTableIndex);
                 assert handleMethod != null;
                 handleMethod.invokeDirect(guestHandler, asGuestSignal(sig, meta));
             } finally {
-                meta.getContext().getLanguageEnv().getContext().leave(null, prev);
+                meta.getContext().getEnv().getContext().leave(null, prev);
             }
         }
     }

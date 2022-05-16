@@ -120,6 +120,7 @@ final class PolyglotContextConfig {
          * Default configuration used for context preinitialization without code sharing.
          */
         static final PreinitConfig DEFAULT = new PreinitConfig();
+        static final PreinitConfig DEFAULT_WITH_NATIVE_ACCESS = new PreinitConfig(true);
 
         final boolean nativeAccessAllowed;
         final boolean createThreadAllowed;
@@ -131,8 +132,12 @@ final class PolyglotContextConfig {
         final boolean useSystemExit;
 
         private PreinitConfig() {
-            this.nativeAccessAllowed = true;
-            this.createThreadAllowed = true;
+            this(false);
+        }
+
+        private PreinitConfig(boolean nativeAccessAllowed) {
+            this.nativeAccessAllowed = nativeAccessAllowed;
+            this.createThreadAllowed = false;
             this.createProcessAllowed = false;
             this.originalOptions = Collections.emptyMap();
             this.polyglotAccess = PolyglotAccess.ALL; // TODO GR-14657 change this to NONE

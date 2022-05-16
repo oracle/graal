@@ -75,7 +75,7 @@ public abstract class StringConversion {
         // code.
         if (JavaVersion.HOST_COMPACT_STRINGS) {
             if (context.getJavaVersion().compactStringsEnabled()) {
-                if (context.getLanguageEnv().getOptions().get(EspressoOptions.StringSharing)) {
+                if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
                     return CompactToCompact.INSTANCE;
                 } else {
                     return CopyingCompactToCompact.INSTANCE;
@@ -87,7 +87,7 @@ public abstract class StringConversion {
             if (context.getJavaVersion().compactStringsEnabled()) {
                 return CompactGuestCharHost.INSTANCE;
             } else {
-                if (context.getLanguageEnv().getOptions().get(EspressoOptions.StringSharing)) {
+                if (context.getEnv().getOptions().get(EspressoOptions.StringSharing)) {
                     return CharToChar.INSTANCE;
                 } else {
                     return CopyingCharToChar.INSTANCE;

@@ -264,7 +264,7 @@ public final class GuestAllocator extends ContextAccessImpl {
     public @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(
                     Object foreignObject,
                     InteropLibrary interopLibrary) {
-        assert getContext().Polyglot;
+        assert getContext().getConfig().Polyglot;
         Meta meta = getContext().getMeta();
         assert meta.polyglot != null;
         assert interopLibrary.isException(foreignObject);

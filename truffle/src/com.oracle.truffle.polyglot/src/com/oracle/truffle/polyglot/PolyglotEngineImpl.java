@@ -1366,12 +1366,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             } else {
                 final String oldOption = engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
                 final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
-                final String optionValue;
-                if (!oldOption.isEmpty() && !newOption.isEmpty()) {
-                    optionValue = oldOption + "," + newOption;
-                } else {
-                    optionValue = oldOption + newOption;
-                }
+                final String withNativeOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME);
+                final String optionValue = String.join(",", oldOption, newOption, withNativeOption);
 
                 final Set<String> languageIds = new HashSet<>();
                 if (!optionValue.isEmpty()) {
@@ -1385,7 +1381,8 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 }
 
-                this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, PreinitConfig.DEFAULT, null, preinitLanguages, true));
+                PreinitConfig preinitConfig = withNativeOption.isEmpty() ? PreinitConfig.DEFAULT : PreinitConfig.DEFAULT_WITH_NATIVE_ACCESS;
+                this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, preinitConfig, null, preinitLanguages, true));
             }
         }
     }

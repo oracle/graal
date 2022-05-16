@@ -53,6 +53,10 @@ final class ImageBuildTimeOptions {
     @Option(name = PREINITIALIZE_CONTEXTS_NAME, category = OptionCategory.EXPERT, help = "Pre-initialize language contexts for the given languages.")//
     static final OptionKey<String> PreinitializeContexts = new OptionKey<>(null, OptionType.defaultType(String.class));
 
+    static final String PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME = "PreinitializeContextsWithNative";
+    @Option(name = PREINITIALIZE_CONTEXTS_WITH_NATIVE_NAME, category = OptionCategory.EXPERT, help = "Pre-initialize language contexts for the given languages, allowing native access.")//
+    static final OptionKey<String> PreinitializeContextsWithNative = new OptionKey<>(null, OptionType.defaultType(String.class));
+
     static final String DISABLE_PRIVILEGES_NAME = "DisablePrivileges";
     @Option(name = DISABLE_PRIVILEGES_NAME, category = OptionCategory.EXPERT, help = "Disable Context privileges so the related code can be excluded from the image.")//
     static final OptionKey<String> DisablePrivileges = new OptionKey<>("");

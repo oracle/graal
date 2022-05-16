@@ -97,7 +97,7 @@ public interface EspressoReference {
     @SuppressWarnings("javadoc")
     static EspressoReference createFinal(EspressoContext context, @JavaType(internalName = "Ljava/lang/ref/FinalReference;") StaticObject guestReference,
                     @JavaType(Object.class) StaticObject referent) {
-        if (!context.env().UseHostFinalReference) {
+        if (!context.getEspressoEnv().UseHostFinalReference) {
             return EspressoReference.createWeak(context, guestReference, referent);
         }
         return FinalizationSupport.createEspressoFinalReference(context, guestReference, referent);

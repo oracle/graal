@@ -31,8 +31,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.espresso.classfile.ClassfileParser;
-import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -90,6 +88,8 @@ public abstract class ClassRegistry {
                         StaticObject classData,
                         boolean isHidden,
                         boolean isStrongHidden) {
+            // isStrongHidden => isHidden
+            assert !isStrongHidden || isHidden;
             this.protectionDomain = protectionDomain;
             this.hostKlass = hostKlass;
             this.patches = patches;
@@ -379,7 +379,7 @@ public abstract class ClassRegistry {
 
     private ParserKlass parseKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
+        ParserKlass parserKlass = env.getLanguage().getLanguageCache().getOrCreateParserKlass(env, getClassLoader(), typeOrNull, bytes, info);
         if (!env.loaderIsBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
             throw EspressoClassLoadingException.securityException("Define class in prohibited package name: " + parserKlass.getName());
         }
@@ -439,7 +439,8 @@ public abstract class ClassRegistry {
         try (DebugCloseable define = KLASS_DEFINE.scope(env.getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
             ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
-            LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
+            LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
+            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(context.getLanguageCacheOptions(), description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
