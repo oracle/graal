@@ -70,6 +70,8 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.memory.VarargsAreaStackAllocationNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ArgumentListExpanderFactory.Unpack32ArgumentExpanderNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.ByteConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.IntegerConversionHelperNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorageFactory.LongConversionHelperNodeGen;
@@ -1149,7 +1151,11 @@ public class LLVMVaListStorage implements TruffleObject {
         private ArgumentListExpander(boolean cached, boolean unpack32) {
             expansionBranchProfile = cached ? BranchProfile.create() : BranchProfile.getUncached();
             noExpansionProfile = cached ? ConditionProfile.createBinaryProfile() : ConditionProfile.getUncached();
-            expander = cached ? LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(unpack32) : ArgumentExpander.getUncached(unpack32);
+            if (cached) {
+                expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.create() : ArgumentExpanderNodeGen.create();
+            } else {
+                expander = unpack32 ? Unpack32ArgumentExpanderNodeGen.getUncached() : ArgumentExpanderNodeGen.getUncached();
+            }
         }
 
         public static ArgumentListExpander create(boolean unpack32) {
@@ -1196,39 +1202,13 @@ public class LLVMVaListStorage implements TruffleObject {
         }
 
         @ImportStatic(LLVMVaListStorage.class)
+        @GenerateUncached
         public abstract static class ArgumentExpander extends LLVMNode {
-            private final boolean unpack32;
-
-            public ArgumentExpander(boolean unpack32) {
-                this.unpack32 = unpack32;
-            }
-
-            private static final ArgumentExpander UNCACHED_UNPACK32 = LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(true);
-            private static final ArgumentExpander UNCACHED_NO_UNPACK32 = LLVMVaListStorageFactory.ArgumentListExpanderFactory.ArgumentExpanderNodeGen.create(false);
-
-            public static ArgumentExpander getUncached(boolean unpack32) {
-                return unpack32 ? UNCACHED_UNPACK32 : UNCACHED_NO_UNPACK32;
-            }
-
             public abstract Object[] execute(Object arg);
-
-            protected boolean doUnpack32() {
-                return unpack32;
-            }
-
-            @Specialization(guards = {"doUnpack32()", "isFloatArrayWithMaxTwoElems(arg.getType()) || isFloatVectorWithMaxTwoElems(arg.getType())"})
-            protected Object[] expandFloatArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
-                return new Object[]{Float.intBitsToFloat(convNode.executeInteger(arg, 0)), Float.intBitsToFloat(convNode.executeInteger(arg, 4))};
-            }
 
             @Specialization(guards = "isDoubleArrayWithMaxTwoElems(arg.getType()) || isDoubleVectorWithMaxTwoElems(arg.getType())")
             protected Object[] expandDoubleArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached LongConversionHelperNode convNode) {
                 return new Object[]{Double.longBitsToDouble(convNode.executeLong(arg, 0)), Double.longBitsToDouble(convNode.executeLong(arg, 8))};
-            }
-
-            @Specialization(guards = {"doUnpack32()", "isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())"})
-            protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
-                return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
             }
 
             @Specialization(guards = "isI64ArrayWithMaxTwoElems(arg.getType()) || isI64VectorWithMaxTwoElems(arg.getType())")
@@ -1242,5 +1222,18 @@ public class LLVMVaListStorage implements TruffleObject {
             }
         }
 
+        @ImportStatic(LLVMVaListStorage.class)
+        @GenerateUncached
+        public abstract static class Unpack32ArgumentExpander extends ArgumentExpander {
+            @Specialization(guards = {"isFloatArrayWithMaxTwoElems(arg.getType()) || isFloatVectorWithMaxTwoElems(arg.getType())"})
+            protected Object[] expandFloatArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
+                return new Object[]{Float.intBitsToFloat(convNode.executeInteger(arg, 0)), Float.intBitsToFloat(convNode.executeInteger(arg, 4))};
+            }
+
+            @Specialization(guards = {"isI32ArrayWithMaxTwoElems(arg.getType()) || isI32VectorWithMaxTwoElems(arg.getType())"})
+            protected Object[] expandI32ArrayOrVectorCompoundArg(LLVMVarArgCompoundValue arg, @Cached IntegerConversionHelperNode convNode) {
+                return new Object[]{convNode.executeInteger(arg, 0), convNode.executeInteger(arg, 4)};
+            }
+        }
     }
 }
