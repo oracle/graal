@@ -196,9 +196,9 @@ public final class ListInterop extends IterableInterop {
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
         static void doDirectLookup(StaticObject receiver, int index, Object value,
-                                   @Cached("receiver.getKlass()") Klass cachedKlass,
-                                   @Cached("doSetLookup(receiver)") Method method,
-                                   @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+                        @Cached("receiver.getKlass()") Klass cachedKlass,
+                        @Cached("doSetLookup(receiver)") Method method,
+                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
             invoke.execute(method, receiver, new Object[]{index, value});
         }
 
@@ -224,6 +224,9 @@ public final class ListInterop extends IterableInterop {
             } catch (EspressoException e) {
                 error.enter();
                 if (InterpreterToVM.instanceOf(e.getGuestException(), receiver.getKlass().getMeta().java_lang_UnsupportedOperationException)) {
+                    // the guest java code might throw UnsupportedOperationException in a variety of
+                    // cases, including cases that are more about "index out of bounds", but since
+                    // we cannot distinguish, we throw the more general UnsupportedMessageException
                     throw UnsupportedMessageException.create();
                 }
                 throw e; // unexpected exception
@@ -238,9 +241,9 @@ public final class ListInterop extends IterableInterop {
         @SuppressWarnings("unused")
         @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
         static void doDirectLookup(StaticObject receiver, Object value,
-                                   @Cached("receiver.getKlass()") Klass cachedKlass,
-                                   @Cached("doAddLookup(receiver)") Method method,
-                                   @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
+                        @Cached("receiver.getKlass()") Klass cachedKlass,
+                        @Cached("doAddLookup(receiver)") Method method,
+                        @Cached InvokeEspressoNode invoke) throws ArityException, UnsupportedTypeException {
             invoke.execute(method, receiver, new Object[]{value});
         }
 
