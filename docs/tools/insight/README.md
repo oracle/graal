@@ -22,8 +22,6 @@ The implementation details of the tool can be found in the [API specification](h
 This page provides information on GraalVM Insight as of the 20.1 version.
 To learn about Insight on versions 20.0 and 19.3, proceed [here](https://github.com/oracle/graal/blob/release/graal-vm/20.0/tools/docs/T-Trace.md).
 
-Note: The GraalVM Insight tool is offered as a technology preview and requires the user to pass the `--experimental-options` option in order to enable the `--insight` instrument.
-
 ## Get Started
 
 1. Create a simple _source-tracing.js_ script with the following content:
@@ -34,7 +32,7 @@ insight.on('source', function(ev) {
 ```
 2. Having set `JAVA_HOME` to the GraalVM home directory, start the `node` launcher with the `--insight` tool and observe what scripts are being loaded and evaluated:
 ```shell
-$JAVA_HOME/bin/node --experimental-options --insight=source-tracing.js --js.print -e "print('The result: ' + 6 * 7)" | tail -n 10
+$JAVA_HOME/bin/node --insight=source-tracing.js --js.print -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 215 characters from internal/modules/esm/transform_source.js
 Loading 12107 characters from internal/modules/esm/translators.js
 Loading 1756 characters from internal/modules/esm/create_dynamic_module.js
@@ -92,7 +90,7 @@ A table with names and counts of function invocations is printed out when the `n
 
 Invoke it as:
 ```shell
-$JAVA_HOME/bin/node --experimental-options --insight=function-hotness-tracing.js --js.print -e "print('The result: ' + 6 * 7)"
+$JAVA_HOME/bin/node --insight=function-hotness-tracing.js --js.print -e "print('The result: ' + 6 * 7)"
 The result: 42
 ==== Hotness Top 10 ====
 543 calls to isPosixPathSeparator
@@ -134,7 +132,7 @@ puts 'Hello from GraalVM Ruby!'
 ```
 3. Apply the JavaScript instrument to the Ruby program:
 ```shell
-$JAVA_HOME/bin/ruby --jvm --polyglot --experimental-options --insight=source-trace.js helloworld.rb
+$JAVA_HOME/bin/ruby --jvm --polyglot --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -155,7 +153,7 @@ puts 'Ruby: Hooks are ready!'
 
 2. Launch a Node.js application and instrument it with the Ruby script:
 ```shell
-$JAVA_HOME/bin/node --jvm  --polyglot --experimental-options --insight=source-tracing.rb --js.print -e "print('With Ruby: ' + 6 * 7)" | grep Ruby
+$JAVA_HOME/bin/node --jvm  --polyglot --insight=source-tracing.rb --js.print -e "print('With Ruby: ' + 6 * 7)" | grep Ruby
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -199,7 +197,7 @@ print("Two is the result " + fib(3));
 
 When the instrument is stored in a `fib-trace.js` file and the actual code is in `fib.js`, invoking the following command yields detailed information about the program execution and parameters passed between function invocations:
 ```shell
-$JAVA_HOME/bin/node --experimental-options --insight=fib-trace.js --js.print fib.js
+$JAVA_HOME/bin/node --insight=fib-trace.js --js.print fib.js
 fib for 3
 fib for 2
 fib for 1
