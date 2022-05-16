@@ -5,13 +5,14 @@ import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.operations.SLOperations;
 
 public class SLOperationsRootNode extends SLRootNode {
 
     @Child private OperationNode operationsNode;
 
-    public SLOperationsRootNode(SLLanguage language, OperationNode operationsNode, TruffleString name) {
-        super(language, operationsNode.createFrameDescriptor(), null, null, name);
+    public SLOperationsRootNode(SLLanguage language, OperationNode operationsNode) {
+        super(language, operationsNode.createFrameDescriptor());
         this.operationsNode = insert(operationsNode);
     }
 
@@ -23,6 +24,16 @@ public class SLOperationsRootNode extends SLRootNode {
     @Override
     public SourceSection getSourceSection() {
         return operationsNode.getSourceSection();
+    }
+
+    @Override
+    public SLExpressionNode getBodyNode() {
+        return null;
+    }
+
+    @Override
+    public TruffleString getTSName() {
+        return operationsNode.getMetadata(SLOperations.METHOD_NAME);
     }
 
 }

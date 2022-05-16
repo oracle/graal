@@ -60,7 +60,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
 
         for (OperationNode node : nodes.getNodes()) {
             TruffleString name = node.getMetadata(SLOperations.METHOD_NAME);
-            SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node, name);
+            SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node);
             RootCallTarget callTarget = rootNode.getCallTarget();
             functions.put(name, callTarget);
         }

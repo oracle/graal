@@ -44,7 +44,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite(value = {"tests"}, options = {"sl.useOperations", "true"})
+@SLTestSuite(value = {"tests"}, options = {"sl.UseOperations", "true"})
 public class SLOperationsSimpleTestSuite {
 
     public static void main(String[] args) throws Exception {

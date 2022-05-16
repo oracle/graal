@@ -50,6 +50,7 @@ import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -78,6 +79,7 @@ import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltin;
+import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -220,8 +222,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     private final Shape rootShape;
 
-    @Option(name = "useOperations", help = "Use the SL interpreter implemented using the Truffle Operations DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> USE_OPERATIONS = new OptionKey<>(false);
+    @Option(help = "Use the SL interpreter implemented using the Truffle Operations DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseOperations = new OptionKey<>(false);
 
     private boolean useOperations;
 
@@ -232,7 +234,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
-        useOperations = USE_OPERATIONS.getValue(env.getOptions());
+        useOperations = UseOperations.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
@@ -249,6 +251,11 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     public boolean isUseOperations() {
         return useOperations;
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        return UseOperations.getValue(firstOptions).equals(UseOperations.getValue(newOptions));
     }
 
     public RootCallTarget getOrCreateUndefinedFunction(TruffleString name) {
@@ -293,7 +300,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         builtinBodyNode.setUnavailableSourceSection();
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
-        SLRootNode rootNode = new SLRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
+        SLRootNode rootNode = new SLAstRootNode(this, new FrameDescriptor(), builtinBodyNode, BUILTIN_SOURCE.createUnavailableSection(), name);
 
         /*
          * Register the builtin function in the builtin registry. Call targets for builtins may be

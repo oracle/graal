@@ -16,6 +16,8 @@ import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
+import com.oracle.truffle.api.operation.OperationNode;
+import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.test.example.BoxingOperations.ObjectProducer;
 
 public class BoxingOperationsTest {
@@ -24,10 +26,9 @@ public class BoxingOperationsTest {
     // than it needs to
 
     private static RootCallTarget parse(Consumer<BoxingOperationsBuilder> parser) {
-        return BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser) //
-                        .getNodes().get(0) //
-                        .createRootNode(null, "test") //
-                        .getCallTarget();
+        OperationNodes nodes = BoxingOperationsBuilder.create(OperationConfig.DEFAULT, parser);
+        OperationNode node = nodes.getNodes().get(0);
+        return new TestRootNode(node).getCallTarget();
     }
 
     @Test

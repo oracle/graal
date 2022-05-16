@@ -28,14 +28,6 @@ public abstract class OperationNode extends Node {
         return bcNode.createFrameDescriptor();
     }
 
-    public OperationsRootNode createRootNode(TruffleLanguage<?> language, String name) {
-        return new OperationsRootNode(language, this, name, false);
-    }
-
-    public OperationsRootNode createInternalRootNode(TruffleLanguage<?> language, String name) {
-        return new OperationsRootNode(language, this, name, true);
-    }
-
     public Object execute(VirtualFrame frame) {
         return bcNode.execute(frame);
     }

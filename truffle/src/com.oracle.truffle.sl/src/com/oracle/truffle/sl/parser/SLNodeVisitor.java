@@ -18,6 +18,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLAstRootNode;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
@@ -134,7 +135,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         final SLFunctionBodyNode functionBodyNode = new SLFunctionBodyNode(methodBlock);
         functionBodyNode.setSourceSection(functionSrc.getCharIndex(), functionSrc.getCharLength());
 
-        final SLRootNode rootNode = new SLRootNode(language, frameDescriptorBuilder.build(), functionBodyNode, functionSrc, functionName);
+        final SLRootNode rootNode = new SLAstRootNode(language, frameDescriptorBuilder.build(), functionBodyNode, functionSrc, functionName);
         functions.put(functionName, rootNode.getCallTarget());
 
         frameDescriptorBuilder = null;

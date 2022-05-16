@@ -20,7 +20,7 @@ public class TestOperationsParserTest {
     private static RootCallTarget parse(Consumer<TestOperationsBuilder> builder) {
         OperationNode operationsNode = parseNode(builder);
         System.out.println(operationsNode);
-        return operationsNode.createRootNode(null, "TestFunction").getCallTarget();
+        return new TestRootNode(operationsNode).getCallTarget();
     }
 
     private static OperationNode parseNode(Consumer<TestOperationsBuilder> builder) {
