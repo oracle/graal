@@ -44,8 +44,8 @@ import jdk.vm.ci.code.Architecture;
 public class AArch64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public AArch64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures) {
-        super(buildtimeCPUFeatures);
+    public AArch64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
+        super(buildtimeCPUFeatures, offsets, errorMessageBytes, builttimeFeatureMaskBytes);
     }
 
     /**

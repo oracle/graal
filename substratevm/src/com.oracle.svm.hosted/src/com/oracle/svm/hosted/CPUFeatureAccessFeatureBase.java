@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.GraalError;
@@ -45,15 +46,13 @@ import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
 
-public abstract class CPUFeatureAccessFeatureHelper {
+public abstract class CPUFeatureAccessFeatureBase {
     /**
      * Initializes global data required at run time by {@link CPUFeatureAccess}. This method will
      * compute a translation table from the {@code CPUFeature} enum entries to the
      * {@code CPUFeatures} C struct, a (bitwise negated) {@code CPUFeatures} struct of the
      * {@linkplain CPUFeatureAccess#buildtimeCPUFeatures() required CPU features} that need to be
      * checked at runtime, and a predefined error message in case the features are not available.
-     * All this information will be passed to
-     * {@link CPUFeatureAccessImpl#initializeCPUFeatureAccessGlobalData}.
      *
      * @param allCPUFeatures Array of all known enum entries representing the available CPU
      *            features.
@@ -67,7 +66,8 @@ public abstract class CPUFeatureAccessFeatureHelper {
      * @param access A {@link FeatureImpl.BeforeAnalysisAccessImpl} instance.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    static <T extends Enum<T>> void initializeCPUFeatureAccessData(Enum<T>[] allCPUFeatures, Class<?> cpuFeatureStructClass, FeatureImpl.BeforeAnalysisAccessImpl access) {
+    protected <T extends Enum<T>> void initializeCPUFeatureAccessData(Enum<T>[] allCPUFeatures, EnumSet<?> buildtimeCPUFeatures, Class<?> cpuFeatureStructClass,
+                    FeatureImpl.BeforeAnalysisAccessImpl access) {
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         NativeLibraries nativeLibraries = access.getNativeLibraries();
         AnalysisType invokeInterface = metaAccess.lookupJavaType(cpuFeatureStructClass);
@@ -86,7 +86,6 @@ public abstract class CPUFeatureAccessFeatureHelper {
                 fieldToOffset.put(fieldName.substring(1), offset);
             }
         }
-        var buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
 
         // Initialize CPUFeatures struct.
         // Over-allocate to a multiple of 64 bit.
@@ -120,8 +119,9 @@ public abstract class CPUFeatureAccessFeatureHelper {
             throw VMError.shouldNotReachHere("Native image does not support the following JVMCI CPU features: " + unknownFeatures);
         }
         String errorMessage = "Current target does not support the following CPU features that are required by the image: " + buildtimeCPUFeatures.toString() + "\n\0";
-        CPUFeatureAccessImpl featureAccess = (CPUFeatureAccessImpl) ImageSingletons.lookup(CPUFeatureAccess.class);
-        featureAccess.initializeCPUFeatureAccessGlobalData(cpuFeatureEnumToStructOffset, errorMessage.getBytes(StandardCharsets.UTF_8), requiredFeaturesStruct);
+        var cpuFeatureAccess = createCPUFeatureAccessSingleton(buildtimeCPUFeatures, cpuFeatureEnumToStructOffset, errorMessage.getBytes(StandardCharsets.UTF_8), requiredFeaturesStruct);
+        ImageSingletons.add(CPUFeatureAccess.class, cpuFeatureAccess);
     }
 
+    protected abstract CPUFeatureAccessImpl createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes);
 }

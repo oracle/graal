@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.aarch64.AArch64CPUFeatureAccess;
 import com.oracle.svm.core.aarch64.AArch64LibCHelper;
@@ -41,21 +40,18 @@ import jdk.vm.ci.aarch64.AArch64;
 
 @AutomaticFeature
 @Platforms(Platform.AARCH64.class)
-class AArch64CPUFeatureAccessFeature implements Feature {
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
-        var arch = (AArch64) targetDescription.arch;
-        var buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
-        ImageSingletons.add(CPUFeatureAccess.class, createAArch64CPUFeatureAccessSingleton(buildtimeCPUFeatures));
-    }
+class AArch64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        CPUFeatureAccessFeatureHelper.initializeCPUFeatureAccessData(AArch64.CPUFeature.values(), AArch64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
+        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+        var arch = (AArch64) targetDescription.arch;
+        var buildtimeCPUFeatures = arch.getFeatures();
+        initializeCPUFeatureAccessData(AArch64.CPUFeature.values(), buildtimeCPUFeatures, AArch64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
-    protected AArch64CPUFeatureAccess createAArch64CPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures) {
-        return new AArch64CPUFeatureAccess(buildtimeCPUFeatures);
+    @Override
+    protected AArch64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
+        return new AArch64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, builttimeFeatureMaskBytes);
     }
 }

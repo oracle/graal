@@ -42,16 +42,6 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
 
     private final EnumSet<?> buildtimeCPUFeatures;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    protected CPUFeatureAccessImpl(EnumSet<?> buildtimeCPUFeatures) {
-        this.buildtimeCPUFeatures = buildtimeCPUFeatures;
-    }
-
-    @Override
-    public EnumSet<?> buildtimeCPUFeatures() {
-        return buildtimeCPUFeatures;
-    }
-
     /**
      * Stores the CPU features used for building the image as a {@code CPUFeatures} struct (see
      * {@code libchelper} project). The size of this global must be at least the size of the
@@ -77,18 +67,42 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
     /**
      * @see #IMAGE_CPU_FEATURE_ERROR_MSG
      */
-    @Platforms(Platform.HOSTED_ONLY.class) private byte[] cpuFeatureErrorMessage;
+    @Platforms(Platform.HOSTED_ONLY.class) private final byte[] cpuFeatureErrorMessage;
 
     /**
      * @see #BUILDTIME_CPU_FEATURE_MASK
      */
-    @Platforms(Platform.HOSTED_ONLY.class) private byte[] builttimeFeatureMask;
+    @Platforms(Platform.HOSTED_ONLY.class) private final byte[] builttimeFeatureMask;
 
     /**
      * Mapping from {@code <Architecture>.CPUFeature#ordinal()} to offsets of the corresponding
      * fields in {@code <Architecture>LibCHelper.CPUFeatures}.
      */
-    private int[] cpuFeatureEnumToStructOffsets;
+    private final int[] cpuFeatureEnumToStructOffsets;
+
+    /**
+     * Initializes the data structures to interface with the C part of {@link CPUFeatureAccess}
+     * ({@code cpuid.c}).
+     *
+     * @param buildtimeCPUFeatures the CPU features enabled at build time
+     * @param offsets see {@link #cpuFeatureEnumToStructOffsets}
+     * @param errorMessageBytes see {@link #IMAGE_CPU_FEATURE_ERROR_MSG}
+     * @param builttimeFeatureMaskBytes see {@link #BUILDTIME_CPU_FEATURE_MASK}
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected CPUFeatureAccessImpl(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
+        GraalError.guarantee(errorMessageBytes[errorMessageBytes.length - 1] == 0, "error message not zero-terminated");
+        GraalError.guarantee(builttimeFeatureMaskBytes.length % 64 == 0, "build-time feature mask byte array not a multiple of 64 bits");
+        this.cpuFeatureEnumToStructOffsets = offsets;
+        this.cpuFeatureErrorMessage = errorMessageBytes;
+        this.builttimeFeatureMask = builttimeFeatureMaskBytes;
+        this.buildtimeCPUFeatures = EnumSet.copyOf(buildtimeCPUFeatures);
+    }
+
+    @Override
+    public EnumSet<?> buildtimeCPUFeatures() {
+        return buildtimeCPUFeatures;
+    }
 
     /**
      * Determines whether a given JVMCI {@code <Architecture>.CPUFeature} is present on the current
@@ -103,22 +117,5 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
             return false;
         }
         return cpuFeatures.readByte(offset) != 0;
-    }
-
-    /**
-     * Initializes the data structures to interface with the C part of {@link CPUFeatureAccess}
-     * ({@code cpuid.c}).
-     * 
-     * @param offsets see {@link #cpuFeatureEnumToStructOffsets}
-     * @param errorMessageBytes see {@link #IMAGE_CPU_FEATURE_ERROR_MSG}
-     * @param builttimeFeatureMaskBytes see {@link #BUILDTIME_CPU_FEATURE_MASK}
-     */
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void initializeCPUFeatureAccessGlobalData(int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
-        GraalError.guarantee(errorMessageBytes[errorMessageBytes.length - 1] == 0, "error message not zero-terminated");
-        GraalError.guarantee(builttimeFeatureMaskBytes.length % 64 == 0, "build-time feature mask byte array not a multiple of 64 bits");
-        this.cpuFeatureEnumToStructOffsets = offsets;
-        this.cpuFeatureErrorMessage = errorMessageBytes;
-        this.builttimeFeatureMask = builttimeFeatureMaskBytes;
     }
 }

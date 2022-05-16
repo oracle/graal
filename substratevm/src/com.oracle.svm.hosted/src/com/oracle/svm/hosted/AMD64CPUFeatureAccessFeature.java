@@ -31,33 +31,27 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64LibCHelper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 
 @AutomaticFeature
 @Platforms(Platform.AMD64.class)
-public class AMD64CPUFeatureAccessFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
-        var arch = (AArch64) targetDescription.arch;
-        var buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
-        ImageSingletons.add(CPUFeatureAccess.class, createAMD64CPUFeatureAccessSingleton(buildtimeCPUFeatures));
-    }
+public class AMD64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        CPUFeatureAccessFeatureHelper.initializeCPUFeatureAccessData(AMD64.CPUFeature.values(), AMD64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
+        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+        var arch = (AMD64) targetDescription.arch;
+        var buildtimeCPUFeatures = arch.getFeatures();
+        initializeCPUFeatureAccessData(AMD64.CPUFeature.values(), buildtimeCPUFeatures, AMD64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
-    protected AMD64CPUFeatureAccess createAMD64CPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures) {
-        return new AMD64CPUFeatureAccess(buildtimeCPUFeatures);
+    @Override
+    protected AMD64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
+        return new AMD64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, builttimeFeatureMaskBytes);
     }
 }
