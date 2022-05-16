@@ -24,16 +24,20 @@
  */
 package com.oracle.svm.hosted;
 
+import java.util.EnumSet;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.amd64.AMD64LibCHelper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 
 @AutomaticFeature
@@ -42,7 +46,10 @@ public class AMD64CPUFeatureAccessFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CPUFeatureAccess.class, createAMD64CPUFeatureAccessSingleton());
+        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
+        var arch = (AArch64) targetDescription.arch;
+        var buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
+        ImageSingletons.add(CPUFeatureAccess.class, createAMD64CPUFeatureAccessSingleton(buildtimeCPUFeatures));
     }
 
     @Override
@@ -50,7 +57,7 @@ public class AMD64CPUFeatureAccessFeature implements Feature {
         CPUFeatureAccessFeatureHelper.initializeCPUFeatureAccessData(AMD64.CPUFeature.values(), AMD64LibCHelper.CPUFeatures.class, (FeatureImpl.BeforeAnalysisAccessImpl) arg);
     }
 
-    protected AMD64CPUFeatureAccess createAMD64CPUFeatureAccessSingleton() {
-        return new AMD64CPUFeatureAccess();
+    protected AMD64CPUFeatureAccess createAMD64CPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures) {
+        return new AMD64CPUFeatureAccess(buildtimeCPUFeatures);
     }
 }

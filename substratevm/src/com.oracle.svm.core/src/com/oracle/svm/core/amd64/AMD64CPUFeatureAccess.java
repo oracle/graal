@@ -27,7 +27,6 @@ package com.oracle.svm.core.amd64;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
@@ -37,7 +36,6 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.CPUFeatureAccessImpl;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
@@ -49,17 +47,9 @@ import jdk.vm.ci.code.Architecture;
 
 public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
-    private final EnumSet<?> buildtimeCPUFeatures;
-
-    public AMD64CPUFeatureAccess() {
-        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
-        var arch = (AMD64) targetDescription.arch;
-        buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
-    }
-
-    @Override
-    public EnumSet<?> buildtimeCPUFeatures() {
-        return buildtimeCPUFeatures;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public AMD64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures) {
+        super(buildtimeCPUFeatures);
     }
 
     /**

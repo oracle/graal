@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -38,6 +39,19 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.util.VMError;
 
 public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
+
+    private final EnumSet<?> buildtimeCPUFeatures;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected CPUFeatureAccessImpl(EnumSet<?> buildtimeCPUFeatures) {
+        this.buildtimeCPUFeatures = buildtimeCPUFeatures;
+    }
+
+    @Override
+    public EnumSet<?> buildtimeCPUFeatures() {
+        return buildtimeCPUFeatures;
+    }
+
     /**
      * Stores the CPU features used for building the image as a {@code CPUFeatures} struct (see
      * {@code libchelper} project). The size of this global must be at least the size of the
