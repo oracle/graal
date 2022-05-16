@@ -47,25 +47,53 @@ public interface LoopPolicies {
 
     boolean shouldTryUnswitch(LoopEx loop);
 
-    enum UnswitchingDecision {
-        /** This loop should be unswitched. */
-        YES,
+    /**
+     * Models the decision of {@code LoopPolicies::shouldUnswitch}. A decision can be considered
+     * trivial. Trivial unswitches are not counted towards the loop's total unswitch count.
+     */
+    final class UnswitchingDecision {
+        public static final UnswitchingDecision NO = new UnswitchingDecision(null, false);
+
+        public static UnswitchingDecision trivial(List<ControlSplitNode> controlSplits) {
+            return new UnswitchingDecision(controlSplits, true);
+        }
+
         /**
-         * This loop should be unswitched, and the unswitch is considered trivial. Trivial
-         * unswitches are not counted towards the loop's total unswitch count.
+         * Build a positive unswitching decision. The given control split nodes cannot be none.
          */
-        TRIVIAL,
-        /** This loop should not be unswitched. */
-        NO;
+        public static UnswitchingDecision yes(List<ControlSplitNode> controlSplits) {
+            assert controlSplits != null;
+            return new UnswitchingDecision(controlSplits, false);
+        }
+
+        private final List<ControlSplitNode> controlSplits;
+        private final boolean isTrivial;
+
+        private UnswitchingDecision(List<ControlSplitNode> controlSplits, boolean isTrivial) {
+            assert !isTrivial || controlSplits != null : "An unswitching desision cannot be trivial but have not control split node";
+
+            this.controlSplits = controlSplits;
+            this.isTrivial = isTrivial;
+        }
 
         public boolean shouldUnswitch() {
-            return this == YES || this == TRIVIAL;
+            return this.controlSplits != null;
         }
 
         public boolean isTrivial() {
-            return this == TRIVIAL;
+            return this.isTrivial;
+        }
+
+        /**
+         * The control split nodes to unswitch.
+         *
+         * @return the list of control split nodes, {@code null} if {@code shouldUnswitch()} returns
+         *         {@code false}.
+         */
+        public List<ControlSplitNode> getControlSplits() {
+            return this.controlSplits;
         }
     }
 
-    UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits);
+    UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits);
 }

@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.test;
 
 import java.util.List;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.loop.phases.LoopUnswitchingPhase;
@@ -37,6 +38,7 @@ import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {
@@ -98,7 +100,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     @SuppressWarnings("fallthrough")
     public static int test2Snippet(int a) {
         int sum = 0;
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); i++) {
             switch (a) {
                 case 0:
                     sum += System.currentTimeMillis();
@@ -129,7 +131,7 @@ public class LoopUnswitchTest extends GraalCompilerTest {
 
     public static int test3Snippet(int a, int b) {
         int sum = 0;
-        for (int i = 0; i < 1000; ++i) {
+        for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); ++i) {
             if (a > 0) {
                 switch (b) {
                     case 0:
@@ -249,8 +251,14 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // Only the switch is unswitched
         test("test3Snippet", "reference3SwitchSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-                return (controlSplits.get(0) instanceof SwitchNode) ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+                for (List<ControlSplitNode> nodes : controlSplits) {
+                    Assert.assertEquals(1, nodes.size());
+                    if (nodes.get(0) instanceof SwitchNode) {
+                        return UnswitchingDecision.yes(nodes);
+                    }
+                }
+                return UnswitchingDecision.NO;
             }
         });
     }
@@ -260,8 +268,14 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // Only the if is unswitched
         test("test3Snippet", "reference3IfSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-                return (controlSplits.get(0) instanceof IfNode) ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+                for (List<ControlSplitNode> nodes : controlSplits) {
+                    Assert.assertEquals(1, nodes.size());
+                    if (nodes.get(0) instanceof IfNode) {
+                        return UnswitchingDecision.yes(nodes);
+                    }
+                }
+                return UnswitchingDecision.NO;
             }
         });
     }
@@ -270,19 +284,19 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public void test3IfSwitch() {
         // First the if is unswitched then the switch
         test("test3Snippet", "reference3IfSwitchSnippet", new DefaultLoopPolicies() {
-            boolean hasUnswitchedIf = false;
-
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-                if (controlSplits.get(0) instanceof IfNode) {
-                    if (hasUnswitchedIf) {
-                        return UnswitchingDecision.NO;
-                    } else {
-                        hasUnswitchedIf = true;
-                        return UnswitchingDecision.YES;
-                    }
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+                if (controlSplits.size() == 2) {
+                    Assert.assertEquals(1, controlSplits.get(0).size());
+                    Assert.assertEquals(1, controlSplits.get(1).size());
+
+                    return UnswitchingDecision.yes(controlSplits.get(0).get(0) instanceof IfNode ? controlSplits.get(0) : controlSplits.get(1));
+                } else if (controlSplits.size() == 1) {
+                    Assert.assertEquals(1, controlSplits.get(0).size());
+                    Assert.assertTrue(controlSplits.get(0).get(0) instanceof SwitchNode);
+                    return UnswitchingDecision.yes(controlSplits.get(0));
                 } else {
-                    return hasUnswitchedIf ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+                    return UnswitchingDecision.NO;
                 }
             }
         });
@@ -292,19 +306,19 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public void test3SwitchIf() {
         // First the switch is unswitched then the if
         test("test3Snippet", "reference3SwitchIfSnippet", new DefaultLoopPolicies() {
-            boolean hasUnswitchedSwitch = false;
-
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<ControlSplitNode> controlSplits) {
-                if (controlSplits.get(0) instanceof SwitchNode) {
-                    if (hasUnswitchedSwitch) {
-                        return UnswitchingDecision.NO;
-                    } else {
-                        hasUnswitchedSwitch = true;
-                        return UnswitchingDecision.YES;
-                    }
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+                if (controlSplits.size() == 2) {
+                    Assert.assertEquals(1, controlSplits.get(0).size());
+                    Assert.assertEquals(1, controlSplits.get(1).size());
+
+                    return UnswitchingDecision.yes(controlSplits.get(0).get(0) instanceof SwitchNode ? controlSplits.get(0) : controlSplits.get(1));
+                } else if (controlSplits.size() == 1) {
+                    Assert.assertEquals(1, controlSplits.get(0).size());
+                    Assert.assertTrue(controlSplits.get(0).get(0) instanceof IfNode);
+                    return UnswitchingDecision.yes(controlSplits.get(0));
                 } else {
-                    return hasUnswitchedSwitch ? UnswitchingDecision.YES : UnswitchingDecision.NO;
+                    return UnswitchingDecision.NO;
                 }
             }
         });
@@ -314,6 +328,28 @@ public class LoopUnswitchTest extends GraalCompilerTest {
     public void test3() {
         // Use the default policy and so the if should be unswitched before the switch
         test("test3Snippet", "reference3IfSwitchSnippet");
+    }
+
+    public static void test4Snippet(int a, int b) {
+        for (int i = 0; GraalDirectives.injectIterationCount(1000, i < 1000); ++i) {
+            if (GraalDirectives.injectBranchProbability(0.000001, a < i)) {
+                // This is an invariant but on average it is exectutes 1000 * 0.000001 = 0.001 < 1
+                // time per execution of the whole loop so it should not be unswitched.
+                if (b > 0) {
+                    GraalDirectives.sideEffect(1);
+                } else {
+                    GraalDirectives.sideEffect(2);
+                }
+            } else {
+                GraalDirectives.sideEffect(3);
+            }
+        }
+    }
+
+    @Test
+    public void test4() {
+        // Using the default loop policy, no unswitch should be performed.
+        test("test4Snippet", "test4Snippet");
     }
 
     private void test(String snippet, String referenceSnippet) {

@@ -56,23 +56,22 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
             do {
                 unswitched = false;
                 final LoopsData dataUnswitch = context.getLoopsDataProvider().getLoopsData(graph);
-                outerLoop: for (LoopEx loop : dataUnswitch.outerFirst()) {
+                for (LoopEx loop : dataUnswitch.outerFirst()) {
                     if (canUnswitch(loop)) {
                         if (getPolicies().shouldTryUnswitch(loop)) {
-                            Iterable<List<ControlSplitNode>> controlSplitsIter = LoopTransformations.findUnswitchable(loop);
-                            for (List<ControlSplitNode> controlSplits : controlSplitsIter) {
-                                UNSWITCH_CANDIDATES.increment(debug);
-                                UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
-                                if (decision.shouldUnswitch()) {
-                                    if (debug.isLogEnabled()) {
-                                        logUnswitch(loop, controlSplits);
-                                    }
-                                    LoopTransformations.unswitch(loop, controlSplits, decision.isTrivial());
-                                    debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", controlSplits);
-                                    UNSWITCHED.increment(debug);
-                                    unswitched = true;
-                                    break outerLoop;
+                            List<List<ControlSplitNode>> controlSplits = LoopTransformations.findUnswitchable(loop);
+                            UNSWITCH_CANDIDATES.increment(debug);
+                            UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
+                            if (decision.shouldUnswitch()) {
+                                List<ControlSplitNode> splits = decision.getControlSplits();
+                                if (debug.isLogEnabled()) {
+                                    logUnswitch(loop, splits);
                                 }
+                                LoopTransformations.unswitch(loop, splits, decision.isTrivial());
+                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", splits);
+                                UNSWITCHED.increment(debug);
+                                unswitched = true;
+                                break;
                             }
                         } else {
                             UNSWITCH_EARLY_REJECTS.increment(debug);
