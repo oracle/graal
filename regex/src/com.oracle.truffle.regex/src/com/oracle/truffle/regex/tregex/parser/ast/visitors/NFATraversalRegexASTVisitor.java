@@ -164,26 +164,15 @@ public abstract class NFATraversalRegexASTVisitor {
      * <li>the {@link QuantifierGuard}s incurred by the traversal</li>
      * <li>the resulting {@link GroupBoundaries} (updates, clears, last group)</li>
      * </ul>
+     * Deduplication is performed when {@link #cur the current node} is updated. However, in order
+     * to reduce this costly operation, we only deduplicate when update {@link #cur the current
+     * node} to a {@link Sequence}. This is sufficient for our purposes since runaway traversals
+     * will need to regularly enter new {@link Sequence} nodes. NB: It also simplifies the
+     * equivalence test for {@link DeduplicationKey}, because if we considered {@link Group}s, we
+     * would need to distinguish the current alternative index stored in the last element of
+     * {@link #curPath}.
      */
     private final EconomicSet<DeduplicationKey> pathDeduplicationSet = EconomicSet.create();
-    private int deduplicationCalls = 0;
-    /**
-     * Deduplication is performed when {@link #cur the current node} is updated. In order to reduce
-     * this costly operation, we limit deduplication in two ways:
-     * <ul>
-     * <li>We only deduplicate when update {@link #cur the current node} to a {@link Sequence}. This
-     * is sufficient for our purposes since runaway traversals will need to regularly enter new
-     * {@link Sequence} nodes. NB: It also simplifies the equivalence test for
-     * {@link DeduplicationKey}, because if we considered {@link Group}s, we would need to
-     * distinguish the current alternative index stored in the last element of
-     * {@link #curPath}.</li>
-     * <li>We only try to deduplicate on every Nth update of {@link #cur the current node} to some
-     * {@link Sequence}. By setting a sufficiently small N, this allows us to still detect runaway
-     * traversals, albeit with a small delay, while also reducing the cost of the deduplication
-     * check significantly.</li>
-     * </ul>
-     */
-    private static final int DEDUPLICATION_PERIOD = 10;
 
     private final StateSet<RegexAST, RegexASTNode> lookAroundsOnPath;
     private final StateSet<RegexAST, RegexASTNode> dollarsOnPath;
@@ -625,11 +614,6 @@ public abstract class NFATraversalRegexASTVisitor {
      * @return {@code true} if a successor was found in this step
      */
     private boolean deduplicatePath() {
-        // Deduplication checks are costly. Only perform them occasionally. This is sufficient
-        // to prevent combinatorial explosions and also cheap to do.
-        if (++deduplicationCalls % DEDUPLICATION_PERIOD != 0) {
-            return false;
-        }
         DeduplicationKey key = new DeduplicationKey(cur, lookAroundsOnPath, dollarsOnPath, quantifierGuards, captureGroupUpdates, captureGroupClears, lastGroup);
         boolean isDuplicate = !pathDeduplicationSet.add(key);
         if (isDuplicate) {
