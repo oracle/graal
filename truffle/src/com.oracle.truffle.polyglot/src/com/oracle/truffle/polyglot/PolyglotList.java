@@ -342,20 +342,12 @@ class PolyglotList<T> extends AbstractList<T> implements PolyglotWrapper {
                     throw PolyglotInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "add");
                 } catch (UnsupportedTypeException e) {
                     error.enter();
-                    throw PolyglotInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, convertToIntOrMax(size), value);
+                    throw PolyglotInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, size, value);
                 } catch (InvalidArrayIndexException e) {
                     error.enter();
-                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, convertToIntOrMax(size));
+                    throw PolyglotInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, size);
                 }
                 return true;
-            }
-
-            private static int convertToIntOrMax(long value) {
-                try {
-                    return Math.toIntExact(value);
-                } catch (ArithmeticException ex) {
-                    return Integer.MAX_VALUE;
-                }
             }
         }
 
