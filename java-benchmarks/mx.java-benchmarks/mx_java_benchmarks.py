@@ -460,6 +460,11 @@ class BaseMicronautBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
         # This method overrides NativeImageMixin.build_assertions
         return []  # We are skipping build assertions due to some failed asserts while building Micronaut apps.
 
+    def extra_image_build_argument(self, benchmark, args):
+        return [
+                   '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
+               ] + super(BaseMicronautBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
+
     def default_stages(self):
         return ['instrument-image', 'instrument-run', 'image', 'run']
 
