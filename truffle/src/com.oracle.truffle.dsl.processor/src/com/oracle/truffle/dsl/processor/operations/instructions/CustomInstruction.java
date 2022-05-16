@@ -26,7 +26,7 @@ public class CustomInstruction extends Instruction {
     }
 
     private final SingleOperationData data;
-    private ExecutableElement executeMethod;
+    protected ExecutableElement executeMethod;
     private DataKind[] dataKinds = null;
     private int numChildNodes;
     private int numConsts;
@@ -75,6 +75,11 @@ public class CustomInstruction extends Instruction {
         super(name, id, data.getMainProperties().returnsValue
                         ? new ResultType[]{ResultType.STACK_VALUE}
                         : new ResultType[]{}, createInputs(data));
+        this.data = data;
+    }
+
+    protected CustomInstruction(String name, int id, SingleOperationData data, ResultType[] results, InputType[] inputs) {
+        super(name, id, results, inputs);
         this.data = data;
     }
 
@@ -139,18 +144,7 @@ public class CustomInstruction extends Instruction {
     public CodeTree createExecuteCode(ExecutionVariables vars) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-        if (vars.tracer != null) {
-            b.startStatement().startCall(vars.tracer, "traceActiveSpecializations");
-            b.variable(vars.bci);
-            b.variable(opcodeIdField);
-
-            b.startStaticCall(getSpecializationBits);
-            b.variable(vars.bc);
-            b.variable(vars.bci);
-            b.end();
-
-            b.end(2);
-        }
+        createTracerCode(vars, b);
 
         if (data.getMainProperties().isVariadic) {
 
@@ -216,6 +210,21 @@ public class CustomInstruction extends Instruction {
         }
 
         return b.build();
+    }
+
+    protected void createTracerCode(ExecutionVariables vars, CodeTreeBuilder b) {
+        if (vars.tracer != null) {
+            b.startStatement().startCall(vars.tracer, "traceActiveSpecializations");
+            b.variable(vars.bci);
+            b.variable(opcodeIdField);
+
+            b.startStaticCall(getSpecializationBits);
+            b.variable(vars.bc);
+            b.variable(vars.bci);
+            b.end();
+
+            b.end(2);
+        }
     }
 
     @Override

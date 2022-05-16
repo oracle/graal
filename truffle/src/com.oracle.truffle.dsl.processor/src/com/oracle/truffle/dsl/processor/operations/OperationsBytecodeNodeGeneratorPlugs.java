@@ -62,6 +62,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     private List<BoxingSplit> boxingSplits;
 
     private OperationsData m;
+    private final SingleOperationData data;
 
     OperationsBytecodeNodeGeneratorPlugs(OperationsData m, CodeVariableElement fldBc, CodeVariableElement fldChildren, List<Object> constIndices,
                     Set<String> innerTypeNames, List<Object> additionalData,
@@ -84,7 +85,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         this.context = ProcessorContext.getInstance();
         this.types = context.getTypes();
 
-        if (cinstr.numPush() == 0) {
+        this.data = cinstr.getData();
+
+        if (cinstr.numPush() == 0 || data.isShortCircuit()) {
             resultUnboxedState = null;
         } else {
             resultUnboxedState = new Object() {
@@ -296,7 +299,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public CodeTree[] createThrowUnsupportedValues(FrameState frameState, List<CodeTree> values, CodeTreeBuilder parent, CodeTreeBuilder builder) {
-        if (isVariadic) {
+        if (regularReturn()) {
             return values.toArray(new CodeTree[values.size()]);
         }
         CodeTree[] result = new CodeTree[values.size()];
@@ -316,6 +319,13 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         if (cinstr.numPush() == 0) {
             b.statement(specializationCall);
             b.returnStatement();
+            return;
+        }
+
+        if (data.isShortCircuit()) {
+            b.startReturn();
+            b.tree(specializationCall);
+            b.end();
             return;
         }
 
@@ -372,7 +382,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public boolean createCallSpecialization(FrameState frameState, SpecializationData specialization, CodeTree specializationCall, CodeTreeBuilder b, boolean inBoundary, CodeTree[] bindings) {
-        if (isVariadic || inBoundary)
+        if (inBoundary || regularReturn())
             return false;
 
         // if (m.isTracing()) {
@@ -393,6 +403,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return true;
     }
 
+    private boolean regularReturn() {
+        return isVariadic || data.isShortCircuit();
+    }
+
     @Override
     public boolean createCallExecuteAndSpecialize(FrameState frameState, CodeTreeBuilder builder, CodeTree call) {
         String easName = transformNodeMethodName("executeAndSpecialize");
@@ -403,7 +417,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             easName = qinstr.getOrig().getUniqueName() + "_executeAndSpecialize_";
         }
 
-        if (isVariadic) {
+        if (regularReturn()) {
             builder.startReturn();
         } else {
             builder.startStatement();
@@ -414,7 +428,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         frameState.addReferencesTo(builder);
         builder.end(2);
 
-        if (!isVariadic) {
+        if (!regularReturn()) {
             builder.returnStatement();
         }
 
@@ -423,10 +437,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public void createCallBoundaryMethod(CodeTreeBuilder builder, FrameState frameState, CodeExecutableElement boundaryMethod, Consumer<CodeTreeBuilder> addArguments) {
-        if (isVariadic) {
+        if (regularReturn()) {
             builder.startReturn().startCall("this", boundaryMethod);
             builder.string("$bci");
-            builder.string("$sp");
             addArguments.accept(builder);
             builder.end(2);
             return;
@@ -445,11 +458,24 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public boolean createCallWrapInAMethod(FrameState frameState, CodeTreeBuilder parentBuilder, CodeExecutableElement method, Runnable addStateParameters) {
-        parentBuilder.startStatement().startCall(method.getSimpleName().toString());
+        boolean needsReturn;
+        if (regularReturn() && method.getReturnType().getKind() != TypeKind.VOID) {
+            parentBuilder.startReturn();
+            needsReturn = false;
+        } else {
+            parentBuilder.startStatement();
+            needsReturn = true;
+        }
+
+        parentBuilder.startCall(method.getSimpleName().toString());
         addNodeCallParameters(parentBuilder, false, false);
         addStateParameters.run();
         parentBuilder.end(2);
-        parentBuilder.returnStatement();
+
+        if (needsReturn) {
+            parentBuilder.returnStatement();
+        }
+
         return true;
     }
 
@@ -514,7 +540,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         // boxing elimination
-        if (!isVariadic && cinstr.numPopStatic() > 0) {
+        if (!regularReturn() && cinstr.numPopStatic() > 0) {
             boolean elseIf = false;
             boolean[] needsElse = new boolean[]{true};
 
@@ -569,6 +595,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     }
 
+    // creates the if / else cascade for determining the type required for doSetResultBoxed
     private boolean createBoxingSplitUnboxingThing(CodeTreeBuilder b, FrameState frameState, boolean elseIf, SpecializationData specialization, List<SpecializationData> specializations,
                     TypeMirror[] primitiveMirrors, boolean[] needsElse) {
         if (!specializations.contains(specialization)) {
@@ -686,7 +713,9 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     public void finishUp() {
-        if (cinstr.numPush() > 0) {
+        if (data.isShortCircuit()) {
+            cinstr.setBoxingEliminationData(0, 0);
+        } else if (cinstr.numPush() > 0) {
             int offset = -1;
             BitSet targetSet = null;
             for (StateBitSet set : multiState.getSets()) {

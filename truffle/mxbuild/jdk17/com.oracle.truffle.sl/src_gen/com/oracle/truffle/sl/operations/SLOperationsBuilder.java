@@ -186,6 +186,14 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
     public abstract void endSLToBoolean();
 
+    public abstract void beginSLAnd();
+
+    public abstract void endSLAnd();
+
+    public abstract void beginSLOr();
+
+    public abstract void endSLOr();
+
     public abstract void beginSLInvoke();
 
     public abstract void endSLInvoke();
@@ -248,7 +256,9 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         private static final int OP_SLUNBOX = 27;
         private static final int OP_SLFUNCTION_LITERAL = 28;
         private static final int OP_SLTO_BOOLEAN = 29;
-        private static final int OP_SLINVOKE = 30;
+        private static final int OP_SLAND = 30;
+        private static final int OP_SLOR = 31;
+        private static final int OP_SLINVOKE = 32;
         private static final int INSTR_POP = 1;
         private static final int INSTR_BRANCH = 2;
         private static final int INSTR_BRANCH_FALSE = 3;
@@ -281,30 +291,32 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         private static final int INSTR_C_SLUNBOX = 30;
         private static final int INSTR_C_SLFUNCTION_LITERAL = 31;
         private static final int INSTR_C_SLTO_BOOLEAN = 32;
-        private static final int INSTR_C_SLINVOKE = 33;
-        private static final int INSTR_C_SLUNBOX_Q_FROM_LONG = 34;
-        private static final int INSTR_C_SLADD_Q_ADD_LONG = 35;
-        private static final int INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 = 36;
-        private static final int INSTR_C_SLUNBOX_Q_FROM_BOOLEAN = 37;
-        private static final int INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN = 38;
-        private static final int INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 = 39;
-        private static final int INSTR_C_SLINVOKE_Q_DIRECT = 40;
-        private static final int INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM = 41;
-        private static final int INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 = 42;
-        private static final int INSTR_C_SLLESS_THAN_Q_LESS_THAN0 = 43;
+        private static final int INSTR_SC_SLAND = 33;
+        private static final int INSTR_SC_SLOR = 34;
+        private static final int INSTR_C_SLINVOKE = 35;
+        private static final int INSTR_C_SLUNBOX_Q_FROM_LONG = 36;
+        private static final int INSTR_C_SLADD_Q_ADD_LONG = 37;
+        private static final int INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 = 38;
+        private static final int INSTR_C_SLUNBOX_Q_FROM_BOOLEAN = 39;
+        private static final int INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN = 40;
+        private static final int INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 = 41;
+        private static final int INSTR_C_SLINVOKE_Q_DIRECT = 42;
+        private static final int INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM = 43;
+        private static final int INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 = 44;
+        private static final int INSTR_C_SLLESS_THAN_Q_LESS_THAN0 = 45;
         private static final short[][] BOXING_DESCRIPTORS = {
         // OBJECT
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // BYTE
         null,
         // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // INT
         null,
         // FLOAT
         null,
         // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // DOUBLE
         null};
 
@@ -387,6 +399,36 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             LE_BYTES.putShort(bc, bci, (short) INSTR_POP);
                             bci = bci + 2;
                         }
+                    }
+                    break;
+                }
+                case OP_SLAND :
+                {
+                    if (childIndex > 0) {
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
+                        LE_BYTES.putShort(bc, bci, (short) INSTR_SC_SLAND);
+                        bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
+                        createOffset(bci + 3, ((BuilderOperationLabel) operationData.aux[0]));
+                        // additionalData  = 1 bytes: [BITS]
+                        //   numChildNodes = 0
+                        //   numConsts     = 0
+                        bc[bci + 5 + 0] = 0;
+                        bci = bci + 6;
+                    }
+                    break;
+                }
+                case OP_SLOR :
+                {
+                    if (childIndex > 0) {
+                        int[] predecessorBcis = doBeforeEmitInstruction(1, false);
+                        LE_BYTES.putShort(bc, bci, (short) INSTR_SC_SLOR);
+                        bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
+                        createOffset(bci + 3, ((BuilderOperationLabel) operationData.aux[0]));
+                        // additionalData  = 1 bytes: [BITS]
+                        //   numChildNodes = 0
+                        //   numConsts     = 0
+                        bc[bci + 5 + 0] = 0;
+                        bci = bci + 6;
                     }
                     break;
                 }
@@ -1374,6 +1416,54 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
         @SuppressWarnings("unused")
         @Override
+        public void beginSLAnd() {
+            doBeforeChild();
+            operationData = new BuilderOperationData(operationData, OP_SLAND, getCurStack(), 1, false);
+            operationData.aux[0] = (BuilderOperationLabel) createLabel();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public void endSLAnd() {
+            if (operationData.operationId != OP_SLAND) {
+                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+            }
+            int numChildren = operationData.numChildren;
+            if (numChildren < 1) {
+                throw new IllegalStateException("SLAnd expected at least 1 children, got " + numChildren);
+            }
+            doEmitLabel(((BuilderOperationLabel) operationData.aux[0]));
+            lastChildPush = 1;
+            operationData = operationData.parent;
+            doAfterChild();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public void beginSLOr() {
+            doBeforeChild();
+            operationData = new BuilderOperationData(operationData, OP_SLOR, getCurStack(), 1, false);
+            operationData.aux[0] = (BuilderOperationLabel) createLabel();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
+        public void endSLOr() {
+            if (operationData.operationId != OP_SLOR) {
+                throw new IllegalStateException("Mismatched begin/end, expected " + operationData.operationId);
+            }
+            int numChildren = operationData.numChildren;
+            if (numChildren < 1) {
+                throw new IllegalStateException("SLOr expected at least 1 children, got " + numChildren);
+            }
+            doEmitLabel(((BuilderOperationLabel) operationData.aux[0]));
+            lastChildPush = 1;
+            operationData = operationData.parent;
+            doAfterChild();
+        }
+
+        @SuppressWarnings("unused")
+        @Override
         public void beginSLInvoke() {
             doBeforeChild();
             operationData = new BuilderOperationData(operationData, OP_SLINVOKE, getCurStack(), 0, false);
@@ -1756,6 +1846,30 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
          *     STACK_VALUE
          *   Results:
          *     STACK_VALUE
+         *   Additional Data:
+         *     0 BITS
+         *   Specializations:
+         *     Boolean
+         *     Fallback
+         *
+         * sc.SLAnd
+         *   Inputs:
+         *     STACK_VALUE
+         *     BRANCH_TARGET
+         *   Results:
+         *     BRANCH
+         *   Additional Data:
+         *     0 BITS
+         *   Specializations:
+         *     Boolean
+         *     Fallback
+         *
+         * sc.SLOr
+         *   Inputs:
+         *     STACK_VALUE
+         *     BRANCH_TARGET
+         *   Results:
+         *     BRANCH
          *   Additional Data:
          *     0 BITS
          *   Specializations:
@@ -2206,6 +2320,28 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 sp = sp - 1 + 1;
                                 nextBci = bci + 4;
                                 break;
+                            }
+                            case INSTR_SC_SLAND :
+                            {
+                                if (this.SLAnd_execute_(frame, bci, sp)) {
+                                    sp = sp - 1;
+                                    bci = bci + 6;
+                                    continue loop;
+                                } else {
+                                    bci = LE_BYTES.getShort(bc, bci + 3);
+                                    continue loop;
+                                }
+                            }
+                            case INSTR_SC_SLOR :
+                            {
+                                if (!this.SLOr_execute_(frame, bci, sp)) {
+                                    sp = sp - 1;
+                                    bci = bci + 6;
+                                    continue loop;
+                                } else {
+                                    bci = LE_BYTES.getShort(bc, bci + 3);
+                                    continue loop;
+                                }
                             }
                             case INSTR_C_SLINVOKE :
                             {
@@ -5335,6 +5471,144 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 }
             }
 
+            private boolean SLAnd_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 5 + 0];
+                if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
+                    return SLAnd_SLAnd_execute__boolean0_($frame, $bci, $sp, state_0);
+                } else {
+                    return SLAnd_SLAnd_execute__generic1_($frame, $bci, $sp, state_0);
+                }
+            }
+
+            private boolean SLAnd_SLAnd_execute__boolean0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
+                boolean $child0Value_;
+                try {
+                    $child0Value_ = expectBoolean($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    return SLAnd_executeAndSpecialize_($frame, $bci, $sp, ex.getResult());
+                }
+                assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+                return SLToBooleanNode.doBoolean($child0Value_);
+            }
+
+            private boolean SLAnd_SLAnd_execute__generic1_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
+                Object $child0Value_ = expectObject($frame, $sp - 1);
+                if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                    boolean $child0Value__ = (boolean) $child0Value_;
+                    return SLToBooleanNode.doBoolean($child0Value__);
+                }
+                if ((state_0 & 0b10) != 0 /* is-state_0 doFallback(Object, Node, int) */) {
+                    {
+                        Node fallback_node__ = (this);
+                        int fallback_bci__ = ($bci);
+                        if (SLAnd_fallbackGuard__($frame, $bci, $sp, state_0, $child0Value_)) {
+                            return SLToBooleanNode.doFallback($child0Value_, fallback_node__, fallback_bci__);
+                        }
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLAnd_executeAndSpecialize_($frame, $bci, $sp, $child0Value_);
+            }
+
+            private boolean SLAnd_executeAndSpecialize_(VirtualFrame $frame, int $bci, int $sp, Object $child0Value) {
+                Lock lock = getLock();
+                boolean hasLock = true;
+                lock.lock();
+                try {
+                    byte state_0 = bc[$bci + 5 + 0];
+                    if ($child0Value instanceof Boolean) {
+                        boolean $child0Value_ = (boolean) $child0Value;
+                        bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLToBooleanNode.doBoolean($child0Value_);
+                    }
+                    {
+                        int fallback_bci__ = 0;
+                        Node fallback_node__ = null;
+                        fallback_node__ = (this);
+                        fallback_bci__ = ($bci);
+                        bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
+                    }
+                } finally {
+                    if (hasLock) {
+                        lock.unlock();
+                    }
+                }
+            }
+
+            private boolean SLOr_execute_(VirtualFrame $frame, int $bci, int $sp) {
+                byte state_0 = bc[$bci + 5 + 0];
+                if ((state_0 & 0b10) == 0 /* only-active doBoolean(boolean) */ && (state_0 != 0  /* is-not doBoolean(boolean) && doFallback(Object, Node, int) */)) {
+                    return SLOr_SLOr_execute__boolean0_($frame, $bci, $sp, state_0);
+                } else {
+                    return SLOr_SLOr_execute__generic1_($frame, $bci, $sp, state_0);
+                }
+            }
+
+            private boolean SLOr_SLOr_execute__boolean0_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
+                boolean $child0Value_;
+                try {
+                    $child0Value_ = expectBoolean($frame, $sp - 1);
+                } catch (UnexpectedResultException ex) {
+                    return SLOr_executeAndSpecialize_($frame, $bci, $sp, ex.getResult());
+                }
+                assert (state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */;
+                return SLToBooleanNode.doBoolean($child0Value_);
+            }
+
+            private boolean SLOr_SLOr_execute__generic1_(VirtualFrame $frame, int $bci, int $sp, byte state_0) {
+                Object $child0Value_ = expectObject($frame, $sp - 1);
+                if ((state_0 & 0b1) != 0 /* is-state_0 doBoolean(boolean) */ && $child0Value_ instanceof Boolean) {
+                    boolean $child0Value__ = (boolean) $child0Value_;
+                    return SLToBooleanNode.doBoolean($child0Value__);
+                }
+                if ((state_0 & 0b10) != 0 /* is-state_0 doFallback(Object, Node, int) */) {
+                    {
+                        Node fallback_node__ = (this);
+                        int fallback_bci__ = ($bci);
+                        if (SLOr_fallbackGuard__($frame, $bci, $sp, state_0, $child0Value_)) {
+                            return SLToBooleanNode.doFallback($child0Value_, fallback_node__, fallback_bci__);
+                        }
+                    }
+                }
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                return SLOr_executeAndSpecialize_($frame, $bci, $sp, $child0Value_);
+            }
+
+            private boolean SLOr_executeAndSpecialize_(VirtualFrame $frame, int $bci, int $sp, Object $child0Value) {
+                Lock lock = getLock();
+                boolean hasLock = true;
+                lock.lock();
+                try {
+                    byte state_0 = bc[$bci + 5 + 0];
+                    if ($child0Value instanceof Boolean) {
+                        boolean $child0Value_ = (boolean) $child0Value;
+                        bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b1 /* add-state_0 doBoolean(boolean) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLToBooleanNode.doBoolean($child0Value_);
+                    }
+                    {
+                        int fallback_bci__ = 0;
+                        Node fallback_node__ = null;
+                        fallback_node__ = (this);
+                        fallback_bci__ = ($bci);
+                        bc[$bci + 5 + 0] = state_0 = (byte) (state_0 | 0b10 /* add-state_0 doFallback(Object, Node, int) */);
+                        lock.unlock();
+                        hasLock = false;
+                        return SLToBooleanNode.doFallback($child0Value, fallback_node__, fallback_bci__);
+                    }
+                } finally {
+                    if (hasLock) {
+                        lock.unlock();
+                    }
+                }
+            }
+
             @ExplodeLoop
             private Object SLInvoke_execute_(VirtualFrame $frame, int $bci, int $sp, Object arg0Value, Object[] arg1Value) {
                 byte state_0 = bc[$bci + 5 + 0];
@@ -5810,6 +6084,8 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         case INSTR_C_SLMUL :
                         case INSTR_C_SLSUB :
                         case INSTR_C_SLFUNCTION_LITERAL :
+                        case INSTR_SC_SLAND :
+                        case INSTR_SC_SLOR :
                         case INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM :
                         {
                             bci = bci + 6;
@@ -6570,6 +6846,60 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             bci += 4;
                             break;
                         }
+                        case INSTR_SC_SLAND :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("sc.SLAnd                         ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("%04x", LE_BYTES.getShort(bc, bci + 3)));
+                            sb.append(" -> ");
+                            sb.append("branch");
+                            bci += 6;
+                            break;
+                        }
+                        case INSTR_SC_SLOR :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append(String.format("%02x ", bc[bci + 5]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("sc.SLOr                          ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(", ");
+                            sb.append(String.format("%04x", LE_BYTES.getShort(bc, bci + 3)));
+                            sb.append(" -> ");
+                            sb.append("branch");
+                            bci += 6;
+                            break;
+                        }
                         case INSTR_C_SLINVOKE :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
@@ -6924,6 +7254,20 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
 
             private static boolean SLToBoolean_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value) {
                 if (((state_0 & 0b10)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                    return false;
+                }
+                return true;
+            }
+
+            private static boolean SLAnd_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value) {
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
+                    return false;
+                }
+                return true;
+            }
+
+            private static boolean SLOr_fallbackGuard__(VirtualFrame $frame, int $bci, int $sp, byte state_0, Object $child0Value) {
+                if (((state_0 & 0b1)) == 0 /* is-not-state_0 doBoolean(boolean) */ && $child0Value instanceof Boolean) {
                     return false;
                 }
                 return true;

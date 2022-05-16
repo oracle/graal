@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.dsl.processor.operations.Operation.ShortCircuitOperation;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ConditionalBranchInstruction;
@@ -23,6 +24,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInst
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadLocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.QuickenedInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ReturnInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.StoreLocalInstruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.ThrowInstruction;
 
@@ -159,15 +161,23 @@ public class OperationsContext {
             return;
         }
 
-        CustomInstruction instr = new CustomInstruction("c." + opData.getName(), getNextInstructionId(), opData);
-        add(instr);
-        customInstructionNameMap.put(opData.getName(), instr);
-        opDataNameMap.put(opData.getName(), opData);
+        if (opData.isShortCircuit()) {
+            ShortCircuitInstruction instr = add(new ShortCircuitInstruction("sc." + opData.getName(), getNextInstructionId(), opData));
+            customInstructionNameMap.put(opData.getName(), instr);
+            opDataNameMap.put(opData.getName(), opData);
+            add(new ShortCircuitOperation(this, opData.getName(), getNextOperationId(), instr));
+        } else {
 
-        int numChildren = props.isVariadic ? -1 : props.numStackValues;
+            CustomInstruction instr = new CustomInstruction("c." + opData.getName(), getNextInstructionId(), opData);
+            add(instr);
+            customInstructionNameMap.put(opData.getName(), instr);
+            opDataNameMap.put(opData.getName(), opData);
 
-        Operation.Simple op = new Operation.Simple(this, opData.getName(), getNextOperationId(), numChildren, instr);
-        add(op);
+            int numChildren = props.isVariadic ? -1 : props.numStackValues;
+
+            Operation.Simple op = new Operation.Simple(this, opData.getName(), getNextOperationId(), numChildren, instr);
+            add(op);
+        }
     }
 
     public void processDecisions(OperationDecisions decisions) {

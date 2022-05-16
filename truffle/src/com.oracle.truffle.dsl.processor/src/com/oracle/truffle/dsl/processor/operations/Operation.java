@@ -20,6 +20,7 @@ import com.oracle.truffle.dsl.processor.operations.instructions.Instruction;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ExecutionVariables;
 import com.oracle.truffle.dsl.processor.operations.instructions.Instruction.ResultType;
 import com.oracle.truffle.dsl.processor.operations.instructions.LoadConstantInstruction;
+import com.oracle.truffle.dsl.processor.operations.instructions.ShortCircuitInstruction;
 
 public abstract class Operation {
     public static final int VARIABLE_CHILDREN = -1;
@@ -752,6 +753,68 @@ public abstract class Operation {
         public boolean hasLeaveCode() {
             return true;
         }
+    }
+
+    public static class ShortCircuitOperation extends Operation {
+
+        private final ShortCircuitInstruction instruction;
+
+        protected ShortCircuitOperation(OperationsContext builder, String name, int id, ShortCircuitInstruction instruction) {
+            super(builder, name, id, VARIABLE_CHILDREN);
+            this.instruction = instruction;
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of();
+        }
+
+        @Override
+        public int minimumChildren() {
+            return 1;
+        }
+
+        @Override
+        public int getNumAuxValues() {
+            return 1; // only the end label
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("1");
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.tree(createSetAux(vars, 0, createCreateLabel()));
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createBeforeChildCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startIf().variable(vars.childIndex).string(" > 0").end().startBlock();
+            {
+                b.tree(OperationGeneratorUtils.createEmitInstruction(vars, instruction, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+            }
+            b.end();
+
+            return b.build();
+        }
+
+        @Override
+        public CodeTree createEndCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.tree(OperationGeneratorUtils.createEmitLabel(vars, createGetAux(vars, 0, getTypes().BuilderOperationLabel)));
+
+            return b.build();
+        }
+
     }
 
     private static final CodeTree createSetAux(BuilderVariables vars, int index, CodeTree value) {

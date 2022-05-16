@@ -271,127 +271,33 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         return null;
     }
 
-    /**
-     * <pre>
-     * a || b
-     * </pre>
-     *
-     * <pre>
-     * {
-     *  l0 = a;
-     *  l0 ? l0 : b;
-     * }
-     * </pre>
-     */
-    private void logicalOrBegin(OperationLocal localIdx) {
-        b.beginBlock();
-        b.beginStoreLocal(localIdx);
-    }
-
-    private void logicalOrMiddle(OperationLocal localIdx) {
-        b.endStoreLocal();
-        b.beginConditional();
-        b.beginSLToBoolean();
-        b.emitLoadLocal(localIdx);
-        b.endSLToBoolean();
-        b.emitLoadLocal(localIdx);
-    }
-
-    private void logicalOrEnd(@SuppressWarnings("unused") OperationLocal localIdx) {
-        b.endConditional();
-        b.endBlock();
-    }
-
     @Override
     public Void visitExpression(ExpressionContext ctx) {
-        int numTerms = ctx.logic_term().size();
-
-        if (numTerms == 1)
-            return visit(ctx.logic_term(0));
 
         b.beginTag(StandardTags.ExpressionTag.class);
 
-        OperationLocal[] tmpLocals = new OperationLocal[numTerms - 1];
-        for (int i = 0; i < numTerms - 1; i++) {
-            tmpLocals[i] = b.createLocal();
-            logicalOrBegin(tmpLocals[i]);
+        b.beginSLOr();
+        for (Logic_termContext term : ctx.logic_term()) {
+            visit(term);
         }
+        b.endSLOr();
 
-        for (int i = 0; i < numTerms; i++) {
-            visit(ctx.logic_term(i));
-
-            if (i != 0) {
-                logicalOrEnd(tmpLocals[i - 1]);
-            }
-
-            if (i != numTerms - 1) {
-                logicalOrMiddle(tmpLocals[i]);
-            }
-        }
         b.endTag();
 
         return null;
     }
 
-    /**
-     * <pre>
-     * a && b
-     * </pre>
-     *
-     * <pre>
-     * {
-     *  l0 = a;
-     *  l0 ? b : l0;
-     * }
-     * </pre>
-     */
-    private void logicalAndBegin(OperationLocal localIdx) {
-        b.beginBlock();
-        b.beginStoreLocal(localIdx);
-    }
-
-    private void logicalAndMiddle(OperationLocal localIdx) {
-        b.endStoreLocal();
-        b.beginConditional();
-        b.beginSLToBoolean();
-        b.emitLoadLocal(localIdx);
-        b.endSLToBoolean();
-    }
-
-    private void logicalAndEnd(OperationLocal localIdx) {
-        b.emitLoadLocal(localIdx);
-        b.endConditional();
-        b.endBlock();
-    }
-
     @Override
     public Void visitLogic_term(Logic_termContext ctx) {
-        int numTerms = ctx.logic_factor().size();
-
-        if (numTerms == 1) {
-            return visit(ctx.logic_factor(0));
-        }
 
         b.beginTag(StandardTags.ExpressionTag.class);
         b.beginSLUnbox();
 
-        OperationLocal[] tmpLocals = new OperationLocal[numTerms - 1];
-        for (int i = 0; i < numTerms - 1; i++) {
-            tmpLocals[i] = b.createLocal();
-            logicalAndBegin(tmpLocals[i]);
+        b.beginSLAnd();
+        for (Logic_factorContext factor : ctx.logic_factor()) {
+            visit(factor);
         }
-
-        for (int i = 0; i < numTerms; i++) {
-            visit(ctx.logic_factor(i));
-
-            if (i != 0) {
-                logicalAndEnd(tmpLocals[i - 1]);
-            }
-
-            if (i != numTerms - 1) {
-                logicalAndMiddle(tmpLocals[i]);
-            }
-        }
+        b.endSLAnd();
 
         b.endSLUnbox();
         b.endTag();

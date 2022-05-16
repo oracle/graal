@@ -12,7 +12,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
@@ -24,6 +23,8 @@ public class SingleOperationData extends Template {
     private NodeData nodeData;
     private OperationsData parent;
     private final Set<TypeMirror> throwDeclarations = new HashSet<>();
+    private final boolean isShortCircuit;
+    private boolean shortCircuitContinueWhen;
 
     public static enum ParameterKind {
         STACK_VALUE,
@@ -97,10 +98,11 @@ public class SingleOperationData extends Template {
         }
     }
 
-    public SingleOperationData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, OperationsData parent, String name) {
+    public SingleOperationData(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation, OperationsData parent, String name, boolean isShortCircuit) {
         super(context, templateType, annotation);
         this.parent = parent;
         this.name = name;
+        this.isShortCircuit = isShortCircuit;
     }
 
     @Override
@@ -122,6 +124,10 @@ public class SingleOperationData extends Template {
 
     public MethodProperties getMainProperties() {
         return mainProperties;
+    }
+
+    public boolean isShortCircuit() {
+        return isShortCircuit;
     }
 
     public void setMainProperties(MethodProperties mainProperties) {
@@ -161,6 +167,14 @@ public class SingleOperationData extends Template {
             return List.of();
         }
         return List.of(nodeData);
+    }
+
+    public boolean getShortCircuitContinueWhen() {
+        return shortCircuitContinueWhen;
+    }
+
+    public void setShortCircuitContinueWhen(boolean shortCircuitContinueWhen) {
+        this.shortCircuitContinueWhen = shortCircuitContinueWhen;
     }
 
 }

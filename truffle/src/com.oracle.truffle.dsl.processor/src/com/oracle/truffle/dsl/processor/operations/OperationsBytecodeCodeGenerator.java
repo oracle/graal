@@ -94,6 +94,8 @@ public class OperationsBytecodeCodeGenerator {
                 CustomInstruction cinstr = (CustomInstruction) instr;
 
                 boolean isVariadic = cinstr.getData().getMainProperties().isVariadic;
+                boolean isShortCircuit = cinstr.getData().isShortCircuit();
+                boolean regularReturn = isVariadic || isShortCircuit;
 
                 final Set<String> methodNames = new HashSet<>();
                 final Set<String> innerTypeNames = new HashSet<>();
@@ -177,7 +179,7 @@ public class OperationsBytecodeCodeGenerator {
                         }
                     }
 
-                    if (!isVariadic) {
+                    if (!regularReturn) {
                         if (isExecute || isExecuteAndSpecialize) {
                             exToCopy.setReturnType(context.getType(void.class));
                         }

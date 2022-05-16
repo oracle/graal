@@ -102,19 +102,34 @@ public class OperationsParser extends AbstractParser<OperationsData> {
         List<TypeElement> operationTypes = new ArrayList<>(ElementFilter.typesIn(typeElement.getEnclosedElements()));
         List<AnnotationMirror> opProxies = ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy);
 
+        // find and bind all operation proxies
         for (AnnotationMirror mir : opProxies) {
             SingleOperationData opData = new SingleOperationParser(data, mir).parse(null, null);
 
-            if (opData != null) {
-                data.addOperationData(opData);
-            } else {
+            if (opData == null) {
                 data.addError(mir, ElementUtils.getAnnotationValue(mir, "value"), "Could not proxy operation");
+                continue;
             }
 
-            opData.redirectMessages(data);
+            data.addOperationData(opData);
             opData.redirectMessagesOnGeneratedElements(data);
         }
 
+        // find and bind all sc operations
+        List<AnnotationMirror> scOperations = ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation);
+        for (AnnotationMirror mir : scOperations) {
+            SingleOperationData opData = new SingleOperationParser(data, mir, true).parse(null, null);
+            if (opData == null) {
+                data.addError(mir, ElementUtils.getAnnotationValue(mir, "name"), "Clould not proxy short circuit operation");
+                continue;
+            }
+
+            data.addOperationData(opData);
+            opData.redirectMessagesOnGeneratedElements(data);
+            opData.setShortCircuitContinueWhen((boolean) ElementUtils.getAnnotationValue(mir, "continueWhen").getValue());
+        }
+
+        // find and bind all inner declared operations
         for (TypeElement inner : operationTypes) {
             if (ElementUtils.findAnnotationMirror(inner, types.Operation) == null) {
                 continue;

@@ -23,7 +23,7 @@ public abstract class OperationBuilder {
     protected final boolean withSource;
     protected final boolean withInstrumentation;
 
-    protected byte[] bc = new byte[65536];
+    protected final byte[] bc = new byte[65536];
     protected int bci = 0;
     protected final OperationsConstantPool constPool = new OperationsConstantPool();
 
@@ -379,9 +379,11 @@ public abstract class OperationBuilder {
     private BuilderFinallyTryContext currentFinallyTry = null;
 
     protected final Object doBeginFinallyTry() {
-        currentFinallyTry = new BuilderFinallyTryContext(currentFinallyTry, bc, bci, exceptionHandlers, labelFills, labels, curStack, maxStack);
 
-        bc = new byte[65536];
+        // save outer code
+        currentFinallyTry = new BuilderFinallyTryContext(currentFinallyTry, Arrays.copyOf(bc, bci), exceptionHandlers, labelFills, labels, curStack, maxStack);
+
+        // reset builder for handler
         bci = 0;
         exceptionHandlers = new ArrayList<>();
         labelFills = new ArrayList<>();
@@ -395,12 +397,14 @@ public abstract class OperationBuilder {
     protected final void doEndFinallyBlock() {
         labelPass(currentFinallyTry);
 
+        // save handler code
         currentFinallyTry.handlerBc = Arrays.copyOf(bc, bci);
         currentFinallyTry.handlerHandlers = exceptionHandlers;
         currentFinallyTry.handlerMaxStack = maxStack;
 
-        bc = currentFinallyTry.bc;
-        bci = currentFinallyTry.bci;
+        // restore outer code
+        System.arraycopy(currentFinallyTry.bc, 0, bc, 0, currentFinallyTry.bc.length);
+        bci = currentFinallyTry.bc.length;
         exceptionHandlers = currentFinallyTry.exceptionHandlers;
         labelFills = currentFinallyTry.labelFills;
         labels = currentFinallyTry.labels;

@@ -19,6 +19,7 @@ import com.oracle.truffle.api.operation.GenerateOperations.Metadata;
 import com.oracle.truffle.api.operation.MetadataKey;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
+import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLTypes;
@@ -56,6 +57,8 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLUnboxNode.class)
 @OperationProxy(SLFunctionLiteralNode.class)
 @OperationProxy(SLToBooleanNode.class)
+@ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, continueWhen = true)
+@ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
 public final class SLOperations {
 
     @Metadata("MethodName") //

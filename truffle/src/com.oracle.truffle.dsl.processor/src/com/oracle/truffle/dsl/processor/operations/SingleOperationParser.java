@@ -39,14 +39,20 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     private final AnnotationMirror proxyMirror;
 
     private final String NODE = "Node";
+    private final boolean isShortCircuit;
 
     public SingleOperationParser(OperationsData parentData) {
-        this(parentData, null);
+        this(parentData, null, false);
     }
 
     public SingleOperationParser(OperationsData parentData, AnnotationMirror proxyMirror) {
+        this(parentData, proxyMirror, false);
+    }
+
+    public SingleOperationParser(OperationsData parentData, AnnotationMirror proxyMirror, boolean isShortCircuit) {
         this.parentData = parentData;
         this.proxyMirror = proxyMirror;
+        this.isShortCircuit = isShortCircuit;
     }
 
     @Override
@@ -61,7 +67,13 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 throw new AssertionError();
             }
 
-            AnnotationValue proxyTypeValue = ElementUtils.getAnnotationValue(proxyMirror, "value");
+            AnnotationValue proxyTypeValue;
+            if (isShortCircuit) {
+                proxyTypeValue = ElementUtils.getAnnotationValue(proxyMirror, "booleanConverter");
+            } else {
+                proxyTypeValue = ElementUtils.getAnnotationValue(proxyMirror, "value");
+            }
+
             TypeMirror proxyType = (TypeMirror) proxyTypeValue.getValue();
             if (proxyType.getKind() != TypeKind.DECLARED) {
                 parentData.addError(proxyMirror, proxyTypeValue, "@OperationProxy'ed type must be a class, not %s", proxyType);
@@ -69,21 +81,25 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
             te = context.getTypeElement((DeclaredType) proxyType);
 
-            AnnotationValue nameFromAnnot = ElementUtils.getAnnotationValue(proxyMirror, "operationName", false);
-
-            if (nameFromAnnot == null) {
-                String nameFromType = te.getSimpleName().toString();
-                // strip the `Node' suffix
-                if (nameFromType.endsWith(NODE)) {
-                    name = nameFromType.substring(0, nameFromType.length() - NODE.length());
-                } else {
-                    name = nameFromType;
-                }
+            if (isShortCircuit) {
+                name = (String) ElementUtils.getAnnotationValue(proxyMirror, "name").getValue();
             } else {
-                name = (String) nameFromAnnot.getValue();
+                AnnotationValue nameFromAnnot = ElementUtils.getAnnotationValue(proxyMirror, "operationName", false);
+
+                if (nameFromAnnot == null) {
+                    String nameFromType = te.getSimpleName().toString();
+                    // strip the `Node' suffix
+                    if (nameFromType.endsWith(NODE)) {
+                        name = nameFromType.substring(0, nameFromType.length() - NODE.length());
+                    } else {
+                        name = nameFromType;
+                    }
+                } else {
+                    name = (String) nameFromAnnot.getValue();
+                }
             }
 
-            data = new SingleOperationData(context, null, proxyMirror, parentData, name);
+            data = new SingleOperationData(context, null, proxyMirror, parentData, name, isShortCircuit);
 
         } else {
             if (proxyMirror != null) {
@@ -96,9 +112,13 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             }
 
             te = (TypeElement) element;
-            name = te.getSimpleName().toString();
+            if (isShortCircuit) {
+                name = (String) ElementUtils.getAnnotationValue(proxyMirror, "name").getValue();
+            } else {
+                name = te.getSimpleName().toString();
+            }
 
-            data = new SingleOperationData(context, te, null, parentData, name);
+            data = new SingleOperationData(context, te, null, parentData, name, false);
         }
 
         List<ExecutableElement> operationFunctions = new ArrayList<>();
@@ -154,6 +174,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             MethodProperties props2 = processMethod(data, fun);
             props2.checkMatches(data, props);
             data.getThrowDeclarations().addAll(fun.getThrownTypes());
+        }
+
+        if (isShortCircuit && (props.numStackValues != 1 || props.isVariadic || !props.returnsValue)) {
+            data.addError("Boolean converter must take exactly one argument, not be variadic, and return a value");
         }
 
         if (data.hasErrors()) {
@@ -222,9 +246,18 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
     }
 
     private CodeExecutableElement createExecuteMethod(MethodProperties props, boolean isVariadic) {
+
+        Class<?> resType;
+        if (isShortCircuit) {
+            resType = boolean.class;
+        } else if (props.returnsValue) {
+            resType = Object.class;
+        } else {
+            resType = void.class;
+        }
         CodeExecutableElement metExecute = new CodeExecutableElement(
                         Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
-                        context.getType(props.returnsValue ? Object.class : void.class), "execute");
+                        context.getType(resType), "execute");
 
         metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
 
