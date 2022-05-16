@@ -23,6 +23,23 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
 * GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
 * GR-38110 Added option to use `long` values as offsets for accessing memory through `ByteArraySupport`.
+* GR-34894 Removed deprecated `DynamicObject` APIs:
+    * `Shape`: `getKeyList(Pred)`, `getPropertyList(Pred)`, `Pred`, `getObjectType`, `getId`, `isRelated`, `createSeparateShape`, `append`, `reservePrimitiveExtensionArray`, `hasTransitionWithKey`
+    * `DynamicObject`: all deprecated constructors and methods (`get`, `set`, `contains`, `define`, `delete`, `size`, `isEmpty`, `setShapeAndGrow`, `setShapeAndResize`, `updateShape`, `copy`)
+    * `ShapeListener`
+    * `TypedLocation`
+    * `Layout.newInstance`, `Layout.createShape`
+    * `Property`: `copyWithRelocatable`, `copyWithFlags`, `isSame`, `relocate`, `set`, `setInternal`, `setGeneric`.
+    * `IncompatibleLocationException`, `FinalLocationException` constructors
+* GR-34894 Deprecated legacy and low-level `DynamicObject` APIs:
+    * `Shape`: `Allocator`, `allocator`, `createFactory`, `newInstance`, `defineProperty`, `addProperty`, `changeType`, `makeSharedShape`, `getMutex`
+    * `ObjectLocation`, `BooleanLocation`, `DoubleLocation`, `IntLocation`, `LongLocation`
+    * `Location`: `canSet`, `set`, `setInternal`, `get`, `getInternal`, `incompatibleLocation`, `finalLocation`
+    * `Property`: `create`, `get`, `set`, `setSafe`, `setGeneric`.
+    * `ObjectType`
+    * `DynamicObjectFactory`, `LocationModifier`, `LocationFactory`, `LayoutFactory`
+    * `IncompatibleLocationException`, `FinalLocationException`
+* GR-34894 Introduced `Location.isPrimitive()`, `Location.getConstantValue()`, and `Shape.makePropertyGetter(Object)`.
 
 ## Version 22.1.0
 
