@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public final class HostAccess {
     private final EconomicSet<AnnotatedElement> members;
     private final EconomicSet<Class<?>> implementableTypes;
     private final List<Object> targetMappings;
-    private final boolean allowPublic;
+    final boolean allowPublic;
     private final boolean allowAllInterfaceImplementations;
     private final boolean allowAllClassImplementations;
     final boolean allowArrayAccess;
@@ -104,12 +104,13 @@ public final class HostAccess {
     final boolean allowIterableAccess;
     final boolean allowIteratorAccess;
     final boolean allowMapAccess;
+    final boolean allowAccessInheritance;
     private final boolean methodScopingDefault;
     private final EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
     private final EconomicSet<Executable> disableMethodScoping;
     volatile Object impl;
 
-    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, null, null);
+    private static final HostAccess EMPTY = new HostAccess(null, null, null, null, null, null, null, false, false, false, false, false, false, false, false, false, false, false, null, null);
 
     /**
      * Predefined host access policy that allows access to public host methods or fields that were
@@ -185,6 +186,7 @@ public final class HostAccess {
                     allowAllClassImplementations(true).//
                     allowArrayAccess(true).allowListAccess(true).allowBufferAccess(true).//
                     allowIterableAccess(true).allowIteratorAccess(true).allowMapAccess(true).//
+                    allowAccessInheritance(true).//
                     name("HostAccess.ALL").build();
 
     /**
@@ -205,7 +207,7 @@ public final class HostAccess {
                     EconomicSet<Class<?>> implementableTypes, List<Object> targetMappings,
                     String name,
                     boolean allowPublic, boolean allowAllImplementations, boolean allowAllClassImplementations, boolean allowArrayAccess, boolean allowListAccess, boolean allowBufferAccess,
-                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess,
+                    boolean allowIterableAccess, boolean allowIteratorAccess, boolean allowMapAccess, boolean allowAccessInheritance,
                     boolean methodScopingDefault, EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations, EconomicSet<Executable> disableMethodScoping) {
         // create defensive copies
         this.accessAnnotations = copySet(annotations, Equivalence.IDENTITY);
@@ -224,6 +226,7 @@ public final class HostAccess {
         this.allowIterableAccess = allowListAccess || allowIterableAccess;
         this.allowMapAccess = allowMapAccess;
         this.allowIteratorAccess = allowListAccess || allowIterableAccess || allowMapAccess || allowIteratorAccess;
+        this.allowAccessInheritance = allowAccessInheritance;
         this.methodScopingDefault = methodScopingDefault;
         this.disableMethodScopingAnnotations = disableMethodScopingAnnotations;
         this.disableMethodScoping = disableMethodScoping;
@@ -643,6 +646,7 @@ public final class HostAccess {
         private boolean allowMapAccess;
         private boolean allowAllImplementations;
         private boolean allowAllClassImplementations;
+        private boolean allowAccessInheritance;
         private boolean methodScopingDefault;
         private EconomicSet<Class<? extends Annotation>> disableMethodScopingAnnotations;
         private EconomicSet<Executable> disableMethodScoping;
@@ -668,6 +672,7 @@ public final class HostAccess {
             this.allowMapAccess = access.allowMapAccess;
             this.allowAllImplementations = access.allowAllInterfaceImplementations;
             this.allowAllClassImplementations = access.allowAllClassImplementations;
+            this.allowAccessInheritance = access.allowAccessInheritance;
             this.methodScopingDefault = access.methodScopingDefault;
             this.disableMethodScopingAnnotations = copySet(access.disableMethodScopingAnnotations, Equivalence.IDENTITY);
             this.disableMethodScoping = copySet(access.disableMethodScoping, Equivalence.IDENTITY);
@@ -921,6 +926,24 @@ public final class HostAccess {
         }
 
         /**
+         * Allows the guest application to inherit access to allowed methods, i.e. implementations
+         * of allowed abstract and interface methods and overrides of allowed concrete methods.
+         *
+         * If inheritance is disabled, all method implementations need to be explicitly allowed
+         * (either by {@linkplain #allowAccessAnnotatedBy(Class) an annotation} or
+         * {@linkplain #allowAccess(Executable) using reflection}) to be available. Consequently,
+         * attempting to allow abstract methods has no effect in this access mode.
+         *
+         * @see #allowAccessAnnotatedBy(Class)
+         * @see #allowAccess(Executable)
+         * @since 22.2
+         */
+        public Builder allowAccessInheritance(boolean inheritAccess) {
+            this.allowAccessInheritance = inheritAccess;
+            return this;
+        }
+
+        /**
          * Adds a custom source to target type mapping for Java host calls, host field assignments
          * and {@link Value#as(Class) explicit value conversions}. Method is equivalent to calling
          * the targetTypeMapping method with precedence {@link TargetMappingPrecedence#HIGH}.
@@ -1126,7 +1149,7 @@ public final class HostAccess {
         public HostAccess build() {
             return new HostAccess(accessAnnotations, excludeTypes, members, implementationAnnotations, implementableTypes, targetMappings, name, allowPublic,
                             allowAllImplementations, allowAllClassImplementations, allowArrayAccess, allowListAccess, allowBufferAccess, allowIterableAccess,
-                            allowIteratorAccess, allowMapAccess, methodScopingDefault, disableMethodScopingAnnotations, disableMethodScoping);
+                            allowIteratorAccess, allowMapAccess, allowAccessInheritance, methodScopingDefault, disableMethodScopingAnnotations, disableMethodScoping);
         }
     }
 

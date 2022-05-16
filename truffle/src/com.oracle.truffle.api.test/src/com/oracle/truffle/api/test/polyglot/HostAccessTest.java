@@ -1739,12 +1739,47 @@ public class HostAccessTest {
     }
 
     @Test
-    public void testInterfaceMethodExports() {
-        setupEnv(HostAccess.EXPLICIT);
+    public void testInterfaceMethodExportsWithInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build());
 
-        Value point = context.asValue(new Point());
+        Value point;
+        point = context.asValue(new BarePoint());
         assertEquals(42, point.invokeMember("x").asInt());
-        assertEquals(42, point.invokeMember("y").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new AnnotatedPoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new PrivatePoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+    }
+
+    @Test
+    public void testInterfaceMethodExportsWithNoInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build());
+
+        Value point;
+        point = context.asValue(new BarePoint());
+        assertFalse(point.hasMember("x"));
+        assertFalse(point.hasMember("y"));
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new AnnotatedPoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new PrivatePoint());
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertEquals(44, point.invokeMember("z").asInt());
     }
 
     public interface PointInterface {
@@ -1753,15 +1788,48 @@ public class HostAccessTest {
 
         @Export
         int y();
+
+        @Export
+        default int z() {
+            return 44;
+        }
     }
 
-    public static class Point implements PointInterface {
+    public static class BarePoint implements PointInterface {
+        @Override
+        public int x() {
+            return 42;
+        }
+
+        @Override
+        public int y() {
+            return 43;
+        }
+    }
+
+    public static class AnnotatedPoint implements PointInterface {
+        @Export
+        @Override
+        public int x() {
+            return 42;
+        }
+
+        @Export
+        @Override
+        public int y() {
+            return 43;
+        }
+    }
+
+    static class PrivatePoint implements PointInterface {
+        @Export
+        @Override
         public int x() {
             return 42;
         }
 
         public int y() {
-            return 42;
+            return 43;
         }
     }
 
