@@ -2255,8 +2255,6 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                                                  arch=mx.get_arch(),
                                                                  java_version=_src_jdk_version,
                                                                  version=version)
-    manifest["x-GraalVM-Polyglot-Part"] = str(isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
-                                              and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability is not None:
         stability = _get_component_stability(main_component)
