@@ -1,5 +1,6 @@
 package com.oracle.truffle.api.operation;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -13,14 +14,26 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 
 public abstract class OperationBytecodeNode extends Node implements BytecodeOSRNode {
 
-    // The order of these must be the same as FrameKind in processor
+    // Thevalues of these must be the same as FrameKind.ordinal && Frame tags
     public static final int FRAME_TYPE_OBJECT = 0;
-    public static final int FRAME_TYPE_BYTE = 1;
-    public static final int FRAME_TYPE_BOOLEAN = 2;
-    public static final int FRAME_TYPE_INT = 3;
+    public static final int FRAME_TYPE_LONG = 1;
+    public static final int FRAME_TYPE_INT = 2;
+    public static final int FRAME_TYPE_DOUBLE = 3;
     public static final int FRAME_TYPE_FLOAT = 4;
-    public static final int FRAME_TYPE_LONG = 5;
-    public static final int FRAME_TYPE_DOUBLE = 6;
+    public static final int FRAME_TYPE_BOOLEAN = 5;
+    public static final int FRAME_TYPE_BYTE = 6;
+    public static final int FRAME_TYPE_ILLEGAL = 7;
+
+    static {
+        assert FRAME_TYPE_OBJECT == FrameSlotKind.Object.tag;
+        assert FRAME_TYPE_LONG == FrameSlotKind.Long.tag;
+        assert FRAME_TYPE_INT == FrameSlotKind.Int.tag;
+        assert FRAME_TYPE_DOUBLE == FrameSlotKind.Double.tag;
+        assert FRAME_TYPE_FLOAT == FrameSlotKind.Float.tag;
+        assert FRAME_TYPE_BOOLEAN == FrameSlotKind.Boolean.tag;
+        assert FRAME_TYPE_BYTE == FrameSlotKind.Byte.tag;
+        assert FRAME_TYPE_ILLEGAL == FrameSlotKind.Illegal.tag;
+    }
 
     private static final ByteArraySupport LE_BYTES = ByteArraySupport.littleEndian();
 
@@ -122,6 +135,7 @@ public abstract class OperationBytecodeNode extends Node implements BytecodeOSRN
                 break;
         }
 
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnexpectedResultException(frame.getValue(slot));
     }
 
@@ -152,6 +166,7 @@ public abstract class OperationBytecodeNode extends Node implements BytecodeOSRN
                 break;
         }
 
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnexpectedResultException(frame.getValue(slot));
     }
 
@@ -167,6 +182,7 @@ public abstract class OperationBytecodeNode extends Node implements BytecodeOSRN
                 break;
         }
 
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnexpectedResultException(frame.getValue(slot));
     }
 
@@ -182,6 +198,7 @@ public abstract class OperationBytecodeNode extends Node implements BytecodeOSRN
                 break;
         }
 
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnexpectedResultException(frame.getValue(slot));
     }
 
@@ -197,6 +214,7 @@ public abstract class OperationBytecodeNode extends Node implements BytecodeOSRN
                 break;
         }
 
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnexpectedResultException(frame.getValue(slot));
     }
 }

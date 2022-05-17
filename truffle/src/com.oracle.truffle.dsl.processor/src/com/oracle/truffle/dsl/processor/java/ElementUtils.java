@@ -220,6 +220,10 @@ public class ElementUtils {
         return b.toString();
     }
 
+    public static TypeMirror boxType(TypeMirror type) {
+        return boxType(ProcessorContext.getInstance(), type);
+    }
+
     public static TypeMirror boxType(ProcessorContext context, TypeMirror primitiveType) {
         if (primitiveType == null) {
             return null;

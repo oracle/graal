@@ -9,7 +9,6 @@ public class BuilderOperationData {
     public final Object[] aux;
     public final Object[] arguments;
     public int numChildren = 0;
-    public int numLocals;
 
     public BuilderOperationData(BuilderOperationData parent, int id, int stackDepth, int numAux, boolean needsLeave, Object... arguments) {
         this.parent = parent;
@@ -19,6 +18,5 @@ public class BuilderOperationData {
         this.aux = new Object[numAux];
         this.needsLeave = needsLeave || (parent != null ? parent.needsLeave : false);
         this.arguments = arguments;
-        numLocals = parent != null ? parent.numLocals : 0;
     }
 }

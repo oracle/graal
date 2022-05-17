@@ -206,34 +206,19 @@ public abstract class OperationBuilder {
     protected int numLocals;
 
     public final OperationLocal createLocal() {
-        BuilderOperationLocal local = new BuilderOperationLocal(operationData, operationData.numLocals++);
-
-        if (numLocals < local.id + 1) {
-            numLocals = local.id + 1;
-        }
-
+        BuilderOperationLocal local = new BuilderOperationLocal(operationData, numLocals++);
         return local;
     }
 
     protected final OperationLocal createParentLocal() {
         BuilderOperationData parent = operationData.parent;
-        assert operationData.numLocals == parent.numLocals;
-
-        BuilderOperationLocal local = new BuilderOperationLocal(parent, parent.numLocals++);
-        operationData.numLocals++;
-
-        if (numLocals < local.id + 1) {
-            numLocals = local.id + 1;
-        }
-
+        BuilderOperationLocal local = new BuilderOperationLocal(parent, numLocals++);
         return local;
     }
 
     protected int getLocalIndex(Object value) {
         BuilderOperationLocal local = (BuilderOperationLocal) value;
-
         assert verifyNesting(local.owner, operationData) : "local access not nested properly";
-
         return local.id;
     }
 

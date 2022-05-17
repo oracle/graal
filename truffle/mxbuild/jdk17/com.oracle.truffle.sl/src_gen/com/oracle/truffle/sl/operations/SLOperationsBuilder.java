@@ -13,6 +13,7 @@ import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.GenerateAOT.Provider;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.LibraryFactory;
@@ -269,55 +270,59 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
         private static final int INSTR_LOAD_ARGUMENT_OBJECT = 8;
         private static final int INSTR_LOAD_ARGUMENT_BOOLEAN = 9;
         private static final int INSTR_LOAD_ARGUMENT_LONG = 10;
-        private static final int INSTR_STORE_LOCAL = 11;
-        private static final int INSTR_LOAD_LOCAL_OBJECT = 12;
-        private static final int INSTR_LOAD_LOCAL_BOOLEAN = 13;
-        private static final int INSTR_LOAD_LOCAL_LONG = 14;
-        private static final int INSTR_RETURN = 15;
-        private static final int INSTR_INSTRUMENT_ENTER = 16;
-        private static final int INSTR_INSTRUMENT_EXIT_VOID = 17;
-        private static final int INSTR_INSTRUMENT_EXIT = 18;
-        private static final int INSTR_INSTRUMENT_LEAVE = 19;
-        private static final int INSTR_C_SLADD = 20;
-        private static final int INSTR_C_SLDIV = 21;
-        private static final int INSTR_C_SLEQUAL = 22;
-        private static final int INSTR_C_SLLESS_OR_EQUAL = 23;
-        private static final int INSTR_C_SLLESS_THAN = 24;
-        private static final int INSTR_C_SLLOGICAL_NOT = 25;
-        private static final int INSTR_C_SLMUL = 26;
-        private static final int INSTR_C_SLREAD_PROPERTY = 27;
-        private static final int INSTR_C_SLSUB = 28;
-        private static final int INSTR_C_SLWRITE_PROPERTY = 29;
-        private static final int INSTR_C_SLUNBOX = 30;
-        private static final int INSTR_C_SLFUNCTION_LITERAL = 31;
-        private static final int INSTR_C_SLTO_BOOLEAN = 32;
-        private static final int INSTR_SC_SLAND = 33;
-        private static final int INSTR_SC_SLOR = 34;
-        private static final int INSTR_C_SLINVOKE = 35;
-        private static final int INSTR_C_SLUNBOX_Q_FROM_LONG = 36;
-        private static final int INSTR_C_SLADD_Q_ADD_LONG = 37;
-        private static final int INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 = 38;
-        private static final int INSTR_C_SLUNBOX_Q_FROM_BOOLEAN = 39;
-        private static final int INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN = 40;
-        private static final int INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 = 41;
-        private static final int INSTR_C_SLINVOKE_Q_DIRECT = 42;
-        private static final int INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM = 43;
-        private static final int INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 = 44;
-        private static final int INSTR_C_SLLESS_THAN_Q_LESS_THAN0 = 45;
+        private static final int INSTR_STORE_LOCAL_OBJECT = 11;
+        private static final int INSTR_STORE_LOCAL_BOOLEAN = 12;
+        private static final int INSTR_STORE_LOCAL_LONG = 13;
+        private static final int INSTR_STORE_LOCAL_UNINIT = 14;
+        private static final int INSTR_LOAD_LOCAL_OBJECT = 15;
+        private static final int INSTR_LOAD_LOCAL_BOOLEAN = 16;
+        private static final int INSTR_LOAD_LOCAL_LONG = 17;
+        private static final int INSTR_LOAD_LOCAL_UNINIT = 18;
+        private static final int INSTR_RETURN = 19;
+        private static final int INSTR_INSTRUMENT_ENTER = 20;
+        private static final int INSTR_INSTRUMENT_EXIT_VOID = 21;
+        private static final int INSTR_INSTRUMENT_EXIT = 22;
+        private static final int INSTR_INSTRUMENT_LEAVE = 23;
+        private static final int INSTR_C_SLADD = 24;
+        private static final int INSTR_C_SLDIV = 25;
+        private static final int INSTR_C_SLEQUAL = 26;
+        private static final int INSTR_C_SLLESS_OR_EQUAL = 27;
+        private static final int INSTR_C_SLLESS_THAN = 28;
+        private static final int INSTR_C_SLLOGICAL_NOT = 29;
+        private static final int INSTR_C_SLMUL = 30;
+        private static final int INSTR_C_SLREAD_PROPERTY = 31;
+        private static final int INSTR_C_SLSUB = 32;
+        private static final int INSTR_C_SLWRITE_PROPERTY = 33;
+        private static final int INSTR_C_SLUNBOX = 34;
+        private static final int INSTR_C_SLFUNCTION_LITERAL = 35;
+        private static final int INSTR_C_SLTO_BOOLEAN = 36;
+        private static final int INSTR_SC_SLAND = 37;
+        private static final int INSTR_SC_SLOR = 38;
+        private static final int INSTR_C_SLINVOKE = 39;
+        private static final int INSTR_C_SLUNBOX_Q_FROM_LONG = 40;
+        private static final int INSTR_C_SLADD_Q_ADD_LONG = 41;
+        private static final int INSTR_C_SLREAD_PROPERTY_Q_READ_SLOBJECT0 = 42;
+        private static final int INSTR_C_SLUNBOX_Q_FROM_BOOLEAN = 43;
+        private static final int INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN = 44;
+        private static final int INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 = 45;
+        private static final int INSTR_C_SLINVOKE_Q_DIRECT = 46;
+        private static final int INSTR_C_SLFUNCTION_LITERAL_Q_PERFORM = 47;
+        private static final int INSTR_C_SLWRITE_PROPERTY_Q_WRITE_SLOBJECT0 = 48;
+        private static final int INSTR_C_SLLESS_THAN_Q_LESS_THAN0 = 49;
         private static final short[][] BOXING_DESCRIPTORS = {
         // OBJECT
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
-        // BYTE
-        null,
-        // BOOLEAN
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_CONSTANT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_LOAD_ARGUMENT_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_OBJECT, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
+        // LONG
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_LONG, 0, INSTR_LOAD_LOCAL_OBJECT, 0, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
         // INT
+        null,
+        // DOUBLE
         null,
         // FLOAT
         null,
-        // LONG
-        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, 0, INSTR_LOAD_LOCAL_LONG, INSTR_LOAD_LOCAL_BOOLEAN, INSTR_LOAD_LOCAL_LONG, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
-        // DOUBLE
+        // BOOLEAN
+        {-1, 0, 0, 0, 0, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_BOOLEAN, INSTR_LOAD_CONSTANT_LONG, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_BOOLEAN, INSTR_LOAD_ARGUMENT_LONG, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_OBJECT, INSTR_STORE_LOCAL_BOOLEAN, 0, 0, INSTR_LOAD_LOCAL_OBJECT, INSTR_LOAD_LOCAL_BOOLEAN, 0, 0, 0, 0, 0, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, 0, 0, -31487 /* 5,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31743 /* 4,1 */, -31999 /* 3,1 */, -31999 /* 3,1 */, -31743 /* 4,1 */, -31487 /* 5,1 */, -31999 /* 3,1 */, -31487 /* 5,1 */, -31743 /* 4,1 */},
+        // BYTE
         null};
 
         int lastChildPush;
@@ -887,7 +892,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                 throw new IllegalStateException("StoreLocal expected 1 children, got " + numChildren);
             }
             int[] predecessorBcis = doBeforeEmitInstruction(1, false);
-            LE_BYTES.putShort(bc, bci, (short) INSTR_STORE_LOCAL);
+            LE_BYTES.putShort(bc, bci, (short) INSTR_STORE_LOCAL_UNINIT);
             bc[bci + 2] = predecessorBcis[0] < bci - 255 ? 0 : (byte)(bci - predecessorBcis[0]);
             LE_BYTES.putShort(bc, bci + 3, (short) (int) getLocalIndex(operationData.arguments[0]));
             bci = bci + 5;
@@ -901,7 +906,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
             doBeforeChild();
             operationData = new BuilderOperationData(operationData, OP_LOAD_LOCAL, getCurStack(), 0, false, arg0);
             int[] predecessorBcis = doBeforeEmitInstruction(0, true);
-            LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_LOCAL_OBJECT);
+            LE_BYTES.putShort(bc, bci, (short) INSTR_LOAD_LOCAL_UNINIT);
             LE_BYTES.putShort(bc, bci + 2, (short) (int) getLocalIndex(operationData.arguments[0]));
             bci = bci + 4;
             lastChildPush = 1;
@@ -1589,7 +1594,25 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
          *   Results:
          *     STACK_VALUE
          *
-         * store.local
+         * store.local.object
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     SET_LOCAL
+         *
+         * store.local.boolean
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     SET_LOCAL
+         *
+         * store.local.long
+         *   Inputs:
+         *     STACK_VALUE
+         *   Results:
+         *     SET_LOCAL
+         *
+         * store.local.uninit
          *   Inputs:
          *     STACK_VALUE
          *   Results:
@@ -1608,6 +1631,12 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
          *     STACK_VALUE
          *
          * load.local.long
+         *   Inputs:
+         *     LOCAL
+         *   Results:
+         *     STACK_VALUE
+         *
+         * load.local.uninit
          *   Inputs:
          *     LOCAL
          *   Results:
@@ -2186,41 +2215,138 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                                 nextBci = bci + 4;
                                 break;
                             }
-                            case INSTR_STORE_LOCAL :
+                            case INSTR_STORE_LOCAL_OBJECT :
                             {
-                                assert frame.isObject(sp - 1);
-                                frame.copy(sp - 1, LE_BYTES.getShort(bc, bci + 3) + VALUES_OFFSET);
-                                frame.clear(--sp);
+                                int localIdx = LE_BYTES.getShort(bc, bci + 3) + VALUES_OFFSET;
+                                int sourceSlot = sp - 1;
+                                frame.setObject(localIdx, expectObject(frame, sourceSlot));
+                                // here:
+                                sp--;
+                                nextBci = bci + 5;
+                                break;
+                            }
+                            case INSTR_STORE_LOCAL_BOOLEAN :
+                            {
+                                int localIdx = LE_BYTES.getShort(bc, bci + 3) + VALUES_OFFSET;
+                                int sourceSlot = sp - 1;
+                                FrameSlotKind localTag = frame.getFrameDescriptor().getSlotKind(localIdx);
+                                do {
+                                    if (localTag == FrameSlotKind.Boolean) {
+                                        try {
+                                            frame.setBoolean(localIdx, expectBoolean(frame, sourceSlot));
+                                            break /* goto here */;
+                                        } catch (UnexpectedResultException ex) {
+                                        }
+                                    }
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                    LE_BYTES.putShort(bc, bci, (short) INSTR_STORE_LOCAL_OBJECT);
+                                    doSetResultBoxed(bc, bci, bc[bci + 2], FRAME_TYPE_OBJECT);
+                                    frame.setObject(localIdx, expectObject(frame, sourceSlot));
+                                } while (false);
+                                // here:
+                                sp--;
+                                nextBci = bci + 5;
+                                break;
+                            }
+                            case INSTR_STORE_LOCAL_LONG :
+                            {
+                                int localIdx = LE_BYTES.getShort(bc, bci + 3) + VALUES_OFFSET;
+                                int sourceSlot = sp - 1;
+                                FrameSlotKind localTag = frame.getFrameDescriptor().getSlotKind(localIdx);
+                                do {
+                                    if (localTag == FrameSlotKind.Long) {
+                                        try {
+                                            frame.setLong(localIdx, expectLong(frame, sourceSlot));
+                                            break /* goto here */;
+                                        } catch (UnexpectedResultException ex) {
+                                        }
+                                    }
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                    LE_BYTES.putShort(bc, bci, (short) INSTR_STORE_LOCAL_OBJECT);
+                                    doSetResultBoxed(bc, bci, bc[bci + 2], FRAME_TYPE_OBJECT);
+                                    frame.setObject(localIdx, expectObject(frame, sourceSlot));
+                                } while (false);
+                                // here:
+                                sp--;
+                                nextBci = bci + 5;
+                                break;
+                            }
+                            case INSTR_STORE_LOCAL_UNINIT :
+                            {
+                                int localIdx = LE_BYTES.getShort(bc, bci + 3) + VALUES_OFFSET;
+                                int sourceSlot = sp - 1;
+                                FrameSlotKind localTag = frame.getFrameDescriptor().getSlotKind(localIdx);
+                                if (localTag == FrameSlotKind.Illegal) {
+                                    assert frame.isObject(sourceSlot);
+                                    frame.copy(sourceSlot, localIdx);
+                                } else {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    int resultTag = storeLocalInitialization(frame, localIdx, localTag.tag, sourceSlot);
+                                    setResultBoxedImpl(bc, bci, resultTag, BOXING_DESCRIPTORS[resultTag]);
+                                    doSetResultBoxed(bc, bci, bc[bci + 2], resultTag);
+                                }
+                                // here:
+                                sp--;
                                 nextBci = bci + 5;
                                 break;
                             }
                             case INSTR_LOAD_LOCAL_OBJECT :
                             {
-                                frame.copy(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET, sp);
+                                int localIdx = LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET;
+                                if (frame.getFrameDescriptor().getSlotKind(localIdx) != FrameSlotKind.Object) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                    frame.setObject(localIdx, frame.getValue(localIdx));
+                                }
+                                frame.copy(localIdx, sp);
                                 sp++;
                                 nextBci = bci + 4;
                                 break;
                             }
                             case INSTR_LOAD_LOCAL_BOOLEAN :
                             {
-                                Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Boolean) {
-                                    frame.setBoolean(sp, (boolean) value);
-                                } else {
-                                    frame.setObject(sp, value);
+                                int localIdx = LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET;
+                                FrameSlotKind localType = frame.getFrameDescriptor().getSlotKind(localIdx);
+                                if (localType != FrameSlotKind.Boolean) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    Object localValue;
+                                    if (localType == FrameSlotKind.Illegal && (localValue = frame.getObject(localIdx)) instanceof Boolean) {
+                                        frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Boolean);
+                                        frame.setBoolean(localIdx, (boolean) localValue);
+                                    } else {
+                                        frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                    }
                                 }
+                                frame.copy(localIdx, sp);
                                 sp++;
                                 nextBci = bci + 4;
                                 break;
                             }
                             case INSTR_LOAD_LOCAL_LONG :
                             {
-                                Object value = frame.getObject(LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET);
-                                if (value instanceof Long) {
-                                    frame.setLong(sp, (long) value);
-                                } else {
-                                    frame.setObject(sp, value);
+                                int localIdx = LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET;
+                                FrameSlotKind localType = frame.getFrameDescriptor().getSlotKind(localIdx);
+                                if (localType != FrameSlotKind.Long) {
+                                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                                    Object localValue;
+                                    if (localType == FrameSlotKind.Illegal && (localValue = frame.getObject(localIdx)) instanceof Long) {
+                                        frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Long);
+                                        frame.setLong(localIdx, (long) localValue);
+                                    } else {
+                                        frame.getFrameDescriptor().setSlotKind(localIdx, FrameSlotKind.Object);
+                                    }
                                 }
+                                frame.copy(localIdx, sp);
+                                sp++;
+                                nextBci = bci + 4;
+                                break;
+                            }
+                            case INSTR_LOAD_LOCAL_UNINIT :
+                            {
+                                int localIdx = LE_BYTES.getShort(bc, bci + 2) + VALUES_OFFSET;
+                                frame.setObject(sp, expectObject(frame, localIdx));
                                 sp++;
                                 nextBci = bci + 4;
                                 break;
@@ -6036,6 +6162,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                         case INSTR_LOAD_LOCAL_OBJECT :
                         case INSTR_LOAD_LOCAL_BOOLEAN :
                         case INSTR_LOAD_LOCAL_LONG :
+                        case INSTR_LOAD_LOCAL_UNINIT :
                         case INSTR_C_SLLOGICAL_NOT :
                         case INSTR_C_SLTO_BOOLEAN :
                         case INSTR_C_SLTO_BOOLEAN_Q_BOOLEAN :
@@ -6055,7 +6182,10 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             bci = bci + 4;
                             break;
                         }
-                        case INSTR_STORE_LOCAL :
+                        case INSTR_STORE_LOCAL_OBJECT :
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        case INSTR_STORE_LOCAL_LONG :
+                        case INSTR_STORE_LOCAL_UNINIT :
                         case INSTR_C_SLLESS_OR_EQUAL :
                         case INSTR_C_SLLESS_THAN :
                         case INSTR_C_SLLESS_OR_EQUAL_Q_LESS_OR_EQUAL0 :
@@ -6376,7 +6506,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             bci += 4;
                             break;
                         }
-                        case INSTR_STORE_LOCAL :
+                        case INSTR_STORE_LOCAL_OBJECT :
                         {
                             sb.append(String.format("%02x ", bc[bci + 0]));
                             sb.append(String.format("%02x ", bc[bci + 1]));
@@ -6394,7 +6524,82 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("   ");
-                            sb.append("store.local                      ");
+                            sb.append("store.local.object               ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 3)));
+                            bci += 5;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_BOOLEAN :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("store.local.boolean              ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 3)));
+                            bci += 5;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_LONG :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("store.local.long                 ");
+                            sb.append(String.format("pop[-%d]", bc[bci + 2]));
+                            sb.append(" -> ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 3)));
+                            bci += 5;
+                            break;
+                        }
+                        case INSTR_STORE_LOCAL_UNINIT :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append(String.format("%02x ", bc[bci + 4]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("store.local.uninit               ");
                             sb.append(String.format("pop[-%d]", bc[bci + 2]));
                             sb.append(" -> ");
                             sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 3)));
@@ -6470,6 +6675,31 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                             sb.append("   ");
                             sb.append("   ");
                             sb.append("load.local.long                  ");
+                            sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
+                            sb.append(" -> ");
+                            sb.append("x");
+                            bci += 4;
+                            break;
+                        }
+                        case INSTR_LOAD_LOCAL_UNINIT :
+                        {
+                            sb.append(String.format("%02x ", bc[bci + 0]));
+                            sb.append(String.format("%02x ", bc[bci + 1]));
+                            sb.append(String.format("%02x ", bc[bci + 2]));
+                            sb.append(String.format("%02x ", bc[bci + 3]));
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("   ");
+                            sb.append("load.local.uninit                ");
                             sb.append(String.format("loc[%d]", LE_BYTES.getShort(bc, bci + 2)));
                             sb.append(" -> ");
                             sb.append("x");
@@ -7302,6 +7532,20 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
                     return false;
                 }
                 return true;
+            }
+
+            private static int storeLocalInitialization(VirtualFrame frame, int localIdx, int localTag, int sourceSlot) {
+                Object value = frame.getValue(sourceSlot);
+                if (localTag == FRAME_TYPE_BOOLEAN && value instanceof Boolean) {
+                    frame.setBoolean(localIdx, (boolean) value);
+                    return FRAME_TYPE_BOOLEAN;
+                }
+                if (localTag == FRAME_TYPE_LONG && value instanceof Long) {
+                    frame.setLong(localIdx, (long) value);
+                    return FRAME_TYPE_LONG;
+                }
+                frame.setObject(localIdx, value);
+                return FRAME_TYPE_OBJECT;
             }
 
             private static void doSetResultBoxed(byte[] bc, int startBci, int bciOffset, int targetType) {

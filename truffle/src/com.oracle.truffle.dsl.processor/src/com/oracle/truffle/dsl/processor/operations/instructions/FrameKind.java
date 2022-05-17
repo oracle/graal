@@ -1,13 +1,19 @@
 package com.oracle.truffle.dsl.processor.operations.instructions;
 
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+
 public enum FrameKind {
+    // order must be the same as FrameSlotKind
     OBJECT("Object", "Object"),
-    BYTE("byte", "Byte"),
-    BOOLEAN("boolean", "Boolean"),
-    INT("int", "Int", "Integer"),
-    FLOAT("float", "Float"),
     LONG("long", "Long"),
-    DOUBLE("double", "Double");
+    INT("int", "Int", "Integer"),
+    DOUBLE("double", "Double"),
+    FLOAT("float", "Float"),
+    BOOLEAN("boolean", "Boolean"),
+    BYTE("byte", "Byte");
 
     private final String typeName;
     private final String frameName;
@@ -41,5 +47,28 @@ public enum FrameKind {
 
     public String getTypeNameBoxed() {
         return typeNameBoxed;
+    }
+
+    public TypeMirror getType() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        switch (this) {
+            case BOOLEAN:
+                return context.getType(boolean.class);
+            case BYTE:
+                return context.getType(byte.class);
+            case DOUBLE:
+                return context.getType(double.class);
+            case FLOAT:
+                return context.getType(float.class);
+            case INT:
+                return context.getType(int.class);
+            case LONG:
+                return context.getType(long.class);
+            case OBJECT:
+                return context.getType(Object.class);
+            default:
+                throw new UnsupportedOperationException();
+
+        }
     }
 }
