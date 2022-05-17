@@ -679,9 +679,7 @@ public class NativeImageGenerator {
                 }
             }
 
-            ProgressReporter.CenteredTextPrinter breakdownsPrinter = SubstrateOptions.BuildOutputBreakdowns.getValue()
-                            ? ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects())
-                            : null;
+            ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
             int numCompilations = codeCache.getCompilations().size();
@@ -709,9 +707,6 @@ public class NativeImageGenerator {
             }
             reporter.printCreationEnd(image.getImageSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
                             numCompilations, image.getDebugInfoSize());
-            if (breakdownsPrinter != null) {
-                breakdownsPrinter.reset().flushln();
-            }
         }
     }
 

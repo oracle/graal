@@ -18,34 +18,34 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  C compiler: gcc (linux, x86_64, 9.3.0)
  Garbage collector: Serial GC
 [2/7] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
-   2,565 (82.61%) of  3,105 classes reachable
-   3,216 (60.42%) of  5,323 fields reachable
-  11,652 (72.44%) of 16,086 methods reachable
-      27 classes,     0 fields, and   135 methods registered for reflection
-      57 classes,    59 fields, and    51 methods registered for JNI access
+   2,718 (72.93%) of  3,727 classes reachable
+   3,442 (53.43%) of  6,442 fields reachable
+  12,128 (44.82%) of 27,058 methods reachable
+      27 classes,     0 fields, and   271 methods registered for reflection
+      58 classes,    59 fields, and    52 methods registered for JNI access
 [3/7] Building universe...                                       (0.5s @ 0.61GB)
 [4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
 [5/7] Inlining methods...     [****]                             (0.5s @ 0.73GB)
 [6/7] Compiling methods...    [**]                               (3.7s @ 2.38GB)
 [7/7] Creating image...                                          (2.1s @ 1.04GB)
-   3.69MB (27.19%) for code area:    6,955 compilation units
-   5.86MB (43.18%) for image heap:   80,528 objects and 5 resources
-   3.05MB (22.46%) for debug info generated in 1.0s
- 997.25KB ( 7.18%) for other data
-  13.57MB in total
+   4.00MB (28.31%) for code area:     7,073 compilation units
+   5.90MB (41.70%) for image heap:   83,319 objects and 5 resources
+   3.24MB (22.91%) for debug info generated in 1.0s
+   1.00MB ( 7.08%) for other data
+  14.15MB in total
 --------------------------------------------------------------------------------
 Top 10 packages in code area:           Top 10 object types in image heap:
- 607.28KB java.util                      862.66KB byte[] for general heap data
- 288.63KB java.lang                      834.02KB byte[] for code metadata
- 223.34KB java.util.regex                723.00KB java.lang.String
- 220.45KB java.text                      534.05KB java.lang.Class
- 194.21KB com.oracle.svm.jni             457.63KB byte[] for java.lang.String
- 153.69KB java.util.concurrent           363.75KB java.util.HashMap$Node
- 118.78KB java.math                      192.70KB java.util.HashMap$Node[]
-  99.00KB com.oracle.svm.core.reflect    140.03KB java.lang.String[]
-  98.21KB sun.text.normalizer            139.04KB char[]
-  89.95KB c.oracle.svm.core.genscavenge  132.78KB c.o.s.c.h.DynamicHubCompanion
-      ... 112 additional packages             ... 734 additional object types
+ 632.68KB java.util                      871.62KB byte[] for code metadata
+ 324.42KB java.lang                      798.53KB java.lang.String
+ 223.90KB java.util.regex                774.91KB byte[] for general heap data
+ 221.62KB java.text                      614.06KB java.lang.Class
+ 198.30KB com.oracle.svm.jni             492.51KB byte[] for java.lang.String
+ 166.02KB java.util.concurrent           314.81KB java.util.HashMap$Node
+ 115.44KB java.math                      233.58KB c.o.s.c.h.DynamicHubCompanion
+  98.48KB sun.text.normalizer            154.84KB java.lang.String[]
+  97.42KB java.util.logging              139.54KB byte[] for embedded resources
+  95.18KB c.oracle.svm.core.genscavenge  139.04KB char[]
+   1.83MB for 118 more packages            1.29MB for 753 more object types
                        (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
     0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
