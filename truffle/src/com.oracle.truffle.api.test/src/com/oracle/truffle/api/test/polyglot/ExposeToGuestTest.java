@@ -133,8 +133,8 @@ public class ExposeToGuestTest {
 
     @Test
     public void explicitlyEnumeratingField() throws Exception {
-        HostAccess explictConfig = HostAccess.newBuilder().allowAccess(AccessibleValue.class.getField("value")).build();
-        Context context = Context.newBuilder().allowHostAccess(explictConfig).build();
+        HostAccess explicitConfig = HostAccess.newBuilder().allowAccess(AccessibleValue.class.getField("value")).build();
+        Context context = Context.newBuilder().allowHostAccess(explicitConfig).build();
         Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
         assertPropertyUndefined("Default annotation isn't enough", readValue, new ExportedValue());
@@ -178,19 +178,20 @@ public class ExposeToGuestTest {
         @HostAccess.Export
         @Override
         public Object foo(T x) {
-            return "overriden foo";
+            return "overridden foo";
         }
     }
 
     @Test
     public void fooBarExposedByInheritance() throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
+        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
+        Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         Assert.assertEquals("basic foo", readValue.execute(new Foo<>()).asString());
         Assert.assertEquals("enhanced bar", readValue.execute(new Bar()).asString());
         assertPropertyUndefined("Cannot call public method in package private class", "foo", readValue, new PackagePrivateBar());
         Assert.assertEquals("basic foo", readValue.execute(new PrivateFoo<>()).asString());
-        Assert.assertEquals("overriden foo", readValue.execute(new PrivateChangedFoo<>()).asString());
+        Assert.assertEquals("overridden foo", readValue.execute(new PrivateChangedFoo<>()).asString());
     }
 
     @FunctionalInterface
@@ -201,10 +202,20 @@ public class ExposeToGuestTest {
 
     @Test
     public void functionalInterfaceCall() throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
+        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
+        Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         FooInterface<Number> foo = (ignore) -> "functional foo";
         Assert.assertEquals("functional foo", readValue.execute(foo).asString());
+        Assert.assertEquals("functional foo", context.asValue(foo).execute(1).asString());
+    }
+
+    @Test
+    public void functionalInterfaceExecute() throws Exception {
+        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build();
+        Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
+        FooInterface<Number> foo = (ignore) -> "functional foo";
+        Assert.assertEquals("functional foo", context.asValue(foo).execute(1).asString());
     }
 
     @Test
@@ -223,7 +234,7 @@ public class ExposeToGuestTest {
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
         final Value arrayRead = readValue.execute(foo);
-        Assert.assertTrue("Foo lamda called", gotIn[0]);
+        Assert.assertTrue("Foo lambda called", gotIn[0]);
         Assert.assertEquals(1, arrayRead.asInt());
     }
 
@@ -238,7 +249,8 @@ public class ExposeToGuestTest {
     }
 
     private static void doAccessForbiddenInExplicit(boolean asList) throws Exception {
-        Context context = Context.newBuilder().allowHostAccess(HostAccess.EXPLICIT).build();
+        HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
+        Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
@@ -247,7 +259,7 @@ public class ExposeToGuestTest {
             arrayRead = readValue.execute(foo);
         } catch (Exception ex) {
             assertEquals("Expecting an exception", PolyglotException.class, ex.getClass());
-            Assert.assertTrue("Foo lamda called", gotIn[0]);
+            Assert.assertTrue("Foo lambda called", gotIn[0]);
             return;
         }
         fail("The read shouldn't succeed: " + arrayRead);
@@ -264,7 +276,7 @@ public class ExposeToGuestTest {
     }
 
     private static void doAccessForbiddenInManual(boolean asList) throws Exception {
-        HostAccess config = HostAccess.newBuilder().allowAccess(FooInterface.class.getMethod("foo", Number.class)).build();
+        HostAccess config = HostAccess.newBuilder().allowAccess(FooInterface.class.getMethod("foo", Number.class)).allowAccessInheritance(true).build();
         Context context = Context.newBuilder().allowHostAccess(config).build();
         Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
         boolean[] gotIn = {false};
@@ -274,7 +286,7 @@ public class ExposeToGuestTest {
             arrayRead = readValue.execute(foo);
         } catch (Exception ex) {
             assertEquals("Expecting an exception", PolyglotException.class, ex.getClass());
-            Assert.assertTrue("Foo lamda called", gotIn[0]);
+            Assert.assertTrue("Foo lambda called", gotIn[0]);
             return;
         }
         fail("The read shouldn't succeed: " + arrayRead);
@@ -511,7 +523,7 @@ public class ExposeToGuestTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testProxyOverloads() {
-        HostAccess access = HostAccess.EXPLICIT;
+        HostAccess access = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Overloaded());
@@ -527,7 +539,7 @@ public class ExposeToGuestTest {
         }
 
         // disable interface proxies.
-        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).build();
+        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowAccessInheritance(true).build();
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Overloaded());
@@ -543,7 +555,7 @@ public class ExposeToGuestTest {
         }
 
         // disable only object proxies
-        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementationsAnnotatedBy(FunctionalInterface.class).build();
+        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementationsAnnotatedBy(FunctionalInterface.class).allowAccessInheritance(true).build();
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Overloaded());
@@ -553,7 +565,7 @@ public class ExposeToGuestTest {
         }
 
         // disable only functional proxies
-        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementations(MarkedInterface.class).build();
+        access = HostAccess.newBuilder().allowAccessAnnotatedBy(Export.class).allowImplementations(MarkedInterface.class).allowAccessInheritance(true).build();
         try (Context c = Context.newBuilder().allowHostAccess(access).build()) {
             c.initialize(ProxyLanguage.ID);
             Value v = c.asValue(new Overloaded());
