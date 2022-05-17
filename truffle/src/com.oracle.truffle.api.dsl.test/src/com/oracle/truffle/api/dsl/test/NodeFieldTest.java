@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
 import java.lang.annotation.Repeatable;
@@ -53,6 +54,7 @@ import java.lang.reflect.Method;
 
 import org.junit.Test;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -274,16 +276,28 @@ public class NodeFieldTest {
     }
 
     @Test
-    public void testUncachedNodeSettableIntFieldRef() {
+    public void testUncachedNodeSettableIntFieldRef() throws Exception {
         UncachedNodeSettableIntFieldRef cached = UncachedNodeSettableIntFieldRefNodeGen.create();
         assertEquals(0, cached.execute());
         assertEquals(0, cached.getFoo());
         cached.setFoo(42);
         assertEquals(42, cached.execute());
         assertEquals(42, cached.getFoo());
-        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().execute(), UnsupportedOperationException.class);
-        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().getFoo(), UnsupportedOperationException.class);
-        assertFails(() -> UncachedNodeSettableIntFieldRefNodeGen.getUncached().setFoo(42), UnsupportedOperationException.class);
+        assertNull(declaredMethod(cached.getClass(), "getFoo").getAnnotation(TruffleBoundary.class));
+        assertNull(declaredMethod(cached.getClass(), "setFoo", int.class).getAnnotation(TruffleBoundary.class));
+
+        UncachedNodeSettableIntFieldRef uncached = UncachedNodeSettableIntFieldRefNodeGen.getUncached();
+        assertFails(() -> uncached.execute(), UnsupportedOperationException.class);
+        assertFails(() -> uncached.getFoo(), UnsupportedOperationException.class);
+        assertFails(() -> uncached.setFoo(42), UnsupportedOperationException.class);
+        assertNotNull(declaredMethod(uncached.getClass(), "getFoo").getAnnotation(TruffleBoundary.class));
+        assertNotNull(declaredMethod(uncached.getClass(), "setFoo", int.class).getAnnotation(TruffleBoundary.class));
+    }
+
+    private static Method declaredMethod(Class<?> c, String name, Class<?>... types) throws Exception {
+        Method m = c.getDeclaredMethod(name, types);
+        m.setAccessible(true);
+        return m;
     }
 
     @GenerateUncached
