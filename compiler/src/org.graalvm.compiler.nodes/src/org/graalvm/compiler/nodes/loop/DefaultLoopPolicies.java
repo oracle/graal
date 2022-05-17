@@ -283,7 +283,8 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * is within an inner loop then its frequency is divided by the local frequencies of the inner
      * loops.
      *
-     * The result is between 0 and {@code controlSplits.size()} times the local loop frequency.
+     * The result should be between 0 and {@code controlSplits.size()} times the local loop
+     * frequency.
      */
     private static double localFrequency(LoopEx loop, List<ControlSplitNode> controlSplits) {
         int loopDepth = loop.loop().getDepth();
@@ -298,7 +299,6 @@ public class DefaultLoopPolicies implements LoopPolicies {
             for (Loop<Block> l = b.getLoop(); l.getDepth() > loopDepth; l = l.getParent()) {
                 f /= loop.loopsData().loop(l).localLoopFrequency();
             }
-            assert 0.0 < f && f <= loopRelativeFrequency : "Control split frequency should be in ]0," + loopRelativeFrequency + "] but found " + f;
 
             freq += f;
         }
