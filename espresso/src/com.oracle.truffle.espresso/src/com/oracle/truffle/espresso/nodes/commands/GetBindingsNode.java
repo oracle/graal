@@ -38,4 +38,9 @@ public final class GetBindingsNode extends RootNode {
     public Object execute(VirtualFrame frame) {
         return EspressoContext.get(this).getBindings();
     }
+
+    @Override
+    public String getName() {
+        return EVAL_NAME;
+    }
 }

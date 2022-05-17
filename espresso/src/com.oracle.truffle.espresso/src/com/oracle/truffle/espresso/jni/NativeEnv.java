@@ -283,6 +283,11 @@ public abstract class NativeEnv implements ContextAccess {
         public String toString() {
             return name;
         }
+
+        @Override
+        public String getName() {
+            return name;
+        }
     }
 
     protected abstract String getName();

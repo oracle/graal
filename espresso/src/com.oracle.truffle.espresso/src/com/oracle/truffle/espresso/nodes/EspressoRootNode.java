@@ -111,6 +111,11 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
     @Override
     public final String getName() {
+        return getMethod().getName().toString() + getMethod().getRawSignature();
+    }
+
+    @Override
+    public String getQualifiedName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();
     }
 
