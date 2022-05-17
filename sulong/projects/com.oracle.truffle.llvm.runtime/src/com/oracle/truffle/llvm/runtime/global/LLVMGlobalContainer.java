@@ -64,7 +64,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
      * The number of writes that will invalidate the assumption.
      */
     private static final int MAX_INVALIDATING_WRITES = 3;
-    static final LLVMGlobalContainer LLVMGlobalContainerDispatch = new LLVMGlobalContainer();
 
     private static final class State {
         final Object value;
@@ -216,7 +215,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "readNative")
-        @GenerateAOT.Exclude
         static byte readManaged(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -238,7 +236,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "readNative")
-        @GenerateAOT.Exclude
         static short readManaged(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -260,7 +257,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "readNative")
-        @GenerateAOT.Exclude
         static int readManaged(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -282,7 +278,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "readNative")
-        @GenerateAOT.Exclude
         static float readManaged(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -304,7 +299,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "readNative")
-        @GenerateAOT.Exclude
         static double readManaged(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -342,7 +336,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
-        @GenerateAOT.Exclude
         static Object readFallback(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -382,7 +375,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
-        @GenerateAOT.Exclude
         static LLVMPointer readFallback(LLVMGlobalContainer self, long offset,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedReadLibrary location) {
@@ -404,7 +396,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "writeNative")
-        @GenerateAOT.Exclude
         static void writeManaged(LLVMGlobalContainer self, long offset, byte value,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
@@ -426,7 +417,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "writeNative")
-        @GenerateAOT.Exclude
         static void writeManaged(LLVMGlobalContainer self, long offset, short value,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
@@ -448,7 +438,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "writeNative")
-        @GenerateAOT.Exclude
         static void writeManaged(LLVMGlobalContainer self, long offset, int value,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
@@ -470,7 +459,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "writeNative")
-        @GenerateAOT.Exclude
         static void writeManaged(LLVMGlobalContainer self, long offset, float value,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
@@ -492,7 +480,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(replaces = "writeNative")
-        @GenerateAOT.Exclude
         static void writeManaged(LLVMGlobalContainer self, long offset, double value,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
@@ -539,7 +526,6 @@ public final class LLVMGlobalContainer extends LLVMInternalTruffleObject {
         }
 
         @Specialization(guards = {"!self.isPointer()", "offset != 0"})
-        @GenerateAOT.Exclude
         static void writeFallback(LLVMGlobalContainer self, long offset, long value,
                         @Shared("toNative") @Cached LLVMToNativeNode toNative,
                         @CachedLibrary("self") LLVMManagedWriteLibrary location) {
