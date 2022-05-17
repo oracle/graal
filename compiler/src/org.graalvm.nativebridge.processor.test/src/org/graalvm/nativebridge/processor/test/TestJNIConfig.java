@@ -24,9 +24,28 @@
  */
 package org.graalvm.nativebridge.processor.test;
 
+import org.graalvm.nativebridge.BinaryInput;
+import org.graalvm.nativebridge.BinaryMarshaller;
+import org.graalvm.nativebridge.BinaryOutput;
 import org.graalvm.nativebridge.JNIConfig;
+import org.graalvm.polyglot.TypeLiteral;
+
+import java.util.List;
+import java.util.Map;
 
 public final class TestJNIConfig {
+
+    private static final BinaryMarshaller<?> UNSUPPORTED = new BinaryMarshaller<Object>() {
+        @Override
+        public Object read(BinaryInput input) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void write(BinaryOutput output, Object object) {
+            throw new UnsupportedOperationException();
+        }
+    };
 
     private static final JNIConfig INSTANCE = createJNIConfig();
 
@@ -35,6 +54,15 @@ public final class TestJNIConfig {
     }
 
     private static JNIConfig createJNIConfig() {
-        return JNIConfig.newBuilder().build();
+        TypeLiteral<List<String>> stringList = new TypeLiteral<>() {
+        };
+        TypeLiteral<Map<String, String>> stringMap = new TypeLiteral<>() {
+        };
+        return JNIConfig.newBuilder().registerMarshaller(stringList, unsupportedMarshaller()).registerMarshaller(stringMap, unsupportedMarshaller()).build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> BinaryMarshaller<T> unsupportedMarshaller() {
+        return (BinaryMarshaller<T>) UNSUPPORTED;
     }
 }

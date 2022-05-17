@@ -474,7 +474,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
 
     @Override
     public ProcessHandler newDefaultProcessHandler() {
-        return ProcessHandlers.newDefaultProcessHandler();
+        if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
+            return ProcessHandlers.newDefaultProcessHandler();
+        } else {
+            return null;
+        }
     }
 
     @Override

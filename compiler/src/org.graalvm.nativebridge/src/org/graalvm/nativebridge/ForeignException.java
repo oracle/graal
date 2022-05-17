@@ -170,7 +170,6 @@ public final class ForeignException extends RuntimeException {
         } catch (Throwable t) {
             // Exception marshalling failed, prevent exception propagation from CEntryPoint that
             // may cause process crash.
-            JNIUtil.trace(2, t);
             return MARSHALLING_FAILED;
         }
     }

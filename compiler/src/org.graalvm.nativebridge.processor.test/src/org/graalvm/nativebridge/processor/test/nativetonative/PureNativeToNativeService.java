@@ -22,32 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.nativebridge;
+package org.graalvm.nativebridge.processor.test.nativetonative;
 
-import org.graalvm.jniutils.JNIEntryPoint;
+import org.graalvm.nativebridge.GenerateNativeToNativeBridge;
+import org.graalvm.nativebridge.NativeIsolate;
+import org.graalvm.nativebridge.NativeObject;
+import org.graalvm.nativebridge.processor.test.Service;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
+import org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically;
 
-final class ForeignExceptionEndPoints {
+@GenerateNativeToNativeBridge(jniConfig = TestJNIConfig.class, include = NotIncludedAutomatically.class)
+abstract class PureNativeToNativeService extends NativeObject implements Service {
 
-    private ForeignExceptionEndPoints() {
-    }
-
-    /**
-     * Called by JNI to create a {@link ForeignException} used to throw native exception into Java
-     * code.
-     *
-     * @param rawValue marshalled original exception
-     * @return a {@link ForeignException} instance
-     */
-    @JNIEntryPoint
-    static Throwable createForeignException(byte[] rawValue) {
-        return ForeignException.create(rawValue, ForeignException.HOST_TO_GUEST);
-    }
-
-    /**
-     * Called by JNI to return a marshalled exception transferred by the {@code exception}.
-     */
-    @JNIEntryPoint
-    static byte[] toByteArray(ForeignException exception) {
-        return exception.toByteArray();
+    PureNativeToNativeService(NativeIsolate isolate, long handle) {
+        super(isolate, handle);
     }
 }

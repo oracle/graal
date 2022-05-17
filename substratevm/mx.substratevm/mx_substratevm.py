@@ -587,6 +587,8 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=['substratevm:LIBRARY_SUPPORT'])
         macro_junit = '--macro:junit' + ('' if builder_on_modulepath else 'cp')
         unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir])
+        image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
+        run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:

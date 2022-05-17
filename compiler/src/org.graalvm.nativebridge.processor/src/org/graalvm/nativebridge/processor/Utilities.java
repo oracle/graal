@@ -26,6 +26,7 @@ package org.graalvm.nativebridge.processor;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
@@ -243,5 +244,9 @@ final class Utilities {
             }
         }
         return false;
+    }
+
+    static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
+        return (PackageElement) typeElement.getEnclosingElement();
     }
 }

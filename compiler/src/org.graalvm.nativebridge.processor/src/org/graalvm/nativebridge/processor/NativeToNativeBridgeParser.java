@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,11 +36,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
+import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.HotSpotToNativeDefinitionData;
+import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.TypeCache;
 
-    static final String GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION = "org.graalvm.nativebridge.GenerateHotSpotToNativeBridge";
+final class NativeToNativeBridgeParser extends AbstractBridgeParser {
 
-    private HotSpotToNativeBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
+    static final String GENERATE_NATIVE_TO_NATIVE_ANNOTATION = "org.graalvm.nativebridge.GenerateNativeToNativeBridge";
+
+    private NativeToNativeBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
         super(processor, typeCache,
                         createConfiguration(processor.env().getTypeUtils(), typeCache),
                         NativeToHotSpotBridgeParser.createConfiguration(typeCache));
@@ -48,7 +51,7 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
     @Override
     AbstractBridgeGenerator createGenerator(DefinitionData definitionData) {
-        return new HotSpotToNativeBridgeGenerator(this, (TypeCache) typeCache, definitionData);
+        return new NativeToNativeBridgeGenerator(this, (TypeCache) typeCache, definitionData);
     }
 
     @Override
@@ -62,42 +65,13 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
                         endPointHandle, centryPointPredicate, jniConfig, throwableMarshaller, annotationsToIgnore, annotationsForMarshallerLookup);
     }
 
-    static HotSpotToNativeBridgeParser create(NativeBridgeProcessor processor) {
-        return new HotSpotToNativeBridgeParser(processor, new TypeCache(processor));
+    static NativeToNativeBridgeParser create(NativeBridgeProcessor processor) {
+        return new NativeToNativeBridgeParser(processor, new TypeCache(processor));
     }
 
     static Configuration createConfiguration(Types types, AbstractTypeCache typeCache) {
-        return new Configuration(typeCache.generateHSToNativeBridge, typeCache.nativeObject,
+        return new Configuration(typeCache.generateNativeToNativeBridge, typeCache.nativeObject,
                         Collections.singleton(Arrays.asList(typeCache.nativeIsolate, types.getPrimitiveType(TypeKind.LONG))),
                         Collections.singleton(Collections.singletonList(typeCache.nativeObject)));
-    }
-
-    static final class HotSpotToNativeDefinitionData extends DefinitionData {
-
-        final DeclaredType centryPointPredicate;
-
-        HotSpotToNativeDefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
-                        List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor,
-                        ExecutableElement receiverAccessor, VariableElement endPointHandle, DeclaredType centryPointPredicate,
-                        DeclaredType jniConfig, MarshallerData throwableMarshaller,
-                        Set<DeclaredType> ignoreAnnotations, Set<DeclaredType> marshallerAnnotations) {
-            super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor,
-                            endPointHandle, jniConfig, throwableMarshaller, ignoreAnnotations, marshallerAnnotations);
-            this.centryPointPredicate = centryPointPredicate;
-        }
-    }
-
-    static class TypeCache extends AbstractTypeCache {
-
-        final DeclaredType centryPoint;
-        final DeclaredType isolateThreadContext;
-        final DeclaredType nativeIsolateThread;
-
-        TypeCache(NativeBridgeProcessor processor) {
-            super(processor);
-            this.centryPoint = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint");
-            this.isolateThreadContext = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext");
-            this.nativeIsolateThread = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolateThread");
-        }
     }
 }

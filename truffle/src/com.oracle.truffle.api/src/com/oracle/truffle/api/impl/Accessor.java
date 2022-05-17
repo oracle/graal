@@ -532,6 +532,8 @@ public abstract class Accessor {
 
         public abstract boolean isIOAllowed();
 
+        public abstract boolean isCreateProcessAllowed();
+
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
 
         public abstract Set<String> getLanguageIds();

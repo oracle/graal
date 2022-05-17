@@ -173,4 +173,9 @@ public interface StackOverflowCheck {
      * Updates the stack overflow boundary of the current thread.
      */
     void updateStackOverflowBoundary();
+
+    /**
+     * Returns the stack overflow boundary of the current thread.
+     */
+    UnsignedWord getStackOverflowBoundary();
 }

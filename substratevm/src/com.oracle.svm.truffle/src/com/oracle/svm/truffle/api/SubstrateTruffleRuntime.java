@@ -31,6 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.Option;
@@ -46,6 +47,7 @@ import org.graalvm.compiler.truffle.runtime.CompilationTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
@@ -392,6 +394,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             default:
                 throw new IllegalStateException("Unsupported value " + res);
         }
+    }
+
+    @Override
+    public long getStackOverflowLimit() {
+        StackOverflowCheck stackOverflowCheck = ImageSingletons.lookup(StackOverflowCheck.class);
+        return stackOverflowCheck.getStackOverflowBoundary().rawValue();
     }
 
     /**
