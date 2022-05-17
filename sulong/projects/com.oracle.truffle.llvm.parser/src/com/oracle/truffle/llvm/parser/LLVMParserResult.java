@@ -44,6 +44,7 @@ public final class LLVMParserResult {
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
     private final List<GlobalVariable> threadLocalGlobals;
+    private final int threadLocalGlobalObjectCounter;
     private final DataLayout dataLayout;
     private final int symbolTableSize;
     private final TargetTriple targetTriple;
@@ -54,12 +55,14 @@ public final class LLVMParserResult {
                     List<GlobalVariable> definedGlobals,
                     List<GlobalVariable> externalGlobals,
                     List<GlobalVariable> threadLocalGlobals,
+                    int threadLocalGlobalObjectCounter,
                     DataLayout dataLayout,
                     TargetTriple targetTriple) {
         this.runtime = runtime;
         this.definedFunctions = definedFunctions;
         this.externalFunctions = externalFunctions;
         this.threadLocalGlobals = threadLocalGlobals;
+        this.threadLocalGlobalObjectCounter = threadLocalGlobalObjectCounter;
         this.definedGlobals = definedGlobals;
         this.externalGlobals = externalGlobals;
         this.dataLayout = dataLayout;
@@ -89,6 +92,10 @@ public final class LLVMParserResult {
 
     public List<GlobalVariable> getThreadLocalGlobals() {
         return threadLocalGlobals;
+    }
+
+    public int getThreadLocalGlobalObjectCounter() {
+        return threadLocalGlobalObjectCounter;
     }
 
     public DataLayout getDataLayout() {

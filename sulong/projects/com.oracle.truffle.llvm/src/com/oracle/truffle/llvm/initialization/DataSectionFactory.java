@@ -47,12 +47,16 @@ import java.util.List;
 public class DataSectionFactory {
 
     @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
+    @CompilationFinal(dimensions = 1) private final int[] threadLocalGlobalContainers;
     @CompilationFinal(dimensions = 1) private final int[] threadLocalGlobalOffsets;
     @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
 
     private DataSection roSection;
     private DataSection rwSection;
     private DataSection threadLocalSection;
+
+    // The index for thread local global objects
+    private int globalContainerIndex = -1;
 
     public DataSectionFactory(LLVMParserResult result) throws Type.TypeOverflowException {
         DataLayout dataLayout = result.getDataLayout();
@@ -62,6 +66,7 @@ public class DataSectionFactory {
 
         this.globalOffsets = new int[globalsCount];
         this.threadLocalGlobalOffsets = new int[threadLocalGlobalsCount];
+        this.threadLocalGlobalContainers = new int[result.getThreadLocalGlobalObjectCounter()];
         this.globalIsReadOnly = new boolean[globalsCount];
 
         List<GlobalVariable> definedGlobals = result.getDefinedGlobals();
@@ -94,14 +99,21 @@ public class DataSectionFactory {
         for (int i = 0; i < threadLocalGlobalsCount; i++) {
             GlobalVariable tlGlobals = threadLocalGlobals.get(i);
             Type type = tlGlobals.getType().getPointeeType();
-            long offset = threadLocalSection.add(tlGlobals, type);
-            assert offset >= 0;
-            if (offset > Integer.MAX_VALUE) {
-                throw CompilerDirectives.shouldNotReachHere("globals section >2GB not supported");
+            if (isSpecialGlobalSlot(type)) {
+                // pointer type
+                threadLocalGlobalContainers[i] = globalContainerIndex;
+                threadLocalGlobalOffsets[i] = globalContainerIndex;
+                globalContainerIndex--;
+            } else {
+                long offset = threadLocalSection.add(tlGlobals, type);
+                assert offset >= 0;
+                if (offset > Integer.MAX_VALUE) {
+                    throw CompilerDirectives.shouldNotReachHere("globals section >2GB not supported");
+                }
+                threadLocalGlobalOffsets[i] = (int) offset;
             }
-            threadLocalGlobalOffsets[i] = (int) offset;
-        }
 
+        }
     }
 
     DataSection getRoSection() {
@@ -126,6 +138,10 @@ public class DataSectionFactory {
 
     int[] getThreadLocalGlobalOffsets() {
         return threadLocalGlobalOffsets;
+    }
+
+    int[] getThreadLocalGlobalContainers() {
+        return threadLocalGlobalContainers;
     }
 
     static final class DataSection {

@@ -51,6 +51,17 @@ int check_different() {
     return 1;
 }
 
+__thread void* global;
+
+void* readGlobal() {
+    return global;
+}
+
+void writeGlobal(void* object) {
+    global = object;
+}
+
+
 char buffer[10240];
 
 FILE *open_buffer() {
