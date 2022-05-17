@@ -130,7 +130,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState arrayState = getObjectState();
-            for (AnalysisObject object : arrayState.objects()) {
+            for (AnalysisObject object : arrayState.objects(bb)) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
                     /* Ignore non-array types when type flow constraints are relaxed. */
                     continue;
@@ -208,7 +208,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
             assert this.isClone();
 
             TypeState objectState = getObjectState();
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType objectType = object.type();
                 if (objectType.isArray()) {
                     if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
@@ -281,7 +281,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
             TypeState objectState = getObjectState();
 
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType objectType = object.type();
                 assert !objectType.isArray();
 

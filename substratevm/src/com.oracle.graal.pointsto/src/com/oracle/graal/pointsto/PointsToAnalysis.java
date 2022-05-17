@@ -110,6 +110,7 @@ public abstract class PointsToAnalysis implements BigBang {
     private TypeFlow<?> allSynchronizedTypeFlow;
 
     protected final AnalysisUniverse universe;
+    private final AnalysisPolicy analysisPolicy;
     protected final AnalysisMetaAccess metaAccess;
     protected final HostVM hostVM;
     private final UnsupportedFeatures unsupportedFeatures;
@@ -150,6 +151,7 @@ public abstract class PointsToAnalysis implements BigBang {
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.universe = universe;
+        this.analysisPolicy = universe.analysisPolicy();
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
         this.replacements = providers.getReplacements();
         this.unsupportedFeatures = unsupportedFeatures;
@@ -329,11 +331,11 @@ public abstract class PointsToAnalysis implements BigBang {
 
     @Override
     public AnalysisPolicy analysisPolicy() {
-        return universe.analysisPolicy();
+        return analysisPolicy;
     }
 
     public AnalysisContextPolicy<AnalysisContext> contextPolicy() {
-        return universe.analysisPolicy().getContextPolicy();
+        return analysisPolicy.getContextPolicy();
     }
 
     @Override

@@ -1497,6 +1497,8 @@ suite = {
                 "com.oracle.graal.pointsto.typestate",
                 "com.oracle.graal.pointsto.infrastructure",
                 "com.oracle.graal.pointsto.flow.context.object",
+                "com.oracle.graal.pointsto.flow.context.free",
+                "com.oracle.graal.pointsto.flow.context.bytecode",
               ],
               "requires": [
                 "java.management",

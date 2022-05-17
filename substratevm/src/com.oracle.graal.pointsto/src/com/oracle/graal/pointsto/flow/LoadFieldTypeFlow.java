@@ -132,7 +132,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
             TypeState objectState = objectFlow.getState();
             objectState = filterObjectState(bb, objectState);
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 /* Get the field flow corresponding to the receiver object. */
 
                 FieldTypeFlow fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);

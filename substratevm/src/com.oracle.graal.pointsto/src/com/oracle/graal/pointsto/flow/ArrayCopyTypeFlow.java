@@ -129,7 +129,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
          * The source and destination array can have reference types which, although must be
          * compatible, can be different.
          */
-        for (AnalysisObject srcArrayObject : srcArrayState.objects()) {
+        for (AnalysisObject srcArrayObject : srcArrayState.objects(bb)) {
             if (!srcArrayObject.type().isArray()) {
                 /*
                  * Ignore non-array type. Sometimes the analysis cannot filter out non-array types
@@ -146,7 +146,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
             ArrayElementsTypeFlow srcArrayElementsFlow = srcArrayObject.getArrayElementsFlow(bb, false);
 
-            for (AnalysisObject dstArrayObject : dstArrayState.objects()) {
+            for (AnalysisObject dstArrayObject : dstArrayState.objects(bb)) {
                 if (!dstArrayObject.type().isArray()) {
                     /* Ignore non-array type. */
                     continue;

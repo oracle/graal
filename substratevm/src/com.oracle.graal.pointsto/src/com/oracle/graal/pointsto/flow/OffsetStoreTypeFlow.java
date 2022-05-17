@@ -147,7 +147,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
             TypeState objectState = objectFlow.getState();
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
                     /* Ignore non-array types when type flow constraints are relaxed. */
                     continue;
@@ -273,7 +273,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
             TypeState objectState = objectFlow.getState();
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType type = object.type();
                 if (type.isArray()) {
                     if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
@@ -374,7 +374,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             TypeState objectState = objectFlow.getState();
 
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType type = object.type();
                 assert !type.isArray();
 
