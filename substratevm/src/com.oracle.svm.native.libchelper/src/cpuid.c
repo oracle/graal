@@ -779,7 +779,7 @@ int checkCPUFeatures(uint8_t *buildtimeFeaturesPtr)
 void checkCPUFeaturesOrExit(uint8_t *buildtimeFeaturesPtr, const char *errorMessage)
 {
     if (checkCPUFeatures(buildtimeFeaturesPtr)) {
-       puts(errorMessage);
+       fputs(errorMessage, stderr);
        exit(1);
     }
 }
