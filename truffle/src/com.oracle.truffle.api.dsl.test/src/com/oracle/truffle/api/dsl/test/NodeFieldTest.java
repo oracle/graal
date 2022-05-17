@@ -283,21 +283,15 @@ public class NodeFieldTest {
         cached.setFoo(42);
         assertEquals(42, cached.execute());
         assertEquals(42, cached.getFoo());
-        assertNull(declaredMethod(cached.getClass(), "getFoo").getAnnotation(TruffleBoundary.class));
-        assertNull(declaredMethod(cached.getClass(), "setFoo", int.class).getAnnotation(TruffleBoundary.class));
+        assertNull(cached.getClass().getDeclaredMethod("getFoo").getAnnotation(TruffleBoundary.class));
+        assertNull(cached.getClass().getDeclaredMethod("setFoo", int.class).getAnnotation(TruffleBoundary.class));
 
         UncachedNodeSettableIntFieldRef uncached = UncachedNodeSettableIntFieldRefNodeGen.getUncached();
         assertFails(() -> uncached.execute(), UnsupportedOperationException.class);
         assertFails(() -> uncached.getFoo(), UnsupportedOperationException.class);
         assertFails(() -> uncached.setFoo(42), UnsupportedOperationException.class);
-        assertNotNull(declaredMethod(uncached.getClass(), "getFoo").getAnnotation(TruffleBoundary.class));
-        assertNotNull(declaredMethod(uncached.getClass(), "setFoo", int.class).getAnnotation(TruffleBoundary.class));
-    }
-
-    private static Method declaredMethod(Class<?> c, String name, Class<?>... types) throws Exception {
-        Method m = c.getDeclaredMethod(name, types);
-        m.setAccessible(true);
-        return m;
+        assertNotNull(uncached.getClass().getDeclaredMethod("getFoo").getAnnotation(TruffleBoundary.class));
+        assertNotNull(uncached.getClass().getDeclaredMethod("setFoo", int.class).getAnnotation(TruffleBoundary.class));
     }
 
     @GenerateUncached
