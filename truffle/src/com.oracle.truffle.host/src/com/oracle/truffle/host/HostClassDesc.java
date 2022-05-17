@@ -148,9 +148,9 @@ final class HostClassDesc {
             HostMethodDesc ctor = collectPublicConstructors(hostAccess, type);
 
             if (!Modifier.isInterface(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) {
-                String functionalInterfaceMethodName = findFunctionalInterfaceMethodName(type);
-                if (functionalInterfaceMethodName != null) {
-                    functionalInterfaceMethod = methodMap.get(functionalInterfaceMethodName);
+                Method implementableAbstractMethod = findFunctionalInterfaceMethod(hostAccess, type);
+                if (implementableAbstractMethod != null) {
+                    functionalInterfaceMethod = lookupSingleMethod(hostAccess, implementableAbstractMethod, methodMap);
                 }
             }
 
@@ -371,12 +371,12 @@ final class HostClassDesc {
             }
         }
 
-        private static String findFunctionalInterfaceMethodName(Class<?> clazz) {
+        private static Method findFunctionalInterfaceMethod(HostClassCache hostAccess, Class<?> clazz) {
             for (Class<?> iface : clazz.getInterfaces()) {
-                if (Modifier.isPublic(iface.getModifiers()) && iface.isAnnotationPresent(FunctionalInterface.class)) {
+                if (Modifier.isPublic(iface.getModifiers()) && iface.isAnnotationPresent(FunctionalInterface.class) && hostAccess.allowsImplementation(iface)) {
                     for (Method m : iface.getMethods()) {
                         if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
-                            return m.getName();
+                            return m;
                         }
                     }
                 }
@@ -384,9 +384,22 @@ final class HostClassDesc {
 
             Class<?> superclass = clazz.getSuperclass();
             if (superclass != null && superclass != Object.class) {
-                return findFunctionalInterfaceMethodName(superclass);
+                return findFunctionalInterfaceMethod(hostAccess, superclass);
             }
             return null;
+        }
+
+        private static HostMethodDesc lookupSingleMethod(HostClassCache hostAccess, Method singleAbstractMethod, Map<String, HostMethodDesc> methodMap) {
+            HostMethodDesc existingMethodDesc = methodMap.get(singleAbstractMethod.getName());
+            if (existingMethodDesc != null) {
+                for (SingleMethod overload : existingMethodDesc.getOverloads()) {
+                    if (Arrays.equals(overload.getParameterTypes(), singleAbstractMethod.getParameterTypes())) {
+                        return overload;
+                    }
+                }
+            }
+            boolean scoped = hostAccess.methodScoped(singleAbstractMethod);
+            return SingleMethod.unreflect(singleAbstractMethod, scoped);
         }
     }
 
