@@ -1187,6 +1187,7 @@ suite = {
                     ],
                 },
             },
+            "noMavenJavadoc": True,
         },
 
         "SVM_LIBFFI": {
