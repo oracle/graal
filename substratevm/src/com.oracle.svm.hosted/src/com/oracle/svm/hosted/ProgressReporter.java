@@ -83,6 +83,8 @@ import com.oracle.svm.util.ReflectionUtil;
 
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
+    private static final String HEADLINE_SEPARATOR;
+    private static final String LINE_SEPARATOR;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_FEATURES = 50;
@@ -144,6 +146,8 @@ public class ProgressReporter {
 
     static {
         CHARACTERS_PER_LINE = IS_CI ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
+        HEADLINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
+        LINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
     }
 
     private static boolean isDumbTerm() {
@@ -881,9 +885,6 @@ public class ProgressReporter {
     }
 
     final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
-        private final String headlineSeparator = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
-        private final String lineSeparator = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
-
         @Override
         DirectPrinter getThis() {
             return this;
@@ -900,11 +901,11 @@ public class ProgressReporter {
         }
 
         void printHeadlineSeparator() {
-            dim().a(headlineSeparator).reset().println();
+            dim().a(HEADLINE_SEPARATOR).reset().println();
         }
 
         void printLineSeparator() {
-            dim().a(lineSeparator).reset().println();
+            dim().a(LINE_SEPARATOR).reset().println();
         }
     }
 
