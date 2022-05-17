@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.blocking;
 
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -147,7 +148,65 @@ public interface EspressoLock {
         return await(timeout, TimeUnit.MILLISECONDS);
     }
 
+    /**
+     * Causes the current thread to wait until either another thread invokes the
+     * {@link EspressoLock#signal()} method or the {@link EspressoLock#signalAll()} method for this
+     * object, or a specified amount of time has elapsed.
+     * <p>
+     * The current thread must own this object's monitor.
+     * <p>
+     * Analogous to the {@link Object#wait(long)} method for built-in monitor locks.
+     *
+     * @param timeout the maximum time to wait. The value {@code 0} means to wait indefinitely.
+     * @param unit the time unit the given timeout is in.
+     * @return {@code false} if the waiting time detectably elapsed before return from the method,
+     *         else {@code true}
+     * @throws IllegalArgumentException if the value of timeout is negative.
+     * @throws IllegalMonitorStateException if the current thread is not the owner of the lock.
+     * @throws GuestInterruptedException if any thread guest-interrupted the current thread before
+     *             or while the current thread was waiting for a notification.
+     */
     boolean await(long timeout, TimeUnit unit) throws GuestInterruptedException;
+
+    /**
+     * Causes the current thread to wait until it is signalled or guest interrupted, or the
+     * specified deadline elapses.
+     *
+     * <p>
+     * The lock is released and the current thread becomes disabled for thread scheduling purposes
+     * and lies dormant until <em>one</em> of five things happens:
+     * <ul>
+     * <li>Some other thread invokes the {@link #signal} method for this {@code EspressoLock} and
+     * the current thread happens to be chosen as the thread to be awakened; or
+     * <li>Some other thread invokes the {@link #signalAll} method for this {@code EspressoLock}; or
+     * <li>Some other thread {@linkplain GuestInterrupter#guestInterrupt(Thread, Object) guest
+     * interrupted} the current thread; or
+     * <li>The specified deadline elapses; or
+     * <li>A &quot;<em>spurious wakeup</em>&quot; occurs.
+     * </ul>
+     *
+     * <p>
+     * In all cases, before this method can return the current thread must re-acquire the lock
+     * associated with this condition. When the thread returns it is <em>guaranteed</em> to hold
+     * this lock.
+     *
+     * <p>
+     * If the current thread:
+     * <ul>
+     * <li>is {@linkplain GuestInterrupter#guestInterrupt(Thread, Object) guest interrupted} on
+     * entry to this method; or
+     * <li>is {@linkplain GuestInterrupter#guestInterrupt(Thread, Object) guest interrupted} while
+     * waiting,
+     * </ul>
+     * then {@link GuestInterruptedException} is thrown. It is not specified, in the first case,
+     * whether or not the test for interruption occurs before the lock is released.
+     *
+     * @param deadline the absolute time to wait until
+     * @return {@code false} if the deadline has elapsed upon return, else {@code true}
+     * @throws IllegalMonitorStateException if the current thread is not the owner of the lock.
+     * @throws GuestInterruptedException if the current thread is guest interrupted.
+     */
+    boolean awaitUntil(Date deadline) throws GuestInterruptedException;
 
     /**
      * Wakes up one waiting thread.
@@ -255,41 +314,25 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     @Override
     public boolean await(long timeout, TimeUnit unit) throws GuestInterruptedException {
-        WaitInterruptible interruptible = new WaitInterruptible(timeout, unit);
         if (timeout < 0) {
             throw new IllegalArgumentException();
         }
         if (!isHeldByCurrentThread()) {
             throw new IllegalMonitorStateException();
         }
-        waiters++;
-        try {
-            blockingSupport.enterBlockingRegion(interruptible, dummy, this,
-                            /*
-                             * Upon being notified to safepoint, control is returned after lock has
-                             * been acquired. We must unlock it, allowing other thread to process
-                             * safepoints while we process ours.
-                             */
-                            this::unlock,
-                            /*
-                             * Since we unlocked to allow other threads to process safepoints, we
-                             * must re-lock ourselves. If this lock was woken up by a signal, then a
-                             * Signaled exception is thrown.
-                             */
-                            this::afterSafepointForWait);
-        } catch (Signaled e) {
-            e.maybeRethrow();
-        } catch (Throwable e) {
-            /*
-             * Either GuestInterruptedException or an exception thrown by a safepoint. Since at that
-             * point, we are still considered in waiting, we may have missed a signal.
-             */
-            consumeSignal();
-            throw e;
-        } finally {
-            waiters--;
+        WaitInterruptible interruptible = new WaitInterruptible(timeout, unit);
+        enterWaitInterruptible(interruptible);
+        return interruptible.getResult();
+    }
+
+    @Override
+    public boolean awaitUntil(Date deadline) throws GuestInterruptedException {
+        if (!isHeldByCurrentThread()) {
+            throw new IllegalMonitorStateException();
         }
-        return interruptible.result;
+        WaitUntilInterruptible interruptible = new WaitUntilInterruptible(deadline);
+        enterWaitInterruptible(interruptible);
+        return interruptible.getResult();
     }
 
     @Override
@@ -331,6 +374,36 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     private void doLock() throws InterruptedException {
         if (!tryLock()) { // Bypass immediate interruption check done before locking
             super.lockInterruptibly();
+        }
+    }
+
+    private void enterWaitInterruptible(InterruptibleWithBooleanResult<EspressoLockImpl> interruptible) throws GuestInterruptedException {
+        waiters++;
+        try {
+            blockingSupport.enterBlockingRegion(interruptible, dummy, this,
+                            /*
+                             * Upon being notified to safepoint, control is returned after lock has
+                             * been acquired. We must unlock it, allowing other thread to process
+                             * safepoints while we process ours.
+                             */
+                            this::unlock,
+                            /*
+                             * Since we unlocked to allow other threads to process safepoints, we
+                             * must re-lock ourselves. If this lock was woken up by a signal, then a
+                             * Signaled exception is thrown.
+                             */
+                            this::afterSafepointForWait);
+        } catch (Signaled e) {
+            e.maybeRethrow();
+        } catch (Throwable e) {
+            /*
+             * Either GuestInterruptedException or an exception thrown by a safepoint. Since at that
+             * point, we are still considered in waiting, we may have missed a signal.
+             */
+            consumeSignal();
+            throw e;
+        } finally {
+            waiters--;
         }
     }
 
@@ -377,15 +450,27 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         }
     }
 
-    private static final class WaitInterruptible implements TruffleSafepoint.Interruptible<EspressoLockImpl> {
+    private abstract static class InterruptibleWithBooleanResult<T> implements TruffleSafepoint.Interruptible<T> {
+        private boolean result;
+
+        public final boolean getResult() {
+            return result;
+        }
+
+        public final void setResult(boolean result) {
+            this.result = result;
+        }
+    }
+
+    private static final class WaitInterruptible extends InterruptibleWithBooleanResult<EspressoLockImpl> {
         WaitInterruptible(long timeout, TimeUnit unit) {
             this.nanoTimeout = unit.toNanos(timeout);
             this.start = System.nanoTime();
+            setResult(true);
         }
 
         private final long nanoTimeout;
         private final long start;
-        boolean result = true;
 
         @Override
         @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Espresso lock runtime method.")
@@ -397,8 +482,23 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
                 if (left <= 0) {
                     return; // fully waited.
                 }
-                result = lock.getWaitCondition().await(left, TimeUnit.NANOSECONDS);
+                setResult(lock.getWaitCondition().await(left, TimeUnit.NANOSECONDS));
             }
+        }
+    }
+
+    private static final class WaitUntilInterruptible extends InterruptibleWithBooleanResult<EspressoLockImpl> {
+        WaitUntilInterruptible(Date date) {
+            this.date = date;
+            setResult(true);
+        }
+
+        private final Date date;
+
+        @Override
+        @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Espresso lock runtime method.")
+        public void apply(EspressoLockImpl lock) throws InterruptedException {
+            setResult(lock.getWaitCondition().awaitUntil(date));
         }
     }
 }

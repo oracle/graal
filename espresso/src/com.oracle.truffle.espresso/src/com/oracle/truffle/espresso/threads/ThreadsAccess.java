@@ -34,6 +34,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterrupter;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
@@ -265,6 +266,36 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
         return state == State.RUNNABLE.value;
     }
 
+    public boolean isManaged(StaticObject guest) {
+        return meta.HIDDEN_ESPRESSO_MANAGED.getBoolean(guest, true);
+    }
+
+    /**
+     * Creates a thread for the given guest thread. This thread will be ready to be started.
+     */
+    public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
+        Thread host = context.getEnv().createThread(new GuestRunnable(context, guest, exit, dispatch));
+        initializeHiddenFields(guest, host, true);
+        // Prepare host thread
+        host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
+        host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
+        if (isInterrupted(guest, false)) {
+            host.interrupt();
+        }
+        String guestName = context.getThreadAccess().getThreadName(guest);
+        host.setName(guestName);
+        // Make the thread known to the context
+        context.registerThread(host, guest);
+        meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
+        return host;
+    }
+
+    public void initializeHiddenFields(StaticObject guest, Thread host, boolean isManaged) {
+        meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
+        meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, isManaged);
+        meta.HIDDEN_THREAD_PARK_LOCK.setHiddenObject(guest, EspressoLock.create(context.getBlockingSupport()));
+    }
+
     // endregion thread control
 
     // region deprecated methods support
@@ -292,6 +323,10 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
         support.resume();
     }
 
+    public void stop(StaticObject guest) {
+        stop(guest, null);
+    }
+
     /**
      * Notifies a thread to throw an asynchronous guest throwable whenever possible.
      */
@@ -307,27 +342,6 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     public void kill(StaticObject guest) {
         DeprecationSupport support = getDeprecationSupport(guest, true);
         support.kill();
-    }
-
-    /**
-     * Creates a thread for the given guest thread. This thread will be ready to be started.
-     */
-    public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
-        Thread host = context.getEnv().createThread(new GuestRunnable(context, guest, exit, dispatch));
-        // Link guest to host
-        meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
-        // Prepare host thread
-        host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
-        host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
-        if (isInterrupted(guest, false)) {
-            host.interrupt();
-        }
-        String guestName = context.getThreadAccess().getThreadName(guest);
-        host.setName(guestName);
-        // Make the thread known to the context
-        context.registerThread(host, guest);
-        context.getThreadAccess().setState(guest, State.RUNNABLE.value);
-        return host;
     }
 
     /**
@@ -350,17 +364,18 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     void terminate(StaticObject thread, DirectCallNode exit) {
         DeprecationSupport support = getDeprecationSupport(thread, true);
         support.exit();
-        try {
-            if (exit == null) {
-                meta.java_lang_Thread_exit.invokeDirect(thread);
-            } else {
-                exit.call(thread);
+        if (!context.isTruffleClosed()) {
+            try {
+                if (exit == null) {
+                    meta.java_lang_Thread_exit.invokeDirect(thread);
+                } else {
+                    exit.call(thread);
+                }
+            } catch (AbstractTruffleException e) {
+                // just drop it
             }
-        } catch (AbstractTruffleException e) {
-            // just drop it
         }
         setTerminateStatusAndNotify(thread);
-        context.unregisterThread(thread);
     }
 
     /**
@@ -389,7 +404,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     }
 
     private boolean isStillborn(StaticObject guest) {
-        if (context.isClosing()) {
+        if (context.isClosing() || context.isTruffleClosed()) {
             return true;
         }
         /*
