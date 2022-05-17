@@ -55,6 +55,9 @@ abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent 
         LanguageInfo languageInfo = rootNode.getLanguageInfo();
         this.language = languageInfo != null ? languageInfo.getId() : null;
         this.rootFunction = rootNode.getName();
+        if (this.rootFunction == null) {
+            this.rootFunction = rootNode.toString();
+        }
     }
 
     @Override
