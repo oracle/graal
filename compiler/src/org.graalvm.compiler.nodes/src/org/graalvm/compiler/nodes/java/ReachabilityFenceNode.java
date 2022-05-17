@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -74,9 +75,17 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
         return new ReachabilityFenceNode(new ValueNode[]{value});
     }
 
+    public static ReachabilityFenceNode create(ValueNode[] values) {
+        return new ReachabilityFenceNode(values);
+    }
+
     protected ReachabilityFenceNode(ValueNode[] values) {
         super(TYPE, StampFactory.forVoid());
         this.values = new NodeInputList<>(this, values);
+    }
+
+    public NodeInputList<ValueNode> getValues() {
+        return values;
     }
 
     @Override
@@ -137,15 +146,40 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        /* Constant values do not need to be tracked. */
-        for (int i = values.size() - 1; i >= 0; i--) {
-            if (values.get(i).isConstant()) {
-                values.remove(i);
+        /*
+         * See if we want to build a new version of this node. Canonicalization must not have side
+         * effects, including modifying the current node in place.
+         */
+        int constantInputs = 0;
+        int compressionInputs = 0;
+        for (ValueNode value : values) {
+            if (value.isConstant()) {
+                /* Constant values do not need to be tracked. */
+                constantInputs++;
+            } else if (tool.allUsagesAvailable() && value.hasExactlyOneUsage() && value instanceof CompressionNode) {
+                /* References do not need to be uncompressed just to be kept alive. */
+                compressionInputs++;
             }
         }
-        if (values.size() == 0) {
+
+        if (values.size() == 0 || values.size() == constantInputs) {
             /* No more values to track, delete ourselves. */
             return null;
+        } else if (constantInputs > 0 || compressionInputs > 0) {
+            /* We can drop or simplify some inputs, so build a new node. */
+            int newInputSize = values.size() - constantInputs;
+            ValueNode[] newInputs = new ValueNode[newInputSize];
+            int i = 0;
+            for (ValueNode value : values) {
+                ValueNode v = value;
+                if (v.isConstant()) {
+                    continue;
+                } else if (tool.allUsagesAvailable() && v.hasExactlyOneUsage() && v instanceof CompressionNode) {
+                    v = ((CompressionNode) v).getValue();
+                }
+                newInputs[i++] = v;
+            }
+            return new ReachabilityFenceNode(newInputs);
         } else {
             return this;
         }
