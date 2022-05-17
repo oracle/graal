@@ -990,6 +990,7 @@ public final class Deoptimizer {
             curOffset = LayoutEncoding.getArrayBaseOffset(hub.getLayoutEncoding());
             curIdx = 2;
         } else {
+            assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
             try {
                 obj = Unsafe.getUnsafe().allocateInstance(DynamicHub.toClass(hub));
             } catch (InstantiationException ex) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,31 +25,47 @@
 package com.oracle.svm.core.graal.nodes;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
 
-import com.oracle.svm.core.heap.StoredContinuation;
-
-import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @NodeInfo
-public class NewStoredContinuationNode extends AbstractNewObjectNode implements Lowerable {
+public final class NewPodInstanceNode extends AbstractNewObjectNode {
+    public static final NodeClass<NewPodInstanceNode> TYPE = NodeClass.create(NewPodInstanceNode.class);
 
-    public static final NodeClass<NewStoredContinuationNode> TYPE = NodeClass.create(NewStoredContinuationNode.class);
-    @Input private ValueNode payloadSize;
+    private final ResolvedJavaType knownInstanceType;
+    @Input ValueNode hub;
+    @Input ValueNode arrayLength;
+    @Input ValueNode referenceMap;
 
-    public NewStoredContinuationNode(ValueNode payloadSize) {
-        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(StoredContinuation.class)), false, null);
-        this.payloadSize = payloadSize;
+    public NewPodInstanceNode(ResolvedJavaType knownInstanceType, ValueNode hub, ValueNode arrayLength, ValueNode referenceMap) {
+        super(TYPE, StampFactory.objectNonNull(TypeReference.createExactTrusted(knownInstanceType)), true, null);
+        this.knownInstanceType = knownInstanceType;
+        this.hub = hub;
+        this.arrayLength = arrayLength;
+        this.referenceMap = referenceMap;
     }
 
-    public ValueNode getPayloadSize() {
-        return payloadSize;
+    public ResolvedJavaType getKnownInstanceType() {
+        return knownInstanceType;
+    }
+
+    public ValueNode getHub() {
+        return hub;
+    }
+
+    public ValueNode getArrayLength() {
+        return arrayLength;
+    }
+
+    public ValueNode getReferenceMap() {
+        return referenceMap;
     }
 
     @NodeIntrinsic
-    public static native StoredContinuation allocate(int payloadSize);
+    public static native Object newPodInstance(@ConstantNodeParameter Class<?> knownInstanceClass, Class<?> runtimeClass, int arrayLength, byte[] referenceMap);
 }

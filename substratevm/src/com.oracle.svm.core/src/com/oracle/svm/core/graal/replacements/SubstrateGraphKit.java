@@ -96,9 +96,9 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
-                    CompilationIdentifier compilationId) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, SubstrateOptions.parseOnce(), false);
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, forceTrackNodeSourcePosition || SubstrateOptions.parseOnce(), false);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();

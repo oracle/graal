@@ -27,9 +27,11 @@ package com.oracle.svm.core.graal.snippets;
 import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
+import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -62,11 +64,13 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.AllocationSnippets;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.LocationIdentity;
@@ -80,8 +84,10 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.ForeignCallWithExceptionNode;
+import com.oracle.svm.core.graal.nodes.NewPodInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
@@ -145,7 +151,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     protected Object allocateInstanceDynamicImpl(DynamicHub hub, FillContent fillContents, boolean emitMemoryBarrier, @SuppressWarnings("unused") boolean supportsBulkZeroing,
                     @SuppressWarnings("unused") boolean supportsOptimizedFilling, AllocationProfilingData profilingData) {
         // The hub was already verified by a ValidateNewInstanceClassNode.
-        UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding());
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
@@ -221,6 +227,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!hub.isInstantiated()) {
             throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
                             " Register the type by adding \"unsafeAllocated\" for the type in " + ConfigurationFile.REFLECTION.getFileName() + ".");
+        } else if (LayoutEncoding.isHybrid(hub.getLayoutEncoding())) {
+            throw new InstantiationException("Cannot allocate objects of special hybrid types.");
         } else {
             throw VMError.shouldNotReachHere();
         }
@@ -260,6 +268,60 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         }
     }
 
+    @Snippet
+    public Object allocatePod(@NonNullParameter DynamicHub hub, int arrayLength, byte[] referenceMap, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean maybeUnroll,
+                    @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
+
+        Word thread = getTLABInfo();
+        Word top = readTlabTop(thread);
+        Word end = readTlabEnd(thread);
+        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
+
+        int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding());
+        UnsignedWord allocationSize = arrayAllocationSize(arrayLength, arrayBaseOffset, 0);
+        Word newTop = top.add(allocationSize);
+
+        Object instance;
+        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
+            writeTlabTop(thread, newTop);
+            emitPrefetchAllocate(newTop, true);
+            instance = formatPod(encodeAsTLABObjectHeader(hub), hub, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
+                            afterArrayLengthOffset(), emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
+        } else {
+            profilingData.snippetCounters.stub.inc();
+            instance = callSlowNewPodInstance(gcAllocationSupport().getSlowNewPodInstanceStub(), encodeAsTLABObjectHeader(hub), arrayLength, afterArrayLengthOffset(), referenceMap);
+        }
+        profileAllocation(profilingData, allocationSize);
+        return piArrayCastToSnippetReplaceeStamp(verifyOop(instance), arrayLength);
+    }
+
+    @NodeIntrinsic(value = ForeignCallNode.class)
+    private static native Object callSlowNewPodInstance(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word hub, int length, int fillStartOffset, byte[] referenceMap);
+
+    public Object formatPod(Word objectHeader, DynamicHub hub, int arrayLength, byte[] referenceMap, Word memory, FillContent fillContents, int fillStartOffset,
+                    boolean emitMemoryBarrier, boolean maybeUnroll, boolean supportsBulkZeroing, boolean supportsOptimizedFilling, AllocationSnippetCounters snippetCounters) {
+
+        int layoutEncoding = hub.getLayoutEncoding();
+        UnsignedWord allocationSize = LayoutEncoding.getArraySize(layoutEncoding, arrayLength);
+
+        Object instance = formatArray(objectHeader, allocationSize, arrayLength, memory, fillContents, fillStartOffset,
+                        false, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+
+        int fromOffset = ConfigurationValues.getObjectLayout().getArrayBaseOffset(JavaKind.Byte);
+        int toOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding) + arrayLength - referenceMap.length;
+        for (int i = 0; i < referenceMap.length; i++) {
+            byte b = ObjectAccess.readByte(referenceMap, fromOffset + i, byteArrayIdentity());
+            ObjectAccess.writeByte(instance, toOffset + i, b, LocationIdentity.INIT_LOCATION);
+        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
+        return instance;
+    }
+
+    @Fold
+    static LocationIdentity byteArrayIdentity() {
+        return NamedLocationIdentity.getArrayLocation(JavaKind.Byte);
+    }
+
     @Override
     protected final int getPrefetchStyle() {
         return SubstrateOptions.AllocatePrefetchStyle.getValue();
@@ -290,7 +352,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
     }
 
     @Fold
-    public static int afterArrayLengthOffset() {
+    protected static int afterArrayLengthOffset() {
         return ConfigurationValues.getObjectLayout().getArrayLengthOffset() + ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
     }
 
@@ -419,6 +481,8 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
         private final SnippetInfo validateNewInstanceClass;
 
+        private final SnippetInfo allocatePod;
+
         public Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets receiver) {
             super(options, providers);
             snippetCounters = new AllocationSnippetCounters(SnippetCounter.Group.NullFactory);
@@ -430,6 +494,15 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             allocateArrayDynamic = snippet(SubstrateAllocationSnippets.class, "allocateArrayDynamic", null, receiver, ALLOCATION_LOCATIONS);
             newmultiarray = snippet(SubstrateAllocationSnippets.class, "newmultiarray", null, receiver, ALLOCATION_LOCATIONS);
             validateNewInstanceClass = snippet(SubstrateAllocationSnippets.class, "validateNewInstanceClass", null, receiver, ALLOCATION_LOCATIONS);
+
+            SnippetInfo allocatePodSnippet = null;
+            if (Pod.RuntimeSupport.isPresent()) {
+                Object[] podLocations = SubstrateAllocationSnippets.ALLOCATION_LOCATIONS;
+                podLocations = Arrays.copyOf(podLocations, podLocations.length + 1);
+                podLocations[podLocations.length - 1] = byteArrayIdentity();
+                allocatePodSnippet = snippet(SubstrateAllocationSnippets.class, "allocatePod", null, receiver, podLocations);
+            }
+            allocatePod = allocatePodSnippet;
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
@@ -440,6 +513,10 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             lowerings.put(DynamicNewArrayNode.class, new DynamicNewArrayLowering());
             lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
             lowerings.put(ValidateNewInstanceClassNode.class, new ValidateNewInstanceClassLowering());
+
+            if (Pod.RuntimeSupport.isPresent()) {
+                lowerings.put(NewPodInstanceNode.class, new NewPodInstanceLowering());
+            }
         }
 
         public AllocationSnippetCounters getSnippetCounters() {
@@ -486,7 +563,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                 DynamicHub hub = ensureMarkedAsInstantiated(type.getHub());
 
                 ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
-                long size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();
+                long size = LayoutEncoding.getPureInstanceSize(hub.getLayoutEncoding()).rawValue();
 
                 Arguments args = new Arguments(allocateInstance, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", hubConstant);
@@ -640,6 +717,32 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
 
                 Arguments args = new Arguments(validateNewInstanceClass, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("hub", node.getInstanceType());
+
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private class NewPodInstanceLowering implements NodeLoweringProvider<NewPodInstanceNode> {
+            @Override
+            public void lower(NewPodInstanceNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                    return;
+                }
+
+                assert node.getKnownInstanceType() == null || (node.getHub().isConstant() &&
+                                providers.getConstantReflection().asJavaType(node.getHub().asConstant()).equals(node.getKnownInstanceType()));
+                assert node.fillContents() : "fillContents must be true for hybrid allocations";
+
+                Arguments args = new Arguments(allocatePod, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("hub", node.getHub());
+                args.add("arrayLength", node.getArrayLength());
+                args.add("referenceMap", node.getReferenceMap());
+                args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
+                args.addConst("maybeUnroll", node.getArrayLength().isConstant());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.addConst("profilingData", getProfilingData(node, node.getKnownInstanceType()));
 
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }

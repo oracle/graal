@@ -26,15 +26,16 @@ package com.oracle.svm.hosted.config;
 
 import java.lang.reflect.Modifier;
 
-import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.hosted.meta.HostedArrayClass;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedType;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HybridLayoutSupport {
@@ -56,23 +57,22 @@ public class HybridLayoutSupport {
         return clazz.getAnnotation(Hybrid.class).canHybridFieldsBeDuplicated();
     }
 
-    /**
-     * Finds the hybrid array and bitset fields of a class annotated with {@link Hybrid}.
-     *
-     * @param hybridClass A class annotated with {@link Hybrid}
-     * @return A {@link Pair} containing the (non-null) hybrid array field in the left position, and
-     *         the (nullable) hybrid bitset field in the right position.
-     */
-    public HybridFields findHybridFields(HostedInstanceClass hybridClass) {
-        assert hybridClass.getAnnotation(Hybrid.class) != null;
+    public boolean canInstantiateAsInstance(HostedType clazz) {
+        assert isHybrid(clazz) : "Can only be called on hybrid types";
+        return false;
+    }
+
+    /** Determines characteristics of a hybrid class. */
+    protected HybridInfo inspectHybrid(HostedInstanceClass hybridClass, MetaAccessProvider metaAccess) {
+        Hybrid annotation = hybridClass.getAnnotation(Hybrid.class);
+        assert annotation != null;
         assert Modifier.isFinal(hybridClass.getModifiers());
 
         HostedField foundArrayField = null;
         HostedField foundTypeIDSlotsField = null;
         for (HostedField field : hybridClass.getInstanceFields(true)) {
             if (field.getAnnotation(Hybrid.Array.class) != null) {
-                assert foundArrayField == null : "must have exactly one hybrid array field";
-                assert field.getType().isArray();
+                assert foundArrayField == null : "must have at most one hybrid array field";
                 foundArrayField = field;
             }
             if (field.getAnnotation(Hybrid.TypeIDSlots.class) != null) {
@@ -81,15 +81,29 @@ public class HybridLayoutSupport {
                 foundTypeIDSlotsField = field;
             }
         }
-        assert foundArrayField != null : "must have exactly one hybrid array field";
-        return new HybridFields(foundArrayField, foundTypeIDSlotsField);
+
+        HostedType arrayType;
+        boolean arrayTypeIsSet = (annotation.componentType() != void.class);
+        if (foundArrayField != null) {
+            arrayType = foundArrayField.getType();
+
+            assert !arrayTypeIsSet || arrayType.equals(metaAccess.lookupJavaType(annotation.componentType()).getArrayClass()) : //
+            "@Hybrid.componentType must match the type of a @Hybrid.Array field when both are present";
+        } else {
+            assert arrayTypeIsSet : "@Hybrid.componentType must be set when no @Hybrid.Array field is present (if present, ensure it is reachable)";
+            arrayType = (HostedArrayClass) metaAccess.lookupJavaType(annotation.componentType()).getArrayClass();
+        }
+        assert arrayType.isArray();
+        return new HybridInfo(arrayType, foundArrayField, foundTypeIDSlotsField);
     }
 
-    public static class HybridFields {
+    public static class HybridInfo {
+        public final HostedType arrayType;
         public final HostedField arrayField;
         public final HostedField typeIDSlotsField;
 
-        public HybridFields(HostedField arrayField, HostedField typeIDSlotsField) {
+        public HybridInfo(HostedType arrayType, HostedField arrayField, HostedField typeIDSlotsField) {
+            this.arrayType = arrayType;
             this.arrayField = arrayField;
             this.typeIDSlotsField = typeIDSlotsField;
         }

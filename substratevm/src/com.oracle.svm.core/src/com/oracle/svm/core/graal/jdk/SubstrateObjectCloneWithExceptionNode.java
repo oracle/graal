@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
@@ -132,5 +133,12 @@ public class SubstrateObjectCloneWithExceptionNode extends WithExceptionNode imp
         graph().replaceSplitWithFixed(this, plainObjectClone, this.next());
         GraphUtil.killCFG(oldException);
         return plainObjectClone;
+    }
+
+    @Override
+    public void virtualize(VirtualizerTool tool) {
+        if (SubstrateObjectCloneSnippets.canVirtualize(this, tool)) {
+            ObjectClone.super.virtualize(tool);
+        }
     }
 }
