@@ -25,7 +25,6 @@
 package org.graalvm.compiler.phases.util;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -45,31 +44,11 @@ public class ValueMergeUtil {
         return mergeValueProducers(merge, returnNodes, null, returnNode -> returnNode.result());
     }
 
-    public static ValueNode mergeReturnsWithMappings(AbstractMergeNode merge, List<? extends ReturnNode> returnNodes, Map<EndNode, ReturnNode> mappings) {
-        return mergeValueProducersWithMappings(merge, returnNodes, null, returnNode -> returnNode.result(), mappings);
-    }
-
     public static ValueNode mergeUnwindExceptions(AbstractMergeNode merge, List<? extends UnwindNode> unwindNodes) {
         return mergeValueProducers(merge, unwindNodes, null, UnwindNode::exception);
     }
 
     public static <T> ValueNode mergeValueProducers(AbstractMergeNode merge, List<? extends T> valueProducers, Function<T, FixedWithNextNode> lastInstrFunction, Function<T, ValueNode> valueFunction) {
-        return mergeValueProducersWithMappings(merge, valueProducers, lastInstrFunction, valueFunction, null);
-    }
-
-    /**
-     * Merges a list of nodes that have a Value output, inserting an AbstractMergeNode and PhiNode.
-     *
-     * @param merge the merge node used to merge value producers.
-     * @param valueProducers list of nodes whose output values will be merged to a single PhiNode.
-     * @param lastInstrFunction get last instruction added.
-     * @param valueFunction specifies which values of valueProducers should be merged.
-     * @param newEndNodeMappings maps the new EndNodes to the replaced valueProducers.
-     *
-     * @return PhiNode merging all ValuesProduced
-     */
-    public static <T> ValueNode mergeValueProducersWithMappings(AbstractMergeNode merge, List<? extends T> valueProducers, Function<T, FixedWithNextNode> lastInstrFunction,
-                    Function<T, ValueNode> valueFunction, Map<EndNode, T> newEndNodeMappings) {
         ValueNode singleResult = null;
         PhiNode phiResult = null;
         for (T valueProducer : valueProducers) {
@@ -94,10 +73,6 @@ public class ValueMergeUtil {
 
             // create and wire up a new EndNode
             EndNode endNode = merge.graph().add(new EndNode());
-            /* Map EndNodes to corresponding ReturnNode. */
-            if (newEndNodeMappings != null) {
-                newEndNodeMappings.put(endNode, valueProducer);
-            }
             merge.addForwardEnd(endNode);
             if (lastInstrFunction == null) {
                 assert valueProducer instanceof ReturnNode || valueProducer instanceof UnwindNode;
