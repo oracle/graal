@@ -1365,6 +1365,15 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_ICU4J_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for ICU4J",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-icu4j.properties",
+      },
+      "maven" : False,
+    },
+
     "LOCATOR": {
       "subDir": "src",
       "moduleInfo" : {
