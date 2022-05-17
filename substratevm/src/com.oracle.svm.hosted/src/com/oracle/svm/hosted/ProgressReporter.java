@@ -43,7 +43,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
@@ -67,6 +69,8 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
@@ -80,6 +84,8 @@ import com.oracle.svm.util.ReflectionUtil;
 
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
+    private static final String HEADLINE_SEPARATOR;
+    private static final String LINE_SEPARATOR;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_FEATURES = 50;
@@ -100,6 +106,8 @@ public class ProgressReporter {
     private final LinkStrategy linkStrategy;
     private final boolean usePrefix;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
+    private final Map<String, Long> codeBreakdown = new HashMap<>();
+    private final Map<String, Long> heapBreakdown = new HashMap<>();
 
     private String outputPrefix = "";
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
@@ -141,6 +149,8 @@ public class ProgressReporter {
 
     static {
         CHARACTERS_PER_LINE = IS_CI ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
+        HEADLINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
+        LINE_SEPARATOR = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
     }
 
     private static boolean isDumbTerm() {
@@ -388,9 +398,10 @@ public class ProgressReporter {
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
         l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
-                        .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).println();
+                        .doclink("code area", "#glossary-code-area").a(":%,10d compilation units", numCompilations).println();
+        int numResources = Resources.singleton().resources().size();
         l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
-                        .doclink("image heap", "#glossary-image-heap").a(": %,8d objects", numHeapObjects).println();
+                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", numHeapObjects, numResources).println();
         if (debugInfoSize > 0) {
             DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
                             .doclink("debug info", "#glossary-debug-info");
@@ -403,6 +414,7 @@ public class ProgressReporter {
         l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", Utils.bytesToHuman(imageSize)).println();
+        printBreakdowns();
     }
 
     public void ensureCreationStageEndCompleted() {
@@ -411,12 +423,76 @@ public class ProgressReporter {
         }
     }
 
-    public CenteredTextPrinter createBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
-        Map<String, Long> codeBreakdown = calculateCodeBreakdown(compilationTasks);
-        Map<String, Long> heapBreakdown = calculateHeapBreakdown(heapObjects);
+    public void createBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
+        if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            return;
+        }
+        calculateCodeBreakdown(compilationTasks);
+        calculateHeapBreakdown(heapObjects);
+    }
+
+    private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
+        for (CompileTask task : compilationTasks) {
+            String classOrPackageName = task.method.format("%H");
+            int lastDotIndex = classOrPackageName.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                classOrPackageName = classOrPackageName.substring(0, lastDotIndex);
+            }
+            codeBreakdown.merge(classOrPackageName, (long) task.result.getTargetCodeSize(), Long::sum);
+        }
+    }
+
+    private void calculateHeapBreakdown(Collection<ObjectInfo> heapObjects) {
+        long stringByteLength = 0;
+        for (ObjectInfo o : heapObjects) {
+            heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
+            Object javaObject = o.getObject();
+            if (reportStringBytes && javaObject instanceof String) {
+                stringByteLength += Utils.getInternalByteArrayLength((String) javaObject);
+            }
+        }
+
+        Long byteArraySize = heapBreakdown.remove("byte[]");
+        if (byteArraySize != null) {
+            long remainingBytes = byteArraySize;
+            if (stringByteLength > 0) {
+                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
+                remainingBytes -= stringByteLength;
+            }
+            long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
+            if (codeInfoSize > 0) {
+                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
+                remainingBytes -= codeInfoSize;
+            }
+            long metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
+            if (metadataByteLength > 0) {
+                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-reflection-metadata"), metadataByteLength);
+                remainingBytes -= metadataByteLength;
+            }
+            long resourcesByteLength = 0;
+            for (ResourceStorageEntry resourceList : Resources.singleton().resources().getValues()) {
+                for (byte[] resource : resourceList.getData()) {
+                    resourcesByteLength += resource.length;
+                }
+            }
+            if (resourcesByteLength > 0) {
+                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
+                remainingBytes -= resourcesByteLength;
+            }
+            if (graphEncodingByteLength > 0) {
+                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
+                remainingBytes -= graphEncodingByteLength;
+            }
+            assert remainingBytes >= 0;
+            heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("general heap data", "#glossary-general-heap-data"), remainingBytes);
+        }
+    }
+
+    private void printBreakdowns() {
+        if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            return;
+        }
         l().printLineSeparator();
-        int numCodeBreakdownItems = codeBreakdown.size();
-        int numHeapBreakdownItems = heapBreakdown.size();
         Iterator<Entry<String, Long>> packagesBySize = codeBreakdown.entrySet().stream()
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
         Iterator<Entry<String, Long>> typesBySizeInHeap = heapBreakdown.entrySet().stream()
@@ -425,15 +501,18 @@ public class ProgressReporter {
         final TwoColumnPrinter p = new TwoColumnPrinter();
         p.l().yellowBold().a(CODE_BREAKDOWN_TITLE).jumpToMiddle().a(HEAP_BREAKDOWN_TITLE).reset().flushln();
 
-        List<Entry<String, Long>> printedCodeSizeEntries = new ArrayList<>();
-        List<Entry<String, Long>> printedHeapSizeEntries = new ArrayList<>();
+        long printedCodeBytes = 0;
+        long printedHeapBytes = 0;
+        long printedCodeItems = 0;
+        long printedHeapItems = 0;
         for (int i = 0; i < MAX_NUM_BREAKDOWN; i++) {
             String codeSizePart = "";
             if (packagesBySize.hasNext()) {
                 Entry<String, Long> e = packagesBySize.next();
                 String className = Utils.truncateClassOrPackageName(e.getKey());
                 codeSizePart = String.format("%9s %s", Utils.bytesToHuman(e.getValue()), className);
-                printedCodeSizeEntries.add(e);
+                printedCodeBytes += e.getValue();
+                printedCodeItems++;
             }
 
             String heapSizePart = "";
@@ -445,7 +524,8 @@ public class ProgressReporter {
                     className = Utils.truncateClassOrPackageName(className);
                 }
                 heapSizePart = String.format("%9s %s", Utils.bytesToHuman(e.getValue()), className);
-                printedHeapSizeEntries.add(e);
+                printedHeapBytes += e.getValue();
+                printedHeapItems++;
             }
             if (codeSizePart.isEmpty() && heapSizePart.isEmpty()) {
                 break;
@@ -453,63 +533,17 @@ public class ProgressReporter {
             p.l().a(codeSizePart).jumpToMiddle().a(heapSizePart).flushln();
         }
 
-        p.l().a("      ... ").a(numCodeBreakdownItems - printedHeapSizeEntries.size()).a(" additional packages")
+        int numCodeItems = codeBreakdown.size();
+        int numHeapItems = heapBreakdown.size();
+        long totalCodeBytes = codeBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
+        long totalHeapBytes = heapBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
+        p.l().a(String.format("%9s for %s more packages", Utils.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
-                        .a("      ... ").a(numHeapBreakdownItems - printedCodeSizeEntries.size()).a(" additional object types").flushln();
+                        .a(String.format("%9s for %s more object types", Utils.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
 
-        return new CenteredTextPrinter().dim()
-                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)");
-    }
-
-    private static Map<String, Long> calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
-        Map<String, Long> classNameToCodeSize = new HashMap<>();
-        for (CompileTask task : compilationTasks) {
-            String classOrPackageName = task.method.format("%H");
-            int lastDotIndex = classOrPackageName.lastIndexOf('.');
-            if (lastDotIndex > 0) {
-                classOrPackageName = classOrPackageName.substring(0, lastDotIndex);
-            }
-            classNameToCodeSize.merge(classOrPackageName, (long) task.result.getTargetCodeSize(), Long::sum);
-        }
-        return classNameToCodeSize;
-    }
-
-    private Map<String, Long> calculateHeapBreakdown(Collection<ObjectInfo> heapObjects) {
-        Map<String, Long> classNameToSize = new HashMap<>();
-        long stringByteLength = 0;
-        for (ObjectInfo o : heapObjects) {
-            classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
-            Object javaObject = o.getObject();
-            if (reportStringBytes && javaObject instanceof String) {
-                stringByteLength += Utils.getInternalByteArrayLength((String) javaObject);
-            }
-        }
-
-        Long byteArraySize = classNameToSize.remove("byte[]");
-        if (byteArraySize != null) {
-            long remainingBytes = byteArraySize;
-            if (stringByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
-                remainingBytes -= stringByteLength;
-            }
-            long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
-            if (codeInfoSize > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
-                remainingBytes -= codeInfoSize;
-            }
-            long metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
-            if (metadataByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-reflection-metadata"), metadataByteLength);
-                remainingBytes -= metadataByteLength;
-            }
-            if (graphEncodingByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
-                remainingBytes -= graphEncodingByteLength;
-            }
-            assert remainingBytes >= 0;
-            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("general heap data", "#glossary-general-heap-data"), remainingBytes);
-        }
-        return classNameToSize;
+        new CenteredTextPrinter().dim()
+                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)")
+                        .reset().flushln();
     }
 
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
@@ -867,9 +901,6 @@ public class ProgressReporter {
     }
 
     final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
-        private final String headlineSeparator = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
-        private final String lineSeparator = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
-
         @Override
         DirectPrinter getThis() {
             return this;
@@ -886,11 +917,11 @@ public class ProgressReporter {
         }
 
         void printHeadlineSeparator() {
-            dim().a(headlineSeparator).reset().println();
+            dim().a(HEADLINE_SEPARATOR).reset().println();
         }
 
         void printLineSeparator() {
-            dim().a(lineSeparator).reset().println();
+            dim().a(LINE_SEPARATOR).reset().println();
         }
     }
 
@@ -942,6 +973,7 @@ public class ProgressReporter {
         private BuildStage activeBuildStage = null;
 
         private ScheduledFuture<?> periodicPrintingTask;
+        private AtomicBoolean isCancelled = new AtomicBoolean();
 
         T start(BuildStage stage) {
             assert activeBuildStage == null;
@@ -957,12 +989,16 @@ public class ProgressReporter {
         }
 
         private void startPeriodicProgress() {
+            isCancelled.set(false);
             periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
                 int countdown;
                 int numPrints;
 
                 @Override
                 public void run() {
+                    if (isCancelled.get()) {
+                        return;
+                    }
                     if (--countdown < 0) {
                         reportProgress();
                         countdown = ++numPrints > 2 ? numPrints * 2 : numPrints;
@@ -998,6 +1034,7 @@ public class ProgressReporter {
 
         void end(double totalTime) {
             if (activeBuildStage.hasPeriodicProgress) {
+                isCancelled.set(true);
                 periodicPrintingTask.cancel(false);
             }
             if (activeBuildStage.hasProgressBar) {
