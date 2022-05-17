@@ -929,10 +929,22 @@ public final class HostAccess {
          * Allows the guest application to inherit access to allowed methods, i.e. implementations
          * of allowed abstract and interface methods and overrides of allowed concrete methods.
          *
-         * If inheritance is disabled, all method implementations need to be explicitly allowed
-         * (either by {@linkplain #allowAccessAnnotatedBy(Class) an annotation} or
+         * If access inheritance is disabled, all method implementations need to be explicitly
+         * allowed (either by {@linkplain #allowAccessAnnotatedBy(Class) an annotation} or
          * {@linkplain #allowAccess(Executable) using reflection}) to be available. Consequently,
          * attempting to allow abstract methods has no effect in this access mode.
+         *
+         * Rationale:
+         *
+         * Requiring explicit vetting of all method implementations prevents unintentional exporting
+         * of newly added or overridden methods.
+         *
+         * When a user annotates an abstract (or concrete) method as exported, they might still know
+         * what that means when they write the code and know of all its implementations; but they
+         * might forget it later and other contributors to the codebase might not be aware of what
+         * is exported through an interface or superclass. So when someone introduces a new
+         * implementation or overrides the method in a subclass, perhaps a few levels down, they
+         * could be accidentally exporting it to the guest application.
          *
          * @see #allowAccessAnnotatedBy(Class)
          * @see #allowAccess(Executable)
