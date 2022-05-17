@@ -410,7 +410,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ValueNode alias = getAlias((ValueNode) input);
                 if (alias instanceof VirtualObjectNode) {
                     int id = ((VirtualObjectNode) alias).getObjectId();
-                    if (shouldMaterialize(state, id, insertBefore)) {
+                    if (shouldMaterializeNonVirtualizable(state, id, insertBefore)) {
                         ensureMaterialized(state, id, insertBefore, effects, COUNTER_MATERIALIZATIONS_UNHANDLED);
                         effects.replaceFirstInput(node, input, state.getObjectState(id).getMaterializedValue());
                         VirtualUtil.trace(node.getOptions(), debug, "replacing input %s at %s", input, node);
@@ -423,7 +423,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    protected boolean shouldMaterialize(BlockT state, int id, FixedNode insertBefore) {
+    protected boolean shouldMaterializeNonVirtualizable(BlockT state, int id, FixedNode insertBefore) {
         return true;
     }
 
