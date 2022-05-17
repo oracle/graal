@@ -424,7 +424,8 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> SoftExit = new OptionKey<>(false);
 
-    @Option(help = "Guest VM exit causes the host VM to exit. This should not be used in most cases as it will take down the whole host VM abruptly.", //
+    @Option(help = "Allows Espresso to use host System.exit() on context exit when there are unresponsive threads. " +
+                    "This should not be used in most cases as it will take down the whole host VM abruptly, possibly preventing other languages from performing their own exit sequence.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //
                     usageSyntax = "false|true") //

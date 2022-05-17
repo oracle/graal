@@ -99,7 +99,7 @@ import sun.reflect.annotation.AnnotationType;
 import sun.reflect.generics.factory.GenericsFactory;
 import sun.reflect.generics.repository.ClassRepository;
 
-@Hybrid(canHybridFieldsBeDuplicated = false)
+@Hybrid
 @Substitute
 @TargetClass(java.lang.Class.class)
 @SuppressWarnings({"static-method", "serial"})
@@ -385,10 +385,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setData(int layoutEncoding, int typeID, int monitorOffset,
-                    short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
-                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated) {
+    public void setData(int layoutEncoding, int typeID, int monitorOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot, short[] typeCheckSlots,
+                    CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance) {
         assert this.vtable == null : "Initialization must be called only once";
+        assert !(!isInstantiated && canInstantiateAsInstance);
+
         this.layoutEncoding = layoutEncoding;
         this.typeID = typeID;
         this.monitorOffset = NumUtil.safeToShort(monitorOffset);
@@ -402,8 +403,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             throw VMError.shouldNotReachHere("Reference map index not within integer range, need to switch field from int to long");
         }
         this.referenceMapIndex = (int) referenceMapIndex;
-        this.instantiationFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
-                        makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, isInstantiated && isInstanceClass() && !LayoutEncoding.isSpecial(layoutEncoding)));
+        this.instantiationFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) | makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance));
 
         if (Proxy.isProxyClass(hostedJavaClass)) {
             companion.setClassLoaderProxy(PredefinedClassesSupport.isPredefined(hostedJavaClass));
@@ -625,8 +625,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isStoredContinuationClass() {
-        return HubType.isStoredContinuation(hubType);
+    public boolean isPodInstanceClass() {
+        return HubType.isPodInstance(hubType);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -393,7 +393,9 @@ public final class JniEnv extends NativeEnv {
     }
 
     public void dispose() {
-        assert jniEnvPtr != null : "JNIEnv already disposed";
+        if (jniEnvPtr == null || getUncached().isNull(jniEnvPtr)) {
+            return; // JniEnv disposed or uninitialized.
+        }
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
@@ -401,7 +403,7 @@ public final class JniEnv extends NativeEnv {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso native interface");
         }
-        assert jniEnvPtr == null;
+        assert jniEnvPtr == null || getUncached().isNull(jniEnvPtr);
     }
 
     public long sizeMax() {
@@ -1693,15 +1695,12 @@ public final class JniEnv extends NativeEnv {
      */
     @JniImpl
     @TruffleBoundary
-    public void FatalError(@Pointer TruffleObject msgPtr) {
+    public void FatalError(@Pointer TruffleObject msgPtr, @Inject SubstitutionProfiler profiler) {
         String msg = NativeUtils.interopPointerToString(msgPtr);
         PrintWriter writer = new PrintWriter(context.getEnv().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
-        if (context.ExitHost) {
-            System.exit(1);
-            throw EspressoError.shouldNotReachHere();
-        }
+        getContext().truffleExit(profiler, 1);
         throw EspressoError.fatal(msg);
     }
 

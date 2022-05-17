@@ -29,9 +29,8 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -43,26 +42,21 @@ import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
-import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
-import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
+import com.oracle.svm.core.genscavenge.graal.nodes.FormatPodNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
-import com.oracle.svm.core.meta.SharedType;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.thread.Continuation;
+
+import jdk.vm.ci.meta.JavaKind;
 
 final class GenScavengeAllocationSnippets implements Snippets {
     @Snippet
@@ -70,7 +64,7 @@ final class GenScavengeAllocationSnippets implements Snippets {
                     @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord size = LayoutEncoding.getInstanceSize(layoutEncoding);
+        UnsignedWord size = LayoutEncoding.getPureInstanceSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
         return alloc().formatObject(objectHeader, size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
     }
@@ -83,35 +77,20 @@ final class GenScavengeAllocationSnippets implements Snippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        Object obj = alloc().formatArray(objectHeader, size, length, memory, fillContents, fillStartOffset,
-                        false, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
-        alloc().emitMemoryBarrierIf(emitMemoryBarrier);
-        return obj;
+        return alloc().formatArray(objectHeader, size, length, memory, fillContents, fillStartOffset,
+                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
 
     @Snippet
-    public static Object allocateStoredContinuationInstance(@ConstantParameter DynamicHub hub, int payloadSize, @ConstantParameter DynamicHub byteArrayHub,
-                    @ConstantParameter int byteArrayBaseOffset, @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
-        /*
-         * We allocate a byte[] first and then convert it to a StoredContinuation. We must pass
-         * parameters below that match the layout of a regular byte[], or we will run into problems
-         * because not all parameters are passed on to the slow path.
-         *
-         * Barrier code assumes that instance objects are always in aligned chunks, but a large
-         * StoredContinuation can end up in an unaligned chunk. Still, no barriers are needed
-         * because objects are immutable once filled and are then written only by GC.
-         */
-        int arrayLength = StoredContinuationImpl.PAYLOAD_OFFSET + payloadSize - byteArrayBaseOffset;
-        Object result = alloc().allocateArrayImpl(SubstrateAllocationSnippets.encodeAsTLABObjectHeader(byteArrayHub), arrayLength, byteArrayBaseOffset, 0,
-                        AllocationSnippets.FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED,
-                        SubstrateAllocationSnippets.afterArrayLengthOffset(), false, false, false, false, profilingData);
-        UnsignedWord arrayHeader = ObjectHeaderImpl.readHeaderFromObject(result);
-        Word header = encodeAsObjectHeader(hub, ObjectHeaderImpl.hasRememberedSet(arrayHeader), ObjectHeaderImpl.isUnalignedHeader(arrayHeader));
-        alloc().initializeObjectHeader(Word.objectToUntrackedPointer(result), header, false);
-        ObjectAccess.writeObject(result, hub.getMonitorOffset(), null, LocationIdentity.init());
-        StoredContinuationImpl.initializeNewlyAllocated(result, payloadSize);
-        alloc().emitMemoryBarrierIf(true);
-        return PiNode.piCastToSnippetReplaceeStamp(result);
+    public static Object formatPodSnippet(Word memory, DynamicHub hub, int arrayLength, byte[] referenceMap, boolean rememberedSet, boolean unaligned, AllocationSnippets.FillContent fillContents,
+                    int fillStartOffset, @ConstantParameter boolean emitMemoryBarrier, @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling,
+                    @ConstantParameter AllocationSnippets.AllocationSnippetCounters snippetCounters) {
+
+        DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+        byte[] refMapNonNull = (byte[]) PiNode.piCastNonNull(referenceMap, SnippetAnchorNode.anchor());
+        Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
+        return alloc().formatPod(objectHeader, hubNonNull, arrayLength, refMapNonNull, memory, fillContents, fillStartOffset,
+                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
@@ -127,29 +106,20 @@ final class GenScavengeAllocationSnippets implements Snippets {
         private final SubstrateAllocationSnippets.Templates baseTemplates;
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
-        private final SnippetInfo allocateStoredContinuationInstance;
+        private final SnippetInfo formatPod;
 
         Templates(OptionValues options, Providers providers, SubstrateAllocationSnippets.Templates baseTemplates) {
             super(options, providers);
             this.baseTemplates = baseTemplates;
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet");
             formatArray = snippet(GenScavengeAllocationSnippets.class, "formatArraySnippet");
-
-            allocateStoredContinuationInstance = !Continuation.isSupported() ? null
-                            : snippet(GenScavengeAllocationSnippets.class, "allocateStoredContinuationInstance", SubstrateAllocationSnippets.ALLOCATION_LOCATIONS);
+            formatPod = snippet(GenScavengeAllocationSnippets.class, "formatPodSnippet", NamedLocationIdentity.getArrayLocation(JavaKind.Byte));
         }
 
         public void registerLowering(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-            FormatObjectLowering formatObjectLowering = new FormatObjectLowering();
-            lowerings.put(FormatObjectNode.class, formatObjectLowering);
-
-            FormatArrayLowering formatArrayLowering = new FormatArrayLowering();
-            lowerings.put(FormatArrayNode.class, formatArrayLowering);
-
-            if (Continuation.isSupported()) {
-                NewStoredContinuationLowering newStoredContinuationLowering = new NewStoredContinuationLowering();
-                lowerings.put(NewStoredContinuationNode.class, newStoredContinuationLowering);
-            }
+            lowerings.put(FormatObjectNode.class, new FormatObjectLowering());
+            lowerings.put(FormatArrayNode.class, new FormatArrayLowering());
+            lowerings.put(FormatPodNode.class, new FormatPodLowering());
         }
 
         private class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
@@ -193,30 +163,26 @@ final class GenScavengeAllocationSnippets implements Snippets {
             }
         }
 
-        private class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
+        private class FormatPodLowering implements NodeLoweringProvider<FormatPodNode> {
             @Override
-            public void lower(NewStoredContinuationNode node, LoweringTool tool) {
+            public void lower(FormatPodNode node, LoweringTool tool) {
                 StructuredGraph graph = node.graph();
-
                 if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
                     return;
                 }
-
-                DynamicHub hub = ((SharedType) tool.getMetaAccess().lookupJavaType(StoredContinuation.class)).getHub();
-                assert hub.isStoredContinuationClass();
-                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
-
-                DynamicHub byteArrayHub = ((SharedType) tool.getMetaAccess().lookupJavaType(byte[].class)).getHub();
-                ConstantNode byteArrayHubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(byteArrayHub), providers.getMetaAccess(), graph);
-                int byteArrayBaseOffset = NumUtil.safeToInt(LayoutEncoding.getArrayBaseOffset(byteArrayHub.getLayoutEncoding()).rawValue());
-
-                Arguments args = new Arguments(allocateStoredContinuationInstance, graph.getGuardsStage(), tool.getLoweringStage());
-                args.addConst("hub", hubConstant);
-                args.add("payloadSize", node.getPayloadSize());
-                args.addConst("byteArrayHub", byteArrayHubConstant);
-                args.addConst("byteArrayBaseOffset", byteArrayBaseOffset);
-                args.addConst("profilingData", baseTemplates.getProfilingData(node, null));
-
+                Arguments args = new Arguments(formatPod, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("memory", node.getMemory());
+                args.add("hub", node.getHub());
+                args.add("arrayLength", node.getArrayLength());
+                args.add("referenceMap", node.getReferenceMap());
+                args.add("rememberedSet", node.getRememberedSet());
+                args.add("unaligned", node.getUnaligned());
+                args.add("fillContents", node.getFillContents());
+                args.add("fillStartOffset", node.getFillStartOffset());
+                args.addConst("emitMemoryBarrier", node.getEmitMemoryBarrier());
+                args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
+                args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
+                args.addConst("snippetCounters", baseTemplates.getSnippetCounters());
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }

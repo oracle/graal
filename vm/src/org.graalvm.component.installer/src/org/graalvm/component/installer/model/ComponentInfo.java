@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -90,8 +90,6 @@ public final class ComponentInfo {
     private final Map<String, Object> providedValues = new HashMap<>();
 
     private URL remoteURL;
-
-    private boolean polyglotRebuild;
 
     private byte[] shaDigest;
 
@@ -246,14 +244,6 @@ public final class ComponentInfo {
 
     public void setShaDigest(byte[] shaDigest) {
         this.shaDigest = shaDigest;
-    }
-
-    public boolean isPolyglotRebuild() {
-        return polyglotRebuild;
-    }
-
-    public void setPolyglotRebuild(boolean polyglotRebuild) {
-        this.polyglotRebuild = polyglotRebuild;
     }
 
     public Set<String> getWorkingDirectories() {
@@ -460,7 +450,7 @@ public final class ComponentInfo {
     /**
      * Sets the component tag. WARNING: do not use this after Component has been constructed; the
      * call will change the hashCode + equals !
-     * 
+     *
      * @param tag component tag/serial
      */
     public void setTag(String tag) {

@@ -1668,17 +1668,13 @@ public class NativeImageGenerator {
                 System.out.print("interface  ");
             } else if (LayoutEncoding.isAbstract(le)) {
                 System.out.print("abstract  ");
-            } else if (LayoutEncoding.isInstance(le)) {
-                System.out.format("instance size %d  ", LayoutEncoding.getInstanceSize(le).rawValue());
-            } else if (LayoutEncoding.isObjectArray(le)) {
-                System.out.format("object array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isPrimitiveArray(le)) {
-                System.out.format("primitive array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isStoredContinuation(le)) {
-                // can exist as HostedType even if unreachable and continuations are disabled
-                System.out.print("stored continuation  ");
+            } else if (LayoutEncoding.isPureInstance(le)) {
+                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceSize(le).rawValue());
+            } else if (LayoutEncoding.isArrayLike(le)) {
+                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
+                String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
+                System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(),
+                                LayoutEncoding.getArrayIndexShift(le), LayoutEncoding.getArrayIndexScale(le));
             } else {
                 throw VMError.shouldNotReachHere();
             }

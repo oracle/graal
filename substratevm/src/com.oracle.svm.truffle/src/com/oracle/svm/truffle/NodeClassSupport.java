@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.truffle;
 
-import com.oracle.svm.core.annotate.Hybrid;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.nativeimage.ImageSingletons;
 
-/**
- * This class is used for variably-sized objects that store continuation stack frames.
- *
- * For object layout and other implementation details, see {@link StoredContinuationImpl}.
- */
-@Hybrid(componentType = byte.class)
-public final class StoredContinuation {
-    /** Must be allocated via {@link StoredContinuationImpl}. */
-    private StoredContinuation() {
+import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.truffle.api.nodes.NodeClass;
+
+class NodeClassSupport {
+    final EconomicMap<Class<?>, NodeClass> nodeClasses = ImageHeapMap.create();
+
+    static NodeClassSupport singleton() {
+        return ImageSingletons.lookup(NodeClassSupport.class);
     }
 }

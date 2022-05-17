@@ -34,7 +34,7 @@ public enum HubType {
     InstanceReference(1),
 
     // special hubs
-    StoredContinuation(2),
+    PodInstance(2),
     Other(3),
 
     // array hubs
@@ -54,7 +54,7 @@ public enum HubType {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int hubType) {
-        return hubType <= StoredContinuation.getValue();
+        return hubType <= PodInstance.getValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -63,8 +63,8 @@ public enum HubType {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isStoredContinuation(int hubType) {
-        return hubType == StoredContinuation.getValue();
+    public static boolean isPodInstance(int hubType) {
+        return hubType == PodInstance.getValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

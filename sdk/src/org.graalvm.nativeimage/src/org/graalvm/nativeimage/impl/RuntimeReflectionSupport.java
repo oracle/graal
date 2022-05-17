@@ -40,44 +40,6 @@
  */
 package org.graalvm.nativeimage.impl;
 
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Executable;
-import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.Set;
-
 public interface RuntimeReflectionSupport extends ReflectionRegistry {
-    Map<Class<?>, Set<Class<?>>> getReflectionInnerClasses();
-
-    Set<Field> getReflectionFields();
-
-    Set<Executable> getReflectionExecutables();
-
-    Object getAccessor(Executable method);
-
-    /*
-     * Returns the methods and fields that shadow a superclass element registered for reflection, to
-     * be excluded from reflection queries.
-     */
-    Set<?> getHidingReflectionFields();
-
-    Set<?> getHidingReflectionMethods();
-
-    Object[] getRecordComponents(Class<?> type);
-
-    void registerHeapDynamicHub(Object hub);
-
-    Set<?> getHeapDynamicHubs();
-
-    void registerHeapReflectionObject(AccessibleObject object);
-
-    Set<AccessibleObject> getHeapReflectionObjects();
-
-    int getReflectionClassesCount();
-
-    int getReflectionMethodsCount();
-
-    int getReflectionFieldsCount();
-
-    boolean requiresProcessing();
+    // needed as reflection-specific ImageSingletons key
 }

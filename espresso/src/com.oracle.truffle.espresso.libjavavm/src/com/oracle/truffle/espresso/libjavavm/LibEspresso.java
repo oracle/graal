@@ -64,6 +64,7 @@ public class LibEspresso {
         }
         VMRuntime.initialize();
         // Use the nuclear option for System.exit
+        builder.useSystemExit(true);
         builder.option("java.ExitHost", "true");
         builder.option("java.EnableSignals", "true");
         builder.option("java.ExposeNativeJavaVM", "true");

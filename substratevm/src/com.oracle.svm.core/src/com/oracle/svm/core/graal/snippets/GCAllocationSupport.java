@@ -37,6 +37,8 @@ public interface GCAllocationSupport {
 
     ForeignCallDescriptor getSlowNewArrayStub();
 
+    ForeignCallDescriptor getSlowNewPodInstanceStub();
+
     boolean useTLAB();
 
     boolean shouldAllocateInTLAB(UnsignedWord size, boolean isArray);

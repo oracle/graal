@@ -58,7 +58,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -78,6 +77,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
+import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -90,7 +90,7 @@ import sun.reflect.annotation.EnumConstantNotPresentExceptionProxy;
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
-public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport {
+public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements InternalRuntimeReflectionSupport {
 
     private final Set<Class<?>> modifiedClasses = ConcurrentHashMap.newKeySet();
     private boolean sealed;

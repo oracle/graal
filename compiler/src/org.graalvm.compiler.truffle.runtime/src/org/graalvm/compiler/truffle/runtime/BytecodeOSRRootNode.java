@@ -28,6 +28,8 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.nativeimage.ImageInfo;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -35,7 +37,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-import org.graalvm.nativeimage.ImageInfo;
 
 final class BytecodeOSRRootNode extends BaseOSRRootNode {
     private final int target;
@@ -66,7 +67,8 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
     @Override
     @SuppressWarnings("deprecation")
     public Object executeOSR(VirtualFrame frame) {
-        VirtualFrame parentFrame = (VirtualFrame) frame.getArguments()[0];
+        BytecodeOSRNode osrNode = (BytecodeOSRNode) loopNode;
+        VirtualFrame parentFrame = (VirtualFrame) osrNode.restoreParentFrameFromArguments(frame.getArguments());
 
         if (!seenMaterializedFrame) {
             // We aren't expecting a materialized frame. If we get one, deoptimize.
@@ -76,7 +78,6 @@ final class BytecodeOSRRootNode extends BaseOSRRootNode {
             }
         }
 
-        BytecodeOSRNode osrNode = (BytecodeOSRNode) loopNode;
         if (seenMaterializedFrame) {
             // If materialize has ever happened, just use the parent frame.
             // This will be slower, since we cannot do scalar replacement on the frame, but it is
