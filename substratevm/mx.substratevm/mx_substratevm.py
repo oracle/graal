@@ -1081,7 +1081,7 @@ libgraal_jar_distributions = [
     'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
 
 libgraal_build_args = [
-    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,org.graalvm.jniutils,org.graalvm.graphio,com.oracle.truffle',
+    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-H:+ReportExceptionStackTraces',
