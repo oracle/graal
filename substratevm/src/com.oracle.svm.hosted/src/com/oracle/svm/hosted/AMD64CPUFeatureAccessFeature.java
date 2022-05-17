@@ -51,7 +51,7 @@ public class AMD64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase im
     }
 
     @Override
-    protected AMD64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
-        return new AMD64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, builttimeFeatureMaskBytes);
+    protected AMD64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
+        return new AMD64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
     }
 }

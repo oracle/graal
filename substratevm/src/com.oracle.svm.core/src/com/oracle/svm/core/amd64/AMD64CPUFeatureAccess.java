@@ -48,8 +48,8 @@ import jdk.vm.ci.code.Architecture;
 public class AMD64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public AMD64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
-        super(buildtimeCPUFeatures, offsets, errorMessageBytes, builttimeFeatureMaskBytes);
+    public AMD64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
+        super(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
     }
 
     /**

@@ -55,7 +55,7 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
      * @see com.oracle.svm.core.aarch64.AArch64LibCHelper.CPUFeatures
      */
     protected static final CGlobalData<CCharPointer> BUILDTIME_CPU_FEATURE_MASK = CGlobalDataFactory
-                    .createBytes(() -> ((CPUFeatureAccessImpl) ImageSingletons.lookup(CPUFeatureAccess.class)).builttimeFeatureMask);
+                    .createBytes(() -> ((CPUFeatureAccessImpl) ImageSingletons.lookup(CPUFeatureAccess.class)).buildtimeFeatureMask);
 
     /**
      * Error message printed when CPU features are missing. The string must be zero terminated.
@@ -72,7 +72,7 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
     /**
      * @see #BUILDTIME_CPU_FEATURE_MASK
      */
-    @Platforms(Platform.HOSTED_ONLY.class) private final byte[] builttimeFeatureMask;
+    @Platforms(Platform.HOSTED_ONLY.class) private final byte[] buildtimeFeatureMask;
 
     /**
      * Mapping from {@code <Architecture>.CPUFeature#ordinal()} to offsets of the corresponding
@@ -87,15 +87,15 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
      * @param buildtimeCPUFeatures the CPU features enabled at build time
      * @param offsets see {@link #cpuFeatureEnumToStructOffsets}
      * @param errorMessageBytes see {@link #IMAGE_CPU_FEATURE_ERROR_MSG}
-     * @param builttimeFeatureMaskBytes see {@link #BUILDTIME_CPU_FEATURE_MASK}
+     * @param buildtimeFeatureMaskBytes see {@link #BUILDTIME_CPU_FEATURE_MASK}
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected CPUFeatureAccessImpl(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
+    protected CPUFeatureAccessImpl(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
         GraalError.guarantee(errorMessageBytes[errorMessageBytes.length - 1] == 0, "error message not zero-terminated");
-        GraalError.guarantee(builttimeFeatureMaskBytes.length % 64 == 0, "build-time feature mask byte array not a multiple of 64 bits");
+        GraalError.guarantee(buildtimeFeatureMaskBytes.length % 64 == 0, "build-time feature mask byte array not a multiple of 64 bits");
         this.cpuFeatureEnumToStructOffsets = offsets;
         this.cpuFeatureErrorMessage = errorMessageBytes;
-        this.builttimeFeatureMask = builttimeFeatureMaskBytes;
+        this.buildtimeFeatureMask = buildtimeFeatureMaskBytes;
         this.buildtimeCPUFeatures = EnumSet.copyOf(buildtimeCPUFeatures);
     }
 

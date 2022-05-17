@@ -123,5 +123,5 @@ public abstract class CPUFeatureAccessFeatureBase {
         ImageSingletons.add(CPUFeatureAccess.class, cpuFeatureAccess);
     }
 
-    protected abstract CPUFeatureAccessImpl createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes);
+    protected abstract CPUFeatureAccessImpl createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes);
 }

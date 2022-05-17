@@ -51,7 +51,7 @@ class AArch64CPUFeatureAccessFeature extends CPUFeatureAccessFeatureBase impleme
     }
 
     @Override
-    protected AArch64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] builttimeFeatureMaskBytes) {
-        return new AArch64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, builttimeFeatureMaskBytes);
+    protected AArch64CPUFeatureAccess createCPUFeatureAccessSingleton(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
+        return new AArch64CPUFeatureAccess(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
     }
 }
