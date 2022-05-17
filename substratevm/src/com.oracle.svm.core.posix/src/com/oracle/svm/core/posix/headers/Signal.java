@@ -237,12 +237,6 @@ public class Signal {
         public native int getCValue();
     }
 
-    @CFunction
-    public static native int sigemptyset(sigset_tPointer set);
-
-    @CFunction
-    public static native int sigaddset(sigset_tPointer set, int signum);
-
     /**
      * Used in {@link SubstrateSegfaultHandler}. So, this must not be a {@link CEnum} as this would
      * result in machine code that needs a proper a heap base.
