@@ -15,6 +15,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Added new `copy.../clear...` methods postfixed by `Static` for exclusively copying and clearing static frame slots.
     * Static frame slots are intended for situations where the type of a variable in a frame slots is known ahead of time and does not need any type checks (e.g. in statically typed languages).
 * GR-36557 Introduced `--engine.InliningUseSize` which changes the code size approximation during inlining to an approximation of the size of the graph rather than just the node count. This option is false by default.
+* GR-37310 Add `BytecodeOSRNode.storeParentFrameInArguments` and `BytecodeOSRNode.restoreParentFrameFromArguments` to give languages more control over how frame arguments in bytecode OSR compilations are created.
 
 ## Version 22.1.0
 

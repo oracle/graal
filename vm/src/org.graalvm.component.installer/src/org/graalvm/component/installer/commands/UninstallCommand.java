@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,7 @@
  */
 package org.graalvm.component.installer.commands;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,18 +37,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+
 import org.graalvm.component.installer.BundleConstants;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
-import org.graalvm.component.installer.CommonConstants;
-import static org.graalvm.component.installer.CommonConstants.WARN_REBUILD_IMAGES;
-import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.InstallerCommand;
 import org.graalvm.component.installer.InstallerStopException;
-import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.model.DistributionType;
 
 public class UninstallCommand implements InstallerCommand {
@@ -77,7 +73,6 @@ public class UninstallCommand implements InstallerCommand {
     private CommandInput input;
     private boolean ignoreFailures;
     private ComponentRegistry registry;
-    private boolean rebuildPolyglot;
     private boolean removeDependent;
     private boolean breakDependent;
     private Map<ComponentInfo, Collection<ComponentInfo>> brokenDependencies = new HashMap<>();
@@ -278,24 +273,17 @@ public class UninstallCommand implements InstallerCommand {
         prepareUninstall();
         checkBrokenDependencies();
         includeAndOrderComponents();
-        try {
-            for (ComponentInfo info : uninstallSequence) {
-                try {
-                    uninstallSingleComponent(info);
-                } catch (InstallerStopException | IOException ex) {
-                    if (ignoreFailures) {
-                        feedback.error("UNINSTALL_IgnoreFailed", ex,
-                                        info.getId(), ex.getLocalizedMessage());
-                    } else {
-                        feedback.error("UNINSTALL_ErrorDuringProcessing", ex, info.getId());
-                        throw ex;
-                    }
+        for (ComponentInfo info : uninstallSequence) {
+            try {
+                uninstallSingleComponent(info);
+            } catch (InstallerStopException | IOException ex) {
+                if (ignoreFailures) {
+                    feedback.error("UNINSTALL_IgnoreFailed", ex,
+                                    info.getId(), ex.getLocalizedMessage());
+                } else {
+                    feedback.error("UNINSTALL_ErrorDuringProcessing", ex, info.getId());
+                    throw ex;
                 }
-            }
-        } finally {
-            if (rebuildPolyglot && WARN_REBUILD_IMAGES) {
-                Path p = SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-                feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator, input.getGraalHomePath().resolve(p).normalize());
             }
         }
         return 0;
@@ -308,7 +296,6 @@ public class UninstallCommand implements InstallerCommand {
 
         feedback.output("UNINSTALL_UninstallingComponent",
                         info.getId(), info.getName(), info.getVersionString());
-        rebuildPolyglot |= info.isPolyglotRebuild();
         doUninstallSingle(inst);
     }
 

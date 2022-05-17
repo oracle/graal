@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso;
 
+import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
+
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -35,7 +37,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -54,7 +55,6 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.nodes.commands.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
@@ -175,7 +175,33 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
+    protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
+        if (exitMode == ExitMode.NATURAL) {
+            // Make sure current thread is no longer considered alive by guest code.
+            if (context.getVM().DetachCurrentThread(context) == JNI_OK) {
+                // Create a new guest thread to wait for other non-daemon threads
+                context.createThread(Thread.currentThread(), context.getMainThreadGroup(), "DestroyJavaVM", false);
+            }
+            // Wait for ongoing threads to finish.
+            context.destroyVM();
+        } else {
+            try {
+                // Here we give a chance for our threads to exit gracefully in guest code before
+                // Truffle kicks in with host thread deaths.
+                context.doExit(exitCode);
+            } finally {
+                context.cleanupNativeEnv(); // This must be done here in case of a hard exit.
+            }
+        }
+    }
+
+    @Override
     protected void finalizeContext(EspressoContext context) {
+        if (!context.isTruffleClosed()) {
+            // If context is closed, we cannot run any guest code for cleanup.
+            context.prepareDispose();
+            context.cleanupNativeEnv();
+        }
         long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
         if (seconds > 10) {
@@ -183,14 +209,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedTimeNanos));
         }
-
-        context.prepareDispose();
-        try {
-            context.doExit(0);
-        } catch (AbstractTruffleException e) {
-            // Expected. Suppress. We do not want to throw during context closing.
-        }
-
         context.setFinalized();
     }
 
@@ -205,11 +223,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     protected CallTarget parse(final ParsingRequest request) throws Exception {
         assert EspressoContext.get(null).isInitialized();
         String contents = request.getSource().getCharacters().toString();
-        if (DestroyVMNode.EVAL_NAME.equals(contents)) {
-            RootNode node = new DestroyVMNode(this);
+        if (com.oracle.truffle.espresso.nodes.commands.DestroyVMNode.EVAL_NAME.equals(contents)) {
+            RootNode node = new com.oracle.truffle.espresso.nodes.commands.DestroyVMNode(this);
             return node.getCallTarget();
         }
         if (ExitCodeNode.EVAL_NAME.equals(contents)) {

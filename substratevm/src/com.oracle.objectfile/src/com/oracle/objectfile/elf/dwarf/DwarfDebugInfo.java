@@ -32,8 +32,11 @@ import java.util.HashMap;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 
+import com.oracle.objectfile.debugentry.MethodEntry;
+import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 
 /**
@@ -53,6 +56,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final String DW_FRAME_SECTION_NAME = ".debug_frame";
     public static final String DW_ABBREV_SECTION_NAME = ".debug_abbrev";
     public static final String DW_INFO_SECTION_NAME = ".debug_info";
+    public static final String DW_LOC_SECTION_NAME = ".debug_loc";
     public static final String DW_ARANGES_SECTION_NAME = ".debug_aranges";
 
     /**
@@ -101,10 +105,17 @@ public class DwarfDebugInfo extends DebugInfoBase {
     /* Level 2+K DIEs (where inline depth K >= 0) */
     public static final int DW_ABBREV_CODE_inlined_subroutine = 31;
     public static final int DW_ABBREV_CODE_inlined_subroutine_with_children = 32;
-    /* Level 3 DIEs. */
+    /* Level 2 DIEs. */
     public static final int DW_ABBREV_CODE_method_parameter_declaration1 = 33;
     public static final int DW_ABBREV_CODE_method_parameter_declaration2 = 34;
     public static final int DW_ABBREV_CODE_method_parameter_declaration3 = 35;
+    public static final int DW_ABBREV_CODE_method_local_declaration1 = 36;
+    public static final int DW_ABBREV_CODE_method_local_declaration2 = 37;
+    /* Level 3 DIEs. */
+    public static final int DW_ABBREV_CODE_method_parameter_location1 = 38;
+    public static final int DW_ABBREV_CODE_method_parameter_location2 = 39;
+    public static final int DW_ABBREV_CODE_method_local_location1 = 40;
+    public static final int DW_ABBREV_CODE_method_local_location2 = 41;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.
@@ -268,8 +279,13 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final byte DW_OP_bra = 0x28;
     public static final byte DW_OP_eq = 0x29;
     public static final byte DW_OP_lit0 = 0x30;
+    public static final byte DW_OP_reg0 = 0x50;
     public static final byte DW_OP_breg0 = 0x70;
+    public static final byte DW_OP_regx = (byte) 0x90;
+    public static final byte DW_OP_bregx = (byte) 0x92;
     public static final byte DW_OP_push_object_address = (byte) 0x97;
+    public static final byte DW_OP_implicit_value = (byte) 0x9e;
+    public static final byte DW_OP_stack_value = (byte) 0x9f;
 
     /* Register constants for AArch64. */
     public static final byte rheapbase_aarch64 = (byte) 27;
@@ -292,6 +308,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
     private DwarfStrSectionImpl dwarfStrSection;
     private DwarfAbbrevSectionImpl dwarfAbbrevSection;
     private DwarfInfoSectionImpl dwarfInfoSection;
+    private DwarfLocSectionImpl dwarfLocSection;
     private DwarfARangesSectionImpl dwarfARangesSection;
     private DwarfLineSectionImpl dwarfLineSection;
     private DwarfFrameSectionImpl dwarfFameSection;
@@ -318,8 +335,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
         dwarfStrSection = new DwarfStrSectionImpl(this);
         dwarfAbbrevSection = new DwarfAbbrevSectionImpl(this);
         dwarfInfoSection = new DwarfInfoSectionImpl(this);
+        dwarfLocSection = new DwarfLocSectionImpl(this);
         dwarfARangesSection = new DwarfARangesSectionImpl(this);
         dwarfLineSection = new DwarfLineSectionImpl(this);
+
         if (elfMachine == ELFMachine.AArch64) {
             dwarfFameSection = new DwarfFrameSectionImplAArch64(this);
             this.heapbaseRegister = rheapbase_aarch64;
@@ -330,6 +349,8 @@ public class DwarfDebugInfo extends DebugInfoBase {
             this.threadRegister = rthread_x86;
         }
         propertiesIndex = new HashMap<>();
+        methodLocalPropertiesIndex = new HashMap<>();
+        rangeLocalPropertiesIndex = new HashMap<>();
     }
 
     public DwarfStrSectionImpl getStrSectionImpl() {
@@ -346,6 +367,10 @@ public class DwarfDebugInfo extends DebugInfoBase {
 
     public DwarfInfoSectionImpl getInfoSectionImpl() {
         return dwarfInfoSection;
+    }
+
+    public DwarfLocSectionImpl getLocSectionImpl() {
+        return dwarfLocSection;
     }
 
     public DwarfARangesSectionImpl getARangesSectionImpl() {
@@ -752,5 +777,78 @@ public class DwarfDebugInfo extends DebugInfoBase {
         assert abstractInlineMethodIndex != null : classEntry.getTypeName() + methodName;
         assert abstractInlineMethodIndex.get(methodName) != null : classEntry.getTypeName() + methodName;
         return abstractInlineMethodIndex.get(methodName);
+    }
+
+    /**
+     * A class used to associate properties with a specific param or local whether top level or
+     * inline.
+     */
+
+    static final class DwarfLocalProperties {
+        private HashMap<DebugLocalInfo, Integer> locals;
+
+        private DwarfLocalProperties() {
+            locals = new HashMap<>();
+        }
+
+        int getIndex(DebugLocalInfo localInfo) {
+            return locals.get(localInfo);
+        }
+
+        void setIndex(DebugLocalInfo localInfo, int index) {
+            if (locals.get(localInfo) != null) {
+                assert locals.get(localInfo) == index;
+            } else {
+                locals.put(localInfo, index);
+            }
+        }
+    }
+
+    private HashMap<MethodEntry, DwarfLocalProperties> methodLocalPropertiesIndex;
+
+    private HashMap<Range, DwarfLocalProperties> rangeLocalPropertiesIndex;
+
+    private DwarfLocalProperties addMethodLocalProperties(MethodEntry methodEntry) {
+        DwarfLocalProperties localProperties = new DwarfLocalProperties();
+        methodLocalPropertiesIndex.put(methodEntry, localProperties);
+        return localProperties;
+    }
+
+    private DwarfLocalProperties addRangeLocalProperties(Range range) {
+        DwarfLocalProperties localProperties = new DwarfLocalProperties();
+        rangeLocalPropertiesIndex.put(range, localProperties);
+        return localProperties;
+    }
+
+    public void setMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties methodProperties = methodLocalPropertiesIndex.get(methodEntry);
+        if (methodProperties == null) {
+            methodProperties = addMethodLocalProperties(methodEntry);
+        }
+        methodProperties.setIndex(localInfo, index);
+    }
+
+    public int getMethodLocalIndex(MethodEntry methodEntry, DebugLocalInfo localinfo) {
+        DwarfLocalProperties methodProperties = methodLocalPropertiesIndex.get(methodEntry);
+        assert methodProperties != null : "get of non-existent local index";
+        int index = methodProperties.getIndex(localinfo);
+        assert index >= 0 : "get of local index before it was set";
+        return index;
+    }
+
+    public void setRangeLocalIndex(Range range, DebugLocalInfo localInfo, int index) {
+        DwarfLocalProperties rangeProperties = rangeLocalPropertiesIndex.get(range);
+        if (rangeProperties == null) {
+            rangeProperties = addRangeLocalProperties(range);
+        }
+        rangeProperties.setIndex(localInfo, index);
+    }
+
+    public int getRangeLocalIndex(Range range, DebugLocalInfo localinfo) {
+        DwarfLocalProperties rangeProperties = rangeLocalPropertiesIndex.get(range);
+        assert rangeProperties != null : "get of non-existent local index";
+        int index = rangeProperties.getIndex(localinfo);
+        assert index >= 0 : "get of local index before it was set";
+        return index;
     }
 }

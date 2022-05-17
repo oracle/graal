@@ -51,7 +51,6 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -75,6 +74,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
+import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -310,7 +310,7 @@ public class ProgressReporter {
                             .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
         }
         String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
-        RuntimeReflectionSupport rs = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        InternalRuntimeReflectionSupport rs = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class);
         l().a(classesFieldsMethodFormat, rs.getReflectionClassesCount(), rs.getReflectionFieldsCount(), rs.getReflectionMethodsCount())
                         .doclink("registered for reflection", "#glossary-reflection-registrations").println();
         if (numJNIClasses > 0) {
@@ -380,7 +380,7 @@ public class ProgressReporter {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
+    public void printCreationEnd(int imageSize, int numHeapObjects, long imageHeapSize, int codeCacheSize,
                     int numCompilations, int debugInfoSize) {
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
@@ -389,9 +389,8 @@ public class ProgressReporter {
         String format = "%9s (%5.2f%%) for ";
         l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).println();
-        long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
         l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
-                        .doclink("image heap", "#glossary-image-heap").a(":%,8d classes and %,d objects", numInstantiatedClasses, numHeapObjects).println();
+                        .doclink("image heap", "#glossary-image-heap").a(": %,8d objects", numHeapObjects).println();
         if (debugInfoSize > 0) {
             DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
                             .doclink("debug info", "#glossary-debug-info");

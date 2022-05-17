@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 
-import jdk.vm.ci.meta.JavaKind;
-
-@NodeInfo
-public class NewStoredContinuationNode extends AbstractNewObjectNode implements Lowerable {
-
-    public static final NodeClass<NewStoredContinuationNode> TYPE = NodeClass.create(NewStoredContinuationNode.class);
-    @Input private ValueNode payloadSize;
-
-    public NewStoredContinuationNode(ValueNode payloadSize) {
-        super(TYPE, StampFactory.forKind(JavaKind.fromJavaClass(StoredContinuation.class)), false, null);
-        this.payloadSize = payloadSize;
+@AutomaticFeature
+public class HeapFeature implements GraalFeature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        if (!ImageSingletons.contains(SubstrateAllocationSnippets.class)) {
+            ImageSingletons.add(SubstrateAllocationSnippets.class, new SubstrateAllocationSnippets());
+        }
     }
 
-    public ValueNode getPayloadSize() {
-        return payloadSize;
+    @Override
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        ImageSingletons.lookup(SubstrateAllocationSnippets.class).registerForeignCalls(foreignCalls);
     }
-
-    @NodeIntrinsic
-    public static native StoredContinuation allocate(int payloadSize);
 }

@@ -290,7 +290,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         Value v1 = context.asValue(new HostStackTraceExecutable("v1", source.createSection(0, 1), source.createSection(1, 1)));
         Value v2 = context.asValue(new HostStackTraceExecutable("v2", source.createSection(2, 1), source.createSection(3, 1)));
 
-        // TODO support host stack trace
+        // TODO GR-38632 support host stack trace
         try {
             v2.execute(v0);
         } catch (PolyglotException e) {

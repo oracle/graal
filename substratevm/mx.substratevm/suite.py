@@ -795,6 +795,9 @@ suite = {
                     "jdk.internal.ref",
                     "sun.nio.ch",
                 ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance": "11+",

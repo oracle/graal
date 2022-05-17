@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -201,14 +203,15 @@ public interface DebugInfoProvider {
 
     interface DebugMethodInfo extends DebugMemberInfo {
         /**
-         * @return an array of Strings identifying the method parameters.
+         * @return an array of DebugLocalInfo objects holding details of this method's parameters
          */
-        List<String> paramTypes();
+        DebugLocalInfo[] getParamInfo();
 
         /**
-         * @return an array of Strings with the method parameters' names.
+         * @return a DebugLocalInfo objects holding details of the target instance parameter this if
+         *         the method is an instance method or null if it is a static method.
          */
-        List<String> paramNames();
+        DebugLocalInfo getThisParamInfo();
 
         /**
          * @return the symbolNameForMethod string
@@ -240,14 +243,38 @@ public interface DebugInfoProvider {
          * @return true if this method is an override of another method.
          */
         boolean isOverride();
+
+        /*
+         * Return the unique type that owns this method. <p/>
+         * 
+         * @return the unique type that owns this method
+         */
+        ResolvedJavaType ownerType();
     }
 
     /**
-     * Access details of a compiled method producing the code in a specific
+     * Access details of a compiled top level or inline method producing the code in a specific
      * {@link com.oracle.objectfile.debugentry.Range}.
      */
     interface DebugRangeInfo extends DebugMethodInfo {
-        ResolvedJavaType ownerType();
+
+        /**
+         * @return the lowest address containing code generated for an outer or inlined code segment
+         *         reported at this line represented as an offset into the code segment.
+         */
+        int addressLo();
+
+        /**
+         * @return the first address above the code generated for an outer or inlined code segment
+         *         reported at this line represented as an offset into the code segment.
+         */
+        int addressHi();
+
+        /**
+         * @return the line number for the outer or inlined segment.
+         */
+        int line();
+
     }
 
     /**
@@ -257,27 +284,10 @@ public interface DebugInfoProvider {
         void debugContext(Consumer<DebugContext> action);
 
         /**
-         * @return the lowest address containing code generated for the method represented as an
-         *         offset into the code segment.
+         * @return a stream of records detailing source local var and line locations within the
+         *         compiled method.
          */
-        int addressLo();
-
-        /**
-         * @return the first address above the code generated for the method represented as an
-         *         offset into the code segment.
-         */
-        int addressHi();
-
-        /**
-         * @return the starting line number for the method.
-         */
-        int line();
-
-        /**
-         * @return a stream of records detailing line numbers and addresses within the compiled
-         *         method.
-         */
-        Stream<DebugLineInfo> lineInfoProvider();
+        Stream<DebugLocationInfo> locationInfoProvider();
 
         /**
          * @return the size of the method frame between prologue and epilogue.
@@ -314,28 +324,59 @@ public interface DebugInfoProvider {
      * Access details of code generated for a specific outer or inlined method at a given line
      * number.
      */
-    interface DebugLineInfo extends DebugRangeInfo {
+    interface DebugLocationInfo extends DebugRangeInfo {
         /**
-         * @return the lowest address containing code generated for an outer or inlined code segment
-         *         reported at this line represented as an offset into the code segment.
+         * @return the {@link DebugLocationInfo} of the nested inline caller-line
          */
-        int addressLo();
+        DebugLocationInfo getCaller();
 
         /**
-         * @return the first address above the code generated for an outer or inlined code segment
-         *         reported at this line represented as an offset into the code segment.
+         * @return a stream of {@link DebugLocalValueInfo} objects identifying local or parameter
+         *         variables present in the frame of the current range.
          */
-        int addressHi();
+        DebugLocalValueInfo[] getLocalValueInfo();
+    }
 
-        /**
-         * @return the line number for the outer or inlined segment.
-         */
+    /**
+     * A DebugLocalInfo details a local or parameter variable recording its name and type, the
+     * (abstract machine) local slot index it resides in and the number of slots it occupies.
+     */
+    interface DebugLocalInfo {
+        String name();
+
+        String typeName();
+
+        int slot();
+
+        int slotCount();
+
+        JavaKind javaKind();
+
         int line();
+    }
 
-        /**
-         * @return the {@link DebugLineInfo} of the nested inline caller-line
-         */
-        DebugLineInfo getCaller();
+    /**
+     * A DebugLocalValueInfo details the value a local or parameter variable present in a specific
+     * frame. The value may be undefined. If not then the instance records its type and either its
+     * (constant) value or the register or stack location in which the value resides.
+     */
+    interface DebugLocalValueInfo extends DebugLocalInfo {
+        enum LocalKind {
+            UNDEFINED,
+            REGISTER,
+            STACKSLOT,
+            CONSTANT
+        }
+
+        LocalKind localKind();
+
+        int regIndex();
+
+        int stackSlot();
+
+        long heapOffset();
+
+        JavaConstant constantValue();
     }
 
     interface DebugFrameSizeChange {

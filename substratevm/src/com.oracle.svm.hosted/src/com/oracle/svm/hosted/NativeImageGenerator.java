@@ -63,6 +63,7 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -141,7 +142,6 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -707,7 +707,7 @@ public class NativeImageGenerator {
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
-            reporter.printCreationEnd(image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
+            reporter.printCreationEnd(image.getImageSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
                             numCompilations, image.getDebugInfoSize());
             if (breakdownsPrinter != null) {
                 breakdownsPrinter.reset().flushln();
@@ -1050,7 +1050,7 @@ public class NativeImageGenerator {
         aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
         BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(aMetaAccess);
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
-        AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
+        MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
@@ -1668,17 +1668,13 @@ public class NativeImageGenerator {
                 System.out.print("interface  ");
             } else if (LayoutEncoding.isAbstract(le)) {
                 System.out.print("abstract  ");
-            } else if (LayoutEncoding.isInstance(le)) {
-                System.out.format("instance size %d  ", LayoutEncoding.getInstanceSize(le).rawValue());
-            } else if (LayoutEncoding.isObjectArray(le)) {
-                System.out.format("object array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isPrimitiveArray(le)) {
-                System.out.format("primitive array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isStoredContinuation(le)) {
-                // can exist as HostedType even if unreachable and continuations are disabled
-                System.out.print("stored continuation  ");
+            } else if (LayoutEncoding.isPureInstance(le)) {
+                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceSize(le).rawValue());
+            } else if (LayoutEncoding.isArrayLike(le)) {
+                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
+                String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
+                System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(),
+                                LayoutEncoding.getArrayIndexShift(le), LayoutEncoding.getArrayIndexScale(le));
             } else {
                 throw VMError.shouldNotReachHere();
             }

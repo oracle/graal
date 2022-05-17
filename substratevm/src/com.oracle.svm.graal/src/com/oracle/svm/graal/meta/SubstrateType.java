@@ -25,11 +25,7 @@
 package com.oracle.svm.graal.meta;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -42,11 +38,7 @@ import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.truffle.api.nodes.DenyReplace;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeClass;
 
-import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -55,10 +47,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstrateType extends NodeClass implements SharedType {
-
-    protected static final SubstrateType[] EMPTY_ARRAY = new SubstrateType[0];
-
+public class SubstrateType implements SharedType {
     private final JavaKind kind;
     private final DynamicHub hub;
 
@@ -74,9 +63,6 @@ public class SubstrateType extends NodeClass implements SharedType {
     @UnknownObjectField(types = {DynamicHub.class}) protected DynamicHub uniqueConcreteImplementation;
 
     public SubstrateType(JavaKind kind, DynamicHub hub) {
-        /* The constructor does not use the parameter, so we can pass whatever we want. */
-        super(Node.class);
-
         this.kind = kind;
         this.hub = hub;
     }
@@ -467,284 +453,5 @@ public class SubstrateType extends NodeClass implements SharedType {
     @Override
     public String toString() {
         return "SubstrateType<" + toJavaName(true) + ">";
-    }
-
-    /*
-     * Implementation of Truffle NodeClass interface
-     */
-
-    @Override
-    public Iterator<Node> makeIterator(Node node) {
-        return new SubstrateNodeIterator(node, this);
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Class<? extends Node> getType() {
-        assert Node.class.isAssignableFrom(DynamicHub.toClass(getHub()));
-        return (Class<? extends Node>) DynamicHub.toClass(getHub());
-    }
-
-    @Override
-    protected SubstrateField[] getNodeFieldArray() {
-        if (rawAllInstanceFields == null) {
-            /*
-             * The type was created at run time from the Class, so we do not have field information.
-             * If we need the fields for a type, the type has to be created during image generation.
-             */
-            throw SubstrateNodeFieldIterator.noFieldsError(this);
-        } else {
-            return rawAllInstanceFields;
-        }
-    }
-
-    @Override
-    public void putFieldObject(Object field, Node receiver, Object value) {
-        assert !getFieldType(field).isPrimitive();
-        assert value == null || getFieldType(field).isInstance(value);
-        long offset = makeOffset((SubstrateField) field);
-        Unsafe.getUnsafe().putObject(receiver, offset, value);
-    }
-
-    @Override
-    public Object getFieldObject(Object field, Node receiver) {
-        assert !getFieldType(field).isPrimitive();
-        long offset = makeOffset((SubstrateField) field);
-        return Unsafe.getUnsafe().getObject(receiver, offset);
-    }
-
-    @Override
-    public Object getFieldValue(Object field, Node node) {
-        Class<?> fieldType = getFieldType(field);
-        long offset = makeOffset((SubstrateField) field);
-        if (fieldType == boolean.class) {
-            return Unsafe.getUnsafe().getBoolean(node, offset);
-        } else if (fieldType == byte.class) {
-            return Unsafe.getUnsafe().getByte(node, offset);
-        } else if (fieldType == short.class) {
-            return Unsafe.getUnsafe().getShort(node, offset);
-        } else if (fieldType == char.class) {
-            return Unsafe.getUnsafe().getChar(node, offset);
-        } else if (fieldType == int.class) {
-            return Unsafe.getUnsafe().getInt(node, offset);
-        } else if (fieldType == long.class) {
-            return Unsafe.getUnsafe().getLong(node, offset);
-        } else if (fieldType == float.class) {
-            return Unsafe.getUnsafe().getFloat(node, offset);
-        } else if (fieldType == double.class) {
-            return Unsafe.getUnsafe().getDouble(node, offset);
-        } else {
-            return Unsafe.getUnsafe().getObject(node, offset);
-        }
-    }
-
-    @Override
-    public boolean isChildField(Object field) {
-        return isChildField((SubstrateField) field);
-    }
-
-    @Override
-    public boolean isChildrenField(Object field) {
-        return isChildrenField((SubstrateField) field);
-    }
-
-    @Override
-    public boolean isCloneableField(Object field) {
-        return ((SubstrateField) field).truffleCloneableField;
-    }
-
-    @Override
-    protected boolean isReplaceAllowed() {
-        boolean replaceDenied = Modifier.isFinal(getModifiers()) && getAnnotation(DenyReplace.class) != null;
-        return !replaceDenied;
-    }
-
-    @Override
-    public Class<?> getFieldType(Object field) {
-        return makeType((SubstrateField) field);
-    }
-
-    @Override
-    public String getFieldName(Object field) {
-        return ((SubstrateField) field).getName();
-    }
-
-    protected static boolean isChildrenField(SubstrateField field) {
-        return field.truffleChildrenField;
-    }
-
-    protected static boolean isChildField(SubstrateField field) {
-        return field.truffleChildField;
-    }
-
-    static Class<?> makeType(SubstrateField field) {
-        if (field.getType().getStorageKind().isPrimitive()) {
-            /* For fields with a Word type, we have to return the primitive class. */
-            return field.getType().getStorageKind().toJavaClass();
-        } else {
-            return DynamicHub.toClass(field.getType().getHub());
-        }
-    }
-
-    static Class<?> makeDeclaringClass(SubstrateField field) {
-        return DynamicHub.toClass(field.getDeclaringClass().getHub());
-    }
-
-    static long makeOffset(SubstrateField field) {
-        assert field.getLocation() >= 0;
-        return field.getLocation();
-    }
-
-}
-
-class SubstrateNodeFieldIterator implements Iterator<SubstrateField> {
-    private final SubstrateType type;
-    private final Predicate<SubstrateField> filter;
-    private int nextFieldInType = 0;
-    private SubstrateField nextField;
-
-    SubstrateNodeFieldIterator(SubstrateType type, Predicate<SubstrateField> filter) {
-        this.type = type;
-        this.filter = filter;
-        computeNext();
-    }
-
-    private void computeNext() {
-        SubstrateField[] rawAllInstanceFields = type.rawAllInstanceFields;
-        if (rawAllInstanceFields == null) {
-            /*
-             * The type was created at run time from the Class, so we do not have field information.
-             * If we need the fields for a type, the type has to be created during image generation.
-             */
-            throw noFieldsError(type);
-
-        } else {
-            SubstrateField[] fields = rawAllInstanceFields;
-            while (nextFieldInType < fields.length) {
-                SubstrateField field = fields[nextFieldInType];
-                nextFieldInType++;
-                if (filter == null || filter.test(field)) {
-                    nextField = field;
-                    return;
-                }
-            }
-        }
-
-        nextField = null;
-    }
-
-    @Override
-    public boolean hasNext() {
-        return nextField != null;
-    }
-
-    @Override
-    public SubstrateField next() {
-        SubstrateField result = nextField;
-        if (result == null) {
-            throw new NoSuchElementException();
-        }
-        computeNext();
-        return result;
-    }
-
-    static RuntimeException noFieldsError(SubstrateType type) {
-        throw VMError.shouldNotReachHere("no instance fields for " + type.getHub().getName() + " available");
-    }
-}
-
-class SubstrateNodeIterator implements Iterator<Node> {
-
-    private final Node node;
-
-    private final SubstrateType type;
-    private int nextFieldInType;
-
-    private Object[] children;
-    private int nextChildInChildren;
-
-    private Node next;
-
-    protected SubstrateNodeIterator(Node node, SubstrateType type) {
-        this.node = node;
-        this.type = type;
-        computeNext();
-    }
-
-    private void computeNext() {
-        if (computeNextFromChildren()) {
-            /* We have another array element from the last @Children field. */
-            return;
-        }
-
-        SubstrateField[] rawAllInstanceFields = type.rawAllInstanceFields;
-        if (rawAllInstanceFields == null) {
-            /*
-             * The type was created at run time from the Class, so we do not have field information.
-             * If we need the fields for a type, the type has to be created during image generation.
-             */
-            throw SubstrateNodeFieldIterator.noFieldsError(type);
-
-        } else {
-            SubstrateField[] fields = rawAllInstanceFields;
-            while (nextFieldInType < fields.length) {
-                SubstrateField field = fields[nextFieldInType];
-                nextFieldInType++;
-                if (computeNextFromField(field)) {
-                    return;
-                }
-            }
-        }
-
-        next = null;
-    }
-
-    private boolean computeNextFromField(SubstrateField field) {
-        if (SubstrateType.isChildField(field)) {
-            long offset = field.getLocation();
-            next = (Node) Unsafe.getUnsafe().getObject(node, offset);
-            if (next != null) {
-                return true;
-            }
-        } else if (SubstrateType.isChildrenField(field)) {
-            long offset = field.getLocation();
-            children = (Object[]) Unsafe.getUnsafe().getObject(node, offset);
-            nextChildInChildren = 0;
-            return computeNextFromChildren();
-        }
-        return false;
-    }
-
-    private boolean computeNextFromChildren() {
-        if (children == null) {
-            return false;
-        }
-
-        while (nextChildInChildren < children.length) {
-            next = (Node) children[nextChildInChildren];
-            nextChildInChildren++;
-            if (next != null) {
-                return true;
-            }
-        }
-
-        children = null;
-        nextChildInChildren = 0;
-        return false;
-    }
-
-    @Override
-    public boolean hasNext() {
-        return next != null;
-    }
-
-    @Override
-    public Node next() {
-        Node result = next;
-        if (result == null) {
-            throw new NoSuchElementException();
-        }
-        computeNext();
-        return result;
     }
 }

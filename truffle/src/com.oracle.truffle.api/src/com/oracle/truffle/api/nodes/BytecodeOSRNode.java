@@ -82,8 +82,8 @@ public interface BytecodeOSRNode extends NodeInterface {
      *
      * <p>
      * The {@code osrFrame} may be the parent frame, but for performance reasons could also be a new
-     * frame. The frame's {@link Frame#getArguments() arguments} are undefined and should not be
-     * used directly.
+     * frame. In case a new frame is created, the frame's {@link Frame#getArguments() arguments}
+     * will be provided by {@link #storeParentFrameInArguments}.
      *
      * <p>
      * Typically, a bytecode node's {@link ExecutableNode#execute(VirtualFrame)
@@ -311,6 +311,39 @@ public interface BytecodeOSRNode extends NodeInterface {
     static Object tryOSR(BytecodeOSRNode osrNode, int target, Object interpreterState, Runnable beforeTransfer, VirtualFrame parentFrame) {
         CompilerAsserts.neverPartOfCompilation();
         return NodeAccessor.RUNTIME.tryBytecodeOSR(osrNode, target, interpreterState, beforeTransfer, parentFrame);
+    }
+
+    /**
+     * Produce the arguments that will be used to perform the call to the new OSR root. It will
+     * become the arguments array of the frame passed into {@link #executeOSR} in case a new frame
+     * is generated for the call for performance reasons. The contents are up to language, Truffle
+     * only requires that a subsequent call to {@link #restoreParentFrame} with the arguments array
+     * will return the same object as was passed into the {@code parentFrame} argument. By default,
+     * this method creates a new one-element array, which discards the original frame arguments.
+     * Override this method to be able to preserve a subset of the original frame arguments. It is
+     * permitted to modify arguments array of {@code parentFrame} and return it. This is called only
+     * in the interpreter, therefore the frame is not virtual and it is safe to store it into the
+     * arguments array.
+     *
+     * @param parentFrame the frame object to be stored in the resulting arguments array
+     * @return arguments array containing {@code parentFrame}
+     * @since 22.2
+     */
+    default Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+        CompilerAsserts.neverPartOfCompilation();
+        return new Object[]{parentFrame};
+    }
+
+    /**
+     * Return the parent frame that was stored in an arguments array by a previous call to
+     * {@link #storeParentFrameInArguments}.
+     *
+     * @param arguments frame arguments originally produced by {@link #storeParentFrameInArguments}.
+     * @return stored parent frame
+     * @since 22.2
+     */
+    default Frame restoreParentFrameFromArguments(Object[] arguments) {
+        return (Frame) arguments[0];
     }
 }
 

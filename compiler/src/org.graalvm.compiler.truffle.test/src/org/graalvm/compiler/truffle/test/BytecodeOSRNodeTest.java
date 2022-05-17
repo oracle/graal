@@ -348,6 +348,17 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     /*
+     * Test storeParentFrameInArguments and restoreParentFrame can be used to preserve selected
+     * frame arguments after OSR.
+     */
+    @Test
+    public void testStoreArguments() {
+        RootNode rootNode = new Program(new PreserveFirstFrameArgumentNode(), new FrameDescriptor());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(42, target.call(PreserveFirstFrameArgumentNode.EXPECTED_FIRST_ARG, 0));
+    }
+
+    /*
      * Test that the frame transfer helper works as expected, both on OSR enter and exit.
      */
     @Test
@@ -1077,6 +1088,45 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             public Object execute(VirtualFrame frame) {
                 return toCall.call(frame.getArguments());
             }
+        }
+    }
+
+    public static class PreserveFirstFrameArgumentNode extends BytecodeOSRTestNode {
+        static final Object EXPECTED_FIRST_ARG = new Object();
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            return execute(osrFrame);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            // This node only terminates in compiled code.
+            while (true) {
+                assertEquals(EXPECTED_FIRST_ARG, frame.getArguments()[0]);
+                if (CompilerDirectives.inCompiledCode()) {
+                    return 42;
+                }
+                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                    Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
+                    if (result != null) {
+                        return result;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+            // This node is always called with 2 args, we preserve the first
+            Object[] arguments = parentFrame.getArguments();
+            arguments[1] = parentFrame;
+            return arguments;
+        }
+
+        @Override
+        public Frame restoreParentFrameFromArguments(Object[] arguments) {
+            return (Frame) arguments[1];
         }
     }
 

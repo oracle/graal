@@ -237,7 +237,6 @@ if LLVM_JAVA_HOME:
         license_files=[],
         third_party_license_files=[],
         truffle_jars=[],
-        include_in_polyglot=False,
         dir_name='java',
         installable_id='espresso-llvm',
         extra_installable_qualifiers=[edition],

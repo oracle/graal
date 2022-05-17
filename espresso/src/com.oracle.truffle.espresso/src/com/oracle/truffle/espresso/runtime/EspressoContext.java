@@ -72,6 +72,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.blocking.BlockingSupport;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -152,7 +153,7 @@ public final class EspressoContext {
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
     @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
-    private final EspressoShutdownHandler shutdownManager;
+    @CompilationFinal private EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
 
@@ -168,6 +169,7 @@ public final class EspressoContext {
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
+    private boolean disposeCalled = false;
     private Classpath bootClasspath;
     // endregion InitControl
 
@@ -194,9 +196,10 @@ public final class EspressoContext {
 
     // Behavior control
     public final boolean EnableManagement;
+    public final boolean SoftExit;
+    public final boolean AllowHostExit;
     public final boolean Polyglot;
     public final boolean HotSwapAPI;
-    public final boolean ExitHost;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
@@ -266,9 +269,8 @@ public final class EspressoContext {
         this.threadRegistry = new EspressoThreadRegistry(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
 
-        boolean softExit = env.getOptions().get(EspressoOptions.SoftExit);
-        this.ExitHost = env.getOptions().get(EspressoOptions.ExitHost);
-        this.shutdownManager = new EspressoShutdownHandler(this, threadRegistry, referenceDrainer, softExit);
+        this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
+        this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
         this.allocationReporter = env.lookup(AllocationReporter.class);
@@ -520,6 +522,7 @@ public final class EspressoContext {
             this.metaInitialized = true;
             this.threads = new ThreadsAccess(meta);
             this.blockingSupport = BlockingSupport.create(threads);
+            this.shutdownManager = new EspressoShutdownHandler(this, threadRegistry, referenceDrainer, SoftExit);
 
             this.interpreterToVM = new InterpreterToVM(this);
 
@@ -759,6 +762,16 @@ public final class EspressoContext {
     }
 
     public void disposeContext() {
+        synchronized (this) {
+            if (disposeCalled) {
+                getLogger().warning("Context is being disposed multiple times");
+                return;
+            }
+            disposeCalled = true;
+        }
+    }
+
+    public void cleanupNativeEnv() {
         if (initialized) {
             getVM().dispose();
             getJNI().dispose();
@@ -842,32 +855,41 @@ public final class EspressoContext {
     }
 
     /**
-     * Creates a new guest thread from the host thread, and adds it to the main thread group.
+     * Creates a new guest thread from the host thread, and adds it to the main thread group. This
+     * thread is not in Espresso's control.
      */
     public StaticObject createThread(Thread hostThread) {
-        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm);
+        return createThread(hostThread, getMainThreadGroup(), null, false);
     }
 
     public StaticObject createThread(Thread hostThread, StaticObject group, String name) {
-        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm, name, group);
+        return createThread(hostThread, group, name, true);
     }
 
-    public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
+    public StaticObject createThread(Thread hostThread, StaticObject group, String name, boolean managedByEspresso) {
+        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm, name, group, managedByEspresso);
+    }
+
+    public void disposeThread(Thread hostThread) {
         StaticObject guestThread = getGuestThreadFromHost(hostThread);
         if (guestThread == null) {
             return;
         }
-        if (hostThread != Thread.currentThread()) {
-            String guestName = threads.getThreadName(guestThread);
-            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
-            return;
-        }
-        // Cannot run guest code after finalizeContext was called (GR-35712).
-        if (isFinalized()) {
-            return;
-        }
-        if (vm.DetachCurrentThread(this) != JNI_OK) {
-            throw new RuntimeException("Could not detach thread correctly");
+        try {
+            // Cannot run guest code after finalizeContext was called (GR-35712).
+            if (isFinalized()) {
+                return;
+            }
+            if (hostThread != Thread.currentThread()) {
+                String guestName = threads.getThreadName(guestThread);
+                getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName + ". Called from thread: " + Thread.currentThread());
+                return;
+            }
+            if (vm.DetachCurrentThread(this) != JNI_OK) {
+                throw new RuntimeException("Could not detach thread correctly");
+            }
+        } finally {
+            unregisterThread(guestThread);
         }
     }
 
@@ -935,20 +957,34 @@ public final class EspressoContext {
 
     // region Shutdown
 
-    public Object getShutdownSynchronizer() {
-        return shutdownManager.getShutdownSynchronizer();
+    public void notifyShutdownSynchronizer() {
+        EspressoLock lock = shutdownManager.getShutdownSynchronizer();
+        lock.lock();
+        try {
+            lock.signalAll();
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public void truffleExit(Node location, int exitCode) {
+        getEnv().getContext().closeExited(location, exitCode);
     }
 
     public void doExit(int code) {
         shutdownManager.doExit(code);
     }
 
-    public void destroyVM(boolean killThreads) {
-        shutdownManager.destroyVM(killThreads);
+    public void destroyVM() {
+        shutdownManager.destroyVM();
     }
 
     public boolean isClosing() {
         return shutdownManager.isClosing();
+    }
+
+    public boolean isTruffleClosed() {
+        return getEnv().getContext().isClosed();
     }
 
     public int getExitStatus() {
@@ -957,10 +993,6 @@ public final class EspressoContext {
 
     public EspressoError abort(String message) {
         getLogger().severe(message);
-        if (ExitHost) {
-            System.exit(1);
-            throw EspressoError.shouldNotReachHere();
-        }
         throw new EspressoExitException(1);
     }
 

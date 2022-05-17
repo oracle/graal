@@ -24,10 +24,16 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.annotate.Hybrid;
+
 /**
  * This class is used for variably-sized objects that store continuation stack frames.
  *
  * For object layout and other implementation details, see {@link StoredContinuationImpl}.
  */
+@Hybrid(componentType = byte.class)
 public final class StoredContinuation {
+    /** Must be allocated via {@link StoredContinuationImpl}. */
+    private StoredContinuation() {
+    }
 }

@@ -32,7 +32,6 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
@@ -50,6 +49,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -62,7 +62,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Class<?> economicMapImpl;
     private final Field economicMapImplEntriesField;
     private final Field economicMapImplHashArrayField;
-    private final RuntimeReflectionSupport reflectionSupport;
+    private final InternalRuntimeReflectionSupport reflectionSupport;
 
     public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
@@ -72,7 +72,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         ImageSingletons.add(ImageHeapScanner.class, this);
-        reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        reflectionSupport = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class);
     }
 
     public static ImageHeapScanner instance() {
