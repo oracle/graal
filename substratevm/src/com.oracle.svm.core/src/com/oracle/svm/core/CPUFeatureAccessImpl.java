@@ -92,7 +92,7 @@ public abstract class CPUFeatureAccessImpl implements CPUFeatureAccess {
     @Platforms(Platform.HOSTED_ONLY.class)
     protected CPUFeatureAccessImpl(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
         GraalError.guarantee(errorMessageBytes[errorMessageBytes.length - 1] == 0, "error message not zero-terminated");
-        GraalError.guarantee(buildtimeFeatureMaskBytes.length % 64 == 0, "build-time feature mask byte array not a multiple of 64 bits");
+        GraalError.guarantee(buildtimeFeatureMaskBytes.length % Long.BYTES == 0, "build-time feature mask byte array not a multiple of 64 bits");
         this.cpuFeatureEnumToStructOffsets = offsets;
         this.cpuFeatureErrorMessage = errorMessageBytes;
         this.buildtimeFeatureMask = buildtimeFeatureMaskBytes;

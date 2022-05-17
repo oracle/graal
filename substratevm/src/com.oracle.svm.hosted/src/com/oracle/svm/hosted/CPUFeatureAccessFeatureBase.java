@@ -58,7 +58,7 @@ public abstract class CPUFeatureAccessFeatureBase {
      *            features.
      * @param cpuFeatureStructClass A {@link org.graalvm.nativeimage.c.struct.CStruct} annotated
      *            {@link Class} representing the CPU Features on the C level. For every entry in
-     *            {@code allCPUFeatures}, there must be {@code byte} field in this struct with
+     *            {@code allCPUFeatures}, there must be a {@code byte} field in this struct with
      *            {@link Enum#name()}, prefixed with {@code "f"}. Example: if there enum entry with
      *            name "AVX", this struct must contain a field of name "fAVX". Note that the struct
      *            must support all fields of all supported JVMCI versions. On the other hand, the
@@ -89,7 +89,7 @@ public abstract class CPUFeatureAccessFeatureBase {
 
         // Initialize CPUFeatures struct.
         // Over-allocate to a multiple of 64 bit.
-        int structSize = ((cpuFeatureStructInfo.getSizeInfo().getProperty() + Long.SIZE - 1) / Long.SIZE) * Long.SIZE;
+        int structSize = ((cpuFeatureStructInfo.getSizeInfo().getProperty() + Long.BYTES - 1) / Long.BYTES) * Long.BYTES;
         byte[] requiredFeaturesStruct = new byte[structSize];
         // Data is stored in bitwise negated form, thus initialize to all 1s.
         Arrays.fill(requiredFeaturesStruct, (byte) 0xff);
