@@ -410,15 +410,21 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ValueNode alias = getAlias((ValueNode) input);
                 if (alias instanceof VirtualObjectNode) {
                     int id = ((VirtualObjectNode) alias).getObjectId();
-                    ensureMaterialized(state, id, insertBefore, effects, COUNTER_MATERIALIZATIONS_UNHANDLED);
-                    effects.replaceFirstInput(node, input, state.getObjectState(id).getMaterializedValue());
-                    VirtualUtil.trace(node.getOptions(), debug, "replacing input %s at %s", input, node);
+                    if (shouldMaterialize(state, id, insertBefore)) {
+                        ensureMaterialized(state, id, insertBefore, effects, COUNTER_MATERIALIZATIONS_UNHANDLED);
+                        effects.replaceFirstInput(node, input, state.getObjectState(id).getMaterializedValue());
+                        VirtualUtil.trace(node.getOptions(), debug, "replacing input %s at %s", input, node);
+                    }
                 }
             }
         }
         if (node instanceof NodeWithState) {
             processNodeWithState((NodeWithState) node, state, effects);
         }
+    }
+
+    protected boolean shouldMaterialize(BlockT state, int id, FixedNode insertBefore) {
+        return true;
     }
 
     protected void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {
