@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jfr;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -113,7 +114,8 @@ public class JfrEventFeature implements Feature {
         if (c.getCanonicalName().equals("jdk.jfr.Event") ||
                         c.getCanonicalName().equals("jdk.internal.event.Event") ||
                         c.getCanonicalName().equals("jdk.jfr.events.AbstractJDKEvent") ||
-                        c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent")) {
+                        c.getCanonicalName().equals("jdk.jfr.events.AbstractBufferStatisticsEvent") ||
+                        Modifier.isAbstract(c.getModifiers())) {
             return;
         }
         try {

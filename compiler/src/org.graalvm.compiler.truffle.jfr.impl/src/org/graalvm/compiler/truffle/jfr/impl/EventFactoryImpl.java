@@ -26,10 +26,8 @@ package org.graalvm.compiler.truffle.jfr.impl;
 
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.FlightRecorderListener;
 import jdk.jfr.Name;
@@ -50,18 +48,7 @@ final class EventFactoryImpl implements EventFactory {
         register(CompilationStatisticsEventImpl.class);
     }
 
-    private final List<Runnable> initializationListeners;
-
     EventFactoryImpl() {
-        this.initializationListeners = new CopyOnWriteArrayList<>();
-        FlightRecorder.addListener(new FlightRecorderListener() {
-            @Override
-            public void recorderInitialized(FlightRecorder recorder) {
-                for (Runnable listener : initializationListeners) {
-                    listener.run();
-                }
-            }
-        });
     }
 
     @Override
@@ -76,12 +63,13 @@ final class EventFactoryImpl implements EventFactory {
 
     @Override
     public void addInitializationListener(Runnable listener) {
-        initializationListeners.add(Objects.requireNonNull(listener, "Listener must be non null."));
-    }
-
-    @Override
-    public void removeInitializationListener(Runnable listener) {
-        initializationListeners.remove(Objects.requireNonNull(listener, "Listener must be non null."));
+        Objects.requireNonNull(listener, "Listener must be non null.");
+        FlightRecorder.addListener(new FlightRecorderListener() {
+            @Override
+            public void recorderInitialized(FlightRecorder recorder) {
+                listener.run();
+            }
+        });
     }
 
     @Override
