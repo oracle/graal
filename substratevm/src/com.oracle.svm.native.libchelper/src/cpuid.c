@@ -23,6 +23,11 @@
  * questions.
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
 #ifndef _WIN64
 #include <alloca.h>
 #else
@@ -31,10 +36,6 @@
 #endif
 
 #if defined(__x86_64__) || defined(_WIN64)
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
 #include "amd64cpufeatures.h"
 #include "amd64hotspotcpuinfo.h"
 
@@ -563,7 +564,6 @@ void determineCPUFeatures(CPUFeatures *features)
  */
 #if defined(__APPLE__)
 
-#include <stdint.h>
 #include <sys/sysctl.h>
 #include "aarch64cpufeatures.h"
 
@@ -608,9 +608,6 @@ void determineCPUFeatures(CPUFeatures* features) {
 
 #include <sys/auxv.h>
 #include <asm/hwcap.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include "aarch64cpufeatures.h"
 
 #ifndef HWCAP_FP
