@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -144,14 +145,21 @@ public class SourceCache {
                     fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
                 }
                 Path srcPath = sourcePath.getParent().resolve(fileNameString);
-                if (srcPath.toFile().exists()) {
-                    try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
-                        for (Path root : fileSystem.getRootDirectories()) {
-                            srcRoots.add(new SourceRoot(root));
+                File srcFile = srcPath.toFile();
+                if (srcFile.exists()) {
+                    if (srcFile.isFile()) {
+                        try {
+                            FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
+                            for (Path root : fileSystem.getRootDirectories()) {
+                                srcRoots.add(new SourceRoot(root));
+                            }
+                        } catch (IOException | FileSystemNotFoundException ioe) {
+                            /* ignore this entry */
                         }
-                    } catch (IOException | FileSystemNotFoundException ioe) {
-                        /* ignore this entry */
+                    } else if (srcFile.isDirectory()) { /* Support for `MX_BUILD_EXPLODED=true` */
+                        srcRoots.add(new SourceRoot(srcPath));
+                    } else {
+                        throw VMError.shouldNotReachHere();
                     }
                 }
             } else {
