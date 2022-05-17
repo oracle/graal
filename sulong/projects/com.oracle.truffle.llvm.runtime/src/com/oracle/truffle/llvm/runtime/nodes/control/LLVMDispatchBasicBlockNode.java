@@ -33,6 +33,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -314,6 +315,29 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode impl
     @Override
     public final Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         return dispatchFromBasicBlock(osrFrame, target, (Counters) interpreterState);
+    }
+
+    @Override
+    public final Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+        /*
+         * We need a copy of the argumnts array since it might be used by va_start.
+         */
+        Object[] newArgs = parentFrame.getArguments().clone();
+        /*
+         * The first argument is the stack pointer. This is only used in the method prologue. When
+         * we transfer to an OSR compilation, this has already happened, so we can safely reuse the
+         * first argument slot for that.
+         *
+         * Note that the parentFrame comes from the interpreter, so it's not actually virtual.
+         * Therefore, no need to materialize the frame, even though it escapes here.
+         */
+        newArgs[0] = parentFrame;
+        return newArgs;
+    }
+
+    @Override
+    public final Frame restoreParentFrameFromArguments(Object[] arguments) {
+        return (Frame) arguments[0];
     }
 
     @Override
