@@ -1740,11 +1740,16 @@ public final class VM extends NativeEnv {
         }
         int bci = stackElement.getBCI();
 
+        String result = "unknown source";
+        String source = method.getSourceFile();
+        if (source != null) {
+            result = source;
+        }
         getMeta().java_lang_StackTraceElement_init.invokeDirect(
                         /* this */ ste,
                         /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(method.getDeclaringKlass().getType().toString(), true, true)),
                         /* methodName */ meta.toGuestString(method.getName()),
-                        /* fileName */ meta.toGuestString(method.getSourceFile()),
+                        /* fileName */ meta.toGuestString(result),
                         /* lineNumber */ method.bciToLineNumber(bci));
 
         return ste;

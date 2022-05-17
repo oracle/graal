@@ -468,11 +468,19 @@ public final class EspressoContext {
         referenceDrainer.startReferenceDrain();
     }
 
+    @TruffleBoundary
     public Source findOrCreateSource(Method method) {
         String sourceFile = method.getSourceFile();
         if (sourceFile == null) {
             return null;
         } else {
+            if (!sourceFile.contains("/") && !sourceFile.contains("\\")) {
+                // try to come up with a more unique name
+                Symbol<Name> runtimePackage = method.getDeclaringKlass().getRuntimePackage();
+                if (runtimePackage != null && runtimePackage.length() > 0) {
+                    sourceFile = runtimePackage + "/" + sourceFile;
+                }
+            }
             TruffleFile file = env.getInternalTruffleFile(sourceFile);
             Source source = Source.newBuilder("java", file).content(Source.CONTENT_NONE).build();
             // sources are interned so no cache needed (hopefully)

@@ -655,13 +655,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public String getSourceFile() {
-        // we have to do this atomically in regards to class redefinition
+        // we have to do this atomically with regard to class redefinition
         ObjectKlass.KlassVersion klassVersion = declaringKlass.getKlassVersion();
 
         SourceFileAttribute sfa = (SourceFileAttribute) klassVersion.getAttribute(Name.SourceFile);
 
         if (sfa == null) {
-            return "unknown source";
+            return null;
         }
         return klassVersion.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
     }
@@ -671,7 +671,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public String report(int curBCI) {
-        return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(" + getSourceFile() + ":" + bciToLineNumber(curBCI) + ")";
+        String sourceFile = getSourceFile();
+        if (sourceFile == null) {
+            sourceFile = "unknown source";
+        }
+        return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(" + sourceFile + ":" + bciToLineNumber(curBCI) + ")";
     }
 
     public String report() {
