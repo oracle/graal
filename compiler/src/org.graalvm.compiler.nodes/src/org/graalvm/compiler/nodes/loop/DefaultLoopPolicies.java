@@ -58,6 +58,8 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(500);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
+        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
+        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
 
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
@@ -319,10 +321,6 @@ public class DefaultLoopPolicies implements LoopPolicies {
         return Math.min(maxDiff, remainingGraphSpace);
     }
 
-    /**
-     * We want to prioritizes invariant that are computed frequently and that have a lower code size
-     * change.
-     */
     @Override
     public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
         if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
@@ -334,12 +332,16 @@ public class DefaultLoopPolicies implements LoopPolicies {
         }
 
         DebugContext debug = loop.loopBegin().getDebug();
+        OptionValues options = debug.getOptions();
+        double loopLocalFrequency = loop.localLoopFrequency();
+        int loopSize = loop.size();
         int maxDiff = maxDiff(loop);
 
         // We prioritize invariant with the highest frequency
         List<ControlSplitNode> maxSplit = null;
         double maxSplitFrequency = 0.0;
         int maxApproxDiff = 0;
+        double maxFactor = 0.0;
         for (List<ControlSplitNode> split : controlSplits) {
             int approxDiff = approxDiff(loop, split);
             if (approxDiff > maxDiff) {
@@ -353,6 +355,34 @@ public class DefaultLoopPolicies implements LoopPolicies {
                  * so we only want to unswitch conditions that are on average executed at least once
                  * par execution of the whole loop.
                  */
+                debug.log("control split %s discarded because infrequent, f=%.2f", split, splitFrequency);
+                continue;
+            }
+
+            /*
+             * Guards should only be unswitched if they are executed very often because otherwise it
+             * might mess with relative frequencies, but if if the successor probabilities of the
+             * control split nodes are evenly distributed then it is good to unswitch then.
+             *
+             * {@link factor} is 0 for guard and 1 for evenly distributed splits.
+             */
+            double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
+            for (ControlSplitNode s : split) {
+                for (double p : s.successorProbabilities()) {
+                    factor *= p;
+                }
+            }
+            assert 0 <= factor && factor <= 1 : "factor shold be between 0 and 1, but is : " + factor;
+
+            // We cap the factor and we invert it to make guards range narrow.
+            factor = 1 - Math.min(Math.max(factor, Options.LoopUnswitchFrequencyMinFactor.getValue(options)), Options.LoopUnswitchFrequencyMaxFactor.getValue(options));
+
+            if (splitFrequency < factor * loopLocalFrequency) {
+                /*
+                 * Invariants that are executed not often with respect to their successor
+                 * probabilities are discarded.
+                 */
+                debug.log("control split %s not frequenct enough with respect to factor, factor=%.2f, split f=%.2f, loop f=%.2f", split, factor, splitFrequency, loopLocalFrequency);
                 continue;
             }
 
@@ -360,12 +390,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
                 maxSplitFrequency = splitFrequency;
                 maxSplit = split;
                 maxApproxDiff = approxDiff;
+                maxFactor = factor;
             }
         }
 
         if (maxSplit != null) {
-            debug.log("shouldUnswitch(%s, %s) : best=%s, delta=%d, max=%d, f=%.2f, invariant f=%.2f", loop, controlSplits, maxSplit, maxApproxDiff, maxDiff,
-                            loop.localLoopFrequency(), maxSplitFrequency);
+            debug.log("shouldUnswitch(%s, %s) : best=%s, loop size=%d, f=%.2f, max=%d, delta=%d, invariant f=%.2f, factor=%.2f", loop, controlSplits, maxSplit, loopSize, loopLocalFrequency, maxDiff,
+                            maxApproxDiff,
+                            maxSplitFrequency, maxFactor);
 
             return UnswitchingDecision.yes(maxSplit);
         } else {
