@@ -62,6 +62,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.ClassLoadingExceptionSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.reflect.SubstrateAccessor;
@@ -90,6 +91,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private boolean sealed;
 
     private final Set<Class<?>> reflectionClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Map<String, Throwable> inaccessibleClasses = new ConcurrentHashMap<>();
     private final Set<Class<?>> unsafeInstantiatedClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<Executable, ExecutableAccessibility> reflectionMethods = new ConcurrentHashMap<>();
     private final Map<Executable, Object> methodAccessors = new ConcurrentHashMap<>();
@@ -133,6 +135,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             if (reflectionClasses.add(clazz)) {
                 modifiedClasses.add(clazz);
             }
+        });
+    }
+
+    @Override
+    public void registerClassLookupException(ConfigurationCondition condition, String typeName, Throwable t) {
+        checkNotSealed();
+        registerConditionalConfiguration(condition, () -> {
+            inaccessibleClasses.put(typeName, t);
         });
     }
 
@@ -643,15 +653,19 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void processRegisteredElements(DuringAnalysisAccessImpl access) {
-        if (modifiedClasses.isEmpty()) {
-            return;
+        if (!modifiedClasses.isEmpty()) {
+            for (Class<?> clazz : modifiedClasses) {
+                processClass(access, clazz);
+            }
+            modifiedClasses.clear();
+            access.requireAnalysisIteration();
         }
-        access.requireAnalysisIteration();
 
-        for (Class<?> clazz : modifiedClasses) {
-            processClass(access, clazz);
+        if (!inaccessibleClasses.isEmpty()) {
+            inaccessibleClasses.forEach(ClassLoadingExceptionSupport::registerClass);
+            inaccessibleClasses.clear();
+            access.requireAnalysisIteration();
         }
-        modifiedClasses.clear();
     }
 
     private void processClass(DuringAnalysisAccessImpl access, Class<?> clazz) {
