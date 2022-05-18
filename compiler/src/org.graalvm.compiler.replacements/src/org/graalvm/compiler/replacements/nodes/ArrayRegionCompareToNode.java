@@ -50,7 +50,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
-import org.graalvm.compiler.replacements.StrideUtil;
+import org.graalvm.compiler.replacements.NodeStrideUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -116,7 +116,11 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
      */
     @Input protected ValueNode length;
 
-    @OptionalInput protected ValueNode stride;
+    /**
+     * Optional argument for dispatching to any combination of strides at runtime, as described in
+     * {@link org.graalvm.compiler.core.common.StrideUtil}.
+     */
+    @OptionalInput protected ValueNode dynamicStrides;
 
     @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
@@ -124,12 +128,12 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
         this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, locationIdentity);
     }
 
-    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, stride, null, null, locationIdentity);
+    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides, LocationIdentity locationIdentity) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, locationIdentity);
     }
 
-    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, stride, null, null, LocationIdentity.ANY_LOCATION);
+    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
@@ -138,7 +142,8 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
         this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
     }
 
-    protected ArrayRegionCompareToNode(NodeClass<? extends ArrayRegionCompareToNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride,
+    protected ArrayRegionCompareToNode(NodeClass<? extends ArrayRegionCompareToNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
+                    ValueNode dynamicStrides,
                     JavaKind strideA,
                     JavaKind strideB,
                     LocationIdentity locationIdentity) {
@@ -151,7 +156,7 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
         this.arrayB = arrayB;
         this.offsetB = offsetB;
         this.length = length;
-        this.stride = stride;
+        this.dynamicStrides = dynamicStrides;
         GraalError.guarantee(strideA == null || allowedStrides().contains(strideA), "unsupported strideA");
         GraalError.guarantee(strideB == null || allowedStrides().contains(strideB), "unsupported strideB");
     }
@@ -195,7 +200,7 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
     }
 
     public int getDirectStubCallIndex() {
-        return StrideUtil.getDirectStubCallIndex(stride, strideA, strideB);
+        return NodeStrideUtil.getDirectStubCallIndex(dynamicStrides, strideA, strideB);
     }
 
     @Override
@@ -206,7 +211,7 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
                 final Value result;
                 if (getDirectStubCallIndex() < 0) {
                     result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length),
-                                    gen.operand(stride));
+                                    gen.operand(dynamicStrides));
                 } else {
                     result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
                 }
@@ -225,10 +230,11 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
     protected void generateArrayCompare(NodeLIRBuilderTool gen) {
         if (getDirectStubCallIndex() < 0) {
             gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(
-                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(stride)));
+                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(dynamicStrides)));
         } else {
-            gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(StrideUtil.getStrideA(stride, strideA), StrideUtil.getStrideB(stride, strideB),
-                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length)));
+            gen.setResult(this,
+                            gen.getLIRGeneratorTool().emitArrayRegionCompareTo(NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
+                                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length)));
         }
     }
 
@@ -250,10 +256,10 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if ((stride == null || stride.isJavaConstant()) && length.isJavaConstant()) {
+        if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
-            JavaKind constStrideA = StrideUtil.getStrideA(stride, strideA);
-            JavaKind constStrideB = StrideUtil.getStrideB(stride, strideB);
+            JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
+            JavaKind constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
             if (len * Math.max(constStrideA.getByteCount(), constStrideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this)) {

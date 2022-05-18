@@ -25,17 +25,18 @@
 package org.graalvm.compiler.lir.amd64;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address;
+import org.graalvm.compiler.core.common.StrideUtil;
 
 /**
  * This class provides utility methods for "stride-agnostic" intrinsic ops such as
  * {@link AMD64ArrayRegionCompareToOp}.
  */
-public class StrideUtil {
+public class AMD64StrideUtil {
 
     /**
      * Compute the jump table index for two given strides {@code strideA} and {@code strideB}.
      */
     public static int getDirectStubCallIndex(AMD64Address.Scale strideA, AMD64Address.Scale strideB) {
-        return (strideA.log2 * 3) + strideB.log2;
+        return StrideUtil.getDirectStubCallIndex(strideA.log2, strideB.log2);
     }
 }

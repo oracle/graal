@@ -51,6 +51,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -106,20 +107,20 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
     @Use({REG}) private Value arrayBValue;
     @Use({REG, ILLEGAL}) private Value offsetBValue;
     @Use({REG}) private Value lengthValue;
-    @Use({REG, ILLEGAL}) private Value strideValue;
+    @Use({REG, ILLEGAL}) private Value dynamicStridesValue;
 
     @Temp({REG}) private Value arrayAValueTemp;
     @Temp({REG}) private Value offsetAValueTemp;
     @Temp({REG}) private Value arrayBValueTemp;
     @Temp({REG, ILLEGAL}) private Value offsetBValueTemp;
     @Temp({REG}) private Value lengthValueTemp;
-    @Temp({REG, ILLEGAL}) private Value strideValueTemp;
+    @Temp({REG, ILLEGAL}) private Value dynamicStridesValueTemp;
 
     @Temp({REG, ILLEGAL}) private Value vectorTemp1;
     @Temp({REG, ILLEGAL}) private Value vectorTemp2;
 
     private AMD64ArrayRegionCompareToOp(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value stride, AMD64MacroAssembler.ExtendMode extendMode) {
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE, tool, YMM);
         this.extendMode = extendMode;
         if (strideA == null) {
@@ -137,7 +138,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         this.arrayBValue = this.arrayBValueTemp = arrayB;
         this.offsetBValue = this.offsetBValueTemp = offsetB;
         this.lengthValue = this.lengthValueTemp = length;
-        this.strideValue = this.strideValueTemp = stride;
+        this.dynamicStridesValue = this.dynamicStridesValueTemp = dynamicStrides;
 
         // We only need the vector register if we generate SIMD code.
         if (isVectorCompareSupported(tool.target(), argScaleA, argScaleB)) {
@@ -165,22 +166,23 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
      * @param length length (number of array slots in respective array's stride) of the region to
      *            compare.
      * @param extendMode integer extension mode for {@code arrayB}.
+     * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
      */
     public static AMD64ArrayRegionCompareToOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value stride, AMD64MacroAssembler.ExtendMode extendMode) {
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArrayA = REG_ARRAY_A.asValue(arrayA.getValueKind());
         RegisterValue regOffsetA = REG_OFFSET_A.asValue(offsetA.getValueKind());
         RegisterValue regArrayB = REG_ARRAY_B.asValue(arrayB.getValueKind());
         RegisterValue regOffsetB = REG_OFFSET_B.asValue(offsetB.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
-        Value regStride = stride == null ? Value.ILLEGAL : REG_STRIDE.asValue(length.getValueKind());
+        Value regStride = dynamicStrides == null ? Value.ILLEGAL : REG_STRIDE.asValue(length.getValueKind());
         tool.emitConvertNullToZero(regArrayA, arrayA);
         tool.emitMove(regOffsetA, offsetA);
         tool.emitConvertNullToZero(regArrayB, arrayB);
         tool.emitMove(regOffsetB, offsetB);
         tool.emitMove(regLength, length);
-        if (stride != null) {
-            tool.emitMove((AllocatableValue) regStride, stride);
+        if (dynamicStrides != null) {
+            tool.emitMove((AllocatableValue) regStride, dynamicStrides);
         }
         return new AMD64ArrayRegionCompareToOp(tool, strideA, strideB, result, regArrayA, regOffsetA, regArrayB, regOffsetB, regLength, regStride, extendMode);
     }
@@ -201,7 +203,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
 
         Register tmp1 = asRegister(offsetAValue);
         Register tmp2 = asRegister(offsetBValue);
-        if (isIllegal(strideValue)) {
+        if (isIllegal(dynamicStridesValue)) {
             emitArrayCompare(crb, masm, argScaleA, argScaleB, result, arrayA, arrayB, length, tmp1);
         } else {
             masm.xorq(tmp2, tmp2);
@@ -210,7 +212,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
             for (int i = 0; i < variants.length; i++) {
                 variants[i] = new Label();
             }
-            AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp1, asRegister(strideValue), 0, 8, Arrays.stream(variants));
+            AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, masm, tmp1, asRegister(dynamicStridesValue), 0, 8, Arrays.stream(variants));
             for (Scale scaleA : new Scale[]{Scale.Times1, Scale.Times2, Scale.Times4}) {
                 for (Scale scaleB : new Scale[]{Scale.Times1, Scale.Times2, Scale.Times4}) {
                     if (scaleA.log2 < scaleB.log2) {
@@ -218,14 +220,16 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
                     }
                     if (scaleA.log2 > scaleB.log2) {
                         masm.align(crb.target.wordSize * 2);
-                        masm.bind(variants[StrideUtil.getDirectStubCallIndex(scaleB, scaleA)]);
+                        // use the same implementation for e.g. stride 1-2 and 2-1 by swapping the
+                        // arguments in one variant
+                        masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(scaleB, scaleA)]);
                         masm.movq(tmp1, arrayA);
                         masm.movq(arrayA, arrayB);
                         masm.movq(arrayB, tmp1);
                         masm.incl(tmp2);
                     }
                     masm.align(crb.target.wordSize * 2);
-                    masm.bind(variants[StrideUtil.getDirectStubCallIndex(scaleA, scaleB)]);
+                    masm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(scaleA, scaleB)]);
                     emitArrayCompare(crb, masm, scaleA, scaleB, result, arrayA, arrayB, length, tmp1);
                     if (scaleA.log2 > scaleB.log2) {
                         masm.testlAndJcc(tmp2, tmp2, ConditionFlag.Zero, done, false);

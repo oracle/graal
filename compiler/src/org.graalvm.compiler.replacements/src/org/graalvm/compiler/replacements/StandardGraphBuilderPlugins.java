@@ -176,7 +176,6 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerNegExactSplitNo
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflowNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;

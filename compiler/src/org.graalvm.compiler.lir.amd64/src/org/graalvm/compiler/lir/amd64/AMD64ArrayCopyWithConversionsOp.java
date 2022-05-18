@@ -53,6 +53,7 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -104,14 +105,14 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
     @Use({REG}) private Value arrayDst;
     @Use({REG}) private Value offsetDst;
     @Use({REG}) private Value length;
-    @Use({REG, ILLEGAL}) private Value stride;
+    @Use({REG, ILLEGAL}) private Value dynamicStrides;
 
     @Temp({REG}) private Value arraySrcTmp;
     @Temp({REG}) private Value offsetSrcTmp;
     @Temp({REG}) private Value arrayDstTmp;
     @Temp({REG}) private Value offsetDstTmp;
     @Temp({REG}) private Value lengthTmp;
-    @Temp({REG, ILLEGAL}) private Value strideTmp;
+    @Temp({REG, ILLEGAL}) private Value dynamicStridesTmp;
 
     @Temp({REG}) private Value[] vectorTemp;
 
@@ -130,8 +131,10 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
      * @param offsetDst offset to be added to arrayDst, in bytes. Must include array base offset!
      * @param length length of the region to copy, scaled to strideDst.
      * @param extendMode sign- or zero-extend array elements when inflating to a bigger stride.
+     * @param dynamicStrides dynamic stride dispatch as described in {@link StrideUtil}.
      */
-    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride,
+    private AMD64ArrayCopyWithConversionsOp(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length,
+                    Value dynamicStrides,
                     AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE, tool, YMM);
         this.extendMode = extendMode;
@@ -143,9 +146,9 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         this.arrayDstTmp = this.arrayDst = arrayDst;
         this.offsetDstTmp = this.offsetDst = offsetDst;
         this.lengthTmp = this.length = length;
-        this.strideTmp = this.stride = stride;
+        this.dynamicStridesTmp = this.dynamicStrides = dynamicStrides;
 
-        if (isIllegal(stride)) {
+        if (StrideUtil.useConstantStrides(dynamicStrides)) {
             assert strideSrc.isNumericInteger() && strideDst.isNumericInteger();
             this.scaleSrcConst = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideSrc)));
             this.scaleDstConst = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(strideDst)));
@@ -171,25 +174,25 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
     }
 
     private static AMD64ArrayCopyWithConversionsOp movParamsAndCreate(LIRGeneratorTool tool, JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst,
-                    Value length, Value stride, AMD64MacroAssembler.ExtendMode extendMode) {
+                    Value length, Value dynamicStrides, AMD64MacroAssembler.ExtendMode extendMode) {
         RegisterValue regArraySrc = REG_ARRAY_SRC.asValue(arraySrc.getValueKind());
         RegisterValue regOffsetSrc = REG_OFFSET_SRC.asValue(offsetSrc.getValueKind());
         RegisterValue regArrayDst = REG_ARRAY_DST.asValue(arrayDst.getValueKind());
         RegisterValue regOffsetDst = REG_OFFSET_DST.asValue(offsetDst.getValueKind());
         RegisterValue regLength = REG_LENGTH.asValue(length.getValueKind());
-        final Value regStride;
+        final Value regDynamicStrides;
         tool.emitConvertNullToZero(regArraySrc, arraySrc);
         tool.emitMove(regOffsetSrc, offsetSrc);
         tool.emitConvertNullToZero(regArrayDst, arrayDst);
         tool.emitMove(regOffsetDst, offsetDst);
         tool.emitMove(regLength, length);
-        if (isIllegal(stride)) {
-            regStride = Value.ILLEGAL;
+        if (isIllegal(dynamicStrides)) {
+            regDynamicStrides = Value.ILLEGAL;
         } else {
-            regStride = REG_STRIDE.asValue(stride.getValueKind());
-            tool.emitMove((RegisterValue) regStride, stride);
+            regDynamicStrides = REG_STRIDE.asValue(dynamicStrides.getValueKind());
+            tool.emitMove((RegisterValue) regDynamicStrides, dynamicStrides);
         }
-        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, regStride, extendMode);
+        return new AMD64ArrayCopyWithConversionsOp(tool, strideSrc, strideDst, regArraySrc, regOffsetSrc, regArrayDst, regOffsetDst, regLength, regDynamicStrides, extendMode);
     }
 
     private static Op getOp(Scale scaleDst, Scale scaleSrc) {
@@ -255,7 +258,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
         asm.leaq(src, new AMD64Address(src, sro, Scale.Times1));
         asm.leaq(dst, new AMD64Address(dst, dso, Scale.Times1));
 
-        if (isIllegal(stride)) {
+        if (isIllegal(dynamicStrides)) {
             emitOp(crb, asm, this.scaleSrcConst, this.scaleDstConst, src, sro, dst, len);
         } else {
             Label[] variants = new Label[9];
@@ -263,16 +266,18 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
             for (int i = 0; i < variants.length; i++) {
                 variants[i] = new Label();
             }
-            AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, asm, dso, asRegister(stride), 0, 8, Arrays.stream(variants));
+            AMD64ControlFlow.RangeTableSwitchOp.emitJumpTable(crb, asm, dso, asRegister(dynamicStrides), 0, 8, Arrays.stream(variants));
 
+            // use the 1-byte-1-byte stride variant for the 2-2 and 4-4 cases by simply shifting the
+            // length
             asm.align(crb.target.wordSize * 2);
-            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Scale.Times4, Scale.Times4)]);
+            asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Scale.Times4, Scale.Times4)]);
             asm.shll(len, 1);
             asm.align(crb.target.wordSize * 2);
-            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Scale.Times2, Scale.Times2)]);
+            asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Scale.Times2, Scale.Times2)]);
             asm.shll(len, 1);
             asm.align(crb.target.wordSize * 2);
-            asm.bind(variants[StrideUtil.getDirectStubCallIndex(Scale.Times1, Scale.Times1)]);
+            asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(Scale.Times1, Scale.Times1)]);
             emitOp(crb, asm, Scale.Times1, Scale.Times1, src, sro, dst, len);
             asm.jmp(end);
 
@@ -282,7 +287,7 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64ComplexVectorOp 
                         continue;
                     }
                     asm.align(crb.target.wordSize * 2);
-                    asm.bind(variants[StrideUtil.getDirectStubCallIndex(scaleSrc, scaleDst)]);
+                    asm.bind(variants[AMD64StrideUtil.getDirectStubCallIndex(scaleSrc, scaleDst)]);
                     emitOp(crb, asm, scaleSrc, scaleDst, src, sro, dst, len);
                     asm.jmp(end);
                 }

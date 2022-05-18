@@ -28,6 +28,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
@@ -47,7 +48,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
-import org.graalvm.compiler.replacements.StrideUtil;
+import org.graalvm.compiler.replacements.NodeStrideUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -100,12 +101,16 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
      */
     @Input protected ValueNode length;
 
-    @OptionalInput protected ValueNode stride;
+    /**
+     * Optional argument for dispatching to any combination of strides at runtime, as described in
+     * {@link org.graalvm.compiler.core.common.StrideUtil}.
+     */
+    @OptionalInput protected ValueNode dynamicStrides;
 
     @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
-    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, stride, null, null, locationIdentity);
+    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides, LocationIdentity locationIdentity) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, locationIdentity);
     }
 
     public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
@@ -121,11 +126,11 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
         this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, locationIdentity);
     }
 
-    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, stride, null, null, LocationIdentity.ANY_LOCATION);
+    public ArrayRegionEqualsNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, LocationIdentity.ANY_LOCATION);
     }
 
-    protected ArrayRegionEqualsNode(NodeClass<? extends ArrayRegionEqualsNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode stride,
+    protected ArrayRegionEqualsNode(NodeClass<? extends ArrayRegionEqualsNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
                     JavaKind strideA,
                     JavaKind strideB,
                     LocationIdentity locationIdentity) {
@@ -138,7 +143,7 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
         this.arrayB = arrayB;
         this.offsetB = offsetB;
         this.length = length;
-        this.stride = stride;
+        this.dynamicStrides = dynamicStrides;
         assert strideA == null || strideA.isPrimitive() && strideB.isPrimitive() : "expected primitive kinds, got: " + strideA + ", " + strideB;
     }
 
@@ -180,12 +185,12 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
         return length;
     }
 
-    public ValueNode getStride() {
-        return stride;
+    public ValueNode getDynamicStrides() {
+        return dynamicStrides;
     }
 
     public int getDirectStubCallIndex() {
-        return StrideUtil.getDirectStubCallIndex(stride, strideA, strideB);
+        return NodeStrideUtil.getDirectStubCallIndex(dynamicStrides, strideA, strideB);
     }
 
     @Override
@@ -196,7 +201,7 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
                 final Value result;
                 if (getDirectStubCallIndex() < 0) {
                     result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length),
-                                    gen.operand(stride));
+                                    gen.operand(dynamicStrides));
                 } else {
                     result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
                 }
@@ -226,11 +231,11 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
             int directStubCallIndex = getDirectStubCallIndex();
             if (directStubCallIndex < 0) {
                 result = gen.getLIRGeneratorTool().emitArrayEquals(
-                                0, 0, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(stride));
+                                0, 0, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(dynamicStrides));
             } else {
                 result = gen.getLIRGeneratorTool().emitArrayEquals(
-                                StrideUtil.getStrideA(directStubCallIndex),
-                                StrideUtil.getStrideB(directStubCallIndex),
+                                StrideUtil.getConstantStrideA(directStubCallIndex),
+                                StrideUtil.getConstantStrideB(directStubCallIndex),
                                 0, 0, gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length));
             }
         }
@@ -255,10 +260,10 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if ((stride == null || stride.isJavaConstant()) && length.isJavaConstant()) {
+        if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
-            JavaKind constStrideA = StrideUtil.getStrideA(stride, strideA);
-            JavaKind constStrideB = StrideUtil.getStrideB(stride, strideB);
+            JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
+            JavaKind constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
             if (len * Math.max(constStrideA.getByteCount(), constStrideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this)) {

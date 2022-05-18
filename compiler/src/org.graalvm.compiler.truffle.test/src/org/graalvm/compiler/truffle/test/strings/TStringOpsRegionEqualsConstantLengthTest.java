@@ -34,7 +34,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.StrideUtil;
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -99,7 +99,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
     @Override
     protected void checkIntrinsicNode(ArrayRegionEqualsNode node) {
         Assert.assertTrue(node.getDirectStubCallIndex() >= 0);
-        ValueNode stride = node.getStride();
+        ValueNode stride = node.getDynamicStrides();
         Assert.assertTrue(stride == null || stride.isJavaConstant());
         Assert.assertTrue(node.getLength().isJavaConstant());
     }

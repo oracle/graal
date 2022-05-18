@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
-import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.getArrayLocation;
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.strideAsPowerOf2;
 
 import org.graalvm.compiler.core.common.StrideUtil;
@@ -299,16 +299,16 @@ public class AMD64TruffleInvocationPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
-                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode stride) {
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
                 LocationIdentity locationIdentity = inferLocationIdentity(isNativeA, isNativeB, false);
-                if (stride.isJavaConstant()) {
-                    int directStubCallIndex = stride.asJavaConstant().asInt();
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
                     b.addPush(JavaKind.Boolean, new ArrayRegionEqualsNode(arrayA, offsetA, arrayB, offsetB, length,
-                                    StrideUtil.getStrideA(directStubCallIndex),
-                                    StrideUtil.getStrideB(directStubCallIndex),
+                                    StrideUtil.getConstantStrideA(directStubCallIndex),
+                                    StrideUtil.getConstantStrideB(directStubCallIndex),
                                     locationIdentity));
                 } else {
-                    b.addPush(JavaKind.Boolean, new ArrayRegionEqualsNode(arrayA, offsetA, arrayB, offsetB, length, stride, locationIdentity));
+                    b.addPush(JavaKind.Boolean, new ArrayRegionEqualsNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, locationIdentity));
                 }
                 return true;
             }
@@ -319,16 +319,16 @@ public class AMD64TruffleInvocationPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
-                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode stride) {
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
                 LocationIdentity locationIdentity = inferLocationIdentity(isNativeA, isNativeB, false);
-                if (stride.isJavaConstant()) {
-                    int directStubCallIndex = stride.asJavaConstant().asInt();
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
                     b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length,
-                                    StrideUtil.getStrideA(directStubCallIndex),
-                                    StrideUtil.getStrideB(directStubCallIndex),
+                                    StrideUtil.getConstantStrideA(directStubCallIndex),
+                                    StrideUtil.getConstantStrideB(directStubCallIndex),
                                     locationIdentity));
                 } else {
-                    b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length, stride, locationIdentity));
+                    b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, locationIdentity));
                 }
                 return true;
             }
@@ -339,14 +339,14 @@ public class AMD64TruffleInvocationPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
                             ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
-                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode stride) {
-                if (stride.isJavaConstant()) {
-                    int directStubCallIndex = stride.asJavaConstant().asInt();
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
                     b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length,
-                                    StrideUtil.getStrideA(directStubCallIndex),
-                                    StrideUtil.getStrideB(directStubCallIndex)));
+                                    StrideUtil.getConstantStrideA(directStubCallIndex),
+                                    StrideUtil.getConstantStrideB(directStubCallIndex)));
                 } else {
-                    b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length, stride));
+                    b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides));
                 }
                 return true;
             }

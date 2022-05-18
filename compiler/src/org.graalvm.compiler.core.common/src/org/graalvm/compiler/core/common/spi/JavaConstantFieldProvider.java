@@ -84,12 +84,12 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     }
 
     protected <T> T foldStableArray(JavaConstant value, ResolvedJavaField field, ConstantFieldTool<T> tool) {
-        return tool.foldStableArray(value, getArrayDimension(field), isDefaultStableField(field, tool));
+        return tool.foldStableArray(value, getArrayDimension(field.getType()), isDefaultStableField(field, tool));
     }
 
-    private int getArrayDimension(ResolvedJavaField field) {
+    private static int getArrayDimension(JavaType type) {
         int dimensions = 0;
-        JavaType componentType = field.getType();
+        JavaType componentType = type;
         while ((componentType = componentType.getComponentType()) != null) {
             dimensions++;
         }

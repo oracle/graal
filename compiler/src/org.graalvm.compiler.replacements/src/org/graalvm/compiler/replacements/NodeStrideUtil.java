@@ -24,11 +24,7 @@
  */
 package org.graalvm.compiler.replacements;
 
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
-
-import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -39,80 +35,48 @@ import jdk.vm.ci.meta.JavaKind;
  * work with fixed strides of 1, 2 or 4 bytes per element, or with a dynamic parameter containing
  * the stride in log2 format, i.e. {@code 0 -> 1 byte, 1 -> 2 byte, 2 -> 4 byte}. If an intrinsic
  * method has two array parameters with potentially different strides, both log2 stride values are
- * encoded into one as follows: {@code (strideA * 3) + strideB}. This value is used inside the
- * intrinsic as a jump table index to dispatch to separately compiled versions for each possible
+ * encoded into one as follows: {@code (strideA * N_STRIDES) + strideB}. This value is used inside
+ * the intrinsic as a jump table index to dispatch to separately compiled versions for each possible
  * combination of strides.
  */
-public final class StrideUtil {
+public final class NodeStrideUtil {
 
     /**
      * If the constant stride parameter {@code strideA} is non-null, return it. Otherwise, extract
-     * {@code strideA} from the constant direct stub call index value {@code stride}.
+     * {@code strideA} from the constant direct stub call index value {@code dynamicStrides}.
      */
-    public static JavaKind getStrideA(ValueNode stride, JavaKind strideA) {
+    public static JavaKind getConstantStrideA(ValueNode dynamicStrides, JavaKind strideA) {
         if (strideA != null) {
             return strideA;
         }
-        return getStrideA(stride.asJavaConstant().asInt());
-    }
-
-    /**
-     * Extract {@code strideA} from {@code directStubCallIndex}.
-     */
-    public static JavaKind getStrideA(int directStubCallIndex) {
-        return log2ToStride(directStubCallIndex / 3);
+        return StrideUtil.getConstantStrideA(dynamicStrides.asJavaConstant().asInt());
     }
 
     /**
      * If the constant stride parameter {@code strideB} is non-null, return it. Otherwise, extract
-     * {@code strideB} from the constant direct stub call index value {@code stride}.
+     * {@code strideB} from the constant direct stub call index value {@code dynamicStrides}.
      */
-    public static JavaKind getStrideB(ValueNode stride, JavaKind strideB) {
+    public static JavaKind getConstantStrideB(ValueNode dynamicStrides, JavaKind strideB) {
         if (strideB != null) {
             return strideB;
         }
-        return getStrideB(stride.asJavaConstant().asInt());
-    }
-
-    /**
-     * Extract {@code strideB} from {@code directStubCallIndex}.
-     */
-    public static JavaKind getStrideB(int directStubCallIndex) {
-        return log2ToStride(directStubCallIndex % 3);
+        return StrideUtil.getConstantStrideB(dynamicStrides.asJavaConstant().asInt());
     }
 
     /**
      * If the constant stride parameters {@code strideA} and {@code strideB} are non-null, construct
      * a direct stub call index from them. Otherwise, return the direct stub call index contained in
-     * the constant value {@code stride}.
+     * {@code dynamicStrides}, if it is constant. If {@code dynamicStrides} is not constant, return
+     * {@code -1}.
      */
-    public static int getDirectStubCallIndex(ValueNode stride, JavaKind strideA, JavaKind strideB) {
+    public static int getDirectStubCallIndex(ValueNode dynamicStrides, JavaKind strideA, JavaKind strideB) {
         if (strideA != null && strideB != null) {
-            return (log2(strideA) * 3) + log2(strideB);
+            return StrideUtil.getDirectStubCallIndex(StrideUtil.log2(strideA), StrideUtil.log2(strideB));
         }
-        if (stride != null && stride.isJavaConstant()) {
-            return stride.asJavaConstant().asInt();
+        if (dynamicStrides != null && dynamicStrides.isJavaConstant()) {
+            return dynamicStrides.asJavaConstant().asInt();
         }
         return -1;
     }
 
-    private static int log2(JavaKind stride) {
-        return (Integer.SIZE - 1) - Integer.numberOfLeadingZeros(stride.getByteCount());
-    }
-
-    /**
-     * Convert the given log2 stride value to a {@link JavaKind} value.
-     */
-    public static JavaKind log2ToStride(int log2Stride) {
-        switch (log2Stride) {
-            case 0:
-                return S1;
-            case 1:
-                return S2;
-            case 2:
-                return S4;
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
-    }
 }

@@ -221,12 +221,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     private final Set<GraalFeature.CallTreeNode> neverPartOfCompilationViolations;
     Set<AnalysisMethod> runtimeCompiledMethods;
 
-    boolean afterAnalysis;
-
-    private ResolvedJavaType truffleStringType;
-    private ResolvedJavaField truffleStringDataField;
-    private ResolvedJavaField truffleStringHashCodeField;
-
     public TruffleFeature() {
         blocklistMethods = new HashSet<>();
         blocklistViolations = new TreeSet<>(TruffleFeature::blocklistViolationComparator);

@@ -26,12 +26,16 @@ package org.graalvm.compiler.truffle.test.strings;
 
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
+
+import jdk.vm.ci.amd64.AMD64;
 
 public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
@@ -92,18 +96,20 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     @Test
     public void testIndexOfSubstring() {
-        assertConstant(1, new RootNode(null) {
+        assertConstant(true, new RootNode(null) {
 
             @Child TruffleString.ByteIndexOfStringNode node = TruffleString.ByteIndexOfStringNode.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
-                return node.execute(a, b, 0, a.byteLength(UTF_8), UTF_8);
+                return node.execute(a, b, 0, a.byteLength(UTF_8), UTF_8) == 1;
             }
         });
     }
 
     private void assertConstant(Object expectedConstant, RootNode root) {
+        Assume.assumeTrue(getArchitecture() instanceof AMD64 &&
+                        Math.max(GraalOptions.ArrayRegionEqualsConstantLimit.getValue(getGraalOptions()), GraalOptions.StringIndexOfConstantLimit.getValue(getGraalOptions())) >= a.byteLength(UTF_8));
         assertPartialEvalEquals(toRootNode((f) -> expectedConstant), root, new Object[0]);
     }
 }

@@ -25,11 +25,11 @@
 package org.graalvm.compiler.replacements.amd64;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
+import static org.graalvm.compiler.core.common.StrideUtil.S1;
+import static org.graalvm.compiler.core.common.StrideUtil.S2;
+import static org.graalvm.compiler.core.common.StrideUtil.S4;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -51,7 +51,7 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
-import org.graalvm.compiler.replacements.StrideUtil;
+import org.graalvm.compiler.replacements.NodeStrideUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -99,7 +99,13 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
     @Input protected ValueNode offsetB;
     @Input protected ValueNode arrayMask;
     @Input protected ValueNode length;
-    @OptionalInput protected ValueNode stride;
+
+    /**
+     * Optional argument for dispatching to any combination of strides at runtime, as described in
+     * {@link org.graalvm.compiler.core.common.StrideUtil}. When this parameter is used,
+     * {@link #strideMask} is assumed to be equal to {@link #strideB}.
+     */
+    @OptionalInput protected ValueNode dynamicStrides;
 
     @OptionalInput(Memory) private MemoryKill lastLocationAccess;
 
@@ -121,8 +127,8 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                     ValueNode arrayA, ValueNode offsetA,
                     ValueNode arrayB, ValueNode offsetB,
                     ValueNode arrayMask,
-                    ValueNode length, ValueNode stride) {
-        this(NONE, null, null, null, LocationIdentity.ANY_LOCATION, arrayA, offsetA, arrayB, offsetB, arrayMask, length, stride);
+                    ValueNode length, ValueNode dynamicStrides) {
+        this(NONE, null, null, null, LocationIdentity.ANY_LOCATION, arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
@@ -137,7 +143,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                     ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length,
-                    ValueNode stride) {
+                    ValueNode dynamicStrides) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
         assert validStride(strideA);
         assert validStride(strideB);
@@ -153,7 +159,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
         this.offsetB = offsetB;
         this.arrayMask = arrayMask;
         this.length = length;
-        this.stride = stride;
+        this.dynamicStrides = dynamicStrides;
     }
 
     private static boolean validStride(JavaKind stride) {
@@ -176,8 +182,8 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
         return strideMask;
     }
 
-    public ValueNode getStride() {
-        return stride;
+    public ValueNode getDynamicStrides() {
+        return dynamicStrides;
     }
 
     public ValueNode getLength() {
@@ -193,7 +199,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
     }
 
     public int getDirectStubCallIndex() {
-        return StrideUtil.getDirectStubCallIndex(stride, strideA, strideB);
+        return NodeStrideUtil.getDirectStubCallIndex(dynamicStrides, strideA, strideB);
     }
 
     @Override
@@ -210,7 +216,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                                     gen.operand(offsetB),
                                     gen.operand(arrayMask),
                                     gen.operand(length),
-                                    gen.operand(stride));
+                                    gen.operand(dynamicStrides));
                 } else {
                     result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null,
                                     gen.operand(arrayA),
@@ -245,9 +251,12 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                             gen.operand(offsetB),
                             gen.operand(arrayMask),
                             gen.operand(length),
-                            gen.operand(stride));
+                            gen.operand(dynamicStrides));
         } else {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(StrideUtil.getStrideA(stride, strideA), StrideUtil.getStrideB(stride, strideB), StrideUtil.getStrideB(stride, strideMask),
+            result = gen.getLIRGeneratorTool().emitArrayEquals(
+                            NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA),
+                            NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
+                            NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask),
                             0, 0, maskBaseOffset,
                             gen.operand(arrayA),
                             gen.operand(offsetA),
@@ -288,11 +297,11 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
-        if ((stride == null || stride.isJavaConstant()) && length.isJavaConstant()) {
+        if ((dynamicStrides == null || dynamicStrides.isJavaConstant()) && length.isJavaConstant()) {
             int len = length.asJavaConstant().asInt();
-            JavaKind constStrideA = StrideUtil.getStrideA(stride, strideA);
-            JavaKind constStrideB = StrideUtil.getStrideB(stride, strideB);
-            JavaKind constStrideMask = StrideUtil.getStrideB(stride, strideMask);
+            JavaKind constStrideA = NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA);
+            JavaKind constStrideB = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB);
+            JavaKind constStrideMask = NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask);
             if (len * Math.max(constStrideA.getByteCount(), constStrideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this) &&

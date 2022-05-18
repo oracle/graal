@@ -1587,11 +1587,6 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider",
         "org.graalvm.compiler.truffle.compiler.phases.inlining.InliningPolicyProvider"
       ],
-      "requiresConcealed" : {
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.services",
-        ],
-      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
