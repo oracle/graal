@@ -571,7 +571,7 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         ZR(31, AArch64.zr.number),
         SP(31, AArch64.sp.number),
         V0(64, AArch64.v0.number),
-        V1(65, AArch64.r1.number),
+        V1(65, AArch64.v1.number),
         V2(66, AArch64.v2.number),
         V3(67, AArch64.v3.number),
         V4(68, AArch64.v4.number),
