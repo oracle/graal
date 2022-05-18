@@ -301,4 +301,13 @@ public class PythonTests extends RegexTestBase {
     public void testBStar() {
         test("b*", "", "MustAdvance=true", "xyz", 0, true, 1, 1);
     }
+
+    @Test
+    public void nfaTraversalTests() {
+        // This relies on correctly maneuvering through the necessary capture groups in the
+        // NFATraversalRegexASTVisitor. Unlike Ruby, for Python regexps, capture group updates are
+        // not reflected in quantifier guards. In order for the traversal to find the needed path,
+        // the group boundaries have to be checked when pruning.
+        test("(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())\\3\\5\\7", "", "", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 7);
+    }
 }
