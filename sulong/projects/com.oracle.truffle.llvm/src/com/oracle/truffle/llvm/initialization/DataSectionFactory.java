@@ -96,12 +96,14 @@ public class DataSectionFactory {
             }
         }
 
+        int globalContainersArrayIndex = 0;
         for (int i = 0; i < threadLocalGlobalsCount; i++) {
             GlobalVariable tlGlobals = threadLocalGlobals.get(i);
             Type type = tlGlobals.getType().getPointeeType();
             if (isSpecialGlobalSlot(type)) {
                 // pointer type
-                threadLocalGlobalContainers[i] = globalContainerIndex;
+                threadLocalGlobalContainers[globalContainersArrayIndex] = globalContainerIndex;
+                globalContainersArrayIndex++;
                 threadLocalGlobalOffsets[i] = globalContainerIndex;
                 globalContainerIndex--;
             } else {
