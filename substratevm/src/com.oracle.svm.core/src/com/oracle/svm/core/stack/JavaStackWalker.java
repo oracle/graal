@@ -77,12 +77,17 @@ public final class JavaStackWalker {
      */
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static void initWalk(JavaStackWalk walk, Pointer startSP, CodePointer startIP) {
+        initWalk(walk, startSP, WordFactory.nullPointer(), startIP);
+    }
+
+    @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
+    public static void initWalk(JavaStackWalk walk, Pointer startSP, Pointer endSP, CodePointer startIP) {
         walk.setSP(startSP);
         walk.setPossiblyStaleIP(startIP);
         walk.setStartSP(startSP);
         walk.setStartIP(startIP);
         walk.setAnchor(JavaFrameAnchors.getFrameAnchor());
-        walk.setEndSP(WordFactory.nullPointer());
+        walk.setEndSP(endSP);
         if (startIP.isNonNull()) {
             // Storing the untethered object in a data structures requires that the caller and all
             // places that use that value are uninterruptible as well.
@@ -98,7 +103,7 @@ public final class JavaStackWalker {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public static void initWalk(JavaStackWalk walk, Pointer startSP) {
-        initWalk(walk, startSP, (CodePointer) WordFactory.nullPointer());
+        initWalk(walk, startSP, WordFactory.nullPointer(), WordFactory.nullPointer());
         assert walk.getIPCodeInfo().isNull() : "otherwise, the caller would have to be uninterruptible as well";
     }
 
@@ -170,6 +175,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.", callerMustBe = true)
     public static boolean continueWalk(JavaStackWalk walk, SimpleCodeInfoQueryResult queryResult, DeoptimizedFrame deoptFrame) {
+        boolean moreFrames;
         Pointer sp = walk.getSP();
 
         long encodedFrameSize;
@@ -191,7 +197,7 @@ public final class JavaStackWalker {
             walk.setPossiblyStaleIP(ip);
 
             walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(ip));
-            return true;
+            moreFrames = true;
 
         } else {
             /* Reached an entry point frame. */
@@ -209,7 +215,7 @@ public final class JavaStackWalker {
                 walk.setPossiblyStaleIP(anchor.getLastJavaIP());
                 walk.setAnchor(anchor.getPreviousAnchor());
                 walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(anchor.getLastJavaIP()));
-                return true;
+                moreFrames = true;
 
             } else {
                 /* Really at the end of the stack, we are done with walking. */
@@ -217,9 +223,14 @@ public final class JavaStackWalker {
                 walk.setPossiblyStaleIP(WordFactory.nullPointer());
                 walk.setAnchor(WordFactory.nullPointer());
                 walk.setIPCodeInfo(WordFactory.nullPointer());
-                return false;
+                moreFrames = false;
             }
         }
+
+        if (moreFrames && walk.getEndSP().isNonNull() && walk.getSP().aboveOrEqual(walk.getEndSP())) {
+            moreFrames = false;
+        }
+        return moreFrames;
     }
 
     @Uninterruptible(reason = "Not really uninterruptible, but we are about to fatally fail.", calleeMustBe = false)

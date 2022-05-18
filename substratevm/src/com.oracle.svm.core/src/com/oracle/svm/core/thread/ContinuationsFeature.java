@@ -36,7 +36,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -72,14 +72,18 @@ public class ContinuationsFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (Continuation.isSupported()) {
+            if (!ImageSingletons.contains(ContinuationSupport.class)) {
+                ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
+            }
+
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
-                            ReflectionUtil.lookupMethod(StoredContinuationImpl.class, "allocate", int.class));
+                            ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
 
             if (LoomSupport.isEnabled()) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
             }
         } else {
-            access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationImpl.class);
+            access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
         }
     }
 
