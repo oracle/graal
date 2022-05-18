@@ -35,6 +35,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class LLVMScope implements TruffleObject {
 
@@ -109,6 +110,13 @@ public class LLVMScope implements TruffleObject {
             return null;
         }
         return scopeMap.get(name);
+    }
+
+    public Collection<String> getMangledNames(String scope) {
+        HashSet<String> result = new HashSet<>();
+        linkageScopeNames.getOrDefault(scope, new HashMap<>()).values().forEach(result::add);
+        symbolOffsets.keySet().forEach(result::add);
+        return result;
     }
 
     public long[] getSymbolOffsets(String symbolName) {

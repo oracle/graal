@@ -29,6 +29,9 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.util.Collection;
+import java.util.HashSet;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -157,6 +160,17 @@ public class LLVMScopeChain implements TruffleObject {
             mangledName = next.getMangledName(scopeName, name);
         }
         return mangledName;
+    }
+
+    @TruffleBoundary
+    public Collection<String> getMangledNames(String scopeName) {
+        assert scope != null;
+        HashSet<String> results = new HashSet<>();
+        scope.getMangledNames(scopeName).forEach(results::add);
+        for (LLVMScopeChain sc = next; sc != null; sc = sc.next) {
+            sc.scope.getMangledNames(scopeName).forEach(results::add);
+        }
+        return results;
     }
 
     @TruffleBoundary

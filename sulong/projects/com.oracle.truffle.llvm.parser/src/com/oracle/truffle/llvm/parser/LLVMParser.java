@@ -250,7 +250,6 @@ public final class LLVMParser {
             long[] indexVals = new long[indices.length];
             for (int i = 0; i < indexVals.length; i++) {
                 indexVals[i] = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indices[i]);
-                Object type = indices[i].getType();
             }
             // swift: last index has offset of 6 TODO pichristoph check why off by 6
             indexVals[indexVals.length - 1] -= 6;

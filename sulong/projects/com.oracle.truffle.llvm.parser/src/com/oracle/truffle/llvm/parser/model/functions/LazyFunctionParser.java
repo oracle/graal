@@ -112,6 +112,7 @@ public final class LazyFunctionParser {
                 final String scopeName = e.scopeName;
                 if (linkageName != null && runtime.getFileScope().getFunction(displayName) == null) {
                     runtime.getPublicFileScope().registerLinkageName(scopeName, displayName, linkageName);
+                    runtime.getFileScope().registerLinkageName(scopeName, displayName, linkageName);
                 }
             }
         }

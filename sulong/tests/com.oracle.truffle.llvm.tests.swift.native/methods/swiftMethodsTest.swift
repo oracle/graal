@@ -34,17 +34,17 @@ public class Parent {
 	}
 
 	public func get3P5() -> Double {
-		return 3.5
+		return 3.5 //TODO fix, but keep error to see if swiftc is started
+	}
+	
+	public func square(n: Int) -> Int {
+		return n*n;
 	}
 }
 
 public class Child : Parent {
-	public func get14() -> Int {
+	public override func get14() -> Int {
 		return 214
-	}
-
-	public func get3P5() -> Double {
-		return 23.5
 	}
 }
 

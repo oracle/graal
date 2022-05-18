@@ -31,7 +31,6 @@
 package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -42,9 +41,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -61,7 +58,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     @GenerateAOT.Exclude
     Object doCppClass(LLVMPointer receiver, LLVMInteropType.CppClass type, String method, Object[] arguments,
                     @Cached LLVMInteropMethodInvokeNode invoke,
-                    @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfPackNode,
+                    @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         Object[] selfArgs = selfPackNode.execute(receiver, arguments, true);
@@ -79,26 +76,10 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     @Specialization
     @GenerateAOT.Exclude
     Object doSwift(LLVMPointer receiver, LLVMInteropType.SwiftClass type, String member, Object[] arguments,
-                    @Cached LLVMForeignReadNode read,
-                    @Shared(value = "selfArgs") @Cached LLVMSelfArgumentPackNode selfArgumentPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
-        final BranchProfile symbolNotFound = BranchProfile.create();
-        String functionFound = member.startsWith("$") ? member : getContext().getGlobalScopeChain().getMangledName(member);
-        if (functionFound != null) {
-            long[] symbolOffsets = getContext().getGlobalScopeChain().getSymbolOffsets(functionFound);
-            if (symbolOffsets != null) {
-                LLVMPointer currentBase = receiver;
-                for (long idx : symbolOffsets) {
-                    currentBase = currentBase.increment(idx * 8);
-                    currentBase = LLVMPointer.cast(read.execute(currentBase, LLVMInteropType.ValueKind.POINTER.type));
-                }
-                final Object[] selfArgs = selfArgumentPackNode.execute(receiver, arguments, false);
-                return interop.execute(currentBase, selfArgs);
-            }
-        }
-        symbolNotFound.enter();
-        throw UnknownIdentifierException.create(functionFound);
+        Object methodAsMember = interop.readMember(receiver, member);
+        return interop.execute(methodAsMember, arguments);
     }
 
     /**

@@ -224,7 +224,7 @@ public final class SulongLibrary implements TruffleObject {
     @ExportMessage(name = "isMemberInvocable")
     boolean memberExists(String member,
                     @Shared("lookup") @Cached LookupNode lookup) {
-        return lookup.execute(this, member) != null;
+        return lookup.execute(this, member) != null || lookup.execute(this, SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member})) != null;
     }
 
     @ExportMessage

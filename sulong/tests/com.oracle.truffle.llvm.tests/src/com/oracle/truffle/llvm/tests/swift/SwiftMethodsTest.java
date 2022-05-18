@@ -27,7 +27,12 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.tests.interop;
+package com.oracle.truffle.llvm.tests.swift;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
@@ -36,6 +41,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.interop.InteropTestBase;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(CommonTestUtils.ExcludingTruffleRunner.class)
 public class SwiftMethodsTest extends InteropTestBase {
@@ -46,9 +53,19 @@ public class SwiftMethodsTest extends InteropTestBase {
     private static Value parent;
     private static Value child;
 
+    private static final String OUT_FILE_NAME = "swiftMethodsTest";
+
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = loadTestBitcodeValue("swiftMethodsTest.swift");
+        final Path basePath = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "swift");
+        File file = Paths.get(basePath.toString(), "swiftMethodsTest.swift" + CommonTestUtils.TEST_DIR_EXT, OUT_FILE_NAME).toFile();
+        org.graalvm.polyglot.Source source;
+        try {
+            source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();
+        } catch (IOException ex) {
+            throw new AssertionError(ex);
+        }
+        testLibrary = runWithPolyglot.getPolyglotContext().eval(source);
 
         objectCreator = testLibrary.getMember("ObjectCreator");
         parent = objectCreator.invokeMember("createParent");
@@ -56,25 +73,30 @@ public class SwiftMethodsTest extends InteropTestBase {
     }
 
     @Test
-    public void testMethodsBaseClass() {
-        Assert.assertEquals(14, parent.invokeMember("get14"));
+    public void testMethodsWithoutArguments() {
+        Assert.assertEquals(14, parent.invokeMember("get14").asInt());
         Assert.assertEquals(0, Double.compare(3.5, parent.invokeMember("get3P5").asDouble()));
     }
 
     @Test
-    public void testMethodsSubClass() {
-        Assert.assertEquals(214, child.invokeMember("get14"));
-        Assert.assertEquals(0, Double.compare(23.5, child.invokeMember("get3P5").asDouble()));
+    public void testMethodsWithArgument() {
+        Assert.assertEquals(36, parent.invokeMember("square", 6).asInt());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testWrongNumberOfArguments() {
+        parent.invokeMember("square");
+    }
+
+    @Test
+    public void testDynamicBinding() {
+        Assert.assertEquals(214, child.invokeMember("get14").asInt());
+        Assert.assertEquals(0, Double.compare(3.5, child.invokeMember("get3P5").asDouble()));
     }
 
     @Test(expected = UnsupportedOperationException.class)
     public void testNonExistingMethod() {
         parent.invokeMember("methodWhichDoesNotExist");
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void testWrongArity() {
-        parent.invokeMember("get14", 14);
     }
 
 }

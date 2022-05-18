@@ -28,15 +28,16 @@ public class LLVMInteropSwiftClassAccess implements TruffleObject {
 
     @ExportMessage
     public boolean hasMembers() {
-        // TODO correct
-        return false;
+        return !LLVMLanguage.getContext().getGlobalScopeChain().getMangledNames(className).isEmpty();
     }
 
+    /**
+     * @param includeInternal
+     */
     @SuppressWarnings("static-method")
     @ExportMessage
     final Object getMembers(boolean includeInternal) {
-        // TODO correct
-        return null;
+        return LLVMLanguage.getContext().getGlobalScopeChain().getMangledNames(className);
     }
 
     @ExportMessage
