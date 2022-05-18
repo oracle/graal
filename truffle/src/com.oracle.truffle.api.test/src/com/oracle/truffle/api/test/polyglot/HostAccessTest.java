@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -82,7 +81,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -96,7 +94,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
-public class HostAccessTest {
+public class HostAccessTest extends AbstractHostAccessTest {
 
     public static final String INSTANTIATION_FAILED = "Instantiation failed";
     public static final String RETURNED_STRING = "Returned string";
@@ -130,14 +128,6 @@ public class HostAccessTest {
         verifyObjectImpl(HostAccess.EXPLICIT);
         verifyObjectImpl(HostAccess.SCOPED);
         verifyObjectImpl(HostAccess.ALL);
-    }
-
-    private static void verifyObjectImpl(HostAccess access) {
-        HostAccess otherAccess = HostAccess.newBuilder(access).build();
-        assertNotSame(access, otherAccess);
-        assertEquals(access, otherAccess);
-        assertEquals(access.hashCode(), otherAccess.hashCode());
-        assertNotNull(access.toString());
     }
 
     public static class MyEquals {
@@ -605,34 +595,6 @@ public class HostAccessTest {
         Value value = context.asValue(map);
         assertSame(map, value.asHostObject());
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
-    }
-
-    private Context context;
-
-    private void setupEnv(HostAccess.Builder builder) {
-        tearDown();
-        if (builder != null) {
-            builder.allowImplementationsAnnotatedBy(FunctionalInterface.class);
-            builder.allowImplementationsAnnotatedBy(HostAccess.Implementable.class);
-            builder.allowAccessAnnotatedBy(HostAccess.Export.class);
-            HostAccess access = builder.build();
-            verifyObjectImpl(access);
-            setupEnv(access);
-        }
-    }
-
-    private void setupEnv(HostAccess access) {
-        tearDown();
-        verifyObjectImpl(access);
-        context = Context.newBuilder().allowHostAccess(access).build();
-    }
-
-    @After
-    public void tearDown() {
-        if (context != null) {
-            context.close();
-            context = null;
-        }
     }
 
     public static final class TargetClass1 {
