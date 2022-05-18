@@ -967,6 +967,44 @@ public class HostAccessTest {
         assertEquals("42", f.m("42").o);
     }
 
+    public static class OverloadedFunctionalMethod implements Function<String, Object> {
+        @Export
+        @Override
+        public Object apply(String arg0) {
+            return arg0;
+        }
+
+        @Export
+        public Object apply(int intArg) {
+            return intArg;
+        }
+
+        @Export
+        public Object apply(@SuppressWarnings("unused") String arg0, Object arg1) {
+            return arg1;
+        }
+    }
+
+    @Test
+    public void testOverloadedFunctionalMethod() throws Exception {
+        setupEnv(HostAccess.EXPLICIT);
+
+        Value function = context.asValue(new OverloadedFunctionalMethod());
+        function.execute("ok");
+        // when calling a functional interface implementation, only dispatch to implementations of
+        // the single abstract method and not other methods with the same name in the subclass.
+        assertFails(() -> function.execute(42), PolyglotException.class, e -> {
+            assertTrue(e.toString(), e.isHostException());
+            assertTrue(e.asHostException().toString(), e.asHostException() instanceof ClassCastException);
+        });
+        assertFails(() -> function.execute("ok", "not ok"), IllegalArgumentException.class);
+
+        // of course, this does not apply when invoking "apply" as a method.
+        assertEquals("ok", function.invokeMember("apply", "ok").asString());
+        assertEquals(42, function.invokeMember("apply", 42).asInt());
+        assertEquals("also ok", function.invokeMember("apply", "ok", "also ok").asString());
+    }
+
     static class CountingPredicate implements Predicate<Value> {
 
         final String targetString;
