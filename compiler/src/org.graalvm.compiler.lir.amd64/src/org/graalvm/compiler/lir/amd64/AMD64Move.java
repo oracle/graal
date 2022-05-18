@@ -633,6 +633,12 @@ public class AMD64Move {
             case V128_QWORD:
                 masm.movdqu(dest, input);
                 break;
+            case V256_QWORD:
+                masm.vmovdqu(dest, input);
+                break;
+            case V512_QWORD:
+                masm.vmovdqu64(dest, input);
+                break;
             case MASK8:
                 masm.kmovb(dest, input);
                 break;
@@ -678,6 +684,12 @@ public class AMD64Move {
                 break;
             case V128_QWORD:
                 masm.movdqu(result, src);
+                break;
+            case V256_QWORD:
+                masm.vmovdqu(result, src);
+                break;
+            case V512_QWORD:
+                masm.vmovdqu64(result, src);
                 break;
             case MASK8:
                 if (isMaskToCPU) {
