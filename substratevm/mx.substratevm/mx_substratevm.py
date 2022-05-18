@@ -838,6 +838,8 @@ def _debuginfotest(native_image, path, build_only, args):
 
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
+        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
+    if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 

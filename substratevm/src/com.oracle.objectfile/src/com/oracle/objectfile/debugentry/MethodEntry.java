@@ -26,15 +26,16 @@
 
 package com.oracle.objectfile.debugentry;
 
-import jdk.vm.ci.meta.JavaKind;
+import java.util.ArrayList;
+import java.util.ListIterator;
+
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 
-import java.util.ArrayList;
-import java.util.ListIterator;
+import jdk.vm.ci.meta.JavaKind;
 
 public class MethodEntry extends MemberEntry {
     private final TypeEntry[] paramTypes;

@@ -1219,7 +1219,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // needs
             // splitting at the extend point with the stack offsets adjusted in the new info
             if (locProducer.usesStack() && firstLocationOffset > stackDecrement) {
-                NativeImageDebugLocationInfo splitLocationInfo = locationInfo.split(stackDecrement, getFrameSize());
+                int adjustment = adjustFrameSize(getFrameSize());
+                NativeImageDebugLocationInfo splitLocationInfo = locationInfo.split(stackDecrement, adjustment);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (%d, %d) (%d, %d)", locationInfo.name(), 0,
                                 locationInfo.addressLo() - 1, locationInfo.addressLo(), locationInfo.addressHi() - 1);
                 locationInfos.add(0, splitLocationInfo);
@@ -1631,7 +1632,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
             for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
                 if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
-                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(localInfo.stackSlot() + (frameSize - 8));
+                    int newSlot = localInfo.stackSlot() + frameSize;
+                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(newSlot);
                     NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
                     NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
                                     value,
@@ -1834,10 +1836,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return this;
         }
 
-        public NativeImageDebugLocationInfo split(int stackDecrement, int frameSize) {
+        public NativeImageDebugLocationInfo split(int stackDecrement, int adjustment) {
             // this should be for an initial range extending beyond the stack decrement
             assert lo == 0 && lo < stackDecrement && stackDecrement < hi : "invalid split request";
-            return new NativeImageDebugLocationInfo(this, stackDecrement, frameSize);
+            return new NativeImageDebugLocationInfo(this, stackDecrement, adjustment);
         }
 
     }
@@ -1895,6 +1897,57 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     AMD64.xmm3
     };
 
+    /**
+     * adjustment in bytes added to offset for stack passed parameters on AMD64
+     *
+     * the value allows for a word offset from the unadjusted sp to allow for the stacked return
+     * address and a second word offset to address the first stack passed parameter with index 0.
+     */
+    static final int AMD64_STACK_OFFSET = 16;
+
+    /**
+     * adjustment in bytes added to offset for stack passed parameters on AARCH64
+     *
+     * the value allows for a word offset from the unadjusted sp to address the first stack passed
+     * parameter with index 0.
+     */
+    static final int AARCH64_STACK_OFFSET = 8;
+
+    /**
+     * Adjustment in bytes added to frame size when recomputing parameter stack offsets after stack
+     * adjustment on AMD64.
+     *
+     * The value allows for the fact that the reported framesize includes the stacked return address
+     * which has already been rolled into the offsets derived for the unadjusted sp.
+     */
+    static final int AMD64_FRAMESIZE_ADJUSTMENT = -8;
+
+    /**
+     * Adjustment in bytes added to frame size when recomputing parameter stack offsets after stack
+     * adjustment on AARCH64.
+     *
+     * The value in this case is zero. Although the reported framesize for AArch64 includes the
+     * pushed lr and fp registers these have not been rolled into the offsets derived for the
+     * unadjusted sp.
+     */
+    static final int AARCH64_FRAMESIZE_ADJUSTMENT = 0;
+
+    static int adjustFrameSize(int frameSize) {
+        // make sure this is the right arch and os
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert arch instanceof AMD64 || arch instanceof AArch64 : "unexpected architecture";
+        OS os = OS.getCurrent();
+        assert os == OS.LINUX || os == OS.WINDOWS : "unexpected os";
+        int adjustment = frameSize;
+        if (arch instanceof AMD64) {
+            // reported amd64 frame size includes an extra 8 bytes for the stacked return address
+            adjustment += AMD64_FRAMESIZE_ADJUSTMENT;
+        } else {
+            adjustment += AARCH64_FRAMESIZE_ADJUSTMENT;
+        }
+        return adjustment;
+    }
+
     class ParamLocationProducer {
         Register[] gpregs;
         Register[] fregs;
@@ -1902,6 +1955,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         int nextFPregIdx;
         int nextStackIdx;
         int stackParamCount;
+        int stackOffset;
 
         ParamLocationProducer(ResolvedJavaMethod method) {
             Architecture arch = ConfigurationValues.getTarget().arch;
@@ -1912,6 +1966,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 assert os == OS.LINUX : "unexpected os/architecture";
                 gpregs = AARCH64_GPREG;
                 fregs = AARCH64_FREG;
+                stackOffset = AARCH64_STACK_OFFSET;
             } else {
                 if (os == OS.LINUX) {
                     gpregs = AMD64_GPREG_LINUX;
@@ -1920,6 +1975,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     gpregs = AMD64_GPREG_WINDOWS;
                     fregs = AMD64_FREG_WINDOWS;
                 }
+                stackOffset = AMD64_STACK_OFFSET;
             }
             nextGPRegIdx = 0;
             nextFPregIdx = 0;
@@ -1958,11 +2014,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         public NativeImageDebugLocalValue nextStackLocation() {
-            // offset is computed relative to the undecremented stack pointer and includes
-            // an extra 16 bytes to allow for the stacked return address and alignment
+            // offset is computed relative to the undecremented stack pointer and includes an extra
+            // offset to adjust for any intervening return address and frame pointer
             assert nextStackIdx < stackParamCount : "encountered too many stack params";
             int stackIdx = nextStackIdx++;
-            return new NativeImageDebugStackValue((2 + stackIdx) * 8);
+            return new NativeImageDebugStackValue((stackIdx * 8) + stackOffset);
         }
 
         public boolean usesStack() {
@@ -1972,9 +2028,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private int computeStackCount(ResolvedJavaMethod method) {
             int numIntegerParams = 0;
             int numFloatingParams = 0;
-            if (!method.isStatic()) {
-                numIntegerParams++;
-            }
             Signature signature = method.getSignature();
             int parameterCount = signature.getParameterCount(false);
             if (!method.isStatic()) {
