@@ -140,7 +140,7 @@ final class HostClassDesc {
             Map<String, HostMethodDesc> staticMethodMap = new LinkedHashMap<>();
             Map<String, HostFieldDesc> fieldMap = new LinkedHashMap<>();
             Map<String, HostFieldDesc> staticFieldMap = new LinkedHashMap<>();
-            HostMethodDesc functionalInterfaceMethod = null;
+            HostMethodDesc functionalInterfaceMethodImpl = null;
 
             collectPublicMethods(hostAccess, type, methodMap, staticMethodMap);
             collectPublicFields(hostAccess, type, fieldMap, staticFieldMap);
@@ -150,7 +150,7 @@ final class HostClassDesc {
             if (!Modifier.isInterface(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) {
                 Method implementableAbstractMethod = findFunctionalInterfaceMethod(hostAccess, type);
                 if (implementableAbstractMethod != null) {
-                    functionalInterfaceMethod = lookupSingleMethod(hostAccess, implementableAbstractMethod, methodMap);
+                    functionalInterfaceMethodImpl = lookupAbstractMethodImplementation(hostAccess, implementableAbstractMethod, methodMap);
                 }
             }
 
@@ -159,7 +159,7 @@ final class HostClassDesc {
             this.constructor = ctor;
             this.fields = fieldMap;
             this.staticFields = staticFieldMap;
-            this.functionalMethod = functionalInterfaceMethod;
+            this.functionalMethod = functionalInterfaceMethodImpl;
         }
 
         private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
@@ -389,17 +389,39 @@ final class HostClassDesc {
             return null;
         }
 
-        private static HostMethodDesc lookupSingleMethod(HostClassCache hostAccess, Method singleAbstractMethod, Map<String, HostMethodDesc> methodMap) {
-            HostMethodDesc existingMethodDesc = methodMap.get(singleAbstractMethod.getName());
-            if (existingMethodDesc != null) {
-                for (SingleMethod overload : existingMethodDesc.getOverloads()) {
-                    if (Arrays.equals(overload.getParameterTypes(), singleAbstractMethod.getParameterTypes())) {
-                        return overload;
+        private static HostMethodDesc lookupAbstractMethodImplementation(HostClassCache hostAccess, Method abstractMethod, Map<String, HostMethodDesc> methodMap) {
+            HostMethodDesc accessibleMethodDesc = methodMap.get(abstractMethod.getName());
+            if (accessibleMethodDesc != null) {
+                Class<?>[] searchTypes = abstractMethod.getParameterTypes();
+                SingleMethod[] available = accessibleMethodDesc.getOverloads();
+                List<SingleMethod> candidates = new ArrayList<>(available.length);
+                next: for (SingleMethod candidate : available) {
+                    Class<?>[] candidateTypes = candidate.getParameterTypes();
+                    if (searchTypes.length == candidateTypes.length) {
+                        for (int i = 0; i < searchTypes.length; i++) {
+                            if (candidateTypes[i].isAssignableFrom(searchTypes[i])) {
+                                // allow covariant parameter types
+                                continue;
+                            } else if (searchTypes[i].isAssignableFrom(candidateTypes[i])) {
+                                // allow contravariant generic type parameters
+                                continue;
+                            } else {
+                                continue next;
+                            }
+                        }
+                        candidates.add(candidate);
                     }
                 }
+                if (candidates.size() == available.length) {
+                    return accessibleMethodDesc;
+                } else if (candidates.size() == 1) {
+                    return candidates.get(0);
+                } else if (candidates.size() > 1) {
+                    return new OverloadedMethod(candidates.toArray(new SingleMethod[candidates.size()]));
+                }
             }
-            boolean scoped = hostAccess.methodScoped(singleAbstractMethod);
-            return SingleMethod.unreflect(singleAbstractMethod, scoped);
+            boolean scoped = hostAccess.methodScoped(abstractMethod);
+            return SingleMethod.unreflect(abstractMethod, scoped);
         }
     }
 
