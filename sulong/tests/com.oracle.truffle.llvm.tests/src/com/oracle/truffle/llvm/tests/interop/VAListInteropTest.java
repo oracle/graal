@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,7 +55,9 @@ public class VAListInteropTest extends InteropTestBase {
 
     static Value testLibrary;
     static Value testVaListCallback4;
+    static Value testMaybeVaPtr;
     static Value getNextVaarg;
+    static Value derefCharCharPtr;
     static Value newStructA;
 
     @ExportLibrary(InteropLibrary.class)
@@ -117,7 +119,9 @@ public class VAListInteropTest extends InteropTestBase {
     public static void loadLibrary() {
         testLibrary = loadTestBitcodeValue("valist.c");
         testVaListCallback4 = testLibrary.getMember("test_va_list_callback4");
+        testMaybeVaPtr = testLibrary.getMember("test_maybe_va_ptr");
         getNextVaarg = testLibrary.getMember("get_next_vaarg");
+        derefCharCharPtr = testLibrary.getMember("deref_chr_chr_ptr");
         newStructA = testLibrary.getMember("newStructA");
     }
 
@@ -127,6 +131,34 @@ public class VAListInteropTest extends InteropTestBase {
         Value sa2 = Value.asValue(new StructA(30, 40));
         Value res = testVaListCallback4.execute(new VaListCallback(), testLibrary, 1, 2, 3, sa1, sa2);
         Assert.assertEquals(6, res.asInt());
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class MaybeVaListCallback implements TruffleObject {
+        @ExportMessage
+        boolean isExecutable() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        Object execute(Object... arguments) {
+            try {
+                /*
+                 * On darwin-aarch64 / windows-amd64 arguments[0] is a LLVMMaybeVaPointer, and in
+                 * this case must behave like a pointer
+                 */
+                return derefCharCharPtr.execute(arguments[0]).asInt();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Test
+    public void testTestMaybeVaPtr() {
+        Value res = testMaybeVaPtr.execute(new MaybeVaListCallback());
+        Assert.assertEquals('A', res.asInt());
     }
 
     public static class StructA {

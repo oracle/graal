@@ -1258,6 +1258,11 @@ suite = {
           },
         },
         "darwin": {
+          "aarch64" : {
+            "buildEnv" : {
+              "PLATFORM" : "aarch64",
+            },
+          },
           "amd64": {
             "buildEnv" : {
               "PLATFORM" : "x86_64",

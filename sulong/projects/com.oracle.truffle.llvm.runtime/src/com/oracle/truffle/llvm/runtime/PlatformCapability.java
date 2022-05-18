@@ -130,6 +130,10 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      */
     public abstract Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr);
 
+    public Object createActualVAListStorage() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
     /**
      * @return the type of the platform specific va_list structure
      */

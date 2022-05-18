@@ -1,3 +1,9 @@
+# Version 22.2.0
+
+New Features:
+
+* Support for the darwin-aarch64 platform (aka. Apple Silicon).
+
 # Version 22.1.0
 
 New Features:

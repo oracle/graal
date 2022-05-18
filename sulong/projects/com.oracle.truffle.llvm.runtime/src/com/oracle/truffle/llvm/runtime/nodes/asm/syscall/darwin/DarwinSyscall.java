@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,23 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64;
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin;
 
-class Aarch64BitVarArgs {
-    // see https://static.docs.arm.com/100986/0000/abi_sve_aapcs64_100986_0000_00_en.pdf
+import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 
-    public static final int OVERFLOW_ARG_AREA = 0;
-    public static final int GP_SAVE_AREA = 8;
-    public static final int FP_SAVE_AREA = 16;
-    public static final int GP_OFFSET = 24;
-    public static final int FP_OFFSET = 28;
+public enum DarwinSyscall implements LLVMSyscallEntry {
 
-    public static final int GP_LIMIT = 64;
-    public static final int GP_STEP = 8;
-    public static final int FP_LIMIT = 128;
-    public static final int FP_STEP = 16;
+    SYS_exit(1),
+    SYS_getpid(20),
+    SYS_getppid(39),
+    SYS_mmap(197),
+    SYS_gettid(286);
 
-    public static final int STACK_STEP = 8;
+    private final int value;
 
-    public static final int SIZE_OF_VALIST = 32;
+    DarwinSyscall(int value) {
+        this.value = value;
+    }
+
+    @Override
+    public int value() {
+        return value;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + " 0x" + Long.toHexString(value) + " (" + value + ")";
+    }
+
 }

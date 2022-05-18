@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,44 +29,51 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.DarwinSyscall;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin.LLVMDarwinAarch64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.aarch64.darwin.LLVMDarwinAarch64VaListStorageFactory.Aarch64VAListPointerWrapperFactoryNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorage;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86_win.LLVMX86_64_WinVaListStorageFactory;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMMaybeVaPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<WindowsAMD64PlatformCapability.UnknownSyscalls> {
+final class DarwinAArch64PlatformCapability extends BasicPlatformCapability<DarwinSyscall> {
 
-    /**
-     * We don't know anything about this platform.
-     */
-    enum UnknownSyscalls implements LLVMSyscallEntry {
-        /* DUMMY */;
-        @Override
-        public int value() {
-            throw CompilerDirectives.shouldNotReachHere();
+    public static final int RTLD_GLOBAL_DARWIN = 8;
+    public static final int RTLD_FIRST_DARWIN = 100;
+    public static final long RTLD_DEFAULT_DARWIN = -2;
+
+    DarwinAArch64PlatformCapability(boolean loadCxxLibraries) {
+        super(DarwinSyscall.class, loadCxxLibraries);
+    }
+
+    @Override
+    public boolean isGlobalDLOpenFlagSet(int flag) {
+        return (flag & RTLD_GLOBAL_DARWIN) == RTLD_GLOBAL_DARWIN;
+    }
+
+    @Override
+    public boolean isFirstDLOpenFlagSet(int flag) {
+        return (flag & RTLD_FIRST_DARWIN) == RTLD_FIRST_DARWIN;
+    }
+
+    @Override
+    public boolean isDefaultDLSymFlagSet(long flag) {
+        return flag == RTLD_DEFAULT_DARWIN;
+    }
+
+    @Override
+    protected LLVMSyscallOperationNode createSyscallNode(DarwinSyscall syscall) {
+        switch (syscall) {
+            case SYS_exit:
+                return new LLVMSyscallExitNode();
+            default:
+                return new LLVMNativeSyscallNode(syscall);
         }
-    }
-
-    WindowsAMD64PlatformCapability(boolean loadCxxLibraries) {
-        super(UnknownSyscalls.class, loadCxxLibraries);
-    }
-
-    @Override
-    public LLVMSyscallOperationNode createSyscallNode(long index) {
-        return LLVMUnsupportedSyscallNode.create(index);
-    }
-
-    @Override
-    protected LLVMSyscallOperationNode createSyscallNode(UnknownSyscalls syscall) {
-        return LLVMUnsupportedSyscallNode.create(syscall);
     }
 
     @Override
@@ -76,21 +83,21 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
 
     @Override
     public Object createActualVAListStorage() {
-        return new LLVMX86_64_WinVaListStorage();
+        return new LLVMDarwinAarch64VaListStorage();
     }
 
     @Override
     public Type getVAListType() {
-        return PointerType.I8;
+        return LLVMDarwinAarch64VaListStorage.VA_LIST_TYPE;
     }
 
     @Override
-    public VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
-        return cached ? LLVMX86_64_WinVaListStorageFactory.PointerWrapperFactoryNodeGen.create() : LLVMX86_64_WinVaListStorageFactory.PointerWrapperFactoryNodeGen.getUncached();
+    public LLVMVaListStorage.VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached) {
+        return cached ? Aarch64VAListPointerWrapperFactoryNodeGen.create() : Aarch64VAListPointerWrapperFactoryNodeGen.getUncached();
     }
 
     @Override
     public OS getOS() {
-        return OS.Windows;
+        return OS.Darwin;
     }
 }
