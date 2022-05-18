@@ -124,6 +124,19 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         return getResult().getStub() != null;
     }
 
+    @Override
+    protected Value getCompareValueForConstantPointer(Value v) {
+        if (isConstantValue(v)) {
+            Constant c = asConstant(v);
+            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+                return AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
+            } else if (c instanceof HotSpotObjectConstant) {
+                return asAllocatable(v);
+            }
+        }
+        return super.getCompareValueForConstantPointer(v);
+    }
+
     private LIRFrameState currentRuntimeCallInfo;
 
     @Override
@@ -202,43 +215,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     private HotSpotLockStack getLockStack() {
         assert debugInfoBuilder != null && debugInfoBuilder.lockStack() != null;
         return debugInfoBuilder.lockStack();
-    }
-
-    @Override
-    public void emitCompareBranch(PlatformKind cmpKind, Value x, Value y, Condition cond, boolean unorderedIsTrue, LabelRef trueDestination, LabelRef falseDestination,
-                    double trueDestinationProbability) {
-        Value localX = x;
-        Value localY = y;
-        if (localX instanceof HotSpotObjectConstant) {
-            localX = asAllocatable(localX);
-        }
-        if (localY instanceof HotSpotObjectConstant) {
-            localY = asAllocatable(localY);
-        }
-        super.emitCompareBranch(cmpKind, localX, localY, cond, unorderedIsTrue, trueDestination, falseDestination, trueDestinationProbability);
-    }
-
-    @Override
-    protected boolean emitCompare(PlatformKind cmpKind, Value a, Value b, Condition condition, boolean unorderedIsTrue) {
-        Value localA = a;
-        Value localB = b;
-        if (isConstantValue(a)) {
-            Constant c = asConstant(a);
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                localA = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
-            } else if (c instanceof HotSpotObjectConstant) {
-                localA = asAllocatable(localA);
-            }
-        }
-        if (isConstantValue(b)) {
-            Constant c = asConstant(b);
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                localB = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
-            } else if (c instanceof HotSpotObjectConstant) {
-                localB = asAllocatable(localB);
-            }
-        }
-        return super.emitCompare(cmpKind, localA, localB, condition, unorderedIsTrue);
     }
 
     @Override
