@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -209,6 +209,14 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
             public void remove() {
                 assert NodeMap.this.values[current] != null;
                 NodeMap.this.values[current] = null;
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public T setValue(T newValue) {
+                T oldValue = (T) NodeMap.this.values[current];
+                NodeMap.this.values[current] = newValue;
+                return oldValue;
             }
         };
     }
