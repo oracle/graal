@@ -237,7 +237,7 @@ public class SerializationFeature implements Feature {
         for (Class<?> proxyClass : proxyClasses) {
             serializationBuilder.registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), proxyClass, Object.class);
         }
-        
+
         serializationBuilder.flushConditionalConfiguration(access);
         /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
         ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
