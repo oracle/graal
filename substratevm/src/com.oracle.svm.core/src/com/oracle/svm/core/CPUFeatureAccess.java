@@ -29,7 +29,9 @@ import java.util.EnumSet;
 import jdk.vm.ci.code.Architecture;
 
 public interface CPUFeatureAccess {
-    void verifyHostSupportsArchitecture(Architecture imageArchitecture);
+    int verifyHostSupportsArchitectureEarly();
+
+    void verifyHostSupportsArchitectureEarlyOrExit();
 
     void enableFeatures(Architecture architecture);
 
