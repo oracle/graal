@@ -811,7 +811,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
-                "truffle:TRUFFLE_API",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -882,6 +881,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.graal",
+                "truffle:TRUFFLE_API",
             ],
             "requiresConcealed" : {
                 "java.base" : [
