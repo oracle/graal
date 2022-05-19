@@ -51,6 +51,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
@@ -1831,6 +1832,90 @@ public class HostAccessTest extends AbstractHostAccessTest {
         public int y() {
             return 43;
         }
+    }
+
+    /**
+     * Referenced in {@code proxys.json}.
+     */
+    public interface ProxiedPoint {
+        /** Not exported. */
+        default int w() {
+            return 41;
+        }
+
+        @Export
+        int x();
+
+        @Export
+        default int y() {
+            return 43;
+        }
+
+        @Export
+        default int z() {
+            return 44;
+        }
+    }
+
+    /**
+     * Referenced in {@code proxys.json}.
+     */
+    public interface ProxiedPoint2 extends ProxiedPoint {
+        @Export
+        @Override
+        int x();
+
+        /** Exported in {@link ProxiedPoint} but not in {@link ProxiedPoint2}. */
+        @Override
+        int z();
+    }
+
+    @Test
+    public void testProxyInterfaceMethodExportInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build());
+
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        InvocationHandler invocationHandler = (proxy, method, args) -> {
+            if (method.getName().equals("x")) {
+                return 42;
+            } else if (method.getName().equals("y")) {
+                return 43;
+            } else if (method.getName().equals("z")) {
+                return 44;
+            } else {
+                throw new IllegalArgumentException(method.getName());
+            }
+        };
+
+        Object proxy = Proxy.newProxyInstance(classLoader, new Class<?>[]{ProxiedPoint.class}, invocationHandler);
+        Value point;
+        point = context.asValue(proxy);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertFalse(point.canInvokeMember("z"));
+
+        Object proxy2 = Proxy.newProxyInstance(classLoader, new Class<?>[]{ProxiedPoint2.class}, invocationHandler);
+        point = context.asValue(proxy2);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertFalse(point.canInvokeMember("z"));
+
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build());
+
+        point = context.asValue(proxy);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(proxy2);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        // @Export on ProxiedPoint.x is inherited
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
     }
 
     public static class MyClassLoader extends URLClassLoader {
