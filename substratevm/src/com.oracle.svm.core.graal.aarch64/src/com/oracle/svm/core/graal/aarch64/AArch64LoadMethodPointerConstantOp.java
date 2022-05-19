@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,40 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.amd64;
+package com.oracle.svm.core.graal.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StandardOp;
-import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
+import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.Constant;
 
-public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
-    public static final LIRInstructionClass<AMD64LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(AMD64LoadMethodPointerConstantOp.class);
+public final class AArch64LoadMethodPointerConstantOp extends AArch64LIRInstruction implements StandardOp.LoadConstantOp {
+    public static final LIRInstructionClass<AArch64LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(AArch64LoadMethodPointerConstantOp.class);
     private final SubstrateMethodPointerConstant constant;
     @Def({REG, HINT}) private AllocatableValue result;
 
-    AMD64LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
+    AArch64LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
         super(TYPE);
         this.constant = constant;
         this.result = result;
     }
 
     @Override
-    public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+    protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         Register resultReg = asRegister(result);
         crb.recordInlineDataInCode(constant);
-        masm.movq(resultReg, 0L, true);
+        masm.adrpAdd(resultReg);
     }
 
     @Override
@@ -63,7 +64,7 @@ public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction 
     }
 
     @Override
-    public SubstrateMethodPointerConstant getConstant() {
+    public Constant getConstant() {
         return constant;
     }
 }
