@@ -112,6 +112,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             data.addOperationData(opData);
+            opData.redirectMessages(data);
             opData.redirectMessagesOnGeneratedElements(data);
         }
 
@@ -125,6 +126,7 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             data.addOperationData(opData);
+            opData.redirectMessages(data);
             opData.redirectMessagesOnGeneratedElements(data);
             opData.setShortCircuitContinueWhen((boolean) ElementUtils.getAnnotationValue(mir, "continueWhen").getValue());
         }

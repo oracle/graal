@@ -200,7 +200,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return CodeTreeBuilder.createBuilder().cast(new CodeTypeMirror(TypeKind.BYTE)).startParantheses().tree(tree).end().build();
     }
 
-    private CodeTree createArrayReference(Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild) {
+    private static final String CHILD_OFFSET_NAME = "childArrayOffset_";
+    private static final String CONST_OFFSET_NAME = "constArrayOffset_";
+
+    private CodeTree createArrayReference(FrameState frame, Object refObject, boolean doCast, TypeMirror castTarget, boolean isChild) {
         if (refObject == null) {
             throw new IllegalArgumentException("refObject is null");
         }
@@ -208,6 +211,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         List<Object> refList = isChild ? childIndices : constIndices;
         int index = refList.indexOf(refObject);
         int baseIndex = additionalData.indexOf(isChild ? OperationsBytecodeCodeGenerator.MARKER_CHILD : OperationsBytecodeCodeGenerator.MARKER_CONST);
+
+        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
         if (index == -1) {
             if (baseIndex == -1) {
@@ -223,7 +228,7 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
             refList.add(refObject);
         }
 
-        CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+        String offsetName = isChild ? CHILD_OFFSET_NAME : CONST_OFFSET_NAME;
 
         if (doCast) {
             b.startParantheses();
@@ -238,10 +243,25 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         }
 
         b.variable(targetField).string("[");
-        b.startCall("LE_BYTES", "getShort");
-        b.variable(fldBc);
-        b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
-        b.end();
+
+        if (frame == null) {
+            b.startCall("LE_BYTES", "getShort");
+            b.variable(fldBc);
+            b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
+            b.end();
+        } else if (frame.getBoolean("has_" + offsetName, false)) {
+            b.string(offsetName);
+        } else {
+            frame.setBoolean("has_" + offsetName, true);
+            b.string("(" + offsetName + " = ");
+            b.startCall("LE_BYTES", "getShort");
+            b.variable(fldBc);
+            b.string("$bci + " + cinstr.lengthWithoutState() + " + " + baseIndex);
+            b.end();
+            b.string(")");
+
+        }
+
         b.string(" + " + index + "]");
 
         if (doCast) {
@@ -258,24 +278,34 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     }
 
     @Override
-    public CodeTree createSpecializationFieldReference(SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType) {
+    public CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType) {
         Object refObject = useSpecializationClass ? s : fieldName;
-        return createArrayReference(refObject, fieldType != null, fieldType, false);
+        return createArrayReference(frame, refObject, fieldType != null, fieldType, false);
     }
 
     @Override
-    public CodeTree createNodeFieldReference(NodeExecutionData execution, String nodeFieldName, boolean forRead) {
+    public CodeTree createNodeFieldReference(FrameState frame, NodeExecutionData execution, String nodeFieldName, boolean forRead) {
         if (nodeFieldName.startsWith("$child")) {
             return CodeTreeBuilder.singleString("__INVALID__");
         }
-        return createArrayReference(execution, forRead, execution.getNodeType(), true);
+        return createArrayReference(frame, execution, forRead, execution.getNodeType(), true);
     }
 
     @Override
-    public CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead) {
-        Object refObject = sharedName != null ? sharedName : cache;
+    public CodeTree createCacheReference(FrameState frame, SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead) {
+        Object refObject;
+        if (sharedName != null) {
+            refObject = sharedName;
+        } else {
+            String sharedGroup = cache.getSharedGroup();
+            if (sharedGroup != null) {
+                refObject = sharedGroup;
+            } else {
+                refObject = cache;
+            }
+        }
         boolean isChild = ElementUtils.isAssignable(cache.getParameter().getType(), types.Node);
-        return createArrayReference(refObject, forRead, cache.getParameter().getType(), isChild);
+        return createArrayReference(frame, refObject, forRead, cache.getParameter().getType(), isChild);
     }
 
     public int getStackOffset(LocalVariable value) {
@@ -313,6 +343,8 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
     @Override
     public void initializeFrameState(FrameState frameState, CodeTreeBuilder builder) {
         frameState.set("frameValue", new LocalVariable(types.VirtualFrame, "$frame", null));
+        builder.declaration("int", CHILD_OFFSET_NAME, (CodeTree) null);
+        builder.declaration("int", CONST_OFFSET_NAME, (CodeTree) null);
     }
 
     private void createPushResult(FrameState frameState, CodeTreeBuilder b, CodeTree specializationCall, TypeMirror retType) {

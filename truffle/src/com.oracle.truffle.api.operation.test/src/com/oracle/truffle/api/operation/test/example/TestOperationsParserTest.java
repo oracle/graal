@@ -879,8 +879,8 @@ public class TestOperationsParserTest {
             b.publish();
         });
 
-        Assert.assertEquals(value, node.getMetadata(TestOperations.TEST_DATA));
-        Assert.assertEquals(value, TestOperations.TEST_DATA.getValue(node));
+        Assert.assertEquals(value, node.getMetadata(TestOperations.TestData));
+        Assert.assertEquals(value, TestOperations.TestData.getValue(node));
     }
 
     @Test
@@ -893,8 +893,8 @@ public class TestOperationsParserTest {
             b.publish();
         });
 
-        Assert.assertEquals(value, node.getMetadata(TestOperations.TEST_DATA));
-        Assert.assertEquals(value, TestOperations.TEST_DATA.getValue(node));
+        Assert.assertEquals(value, node.getMetadata(TestOperations.TestData));
+        Assert.assertEquals(value, TestOperations.TestData.getValue(node));
     }
 
     @Test
@@ -903,7 +903,7 @@ public class TestOperationsParserTest {
             b.publish();
         });
 
-        Assert.assertEquals(TestOperations.TEST_DATA.getDefaultValue(), node.getMetadata(TestOperations.TEST_DATA));
-        Assert.assertEquals(TestOperations.TEST_DATA.getDefaultValue(), TestOperations.TEST_DATA.getValue(node));
+        Assert.assertEquals(TestOperations.TestData.getDefaultValue(), node.getMetadata(TestOperations.TestData));
+        Assert.assertEquals(TestOperations.TestData.getDefaultValue(), TestOperations.TestData.getValue(node));
     }
 }

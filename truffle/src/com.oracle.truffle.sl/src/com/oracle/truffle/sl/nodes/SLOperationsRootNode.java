@@ -33,7 +33,7 @@ public class SLOperationsRootNode extends SLRootNode {
 
     @Override
     public TruffleString getTSName() {
-        return operationsNode.getMetadata(SLOperations.METHOD_NAME);
+        return operationsNode.getMetadata(SLOperations.MethodName);
     }
 
 }

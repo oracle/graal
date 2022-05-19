@@ -234,7 +234,7 @@ public class TruffleTypes {
     public static final String GenerateOperations_Metadata_Name = "com.oracle.truffle.api.operation.GenerateOperations.Metadata";
     public static final String MetadataKey_Name = "com.oracle.truffle.api.operation.MetadataKey";
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
-    public static final String OperationBytecodeNode_Name = "com.oracle.truffle.api.operation.OperationBytecodeNode";
+    public static final String OperationBytecodeNode_Name = "com.oracle.truffle.api.operation.OperationBuilder.BytecodeNode";
     public static final String OperationConfig_Name = "com.oracle.truffle.api.operation.OperationConfig";
     public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
     public static final String OperationLocal_Name = "com.oracle.truffle.api.operation.OperationLocal";

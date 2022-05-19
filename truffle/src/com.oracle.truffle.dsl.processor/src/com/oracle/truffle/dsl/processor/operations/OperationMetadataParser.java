@@ -58,7 +58,13 @@ public class OperationMetadataParser extends AbstractParser<OperationMetadataDat
         }
 
         data.setType(metadataType);
-        data.setName((String) ElementUtils.getAnnotationValue(mir, "value").getValue());
+
+        String name = element.getSimpleName().toString();
+        if (ElementUtils.getAnnotationValue(mir, "value") != null) {
+            name = (String) ElementUtils.getAnnotationValue(mir, "value").getValue();
+        }
+
+        data.setName(name);
 
         return data;
     }

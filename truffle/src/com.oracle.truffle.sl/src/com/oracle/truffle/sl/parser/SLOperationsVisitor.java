@@ -59,7 +59,7 @@ public class SLOperationsVisitor extends SLBaseVisitor {
         });
 
         for (OperationNode node : nodes.getNodes()) {
-            TruffleString name = node.getMetadata(SLOperations.METHOD_NAME);
+            TruffleString name = node.getMetadata(SLOperations.MethodName);
             SLOperationsRootNode rootNode = new SLOperationsRootNode(language, node);
             RootCallTarget callTarget = rootNode.getCallTarget();
             functions.put(name, callTarget);
@@ -357,6 +357,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 b.endSLEqual();
                 b.endSLLogicalNot();
                 break;
+            default:
+                throw new UnsupportedOperationException();
         }
 
         b.endSLUnbox();
@@ -381,6 +383,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 case "-":
                     b.beginSLSub();
                     break;
+                default:
+                    throw new UnsupportedOperationException();
             }
         }
 
@@ -396,6 +400,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 case "-":
                     b.endSLSub();
                     break;
+                default:
+                    throw new UnsupportedOperationException();
             }
         }
 
@@ -421,6 +427,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 case "/":
                     b.beginSLDiv();
                     break;
+                default:
+                    throw new UnsupportedOperationException();
             }
         }
 
@@ -440,6 +448,8 @@ public class SLOperationsVisitor extends SLBaseVisitor {
                 case "/":
                     b.endSLDiv();
                     break;
+                default:
+                    throw new UnsupportedOperationException();
             }
         }
 

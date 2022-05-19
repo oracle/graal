@@ -61,8 +61,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
 public final class SLOperations {
 
-    @Metadata("MethodName") //
-    public static final MetadataKey<TruffleString> METHOD_NAME = new MetadataKey<>(SLStrings.EMPTY_STRING);
+    @Metadata public static final MetadataKey<TruffleString> MethodName = new MetadataKey<>(SLStrings.EMPTY_STRING);
 
     @Operation
     @TypeSystemReference(SLTypes.class)

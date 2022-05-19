@@ -19,6 +19,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
@@ -173,7 +174,8 @@ public class OperationsBytecodeCodeGenerator {
                         List<VariableElement> params = exToCopy.getParameters();
 
                         for (int i = 0; i < params.size(); i++) {
-                            if (params.get(i).asType().equals(types.VirtualFrame)) {
+                            TypeMirror paramType = params.get(i).asType();
+                            if (ElementUtils.typeEquals(paramType, types.Frame) || ElementUtils.typeEquals(paramType, types.VirtualFrame)) {
                                 params.remove(i);
                                 i--;
                             }

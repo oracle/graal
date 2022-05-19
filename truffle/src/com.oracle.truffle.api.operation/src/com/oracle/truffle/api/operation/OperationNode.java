@@ -4,11 +4,11 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.operation.OperationBuilder.BytecodeNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 public abstract class OperationNode extends Node {
@@ -16,9 +16,9 @@ public abstract class OperationNode extends Node {
     private final OperationNodes nodes;
     @CompilationFinal private SourceInfo sourceInfo;
 
-    @Child private OperationBytecodeNode bcNode;
+    @Child private BytecodeNode bcNode;
 
-    protected OperationNode(OperationNodes nodes, Object sourceInfo, OperationBytecodeNode bcNode) {
+    protected OperationNode(OperationNodes nodes, Object sourceInfo, BytecodeNode bcNode) {
         this.nodes = nodes;
         this.sourceInfo = (SourceInfo) sourceInfo;
         this.bcNode = bcNode;
@@ -42,7 +42,7 @@ public abstract class OperationNode extends Node {
         return bcNode.isInstrumented();
     }
 
-    void changeBytecode(OperationBytecodeNode node) {
+    void changeBytecode(BytecodeNode node) {
         CompilerAsserts.neverPartOfCompilation();
         bcNode = insert(node);
     }
@@ -150,4 +150,9 @@ public abstract class OperationNode extends Node {
             }
         };
     }
+
+    public final String dump() {
+        return bcNode.dump();
+    }
+
 }

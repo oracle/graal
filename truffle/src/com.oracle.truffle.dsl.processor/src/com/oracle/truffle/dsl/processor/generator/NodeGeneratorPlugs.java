@@ -35,11 +35,11 @@ public interface NodeGeneratorPlugs {
 
     CodeTree transformValueBeforePersist(CodeTree tree);
 
-    CodeTree createSpecializationFieldReference(SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType);
+    CodeTree createSpecializationFieldReference(FrameState frame, SpecializationData s, String fieldName, boolean useSpecializationClass, TypeMirror fieldType);
 
-    CodeTree createNodeFieldReference(NodeExecutionData execution, String nodeFieldName, boolean forRead);
+    CodeTree createNodeFieldReference(FrameState frame, NodeExecutionData execution, String nodeFieldName, boolean forRead);
 
-    CodeTree createCacheReference(SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead);
+    CodeTree createCacheReference(FrameState frame, SpecializationData specialization, CacheExpression cache, String sharedName, boolean forRead);
 
     CodeTree[] createThrowUnsupportedValues(FrameState frameState, List<CodeTree> values, CodeTreeBuilder parent, CodeTreeBuilder builder);
 

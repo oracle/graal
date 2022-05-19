@@ -19,6 +19,6 @@ public @interface GenerateOperations {
     @Retention(RetentionPolicy.SOURCE)
     @Target({ElementType.FIELD})
     public @interface Metadata {
-        String value();
+        String name() default "";
     }
 }

@@ -17,8 +17,7 @@ import com.oracle.truffle.api.operation.Variadic;
 @GenerateOperations
 public final class TestOperations {
 
-    @Metadata("TestData") //
-    public static final MetadataKey<String> TEST_DATA = new MetadataKey<>("default value");
+    @Metadata public static final MetadataKey<String> TestData = new MetadataKey<>("default value");
 
     private static class TestException extends AbstractOperationsTruffleException {
 

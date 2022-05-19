@@ -259,7 +259,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                         Set.of(Modifier.PUBLIC, Modifier.ABSTRACT),
                         context.getType(resType), "execute");
 
-        metExecute.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        metExecute.addParameter(new CodeVariableElement(types.Frame, "frame"));
 
         if (isVariadic) {
             int i = 0;
@@ -295,7 +295,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 if (isVariadic) {
                     data.addError(method, "Value arguments after @Variadic not allowed");
                 }
-                if (ElementUtils.isAssignable(param.asType(), types.VirtualFrame)) {
+                if (ElementUtils.typeEquals(param.asType(), types.Frame) || ElementUtils.typeEquals(param.asType(), types.VirtualFrame)) {
                     parameters.add(ParameterKind.VIRTUAL_FRAME);
                 } else {
                     parameters.add(ParameterKind.STACK_VALUE);
@@ -333,18 +333,18 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
         result.setSuperClass(types.Node);
 
-        result.add(createExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object.class)));
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, context.getType(Object.class)));
 
         for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
-            result.add(createExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
+            result.add(createChildExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
         }
 
         return result;
     }
 
-    private CodeExecutableElement createExecuteMethod(String name, TypeMirror retType) {
+    private CodeExecutableElement createChildExecuteMethod(String name, TypeMirror retType) {
         CodeExecutableElement result = new CodeExecutableElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), retType, "execute" + name);
-        // result.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+        // result.addParameter(new CodeVariableElement(types.Frame, "frame"));
 
         if (!GENERIC_EXECUTE_NAME.equals(name)) {
             result.addThrownType(types.UnexpectedResultException);
