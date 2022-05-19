@@ -34,13 +34,11 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.word.LocationIdentity;
+import org.graalvm.compiler.replacements.nodes.ForeignCalls;
 
 import jdk.vm.ci.meta.JavaKind;
 
-public class ArrayIndexOf {
-
-    private static final LocationIdentity[] NO_LOCATIONS = {};
+public class ArrayIndexOfForeignCalls {
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?> arrayArgType, int nValues) {
         Class<?>[] argTypes = new Class<?>[4 + nValues];
@@ -49,7 +47,7 @@ public class ArrayIndexOf {
         for (int i = 2; i < argTypes.length; i++) {
             argTypes[i] = int.class;
         }
-        return new ForeignCallDescriptor(name, int.class, argTypes, true, NO_LOCATIONS, false, false);
+        return ForeignCalls.pureFunctionForeignCallDescriptor(name, int.class, argTypes);
     }
 
     public static final ForeignCallDescriptor STUB_INDEX_OF_TWO_CONSECUTIVE_B_S1 = foreignCallDescriptor("indexOfTwoConsecutiveBS1", byte[].class, 2);
@@ -270,7 +268,7 @@ public class ArrayIndexOf {
                     throw GraalError.shouldNotReachHere();
             }
         } else {
-            int index = (4 * strideAsPowerOf2(stride)) + (valueCount - 1);
+            int index = (4 * ForeignCalls.strideAsPowerOf2(stride)) + (valueCount - 1);
             switch (arrayKind) {
                 case Byte:
                     return STUBS_INDEX_OF_ANY_B[index];
@@ -299,13 +297,6 @@ public class ArrayIndexOf {
     }
 
     /**
-     * Index of two consecutive chars in a char array.
-     */
-    public static int indexOfTwoConsecutiveCS2(char[] array, int length, int fromIndex, char c1, char c2) {
-        return ArrayIndexOfNode.indexOf2Consecutive(S2, S2, array, 0, length, fromIndex, c1, c2);
-    }
-
-    /**
      * Index of one byte in a byte array.
      */
     public static int indexOfB1S1(byte[] array, int length, int fromIndex, byte b) {
@@ -319,14 +310,4 @@ public class ArrayIndexOf {
         return ArrayIndexOfNode.indexOf(S1, S2, array, 0, length, fromIndex, c);
     }
 
-    /**
-     * Index of one char in a char array.
-     */
-    public static int indexOfC1S2(char[] array, int length, int fromIndex, char c) {
-        return ArrayIndexOfNode.indexOf(S2, S2, array, 0, length, fromIndex, c);
-    }
-
-    public static int strideAsPowerOf2(JavaKind stride) {
-        return Integer.numberOfTrailingZeros(stride.getByteCount());
-    }
 }

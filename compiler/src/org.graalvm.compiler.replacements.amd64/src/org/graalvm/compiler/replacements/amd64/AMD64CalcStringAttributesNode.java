@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -141,11 +142,13 @@ public final class AMD64CalcStringAttributesNode extends FixedWithNextNode imple
         if (UseGraalStubs.getValue(graph().getOptions())) {
             ForeignCallLinkage linkage = gen.lookupGraalStub(this);
             if (linkage != null) {
+                TTY.println("EMITTING CALC_STRING_ATTRIBUTES STUB CALL");
                 Value result = gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(array), gen.operand(offset), gen.operand(length));
                 gen.setResult(this, result);
                 return;
             }
         }
+        TTY.println("EMITTING CALC_STRING_ATTRIBUTES CODE");
         Value result = gen.getLIRGeneratorTool().emitCalcStringAttributes(op, gen.operand(array), gen.operand(offset), gen.operand(length), assumeValid);
         gen.setResult(this, result);
     }
@@ -153,13 +156,13 @@ public final class AMD64CalcStringAttributesNode extends FixedWithNextNode imple
     /* NodeIntrinsic plugins for snippet stubs. */
 
     @NodeIntrinsic
-    private static native int intReturnValue(
+    public static native int intReturnValue(
                     @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
                     @ConstantNodeParameter boolean assumeValid,
                     Object array, long offset, int length);
 
     @NodeIntrinsic
-    private static native long longReturnValue(
+    public static native long longReturnValue(
                     @ConstantNodeParameter AMD64CalcStringAttributesOp.Op op,
                     @ConstantNodeParameter boolean assumeValid,
                     Object array, long offset, int length);

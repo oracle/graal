@@ -31,13 +31,11 @@ import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.replacements.ArrayIndexOf;
+import org.graalvm.compiler.replacements.ArrayIndexOfForeignCalls;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -46,7 +44,6 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticFeature
 @Platforms(AMD64.class)
@@ -58,12 +55,7 @@ class AMD64ArrayIndexOfForeignCallsFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        BeforeAnalysisAccessImpl impl = (BeforeAnalysisAccessImpl) access;
-        AnalysisMetaAccess metaAccess = impl.getMetaAccess();
-        for (SubstrateForeignCallDescriptor descriptor : AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
-            AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
-            impl.registerAsRoot(method, true);
-        }
+        SubstrateGraalUtils.registerStubRoots(access, AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 
     @Override
@@ -76,8 +68,8 @@ class AMD64ArrayIndexOfForeignCallsFeature implements InternalFeature {
 class AMD64ArrayIndexOfForeignCalls {
     // None of the following foreign calls kills any locations.
 
-    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ArrayIndexOf.STUBS_AMD64)
-                    .filter(x -> Arrays.stream(ArrayIndexOf.STUBS_AARCH64).noneMatch(y -> y == x))
+    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ArrayIndexOfForeignCalls.STUBS_AMD64)
+                    .filter(x -> Arrays.stream(ArrayIndexOfForeignCalls.STUBS_AARCH64).noneMatch(y -> y == x))
                     .map(call -> SnippetRuntime.findForeignCall(AMD64ArrayIndexOfForeignCalls.class, call.getName(), true))
                     .toArray(SubstrateForeignCallDescriptor[]::new);
 

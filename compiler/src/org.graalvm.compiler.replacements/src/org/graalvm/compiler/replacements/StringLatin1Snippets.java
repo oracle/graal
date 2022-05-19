@@ -71,7 +71,7 @@ public class StringLatin1Snippets implements Snippets {
             return -1;
         }
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
-            return ArrayIndexOf.indexOfB1S1(source, sourceCount, fromIndex, getByte(target, 0));
+            return ArrayIndexOfForeignCalls.indexOfB1S1(source, sourceCount, fromIndex, getByte(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
@@ -79,7 +79,7 @@ public class StringLatin1Snippets implements Snippets {
                 byte b1 = getByte(target, 0);
                 byte b2 = getByte(target, 1);
                 do {
-                    int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveBS1(source, haystackLength, offset, b1, b2);
+                    int indexOfResult = ArrayIndexOfForeignCalls.indexOfTwoConsecutiveBS1(source, haystackLength, offset, b1, b2);
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                         return -1;
                     }

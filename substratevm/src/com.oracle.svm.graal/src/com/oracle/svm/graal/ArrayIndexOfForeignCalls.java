@@ -32,7 +32,6 @@ import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platform.AMD64;
@@ -62,7 +61,7 @@ class ArrayIndexOfForeignCallsFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl impl = (BeforeAnalysisAccessImpl) access;
         AnalysisMetaAccess metaAccess = impl.getMetaAccess();
-        for (SubstrateForeignCallDescriptor descriptor : ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
+        for (SubstrateForeignCallDescriptor descriptor : com.oracle.svm.graal.ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
             AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
             impl.registerAsRoot(method, true);
         }
@@ -70,14 +69,14 @@ class ArrayIndexOfForeignCallsFeature implements InternalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(ArrayIndexOfForeignCalls.FOREIGN_CALLS);
+        foreignCalls.register(com.oracle.svm.graal.ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 }
 
 @Platforms({AMD64.class, AARCH64.class})
 class ArrayIndexOfForeignCalls {
 
-    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ArrayIndexOf.STUBS_AARCH64)
+    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(org.graalvm.compiler.replacements.ArrayIndexOfForeignCalls.STUBS_AARCH64)
                     .map(call -> SnippetRuntime.findForeignCall(ArrayIndexOfForeignCalls.class, call.getName(), true))
                     .toArray(SubstrateForeignCallDescriptor[]::new);
 

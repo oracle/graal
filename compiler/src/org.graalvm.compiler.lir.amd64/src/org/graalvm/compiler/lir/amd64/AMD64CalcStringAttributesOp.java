@@ -205,7 +205,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         this.op = op;
         this.assumeValid = assumeValid;
 
-        assert supports(tool.target(), CPUFeature.SSE4_1);
+        GraalError.guarantee(supports(tool.target(), CPUFeature.SSE4_1), "needs at least SSE4.1 support");
         assert op.stride.isNumericInteger();
 
         this.scale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(op.stride)));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,81 +22,112 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.amd64;
+package com.oracle.svm.graal;
 
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
-import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.stubs.SnippetStub;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
+import org.graalvm.nativeimage.Platform.AMD64;
+import org.graalvm.nativeimage.Platforms;
 
-import jdk.vm.ci.meta.JavaKind;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.graal.InternalFeature;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 
-/**
- * Arraycopy operation for arbitrary source and destination arrays, with arbitrary byte offset, with
- * support for arbitrary compression and inflation of {@link JavaKind#Byte 8 bit},
- * {@link JavaKind#Char 16 bit} or {@link JavaKind#Int 32 bit} array elements.
- *
- * @see org.graalvm.compiler.lir.amd64.AMD64ArrayCopyWithConversionsOp
- */
-public final class AMD64ArrayCopyWithConversionsStub extends SnippetStub {
-
-    public AMD64ArrayCopyWithConversionsStub(OptionValues options, HotSpotProviders providers, HotSpotForeignCallLinkage linkage) {
-        super(linkage.getDescriptor().getName(), options, providers, linkage);
+@AutomaticFeature
+@Platforms(AMD64.class)
+class ArrayCopyWithConversionsForeignCallsFeature implements InternalFeature {
+    @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return !SubstrateOptions.useLLVMBackend();
     }
 
-    @Snippet
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        SubstrateGraalUtils.registerStubRoots(access, ArrayCopyWithConversionsForeignCalls.FOREIGN_CALLS);
+    }
+
+    @Override
+    public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(ArrayCopyWithConversionsForeignCalls.FOREIGN_CALLS);
+    }
+}
+
+@Platforms(AMD64.class)
+class ArrayCopyWithConversionsForeignCalls {
+
+    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = SubstrateGraalUtils.mapStubs(
+                    org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls.STUBS,
+                    ArrayCopyWithConversionsForeignCalls.class);
+
+    // GENERATED CODE BEGIN
+    
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS1S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S1);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS1S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S2);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS1S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S4);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS2S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S1);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS2S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S2);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS2S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S4);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS4S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S1);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS4S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S2);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubS4S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S4);
-    }
+    }    
 
-    @Snippet
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
     private static void stubDynamicStrides(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int dynamicStrides) {
         ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides);
     }
+
+    // GENERATED CODE END
 }

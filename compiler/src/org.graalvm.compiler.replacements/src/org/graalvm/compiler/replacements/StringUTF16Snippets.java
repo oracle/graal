@@ -82,12 +82,12 @@ public class StringUTF16Snippets implements Snippets {
         ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
-            return ArrayIndexOf.indexOfB1S2(source, sourceCount, fromIndex, getChar(target, 0));
+            return ArrayIndexOfForeignCalls.indexOfB1S2(source, sourceCount, fromIndex, getChar(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
             while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
-                int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveBS2(source, haystackLength, offset, getChar(target, 0), getChar(target, 1));
+                int indexOfResult = ArrayIndexOfForeignCalls.indexOfTwoConsecutiveBS2(source, haystackLength, offset, getChar(target, 0), getChar(target, 1));
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                     return -1;
                 }
@@ -113,7 +113,7 @@ public class StringUTF16Snippets implements Snippets {
         ReplacementsUtil.dynamicAssert(targetCount <= target.length, "StringUTF16.indexOfLatin1Unsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfLatin1Unsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
-            return ArrayIndexOf.indexOfB1S2(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(getByte(target, 0)));
+            return ArrayIndexOfForeignCalls.indexOfB1S2(source, sourceCount, fromIndex, (char) Byte.toUnsignedInt(getByte(target, 0)));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
@@ -121,7 +121,7 @@ public class StringUTF16Snippets implements Snippets {
                 char c1 = (char) Byte.toUnsignedInt(getByte(target, 0));
                 char c2 = (char) Byte.toUnsignedInt(getByte(target, 1));
                 do {
-                    int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveBS2(source, haystackLength, offset, c1, c2);
+                    int indexOfResult = ArrayIndexOfForeignCalls.indexOfTwoConsecutiveBS2(source, haystackLength, offset, c1, c2);
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                         return -1;
                     }

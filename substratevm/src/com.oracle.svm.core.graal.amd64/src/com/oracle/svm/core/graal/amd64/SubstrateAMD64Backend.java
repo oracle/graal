@@ -58,6 +58,7 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.memory.MemoryExtendKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
@@ -95,6 +96,7 @@ import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.gen.MoveFactory.BackupSlotProvider;
@@ -117,7 +119,23 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.CPUFeatureAccess;
 import com.oracle.svm.core.FrameAccess;
@@ -157,6 +175,7 @@ import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -981,6 +1000,43 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         public Variable emitReadReturnAddress() {
             assert FrameAccess.returnAddressSize() > 0;
             return getLIRGeneratorTool().emitMove(StackSlot.get(getLIRGeneratorTool().getLIRKind(FrameAccess.getWordStamp()), -FrameAccess.returnAddressSize(), true));
+        }
+
+        @Override
+        public ForeignCallLinkage lookupGraalStub(ValueNode valueNode) {
+            ResolvedJavaMethod method = valueNode.graph().method();
+            if (method != null && GuardedAnnotationAccess.getAnnotation(method, SubstrateForeignCallTarget.class) != null) {
+                // Emit assembly for snippet stubs
+                return null;
+            }
+
+            // Assume the SVM ForeignCallSignature are identical to the Graal ones.
+            return lookupForeignCall(getForeignCallDescriptor(valueNode, gen));
+        }
+
+        private ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, LIRGenerator gen) {
+            if (valueNode instanceof ArrayIndexOfNode) {
+                return ArrayIndexOfForeignCalls.getStub((ArrayIndexOfNode) valueNode);
+            } else if (valueNode instanceof ArrayEqualsNode) {
+                return AMD64ArrayEqualsForeignCalls.getArrayEqualsStub((ArrayEqualsNode) valueNode, gen);
+            } else if (valueNode instanceof ArrayRegionEqualsNode) {
+                return AMD64ArrayEqualsForeignCalls.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, gen);
+            } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
+                return AMD64ArrayEqualsWithMaskForeignCalls.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
+            } else if (valueNode instanceof ArrayCompareToNode) {
+                return ArrayCompareToForeignCalls.getStub((ArrayCompareToNode) valueNode);
+            } else if (valueNode instanceof ArrayRegionCompareToNode) {
+                return ArrayRegionCompareToForeignCalls.getStub((ArrayRegionCompareToNode) valueNode);
+            } else if (valueNode instanceof AMD64CalcStringAttributesNode) {
+                return AMD64CalcStringAttributesForeignCalls.getStub((AMD64CalcStringAttributesNode) valueNode);
+            } else if (valueNode instanceof ArrayCopyWithConversionsNode) {
+                return ArrayCopyWithConversionsForeignCalls.getStub((ArrayCopyWithConversionsNode) valueNode);
+            }
+            return null;
+        }
+
+        private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
+            return descriptor == null ? null : gen.getForeignCalls().lookupForeignCall(descriptor);
         }
     }
 

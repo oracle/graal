@@ -26,7 +26,7 @@ package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.getArrayLocation;
 import static org.graalvm.compiler.core.common.StrideUtil.NONE;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.strideAsPowerOf2;
+import static org.graalvm.compiler.replacements.nodes.ForeignCalls.strideAsPowerOf2;
 
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;

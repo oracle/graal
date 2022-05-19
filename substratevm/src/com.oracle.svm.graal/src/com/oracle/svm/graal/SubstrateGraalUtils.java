@@ -28,13 +28,19 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.Map;
 
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.hosted.FeatureImpl;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationWrapper;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
 import org.graalvm.compiler.core.GraalCompiler;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -57,6 +63,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 
 import jdk.vm.ci.code.Architecture;
+import org.graalvm.nativeimage.hosted.Feature;
 
 public class SubstrateGraalUtils {
 
@@ -136,6 +143,21 @@ public class SubstrateGraalUtils {
 
     public static CompilationResult compileGraph(final SharedMethod method, final StructuredGraph graph) {
         return compileGraph(GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), method, graph);
+    }
+
+    static void registerStubRoots(Feature.BeforeAnalysisAccess access, SnippetRuntime.SubstrateForeignCallDescriptor[] foreignCalls) {
+        FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        AnalysisMetaAccess metaAccess = impl.getMetaAccess();
+        for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : foreignCalls) {
+            AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
+            impl.registerAsRoot(method, true);
+        }
+    }
+
+    static SnippetRuntime.SubstrateForeignCallDescriptor[] mapStubs(ForeignCallDescriptor[] foreignCallDescriptors, Class<?> declaringClass) {
+        return Arrays.stream(foreignCallDescriptors)
+                        .map(call -> SnippetRuntime.findForeignCall(declaringClass, call.getName(), true))
+                        .toArray(SnippetRuntime.SubstrateForeignCallDescriptor[]::new);
     }
 
     public static class Options {
