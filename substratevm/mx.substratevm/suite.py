@@ -902,9 +902,6 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.truffle",
             ],
-            "requires": [
-                "jdk.unsupported",  # workaround to make TRUFFLE_DSL_PROCESSOR work with ECJ
-            ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "11+",
             "annotationProcessors": [
