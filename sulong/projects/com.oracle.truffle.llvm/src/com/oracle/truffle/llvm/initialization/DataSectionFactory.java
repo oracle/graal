@@ -31,12 +31,12 @@ package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.llvm.parser.LLVMParser;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.memory.LLVMAllocateNode;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -47,7 +47,6 @@ import java.util.List;
 public class DataSectionFactory {
 
     @CompilationFinal(dimensions = 1) private final int[] globalOffsets;
-    @CompilationFinal(dimensions = 1) private final int[] threadLocalGlobalContainers;
     @CompilationFinal(dimensions = 1) private final int[] threadLocalGlobalOffsets;
     @CompilationFinal(dimensions = 1) private final boolean[] globalIsReadOnly;
 
@@ -57,6 +56,7 @@ public class DataSectionFactory {
 
     // The index for thread local global objects
     private int globalContainerIndex = -1;
+    private int threadLocalGlobalContainerLength = 0;
 
     public DataSectionFactory(LLVMParserResult result) throws Type.TypeOverflowException {
         DataLayout dataLayout = result.getDataLayout();
@@ -66,7 +66,6 @@ public class DataSectionFactory {
 
         this.globalOffsets = new int[globalsCount];
         this.threadLocalGlobalOffsets = new int[threadLocalGlobalsCount];
-        this.threadLocalGlobalContainers = new int[result.getThreadLocalGlobalObjectCounter()];
         this.globalIsReadOnly = new boolean[globalsCount];
 
         List<GlobalVariable> definedGlobals = result.getDefinedGlobals();
@@ -78,7 +77,7 @@ public class DataSectionFactory {
         for (int i = 0; i < globalsCount; i++) {
             GlobalVariable global = definedGlobals.get(i);
             Type type = global.getType().getPointeeType();
-            if (boxGlobals && isSpecialGlobalSlot(type)) {
+            if (boxGlobals && LLVMParser.isSpecialGlobalSlot(type)) {
                 globalOffsets[i] = -1; // pointer type
             } else {
                 // allocate at least one byte per global (to make the pointers unique)
@@ -96,14 +95,12 @@ public class DataSectionFactory {
             }
         }
 
-        int globalContainersArrayIndex = 0;
         for (int i = 0; i < threadLocalGlobalsCount; i++) {
             GlobalVariable tlGlobals = threadLocalGlobals.get(i);
             Type type = tlGlobals.getType().getPointeeType();
-            if (isSpecialGlobalSlot(type)) {
+            if (LLVMParser.isSpecialGlobalSlot(type)) {
                 // pointer type
-                threadLocalGlobalContainers[globalContainersArrayIndex] = globalContainerIndex;
-                globalContainersArrayIndex++;
+                threadLocalGlobalContainerLength++;
                 threadLocalGlobalOffsets[i] = globalContainerIndex;
                 globalContainerIndex--;
             } else {
@@ -114,7 +111,6 @@ public class DataSectionFactory {
                 }
                 threadLocalGlobalOffsets[i] = (int) offset;
             }
-
         }
     }
 
@@ -142,8 +138,8 @@ public class DataSectionFactory {
         return threadLocalGlobalOffsets;
     }
 
-    int[] getThreadLocalGlobalContainers() {
-        return threadLocalGlobalContainers;
+    int getThreadLocalGlobalContainerLength() {
+        return threadLocalGlobalContainerLength;
     }
 
     static final class DataSection {
@@ -185,18 +181,6 @@ public class DataSectionFactory {
             int size = Math.min(Long.BYTES, Integer.highestOneBit(remaining));
             result.add(PrimitiveType.getIntegerType(size * Byte.SIZE));
             remaining -= size;
-        }
-    }
-
-    /**
-     * Globals of pointer type need to be handles specially because they can potentially contain a
-     * foreign object.
-     */
-    private static boolean isSpecialGlobalSlot(Type type) {
-        if (type instanceof PointerType) {
-            return true;
-        } else {
-            return type == PrimitiveType.I64;
         }
     }
 

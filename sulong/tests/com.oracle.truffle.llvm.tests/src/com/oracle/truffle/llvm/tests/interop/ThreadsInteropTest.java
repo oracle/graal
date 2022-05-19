@@ -114,7 +114,7 @@ public class ThreadsInteropTest extends InteropTestBase {
 
     private static void assertSameGlobal(Value[] threadIds, StructObject[] structs) {
         for (int i = 0; i < threadIds.length; i++) {
-            Assert.assertEquals("the structure in the global thread must be the same", threadIds[i].toString(), structs[i].toString());
+            Assert.assertEquals(runWithPolyglot.getPolyglotContext().asValue(structs[i]), threadIds[i]);
         }
     }
 

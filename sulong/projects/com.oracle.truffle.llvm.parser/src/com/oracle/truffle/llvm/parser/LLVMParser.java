@@ -55,6 +55,7 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 import java.util.ArrayList;
@@ -138,8 +139,16 @@ public final class LLVMParser {
         registerInPublicFileScope(symbol);
     }
 
-    private static boolean isSpecialGlobalSlot(Type type) {
-        return type instanceof PointerType;
+    /**
+     * Globals of pointer type need to be handles specially because they can potentially contain a
+     * foreign object.
+     */
+    public static boolean isSpecialGlobalSlot(Type type) {
+        if (type instanceof PointerType) {
+            return true;
+        } else {
+            return type == PrimitiveType.I64;
+        }
     }
 
     private void defineFunction(FunctionSymbol functionSymbol, ModelModule model, DataLayout dataLayout) {
