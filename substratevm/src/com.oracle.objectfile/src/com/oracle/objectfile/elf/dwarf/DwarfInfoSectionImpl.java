@@ -1412,6 +1412,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2 ||
                         abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2) {
             int locRefAddr = getRangeLocalIndex(range, localInfo);
+            log(context, "  [0x%08x]     loc list  0x%x", pos, locRefAddr);
             pos = writeAttrLocList(locRefAddr, buffer, pos);
         }
         return pos;
