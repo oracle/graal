@@ -262,6 +262,8 @@ def gate_body(args, tasks):
     libgraal_suite_name = 'substratevm'
     if mx.suite(libgraal_suite_name, fatalIfMissing=False) is not None:
         import mx_substratevm
+        # Use `short_name` rather than `name` since the code that follows
+        # should be executed also when "LibGraal Enterprise" is registered
         if mx_sdk_vm_impl.has_component(mx_substratevm.libgraal.short_name):
             libgraal_location = mx_sdk_vm_impl.get_native_image_locations(mx_substratevm.libgraal.short_name, 'jvmcicompiler')
             if libgraal_location is None:
