@@ -78,7 +78,13 @@ public class ExposeToGuestTest {
     @Test
     public void byDefaultOnlyAnnotatedMethodsCanBeAccessed() {
         Context context = Context.create();
-        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function readValue(x) {\n" +
+                        "  return x.value;\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return readValue;\n" +
+                        "}\n");
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
         assertPropertyUndefined("PublicValue isn't enough by default", readValue, new PublicValue());
     }
@@ -107,7 +113,13 @@ public class ExposeToGuestTest {
     @Test
     public void exportingAllPublicIsEasy() {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
-        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function readValue(x) {\n" +
+                        "  return x.value;\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return readValue;\n" +
+                        "}\n");
         Assert.assertEquals(42, readValue.execute(new PublicValue()).asInt());
         Assert.assertEquals(42, readValue.execute(new ExportedValue()).asInt());
     }
@@ -116,7 +128,13 @@ public class ExposeToGuestTest {
     public void customExportedAnnotation() {
         HostAccess accessMeConfig = HostAccess.newBuilder().allowAccessAnnotatedBy(AccessMe.class).build();
         Context context = Context.newBuilder().allowHostAccess(accessMeConfig).build();
-        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function readValue(x) {\n" +
+                        "  return x.value;\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return readValue;\n" +
+                        "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
         assertPropertyUndefined("Default annotation isn't enough", readValue, new ExportedValue());
         assertPropertyUndefined("Public isn't enough by default", readValue, new PublicValue());
@@ -135,7 +153,13 @@ public class ExposeToGuestTest {
     public void explicitlyEnumeratingField() throws Exception {
         HostAccess explicitConfig = HostAccess.newBuilder().allowAccess(AccessibleValue.class.getField("value")).build();
         Context context = Context.newBuilder().allowHostAccess(explicitConfig).build();
-        Value readValue = context.eval("sl", "" + "function readValue(x) {\n" + "  return x.value;\n" + "}\n" + "function main() {\n" + "  return readValue;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function readValue(x) {\n" +
+                        "  return x.value;\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return readValue;\n" +
+                        "}\n");
         Assert.assertEquals(42, readValue.execute(new AccessibleValue()).asInt());
         assertPropertyUndefined("Default annotation isn't enough", readValue, new ExportedValue());
         assertPropertyUndefined("Public isn't enough by default", readValue, new PublicValue());
@@ -186,7 +210,13 @@ public class ExposeToGuestTest {
     public void fooBarExposedByInheritance() throws Exception {
         HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
         Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
-        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function callFoo(x) {\n" +
+                        "  return x.foo(1);\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return callFoo;\n" +
+                        "}\n");
         Assert.assertEquals("basic foo", readValue.execute(new Foo<>()).asString());
         Assert.assertEquals("enhanced bar", readValue.execute(new Bar()).asString());
         assertPropertyUndefined("Cannot call public method in package private class", "foo", readValue, new PackagePrivateBar());
@@ -204,7 +234,13 @@ public class ExposeToGuestTest {
     public void functionalInterfaceCall() throws Exception {
         HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
         Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
-        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1);\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function callFoo(x) {\n" +
+                        "  return x.foo(1);\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return callFoo;\n" +
+                        "}\n");
         FooInterface<Number> foo = (ignore) -> "functional foo";
         Assert.assertEquals("functional foo", readValue.execute(foo).asString());
         Assert.assertEquals("functional foo", context.asValue(foo).execute(1).asString());
@@ -230,7 +266,13 @@ public class ExposeToGuestTest {
 
     private static void doAccessAllowedInPublicHostAccess(boolean asList) throws Exception {
         Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
-        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function callFoo(x) {\n" +
+                        "  return x.foo(1)[0];\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return callFoo;\n" +
+                        "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
         final Value arrayRead = readValue.execute(foo);
@@ -251,7 +293,13 @@ public class ExposeToGuestTest {
     private static void doAccessForbiddenInExplicit(boolean asList) throws Exception {
         HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
         Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
-        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function callFoo(x) {\n" +
+                        "  return x.foo(1)[0];\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return callFoo;\n" +
+                        "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
         final Value arrayRead;
@@ -278,7 +326,13 @@ public class ExposeToGuestTest {
     private static void doAccessForbiddenInManual(boolean asList) throws Exception {
         HostAccess config = HostAccess.newBuilder().allowAccess(FooInterface.class.getMethod("foo", Number.class)).allowAccessInheritance(true).build();
         Context context = Context.newBuilder().allowHostAccess(config).build();
-        Value readValue = context.eval("sl", "" + "function callFoo(x) {\n" + "  return x.foo(1)[0];\n" + "}\n" + "function main() {\n" + "  return callFoo;\n" + "}\n");
+        Value readValue = context.eval("sl", "" +
+                        "function callFoo(x) {\n" +
+                        "  return x.foo(1)[0];\n" +
+                        "}\n" +
+                        "function main() {\n" +
+                        "  return callFoo;\n" +
+                        "}\n");
         boolean[] gotIn = {false};
         FooInterface<Number> foo = returnAsArrayOrList(gotIn, asList);
         final Value arrayRead;
