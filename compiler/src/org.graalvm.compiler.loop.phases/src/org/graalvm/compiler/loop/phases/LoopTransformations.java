@@ -718,8 +718,9 @@ public abstract class LoopTransformations {
     /**
      * Find all unswichable control split nodes in the given loop and group them by condition.
      *
-     * @param loop search control split nodes in this loop
-     * @return the unswitchable control split nodes grouped by condition.
+     * @param loop search control split nodes in this loop.
+     * @return the unswitchable control split nodes grouped by condition meaning that every control
+     *         split node within the same inner list share the same condition.
      */
     public static List<List<ControlSplitNode>> findUnswitchable(LoopEx loop) {
         EconomicMap<ValueNode, List<ControlSplitNode>> controls = EconomicMap.create(Equivalence.IDENTITY);

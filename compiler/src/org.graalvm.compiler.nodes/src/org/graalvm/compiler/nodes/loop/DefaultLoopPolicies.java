@@ -282,11 +282,31 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
     /**
      * Compute the sum of the local frequencies of the control split nodes. If a control split node
-     * is within an inner loop then its frequency is divided by the local frequencies of the inner
-     * loops.
+     * is within an inner loop then its frequency is divided by the local loop frequencies of the
+     * inner loops.
      *
      * The result should be between 0 and {@code controlSplits.size()} times the local loop
      * frequency.
+     *
+     * Lets take the following code : <code>
+     *  for (int i = 0; i < 1000; ++i) {
+     *      if (i % 2 == 0) {
+     *          if (invariant) { [...] } else { [...] }
+     *      } else {
+     *          if (i % 4 == 1) {
+     *              for (int j = 0; j < 10; ++j) {
+     *                  if (invariant) { [...] } else { [...] }
+     *              }
+     *          } else { [...] }
+     *      }
+     *  }
+     * </code>
+     *
+     * The loop has a local loop frequency of 1000, the first invariant is reached 500 times, the
+     * second one 2500 times as the inner loop has a local loop frequency of 10, but as the second
+     * one could be unswitched from the inner loop, we only count a frequency of 250 for it. Finally
+     * the result is the sum of the two frequencies which is 750. This mean that on average each
+     * time the loop is executed, the invariant is computed 750 times.
      */
     private static double localFrequency(LoopEx loop, List<ControlSplitNode> controlSplits) {
         int loopDepth = loop.loop().getDepth();
@@ -359,12 +379,45 @@ public class DefaultLoopPolicies implements LoopPolicies {
                 continue;
             }
 
-            /*
+            /**
              * Guards should only be unswitched if they are executed very often because otherwise it
-             * might mess with relative frequencies, but if if the successor probabilities of the
-             * control split nodes are evenly distributed then it is good to unswitch then.
+             * might change the hottest path, but if the successor probabilities of the control
+             * split nodes are evenly distributed then it is good to unswitch them.
              *
-             * {@link factor} is 0 for guard and 1 for evenly distributed splits.
+             * {@link factor} is 0 for guards and 1 for evenly distributed splits.
+             *
+             * The idea behind this heuristic is that when a guard is executed often, unswitching it
+             * will not change the hottest path. For example: <code>
+             *  Object o = [...];
+             *  for (int i = 0; i < 1000; ++i) {
+             *      if (very_likely(i)) {
+             *          if (o == null) { Deop } else { [.1.] }
+             *      } else { [.2.] }
+             *  }
+             *  </code>
+             *
+             * The hottest path goes trough the block 1 and as the invariant is computed frequently
+             * we can be confident that it is most of the time true. Thus after unswitching
+             * it:<code>
+             *  Object o = [...];
+             *  if (o == null) {
+             *      for (int i = 0; i < 1000; ++i) {
+             *          if (very_likely(i)) { Deop } else { [.2.] }
+             *      }
+             *  } else {
+             *      for (int i = 0; i < 1000; ++i) {
+             *          if (very_likely(i)) { [.1.] } else { [.2.] }
+             *      }
+             *  }
+             * </code>
+             *
+             * The hottest path still goes through block [.1.].
+             *
+             * On the other hand when an invariant is not frequently computed, it is possible that
+             * it is not independent from outer conditions (specially for guards, as usually
+             * programs avoid null pointer exceptions but the compiler cannot check it) and so their
+             * profile data might not be correct after unswitching and so it might change the
+             * hottest path.
              */
             double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
             for (ControlSplitNode s : split) {
@@ -374,13 +427,14 @@ public class DefaultLoopPolicies implements LoopPolicies {
             }
             assert 0 <= factor && factor <= 1 : "factor shold be between 0 and 1, but is : " + factor;
 
-            // We cap the factor and we invert it to make guards range narrow.
+            // We cap the factor and we invert it to make guards' range narrow.
             factor = 1 - Math.min(Math.max(factor, Options.LoopUnswitchFrequencyMinFactor.getValue(options)), Options.LoopUnswitchFrequencyMaxFactor.getValue(options));
 
             if (splitFrequency < factor * loopLocalFrequency) {
                 /*
                  * Invariants that are executed not often with respect to their successor
-                 * probabilities are discarded.
+                 * probabilities are discarded as they might change the hottest path. For example:
+                 *
                  */
                 debug.log("control split %s not frequenct enough with respect to factor, factor=%.2f, split f=%.2f, loop f=%.2f", split, factor, splitFrequency, loopLocalFrequency);
                 continue;
