@@ -130,6 +130,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class TruffleBaseFeature implements com.oracle.svm.core.graal.GraalFeature {
 
+    @Override
+    public String getURL() {
+        return "https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.truffle/src/com/oracle/svm/truffle/TruffleBaseFeature.java";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Provides base support for Truffle";
+    }
+
     public static final class IsEnabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
