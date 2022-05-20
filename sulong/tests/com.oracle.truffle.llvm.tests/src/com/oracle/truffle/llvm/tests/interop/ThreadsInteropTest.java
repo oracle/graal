@@ -38,6 +38,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
 
 public class ThreadsInteropTest extends InteropTestBase {
 
@@ -91,14 +92,20 @@ public class ThreadsInteropTest extends InteropTestBase {
         Value[] ret = new Value[THREAD_COUNT];
         Thread[] threads = new Thread[THREAD_COUNT];
         StructObject[] structs = new StructObject[THREAD_COUNT];
+        CountDownLatch signal = new CountDownLatch(THREAD_COUNT);
 
         for (int i = 0; i < THREAD_COUNT; i++) {
             StructObject object = new StructObject(new HashMap<>());
             structs[i] = object;
             int finalI = i;
             threads[i] = new Thread(() -> {
-                cpart.invokeMember("writeGlobal", object);
-                ret[finalI] = cpart.invokeMember("readGlobal");
+                try {
+                    cpart.invokeMember("writeGlobal", object);
+                    signal.countDown();
+                    signal.await();
+                    ret[finalI] = cpart.invokeMember("readGlobal");
+                } catch (InterruptedException ignored) {
+                }
             });
             threads[i].start();
         }
