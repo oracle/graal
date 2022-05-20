@@ -34,6 +34,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -405,7 +406,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     }
 
     private static String[] makeTitleAndFormat(int nameLength, int[] showTiers, Integer[] tiers) {
-        StringBuilder titleBuilder = new StringBuilder(String.format(" %-" + nameLength + "s ||             Total Time    ", "Name"));
+        StringBuilder titleBuilder = new StringBuilder(format(" %-" + nameLength + "s ||             Total Time    ", "Name"));
         StringBuilder formatBuilder = new StringBuilder(" %-" + nameLength + "s ||       %10dms %5.1f%% ");
         maybeAddTiers(titleBuilder, formatBuilder, showTiers, tiers);
         titleBuilder.append("||              Self Time    ");
@@ -627,7 +628,7 @@ class CPUSamplerCLI extends ProfilerCLI {
         }
 
         private static String formatIndentBreakLabel(int skippedDepth) {
-            return String.format("(\u21B3%s) ", skippedDepth);
+            return CPUSamplerCLI.format("(\u21B3%s) ", skippedDepth);
         }
 
         String format(String format, int[] showTiers, long samplePeriod, int depth, long globalTotalSamples, Integer[] tiers) {
@@ -645,7 +646,7 @@ class CPUSamplerCLI extends ProfilerCLI {
             args.add(percent(totalSelfSamples, globalTotalSamples));
             maybeAddTiers(args, tierToSelfSamples, totalSelfSamples, showTiers, tiers);
             args.add(getShortDescription(location.getSourceSection()));
-            return String.format(format, args.toArray());
+            return CPUSamplerCLI.format(format, args.toArray());
         }
 
         private static void maybeAddTiers(List<Object> args, int[] samples, int total, int[] showTiers, Integer[] tiers) {
@@ -819,6 +820,10 @@ class CPUSamplerCLI extends ProfilerCLI {
                 }
             }
         }
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.US, format, args);
     }
 
 }

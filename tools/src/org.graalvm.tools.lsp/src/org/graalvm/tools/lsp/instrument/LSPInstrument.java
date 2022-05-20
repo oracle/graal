@@ -34,6 +34,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -238,7 +239,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable e) {
-                String message = String.format("[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
+                String message = String.format(Locale.US, "[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
                 new LSPIOException(message, e).printStackTrace(err);
             }
 

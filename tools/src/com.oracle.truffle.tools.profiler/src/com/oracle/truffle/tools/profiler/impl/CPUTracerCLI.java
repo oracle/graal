@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
@@ -141,7 +142,7 @@ class CPUTracerCLI extends ProfilerCLI {
         });
         int length = computeNameLength(payloads, 50);
         String format = " %-" + length + "s | %20s | %20s | %20s | %s";
-        String title = String.format(format, "Name", "Total Count", "Interpreted Count", "Compiled Count", "Location");
+        String title = format(format, "Name", "Total Count", "Interpreted Count", "Compiled Count", "Location");
         String sep = repeat("-", title.length());
         long totalCount = 0;
         for (CPUTracer.Payload payload : payloads) {
@@ -149,7 +150,7 @@ class CPUTracerCLI extends ProfilerCLI {
         }
 
         out.println(sep);
-        out.println(String.format("Tracing Histogram. Counted a total of %d element executions.", totalCount));
+        out.println(format("Tracing Histogram. Counted a total of %d element executions.", totalCount));
         out.println("  Total Count: Number of times the element was executed and percentage of total executions.");
         out.println("  Interpreted Count: Number of times the element was interpreted and percentage of total executions of this element.");
         out.println("  Compiled Count: Number of times the compiled element was executed and percentage of total executions of this element.");
@@ -158,10 +159,10 @@ class CPUTracerCLI extends ProfilerCLI {
         out.println(title);
         out.println(sep);
         for (CPUTracer.Payload payload : payloads) {
-            String total = String.format("%d %5.1f%%", payload.getCount(), (double) payload.getCount() * 100 / totalCount);
-            String interpreted = String.format("%d %5.1f%%", payload.getCountInterpreted(), (double) payload.getCountInterpreted() * 100 / payload.getCount());
-            String compiled = String.format("%d %5.1f%%", payload.getCountCompiled(), (double) payload.getCountCompiled() * 100 / payload.getCount());
-            out.println(String.format(format, payload.getRootName(), total, interpreted, compiled, getShortDescription(payload.getSourceSection())));
+            String total = format("%d %5.1f%%", payload.getCount(), (double) payload.getCount() * 100 / totalCount);
+            String interpreted = format("%d %5.1f%%", payload.getCountInterpreted(), (double) payload.getCountInterpreted() * 100 / payload.getCount());
+            String compiled = format("%d %5.1f%%", payload.getCountCompiled(), (double) payload.getCountCompiled() * 100 / payload.getCount());
+            out.println(format(format, payload.getRootName(), total, interpreted, compiled, getShortDescription(payload.getSourceSection())));
         }
         out.println(sep);
     }
@@ -174,5 +175,9 @@ class CPUTracerCLI extends ProfilerCLI {
             maxLength = Math.min(maxLength, limit);
         }
         return maxLength;
+    }
+
+    private static String format(String format, Object... args) {
+        return String.format(Locale.US, format, args);
     }
 }

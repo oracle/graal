@@ -30,6 +30,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -262,7 +263,7 @@ public final class MemoryTracer implements Closeable {
     public synchronized void setStackLimit(int stackLimit) {
         verifyConfigAllowed();
         if (stackLimit < 1) {
-            throw new ProfilerException(String.format("Invalid stack limit %s.", stackLimit));
+            throw new ProfilerException(String.format(Locale.US, "Invalid stack limit %s.", stackLimit));
         }
         this.stackLimit = stackLimit;
     }

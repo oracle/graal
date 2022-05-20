@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -53,7 +54,7 @@ class WildcardFilter {
                                         patterns.add(Pattern.compile(wildcardToRegex(expression)));
                                     } catch (PatternSyntaxException e) {
                                         throw new IllegalArgumentException(
-                                                        String.format("Invalid wildcard pattern %s.", expression), e);
+                                                        String.format(Locale.US, "Invalid wildcard pattern %s.", expression), e);
                                     }
                                 } else {
                                     strings.add(expression);

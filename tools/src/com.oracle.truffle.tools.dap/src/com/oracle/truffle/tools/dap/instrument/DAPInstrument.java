@@ -29,6 +29,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.UnknownHostException;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 import org.graalvm.options.OptionCategory;
@@ -120,7 +121,7 @@ public final class DAPInstrument extends TruffleInstrument {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable e) {
-            String message = String.format("[Graal DAP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
+            String message = String.format(Locale.US, "[Graal DAP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
             new DAPIOException(message, e).printStackTrace(err);
         }
     }
