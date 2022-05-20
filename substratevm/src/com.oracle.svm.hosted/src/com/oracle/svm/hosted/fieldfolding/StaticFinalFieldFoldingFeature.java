@@ -72,7 +72,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -128,7 +128,7 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * </ul>
  */
 @AutomaticFeature
-final class StaticFinalFieldFoldingFeature implements GraalFeature {
+final class StaticFinalFieldFoldingFeature implements InternalFeature {
 
     public static class Options {
         @Option(help = "Optimize static final fields that get a constant assigned in the class initializer.")//

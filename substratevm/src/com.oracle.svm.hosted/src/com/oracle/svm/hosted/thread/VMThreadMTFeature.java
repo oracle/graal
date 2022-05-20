@@ -44,7 +44,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
@@ -70,7 +70,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * offset in the {@link IsolateThread} data structure.
  */
 @AutomaticFeature
-public class VMThreadMTFeature implements GraalFeature {
+public class VMThreadMTFeature implements InternalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
     private final VMThreadLocalMTSupport threadLocalSupport = new VMThreadLocalMTSupport();

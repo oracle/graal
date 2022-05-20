@@ -32,7 +32,7 @@ import java.util.Set;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
@@ -40,7 +40,7 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
  * @see LambdaProxyRenamingSubstitutionProcessor
  */
 @AutomaticFeature
-final class StableLambdaProxyNameFeature implements GraalFeature {
+final class StableLambdaProxyNameFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {

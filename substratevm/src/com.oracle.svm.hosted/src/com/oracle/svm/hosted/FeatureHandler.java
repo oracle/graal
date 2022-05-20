@@ -43,7 +43,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -79,10 +79,10 @@ public class FeatureHandler {
         }
     }
 
-    public void forEachGraalFeature(Consumer<GraalFeature> consumer) {
+    public void forEachGraalFeature(Consumer<InternalFeature> consumer) {
         for (Feature feature : featureInstances) {
-            if (feature instanceof GraalFeature) {
-                consumer.accept((GraalFeature) feature);
+            if (feature instanceof InternalFeature) {
+                consumer.accept((InternalFeature) feature);
             }
         }
     }
@@ -204,7 +204,7 @@ public class FeatureHandler {
         ClassLoaderSupport classLoaderSupport = ImageSingletons.lookup(ClassLoaderSupport.class);
         List<String> userEnabledFeatures = Options.userEnabledFeatures();
         return featureInstances.stream()
-                        .filter(f -> (!(f instanceof GraalFeature) || !((GraalFeature) f).isHidden()) &&
+                        .filter(f -> (!(f instanceof InternalFeature) || !((InternalFeature) f).isHidden()) &&
                                         (classLoaderSupport.isNativeImageClassLoader(f.getClass().getClassLoader()) || userEnabledFeatures.contains(f.getClass().getName())))
                         .collect(Collectors.toList());
     }

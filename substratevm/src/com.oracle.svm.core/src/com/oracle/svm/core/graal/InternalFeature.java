@@ -39,7 +39,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 
-public interface GraalFeature extends Feature {
+public interface InternalFeature extends Feature {
 
     /**
      * Called to register foreign calls.

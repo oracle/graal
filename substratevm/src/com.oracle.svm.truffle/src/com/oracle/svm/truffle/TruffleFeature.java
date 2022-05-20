@@ -161,7 +161,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Feature that enables compilation of Truffle ASTs to machine code. This feature requires
  * {@link SubstrateTruffleRuntime} to be set as {@link TruffleRuntime}.
  */
-public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
+public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature {
 
     @Override
     public String getURL() {

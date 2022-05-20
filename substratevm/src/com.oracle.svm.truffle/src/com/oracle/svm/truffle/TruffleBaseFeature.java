@@ -128,7 +128,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * {@link TruffleFeature}'s dependency), then {@link TruffleRuntime} <b>must</b> be set to the
  * {@link DefaultTruffleRuntime}.
  */
-public final class TruffleBaseFeature implements com.oracle.svm.core.graal.GraalFeature {
+public final class TruffleBaseFeature implements com.oracle.svm.core.graal.InternalFeature {
 
     @Override
     public String getURL() {
