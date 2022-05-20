@@ -480,5 +480,113 @@
                 "arch": "amd64"
             }
         ]
+    },
+    {
+        "name": "js-installable-svm-java11",
+        "core": false,
+        "jdk": "jdk_11",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "js-installable-svm-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "regex-installable-svm-java11",
+        "core": false,
+        "jdk": "jdk_11",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "regex-installable-svm-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64"
+            }
+        ]
     }
 ]
