@@ -1918,6 +1918,74 @@ public class HostAccessTest extends AbstractHostAccessTest {
         assertEquals(44, point.invokeMember("z").asInt());
     }
 
+    @FunctionalInterface
+    public interface LambdaInterface {
+        /** Not exported. */
+        default int w() {
+            return 41;
+        }
+
+        @Export
+        int x();
+
+        @Export
+        default int y() {
+            return 43;
+        }
+
+        @Export
+        default int z() {
+            return 44;
+        }
+    }
+
+    @FunctionalInterface
+    public interface LambdaInterface2 extends LambdaInterface {
+        @Export
+        @Override
+        int x();
+
+        /** Exported in {@link LambdaInterface} but not in {@link LambdaInterface2}. */
+        @Override
+        default int z() {
+            return 44;
+        }
+    }
+
+    @Test
+    public void testLambdaInterfaceMethodExportInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build());
+
+        LambdaInterface lambda = () -> 42;
+        Value point;
+        point = context.asValue(lambda);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        LambdaInterface2 lambda2 = () -> 42;
+        point = context.asValue(lambda2);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertFalse(point.canInvokeMember("z"));
+
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build());
+
+        point = context.asValue(lambda);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(lambda2);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+    }
+
     public static class MyClassLoader extends URLClassLoader {
         public MyClassLoader(URL[] urls) {
             super(urls);
