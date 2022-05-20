@@ -51,7 +51,7 @@ public class ContextInsensitiveFieldTypeFlow extends FieldTypeFlow {
          * objects as merged. The field sink type flow collects field concrete types, but it doesn't
          * need to track individual context-sensitive objects.
          */
-        return super.addState(bb, TypeState.forContextInsensitiveTypeState(bb, add));
+        return super.addState(bb, bb.analysisPolicy().forContextInsensitiveTypeState(bb, add));
     }
 
     @Override

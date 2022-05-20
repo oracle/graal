@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow.context.free;
+package com.oracle.graal.pointsto.typestate;
 
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 

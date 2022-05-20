@@ -201,7 +201,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
              * objects, so that the union operation doesn't merge the concrete objects with abstract
              * objects.
              */
-            TypeState cloneStateCopy = TypeState.forContextInsensitiveTypeState(bb, cloneState);
+            TypeState cloneStateCopy = bb.analysisPolicy().forContextInsensitiveTypeState(bb, cloneState);
             result = TypeState.forUnion(bb, result, cloneStateCopy);
         }
         return result;
