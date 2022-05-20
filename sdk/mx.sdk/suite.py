@@ -487,7 +487,6 @@ suite = {
             "bin/clang-rename*",
             "bin/clang-scan-deps*",
             "bin/diagtool*",
-            "bin/dsymutil*",
             "bin/git-clang-format",
             "bin/hmaptool",
             "bin/llvm-addr2line*",
