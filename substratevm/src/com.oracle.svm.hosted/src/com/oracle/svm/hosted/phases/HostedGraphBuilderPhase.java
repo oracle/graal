@@ -161,7 +161,8 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
     @Override
     public MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, JavaTypeProfile profile) {
         StaticAnalysisResults staticAnalysisResults = getMethod().getProfilingInfo();
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, staticAnalysisResults.getTypeProfile(bci()), staticAnalysisResults.getMethodProfile(bci()));
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp,
+                        staticAnalysisResults.getTypeProfile(bci()), staticAnalysisResults.getMethodProfile(bci()), staticAnalysisResults.getStaticTypeProfile(bci()));
     }
 
     @Override

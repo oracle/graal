@@ -108,7 +108,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     @Override
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null);
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {
