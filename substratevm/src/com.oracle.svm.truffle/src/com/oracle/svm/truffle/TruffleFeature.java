@@ -158,10 +158,20 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * Feature that enables compilation of Truffle AST to machine code. This feature requires
+ * Feature that enables compilation of Truffle ASTs to machine code. This feature requires
  * {@link SubstrateTruffleRuntime} to be set as {@link TruffleRuntime}.
  */
-public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
+public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature {
+
+    @Override
+    public String getURL() {
+        return "https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.truffle/src/com/oracle/svm/truffle/TruffleFeature.java";
+    }
+
+    @Override
+    public String getDescription() {
+        return "Enables compilation of Truffle ASTs to machine code";
+    }
 
     public static class Options {
         @Option(help = "Check that CompilerAsserts.neverPartOfCompilation is not reachable for runtime compilation")//

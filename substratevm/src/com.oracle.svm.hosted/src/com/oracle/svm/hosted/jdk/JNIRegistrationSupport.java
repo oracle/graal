@@ -60,7 +60,7 @@ import org.graalvm.nativeimage.impl.InternalPlatform;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
-public final class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
+public final class JNIRegistrationSupport extends JNIRegistrationUtil implements InternalFeature {
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;

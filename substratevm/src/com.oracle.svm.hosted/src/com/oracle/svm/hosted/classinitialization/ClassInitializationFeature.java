@@ -56,7 +56,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -70,7 +70,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 
 @AutomaticFeature
-public class ClassInitializationFeature implements GraalFeature {
+public class ClassInitializationFeature implements InternalFeature {
     private static final String NATIVE_IMAGE_CLASS_REASON = "Native Image classes are always initialized at build time";
 
     private ClassInitializationSupport classInitializationSupport;

@@ -46,7 +46,7 @@ import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.remset.CardTableBasedRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.NoRememberedSet;
 import com.oracle.svm.core.genscavenge.remset.RememberedSet;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.GCAllocationSupport;
@@ -60,7 +60,7 @@ import com.oracle.svm.core.jdk.management.ManagementFeature;
 import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticFeature
-class SerialGCFeature implements GraalFeature {
+class SerialGCFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.UseSerialGC.getValue();
