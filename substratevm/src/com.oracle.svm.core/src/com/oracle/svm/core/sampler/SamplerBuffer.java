@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,65 +22,79 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+
+package com.oracle.svm.core.sampler;
 
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 
 /**
- * A data structure that holds the mutable state of a {@link JfrNativeEventWriter}. Typically, it is
- * allocated on the stack.
+ * A {@link SamplerBuffer} is a block of native memory into which the results of stack walks are
+ * written.
  */
 @RawStructure
-public interface JfrNativeEventWriterData extends PointerBase {
-    /**
-     * Gets the JfrBuffer that data will be written to.
-     */
-    @RawField
-    JfrBuffer getJfrBuffer();
+interface SamplerBuffer extends PointerBase {
 
     /**
-     * Sets the JfrBuffer that data will be written to.
+     * Returns the buffer that is next in the {@link SamplerBufferStack}, otherwise null.
      */
     @RawField
-    void setJfrBuffer(JfrBuffer value);
+    SamplerBuffer getNext();
 
     /**
-     * Gets the start position for the current event write.
+     * Sets the successor to this buffer in the {@link SamplerBufferStack}.
      */
     @RawField
-    Pointer getStartPos();
+    void setNext(SamplerBuffer buffer);
 
     /**
-     * Sets the start position for the current event write.
+     * Returns the JFR id of the thread that owns this buffer.
      */
     @RawField
-    void setStartPos(Pointer value);
+    long getOwner();
 
     /**
-     * Gets the current position of the event write. This position is moved forward as data is
-     * written for an event
+     * Sets the JFR id of the thread that owns this buffer.
      */
     @RawField
-    Pointer getCurrentPos();
+    void setOwner(long threadId);
 
     /**
-     * Sets the current position of the event write.
+     * Returns the current position. Any data before this position is valid sample data.
      */
     @RawField
-    void setCurrentPos(Pointer value);
+    Pointer getPos();
 
     /**
-     * Returns the position where the buffer ends. Writing of data cannot exceed this position.
+     * Sets the current position.
      */
     @RawField
-    Pointer getEndPos();
+    void setPos(Pointer pos);
 
     /**
-     * Sets the position where the buffer ends.
+     * Returns the size of the buffer. This excludes the header of the buffer.
      */
     @RawField
-    void setEndPos(Pointer value);
+    UnsignedWord getSize();
+
+    /**
+     * Sets the size of the buffer.
+     */
+    @RawField
+    void setSize(UnsignedWord value);
+
+    /**
+     * Should this buffer be freed after processing the data in it.
+     */
+    @RawField
+    boolean getFreeable();
+
+    /**
+     * Sets the freeable status of the buffer.
+     */
+    @RawField
+    void setFreeable(boolean freeable);
 }
