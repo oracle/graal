@@ -122,22 +122,22 @@ suite = {
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "sha1" : "dfa3a1fbc55bf5db8c6e79fc0935ac7ab1202950",
-      "sourceSha1" : "21551c094193ab59d284b434c1e33a3ddf4b5c0e",
+      "sha1" : "9e7d3304c23f9ba5cb71915f7cce23231a57a445",
+      "sourceSha1" : "cc9684d401adeb1a90404a5d77fd38d348a41ec1",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "70.1",
+        "version" : "71.1",
       },
     },
     "ICU4J-CHARSET" : {
       "moduleName" : "com.ibm.icu.charset",
-      "sha1" : "9d220e65da007d8ed60cd7970a74d14a8205dfe7",
-      "sourceSha1" : "8f38201691b79d28e424daaa1c9a95039468e946",
+      "sha1" : "43a0c57f34daf0107810d5840a21f4e8a5ecfa5a",
+      "sourceSha1" : "9306ea1978df483a85d84f1fe61795f1e0786aec",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j-charset",
-        "version" : "70.1",
+        "version" : "71.1",
       },
     },
 
