@@ -24,11 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.espresso.EspressoLanguage;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -139,51 +135,34 @@ public interface ClassLoadingEnv extends LanguageAccess {
 
         @Override
         public boolean isLoaderBootOrPlatform(StaticObject loader) {
-            return StaticObject.isNull(loader);
+            if (StaticObject.isNull(loader)) {
+                return true;
+            }
+            Meta meta = loader.getKlass().getMeta();
+            if (meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader == null) {
+                return false;
+            }
+            return meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass());
         }
 
         @Override
         public int unboxInteger(StaticObject obj) {
-            assert !StaticObject.isNull(obj);
-            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Integer);
-            try {
-                return InteropLibrary.getUncached().asInt(obj);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere();
-            }
+            return obj.getKlass().getMeta().unboxInteger(obj);
         }
 
         @Override
         public float unboxFloat(StaticObject obj) {
-            assert !StaticObject.isNull(obj);
-            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Float);
-            try {
-                return InteropLibrary.getUncached().asFloat(obj);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere();
-            }
+            return obj.getKlass().getMeta().unboxFloat(obj);
         }
 
         @Override
         public long unboxLong(StaticObject obj) {
-            assert !StaticObject.isNull(obj);
-            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Long);
-            try {
-                return InteropLibrary.getUncached().asLong(obj);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere();
-            }
+            return obj.getKlass().getMeta().unboxLong(obj);
         }
 
         @Override
         public double unboxDouble(StaticObject obj) {
-            assert !StaticObject.isNull(obj);
-            assert obj.getKlass().getType().equals(Symbol.Type.java_lang_Double);
-            try {
-                return InteropLibrary.getUncached().asDouble(obj);
-            } catch (UnsupportedMessageException e) {
-                throw EspressoError.shouldNotReachHere();
-            }
+            return obj.getKlass().getMeta().unboxDouble(obj);
         }
     }
 }
