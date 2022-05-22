@@ -57,6 +57,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
+import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -1309,7 +1310,7 @@ public final class ClassfileParser {
     }
 
     private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
-        if (env.needsVerify(loader)) {
+        if (MethodVerifier.needsVerify(env.getLanguage(), loader)) {
             return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
         }
         stream.skip(attributeSize);
