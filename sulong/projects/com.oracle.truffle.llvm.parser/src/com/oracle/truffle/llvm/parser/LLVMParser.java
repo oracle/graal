@@ -59,6 +59,8 @@ import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -237,6 +239,7 @@ public final class LLVMParser {
                         elementPointerConstant.getType(), createElemPtrNode);
         runtime.getFileScope().register(expressionSymbol);
         runtime.getPublicFileScope().register(expressionSymbol);
+        final Type baseType = elementPointerConstant.getBasePointer().getType();
         if (expressionSymbol.getName().endsWith("Tq")) {
             // if symbolname ends with "Tq", it is a Swift function descriptor
             // https://github.com/apple/swift/blob/main/docs/ABI/Mangling.rst
@@ -244,15 +247,26 @@ public final class LLVMParser {
             // SwiftDemangler.MethodDescriptor md =
             // SwiftDemangler.decodeFunctionDescriptor(expressionSymbol.getName());
 
-            // TODO (pichristoph) check if source language is swift
             String methodName = expressionSymbol.getName().substring(0, expressionSymbol.getName().length() - 2);
             SymbolImpl[] indices = elementPointerConstant.getIndices();
             long[] indexVals = new long[indices.length];
-            for (int i = 0; i < indexVals.length; i++) {
+            for (int i = 0; i < indexVals.length - 1; i++) {
                 indexVals[i] = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indices[i]);
             }
-            // swift: last index has offset of 6 TODO pichristoph check why off by 6
-            indexVals[indexVals.length - 1] -= 6;
+
+            try {
+                long lastIndexVal = LLVMSymbolReadResolver.evaluateLongIntegerConstant(indices[indices.length - 1]);
+                StructureType structBase = (StructureType) ((PointerType) baseType).getPointeeType();
+                long offset = 0;
+                for (int i = 0; i < lastIndexVal; i++) {
+                    Type t = structBase.getElementType(i);
+                    offset += t.getSize(targetDataLayout);
+                }
+                // alignment: round up (ceiling): add 4, divide by 8
+                indexVals[indexVals.length - 1] = (offset + 4) / 8;
+            } catch (TypeOverflowException e) {
+                throw new IllegalArgumentException(e);
+            }
             runtime.getPublicFileScope().setSymbolOffsets(methodName, indexVals);
         }
     }
