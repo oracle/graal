@@ -105,6 +105,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         build_args=[
             '-H:-ParseRuntimeOptions',
             '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+            '--initialize-at-build-time=org.graalvm.polybench',
             '--tool:all',
         ],
         is_main_launcher=True,
