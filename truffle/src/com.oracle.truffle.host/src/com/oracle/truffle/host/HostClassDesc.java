@@ -373,7 +373,7 @@ final class HostClassDesc {
 
         private static Method findFunctionalInterfaceMethod(HostClassCache hostAccess, Class<?> clazz) {
             for (Class<?> iface : clazz.getInterfaces()) {
-                if (Modifier.isPublic(iface.getModifiers()) && iface.isAnnotationPresent(FunctionalInterface.class) && hostAccess.allowsImplementation(iface)) {
+                if (isClassAccessible(iface, hostAccess) && iface.isAnnotationPresent(FunctionalInterface.class) && hostAccess.allowsImplementation(iface)) {
                     for (Method m : iface.getMethods()) {
                         if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
                             return m;
