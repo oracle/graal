@@ -686,12 +686,14 @@ public class FlatNodeGenFactory {
                 if (field.getGetter() != null && field.getGetter().getModifiers().contains(Modifier.ABSTRACT)) {
                     CodeExecutableElement method = CodeExecutableElement.clone(field.getGetter());
                     method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
                     method.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end().end();
                     uncached.add(method);
                 }
                 if (field.isSettable()) {
                     CodeExecutableElement method = CodeExecutableElement.clone(field.getSetter());
                     method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
                     method.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end().end();
                     uncached.add(method);
                 }
