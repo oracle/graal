@@ -150,7 +150,7 @@ final class HostClassDesc {
             if (!Modifier.isInterface(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) {
                 Method implementableAbstractMethod = findFunctionalInterfaceMethod(hostAccess, type);
                 if (implementableAbstractMethod != null) {
-                    functionalInterfaceMethodImpl = lookupAbstractMethodImplementation(hostAccess, implementableAbstractMethod, methodMap);
+                    functionalInterfaceMethodImpl = lookupAbstractMethodImplementation(implementableAbstractMethod, methodMap);
                 }
             }
 
@@ -373,7 +373,7 @@ final class HostClassDesc {
 
         private static Method findFunctionalInterfaceMethod(HostClassCache hostAccess, Class<?> clazz) {
             for (Class<?> iface : clazz.getInterfaces()) {
-                if (isClassAccessible(iface, hostAccess) && iface.isAnnotationPresent(FunctionalInterface.class) && hostAccess.allowsImplementation(iface)) {
+                if (isClassAccessible(iface, hostAccess) && iface.isAnnotationPresent(FunctionalInterface.class)) {
                     for (Method m : iface.getMethods()) {
                         if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
                             return m;
@@ -389,7 +389,7 @@ final class HostClassDesc {
             return null;
         }
 
-        private static HostMethodDesc lookupAbstractMethodImplementation(HostClassCache hostAccess, Method abstractMethod, Map<String, HostMethodDesc> methodMap) {
+        private static HostMethodDesc lookupAbstractMethodImplementation(Method abstractMethod, Map<String, HostMethodDesc> methodMap) {
             HostMethodDesc accessibleMethodDesc = methodMap.get(abstractMethod.getName());
             if (accessibleMethodDesc != null) {
                 Class<?>[] searchTypes = abstractMethod.getParameterTypes();
@@ -420,8 +420,7 @@ final class HostClassDesc {
                     return new OverloadedMethod(candidates.toArray(new SingleMethod[candidates.size()]));
                 }
             }
-            boolean scoped = hostAccess.methodScoped(abstractMethod);
-            return SingleMethod.unreflect(abstractMethod, scoped);
+            return null;
         }
     }
 
