@@ -233,25 +233,48 @@ public class ExposeToGuestTest {
     @Test
     public void functionalInterfaceCall() throws Exception {
         HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build();
-        Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
-        Value readValue = context.eval("sl", "" +
-                        "function callFoo(x) {\n" +
-                        "  return x.foo(1);\n" +
-                        "}\n" +
-                        "function main() {\n" +
-                        "  return callFoo;\n" +
-                        "}\n");
-        FooInterface<Number> foo = (ignore) -> "functional foo";
-        Assert.assertEquals("functional foo", readValue.execute(foo).asString());
-        Assert.assertEquals("functional foo", context.asValue(foo).execute(1).asString());
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            Value readValue = context.eval("sl", "" +
+                            "function callFoo(x) {\n" +
+                            "  return x.foo(1);\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return callFoo;\n" +
+                            "}\n");
+            FooInterface<Number> foo = (ignore) -> "functional foo";
+            Assert.assertEquals("functional foo", readValue.execute(foo).asString());
+            Assert.assertEquals("functional foo", context.asValue(foo).execute(1).asString());
+        }
+    }
+
+    public static class ExportedFooInterfaceImpl implements FooInterface<Number> {
+        @HostAccess.Export
+        @Override
+        public Object foo(Number value) {
+            return "functional foo";
+        }
     }
 
     @Test
-    public void functionalInterfaceExecute() throws Exception {
+    public void functionalInterfaceCallNoInheritance() throws Exception {
         HostAccess hostAccess = HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build();
-        Context context = Context.newBuilder().allowHostAccess(hostAccess).build();
-        FooInterface<Number> foo = (ignore) -> "functional foo";
-        Assert.assertEquals("functional foo", context.asValue(foo).execute(1).asString());
+        try (Context context = Context.newBuilder().allowHostAccess(hostAccess).build()) {
+            Value readValue = context.eval("sl", "" +
+                            "function callFoo(x) {\n" +
+                            "  return x.foo(1);\n" +
+                            "}\n" +
+                            "function main() {\n" +
+                            "  return callFoo;\n" +
+                            "}\n");
+
+            FooInterface<Number> lambdaImpl = (ignore) -> "functional foo";
+            AbstractPolyglotTest.assertFails(() -> context.asValue(lambdaImpl).execute(1), UnsupportedOperationException.class);
+            AbstractPolyglotTest.assertFails(() -> readValue.execute(lambdaImpl), PolyglotException.class);
+
+            FooInterface<Number> exportedImpl = new ExportedFooInterfaceImpl();
+            Assert.assertEquals("functional foo", context.asValue(exportedImpl).execute(1).asString());
+            Assert.assertEquals("functional foo", readValue.execute(exportedImpl).asString());
+        }
     }
 
     @Test
