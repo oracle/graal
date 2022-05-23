@@ -70,8 +70,6 @@ public final class HostCompilerDirectives {
      * the compiler to invest extra effort into optimizing such methods. Language implementers are
      * advised to inspect the IR of the interpreter when using this.
      *
-     * @see BytecodeInterpreterSwitchBoundary to control the boundaries of inlining
-     *
      * @since 21.0
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -89,10 +87,13 @@ public final class HostCompilerDirectives {
      *
      * @see BytecodeInterpreterSwitch to annotate the root method of a bytecode interpreter
      *
+     * @deprecated use is no longer needed. boundaries for {@link BytecodeInterpreterSwitch} are
+     *             determined automatically. To migrate remove all usages.
      * @since 21.0
      */
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+    @Deprecated(since = "22.2")
     public @interface BytecodeInterpreterSwitchBoundary {
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot;
+package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import org.graalvm.compiler.core.Instrumentation;
-import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
-import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
@@ -34,31 +33,18 @@ import org.graalvm.compiler.serviceprovider.ServiceProvider;
  * Factory for creating the default configuration for the community edition of Graal.
  */
 @ServiceProvider(CompilerConfigurationFactory.class)
-public class CommunityCompilerConfigurationFactory extends CompilerConfigurationFactory {
+public class TruffleCommunityCompilerConfigurationFactory extends CommunityCompilerConfigurationFactory {
 
-    public static final String NAME = "community";
+    public static final int AUTO_SELECTION_PRIORITY = 3;
 
-    /**
-     * Must be greater than {@link EconomyCompilerConfigurationFactory#AUTO_SELECTION_PRIORITY}.
-     */
-    public static final int AUTO_SELECTION_PRIORITY = 2;
-
-    public CommunityCompilerConfigurationFactory() {
-        this(AUTO_SELECTION_PRIORITY);
-    }
-
-    protected CommunityCompilerConfigurationFactory(int priority) {
-        super(NAME, priority);
-        assert priority > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
+    public TruffleCommunityCompilerConfigurationFactory() {
+        super(AUTO_SELECTION_PRIORITY);
+        assert AUTO_SELECTION_PRIORITY > CommunityCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
     }
 
     @Override
     public CompilerConfiguration createCompilerConfiguration() {
-        return new CommunityCompilerConfiguration();
+        return new TruffleCommunityCompilerConfiguration();
     }
 
-    @Override
-    public final Instrumentation createInstrumentation(OptionValues options) {
-        return new DefaultInstrumentation();
-    }
 }

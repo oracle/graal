@@ -145,6 +145,7 @@ intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary
  outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
 intf java.lang.annotation.Annotation

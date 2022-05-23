@@ -55,11 +55,11 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -71,7 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * method above the limit. On the other hand, the inlining depth is generous because we do do not
  * need to limit it. Note that more experimentation is necessary to come up with the optimal
  * configuration.
- * 
+ *
  * Important: the implementation details of this class are publicly observable API. Since
  * {@link java.lang.reflect.Method} constants can be produced by inlining lookup methods with
  * constant arguments, reducing inlining can break customer code. This means we can never reduce the
@@ -90,6 +90,8 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         @Option(help = "Maximum number of invokes for method inlined before static analysis")//
         public static final HostedOptionKey<Integer> InlineBeforeAnalysisAllowedDepth = new HostedOptionKey<>(20);
     }
+
+    private final SVMHost hostVM;
 
     private final int allowedNodes = Options.InlineBeforeAnalysisAllowedNodes.getValue();
     private final int allowedInvokes = Options.InlineBeforeAnalysisAllowedInvokes.getValue();
@@ -111,6 +113,10 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
         }
     }
 
+    public InlineBeforeAnalysisPolicyImpl(SVMHost hostVM) {
+        this.hostVM = hostVM;
+    }
+
     protected boolean alwaysInlineInvoke(@SuppressWarnings("unused") AnalysisMetaAccess metaAccess, @SuppressWarnings("unused") ResolvedJavaMethod method) {
         return false;
     }
@@ -130,10 +136,7 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
 
         AnalysisMethod caller = (AnalysisMethod) b.getMethod();
         AnalysisMethod callee = (AnalysisMethod) method;
-        if (!callee.canBeInlined()) {
-            return false;
-        }
-        if (GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+        if (hostVM.neverInlineTrivial(caller, callee)) {
             return false;
         }
         if (GuardedAnnotationAccess.isAnnotationPresent(callee, Fold.class) || GuardedAnnotationAccess.isAnnotationPresent(callee, NodeIntrinsic.class)) {
@@ -212,12 +215,12 @@ public class InlineBeforeAnalysisPolicyImpl extends InlineBeforeAnalysisPolicy<I
             /*
              * We never allow to inline any kind of allocations, because the machine code size is
              * large.
-             * 
+             *
              * With one important exception: we allow (and do not even count) arrays allocated with
              * length 0. Such allocations occur when a method has a Java vararg parameter but the
              * caller does not provide any vararg. Without this exception, important vararg usages
              * like Class.getDeclaredConstructor would not be considered for inlining.
-             * 
+             *
              * Note that we are during graph decoding, so usages of the node are not decoded yet. So
              * we cannot base the decision on a certain usage pattern of the allocation.
              */

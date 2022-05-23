@@ -52,7 +52,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -102,7 +101,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     private static final int DEBUG_TEAR_DOWN_TIMEOUT = 2_000;
     private static final int PRODUCTION_TEAR_DOWN_TIMEOUT = 10_000;
 
-    private CallMethods hostedCallMethods;
+    private KnownMethods hostedCallMethods;
     private volatile BackgroundCompileQueue compileQueue;
     private volatile boolean initialized;
     private volatile Boolean profilingEnabled;
@@ -168,7 +167,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     public ResolvedJavaMethod[] getAnyFrameMethod() {
-        return callMethods.anyFrameMethod;
+        return knownMethods.anyFrameMethod;
     }
 
     @Override
@@ -193,11 +192,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return (SubstrateTruffleCompiler) truffleCompiler;
     }
 
-    @Override
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void lookupCallMethods(MetaAccessProvider metaAccess) {
-        super.lookupCallMethods(metaAccess);
-        hostedCallMethods = CallMethods.lookup(GraalAccess.getOriginalProviders().getMetaAccess());
+    public void initializeHostedKnownMethods(MetaAccessProvider hostedMetaAccess) {
+        hostedCallMethods = new KnownMethods(hostedMetaAccess);
     }
 
     @Override
@@ -208,11 +205,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    protected CallMethods getCallMethods() {
+    public KnownMethods getKnownMethods() {
         if (SubstrateUtil.HOSTED) {
             return hostedCallMethods;
         } else {
-            return callMethods;
+            return knownMethods;
         }
     }
 
@@ -245,7 +242,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     @Override
     public void notifyTransferToInterpreter() {
-        CompilerAsserts.neverPartOfCompilation();
         /*
          * Nothing to do here. We print the stack trace in the Deoptimizer when the actual
          * deoptimization happened.

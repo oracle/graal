@@ -386,17 +386,23 @@ public abstract class RootNode extends ExecutableNode {
         // Check isLoaded to avoid returning a CallTarget before notifyOnLoad() is done
         if (target == null || !NodeAccessor.RUNTIME.isLoaded(target)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ReentrantLock l = getLazyLock();
-            l.lock();
-            try {
-                target = this.callTarget;
-                if (target == null) {
-                    target = NodeAccessor.RUNTIME.newCallTarget(null, this);
-                    this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
-                }
-            } finally {
-                l.unlock();
+            target = initializeTarget();
+        }
+        return target;
+    }
+
+    private RootCallTarget initializeTarget() {
+        RootCallTarget target;
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            target = this.callTarget;
+            if (target == null) {
+                target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
             }
+        } finally {
+            l.unlock();
         }
         return target;
     }

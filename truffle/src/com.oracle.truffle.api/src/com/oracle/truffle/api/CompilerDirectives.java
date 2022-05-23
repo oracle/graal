@@ -74,9 +74,11 @@ public final class CompilerDirectives {
      * @since 0.8 or earlier
      */
     public static void transferToInterpreter() {
-        if (inInterpreter()) {
-            Truffle.getRuntime().notifyTransferToInterpreter();
-        }
+        /*
+         * We unconditionally call into the runtime as the runtime needs to know where these
+         * transferToInterpreter calls happen e.g. for analysis during host compilation.
+         */
+        Truffle.getRuntime().notifyTransferToInterpreter();
     }
 
     /**
@@ -86,9 +88,11 @@ public final class CompilerDirectives {
      * @since 0.8 or earlier
      */
     public static void transferToInterpreterAndInvalidate() {
-        if (inInterpreter()) {
-            Truffle.getRuntime().notifyTransferToInterpreter();
-        }
+        /*
+         * We unconditionally call into the runtime as the runtime needs to know where these
+         * transferToInterpreter calls happen e.g. for analysis during host compilation.
+         */
+        Truffle.getRuntime().notifyTransferToInterpreter();
     }
 
     /**

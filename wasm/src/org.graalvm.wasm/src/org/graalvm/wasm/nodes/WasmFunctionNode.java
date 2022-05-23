@@ -45,9 +45,9 @@ import static org.graalvm.wasm.BinaryStreamParser.value;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_COUNT;
@@ -58,17 +58,17 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_OFFSET;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_SIZE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_NODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_PROFILE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_RETURN_LENGTH_SHIFT;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_STACK_SIZE_MASK;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
@@ -268,8 +268,6 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-import com.oracle.truffle.api.nodes.LoopNode;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -291,11 +289,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
@@ -427,7 +426,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @BytecodeInterpreterSwitch
-    @BytecodeInterpreterSwitchBoundary
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings("UnusedAssignment")
     public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startExtraOffset, int startStackPointer) {
@@ -1502,7 +1500,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    @BytecodeInterpreterSwitchBoundary
     private Object executeDirectCall(int callNodeIndex, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
@@ -1534,7 +1531,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return true;
     }
 
-    @BytecodeInterpreterSwitchBoundary
     private Object executeIndirectCallNode(int callNodeIndex, CallTarget target, Object[] args) {
         WasmIndirectCallNode callNode = (WasmIndirectCallNode) callNodes[callNodeIndex];
         return callNode.execute(target, args);

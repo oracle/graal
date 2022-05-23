@@ -335,6 +335,10 @@ public final class GraalFeature implements Feature {
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
     }
 
+    public Map<AnalysisMethod, CallTreeNode> getRuntimeCompiledMethods() {
+        return methods;
+    }
+
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess c) {
         DebugContext debug = DebugContext.forCurrentThread();
@@ -527,7 +531,11 @@ public final class GraalFeature implements Feature {
                 parse = true;
                 graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
                                 .method(method)
-                                .recordInlinedMethods(false)
+                                /*
+                                 * Needed for computation of the list of all runtime compilable
+                                 * methods in TruffleFeature.
+                                 */
+                                .recordInlinedMethods(true)
                                 .build();
             }
 

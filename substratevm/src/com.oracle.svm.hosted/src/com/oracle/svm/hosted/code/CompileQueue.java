@@ -142,7 +142,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.StubCallingConvention;
@@ -674,7 +673,7 @@ public class CompileQueue {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            if (makeInlineDecision((HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
+            if (makeInlineDecision((HostedMethod) b.getMethod(), (HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
                 inlinedDuringDecoding = true;
                 return InlineInfo.createStandardInlineInfo(method);
             } else {
@@ -710,7 +709,7 @@ public class CompileQueue {
          */
         boolean inliningPotential = false;
         for (var invokeInfo : method.compilationInfo.getCompilationGraph().getInvokeInfos()) {
-            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(invokeInfo.getTargetMethod())) {
+            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(method, invokeInfo.getTargetMethod())) {
                 inliningPotential = true;
                 break;
             }
@@ -718,7 +717,6 @@ public class CompileQueue {
         if (!inliningPotential) {
             return;
         }
-
         var providers = runtimeConfig.lookupBackend(method).getProviders();
         var graph = method.compilationInfo.createGraph(debug, CompilationIdentifier.INVALID_COMPILATION_ID, false);
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
@@ -743,8 +741,8 @@ public class CompileQueue {
         }
     }
 
-    private boolean makeInlineDecision(HostedMethod callee) {
-        if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
+    private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
+        if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
             return false;
         }
         if (callee.shouldBeInlined()) {
