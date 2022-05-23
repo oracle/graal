@@ -62,13 +62,14 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
     // va_list is implemented.
 
     @Override
-    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
-        return new LLVMLinuxAarch64VaListStorage(vaListStackPtr);
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType) {
+        return new LLVMLinuxAarch64VaListStorage(vaListStackPtr, vaListType);
     }
 
     @Override
-    public Type getVAListType() {
-        return LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE;
+    public Type getGlobalVAListType(Type type) {
+        return LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_14.equals(type) ? LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_14
+                        : LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_12.equals(type) ? LLVMLinuxAarch64VaListStorage.VA_LIST_TYPE_12 : null;
     }
 
     @Override

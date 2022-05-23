@@ -70,7 +70,7 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
     }
 
     @Override
-    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType) {
         return LLVMMaybeVaPointer.createWithAlloca(vaListStackPtr, allocaNode);
     }
 
@@ -80,8 +80,8 @@ final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<Windo
     }
 
     @Override
-    public Type getVAListType() {
-        return PointerType.I8;
+    public Type getGlobalVAListType(Type type) {
+        return PointerType.I8.equals(type) ? PointerType.I8 : null;
     }
 
     @Override
