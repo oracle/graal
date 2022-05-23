@@ -74,9 +74,9 @@ public final class NativeIsolateThread {
         decrementAttached();
     }
 
-    void enter() {
+    boolean enter() {
         assert verifyThread();
-        incrementAttached();
+        return incrementAttached();
     }
 
     boolean invalidate() {
@@ -118,14 +118,14 @@ public final class NativeIsolateThread {
         return true;
     }
 
-    private void incrementAttached() {
+    private boolean incrementAttached() {
         while (true) {
             int value = enteredCount.get();
             if (value == CLOSED) {
                 if (executesShutDown) {
-                    return;
+                    return true;
                 } else {
-                    throw isolate.throwClosedException();
+                    return false;
                 }
             }
             int closing = (value & CLOSING_MASK);
@@ -134,6 +134,7 @@ public final class NativeIsolateThread {
                 break;
             }
         }
+        return true;
     }
 
     private void decrementAttached() {
