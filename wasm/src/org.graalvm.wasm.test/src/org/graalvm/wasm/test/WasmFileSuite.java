@@ -290,7 +290,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option("wasm.StoreConstantsPolicy", WasmTestOptions.STORE_CONSTANTS_POLICY);
                 System.out.println("wasm.StoreConstantsPolicy: " + WasmTestOptions.STORE_CONSTANTS_POLICY);
             }
-
+            contextBuilder.option("wasm.KeepDataSections", "true");
             contextBuilder.option("wasm.Builtins", includedExternalModules());
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
