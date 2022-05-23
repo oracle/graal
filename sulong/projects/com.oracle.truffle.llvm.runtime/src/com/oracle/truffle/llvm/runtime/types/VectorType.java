@@ -103,7 +103,7 @@ public final class VectorType extends AggregateType {
         // See https://llvm.org/docs/LangRef.html#vector-type
         long bitSize = getElementType().getBitSize();
         long vecBitSize = multiplyUnsignedExact(bitSize, Integer.toUnsignedLong(length));
-        long size = vecBitSize / 8;
+        long size = vecBitSize / Byte.SIZE;
         if (vecBitSize % Byte.SIZE != 0) {
             size += 1;
         }

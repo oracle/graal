@@ -54,7 +54,6 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "trace");
 
     private static final String BC_O0 = "bitcode-O0.bc";
-    // private static final String BC_O1 = "bitcode-O1.bc";
     private static final String BC_MEM2REG = "bitcode-O0-MEM2REG.bc";
 
     public LLVMDebugTest(String testName, String configuration, String exclusionReasion) {
