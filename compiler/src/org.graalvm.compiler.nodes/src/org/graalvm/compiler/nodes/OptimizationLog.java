@@ -24,18 +24,6 @@
  */
 package org.graalvm.compiler.nodes;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.debug.CompilationListener;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.json.JSONFormatter;
-import org.graalvm.compiler.serviceprovider.GraalServices;
-
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -45,6 +33,22 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.debug.CompilationListener;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
+import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.json.JSONFormatter;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Unifies counting, logging and dumping in optimization phases. If enabled, collects info about optimizations performed
@@ -204,11 +208,37 @@ public class OptimizationLog implements CompilationListener {
         }
     }
 
+    /**
+     * Keeps track of virtualized allocations and materializations during partial escape analysis.
+     */
+    public static class PartialEscapeLog {
+        private final EconomicMap<VirtualObjectNode, Integer> virtualNodes = EconomicMap.create(Equivalence.IDENTITY);
+
+        /**
+         * Notifies the log that an allocation was virtualized.
+         * 
+         * @param virtualObjectNode the virtualized node
+         */
+        public void allocationRemoved(VirtualObjectNode virtualObjectNode) {
+            virtualNodes.put(virtualObjectNode, 0);
+        }
+
+        /**
+         * Notifies the log that an object was materialized.
+         * 
+         * @param virtualObjectNode the object that was materialized
+         */
+        public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
+            virtualNodes.put(virtualObjectNode, virtualNodes.get(virtualObjectNode) + 1);
+        }
+    }
+
     private static final OptimizationEntryEmpty OPTIMIZATION_ENTRY_EMPTY = new OptimizationEntryEmpty();
     private final StructuredGraph graph;
     private static final AtomicBoolean nodeSourcePositionWarningEmitted = new AtomicBoolean();
     private final String compilationId;
     private final boolean optimizationLogEnabled;
+    private PartialEscapeLog partialEscapeLog = null;
 
     /**
      * The most recently opened phase that was not closed. Initially, this is the root phase. If
@@ -325,6 +355,44 @@ public class OptimizationLog implements CompilationListener {
             return className.substring(0, className.length() - phaseSuffix.length());
         }
         return className;
+    }
+
+    /**
+     * Notifies the log that virtual escape analysis will be entered. Prepares an object that keeps
+     * track of virtualized allocations.
+     */
+    public void enterPartialEscapeAnalysis() {
+        assert partialEscapeLog == null;
+        if (optimizationLogEnabled) {
+            partialEscapeLog = new PartialEscapeLog();
+        }
+    }
+
+    /**
+     * Notifies the log that virtual escape analysis has ended. Reports all virtualized allocations.
+     */
+    public void exitPartialEscapeAnalysis() {
+        if (optimizationLogEnabled) {
+            assert partialEscapeLog != null;
+            MapCursor<VirtualObjectNode, Integer> cursor = partialEscapeLog.virtualNodes.getEntries();
+            while (cursor.advance()) {
+                report(PartialEscapeLog.class, "AllocationVirtualized", OptimizationLogUtil.findBCI(cursor.getKey()))
+                                .setProperty("materializations", cursor.getValue());
+            }
+            partialEscapeLog = null;
+        }
+    }
+
+    /**
+     * Gets the log that keeps track of virtualized allocations during partial escape analysis. Must
+     * be called between {@link #enterPartialEscapeAnalysis()} and
+     * {@link #exitPartialEscapeAnalysis()}.
+     * 
+     * @return the log that keeps track of virtualized allocations during partial escape analysis
+     */
+    public PartialEscapeLog getPartialEscapeLog() {
+        assert partialEscapeLog != null;
+        return partialEscapeLog;
     }
 
     /**
