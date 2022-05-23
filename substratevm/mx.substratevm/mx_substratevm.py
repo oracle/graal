@@ -1172,7 +1172,7 @@ def run_helloworld_command(args, config, command_name):
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
-    parser.add_argument(all_args[2], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
@@ -1195,7 +1195,7 @@ def debuginfotest(args, config=None):
     all_args = ['--output-path', '--build-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
-    parser.add_argument(all_args[1], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]
