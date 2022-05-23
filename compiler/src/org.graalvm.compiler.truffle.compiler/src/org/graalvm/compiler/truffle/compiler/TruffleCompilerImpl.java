@@ -367,7 +367,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         Throwable error = e;
         boolean graphTooBig = false;
         if (error instanceof GraphTooBigBailoutException) {
-            error = error.getCause();
+            Throwable cause = error.getCause();
+            if (cause != null) {
+                error = cause;
+            }
             graphTooBig = true;
         }
         BailoutException bailout = error instanceof BailoutException ? (BailoutException) error : null;

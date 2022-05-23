@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package org.graalvm.compiler.debug;
 
-import org.graalvm.compiler.debug.PerformanceIssueBailout;
-
-public class PermanentBailoutException extends GraalBailoutException implements PerformanceIssueBailout {
-
-    private static final long serialVersionUID = -2683649650135362549L;
-
-    public PermanentBailoutException(String format, Object... args) {
-        super(true, format, args);
-    }
-
-    public PermanentBailoutException(String reason) {
-        super(true, "%s", reason);
-    }
-
-    public PermanentBailoutException(Throwable cause, String format, Object... args) {
-        super(cause, format, args);
+/**
+ * This interface marks bailout exceptions which will significantly affect performance. Those will
+ * be intercepted even if {@link DebugOptions#InterceptBailout} is false.
+ */
+public interface PerformanceIssueBailout {
+    default boolean isPerformanceIssue() {
+        return true;
     }
 }
