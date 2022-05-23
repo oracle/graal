@@ -423,6 +423,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
+    @SuppressWarnings("unused")
     protected boolean shouldMaterializeNonVirtualizable(BlockT state, int id, FixedNode insertBefore) {
         return true;
     }
