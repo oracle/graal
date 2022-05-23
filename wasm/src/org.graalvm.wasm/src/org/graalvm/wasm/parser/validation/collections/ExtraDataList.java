@@ -63,21 +63,23 @@ public class ExtraDataList implements ExtraDataFormatHelper {
     private static final int[] EMPTY_INT_ARRAY = new int[0];
 
     private final ArrayList<ExtraDataEntry> entries;
-    private final IntArrayList entrySizes;
+    private final ArrayList<BranchTarget> branchEntries;
+    private final IntArrayList entryExtraDataOffsets;
 
     private int size;
     private boolean extend;
 
     public ExtraDataList() {
         this.entries = new ArrayList<>(INITIAL_EXTRA_DATA_SIZE);
-        this.entrySizes = new IntArrayList();
+        this.branchEntries = new ArrayList<>(0);
+        this.entryExtraDataOffsets = new IntArrayList();
         this.size = 0;
         this.extend = false;
     }
 
     private void addEntry(ExtraDataEntry entry) {
         entries.add(entry);
-        entrySizes.add(entry.length());
+        entryExtraDataOffsets.add(size);
         size += entry.length();
     }
 
@@ -87,32 +89,39 @@ public class ExtraDataList implements ExtraDataFormatHelper {
     }
 
     public BranchTarget addIf(int offset) {
-        IfEntry entry = new IfEntry(offset, size, this);
+        IfEntry entry = new IfEntry(this, offset, size, entries.size());
         addEntry(entry);
+        branchEntries.add(entry);
         return entry;
     }
 
     public BranchTarget addElse(int offset) {
-        ElseEntry entry = new ElseEntry(offset, size, this);
+        ElseEntry entry = new ElseEntry(this, offset, size, entries.size());
         addEntry(entry);
+        branchEntries.add(entry);
         return entry;
     }
 
     public BranchTargetWithStackChange addConditionalBranch(int offset) {
-        ConditionalBranchEntry entry = new ConditionalBranchEntry(offset, size, this);
+        ConditionalBranchEntry entry = new ConditionalBranchEntry(this, offset, size, entries.size());
         addEntry(entry);
+        branchEntries.add(entry);
         return entry;
     }
 
     public BranchTargetWithStackChange addUnconditionalBranch(int offset) {
-        UnconditionalBranchEntry entry = new UnconditionalBranchEntry(offset, size, this);
+        UnconditionalBranchEntry entry = new UnconditionalBranchEntry(this, offset, size, entries.size());
         addEntry(entry);
+        branchEntries.add(entry);
         return entry;
     }
 
-    public BranchTableEntry addBranchTable(int offset, int size) {
-        BranchTableEntry entry = new BranchTableEntry(offset, this.size, size, this);
+    public BranchTableEntry addBranchTable(int elementCount, int offset) {
+        BranchTableEntry entry = new BranchTableEntry(elementCount, this, offset, size, entries.size());
         addEntry(entry);
+        for (int i = 0; i < entry.size(); i++) {
+            branchEntries.add(entry.item(i));
+        }
         return entry;
     }
 
@@ -144,34 +153,28 @@ public class ExtraDataList implements ExtraDataFormatHelper {
         } else {
             int dataSize = size;
             if (extend) {
-                int[] sizes = entrySizes.toArray();
+                int[] offsets = entryExtraDataOffsets.toArray();
                 // Every size extensions can cause other size extensions (extra data displacement
                 // changes). Therefore, we can only stop if no more extensions happened.
                 while (extend) {
                     extend = false;
-                    // Sync the sizes array with the new sizes of the entries for displacement
+                    // Sync the offsets array with the new sizes of the entries for displacement
                     // calculations.
                     dataSize = 0;
                     for (int i = 0; i < entries.size(); i++) {
                         ExtraDataEntry entry = entries.get(i);
                         final int s = entry.length();
+                        offsets[i] = dataSize;
                         dataSize += s;
-                        sizes[i] = s;
                     }
                     // Update extra data displacements caused by entry size changes.
-                    for (int i = 0; i < entries.size(); i++) {
-                        ExtraDataEntry entry = entries.get(i);
-                        if (entry instanceof BranchTarget) {
-                            BranchTarget branchTargetEntry = (BranchTarget) entry;
-                            branchTargetEntry.updateExtraDataDisplacement(distanceBetween(sizes, i, branchTargetEntry.extraDataTargetIndex()));
+                    for (BranchTarget b : branchEntries) {
+                        int targetIndex = b.extraDataTargetIndex();
+                        int targetOffset = dataSize;
+                        if (targetIndex < offsets.length) {
+                            targetOffset = offsets[targetIndex];
                         }
-                        if (entry instanceof BranchTableEntry) {
-                            BranchTableEntry branchTable = (BranchTableEntry) entry;
-                            for (int j = 0; j < branchTable.size(); j++) {
-                                BranchTargetWithStackChange branchTableEntry = branchTable.item(j);
-                                branchTableEntry.updateExtraDataDisplacement(distanceBetween(sizes, i, branchTableEntry.extraDataTargetIndex()));
-                            }
-                        }
+                        b.updateExtraDataDisplacement(offsets[b.extraDataIndex()], targetOffset);
                     }
                 }
             }
@@ -182,19 +185,5 @@ public class ExtraDataList implements ExtraDataFormatHelper {
             }
             return data;
         }
-    }
-
-    private static int distanceBetween(int[] sizes, int startIndex, int endIndex) {
-        int distance = 0;
-        if (endIndex > startIndex) {
-            for (int i = startIndex; i < endIndex; i++) {
-                distance += sizes[i];
-            }
-        } else {
-            for (int i = endIndex; i < startIndex; i++) {
-                distance += sizes[i];
-            }
-        }
-        return distance;
     }
 }

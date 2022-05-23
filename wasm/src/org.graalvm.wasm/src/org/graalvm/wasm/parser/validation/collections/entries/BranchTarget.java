@@ -52,17 +52,21 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 public abstract class BranchTarget extends ExtraDataEntry {
     private final int byteCodeOffset;
     private final int extraDataOffset;
+
+    private final int extraDataIndex;
+
     private int byteCodeDisplacement;
     private int extraDataDisplacement;
     private int extraDataTargetIndex;
 
-    private boolean compactExtraDataDisplacement;
+    private boolean compactExtraDataTarget;
 
-    protected BranchTarget(int byteCodeOffset, int extraDataOffset, ExtraDataFormatHelper formatHelper) {
+    protected BranchTarget(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
         super(formatHelper);
+        this.compactExtraDataTarget = true;
         this.byteCodeOffset = byteCodeOffset;
         this.extraDataOffset = extraDataOffset;
-        this.compactExtraDataDisplacement = true;
+        this.extraDataIndex = extraDataIndex;
     }
 
     /**
@@ -73,22 +77,20 @@ public abstract class BranchTarget extends ExtraDataEntry {
      * @param extraDataTargetIndex The target index in the extra data list
      */
     public void setTargetInfo(int byteCodeTarget, int extraDataTarget, int extraDataTargetIndex) {
-        try {
-            this.byteCodeDisplacement = Math.subtractExact(byteCodeTarget, byteCodeOffset);
-            this.extraDataDisplacement = Math.subtractExact(extraDataTarget, extraDataOffset);
-        } catch (ArithmeticException e) {
-            throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
-        }
+        this.byteCodeDisplacement = byteCodeTarget - byteCodeOffset;
+        this.extraDataDisplacement = extraDataTarget - extraDataOffset;
         this.extraDataTargetIndex = extraDataTargetIndex;
-        final boolean compact = ExtraDataUtil.areCompactSignedShortValuesWithIndicator(extraDataDisplacement, byteCodeDisplacement);
-        if (!compact) {
+        if (ExtraDataUtil.exceedsSignedShortValueWithIndicator(this.extraDataDisplacement) || ExtraDataUtil.exceedsSignedShortValue(this.byteCodeDisplacement)) {
+            if (ExtraDataUtil.exceedsSignedIntValueWithIndicator(this.extraDataDisplacement)) {
+                throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
+            }
             extendFormat();
-            ExtraDataUtil.checkRepresentableSignedValueWithIndicator(extraDataDisplacement);
+            this.compactExtraDataTarget = false;
         }
-        this.compactExtraDataDisplacement = compact;
     }
 
     protected int compactByteCodeDisplacement() {
+        // Needed to correctly convert negative values
         return Short.toUnsignedInt((short) byteCodeDisplacement);
     }
 
@@ -97,6 +99,7 @@ public abstract class BranchTarget extends ExtraDataEntry {
     }
 
     protected int compactExtraDataDisplacement() {
+        // Needed to correctly convert negative values
         return Short.toUnsignedInt((short) extraDataDisplacement);
     }
 
@@ -111,13 +114,18 @@ public abstract class BranchTarget extends ExtraDataEntry {
         return extraDataTargetIndex;
     }
 
-    public void updateExtraDataDisplacement(int extraDataDisplacement) {
-        this.extraDataDisplacement = extraDataDisplacement;
-        final boolean compact = ExtraDataUtil.isCompactSignedShortValueWithIndicator(extraDataDisplacement);
-        if (compactExtraDataDisplacement != compact) {
-            compactExtraDataDisplacement = compact;
+    public int extraDataIndex() {
+        return extraDataIndex;
+    }
+
+    public void updateExtraDataDisplacement(int offset, int targetOffset) {
+        extraDataDisplacement = targetOffset - offset;
+        if (compactExtraDataTarget && ExtraDataUtil.exceedsSignedShortValueWithIndicator(extraDataDisplacement)) {
+            if (ExtraDataUtil.exceedsSignedIntValueWithIndicator(extraDataDisplacement)) {
+                throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
+            }
             extendFormat();
+            compactExtraDataTarget = false;
         }
-        ExtraDataUtil.checkRepresentableSignedValueWithIndicator(extraDataDisplacement);
     }
 }

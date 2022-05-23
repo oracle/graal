@@ -60,8 +60,8 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * </code>
  */
 public class ConditionalBranchEntry extends BranchTargetWithStackChange {
-    public ConditionalBranchEntry(int byteCodeOffset, int extraDataOffset, ExtraDataFormatHelper formatHelper) {
-        super(byteCodeOffset, extraDataOffset, formatHelper);
+    public ConditionalBranchEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
+        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
     }
 
     @Override

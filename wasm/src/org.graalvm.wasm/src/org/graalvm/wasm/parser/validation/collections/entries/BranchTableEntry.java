@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation.collections.entries;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
 import org.graalvm.wasm.util.ExtraDataUtil;
 
@@ -62,15 +64,17 @@ import org.graalvm.wasm.util.ExtraDataUtil;
 public class BranchTableEntry extends ExtraDataEntry implements ExtraDataFormatHelper {
     private final ConditionalBranchEntry[] items;
 
-    public BranchTableEntry(int byteCodeOffset, int extraDataOffset, int size, ExtraDataFormatHelper formatHelper) {
+    public BranchTableEntry(int elementCount, ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
         super(formatHelper);
-        if (!ExtraDataUtil.isCompactUnsignedShortValueWithIndicator(size)) {
+        if (ExtraDataUtil.exceedsUnsignedShortValueWithIndicator(elementCount)) {
+            if (ExtraDataUtil.exceedsUnsignedIntValueWithIndicator(elementCount)) {
+                throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
+            }
             extendFormat();
-            ExtraDataUtil.checkRepresentableUnsignedValueWithIndicator(size);
         }
-        this.items = new ConditionalBranchEntry[size];
-        for (int i = 0; i < size; i++) {
-            this.items[i] = new ConditionalBranchEntry(byteCodeOffset, extraDataOffset, this);
+        this.items = new ConditionalBranchEntry[elementCount];
+        for (int i = 0; i < elementCount; i++) {
+            this.items[i] = new ConditionalBranchEntry(this, byteCodeOffset, extraDataOffset, extraDataIndex);
         }
     }
 

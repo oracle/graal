@@ -347,7 +347,7 @@ public class ParserState {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
         byte[] branchLabelReturnTypes = frame.labelTypes();
-        BranchTableEntry branchTable = extraData.addBranchTable(offset, branchLabels.length);
+        BranchTableEntry branchTable = extraData.addBranchTable(branchLabels.length, offset);
         for (int i = 0; i < branchLabels.length; i++) {
             int otherBranchLabel = branchLabels[i];
             checkLabelExists(otherBranchLabel);

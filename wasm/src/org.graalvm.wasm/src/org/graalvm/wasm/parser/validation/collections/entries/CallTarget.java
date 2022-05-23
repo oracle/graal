@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation.collections.entries;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
 import org.graalvm.wasm.util.ExtraDataUtil;
 
@@ -53,9 +55,11 @@ public abstract class CallTarget extends ExtraDataEntry {
     protected CallTarget(int nodeIndex, ExtraDataFormatHelper formatHelper) {
         super(formatHelper);
         this.nodeIndex = nodeIndex;
-        if (!ExtraDataUtil.isCompactUnsignedShortValueWithIndicator(nodeIndex)) {
+        if (ExtraDataUtil.exceedsUnsignedShortValueWithIndicator(nodeIndex)) {
+            if (ExtraDataUtil.exceedsUnsignedIntValueWithIndicator(nodeIndex)) {
+                throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
+            }
             extendFormat();
-            ExtraDataUtil.checkRepresentableUnsignedValueWithIndicator(nodeIndex);
         }
     }
 

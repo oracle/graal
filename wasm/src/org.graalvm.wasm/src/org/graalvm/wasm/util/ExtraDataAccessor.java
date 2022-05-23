@@ -45,7 +45,6 @@ package org.graalvm.wasm.util;
  * Helper class for accessing extra data entries.
  */
 public class ExtraDataAccessor {
-    private static final int EXTENDED_FORMAT_INDICATOR = 0x8000_0000;
     private static final int INDICATOR_REMOVAL_MASK = 0x7fff_ffff;
 
     public static final int COMPACT_IF_LENGTH = 2;
@@ -74,45 +73,43 @@ public class ExtraDataAccessor {
     public static final int COMPACT_CALL_INDIRECT_PROFILE_OFFSET = 0;
     public static final int EXTENDED_CALL_INDIRECT_PROFILE_OFFSET = 1;
 
-    /**
-     * Checks if the given entry is in compact format.
-     */
-    public static boolean isCompactFormat(int[] extraData, int offset) {
-        return (extraData[offset] & EXTENDED_FORMAT_INDICATOR) == 0;
+    public static int firstValueUnsigned(int[] extraData, int offset, boolean compact) {
+        if (compact) {
+            return extraData[offset] >>> 16;
+        } else {
+            return extraData[offset] & INDICATOR_REMOVAL_MASK;
+        }
     }
 
     public static int firstValueSigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
-            return (extraData[offset] << 1) >> 17;
+            return extraData[offset] << 1 >> 17;
+        } else {
+            return extraData[offset] << 1 >> 1;
         }
-        return extraData[offset] & INDICATOR_REMOVAL_MASK;
-    }
-
-    public static int firstValueUnsigned(int[] extraData, int offset, boolean compact) {
-        if (compact) {
-            return (extraData[offset] & INDICATOR_REMOVAL_MASK) >>> 16;
-        }
-        return extraData[offset] & INDICATOR_REMOVAL_MASK;
     }
 
     public static int secondValueSigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
-            return (extraData[offset] << 16) >> 16;
+            return extraData[offset] << 16 >> 16;
+        } else {
+            return extraData[offset + 1];
         }
-        return extraData[offset + 1];
     }
 
     public static int thirdValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
-            return (extraData[offset + 1] & 0xff00_0000) >>> 24;
+            return extraData[offset + 1] >>> 24;
+        } else {
+            return extraData[offset + 2];
         }
-        return extraData[offset + 2];
     }
 
     public static int forthValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
             return (extraData[offset + 1] & 0x00ff_0000) >>> 16;
+        } else {
+            return extraData[offset + 3];
         }
-        return extraData[offset + 3];
     }
 }

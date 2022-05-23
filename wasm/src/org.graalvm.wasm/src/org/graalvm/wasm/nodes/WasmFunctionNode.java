@@ -258,7 +258,6 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.forthValueUnsigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.isCompactFormat;
 import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
@@ -480,7 +479,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case IF: {
                     stackPointer--;
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_IF_PROFILE_OFFSET : EXTENDED_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
@@ -497,16 +496,16 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case ELSE: {
                     // The then branch was executed at this point. Jump to end of the if statement.
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     offset += secondValueSigned(extraData, extraOffset, compact);
-                    extraOffset += firstValueSigned(extraData, extraOffset, compact);
+                    extraOffset += firstValueUnsigned(extraData, extraOffset, compact);
                     break;
                 }
                 case END:
                     break;
                 case BR: {
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int targetStackPointer = numLocals + forthValueUnsigned(extraData, extraOffset, compact);
                     final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
@@ -521,7 +520,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case BR_IF: {
                     stackPointer--;
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
@@ -544,7 +543,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 }
                 case BR_TABLE: {
                     stackPointer--;
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
                     int index = popInt(frame, stackPointer);
                     final int size = firstValueUnsigned(extraData, extraOffset, compact);
@@ -623,7 +622,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), numArgs, stackPointer);
                     stackPointer -= args.length;
 
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     final int callNodeIndex = firstValueUnsigned(extraData, extraOffset, compact);
                     extraOffset += CALL_LENGTH;
 
@@ -713,7 +712,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Validate that the function type matches the expected type.
                     final boolean functionFromCurrentContext = functionInstanceContext == context;
 
-                    final boolean compact = isCompactFormat(extraData, extraOffset);
+                    final boolean compact = extraData[extraOffset] >= 0;
                     final int profileOffset = extraOffset + (compact ? COMPACT_CALL_INDIRECT_PROFILE_OFFSET : EXTENDED_CALL_INDIRECT_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, functionFromCurrentContext)) {
                         // We can do a quick equivalence-class check.
@@ -2822,32 +2821,34 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static final int MAX_PROFILE_VALUE = 0x0000_00ff;
     private static final int MAX_TABLE_PROFILE_VALUE = 0x0000_ffff;
 
-    private static boolean profileCondition(int[] extraData, int profileOffset, boolean condition) {
+    private static boolean profileCondition(int[] extraData, final int profileOffset, boolean condition) {
         int t = (extraData[profileOffset] & 0x0000_ff00) >> 8;
         int f = extraData[profileOffset] & 0x0000_00ff;
         boolean val = condition;
         if (val) {
-            if (t == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (f == 0) {
-                // Make this branch fold during PE
-                val = true;
-            }
-            if (CompilerDirectives.inInterpreter()) {
+            if (!CompilerDirectives.inInterpreter()) {
+                if (t == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (f == 0) {
+                    // Make this branch fold during PE
+                    val = true;
+                }
+            } else {
                 if (t < MAX_PROFILE_VALUE) {
                     extraData[profileOffset] += 0x0100;
                 }
             }
         } else {
-            if (f == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (t == 0) {
-                // Make this branch fold during PE
-                val = false;
-            }
-            if (CompilerDirectives.inInterpreter()) {
+            if (!CompilerDirectives.inInterpreter()) {
+                if (f == 0) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                }
+                if (t == 0) {
+                    // Make this branch fold during PE
+                    val = false;
+                }
+            } else {
                 if (f < MAX_PROFILE_VALUE) {
                     extraData[profileOffset] += 0x0001;
                 }
@@ -2861,7 +2862,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static void updateBranchTableProfile(int[] extraData, int counterOffset, int profileOffset) {
+    private static void updateBranchTableProfile(int[] extraData, final int counterOffset, final int profileOffset) {
         assert CompilerDirectives.inInterpreter();
         if ((extraData[counterOffset] & 0x0000_ffff) < MAX_TABLE_PROFILE_VALUE) {
             extraData[counterOffset]++;
@@ -2869,7 +2870,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private static boolean profileBranchTable(int[] extraData, int counterOffset, int profileOffset, boolean condition) {
+    private static boolean profileBranchTable(int[] extraData, final int counterOffset, final int profileOffset, boolean condition) {
         assert !CompilerDirectives.inInterpreter();
         int t = extraData[profileOffset] & 0x0000_ffff;
         int sum = extraData[counterOffset] & 0x0000_ffff;

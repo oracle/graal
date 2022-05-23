@@ -435,11 +435,11 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.IF: {
-                    final int ifOffset = offset;
+                    final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // condition
                     final byte ifReturnType = readBlockType();
 
-                    state.enterIf(ifReturnType, ifOffset);
+                    state.enterIf(ifReturnType, branchOffset);
                     break;
                 }
                 case Instructions.END: {
@@ -451,24 +451,24 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.BR: {
-                    final int brOffset = offset;
+                    final int branchOffset = offset;
                     final int branchLabel = readTargetOffset();
-                    state.addUnconditionalBranch(branchLabel, brOffset);
+                    state.addUnconditionalBranch(branchLabel, branchOffset);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
                     break;
                 }
                 case Instructions.BR_IF: {
-                    final int brIfOffset = offset;
+                    final int branchOffset = offset;
                     final int branchLabel = readTargetOffset();
                     state.popChecked(I32_TYPE); // condition
-                    state.addConditionalBranch(branchLabel, brIfOffset);
+                    state.addConditionalBranch(branchLabel, branchOffset);
 
                     break;
                 }
                 case Instructions.BR_TABLE: {
-                    final int brTableOffset = offset;
+                    final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // index
                     final int length = readLength();
 
@@ -477,7 +477,7 @@ public class BinaryParser extends BinaryStreamParser {
                         final int branchLabel = readTargetOffset();
                         branchTable[i] = branchLabel;
                     }
-                    state.addBranchTable(branchTable, brTableOffset);
+                    state.addBranchTable(branchTable, branchOffset);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();

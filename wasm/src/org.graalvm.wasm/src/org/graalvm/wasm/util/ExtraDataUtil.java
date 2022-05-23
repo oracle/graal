@@ -41,22 +41,17 @@
 
 package org.graalvm.wasm.util;
 
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-
 /**
  * Helper class for generating extra data entries.
  */
 public class ExtraDataUtil {
     private static final int EXTENDED_FORMAT_INDICATOR = 0x8000_0000;
-
     private static final int MIN_SIGNED_31BIT_VALUE = 0xc000_0000;
     private static final int MAX_SIGNED_31BIT_VALUE = 0x3fff_ffff;
-
+    private static final int MAX_UNSIGNED_16BIT_VALUE = 0x0000_ffff;
     private static final int MAX_UNSIGNED_15BIT_VALUE = 0x0000_7fff;
     private static final int MIN_SIGNED_15BIT_VALUE = 0xffff_c000;
     private static final int MAX_SIGNED_15BIT_VALUE = 0x0000_3fff;
-
     private static final int MAX_UNSIGNED_8BIT_VALUE = 0x0000_00ff;
 
     /**
@@ -77,97 +72,40 @@ public class ExtraDataUtil {
 
     public static final int PROFILE_SIZE = 1;
 
-    /**
-     * Combines the given value into a single integer in the following format:
-     * 
-     * <code>
-     *     | 0 (1-bit) | upperValue (15-bit) | lowerValue (16-bit) |
-     * </code>
-     * 
-     * The {@link ExtraDataUtil#areCompactSignedShortValuesWithIndicator(int, int)} method can be
-     * used to check if the given values can be represented by the resulting integer.
-     * 
-     * @param upperValue The upper value of the resulting integer
-     * @param lowerValue The lower value of the resulting integer
-     * @return The combined integer value
-     */
     private static int createCompactShortValuesWithIndicator(int upperValue, int lowerValue) {
         return ((upperValue << 16) | lowerValue) & 0x7fff_ffff;
     }
 
-    /**
-     * Combines the given values into the upper 16-bit of a single integer in the following format:
-     *
-     * <code>
-     *     | upperValue (8-bit) | lowerValue (8-bit) | 0 (16-bit) |
-     * </code>
-     * 
-     * The {@link ExtraDataUtil#areCompactUnsignedBytes(int, int)} method can be used to check if
-     * the given values can be represented by the resulting integer.
-     * 
-     * @param upperValue The return length
-     * @param lowerValue The stack size
-     * @return The stack change entry
-     */
     private static int createCompactUpperBytes(int upperValue, int lowerValue) {
         return (upperValue << 24) | (lowerValue << 16);
     }
 
-    /**
-     * Checks if the given values can be represented in a compactShortValuesWithIndicator format.
-     * 
-     * @param upperValue The upper value of the resulting integer
-     * @param lowerValue The lower value of the resulting integer
-     * @return True if the values fit into the compactShortValuesWithIndicator format, false
-     *         otherwise
-     */
-    public static boolean areCompactSignedShortValuesWithIndicator(int upperValue, int lowerValue) {
-        return isCompactSignedShortValueWithIndicator(upperValue) && Short.MIN_VALUE <= lowerValue && lowerValue <= Short.MAX_VALUE;
+    public static boolean exceedsUnsignedByteValue(int value) {
+        return Integer.compareUnsigned(value, MAX_UNSIGNED_8BIT_VALUE) > 0;
     }
 
-    /**
-     * Checks if the given value can be represented as the upper value of a
-     * compactShortValuesWithIndicator format.
-     * 
-     * @param upperValue The upper value of the resulting integer
-     * @return True if the value fits the upper part of the compactShortValuesWithIndicator format,
-     *         false otherwise
-     */
-    public static boolean isCompactUnsignedShortValueWithIndicator(int upperValue) {
-        return Integer.compareUnsigned(upperValue, MAX_UNSIGNED_15BIT_VALUE) <= 0;
+    public static boolean exceedsUnsignedShortValueWithIndicator(int value) {
+        return Integer.compareUnsigned(value, MAX_UNSIGNED_15BIT_VALUE) > 0;
     }
 
-    public static boolean isCompactSignedShortValueWithIndicator(int upperValue) {
-        return MIN_SIGNED_15BIT_VALUE <= upperValue && upperValue <= MAX_SIGNED_15BIT_VALUE;
+    public static boolean exceedsSignedShortValueWithIndicator(int value) {
+        return value < MIN_SIGNED_15BIT_VALUE || MAX_SIGNED_15BIT_VALUE < value;
     }
 
-    public static void checkRepresentableUnsignedValueWithIndicator(int value) {
-        if (value < 0) {
-            throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
-        }
+    public static boolean exceedsSignedShortValue(int value) {
+        return value < Short.MIN_VALUE || Short.MAX_VALUE < value;
     }
 
-    public static void checkRepresentableSignedValueWithIndicator(int value) {
-        if (value < MIN_SIGNED_31BIT_VALUE || value >= MAX_SIGNED_31BIT_VALUE) {
-            throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
-        }
+    public static boolean exceedsUnsignedIntValueWithIndicator(int value) {
+        return value < 0;
     }
 
-    /**
-     * Checks if the given values can be represented as the compactUpperBytes format.
-     * 
-     * @param upperValue The return length
-     * @param lowerValue The stack size
-     * @return True, if a compact stack change entry could be constructed
-     */
-    public static boolean areCompactUnsignedBytes(int upperValue, int lowerValue) {
-        return Integer.compareUnsigned(upperValue, MAX_UNSIGNED_8BIT_VALUE) <= 0 && Integer.compareUnsigned(lowerValue, MAX_UNSIGNED_8BIT_VALUE) <= 0;
+    public static boolean exceedsSignedIntValueWithIndicator(int value) {
+        return value < MIN_SIGNED_31BIT_VALUE || MAX_SIGNED_31BIT_VALUE < value;
     }
 
-    public static void checkRepresentableValue(int value) {
-        if (value < 0) {
-            throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
-        }
+    public static boolean exceedsPositiveIntValue(int value) {
+        return value < 0;
     }
 
     /**

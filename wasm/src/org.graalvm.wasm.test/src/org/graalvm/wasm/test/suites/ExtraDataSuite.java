@@ -41,368 +41,198 @@
 
 package org.graalvm.wasm.test.suites;
 
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTableEntry;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.WasmType;
+import org.graalvm.wasm.parser.validation.ParserState;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ExtraDataSuite {
-    @Test
-    public void testCompactByteCodeDisplacementSimpleForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        t.setTargetInfo(1, 0, 0);
-        final int[] expected = {1, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+    private static int compactTargetInfo(int byteCodeTarget, int extraDataTarget) {
+        int e = Short.toUnsignedInt((short) extraDataTarget);
+        int b = Short.toUnsignedInt((short) byteCodeTarget);
+        return ((e << 16) + b) & 0x7fff_ffff;
+    }
+
+    private static int extendedTargetInfo(int extraDataTarget) {
+        return 0x8000_0000 | extraDataTarget;
     }
 
     @Test
-    public void testCompactByteCodeDisplacementSimpleBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(1);
-        t.setTargetInfo(0, 0, 0);
-        final int[] expected = {65535, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+    public void testCompactByteCodeTargetMaxBackJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterLoop(WasmType.VOID_TYPE, 10);
+        state.addConditionalBranch(0, 32778);
+        state.exit(32779);
+        state.exit(32780);
+
+        final int[] expected = {compactTargetInfo(-32768, 0), 0};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testCompactByteCodeDisplacementMaxForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        t.setTargetInfo(32767, 0, 0);
-        final int[] expected = {32767, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+    public void testCompactByteCodeTargetMaxForwardJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(32777);
+        state.exit(32778);
+        final int[] expected = {compactTargetInfo(32767, 2), 0};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testCompactBytecodeDisplacementMaxBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(32768);
-        t.setTargetInfo(0, 0, 0);
-        final int[] expected = {32768, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+    public void testExtendedByteCodeTargetMinBackJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterLoop(WasmType.VOID_TYPE, 10);
+        state.addConditionalBranch(0, 32779);
+        state.exit(32780);
+        state.exit(32781);
+        final int[] expected = {extendedTargetInfo(0), -32769, 0, 0, 0};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testExtendedByteCodeDisplacementMinForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        t.setTargetInfo(32768, 0, 0);
-        final int[] expected = {-2147483648, 32768, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+    public void testExtendedByteCodeTargetMinForwardJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(32778);
+        state.exit(32779);
+        final int[] expected = {extendedTargetInfo(5), 32768, 0, 0, 0};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testExtendedByteCodeDisplacementMinBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(32769);
-        t.setTargetInfo(0, 0, 0);
-        final int[] expected = {-2147483648, -32769, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedByteCodeDisplacementMaxForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        t.setTargetInfo(2147483647, 0, 0);
-        final int[] expected = {-2147483648, 2147483647, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedByteCodeDisplacementMaxBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(2147483647);
-        t.setTargetInfo(0, 0, 0);
-        final int[] expected = {-2147483648, -2147483647, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactExtraDataDisplacementSimpleForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        l.addCall(0);
-        t.setTargetInfo(0, 2, 1);
-        final int[] expected = {131072, 0, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactExtraDataDisplacementSimpleBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        l.addCall(0);
-        BranchTarget t = l.addIf(0);
-        t.setTargetInfo(0, 0, 0);
-        final int[] expected = {0, 2147418112, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactExtraDataDisplacementMaxForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        int displacement = 16383;
-        BranchTarget t = l.addIf(0);
-        for (int i = 0; i < displacement - 1; i++) {
-            l.addCall(0);
+    public void testCompactExtraDataTargetMaxBackJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterLoop(WasmType.VOID_TYPE, 0);
+        for (int i = 0; i < 16384; i++) {
+            state.addCall(0);
         }
-        t.setTargetInfo(0, displacement, displacement - 2);
-        final int[] expected = new int[displacement + 1];
-        expected[0] = 1073676288;
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+        state.addConditionalBranch(0, 16385);
+        state.exit(16386);
+        state.exit(16387);
+        final int[] expected = new int[16386];
+        expected[16384] = compactTargetInfo(-16385, -16384);
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testCompactExtraDataDisplacementMaxBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        int displacement = 16384;
-        for (int i = 0; i < displacement; i++) {
-            l.addCall(0);
+    public void testCompactExtraDataTargetMaxForwardJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 0);
+        for (int i = 0; i < 16381; i++) {
+            state.addCall(0);
         }
-        BranchTarget t = l.addIf(displacement);
-        t.setTargetInfo(displacement, 0, 0);
-        final int[] expected = new int[displacement + 2];
-        expected[displacement] = 1073741824;
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+        state.exit(16382);
+        state.exit(16383);
+        final int[] expected = new int[16383];
+        expected[0] = compactTargetInfo(16382, 16383);
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testExtendedExtraDataDisplacementMinForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        int displacement = 16384;
-        BranchTarget t = l.addIf(0);
-        for (int i = 0; i < displacement - 1; i++) {
-            l.addCall(0);
+    public void testExtendedExtraDataTargetMinBackwardJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterLoop(WasmType.VOID_TYPE, 0);
+        for (int i = 0; i < 16385; i++) {
+            state.addCall(0);
         }
-        t.setTargetInfo(0, displacement, displacement - 2);
-        final int[] expected = new int[displacement + 2];
-        expected[0] = -2147467264;
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+        state.addConditionalBranch(0, 16386);
+        state.exit(16387);
+        state.exit(16388);
+        final int[] expected = new int[16390];
+        expected[16385] = extendedTargetInfo(-16385);
+        expected[16386] = -16386;
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testExtendedExtraDataDisplacementMinBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        int displacement = 16385;
-        for (int i = 0; i < displacement; i++) {
-            l.addCall(0);
+    public void testExtendedExtraDataTargetMinForwardJump() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 0);
+        for (int i = 0; i < 16382; i++) {
+            state.addCall(0);
         }
-        BranchTarget t = l.addIf(displacement);
-        t.setTargetInfo(displacement, 0, 0);
-        final int[] expected = new int[displacement + 3];
-        expected[displacement] = -2147467263;
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedExtraDataDisplacementOutOfBoundsForwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        try {
-            t.setTargetInfo(0, 1073741824, 0);
-            Assert.fail("Should have thrown exception");
-        } catch (WasmException e) {
-            Assert.assertTrue(e.getMessage().contains("value cannot be represented in extra data"));
-        }
-    }
-
-    @Test
-    public void testExtendedExtraDataDisplacementOutOfBoundsBackwardJump() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTarget t = l.addIf(0);
-        try {
-            t.setTargetInfo(0, -1073741825, 0);
-            Assert.fail("Should have thrown exception");
-        } catch (WasmException e) {
-            Assert.assertTrue(e.getMessage().contains("value cannot be represented in extra data"));
-        }
+        state.exit(16383);
+        state.exit(16384);
+        final int[] expected = new int[16387];
+        expected[0] = extendedTargetInfo(16387);
+        expected[1] = 16383;
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
     public void testCompactReturnLength() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(1, 0);
-        final int[] expected = {0, 16777216};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactReturnLengthMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(255, 0);
-        final int[] expected = {0, -16777216};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedReturnLengthMinValue() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(256, 0);
-        final int[] expected = {-2147483648, 0, 256, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedReturnLengthMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(2147483647, 0);
-        final int[] expected = {-2147483648, 0, 2147483647, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedReturnLengthOutOfBounds() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        try {
-            t.setStackInfo(-1, 0);
-            Assert.fail("Should have thrown exception");
-        } catch (WasmException e) {
-            Assert.assertTrue(e.getMessage().contains("value cannot be represented in extra data"));
-        }
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.enterBlock(WasmType.I32_TYPE);
+        state.push(WasmType.I32_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(20);
+        state.pop();
+        state.exit(21);
+        final int[] expected = {compactTargetInfo(10, 2), 1 << 24};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
     public void testCompactStackSize() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(0, 1);
-        final int[] expected = {0, 65536};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.push(WasmType.I32_TYPE);
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(20);
+        state.pop();
+        state.exit(21);
+        final int[] expected = {compactTargetInfo(10, 2), 1 << 16};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testCompactStackSizeMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(0, 255);
-        final int[] expected = {0, 16711680};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedStackSizeMinValue() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(0, 256);
-        final int[] expected = {-2147483648, 0, 0, 256};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedStackSizeMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        t.setStackInfo(0, 2147483647);
-        final int[] expected = {-2147483648, 0, 0, 2147483647};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedStackSizeOutOfBounds() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTargetWithStackChange t = l.addUnconditionalBranch(0);
-        try {
-            t.setStackInfo(0, -1);
-            Assert.fail("Should have thrown exception");
-        } catch (WasmException e) {
-            Assert.assertTrue(e.getMessage().contains("value cannot be represented in extra data"));
+    public void testCompactStackSizeMax() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        for (int i = 0; i < 255; i++) {
+            state.push(WasmType.I32_TYPE);
         }
-    }
-
-    @Test
-    public void testCompactTableHeader() {
-        ExtraDataList l = new ExtraDataList();
-        l.addBranchTable(0, 1);
-        final int[] expected = {65536, 0, 0};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactTableHeaderMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        l.addBranchTable(0, 32767);
-        final int[] expected = new int[1 + 2 * 32767];
-        expected[0] = 2147418112;
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedTableHeaderMinValue() {
-        ExtraDataList l = new ExtraDataList();
-        l.addBranchTable(0, 32768);
-        final int[] expected = new int[2 + 5 * 32768];
-        expected[0] = -2147450880;
-        for (int i = 2; i < expected.length; i += 5) {
-            expected[i] = -2147483648;
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(20);
+        for (int i = 0; i < 255; i++) {
+            state.pop();
         }
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+        state.exit(21);
+        final int[] expected = {compactTargetInfo(10, 2), 255 << 16};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 
     @Test
-    public void testExtendedTableHeaderOutOfBounds() {
-        ExtraDataList l = new ExtraDataList();
-        try {
-            l.addBranchTable(0, -1);
-            Assert.fail("Should have thrown exception");
-        } catch (WasmException e) {
-            Assert.assertTrue(e.getMessage().contains("value cannot be represented in extra data"));
+    public void testExtendedStackSizeMin() {
+        ParserState state = new ParserState();
+        state.enterBlock(WasmType.VOID_TYPE);
+        for (int i = 0; i < 256; i++) {
+            state.push(WasmType.I32_TYPE);
         }
-    }
-
-    @Test
-    public void testTableHeaderWithExtendedItem() {
-        ExtraDataList l = new ExtraDataList();
-        BranchTableEntry b = l.addBranchTable(0, 2);
-        b.item(0).setTargetInfo(32768, 0, 0);
-        for (int i = 0; i < 32764; i++) {
-            l.addCall(0);
+        state.enterBlock(WasmType.VOID_TYPE);
+        state.addConditionalBranch(0, 10);
+        state.exit(20);
+        for (int i = 0; i < 256; i++) {
+            state.pop();
         }
-        final int[] expected = new int[12 + 32764];
-        expected[0] = -2147483646;
-        expected[2] = -2147483648;
-        expected[3] = 32768;
-        expected[7] = -2147483648;
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactCallIndex() {
-        ExtraDataList l = new ExtraDataList();
-        l.addCall(1);
-        final int[] expected = {65536};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testCompactCallIndexMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        l.addCall(32767);
-        final int[] expected = {2147418112};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedCallIndexMinValue() {
-        ExtraDataList l = new ExtraDataList();
-        l.addCall(32768);
-        final int[] expected = {-2147450880};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
-    }
-
-    @Test
-    public void testExtendedCallIndexMaxValue() {
-        ExtraDataList l = new ExtraDataList();
-        l.addCall(2147483647);
-        final int[] expected = {-1};
-        Assert.assertArrayEquals(expected, l.extraDataArray());
+        state.exit(21);
+        final int[] expected = {extendedTargetInfo(5), 10, 0, 256, 0};
+        Assert.assertArrayEquals(expected, state.extraData());
     }
 }

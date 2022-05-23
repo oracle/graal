@@ -61,8 +61,8 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  */
 public class IfEntry extends BranchTarget {
 
-    public IfEntry(int byteCodeOffset, int extraDataOffset, ExtraDataFormatHelper formatHelper) {
-        super(byteCodeOffset, extraDataOffset, formatHelper);
+    public IfEntry(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
+        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
     }
 
     @Override

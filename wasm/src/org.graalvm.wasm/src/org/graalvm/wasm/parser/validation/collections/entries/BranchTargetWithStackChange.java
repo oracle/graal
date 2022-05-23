@@ -41,6 +41,8 @@
 
 package org.graalvm.wasm.parser.validation.collections.entries;
 
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
 import org.graalvm.wasm.util.ExtraDataUtil;
 
@@ -52,8 +54,8 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
     private int returnLength;
     private int stackSize;
 
-    protected BranchTargetWithStackChange(int byteCodeOffset, int extraDataOffset, ExtraDataFormatHelper formatHelper) {
-        super(byteCodeOffset, extraDataOffset, formatHelper);
+    protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
+        super(formatHelper, byteCodeOffset, extraDataOffset, extraDataIndex);
     }
 
     /**
@@ -65,10 +67,11 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
     public void setStackInfo(int returnLength, int stackSize) {
         this.returnLength = returnLength;
         this.stackSize = stackSize;
-        if (!ExtraDataUtil.areCompactUnsignedBytes(returnLength, stackSize)) {
+        if (ExtraDataUtil.exceedsUnsignedByteValue(returnLength) || ExtraDataUtil.exceedsUnsignedByteValue(stackSize)) {
+            if (ExtraDataUtil.exceedsPositiveIntValue(returnLength) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
+                throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
+            }
             extendFormat();
-            ExtraDataUtil.checkRepresentableValue(returnLength);
-            ExtraDataUtil.checkRepresentableValue(stackSize);
         }
     }
 
