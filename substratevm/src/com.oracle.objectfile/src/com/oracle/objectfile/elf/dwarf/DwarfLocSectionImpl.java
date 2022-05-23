@@ -272,29 +272,18 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             // can write using DW_OP_reg<n>
             short byteCount = 1;
             byte regOp = (byte) (DwarfDebugInfo.DW_OP_reg0 + targetIdx);
-            if (buffer == null) {
-                pos += putShort(byteCount, scratch, 0);
-                pos += putByte(regOp, scratch, 0);
-            } else {
-                pos = putShort(byteCount, buffer, pos);
-                pos = putByte(regOp, buffer, pos);
-                verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, regOp);
-            }
+            pos = writeShort(byteCount, buffer, pos);
+            pos = writeByte(regOp, buffer, pos);
+            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x", pos, byteCount, regOp);
         } else {
             // have to write using DW_OP_regx + LEB operand
             assert targetIdx < 128 : "unexpectedly high reg index!";
             short byteCount = 2;
             byte regOp = DwarfDebugInfo.DW_OP_regx;
-            if (buffer == null) {
-                pos += putShort(byteCount, scratch, 0);
-                pos += putByte(regOp, scratch, 0);
-                pos += putULEB(targetIdx, scratch, 0);
-            } else {
-                pos = putShort(byteCount, buffer, pos);
-                pos = putByte(regOp, buffer, pos);
-                pos = putULEB(targetIdx, buffer, pos);
-                verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x reg %d", pos, byteCount, regOp, targetIdx);
-            }
+            pos = writeShort(byteCount, buffer, pos);
+            pos = writeByte(regOp, buffer, pos);
+            pos = writeULEB(targetIdx, buffer, pos);
+            verboseLog(context, "  [0x%08x]     REGOP count %d op 0x%x reg %d", pos, byteCount, regOp, targetIdx);
             // target idx written as ULEB should fit in one byte
             assert pos == p + 4 : "wrote the wrong number of bytes!";
         }
@@ -314,32 +303,22 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
             // pass base reg index as a ULEB operand
             stackOp = DwarfDebugInfo.DW_OP_bregx;
         }
-        if (buffer == null) {
-            pos += putShort(byteCount, scratch, 0);
-            pos += putByte(stackOp, scratch, 0);
-            if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-                // need to pass base reg index as a ULEB operand
-                pos += putULEB(sp, scratch, 0);
-            }
-            pos += putSLEB(offset, scratch, 0);
+        int patchPos = pos;
+        pos = writeShort(byteCount, buffer, pos);
+        int zeroPos = pos;
+        pos = writeByte(stackOp, buffer, pos);
+        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
+            // need to pass base reg index as a ULEB operand
+            pos = writeULEB(sp, buffer, pos);
+        }
+        pos = writeSLEB(offset, buffer, pos);
+        // now backpatch the byte count
+        byteCount = (byte) (pos - zeroPos);
+        writeShort(byteCount, buffer, patchPos);
+        if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, stackOp, 0 - offset);
         } else {
-            int patchPos = pos;
-            pos = putShort(byteCount, buffer, pos);
-            int zeroPos = pos;
-            pos = putByte(stackOp, buffer, pos);
-            if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-                // need to pass base reg index as a ULEB operand
-                pos = putULEB(sp, buffer, pos);
-            }
-            pos = putSLEB(offset, buffer, pos);
-            // now backpatch the byte count
-            byteCount = (byte) (pos - zeroPos);
-            putShort(byteCount, buffer, patchPos);
-            if (stackOp == DwarfDebugInfo.DW_OP_bregx) {
-                verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x offset %d", pos, byteCount, stackOp, 0 - offset);
-            } else {
-                verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, stackOp, sp, 0 - offset);
-            }
+            verboseLog(context, "  [0x%08x]     STACKOP count %d op 0x%x reg %d offset %d", pos, byteCount, stackOp, sp, 0 - offset);
         }
         return pos;
     }
@@ -352,47 +331,25 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         int dataByteCount = kind.getByteCount();
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
-        if (buffer == null) {
-            pos += putShort((short) byteCount, scratch, 0);
-            pos += putByte(op, scratch, 0);
-            pos += putULEB(dataByteCount, scratch, 0);
-
-            if (dataByteCount == 1) {
-                if (kind == JavaKind.Boolean) {
-                    pos += putByte((byte) (constant.asBoolean() ? 1 : 0), scratch, 0);
-                } else {
-                    pos += putByte((byte) constant.asInt(), scratch, 0);
-                }
-            } else if (dataByteCount == 2) {
-                pos += putShort((short) constant.asInt(), scratch, 0);
-            } else if (dataByteCount == 4) {
-                int i = (kind == JavaKind.Int ? constant.asInt() : Float.floatToRawIntBits(constant.asFloat()));
-                pos += putInt(i, scratch, 0);
+        pos = writeShort((short) byteCount, buffer, pos);
+        pos = writeByte(op, buffer, pos);
+        pos = writeULEB(dataByteCount, buffer, pos);
+        if (dataByteCount == 1) {
+            if (kind == JavaKind.Boolean) {
+                pos = writeByte((byte) (constant.asBoolean() ? 1 : 0), buffer, pos);
             } else {
-                long l = (kind == JavaKind.Long ? constant.asLong() : Double.doubleToRawLongBits(constant.asDouble()));
-                pos += putLong(l, scratch, 0);
+                pos = writeByte((byte) constant.asInt(), buffer, pos);
             }
+        } else if (dataByteCount == 2) {
+            pos = writeShort((short) constant.asInt(), buffer, pos);
+        } else if (dataByteCount == 4) {
+            int i = (kind == JavaKind.Int ? constant.asInt() : Float.floatToRawIntBits(constant.asFloat()));
+            pos = writeInt(i, buffer, pos);
         } else {
-            pos = putShort((short) byteCount, buffer, pos);
-            pos = putByte(op, buffer, pos);
-            pos = putULEB(dataByteCount, buffer, pos);
-            if (dataByteCount == 1) {
-                if (kind == JavaKind.Boolean) {
-                    pos = putByte((byte) (constant.asBoolean() ? 1 : 0), buffer, pos);
-                } else {
-                    pos = putByte((byte) constant.asInt(), buffer, pos);
-                }
-            } else if (dataByteCount == 2) {
-                pos = putShort((short) constant.asInt(), buffer, pos);
-            } else if (dataByteCount == 4) {
-                int i = (kind == JavaKind.Int ? constant.asInt() : Float.floatToRawIntBits(constant.asFloat()));
-                pos = putInt(i, buffer, pos);
-            } else {
-                long l = (kind == JavaKind.Long ? constant.asLong() : Double.doubleToRawLongBits(constant.asDouble()));
-                pos = putLong(l, buffer, pos);
-            }
-            verboseLog(context, "  [0x%08x]     CONSTANT (primitive) %s", pos, constant.toValueString());
+            long l = (kind == JavaKind.Long ? constant.asLong() : Double.doubleToRawLongBits(constant.asDouble()));
+            pos = writeLong(l, buffer, pos);
         }
+        verboseLog(context, "  [0x%08x]     CONSTANT (primitive) %s", pos, constant.toValueString());
         return pos;
     }
 
@@ -403,18 +360,11 @@ public class DwarfLocSectionImpl extends DwarfSectionImpl {
         int dataByteCount = 8;
         // total bytes is op + uleb + dataByteCount
         int byteCount = 1 + 1 + dataByteCount;
-        if (buffer == null) {
-            pos += putShort((short) byteCount, scratch, 0);
-            pos += putByte(op, scratch, 0);
-            pos += putULEB(dataByteCount, scratch, 0);
-            pos = writeAttrData8(0, buffer, pos);
-        } else {
-            pos = putShort((short) byteCount, buffer, pos);
-            pos = putByte(op, buffer, pos);
-            pos = putULEB(dataByteCount, buffer, pos);
-            pos = writeAttrData8(0, buffer, pos);
-            verboseLog(context, "  [0x%08x]     CONSTANT (null) %s", pos, constant.toValueString());
-        }
+        pos = writeShort((short) byteCount, buffer, pos);
+        pos = writeByte(op, buffer, pos);
+        pos = writeULEB(dataByteCount, buffer, pos);
+        pos = writeAttrData8(0, buffer, pos);
+        verboseLog(context, "  [0x%08x]     CONSTANT (null) %s", pos, constant.toValueString());
         return pos;
     }
 

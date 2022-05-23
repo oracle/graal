@@ -875,19 +875,11 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeAttrType(long code, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(code, scratch, 0);
-        } else {
-            return putSLEB(code, buffer, pos);
-        }
+        return writeSLEB(code, buffer, pos);
     }
 
     private int writeAttrForm(long code, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(code, scratch, 0);
-        } else {
-            return putSLEB(code, buffer, pos);
-        }
+        return writeSLEB(code, buffer, pos);
     }
 
     private int writeBuiltInUnitAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
