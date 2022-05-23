@@ -97,7 +97,10 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     public static boolean isInstrumented(ResolvedJavaMethod method) {
-        // Initialization must be deferred into the image executtion time
+        if ("traceThrowable".equals(method.getName()) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
+            return true;
+        }
+        // Initialization must be deferred into the image execution time
         InstrumentedFilterState currentState = instrumentedFilterState.get();
         if (currentState == InstrumentedFilterState.INACTIVE) {
             return false;
