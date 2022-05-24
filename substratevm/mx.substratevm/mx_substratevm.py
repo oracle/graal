@@ -833,6 +833,7 @@ def _debuginfotest(native_image, path, build_only, args):
                          '-Dgraal.LogFile=graal.log',
                          '-g',
                          '-H:-OmitInlinedMethodDebugLineInfo',
+                         '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
                          'hello.Hello'] + args
