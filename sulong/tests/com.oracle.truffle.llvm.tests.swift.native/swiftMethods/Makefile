@@ -29,13 +29,11 @@
 #
 QUIETLY$(MX_VERBOSE)  = @
 
-default: methods/ref.bc 
+default: swiftMethods/ref.out
 
-methods/ref.out: methods/swiftMethodsTest.swift methods/Makefile
+swiftMethods/ref.out: swiftMethods/swiftMethodsTest.swift swiftMethods/Makefile
 	@mkdir -p $(shell dirname $@)
-	mkdir /home/christoph/testestest
-	$(QUIETLY) $(SWIFTC) -O -embed-bitcode $(ORIGIN_TOKEN)/.. -o $@ $<
+	$(QUIETLY) $(SWIFTC) -O -embed-bitcode -g -o $@ $<
 
-%.bc: %.out
-	cp $< $@
+
 

@@ -47,7 +47,7 @@ default:
 ifeq ($(OS), darwin)
 SO_EXT=.dylib
 ORIGIN_TOKEN='@loader_path'
-SO_LDFLAGS=-Wl,-install_name,@methods/$(notdir $@) -Wl,-undefined,suppress -Wl,-flat_namespace
+SO_LDFLAGS=-Wl,-install_name,@swiftMethods/$(notdir $@) -Wl,-undefined,suppress -Wl,-flat_namespace
 else
 SO_EXT=.so
 ORIGIN_TOKEN='$$ORIGIN'

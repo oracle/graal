@@ -1265,6 +1265,26 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.swift.native" : {
+      "subDir" : "tests",
+      "native": True,
+      "vpath": True,
+      "buildEnv" : {
+        "OS" : "<os>",
+        "CLANG": "<toolchainGetToolPath:native,CC>",
+        "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.swift.native>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+        "SULONG_TOOLCHAIN_LAUNCHERS",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+      ],
+      "results": [
+        "swiftMethods",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.dynloader.native" : {
       "subDir" : "tests",
       "native": True,
@@ -1901,6 +1921,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
+          "dependency:com.oracle.truffle.llvm.tests.swift.native/*",
         ],
       },
       "license" : "BSD-new",

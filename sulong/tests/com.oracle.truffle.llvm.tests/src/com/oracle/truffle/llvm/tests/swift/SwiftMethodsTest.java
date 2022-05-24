@@ -53,12 +53,10 @@ public class SwiftMethodsTest extends InteropTestBase {
     private static Value parent;
     private static Value child;
 
-    private static final String OUT_FILE_NAME = "swiftMethodsTest";
-
     @BeforeClass
     public static void loadTestBitcode() {
-        final Path basePath = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "swift");
-        File file = Paths.get(basePath.toString(), "swiftMethodsTest.swift" + CommonTestUtils.TEST_DIR_EXT, OUT_FILE_NAME).toFile();
+        final Path basePath = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"));
+        File file = Paths.get(basePath.toString(), "swiftMethods", "ref.out").toFile();
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

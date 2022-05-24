@@ -449,7 +449,11 @@ public class SwiftDemangler {
     public static String getSwiftTypeAccessorName(String[] namespaces) {
         StringBuilder sb = new StringBuilder(NAMESPACE_PREFIX_DEFAULT);
         for (String namespace : namespaces) {
+
             if (namespace != null) {
+                if (namespace.contains(".")) {
+                    namespace = namespace.substring(0, namespace.indexOf("."));
+                }
                 sb.append(namespace.length());
                 sb.append(namespace);
             }

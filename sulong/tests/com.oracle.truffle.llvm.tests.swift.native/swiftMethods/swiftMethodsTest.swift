@@ -34,11 +34,11 @@ public class Parent {
 	}
 
 	public func get3P5() -> Double {
-		return 3.5 //TODO fix, but keep error to see if swiftc is started
+		return 3.5
 	}
 	
 	public func square(n: Int) -> Int {
-		return n*n;
+		return n*n
 	}
 }
 
