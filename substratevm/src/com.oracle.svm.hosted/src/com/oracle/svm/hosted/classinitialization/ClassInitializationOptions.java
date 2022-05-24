@@ -99,4 +99,7 @@ public final class ClassInitializationOptions {
 
     @Option(help = "Use new class initialization strategy that allows all classes to be used at image build time.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> UseNewExperimentalClassInitialization = new HostedOptionKey<>(false);
+
+    @Option(help = "Use build-time evaluation of methods annotated with the @Constant annotation and constant arguments.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseExperimentalBuildTimeEvaluation = new HostedOptionKey<>(false);
 }
