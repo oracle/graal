@@ -591,8 +591,14 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=['substratevm:LIBRARY_SUPPORT'])
-        macro_junit = '--macro:junit' + ('cp' if force_builder_on_cp else '')
-        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir])
+        macro_junit = '--macro:junit'
+        if force_builder_on_cp:
+            macro_junit += 'cp'
+            custom_env = os.environ.copy()
+            custom_env['USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM'] = 'false'
+        else:
+            custom_env = None
+        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir], env=custom_env)
         image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
         run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
