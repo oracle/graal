@@ -104,6 +104,11 @@ public abstract class MonitorSupport {
      * Called from {@code Unsafe.park} when changing the current thread's state before parking the
      * thread. When the thread is parked due to a monitor operation, we need to alter the new thread
      * state so {@link Thread#getState()} gives the expected result.
+     *
+     * Note that the thread state is set only while the thread is parked, but if the thread is
+     * spuriously unparked, the thread's state briefly changes to running until it parks again. This
+     * is a difference to other VMs which remain in the blocked/waiting state until the monitor has
+     * been successfully acquired.
      */
     public abstract int maybeAdjustNewParkStatus(int status);
 }
