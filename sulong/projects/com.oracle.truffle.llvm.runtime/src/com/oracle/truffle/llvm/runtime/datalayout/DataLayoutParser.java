@@ -119,6 +119,17 @@ final class DataLayoutParser {
         specs.add(newSpec);
     }
 
+    private static void replace(List<DataTypeSpecification> specs, DataTypeSpecification newSpec) {
+        for (DataTypeSpecification spec : specs) {
+            if (spec.type == newSpec.type && spec.getSize() == newSpec.getSize()) {
+                specs.remove(spec);
+                specs.add(newSpec);
+                return;
+            }
+        }
+        specs.add(newSpec);
+    }
+
     /**
      * Parses the LLVM data layout string.
      *
@@ -128,8 +139,16 @@ final class DataLayoutParser {
      * @return the byte order specified by the data layout
      */
     static ByteOrder parseDataLayout(String layout, List<DataTypeSpecification> specs) {
-        /* According to the LLVM documentation, big endian is the default. */
-        ByteOrder byteOrder = BIG_ENDIAN;
+        /*
+         * According to the LLVM documentation, below is the default datalayout: e - little endian
+         * p:64:64:64 - 64-bit pointers with 64-bit alignment. i1:8:8 - i1 is 8-bit (byte) aligned
+         * i8:8:8 - i8 is 8-bit (byte) aligned i16:16:16 - i16 is 16-bit aligned i32:32:32 - i32 is
+         * 32-bit aligned i64:32:64 - i64 has ABI alignment of 32-bits but preferred alignment of
+         * 64-bits f16:16:16 - half is 16-bit aligned f32:32:32 - float is 32-bit aligned f64:64:64
+         * - double is 64-bit aligned f128:128:128 - quad is 128-bit aligned
+         */
+
+        ByteOrder byteOrder = LITTLE_ENDIAN;
         String[] layoutSpecs = layout.split("-");
         for (String spec : layoutSpecs) {
             if (spec.equals("E")) {
@@ -144,7 +163,7 @@ final class DataLayoutParser {
             DataLayoutType type = getDataType(spec);
             DataTypeSpecification dataTypeSpec = createDataTypeSpec(type, spec);
             if (dataTypeSpec != null) {
-                specs.add(dataTypeSpec);
+                replace(specs, dataTypeSpec);
             }
         }
 
