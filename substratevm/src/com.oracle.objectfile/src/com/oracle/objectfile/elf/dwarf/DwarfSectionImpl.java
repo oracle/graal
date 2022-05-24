@@ -227,6 +227,43 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return pos;
     }
 
+    protected int putULEB(long val, byte[] buffer, int p) {
+        int pos = p;
+        long l = val;
+        for (int i = 0; i < 9; i++) {
+            byte b = (byte) (l & 0x7f);
+            l = l >>> 7;
+            boolean done = (l == 0);
+            if (!done) {
+                b = (byte) (b | 0x80);
+            }
+            pos = writeByte(b, buffer, pos);
+            if (done) {
+                break;
+            }
+        }
+        return pos;
+    }
+
+    protected int putSLEB(long val, byte[] buffer, int p) {
+        int pos = p;
+        long l = val;
+        for (int i = 0; i < 9; i++) {
+            byte b = (byte) (l & 0x7f);
+            l = l >> 7;
+            boolean bIsSigned = (b & 0x40) != 0;
+            boolean done = ((bIsSigned && l == -1) || (!bIsSigned && l == 0));
+            if (!done) {
+                b = (byte) (b | 0x80);
+            }
+            pos = writeByte(b, buffer, pos);
+            if (done) {
+                break;
+            }
+        }
+        return pos;
+    }
+
     protected static int countUTF8Bytes(String s) {
         return countUTF8Bytes(s, 0);
     }
@@ -298,56 +335,23 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int writeULEB(long val, byte[] buffer, int p) {
-        int pos = p;
-        int delta = 0;
-        if (buffer == null) {
-            // write to the scratch buffer starting at offset 0 but remember to add the start
-            // position to derive the final position
-            buffer = scratch;
-            delta = p;
-            pos = 0;
+        if (buffer != null) {
+            // write to the buffer at the supplied position
+            return putULEB(val, buffer, p);
+        } else {
+            // write to a scratch buffer at position 0 then offset from initial pos
+            return p + putULEB(val, scratch, 0);
         }
-        long l = val;
-        for (int i = 0; i < 9; i++) {
-            byte b = (byte) (l & 0x7f);
-            l = l >>> 7;
-            boolean done = (l == 0);
-            if (!done) {
-                b = (byte) (b | 0x80);
-            }
-            pos = writeByte(b, buffer, pos);
-            if (done) {
-                break;
-            }
-        }
-        return pos + delta;
     }
 
     protected int writeSLEB(long val, byte[] buffer, int p) {
-        int pos = p;
-        int delta = 0;
-        if (buffer == null) {
-            // write to the scratch buffer starting at offset 0 but remember to add the start
-            // position to derive the final position
-            buffer = scratch;
-            delta = p;
-            pos = 0;
+        if (buffer != null) {
+            // write to the buffer at the supplied position
+            return putSLEB(val, buffer, p);
+        } else {
+            // write to a scratch buffer at position 0 then offset from initial pos
+            return p + putSLEB(val, scratch, 0);
         }
-        long l = val;
-        for (int i = 0; i < 9; i++) {
-            byte b = (byte) (l & 0x7f);
-            l = l >> 7;
-            boolean bIsSigned = (b & 0x40) != 0;
-            boolean done = ((bIsSigned && l == -1) || (!bIsSigned && l == 0));
-            if (!done) {
-                b = (byte) (b | 0x80);
-            }
-            pos = writeByte(b, buffer, pos);
-            if (done) {
-                break;
-            }
-        }
-        return pos + delta;
     }
 
     protected int writeUTF8StringBytes(String s, byte[] buffer, int pos) {
@@ -361,6 +365,10 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             return s.substring(startChar).getBytes(StandardCharsets.UTF_8).length;
         }
     }
+
+    /*
+     * Common write methods that rely on called methods to handle a null buffer
+     */
 
     protected void patchLength(int lengthPos, byte[] buffer, int pos) {
         int length = pos - (lengthPos + 4);
