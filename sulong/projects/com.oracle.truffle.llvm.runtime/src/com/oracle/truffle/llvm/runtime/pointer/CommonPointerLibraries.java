@@ -59,7 +59,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropInvokeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMReadMemberNode;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadMemberNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Buffer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Clazz;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMResolveForeignClassChainNode;
@@ -272,7 +272,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static Object readMember(LLVMPointerImpl receiver, String ident,
-                    @Cached LLVMReadMemberNode read) throws UnsupportedMessageException, UnknownIdentifierException {
+                    @Cached LLVMInteropReadMemberNode read) throws UnsupportedMessageException, UnknownIdentifierException {
         return read.execute(receiver, ident, receiver.getExportType());
     }
 

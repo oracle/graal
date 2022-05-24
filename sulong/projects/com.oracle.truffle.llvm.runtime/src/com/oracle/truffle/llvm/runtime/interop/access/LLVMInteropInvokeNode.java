@@ -57,7 +57,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
     @Specialization
     @GenerateAOT.Exclude
     Object doCppClass(LLVMPointer receiver, LLVMInteropType.CppClass type, String method, Object[] arguments,
-                    @Cached LLVMInteropMethodInvokeNode invoke,
+                    @Cached LLVMInteropCppMethodInvokeNode invoke,
                     @Cached LLVMSelfArgumentPackNode selfPackNode,
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {

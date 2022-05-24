@@ -50,10 +50,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
-public abstract class LLVMReadMemberNode extends LLVMNode {
+public abstract class LLVMInteropReadMemberNode extends LLVMNode {
 
-    public static LLVMReadMemberNode create() {
-        return LLVMReadMemberNodeGen.create();
+    public static LLVMInteropReadMemberNode create() {
+        return LLVMInteropReadMemberNodeGen.create();
     }
 
     public abstract Object execute(LLVMPointer receiver, String ident, LLVMInteropType type) throws UnsupportedMessageException, UnknownIdentifierException;

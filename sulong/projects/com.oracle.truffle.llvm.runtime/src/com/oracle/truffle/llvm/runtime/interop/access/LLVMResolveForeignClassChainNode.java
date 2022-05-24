@@ -54,9 +54,9 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
      * @param cachedClazz
      */
     @Specialization(guards = {"ident.equals(cachedIdent)", "clazz==cachedClazz"})
-    public LLVMPointer doClassResolvingCached(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz,
+    public LLVMPointer doClassResolvingCached(LLVMPointer receiver, String ident, LLVMInteropType.CppClass clazz,
                     @Cached(value = "ident", allowUncached = true) String cachedIdent,
-                    @Cached(value = "clazz", allowUncached = true) LLVMInteropType.Clazz cachedClazz,
+                    @Cached(value = "clazz", allowUncached = true) LLVMInteropType.CppClass cachedClazz,
                     @Cached LLVMForeignVirtualSuperElemPtrNode virtualSuperElemPtrNode,
                     @Cached LLVMForeignDirectSuperElemPtrNode directSuperElemPtrNode,
                     @Cached(value = "clazz.getSuperOffsetInformation(ident)", allowUncached = true) Pair<long[], Struct> p,
@@ -70,7 +70,7 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
     }
 
     @Specialization(replaces = "doClassResolvingCached")
-    public LLVMPointer doClazzResolving(LLVMPointer receiver, String ident, LLVMInteropType.Clazz clazz,
+    public LLVMPointer doClazzResolving(LLVMPointer receiver, String ident, LLVMInteropType.CppClass clazz,
                     @Cached LLVMForeignVirtualSuperElemPtrNode virtualSuperElemPtrNode,
                     @Cached LLVMForeignDirectSuperElemPtrNode directSuperElemPtrNode) throws UnknownIdentifierException {
         LLVMPointer curReceiver = receiver;
@@ -82,8 +82,8 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
         return curReceiver.export(p.getRight() == null ? clazz : p.getRight());
     }
 
-    static boolean isClazzType(Object o) {
-        return o instanceof LLVMInteropType.Clazz;
+    static boolean isCppClassType(Object o) {
+        return o instanceof LLVMInteropType.CppClass;
     }
 
     /**
@@ -91,7 +91,7 @@ public abstract class LLVMResolveForeignClassChainNode extends LLVMNode {
      * @param ident
      * @param type
      */
-    @Specialization(guards = "!isClazzType(type)")
+    @Specialization(guards = "!isCppClassType(type)")
     public LLVMPointer doNothing(LLVMPointer receiver, String ident, LLVMInteropType type) {
         // since the exporttype of 'receiver' is no class, no resolving is needed
         return receiver;
