@@ -39,10 +39,10 @@ import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 
 public class PostPartialEvaluationSuite extends PhaseSuite<TruffleTierContext> {
     public PostPartialEvaluationSuite(boolean iterativePartialEscape) {
-        appendPhase(new ConvertDeoptimizeToGuardPhase());
+        CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+        appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizerPhase));
         appendPhase(new InlineReplacementsPhase());
         appendPhase(new ConditionalEliminationPhase(false));
-        CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
         appendPhase(canonicalizerPhase);
         appendPhase(new FrameAccessVerificationPhase());
         appendPhase(new PartialEscapePhase(iterativePartialEscape, canonicalizerPhase,

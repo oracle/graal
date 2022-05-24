@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.BasePhase;
 
 /**
  * Try to replace box operations with dominating box operations.
@@ -57,7 +56,11 @@ import org.graalvm.compiler.phases.BasePhase;
  * boxedVal2 = boxedVal1;
  * </pre>
  */
-public class BoxNodeOptimizationPhase extends BasePhase<CoreProviders> {
+public class BoxNodeOptimizationPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+
+    public BoxNodeOptimizationPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {

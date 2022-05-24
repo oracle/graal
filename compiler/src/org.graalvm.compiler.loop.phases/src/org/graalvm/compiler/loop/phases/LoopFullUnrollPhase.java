@@ -55,11 +55,8 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
         LOOP_COMPARATOR = Comparator.comparingDouble(loopFreq).thenComparingInt(loopDepth).reversed();
     }
 
-    private final CanonicalizerPhase canonicalizer;
-
     public LoopFullUnrollPhase(CanonicalizerPhase canonicalizer, LoopPolicies policies) {
-        super(policies);
-        this.canonicalizer = canonicalizer;
+        super(policies, canonicalizer);
     }
 
     @Override

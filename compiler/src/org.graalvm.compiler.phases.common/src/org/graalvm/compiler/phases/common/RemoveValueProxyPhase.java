@@ -29,13 +29,21 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerification;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
 
-public class RemoveValueProxyPhase extends Phase {
+public class RemoveValueProxyPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+
+    public RemoveValueProxyPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
+
+    public RemoveValueProxyPhase() {
+        super(null);
+    }
 
     @Override
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         for (LoopExitNode exit : graph.getNodes(LoopExitNode.TYPE)) {
             exit.removeProxies();
             FrameState frameState = exit.stateAfter();

@@ -110,7 +110,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
          * initial graph.
          */
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
-            new ConvertDeoptimizeToGuardPhase().apply(graphToEncode, providers);
+            new ConvertDeoptimizeToGuardPhase(null).apply(graphToEncode, providers);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
                 new DominatorBasedGlobalValueNumberingPhase().apply(graphToEncode, providers);
             }

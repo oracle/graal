@@ -113,7 +113,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
 
         new HighTierLoweringPhase(canonicalizer).apply(graph, context);
         canonicalizer.apply(graph, context);
-        new FloatingReadPhase().apply(graph);
+        new FloatingReadPhase(canonicalizer).apply(graph, context);
         new ConditionalEliminationPhase(true).apply(graph, context);
         canonicalizer.apply(graph, context);
 

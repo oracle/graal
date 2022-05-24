@@ -163,7 +163,6 @@ import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase.MemoryMapImpl;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.LowTierLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
@@ -1198,9 +1197,9 @@ public class SnippetTemplate {
                 // (3)
                 assert !guardsStage.allowsFloatingGuards() : guardsStage;
                 // only create memory map nodes if we need the memory graph
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new FloatingReadPhase(true, true)).apply(snippetCopy, providers);
+                new FloatingReadPhase(true, true, canonicalizer).apply(snippetCopy, providers);
                 new GuardLoweringPhase().apply(snippetCopy, providers);
-                new IncrementalCanonicalizerPhase<>(canonicalizer, new RemoveValueProxyPhase()).apply(snippetCopy, providers);
+                new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);

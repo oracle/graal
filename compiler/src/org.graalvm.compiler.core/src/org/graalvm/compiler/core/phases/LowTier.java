@@ -65,7 +65,7 @@ public class LowTier extends BaseTier<LowTierContext> {
 
         appendPhase(new LowTierLoweringPhase(canonicalizer));
 
-        appendPhase(new ExpandLogicPhase());
+        appendPhase(new ExpandLogicPhase(canonicalizer));
 
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));

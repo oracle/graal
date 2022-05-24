@@ -24,40 +24,55 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.graph.Graph.NodeEventScope;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 /**
  * A phase suite that applies {@linkplain CanonicalizerPhase canonicalization} to a graph after all
  * phases in the suite have been applied if any of the phases changed the graph.
  */
-public class IncrementalCanonicalizerPhase<C extends CoreProviders> extends PhaseSuite<C> {
+public abstract class IncrementalCanonicalizerPhase<C extends CoreProviders> extends BasePhase<C> {
 
-    private final CanonicalizerPhase canonicalizer;
+    protected final CanonicalizerPhase canonicalizer;
 
     public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer) {
         this.canonicalizer = canonicalizer;
     }
 
-    public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer, BasePhase<? super C> phase) {
-        this.canonicalizer = canonicalizer;
-        appendPhase(phase);
+    public static class ApplyIncremental implements DebugCloseable {
+        private final EconomicSetNodeEventListener listener;
+        private final StructuredGraph graph;
+        private final CoreProviders context;
+        private final CanonicalizerPhase canonicalizer;
+        private final Graph.NodeEventScope scope;
+
+        public ApplyIncremental(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
+            assert canonicalizer != null;
+            this.graph = graph;
+            this.context = context;
+            this.canonicalizer = canonicalizer;
+            this.listener = new EconomicSetNodeEventListener();
+            scope = graph.trackNodeEvents(listener);
+        }
+
+        @Override
+        public void close() {
+            scope.close();
+            if (!listener.getNodes().isEmpty()) {
+                canonicalizer.applyIncremental(graph, context, listener.getNodes(), null, false);
+            }
+        }
     }
 
     @Override
-    @SuppressWarnings("try")
-    protected void run(StructuredGraph graph, C context) {
-        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
-        try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
-            super.run(graph, context);
+    protected DebugCloseable beforeApply(StructuredGraph graph, C context) {
+        if (canonicalizer != null) {
+            return new ApplyIncremental(graph, context, canonicalizer);
         }
-
-        if (!listener.getNodes().isEmpty()) {
-            canonicalizer.applyIncremental(graph, context, listener.getNodes(), null, false);
-        }
+        return null;
     }
 }

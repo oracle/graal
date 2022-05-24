@@ -703,8 +703,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             }
             new HighTierLoweringPhase(canonicalizer).apply(graph, context);
 
-            new FloatingReadPhase().apply(graph);
-            new RemoveValueProxyPhase().apply(graph);
+            new FloatingReadPhase(null).apply(graph, context);
+            new RemoveValueProxyPhase().apply(graph, context);
 
             MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
             new GuardLoweringPhase().apply(graph, midContext);

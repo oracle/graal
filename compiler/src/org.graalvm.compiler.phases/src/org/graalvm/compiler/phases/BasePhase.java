@@ -214,15 +214,16 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     /**
      * An extension point for subclasses, called at the start of
      * {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     *
+     * @param graph
+     * @param context
      */
-    protected void startApplyHook() {
-
+    protected DebugCloseable beforeApply(StructuredGraph graph, C context) {
+        return null;
     }
 
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
-        startApplyHook();
-
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
@@ -232,7 +233,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         try (CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
                         DebugContext.Scope s = debug.scope(getClass(), this);
-                        DebugCloseable c = memUseTracker.start(debug);) {
+                        DebugCloseable c = memUseTracker.start(debug);
+                        DebugCloseable s2 = beforeApply(graph, context)) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();

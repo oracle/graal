@@ -40,14 +40,15 @@ import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
     private static final CounterKey UNSWITCHED = DebugContext.counter("Unswitched");
     private static final CounterKey UNSWITCH_CANDIDATES = DebugContext.counter("UnswitchCandidates");
     private static final CounterKey UNSWITCH_EARLY_REJECTS = DebugContext.counter("UnswitchEarlyRejects");
 
-    public LoopUnswitchingPhase(LoopPolicies policies) {
-        super(policies);
+    public LoopUnswitchingPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
+        super(policies, canonicalizer);
     }
 
     @Override
