@@ -716,7 +716,8 @@ public abstract class LoopTransformations {
     }
 
     /**
-     * Find all unswichable control split nodes in the given loop and group them by condition.
+     * Find all unswichable control split nodes in the given loop. When multiple control split nodes
+     * have the same invariant condition, group them together.
      *
      * @param loop search control split nodes in this loop.
      * @return the unswitchable control split nodes grouped by condition meaning that every control
