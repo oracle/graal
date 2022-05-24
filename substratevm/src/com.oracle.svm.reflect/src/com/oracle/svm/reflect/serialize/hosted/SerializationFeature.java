@@ -222,15 +222,15 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
-        UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
-                        " Please make sure it is in the classpath", targetClassName);
+        if (serializationTargetClass == null) {
+            return;
+        }
 
         if (customTargetConstructorClassName != null) {
             Class<?> customTargetConstructorClass = typeResolver.resolveType(customTargetConstructorClassName);
-            UserError.guarantee(customTargetConstructorClass != null,
-                            "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
-                                            " Please make sure it is in the classpath",
-                            customTargetConstructorClass);
+            if (customTargetConstructorClass == null) {
+                return;
+            }
             registerWithTargetConstructorClass(condition, serializationTargetClass, customTargetConstructorClass);
         } else {
             registerWithTargetConstructorClass(condition, serializationTargetClass, null);
@@ -240,13 +240,29 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     @Override
     public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
+
+        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        if (conditionClass == null) {
+            return;
+        }
+
         if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
             println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
-        } else if (denyRegistry.isAllowed(serializationTargetClass)) {
+            return;
+        }
+
+        if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
-                UserError.guarantee(customTargetConstructorClass.isAssignableFrom(serializationTargetClass),
-                                "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
-                                customTargetConstructorClass, serializationTargetClass);
+                if (!customTargetConstructorClass.isAssignableFrom(serializationTargetClass)) {
+                    println("Warning: The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
+                                    " is not a superclass of the serialization target " + serializationTargetClass + ".");
+                    return;
+                }
+                if (ReflectionUtil.lookupConstructor(true, customTargetConstructorClass) == null) {
+                    println("Warning: The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
+                                    " does not declare a parameterless constructor.");
+                    return;
+                }
             }
             registerConditionalConfiguration(condition, () -> {
                 Class<?> targetConstructor = addConstructorAccessor(serializationTargetClass, customTargetConstructorClass);
@@ -361,12 +377,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             }
             Constructor<?> customConstructorToCall = null;
             if (customTargetConstructorClass != null) {
-                try {
-                    customConstructorToCall = customTargetConstructorClass.getDeclaredConstructor();
-                } catch (NoSuchMethodException ex) {
-                    UserError.abort("The given targetConstructorClass %s does not declare a parameterless constructor.",
-                                    customTargetConstructorClass.getTypeName());
-                }
+                customConstructorToCall = ReflectionUtil.lookupConstructor(customTargetConstructorClass);
             }
             targetConstructor = newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
             targetConstructorClass = targetConstructor.getDeclaringClass();
