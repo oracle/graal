@@ -33,7 +33,8 @@ public enum ConfigurationFile {
     REFLECTION("reflect", true),
     SERIALIZATION("serialization", true),
     SERIALIZATION_DENY("serialization-deny", false),
-    PREDEFINED_CLASSES_NAME("predefined-classes", true);
+    PREDEFINED_CLASSES_NAME("predefined-classes", true),
+    EXCEPTION("exception", true);
 
     public static final String DEFAULT_FILE_NAME_SUFFIX = "-config.json";
     private final String name;

@@ -117,5 +117,13 @@ public abstract class Tracer {
         traceEntry(entry);
     }
 
+    public void traceException(String clazzName, String exceptionTypeName) {
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("tracer", "exception");
+        entry.put("class", clazzName);
+        entry.put("exception", exceptionTypeName);
+        traceEntry(entry);
+    }
+
     protected abstract void traceEntry(Map<String, Object> entry);
 }

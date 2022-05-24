@@ -48,6 +48,7 @@ public class ConfigurationFileCollection {
     private final Set<URI> resourceConfigPaths = new LinkedHashSet<>();
     private final Set<URI> serializationConfigPaths = new LinkedHashSet<>();
     private final Set<URI> predefinedClassesConfigPaths = new LinkedHashSet<>();
+    private final Set<URI> exceptionConfigPaths = new LinkedHashSet<>();
     private Set<URI> lockFilePaths;
 
     public void addDirectory(Path path) {
@@ -57,6 +58,7 @@ public class ConfigurationFileCollection {
         resourceConfigPaths.add(path.resolve(ConfigurationFile.RESOURCES.getFileName()).toUri());
         serializationConfigPaths.add(path.resolve(ConfigurationFile.SERIALIZATION.getFileName()).toUri());
         predefinedClassesConfigPaths.add(path.resolve(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()).toUri());
+        exceptionConfigPaths.add(path.resolve(ConfigurationFile.EXCEPTION.getFileName()).toUri());
         detectAgentLock(path.resolve(ConfigurationFile.LOCK_FILE_NAME), Files::exists, Path::toUri);
     }
 
@@ -76,6 +78,7 @@ public class ConfigurationFileCollection {
         resourceConfigPaths.add(fileResolver.apply(ConfigurationFile.RESOURCES.getFileName()));
         serializationConfigPaths.add(fileResolver.apply(ConfigurationFile.SERIALIZATION.getFileName()));
         predefinedClassesConfigPaths.add(fileResolver.apply(ConfigurationFile.PREDEFINED_CLASSES_NAME.getFileName()));
+        exceptionConfigPaths.add(fileResolver.apply(ConfigurationFile.EXCEPTION.getFileName()));
         detectAgentLock(fileResolver.apply(ConfigurationFile.LOCK_FILE_NAME), Objects::nonNull, Function.identity());
     }
 
@@ -85,7 +88,8 @@ public class ConfigurationFileCollection {
 
     public boolean isEmpty() {
         return jniConfigPaths.isEmpty() && reflectConfigPaths.isEmpty() && proxyConfigPaths.isEmpty() &&
-                        resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() && predefinedClassesConfigPaths.isEmpty();
+                        resourceConfigPaths.isEmpty() && serializationConfigPaths.isEmpty() &&
+                        predefinedClassesConfigPaths.isEmpty() && exceptionConfigPaths.isEmpty();
     }
 
     public Set<URI> getJniConfigPaths() {
@@ -110,6 +114,10 @@ public class ConfigurationFileCollection {
 
     public Set<URI> getPredefinedClassesConfigPaths() {
         return predefinedClassesConfigPaths;
+    }
+
+    public Set<URI> getExceptionConfigPaths() {
+        return exceptionConfigPaths;
     }
 
     public TypeConfiguration loadJniConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
@@ -145,11 +153,18 @@ public class ConfigurationFileCollection {
         return serializationConfiguration;
     }
 
+    public ExceptionConfiguration loadExceptionConfig(Function<IOException, Exception> exceptionHandler) throws Exception {
+        ExceptionConfiguration exceptionConfiguration = new ExceptionConfiguration();
+        loadConfig(exceptionConfigPaths, exceptionConfiguration.createParser(), exceptionHandler);
+        return exceptionConfiguration;
+    }
+
     public ConfigurationSet loadConfigurationSet(Function<IOException, Exception> exceptionHandler, Path[] predefinedConfigClassDestinationDirs,
                     Predicate<String> predefinedConfigClassWithHashExclusionPredicate) throws Exception {
         return new ConfigurationSet(loadReflectConfig(exceptionHandler), loadJniConfig(exceptionHandler), loadResourceConfig(exceptionHandler), loadProxyConfig(exceptionHandler),
                         loadSerializationConfig(exceptionHandler),
-                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler));
+                        loadPredefinedClassesConfig(predefinedConfigClassDestinationDirs, predefinedConfigClassWithHashExclusionPredicate, exceptionHandler),
+                        loadExceptionConfig(exceptionHandler));
     }
 
     private static TypeConfiguration loadTypeConfig(Collection<URI> uris, Function<IOException, Exception> exceptionHandler) throws Exception {

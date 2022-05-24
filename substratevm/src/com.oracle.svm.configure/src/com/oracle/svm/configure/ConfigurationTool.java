@@ -343,6 +343,11 @@ public class ConfigurationTool {
                 configurationSet.getPredefinedClassesConfiguration().printJson(writer);
             }
         }
+        for (URI uri : outputCollection.getExceptionConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                configurationSet.getExceptionConfiguration().printJson(writer);
+            }
+        }
     }
 
     private static Path getOrCreateDirectory(String current, String value) throws IOException {

@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 import com.oracle.svm.configure.config.ConfigurationPredefinedClass;
 import com.oracle.svm.configure.config.ConfigurationType;
+import com.oracle.svm.configure.config.ExceptionConfiguration;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
@@ -40,7 +41,8 @@ import com.oracle.svm.configure.filters.ComplexFilter;
 import com.oracle.svm.core.configure.ConditionalElement;
 
 public class ConditionalConfigurationPredicate implements TypeConfiguration.Predicate, ProxyConfiguration.Predicate,
-                ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate {
+                ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate,
+                ExceptionConfiguration.Predicate {
 
     private final ComplexFilter filter;
 
@@ -81,5 +83,10 @@ public class ConditionalConfigurationPredicate implements TypeConfiguration.Pred
     @Override
     public boolean testPredefinedClass(ConfigurationPredefinedClass clazz) {
         return clazz.getNameInfo() != null && !filter.includes(clazz.getNameInfo());
+    }
+
+    @Override
+    public boolean testExceptionType(String className) {
+        return true;
     }
 }
