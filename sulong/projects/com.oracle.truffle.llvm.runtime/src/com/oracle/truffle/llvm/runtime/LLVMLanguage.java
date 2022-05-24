@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
@@ -214,6 +215,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         boolean isDisposed;
         LLVMStack stack;
         LLVMPointer localStorage;
+        LLVMGlobalContainer[][] globalContainers = new LLVMGlobalContainer[10][];
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
@@ -270,6 +272,22 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             LLVMStack tmp = stack;
             this.stack = null;
             return tmp;
+        }
+
+        public void addGlobalContainer(LLVMGlobalContainer[] globalContainer, BitcodeID bitcodeID) {
+            int id = bitcodeID.getId();
+            if (id >= globalContainers.length) {
+                int newLength = (id + 1) + ((id + 1) / 2);
+                globalContainers = Arrays.copyOf(globalContainers, newLength);
+            }
+            globalContainers[id] = globalContainer;
+        }
+
+        public LLVMGlobalContainer getGlobalContainer(int index, BitcodeID bitcodeID) {
+            int id = bitcodeID.getId();
+            assert 0 < id && id < globalContainers.length;
+            assert 0 < index && index < globalContainers[id].length;
+            return globalContainers[id][index];
         }
     }
 
@@ -531,6 +549,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                     for (LLVMPointer section : threadLocalValue.sections) {
                         if (section != null) {
                             freeOpNode.execute(section);
+                        }
+                    }
+                    for (LLVMGlobalContainer[] globalContainers : threadLocalValue.globalContainers) {
+                        if (globalContainers != null) {
+                            for (LLVMGlobalContainer globalContainer : globalContainers) {
+                                if (globalContainer != null) {
+                                    globalContainer.dispose();
+                                }
+                            }
                         }
                     }
                     threadLocalValue.setDisposed();
