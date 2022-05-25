@@ -30,9 +30,11 @@
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.dsl.AOTSupport;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -148,5 +150,10 @@ public final class LLVMFunctionStartNode extends LLVMRootNode implements LLVMHas
         AOTSupport.prepareForAOT(this);
         // TODO: use the FunctionDefinition to prepare the right signature
         return ExecutionSignature.GENERIC;
+    }
+
+    @Override
+    protected Object translateStackTraceElement(TruffleStackTraceElement element) {
+        return LLVMLanguage.getContext().createFunctionDescriptor(rootFunction, rootFunction.getFixedCode());
     }
 }
