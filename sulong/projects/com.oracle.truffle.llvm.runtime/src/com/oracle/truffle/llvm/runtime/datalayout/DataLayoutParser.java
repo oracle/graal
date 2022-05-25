@@ -168,28 +168,7 @@ final class DataLayoutParser {
             }
         }
 
-        // Add specs for 32 bit float and 64 bit double which are supported on all targets
-        // http://releases.llvm.org/3.9.0/docs/LangRef.html#data-layout
-        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, Float.SIZE, Float.SIZE, Float.SIZE));
-        addIfMissing(specs, new DataTypeSpecification(DataLayoutType.FLOAT, Double.SIZE, Double.SIZE, Double.SIZE));
-
-        // FIXME:work around to handle pointer type in LLVM 3.9.0 bitcode format
-        checkPointerType(specs);
         return byteOrder;
-    }
-
-    private static void checkPointerType(List<DataTypeSpecification> specs) {
-        boolean isPointerTypeFound = false;
-        for (DataTypeSpecification spec : specs) {
-            if (spec.type == DataLayoutType.POINTER) {
-                isPointerTypeFound = true;
-                break;
-            }
-        }
-        if (!isPointerTypeFound) {
-            // Use the default pointer type spec
-            specs.add(new DataTypeSpecification(DataLayoutType.POINTER, 64, 64, 64));
-        }
     }
 
     private static DataTypeSpecification createDataTypeSpec(DataLayoutType type, String spec) {
