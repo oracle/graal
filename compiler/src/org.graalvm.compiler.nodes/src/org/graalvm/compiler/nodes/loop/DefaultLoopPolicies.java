@@ -53,6 +53,7 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.cfg.Block;
@@ -399,6 +400,18 @@ public class DefaultLoopPolicies implements LoopPolicies {
         int bestCodeSizeChange = 0;
         double bestFactor = 0.0;
         for (List<ControlSplitNode> split : controlSplits) {
+            boolean isTrusted = true;
+            for (ControlSplitNode node : split) {
+                isTrusted = isTrusted && ProfileSource.isTrusted(node.getProfileData().getProfileSource());
+            }
+            if (!isTrusted) {
+                /**
+                 * If any of the nodes has an untrusted profile source, we don't unswitch it as its
+                 * probabilities are unknown.
+                 */
+                debug.log("control split %s discarded because unknown profile data", split);
+            }
+
             int approxCodeSizeChange = approxCodeSizeChange(loop, split);
             if (approxCodeSizeChange > loopMaxCodeSizeChange) {
                 /*
