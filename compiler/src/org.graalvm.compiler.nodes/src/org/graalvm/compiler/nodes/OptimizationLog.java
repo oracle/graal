@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -43,7 +42,13 @@ import org.graalvm.compiler.debug.CompilationListener;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.TTY;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeSuccessorList;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.json.JSONFormatter;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -85,10 +90,13 @@ public class OptimizationLog implements CompilationListener {
      * Represents one performed optimization stored in the optimization log. Additional properties are stored and
      * immediately evaluated. This is a leaf node in the optimization tree.
      */
-    private static final class OptimizationEntryImpl implements OptimizationEntry, OptimizationTreeNode {
+    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization")
+    public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
+        private static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
         private final EconomicMap<String, Object> map;
 
-        private OptimizationEntryImpl(String optimizationName, String eventName, int bci) {
+        protected OptimizationEntryImpl(String optimizationName, String eventName, int bci) {
+            super(TYPE);
             map = EconomicMap.create();
             map.put("optimizationName", optimizationName);
             map.put("eventName", eventName);
@@ -134,12 +142,19 @@ public class OptimizationLog implements CompilationListener {
      * Represents a node in the tree of optimizations. The tree of optimizations consists of internal nodes
      * (optimization phases) and leaf nodes (individual optimizations).
      */
-    private interface OptimizationTreeNode {
+    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED)
+    public abstract static class OptimizationTreeNode extends Node {
+        public static final NodeClass<OptimizationTreeNode> TYPE = NodeClass.create(OptimizationTreeNode.class);
+
+        protected OptimizationTreeNode(NodeClass<? extends OptimizationTreeNode> c) {
+            super(c);
+        }
+
         /**
          * Converts the optimization subtree to an object that can be formatted as JSON.
          * @return a representation of the optimization subtree that can be formatted as JSON
          */
-        EconomicMap<String, Object> asJsonMap();
+        abstract EconomicMap<String, Object> asJsonMap();
     }
 
     /**
@@ -147,14 +162,15 @@ public class OptimizationLog implements CompilationListener {
      * node in the tree of optimizations that holds its subphases and individual optimizations in the order they were
      * performed.
      */
-    private static final class OptimizationPhaseScope implements DebugContext.CompilerPhaseScope, OptimizationTreeNode {
-        private final OptimizationPhaseScope parentPhase;
+    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Phase")
+    public static class OptimizationPhaseScope extends OptimizationTreeNode implements DebugContext.CompilerPhaseScope {
+        public static final NodeClass<OptimizationPhaseScope> TYPE = NodeClass.create(OptimizationPhaseScope.class);
         private final OptimizationLog optimizationLog;
         private final CharSequence phaseName;
-        private ArrayList<OptimizationTreeNode> children = null;
+        @Successor private NodeSuccessorList<OptimizationTreeNode> children = null;
 
-        private OptimizationPhaseScope(OptimizationPhaseScope parentPhase, OptimizationLog optimizationLog, CharSequence phaseName) {
-            this.parentPhase = parentPhase;
+        protected OptimizationPhaseScope(OptimizationLog optimizationLog, CharSequence phaseName) {
+            super(TYPE);
             this.optimizationLog = optimizationLog;
             this.phaseName = phaseName;
         }
@@ -165,24 +181,25 @@ public class OptimizationLog implements CompilationListener {
          * @return the newly created phase
          */
         private OptimizationPhaseScope enterSubphase(CharSequence subphaseName) {
-            OptimizationPhaseScope subphase = new OptimizationPhaseScope(this, optimizationLog, subphaseName);
-            if (children == null) {
-                children = new ArrayList<>();
-            }
-            children.add(subphase);
+            OptimizationPhaseScope subphase = new OptimizationPhaseScope(optimizationLog, subphaseName);
+            addChild(subphase);
             optimizationLog.currentPhase = subphase;
             return subphase;
         }
 
         /**
-         * Adds a performed optimization to this phase.
-         * @param optimizationEntry the optimization entry to be added
+         * Adds a node to the graph as a child of this phase.
+         * 
+         * @param node the node to be added as a child
          */
-        private void addOptimizationEntry(OptimizationEntryImpl optimizationEntry) {
+        private void addChild(OptimizationTreeNode node) {
+            graph().add(node);
             if (children == null) {
-                children = new ArrayList<>();
+                children = new NodeSuccessorList<>(this, 1);
+                children.set(0, node);
+            } else {
+                children.add(node);
             }
-            children.add(optimizationEntry);
         }
 
         /**
@@ -190,7 +207,7 @@ public class OptimizationLog implements CompilationListener {
          */
         @Override
         public void close() {
-            optimizationLog.currentPhase = parentPhase;
+            optimizationLog.currentPhase = (OptimizationPhaseScope) predecessor();
         }
 
         @Override
@@ -245,6 +262,7 @@ public class OptimizationLog implements CompilationListener {
      * {@link #optimizationLogEnabled} is {@code false}, the field stays null.
      */
     private OptimizationPhaseScope currentPhase;
+    private final Graph optimizationTree;
 
     /**
      * Constructs an optimization log bound with a given graph. Optimization {@link OptimizationEntry entries} are stored
@@ -263,10 +281,13 @@ public class OptimizationLog implements CompilationListener {
                 );
             }
             compilationId = parseCompilationId();
-            currentPhase = new OptimizationPhaseScope(null, this, "RootPhase");
+            currentPhase = new OptimizationPhaseScope(this, "RootPhase");
+            optimizationTree = new Graph("OptimizationTree", graph.getOptions(), graph.getDebug(), false);
+            optimizationTree.add(currentPhase);
         } else {
             compilationId = null;
             currentPhase = null;
+            optimizationTree = null;
         }
     }
 
@@ -324,7 +345,7 @@ public class OptimizationLog implements CompilationListener {
         }
         if (optimizationLogEnabled) {
             OptimizationEntryImpl optimizationEntry = new OptimizationEntryImpl(optimizationName, eventName, bci);
-            currentPhase.addOptimizationEntry(optimizationEntry);
+            currentPhase.addChild(optimizationEntry);
             return optimizationEntry;
         }
         return OPTIMIZATION_ENTRY_EMPTY;
@@ -415,6 +436,15 @@ public class OptimizationLog implements CompilationListener {
         String json = JSONFormatter.formatJSON(asJsonMap());
         PrintStream stream = new PrintStream(Files.newOutputStream(path));
         stream.print(json);
+    }
+
+    /**
+     * Dumps the tree of optimizations if the optimization log is enabled.
+     */
+    public void dumpOptimizationTreeIfEnabled() {
+        if (optimizationLogEnabled) {
+            graph.getDebug().dump(DebugContext.DETAILED_LEVEL, optimizationTree, "Optimization tree");
+        }
     }
 
     private EconomicMap<String, Object> asJsonMap() {

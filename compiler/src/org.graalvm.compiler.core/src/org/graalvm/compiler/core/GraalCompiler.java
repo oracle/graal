@@ -151,6 +151,7 @@ public class GraalCompiler {
                     assert r.graph.verifySourcePositions(true);
                 }
                 r.graph.getOptimizationLog().printToFileIfEnabled();
+                r.graph.getOptimizationLog().dumpOptimizationTreeIfEnabled();
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
