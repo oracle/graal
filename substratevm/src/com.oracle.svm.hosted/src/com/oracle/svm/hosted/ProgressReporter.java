@@ -39,6 +39,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -585,15 +586,21 @@ public class ProgressReporter {
 
     private void printArtifacts(String imageName, NativeImageGenerator generator, OptionValues parsedHostedOptions, Map<ArtifactType, List<Path>> artifacts) {
         l().yellowBold().a("Produced artifacts:").reset().println();
+        // Use TreeMap to sort paths alphabetically.
+        Map<Path, List<String>> pathToTypes = new TreeMap<>();
         artifacts.forEach((artifactType, paths) -> {
-            for (Path p : paths) {
-                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
+            for (Path path : paths) {
+                pathToTypes.computeIfAbsent(path, p -> new ArrayList<>()).add(artifactType.name().toLowerCase());
             }
         });
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
+            Path buildStatisticsPath = reportImageBuildStatistics(imageName, generator.getBigbang());
+            pathToTypes.computeIfAbsent(buildStatisticsPath, p -> new ArrayList<>()).add("raw");
         }
-        l().a(" ").link(reportBuildArtifacts(imageName, artifacts)).println();
+        pathToTypes.computeIfAbsent(reportBuildArtifacts(imageName, artifacts), p -> new ArrayList<>()).add("txt");
+        pathToTypes.forEach((path, typeNames) -> {
+            l().a(" ").link(path).dim().a(" (").a(String.join(", ", typeNames)).a(")").reset().println();
+        });
     }
 
     private Path reportImageBuildStatistics(String imageName, BigBang bb) {
