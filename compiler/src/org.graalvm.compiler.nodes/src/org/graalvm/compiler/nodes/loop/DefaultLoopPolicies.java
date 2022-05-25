@@ -70,17 +70,17 @@ public class DefaultLoopPolicies implements LoopPolicies {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Maximum loop unswiching code size increase in nodes", type = OptionType.Expert)
+        @Option(help = "Maximum loop unswitching code size increase in nodes.", type = OptionType.Expert)
         public static final OptionKey<Integer> LoopUnswitchMaxIncrease = new OptionKey<>(2000);
-        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency", type = OptionType.Expert)
+        @Option(help = "Number of nodes allowed for a loop unswitching regardless of the loop frequency.", type = OptionType.Expert)
         public static final OptionKey<Integer> LoopUnswitchTrivial = new OptionKey<>(10);
-        @Option(help = "Number of nodes allowed for a loop unswitching per the loop frequency", type = OptionType.Expert)
+        @Option(help = "Number of nodes allowed for a loop unswitching per loop frequency. The number of nodes allowed for the unswitching is proportional to the relative frequency of the loop by this constant.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchFrequencyBoost = new OptionKey<>(10.0);
-        @Option(help = "Minimum value for the frequency factor of an invariant", type = OptionType.Expert)
+        @Option(help = "Minimum value for the frequency factor of an invariant.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchFrequencyMinFactor = new OptionKey<>(0.05);
-        @Option(help = "Maximun value for the frequency factor of an invariant", type = OptionType.Expert)
+        @Option(help = "Maximun value for the frequency factor of an invariant.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchFrequencyMaxFactor = new OptionKey<>(0.95);
-        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched", type = OptionType.Expert)
+        @Option(help = "Lower bound for the minimun frequency of an invariant condition to be unswitched.", type = OptionType.Expert)
         public static final OptionKey<Double> LoopUnswitchMinSplitFrequency = new OptionKey<>(1.0);
 
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
