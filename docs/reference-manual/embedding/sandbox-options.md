@@ -20,6 +20,7 @@ The options are a best effort approach to limiting resource usage of guest appli
 
 The resource limits may be configured using the following options:
 
+<!-- BEGIN: sandbox-options -->
 - `--sandbox.AllocatedBytesCheckEnabled=true|false` : Specifies whether checking of allocated bytes for an execution context is enabled. Is set to 'true' by default.
 - `--sandbox.AllocatedBytesCheckFactor=[0.0, inf)` : Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated. Is set to '1.0' by default.
 - `--sandbox.AllocatedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context. Is set to '10ms' by default.
@@ -34,6 +35,7 @@ The resource limits may be configured using the following options:
 - `--sandbox.RetainedBytesCheckFactor=[0.0, inf)` : Specifies a factor of total heap memory of the host VM the exceeding of which stops the world. When the total number of bytes allocated in the heap for the whole host VM exceeds the factor, the following process is initiated. Execution for all engines with at least one memory-limited execution context is paused. Retained bytes in the heap for each memory-limited context are computed. Contexts exceeding their limits are cancelled. The execution is resumed. Is set to '0.7' by default.
 - `--sandbox.RetainedBytesCheckInterval=[1, inf)ms|s|m|h|d` : Specifies the minimum time interval between two computations of retained bytes in the heap for a single execution context. Is set to '10ms' by default.
 - `--sandbox.UseLowMemoryTrigger=true|false` : Specifies whether stopping the world is enabled. When enabled, engines with at least one memory limited execution context are paused when the total number of bytes allocated in the heapfor the whole host VM exceeds the specified factor of total heap memory of the host VM. Is set to 'true' by default.
+<!-- END: sandbox-options -->
 
 Different configurations may be provided for each polyglot embedding `Context` instance.
 In addition to that the limits may be reset at any point of time during the execution. Resetting is only aplicable to `sandbox.MaxStatements` and `sandbox.MaxCPUTime`.
