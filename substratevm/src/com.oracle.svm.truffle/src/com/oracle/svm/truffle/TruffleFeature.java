@@ -109,6 +109,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
@@ -184,6 +185,9 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
     }
 
     public static class Options {
+        @Option(help = "Print truffle boundaries found during the analysis")//
+        public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
+
         @Option(help = "Check that CompilerAsserts.neverPartOfCompilation is not reachable for runtime compilation")//
         public static final HostedOptionKey<Boolean> TruffleCheckNeverPartOfCompilation = new HostedOptionKey<>(true);
 
@@ -813,6 +817,10 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        if (Options.PrintStaticTruffleBoundaries.getValue()) {
+            printStaticTruffleBoundaries();
+        }
+
         SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
         AfterAnalysisAccessImpl config = (AfterAnalysisAccessImpl) access;
         truffleRuntime.initializeHostedKnownMethods(config.getMetaAccess());
@@ -842,6 +850,30 @@ public class TruffleFeature implements com.oracle.svm.core.graal.InternalFeature
                 }
             }
         }
+    }
+
+    private static void printStaticTruffleBoundaries() {
+        HashSet<ResolvedJavaMethod> foundBoundaries = new HashSet<>();
+        int callSiteCount = 0;
+        int calleeCount = 0;
+        for (CallTreeNode node : ImageSingletons.lookup(GraalFeature.class).getRuntimeCompiledMethods().values()) {
+            StructuredGraph graph = node.getGraph();
+            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                ResolvedJavaMethod targetMethod = callTarget.targetMethod();
+                TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
+                if (truffleBoundary != null) {
+                    ++callSiteCount;
+                    if (foundBoundaries.contains(targetMethod)) {
+                        // nothing to do
+                    } else {
+                        foundBoundaries.add(targetMethod);
+                        System.out.println("Truffle boundary found: " + targetMethod);
+                        calleeCount++;
+                    }
+                }
+            }
+        }
+        System.out.printf("Number of Truffle call boundaries: %d, number of unique called methods outside the boundary: %d%n", callSiteCount, calleeCount);
     }
 
     @Override

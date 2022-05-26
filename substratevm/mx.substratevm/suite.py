@@ -811,7 +811,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
-                "truffle:TRUFFLE_API",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -882,6 +881,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.graal",
+                "truffle:TRUFFLE_API",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -901,9 +901,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.truffle",
-            ],
-            "requires": [
-                "jdk.unsupported",  # workaround to make TRUFFLE_DSL_PROCESSOR work with ECJ
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "11+",
