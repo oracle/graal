@@ -656,10 +656,15 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         return (other == null || other.compareTo(modified) < 0) ? modified : other;
     }
 
+    @SuppressWarnings("BusyWait")
     private static void compulsoryDelete(Path pathToDelete) {
         final int maxRetries = 3;
         int retries = 0;
         while (pathToDelete.toFile().exists() && !pathToDelete.toFile().delete() && retries < maxRetries) {
+            try {
+                Thread.sleep((long) (100 + Math.random() * 500));
+            } catch (InterruptedException e) {
+            }
             retries++;
         }
     }
