@@ -76,18 +76,13 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     }
 
     @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(graph, context, newNodesMark).apply(graph, dumpGraph);
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
+        new Instance(graph, context, newNodesMark).apply(graph);
     }
 
     @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
-        new Instance(graph, context, workingSet).apply(graph, dumpGraph);
-    }
-
-    @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(graph, context, workingSet, newNodesMark).apply(graph, dumpGraph);
+    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
+        new Instance(graph, context, workingSet).apply(graph);
     }
 
     private final class Instance extends CanonicalizerPhase.Instance {

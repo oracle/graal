@@ -213,12 +213,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
 
     /**
      * An extension point for subclasses, called at the start of
-     * {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
-     *
-     * @param graph
-     * @param context
+     * {@link BasePhase#apply(StructuredGraph, Object, boolean)}. The return value is a
+     * {@link DebugCloseable scope} which will surround all the work performed by the
+     * {@link #apply}. This allows subclaseses to inject work which will performed before and after
+     * the application of this phase.
      */
-    protected DebugCloseable beforeApply(StructuredGraph graph, C context) {
+    protected DebugCloseable applyScope(StructuredGraph graph, C context) {
         return null;
     }
 
@@ -230,11 +230,11 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         DebugContext debug = graph.getDebug();
-        try (CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+        try (DebugCloseable s2 = applyScope(graph, context);
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
                         DebugContext.Scope s = debug.scope(getClass(), this);
-                        DebugCloseable c = memUseTracker.start(debug);
-                        DebugCloseable s2 = beforeApply(graph, context)) {
+                        DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
             int edgesBefore = graph.getEdgeModificationCount();

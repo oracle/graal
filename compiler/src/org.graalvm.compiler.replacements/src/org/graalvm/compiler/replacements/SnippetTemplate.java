@@ -1439,6 +1439,7 @@ public class SnippetTemplate {
     public static void explodeLoops(final StructuredGraph snippetCopy, CoreProviders providers) {
         // Do any required loop explosion
         boolean exploded = false;
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         do {
             exploded = false;
             ExplodeLoopNode explodeLoop = snippetCopy.getNodes().filter(ExplodeLoopNode.class).first();
@@ -1448,14 +1449,13 @@ public class SnippetTemplate {
                 if (loopBegin != null) {
                     LoopEx loop = providers.getLoopsDataProvider().getLoopsData(snippetCopy).loop(loopBegin);
                     Mark mark = snippetCopy.getMark();
-                    CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                     try {
                         LoopTransformations.fullUnroll(loop, providers, canonicalizer);
                     } catch (RetryableBailoutException e) {
                         // This is a hard error in this context
                         throw new GraalError(e, snippetCopy.toString());
                     }
-                    CanonicalizerPhase.create().applyIncremental(snippetCopy, providers, mark, false);
+                    canonicalizer.applyIncremental(snippetCopy, providers, mark);
                     loop.deleteUnusedNodes();
                 }
                 GraphUtil.removeFixedWithUnusedInputs(explodeLoop);

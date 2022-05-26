@@ -71,6 +71,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
@@ -101,6 +102,34 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
          * {@link StructuredGraph#findDuplicate(Node)} for details.
          */
         GVN;
+    }
+
+    /**
+     * Helper class to apply incremental canonicalization using scopes.
+     */
+    public static class CanonicalizerApplyIncremental implements DebugCloseable {
+        private final EconomicSetNodeEventListener listener;
+        private final StructuredGraph graph;
+        private final CoreProviders context;
+        private final CanonicalizerPhase canonicalizer;
+        private final Graph.NodeEventScope scope;
+
+        public CanonicalizerApplyIncremental(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
+            assert canonicalizer != null;
+            this.graph = graph;
+            this.context = context;
+            this.canonicalizer = canonicalizer;
+            this.listener = new EconomicSetNodeEventListener();
+            scope = graph.trackNodeEvents(listener);
+        }
+
+        @Override
+        public void close() {
+            scope.close();
+            if (!listener.getNodes().isEmpty()) {
+                canonicalizer.applyIncremental(graph, context, listener.getNodes());
+            }
+        }
     }
 
     private static final int MAX_ITERATION_PER_NODE = 10;
@@ -203,11 +232,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            mark are processed
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-        this.applyIncremental(graph, context, newNodesMark, true);
-    }
-
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(graph, context, newNodesMark).apply(graph, dumpGraph);
+        new Instance(graph, context, newNodesMark).apply(graph);
     }
 
     /**
@@ -215,19 +240,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            be an auto-grow node bitmap
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-        this.applyIncremental(graph, context, workingSet, true);
-    }
-
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean dumpGraph) {
-        new Instance(graph, context, workingSet).apply(graph, dumpGraph);
-    }
-
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-        this.applyIncremental(graph, context, workingSet, newNodesMark, true);
-    }
-
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean dumpGraph) {
-        new Instance(graph, context, workingSet, newNodesMark).apply(graph, dumpGraph);
+        new Instance(graph, context, workingSet).apply(graph);
     }
 
     public NodeView getNodeView() {

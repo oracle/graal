@@ -106,7 +106,7 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
     @SuppressWarnings("try")
     static StructuredGraph lowerReplacement(StructuredGraph graph, StructuredGraph replacementGraph, LoweringTool tool) {
         if (graph.isAfterStage(StructuredGraph.StageFlag.VALUE_PROXY_REMOVAL)) {
-            new RemoveValueProxyPhase().apply(replacementGraph, null);
+            new RemoveValueProxyPhase(CanonicalizerPhase.create()).apply(replacementGraph, null);
         }
         StructuredGraph.GuardsStage guardsStage = graph.getGuardsStage();
         if (!guardsStage.allowsFloatingGuards()) {

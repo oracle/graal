@@ -261,7 +261,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         }
 
         if (!listener.getNodes().isEmpty()) {
-            canonicalizer.applyIncremental(graph, context, listener.getNodes(), null, false);
+            canonicalizer.applyIncremental(graph, context, listener.getNodes());
         }
         assert graph.verify();
     }

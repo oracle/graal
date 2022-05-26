@@ -38,10 +38,6 @@ public class RemoveValueProxyPhase extends IncrementalCanonicalizerPhase<CorePro
         super(canonicalizer);
     }
 
-    public RemoveValueProxyPhase() {
-        super(null);
-    }
-
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         for (LoopExitNode exit : graph.getNodes(LoopExitNode.TYPE)) {

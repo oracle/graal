@@ -25,54 +25,29 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 /**
- * A phase suite that applies {@linkplain CanonicalizerPhase canonicalization} to a graph after all
- * phases in the suite have been applied if any of the phases changed the graph.
+ * The base classes for phases that always want to apply {@link CanonicalizerPhase#applyIncremental}
+ * to a graph after the phase has been applied if the graph changed.
  */
 public abstract class IncrementalCanonicalizerPhase<C extends CoreProviders> extends BasePhase<C> {
 
     protected final CanonicalizerPhase canonicalizer;
 
+    /**
+     * Primary constructor for incremental canonicalzation. Subclasses must provide a non-null
+     * {@link CanonicalizerPhase}
+     */
     public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer) {
+        assert canonicalizer != null;
         this.canonicalizer = canonicalizer;
     }
 
-    public static class ApplyIncremental implements DebugCloseable {
-        private final EconomicSetNodeEventListener listener;
-        private final StructuredGraph graph;
-        private final CoreProviders context;
-        private final CanonicalizerPhase canonicalizer;
-        private final Graph.NodeEventScope scope;
-
-        public ApplyIncremental(StructuredGraph graph, CoreProviders context, CanonicalizerPhase canonicalizer) {
-            assert canonicalizer != null;
-            this.graph = graph;
-            this.context = context;
-            this.canonicalizer = canonicalizer;
-            this.listener = new EconomicSetNodeEventListener();
-            scope = graph.trackNodeEvents(listener);
-        }
-
-        @Override
-        public void close() {
-            scope.close();
-            if (!listener.getNodes().isEmpty()) {
-                canonicalizer.applyIncremental(graph, context, listener.getNodes(), null, false);
-            }
-        }
-    }
-
     @Override
-    protected DebugCloseable beforeApply(StructuredGraph graph, C context) {
-        if (canonicalizer != null) {
-            return new ApplyIncremental(graph, context, canonicalizer);
-        }
-        return null;
+    protected DebugCloseable applyScope(StructuredGraph graph, C context) {
+        return new CanonicalizerPhase.CanonicalizerApplyIncremental(graph, context, canonicalizer);
     }
 }

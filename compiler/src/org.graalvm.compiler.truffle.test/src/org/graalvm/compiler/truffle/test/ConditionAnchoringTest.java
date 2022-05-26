@@ -127,7 +127,6 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         CanonicalizerPhase canonicalizerPhase = createCanonicalizerPhase();
         FloatingReadPhase floatingReadPhase = new FloatingReadPhase(canonicalizerPhase);
         floatingReadPhase.apply(graph, context);
-        // canonicalizerPhase.apply(graph, context);
 
         NodeIterable<FloatingReadNode> floatingReads = graph.getNodes().filter(FloatingReadNode.class);
         assertThat(floatingReads, hasCount(ids + 1)); // 1 id read, 1 'field' access

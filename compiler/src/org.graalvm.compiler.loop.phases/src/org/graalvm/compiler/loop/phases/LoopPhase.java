@@ -35,6 +35,7 @@ public abstract class LoopPhase<P extends LoopPolicies> extends IncrementalCanon
     public LoopPhase(P policies, CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
         this.policies = policies;
+        assert canonicalizer != null : "incremental canonicalization must always be enabled for loop phases";
     }
 
     protected P getPolicies() {
