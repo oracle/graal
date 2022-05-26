@@ -36,7 +36,6 @@ import java.util.List;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -496,14 +495,18 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     /**
      * testing scheduling within a block.
      */
-    public static int testBlockScheduleSnippet() {
+    public static int testBlockScheduleSnippet(Container container2) {
         int res = 0;
+        // Introduce an aliasing write so the read isn't foldable
         container.a = 0x00;
         container.a = 0x10;
         container.a = 0x20;
         container.a = 0x30;
         container.a = 0x40;
+        // Introduce an aliasing write so read elimination can't fold the read
+        container2.a = 1;
         res = container.a;
+        container2.a = 1;
         container.a = 0x50;
         container.a = 0x60;
         container.a = 0x70;
@@ -514,33 +517,29 @@ public class MemoryScheduleTest extends GraphScheduleTest {
     public void testBlockSchedule() {
         ScheduleResult schedule = getFinalSchedule("testBlockScheduleSnippet", TestMode.WITHOUT_FRAMESTATES);
         StructuredGraph graph = schedule.getCFG().graph;
-        NodeIterable<WriteNode> writeNodes = graph.getNodes().filter(WriteNode.class);
+        List<WriteNode> writes = graph.getNodes().filter(WriteNode.class).snapshot();
 
-        assertDeepEquals(8, writeNodes.count());
+        assertDeepEquals(4, writes.size());
         assertDeepEquals(1, graph.getNodes().filter(FloatingReadNode.class).count());
 
         FloatingReadNode read = graph.getNodes().filter(FloatingReadNode.class).first();
 
-        WriteNode[] writes = new WriteNode[8];
-        int i = 0;
-        for (WriteNode n : writeNodes) {
-            writes[i] = n;
-            i++;
-        }
-        assertOrderedAfterSchedule(schedule, writes[4], read);
-        assertOrderedAfterSchedule(schedule, read, writes[5]);
-        for (int j = 0; j < 7; j++) {
-            assertOrderedAfterSchedule(schedule, writes[j], writes[j + 1]);
+        assertOrderedAfterSchedule(schedule, writes.get(0), read);
+        assertOrderedAfterSchedule(schedule, read, writes.get(2));
+        for (int j = 0; j < writes.size() - 1; j++) {
+            assertOrderedAfterSchedule(schedule, writes.get(j), writes.get(j + 1));
         }
     }
 
     /**
      * read should move inside the loop (out of loop is disabled).
      */
-    public static int testBlockSchedule2Snippet(int value) {
+    public static int testBlockSchedule2Snippet(int value, Container container2) {
         int res = 0;
 
         container.a = value;
+        // Introduce an aliasing write so read elimination can't fold the read
+        container2.a = 0;
         for (int i = 0; i < 100; i++) {
             if (i == 10) {
                 return container.a;
@@ -703,8 +702,8 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             }
             new HighTierLoweringPhase(canonicalizer).apply(graph, context);
 
-            new FloatingReadPhase(null).apply(graph, context);
-            new RemoveValueProxyPhase().apply(graph, context);
+            new FloatingReadPhase(canonicalizer).apply(graph, context);
+            new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
 
             MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
             new GuardLoweringPhase().apply(graph, midContext);
