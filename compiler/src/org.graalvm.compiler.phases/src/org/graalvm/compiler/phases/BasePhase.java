@@ -218,6 +218,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      * {@link #apply}. This allows subclaseses to inject work which will performed before and after
      * the application of this phase.
      */
+    @SuppressWarnings("unused")
     protected DebugCloseable applyScope(StructuredGraph graph, C context) {
         return null;
     }

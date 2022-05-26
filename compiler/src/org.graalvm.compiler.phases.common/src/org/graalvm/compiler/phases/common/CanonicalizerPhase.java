@@ -307,10 +307,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             this(graph, context, null, newNodesMark, false);
         }
 
-        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-            this(graph, context, workingSet, newNodesMark, false);
-        }
-
         Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean isFinalCanonicalization) {
             this.initialGraph = graph;
             this.context = context;
