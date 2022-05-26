@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
@@ -355,8 +354,7 @@ final class ParserDriver {
         ModelModule module = new ModelModule();
         Source source = binaryParserResult.getSource();
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source);
-        TargetDataLayout layout = module.getTargetDataLayout();
-        DataLayout targetDataLayout = new DataLayout(layout.getDataLayout());
+        DataLayout targetDataLayout = new DataLayout(module.getTargetDataLayout());
         verifyBitcodeSource(source, targetDataLayout, getTargetTriple(module));
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         // Create a new public file scope to be returned inside sulong library.
