@@ -3922,7 +3922,14 @@ public class FlatNodeGenFactory {
 
         String includeFrameParameter = null;
         if (specialization != null && specialization.getFrame() != null) {
-            includeFrameParameter = FRAME_VALUE;
+            if (ElementUtils.typeEquals(types.MaterializedFrame, specialization.getFrame().getType())) {
+                includeFrameParameter = FRAME_VALUE;
+            } else {
+                includeFrameParameter = FRAME_VALUE + "Materialized";
+                CodeTreeBuilder read = builder.create().startCall(FRAME_VALUE, "materialize").end();
+                LocalVariable materializedFrame = new LocalVariable(types.MaterializedFrame, FRAME_VALUE, read.build());
+                frameState.set(includeFrameParameter, materializedFrame);
+            }
         }
         CodeExecutableElement boundaryMethod = new CodeExecutableElement(modifiers(PRIVATE), parentMethod.getReturnType(), boundaryMethodName);
         GeneratorUtils.mergeSupressWarnings(boundaryMethod, "static-method");
@@ -3930,9 +3937,9 @@ public class FlatNodeGenFactory {
         frameState.addParametersTo(boundaryMethod, Integer.MAX_VALUE, includeFrameParameter,
                         createSpecializationLocalName(specialization));
 
+        boundaryMethod.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
         boundaryMethod.getThrownTypes().addAll(parentMethod.getThrownTypes());
         innerBuilder = boundaryMethod.createBuilder();
-        GeneratorUtils.addBoundaryOrTransferToInterpreter(boundaryMethod, innerBuilder);
         ((CodeTypeElement) parentMethod.getEnclosingElement()).add(boundaryMethod);
         builder.startReturn().startCall("this", boundaryMethod);
         multiState.addReferencesTo(frameState, builder);
