@@ -1,4 +1,4 @@
-// Holds repo specific definitions
+// Holds repo specific definitions.
 {
   graalvm_edition:: "ce",
 
