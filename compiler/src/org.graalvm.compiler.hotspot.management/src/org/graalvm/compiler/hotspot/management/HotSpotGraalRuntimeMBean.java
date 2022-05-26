@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.management;
 
-import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -50,7 +49,6 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.services.Services;
 
@@ -186,22 +184,6 @@ public final class HotSpotGraalRuntimeMBean implements DynamicMBean {
             Object retvalue = null;
             if ("dumpMethod".equals(actionName)) {
                 retvalue = runtime.invokeManagementAction(actionName, params);
-            } else {
-                boolean found = false;
-                for (HotSpotMBeanOperationProvider p : GraalServices.load(HotSpotMBeanOperationProvider.class)) {
-                    List<MBeanOperationInfo> info = new ArrayList<>();
-                    p.registerOperations(MBeanOperationInfo.class, info);
-                    for (MBeanOperationInfo op : info) {
-                        if (actionName.equals(op.getName())) {
-                            retvalue = p.invoke(actionName, params, signature);
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (!found) {
-                    throw new MBeanException(new IllegalStateException("Cannot find operation " + actionName));
-                }
             }
             if (DEBUG) {
                 System.out.printf("invoke: %s%s = %s%n", actionName, Arrays.asList(params), retvalue);
@@ -249,10 +231,6 @@ public final class HotSpotGraalRuntimeMBean implements DynamicMBean {
                         new MBeanParameterInfo("host", "java.lang.String", "The host where the IGV tool is running at"),
                         new MBeanParameterInfo("port", "int", "The port where the IGV tool is listening at"),
         }, "void", MBeanOperationInfo.ACTION));
-
-        for (HotSpotMBeanOperationProvider p : GraalServices.load(HotSpotMBeanOperationProvider.class)) {
-            p.registerOperations(MBeanOperationInfo.class, opts);
-        }
 
         return new MBeanInfo(
                         HotSpotGraalRuntimeMBean.class.getName(),
