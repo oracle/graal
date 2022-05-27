@@ -630,6 +630,13 @@ public abstract class InteropLibrary extends Library {
      * like {@link #getSourceLocation(Object) source location} in case of {@link #isScope(Object)
      * scope} variables, etc.
      * <p>
+     * The order of member names needs to be:
+     * <ul>
+     * <li>deterministic, assuming the program execution is deterministic,</li>
+     * <li>in the declaration order, when applicable,</li>
+     * <li>multiple invocations of this method must return the same members in the same order as
+     * long as no side-effecting operations were performed.</li>
+     * </ul>
      * If the includeInternal argument is <code>true</code> then internal member names are returned
      * as well. Internal members are implementation specific and should not be exposed to guest
      * language application. An example of internal members are internal slots in ECMAScript.
