@@ -44,7 +44,7 @@ public class InstanceReferenceMapDecoder {
         assert referenceMapEncoding.isNonNull();
 
         if (Continuation.isSupported() && referenceMapIndex == ReferenceMapIndex.STORED_CONTINUATION) {
-            return StoredContinuationImpl.walkStoredContinuationFromPointer(baseAddress, null, visitor, holderObject);
+            return StoredContinuationAccess.walkReferences(baseAddress, visitor, holderObject);
         }
 
         Pointer position = NonmovableByteArrayReader.pointerTo(referenceMapEncoding, referenceMapIndex);
