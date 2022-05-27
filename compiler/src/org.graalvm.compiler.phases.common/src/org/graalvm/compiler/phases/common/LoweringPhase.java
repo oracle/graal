@@ -36,10 +36,12 @@ import static org.graalvm.compiler.phases.common.LoweringPhase.ProcessBlockState
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -208,18 +210,18 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
     }
 
     private final CanonicalizerPhase canonicalizer;
-    private final LoweringTool.LoweringStage loweringStage;
+    private final LoweringTool.StandardLoweringStage loweringStage;
     private final boolean lowerOptimizableMacroNodes;
     private final StructuredGraph.StageFlag postRunStage;
 
-    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes, StructuredGraph.StageFlag postRunStage) {
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.StandardLoweringStage loweringStage, boolean lowerOptimizableMacroNodes, StructuredGraph.StageFlag postRunStage) {
         this.canonicalizer = canonicalizer;
         this.loweringStage = loweringStage;
         this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
         this.postRunStage = postRunStage;
     }
 
-    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, StructuredGraph.StageFlag postRunStage) {
+    LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.StandardLoweringStage loweringStage, StructuredGraph.StageFlag postRunStage) {
         this(canonicalizer, loweringStage, false, postRunStage);
     }
 
@@ -466,6 +468,36 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         VERIFY_LOWERING
     }
 
+    public static class LoweringStatistics {
+        static final EnumSet<LoweringTool.StandardLoweringStage> stages = EnumSet.allOf(LoweringTool.StandardLoweringStage.class);
+
+        /**
+         * Records time spent in {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+         */
+        private final TimerKey[] timers;
+
+        /**
+         * Counts calls to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+         */
+        private final CounterKey[] counters;
+
+        public LoweringStatistics(Class<?> clazz) {
+            timers = new TimerKey[stages.size()];
+            counters = new CounterKey[stages.size()];
+            for (LoweringTool.StandardLoweringStage loweringStage : stages) {
+                timers[loweringStage.ordinal()] = DebugContext.timer("LoweringTime_%s_%s", loweringStage, clazz);
+                counters[loweringStage.ordinal()] = DebugContext.counter("LoweringCount_%s_%s", loweringStage, clazz);
+            }
+        }
+    }
+
+    private static final ClassValue<LoweringStatistics> statisticsClassValue = new ClassValue<>() {
+        @Override
+        protected LoweringStatistics computeValue(Class<?> c) {
+            return new LoweringStatistics(c);
+        }
+    };
+
     private final class Round extends Phase {
 
         private final CoreProviders context;
@@ -475,7 +507,7 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         private Round(CoreProviders context, LoweringMode mode) {
             this.context = context;
             this.mode = mode;
-            this.totalTimer = DebugContext.timer("LoweringTime_%s", loweringStage);
+            this.totalTimer = loweringStage.timer;
         }
 
         @Override
@@ -585,9 +617,9 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                     try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
                         TimerKey timer = null;
                         if (debug.areMetricsEnabled()) {
-                            Class<? extends Node> clazz = node.getClass();
-                            timer = DebugContext.timer("LoweringTime_%s_%s", loweringStage, clazz);
-                            DebugContext.counter("LoweringCount_%s_%s", loweringStage, clazz).increment(debug);
+                            LoweringStatistics statistics = statisticsClassValue.get(node.getClass());
+                            statistics.counters[loweringStage.ordinal()].increment(debug);
+                            timer = statistics.timers[loweringStage.ordinal()];
                         }
                         try (DebugCloseable a = timer != null ? timer.start(debug) : null;
                                         DebugCloseable a2 = totalTimer.start(debug)) {
