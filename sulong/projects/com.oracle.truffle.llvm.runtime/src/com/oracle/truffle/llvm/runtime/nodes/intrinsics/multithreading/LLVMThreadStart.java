@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMReadNode.LLVMObjectReadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import com.oracle.truffle.llvm.runtime.pthread.PThreadExitException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -83,16 +82,7 @@ public final class LLVMThreadStart {
             } finally {
                 if (!this.context.getEnv().getContext().isClosed()) {
                     // call destructors from key create
-                    for (int key = 1; key <= pThreadContext.getNumberOfPthreadKeys(); key++) {
-                        final LLVMPointer destructor = pThreadContext.getDestructor(key);
-                        if (destructor != null && !destructor.isNull()) {
-                            final LLVMPointer keyMapping = pThreadContext.getAndRemoveSpecificUnlessNull(key);
-                            if (keyMapping != null) {
-                                assert !keyMapping.isNull();
-                                pThreadContext.getPthreadCallTarget().call(destructor, keyMapping);
-                            }
-                        }
-                    }
+                    pThreadContext.callDestructors();
                 }
             }
         }

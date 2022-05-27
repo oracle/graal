@@ -744,6 +744,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeThread(LLVMContext context, Thread thread) {
+        getCapability(PlatformCapability.class).disposeThread(context, thread);
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);
