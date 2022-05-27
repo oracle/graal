@@ -627,7 +627,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        protected CharSequence getName() {
+        public CharSequence getName() {
             return "RawCEPhase";
         }
 

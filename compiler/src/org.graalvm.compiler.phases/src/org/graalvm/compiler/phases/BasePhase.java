@@ -109,11 +109,6 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      */
     private final MemUseTrackerKey memUseTracker;
 
-    /** Lazy initialization to create pattern only when assertions are enabled. */
-    static class NamePatternHolder {
-        static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
-    }
-
     public static class BasePhaseStatistics {
         /**
          * Records time spent in {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
@@ -231,7 +226,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         DebugContext debug = graph.getDebug();
-        try (DebugContext.Scope s = debug.scope(BasePhase.this.getClass(), this);
+        try (DebugContext.Scope s = debug.scope(getName(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
                         DebugCloseable c = memUseTracker.start(debug)) {
@@ -341,8 +336,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    protected CharSequence getName() {
-        return new ClassTypeSequence(BasePhase.this.getClass());
+    public CharSequence getName() {
+        return new ClassTypeSequence(this.getClass());
     }
 
     protected abstract void run(StructuredGraph graph, C context);

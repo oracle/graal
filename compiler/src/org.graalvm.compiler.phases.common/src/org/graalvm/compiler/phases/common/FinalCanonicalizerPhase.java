@@ -26,12 +26,8 @@ package org.graalvm.compiler.phases.common;
 
 import java.util.EnumSet;
 
-import org.graalvm.compiler.graph.Graph.Mark;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 
 /**
  * Final application of {@link CanonicalizerPhase}. After the application of this phase, no further
@@ -39,12 +35,13 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
  * {@link CanonicalizerTool#finalCanonicalization()} for more details.
  */
 public class FinalCanonicalizerPhase extends CanonicalizerPhase {
-    protected FinalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features) {
-        this(null, features);
-    }
-
     protected FinalCanonicalizerPhase(CustomSimplification customSimplification, EnumSet<CanonicalizerFeature> features) {
         super(customSimplification, features);
+    }
+
+    @Override
+    protected boolean isFinalCanonicalization() {
+        return true;
     }
 
     @Override
@@ -69,41 +66,4 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     public static FinalCanonicalizerPhase createFromCanonicalizer(CanonicalizerPhase canonicalizer) {
         return new FinalCanonicalizerPhase(canonicalizer.customSimplification, canonicalizer.features);
     }
-
-    @Override
-    protected void run(StructuredGraph graph, CoreProviders context) {
-        new Instance(graph, context).run(graph);
-    }
-
-    @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-        new Instance(graph, context, newNodesMark).apply(graph);
-    }
-
-    @Override
-    public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-        new Instance(graph, context, workingSet).apply(graph);
-    }
-
-    private final class Instance extends CanonicalizerPhase.Instance {
-        private Instance(StructuredGraph graph, CoreProviders context) {
-            super(graph, context, null, true);
-        }
-
-        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-            super(graph, context, workingSet, true);
-        }
-
-        private Instance(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-            super(graph, context, newNodesMark.isStart() ? null : graph.getNewNodes(newNodesMark), true);
-        }
-
-        @Override
-        protected void run(StructuredGraph graph) {
-            super.run(graph);
-            graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
-        }
-
-    }
-
 }

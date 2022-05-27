@@ -46,7 +46,7 @@ import org.graalvm.compiler.nodes.calc.AbstractNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 
-public class ExpandLogicPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders> {
     private static final double EPSILON = 1E-6;
 
     public ExpandLogicPhase(CanonicalizerPhase canonicalizer) {

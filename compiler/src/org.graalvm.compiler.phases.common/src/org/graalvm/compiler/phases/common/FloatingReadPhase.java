@@ -82,7 +82,7 @@ import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.word.LocationIdentity;
 
-public class FloatingReadPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     private final boolean createFloatingReads;
     private final boolean createMemoryMapNodes;

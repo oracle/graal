@@ -33,7 +33,7 @@ import org.graalvm.compiler.phases.BasePhase;
  * The base classes for phases that always want to apply {@link CanonicalizerPhase#applyIncremental}
  * to a graph after the phase has been applied if the graph changed.
  */
-public abstract class IncrementalCanonicalizerPhase<C extends CoreProviders> extends BasePhase<C> {
+public abstract class PostRunCanonicalizationPhase<C extends CoreProviders> extends BasePhase<C> {
 
     protected final CanonicalizerPhase canonicalizer;
 
@@ -41,13 +41,13 @@ public abstract class IncrementalCanonicalizerPhase<C extends CoreProviders> ext
      * Primary constructor for incremental canonicalzation. Subclasses must provide a non-null
      * {@link CanonicalizerPhase}
      */
-    public IncrementalCanonicalizerPhase(CanonicalizerPhase canonicalizer) {
+    public PostRunCanonicalizationPhase(CanonicalizerPhase canonicalizer) {
         assert canonicalizer != null;
         this.canonicalizer = canonicalizer;
     }
 
     @Override
     protected DebugCloseable applyScope(StructuredGraph graph, C context) {
-        return new CanonicalizerPhase.CanonicalizerApplyIncremental(graph, context, canonicalizer);
+        return new IncrementalCanonicalizerPhase.Apply(graph, context, canonicalizer);
     }
 }

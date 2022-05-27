@@ -32,7 +32,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
-public class RemoveValueProxyPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+public class RemoveValueProxyPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     public RemoveValueProxyPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);

@@ -65,8 +65,8 @@ import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
 import org.graalvm.compiler.phases.common.LazyValue;
+import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -83,7 +83,7 @@ import jdk.vm.ci.meta.DeoptimizationAction;
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
  *
  */
-public class ConvertDeoptimizeToGuardPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     public ConvertDeoptimizeToGuardPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);

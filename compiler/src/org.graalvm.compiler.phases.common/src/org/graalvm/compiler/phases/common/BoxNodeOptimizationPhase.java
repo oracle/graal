@@ -56,7 +56,7 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
  * boxedVal2 = boxedVal1;
  * </pre>
  */
-public class BoxNodeOptimizationPhase extends IncrementalCanonicalizerPhase<CoreProviders> {
+public class BoxNodeOptimizationPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     public BoxNodeOptimizationPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);

@@ -479,12 +479,12 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
-        protected CharSequence getName() {
+        public CharSequence getName() {
             switch (mode) {
                 case LOWERING:
-                    return "LoweringRound";
+                    return "LoweringRoundPhase";
                 case VERIFY_LOWERING:
-                    return "VerifyLoweringRound";
+                    return "VerifyLoweringRoundPhase";
                 default:
                     throw GraalError.shouldNotReachHere();
             }

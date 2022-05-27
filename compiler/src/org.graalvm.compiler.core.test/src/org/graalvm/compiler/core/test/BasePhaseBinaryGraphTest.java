@@ -59,7 +59,7 @@ public class BasePhaseBinaryGraphTest {
         }
 
         @Override
-        protected CharSequence getName() {
+        public CharSequence getName() {
             return super.getName();
         }
     }

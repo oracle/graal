@@ -70,7 +70,7 @@ import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
@@ -114,7 +114,7 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * speculation log entry is associated with the hoisted guard such that when it fails, the same
  * guard hoisting will not be performed in a subsequent compilation.
  */
-public class SpeculativeGuardMovementPhase extends IncrementalCanonicalizerPhase<MidTierContext> {
+public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> {
 
     public SpeculativeGuardMovementPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
