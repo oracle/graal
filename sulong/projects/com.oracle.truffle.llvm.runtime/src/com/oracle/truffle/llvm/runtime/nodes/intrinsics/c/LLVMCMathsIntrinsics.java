@@ -43,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMDoubleStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMFloatStoreNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -819,6 +820,8 @@ public abstract class LLVMCMathsIntrinsics {
         protected abstract float compare(float a, float b);
 
         protected abstract double compare(double a, double b);
+
+        protected abstract LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp);
     }
 
     public static final class LLVMUmaxOperator extends LLVMMinMaxOperator {
@@ -847,6 +850,11 @@ public abstract class LLVMCMathsIntrinsics {
         @Override
         protected double compare(double a, double b) {
             return Math.max(a, b);
+        }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return Long.compareUnsigned(aCmp, bCmp) >= 0 ? a : b;
         }
     }
 
@@ -877,6 +885,11 @@ public abstract class LLVMCMathsIntrinsics {
         protected double compare(double a, double b) {
             return Math.min(a, b);
         }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return Long.compareUnsigned(aCmp, bCmp) <= 0 ? a : b;
+        }
     }
 
     public static final class LLVMSmaxOperator extends LLVMMinMaxOperator {
@@ -906,6 +919,11 @@ public abstract class LLVMCMathsIntrinsics {
         protected double compare(double a, double b) {
             return Math.max(a, b);
         }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return aCmp >= bCmp ? a : b;
+        }
     }
 
     public static final class LLVMSminOperator extends LLVMMinMaxOperator {
@@ -934,6 +952,11 @@ public abstract class LLVMCMathsIntrinsics {
         @Override
         protected double compare(double a, double b) {
             return Math.min(a, b);
+        }
+
+        @Override
+        protected LLVMPointer compare(LLVMPointer a, long aCmp, LLVMPointer b, long bCmp) {
+            return aCmp <= bCmp ? a : b;
         }
     }
 
@@ -986,6 +1009,13 @@ public abstract class LLVMCMathsIntrinsics {
         @Specialization
         protected double doDoubleVector(double a, double b) {
             return getOperator().compare(a, b);
+        }
+
+        @Specialization
+        protected LLVMPointer doPointer(LLVMPointer a, LLVMPointer b,
+                        @Cached ToComparableValue aComp,
+                        @Cached ToComparableValue bComp) {
+            return getOperator().compare(a, aComp.executeWithTarget(a), b, bComp.executeWithTarget(b));
         }
     }
 
