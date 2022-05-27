@@ -339,13 +339,10 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class)
     static JNIObjectHandle FindClass(JNIEnvironment env, CCharPointer cname) {
-        String name = Utf8.utf8ToString(cname);
-        if (!name.startsWith("[")) {
-            name = "L" + name + ";";
-        }
+        CharSequence name = Utf8.wrapUtf8CString(cname);
         Class<?> clazz = JNIReflectionDictionary.singleton().getClassObjectByName(name);
         if (clazz == null) {
-            throw new NoClassDefFoundError(name);
+            throw new NoClassDefFoundError(name.toString());
         }
         /* Ensure that native code can't access the uninitialized native state, if any. */
         DynamicHub.fromClass(clazz).ensureInitialized();
@@ -364,8 +361,8 @@ public final class JNIFunctions {
         Pointer p = (Pointer) methods;
         for (int i = 0; i < nmethods; i++) {
             JNINativeMethod entry = (JNINativeMethod) p;
-            String name = Utf8.utf8ToString(entry.name());
-            String signature = Utf8.utf8ToString(entry.signature());
+            CharSequence name = Utf8.wrapUtf8CString(entry.name());
+            CharSequence signature = Utf8.wrapUtf8CString(entry.signature());
             CFunctionPointer fnPtr = entry.fnPtr();
 
             String declaringClass = MetaUtil.toInternalName(clazz.getName());
@@ -1227,12 +1224,12 @@ public final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             DynamicHub.fromClass(clazz).ensureInitialized();
 
-            String name = Utf8.utf8ToString(cname);
-            String signature = Utf8.utf8ToString(csig);
+            CharSequence name = Utf8.wrapUtf8CString(cname);
+            CharSequence signature = Utf8.wrapUtf8CString(csig);
             return getMethodID(clazz, name, signature, isStatic);
         }
 
-        private static JNIMethodId getMethodID(Class<?> clazz, String name, String signature, boolean isStatic) {
+        private static JNIMethodId getMethodID(Class<?> clazz, CharSequence name, CharSequence signature, boolean isStatic) {
             JNIMethodId methodID = JNIReflectionDictionary.singleton().getMethodID(clazz, name, signature, isStatic);
             if (methodID.isNull()) {
                 String message = clazz.getName() + "." + name + signature;
@@ -1253,7 +1250,7 @@ public final class JNIFunctions {
             Class<?> clazz = JNIObjectHandles.getObject(hclazz);
             DynamicHub.fromClass(clazz).ensureInitialized();
 
-            String name = Utf8.utf8ToString(cname);
+            CharSequence name = Utf8.wrapUtf8CString(cname);
             JNIFieldId fieldID = JNIReflectionDictionary.singleton().getFieldID(clazz, name, isStatic);
             if (fieldID.isNull()) {
                 throw new NoSuchFieldError(clazz.getName() + '.' + name);

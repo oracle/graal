@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.jni.access;
 
+import static com.oracle.svm.jni.access.JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -44,7 +46,9 @@ public final class JNIAccessibleMethodDescriptor {
     private static final String INITIALIZER_NAME = "<clinit>";
 
     public static JNIAccessibleMethodDescriptor of(JavaMethod method) {
-        return new JNIAccessibleMethodDescriptor(method.getName(), method.getSignature().toMethodDescriptor());
+        String sig = method.getSignature().toMethodDescriptor();
+        assert !sig.contains(".") : "Malformed signature (needs to use '/' as package separator)";
+        return new JNIAccessibleMethodDescriptor(method.getName(), sig);
     }
 
     public static JNIAccessibleMethodDescriptor of(Executable method) {
@@ -63,60 +67,56 @@ public final class JNIAccessibleMethodDescriptor {
             throw VMError.shouldNotReachHere();
         }
         sb.append(')').append(MetaUtil.toInternalName(returnType.getName()));
+        assert sb.indexOf(".") == -1 : "Malformed signature (needs to use '/' as package separator)";
         return new JNIAccessibleMethodDescriptor(name, sb.toString());
     }
 
-    private final String name;
-    private final String signature;
+    private final CharSequence name;
+    private final CharSequence signature;
 
-    JNIAccessibleMethodDescriptor(String name, String signature) {
-        assert !signature.contains(".") : "Malformed signature (needs to use '/' as package separator)";
+    JNIAccessibleMethodDescriptor(CharSequence name, CharSequence signature) {
         this.name = name;
         this.signature = signature;
     }
 
     public boolean isConstructor() {
-        return name.equals(CONSTRUCTOR_NAME);
+        return WRAPPED_CSTRING_EQUIVALENCE.equals(name, CONSTRUCTOR_NAME);
     }
 
     public boolean isClassInitializer() {
-        return name.equals(INITIALIZER_NAME);
+        return WRAPPED_CSTRING_EQUIVALENCE.equals(name, INITIALIZER_NAME);
     }
 
     public String getName() {
-        return name;
+        return (String) name;
     }
 
     public String getSignature() {
-        return signature;
-    }
-
-    public String getNameAndSignature() {
-        return name + signature;
+        return (String) signature;
     }
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof JNIAccessibleMethodDescriptor) {
             JNIAccessibleMethodDescriptor other = (JNIAccessibleMethodDescriptor) obj;
-            return (other == this) || (name.equals(other.name) && signature.equals(other.signature));
+            return (other == this) || (WRAPPED_CSTRING_EQUIVALENCE.equals(name, other.name) && WRAPPED_CSTRING_EQUIVALENCE.equals(signature, other.signature));
         }
         return false;
     }
 
     boolean matchesIgnoreReturnType(ResolvedJavaMethod method) {
-        if (!name.equals(method.getName())) {
+        if (!getName().equals(method.getName())) {
             return false;
         }
         int position = 1; // skip '('
         for (JavaType parameterType : method.getSignature().toParameterTypes(null)) {
             String paramInternal = parameterType.getName();
-            if (!signature.startsWith(paramInternal, position)) {
+            if (!getSignature().startsWith(paramInternal, position)) {
                 return false;
             }
             position += paramInternal.length();
         }
-        return signature.startsWith(")", position);
+        return getSignature().startsWith(")", position);
     }
 
     @Override
