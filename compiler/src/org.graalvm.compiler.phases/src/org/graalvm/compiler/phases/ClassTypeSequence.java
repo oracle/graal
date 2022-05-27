@@ -29,10 +29,10 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-final class ClassTypeSequence implements JavaType, CharSequence {
+public final class ClassTypeSequence implements JavaType, CharSequence {
     private final Class<?> clazz;
 
-    ClassTypeSequence(Class<?> clazz) {
+    public ClassTypeSequence(Class<?> clazz) {
         this.clazz = clazz;
     }
 

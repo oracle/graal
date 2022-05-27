@@ -87,19 +87,15 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
 
     private final class Instance extends CanonicalizerPhase.Instance {
         private Instance(StructuredGraph graph, CoreProviders context) {
-            this(graph, context, null, null);
+            super(graph, context, null, true);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-            this(graph, context, workingSet, null);
+            super(graph, context, workingSet, true);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-            this(graph, context, null, newNodesMark);
-        }
-
-        private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark) {
-            super(graph, context, workingSet, newNodesMark, true);
+            super(graph, context, newNodesMark.isStart() ? null : graph.getNewNodes(newNodesMark), true);
         }
 
         @Override

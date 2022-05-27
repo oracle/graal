@@ -231,10 +231,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
 
         DebugContext debug = graph.getDebug();
-        try (DebugCloseable s2 = applyScope(graph, context);
+        try (DebugContext.Scope s = debug.scope(BasePhase.this.getClass(), this);
                         CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
-                        DebugContext.Scope s = debug.scope(getClass(), this);
                         DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
@@ -253,7 +252,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             }
             inputNodesCount.add(debug, graph.getNodeCount());
 
-            this.run(graph, context);
+            try (DebugCloseable s2 = applyScope(graph, context)) {
+                this.run(graph, context);
+            }
             executionCount.increment(debug);
             edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {

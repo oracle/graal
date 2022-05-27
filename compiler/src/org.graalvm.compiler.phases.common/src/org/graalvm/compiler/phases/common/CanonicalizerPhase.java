@@ -70,6 +70,7 @@ import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.ClassTypeSequence;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
@@ -287,40 +288,34 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         private final StructuredGraph initialGraph;
         private final CoreProviders context;
-        private final Iterable<? extends Node> initWorkingSet;
 
         private final NodeWorkList workList;
         private final Tool tool;
         private final DebugContext debug;
 
         private final boolean isFinalCanonicalization;
+        private final boolean incremental;
 
         private Instance(StructuredGraph graph, CoreProviders context) {
-            this(graph, context, null, null, false);
+            this(graph, context, null, false);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-            this(graph, context, workingSet, null, false);
+            this(graph, context, workingSet, false);
         }
 
         private Instance(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-            this(graph, context, null, newNodesMark, false);
+            this(graph, context, newNodesMark.isStart() ? null : graph.getNewNodes(newNodesMark), false);
         }
 
-        Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, Mark newNodesMark, boolean isFinalCanonicalization) {
+        Instance(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet, boolean isFinalCanonicalization) {
             this.initialGraph = graph;
             this.context = context;
-            this.initWorkingSet = workingSet;
             this.debug = graph.getDebug();
-            boolean wholeGraph = newNodesMark == null || newNodesMark.isStart();
-            if (initWorkingSet == null) {
-                workList = graph.createIterativeNodeWorkList(wholeGraph, MAX_ITERATION_PER_NODE);
-            } else {
-                workList = graph.createIterativeNodeWorkList(false, MAX_ITERATION_PER_NODE);
-                workList.addAll(initWorkingSet);
-            }
-            if (!wholeGraph) {
-                workList.addAll(graph.getNewNodes(newNodesMark));
+            this.incremental = workingSet != null;
+            workList = graph.createIterativeNodeWorkList(!incremental, MAX_ITERATION_PER_NODE);
+            if (workingSet != null) {
+                workList.addAll(workingSet);
             }
 
             // FIXME figure out appropriate phase
@@ -331,6 +326,14 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         @Override
         public boolean checkContract() {
             return false;
+        }
+
+        @Override
+        protected CharSequence getName() {
+            if (incremental) {
+                return new ClassTypeSequence(IncrementalCanonicalizerPhase.class);
+            }
+            return super.getName();
         }
 
         @Override
@@ -380,7 +383,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 for (Node n : workList) {
                     boolean changed = processNode(n);
                     if (changed && debug.isDumpEnabled(DebugContext.DETAILED_LEVEL)) {
-                        debug.dump(DebugContext.DETAILED_LEVEL, graph, "CanonicalizerPhase %s", n);
+                        debug.dump(DebugContext.DETAILED_LEVEL, graph, "%s %s", getName(), n);
                     }
                     ++sum;
                 }
