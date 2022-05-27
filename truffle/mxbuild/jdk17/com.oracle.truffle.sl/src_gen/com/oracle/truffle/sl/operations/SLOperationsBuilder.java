@@ -17,6 +17,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
@@ -37,7 +38,6 @@ import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNode;
 import com.oracle.truffle.api.operation.OperationNodes;
-import com.oracle.truffle.api.operation.OperationsBytesSupport;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.ConcatNode;
@@ -225,7 +225,7 @@ public abstract class SLOperationsBuilder extends OperationBuilder {
     @GeneratedBy(SLOperations.class)
     private static class BuilderImpl extends SLOperationsBuilder {
 
-        private static final OperationsBytesSupport LE_BYTES = OperationsBytesSupport.littleEndian();
+        private static final ByteArraySupport LE_BYTES = ByteArraySupport.littleEndian();
         private static final int OP_BLOCK = 1;
         private static final int OP_IF_THEN = 2;
         private static final int OP_IF_THEN_ELSE = 3;

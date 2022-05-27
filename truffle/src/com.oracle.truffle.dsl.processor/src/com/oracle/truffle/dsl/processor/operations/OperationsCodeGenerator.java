@@ -234,8 +234,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
         typBuilderImpl.add(ctor);
 
         {
-            String bytesSupportClass = "com.oracle.truffle.api.operation.OperationsBytesSupport";
-            // String bytesSupportClass = "com.oracle.truffle.api.memory.ByteArraySupport";
+            // String bytesSupportClass = "com.oracle.truffle.api.operation.OperationsBytesSupport";
+            String bytesSupportClass = "com.oracle.truffle.api.memory.ByteArraySupport";
             DeclaredType byteArraySupportType = context.getDeclaredType(bytesSupportClass);
             CodeVariableElement leBytes = new CodeVariableElement(
                             MOD_PRIVATE_STATIC_FINAL,
