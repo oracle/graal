@@ -97,4 +97,15 @@ public final class InternalByteArray {
     public int getEnd() {
         return offset + length;
     }
+
+    /**
+     * Read the byte at {@code array[offset + index]} and return it as a byte (offset is a logical index into the string).
+     * Consider using {@link TruffleString.ReadByteNode} (and {@link TruffleString.MaterializeNode} before) instead if
+     * not needing the byte[] for other purposes, as that will avoid extra copying if the string is stored in native memory.
+     *
+     * @since 22.2
+     */
+    public byte get(int index) {
+        return array[offset + index];
+    }
 }
