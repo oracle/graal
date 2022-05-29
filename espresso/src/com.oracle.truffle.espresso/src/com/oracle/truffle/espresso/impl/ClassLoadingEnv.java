@@ -29,11 +29,11 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class ClassLoadingEnv implements LanguageAccess {
-    private final AtomicInteger klassIdProvider = new AtomicInteger();
-    private final AtomicInteger loaderIdProvider = new AtomicInteger();
+    private final AtomicLong klassIdProvider = new AtomicLong();
+    private final AtomicLong loaderIdProvider = new AtomicLong();
 
     private final EspressoLanguage language;
     private final TruffleLogger logger;
@@ -68,16 +68,16 @@ public class ClassLoadingEnv implements LanguageAccess {
         return timers;
     }
 
-    public int getNewKlassId() {
-        int id = klassIdProvider.getAndIncrement();
+    public long getNewKlassId() {
+        long id = klassIdProvider.getAndIncrement();
         if (id < 0) {
             throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
         }
         return id;
     }
 
-    public int getNewLoaderId() {
-        int id = loaderIdProvider.getAndIncrement();
+    public long getNewLoaderId() {
+        long id = loaderIdProvider.getAndIncrement();
         if (id < 0) {
             throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
         }

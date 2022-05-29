@@ -156,7 +156,7 @@ public final class EspressoContext {
     // endregion Helpers
 
     // region ID
-    @CompilationFinal private int bootClassLoaderID;
+    @CompilationFinal private long bootClassLoaderID;
     // endregion ID
 
     // region InitControl
@@ -236,7 +236,7 @@ public final class EspressoContext {
         return logger;
     }
 
-    public int getBootClassLoaderID() {
+    public long getBootClassLoaderID() {
         return bootClassLoaderID;
     }
 

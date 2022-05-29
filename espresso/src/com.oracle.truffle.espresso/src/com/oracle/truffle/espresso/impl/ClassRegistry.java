@@ -111,7 +111,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         public final StaticObject classData;
         public final boolean isHidden;
         public final boolean isStrongHidden;
-        public int klassID = -1;
+        public long klassID = -1;
 
         public boolean addedToRegistry() {
             return !isAnonymousClass() && !isHidden();
@@ -137,7 +137,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
             return flags;
         }
 
-        public void initKlassID(int futureKlassID) {
+        public void initKlassID(long futureKlassID) {
             this.klassID = futureKlassID;
         }
     }
@@ -206,7 +206,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         }
     }
 
-    private final int loaderID;
+    private final long loaderID;
 
     private ModuleEntry unnamed;
     private final PackageTable packages;
@@ -216,7 +216,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
         return unnamed;
     }
 
-    public final int getLoaderID() {
+    public final long getLoaderID() {
         return loaderID;
     }
 
