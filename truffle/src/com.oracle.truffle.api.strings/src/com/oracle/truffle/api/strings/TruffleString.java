@@ -4998,6 +4998,18 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
+         * Copy the entire string to a byte[] and return it.
+         *
+         * @since 22.2
+         */
+        public final byte[] execute(AbstractTruffleString string, Encoding expectedEncoding) {
+            int byteLength = string.byteLength(expectedEncoding);
+            byte[] copy = new byte[byteLength];
+            execute(string, 0, copy, 0, byteLength, expectedEncoding);
+            return copy;
+        }
+
+        /**
          * Copy a region of the given {@link TruffleString} {@code a}, bounded by
          * {@code byteFromIndexA} and {@code byteLength} into the given byte array, at starting at
          * {@code byteFromIndexDst}.
