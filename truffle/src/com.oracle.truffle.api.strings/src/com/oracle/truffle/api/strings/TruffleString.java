@@ -2717,6 +2717,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to read a single byte from a string.
+     * See {@link #execute(AbstractTruffleString, int, Encoding)} for details.
      *
      * @since 22.1
      */
@@ -2730,6 +2731,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Read a single byte from a string.
+         * If used inside a loop or repetitively, {@link MaterializeNode} should be used before.
          *
          * @since 22.1
          */
