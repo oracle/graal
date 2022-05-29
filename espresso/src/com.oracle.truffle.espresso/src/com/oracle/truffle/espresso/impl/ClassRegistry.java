@@ -258,11 +258,10 @@ public abstract class ClassRegistry extends ContextAccessImpl {
 
     protected ClassRegistry(EspressoContext context) {
         super(context);
-        this.loaderID = context.getNewLoaderId();
+        this.loaderID = context.getClassLoadingEnv().getNewLoaderId();
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         this.packages = new PackageTable(rwLock);
         this.modules = new ModuleTable(rwLock);
-
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
@@ -381,7 +380,7 @@ public abstract class ClassRegistry extends ContextAccessImpl {
 
     private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, getContext(), info);
+        ParserKlass parserKlass = ClassfileParser.parse(getContext().getClassLoadingEnv(), new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());

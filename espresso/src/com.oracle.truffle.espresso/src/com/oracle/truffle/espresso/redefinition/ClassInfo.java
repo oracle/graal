@@ -127,7 +127,7 @@ public abstract class ClassInfo {
 
     public static HotSwapClassInfo create(ObjectKlass klass, Symbol<Name> name, byte[] bytes, StaticObject definingLoader, EspressoContext context, boolean isNewInnerTestKlass) {
         Symbol<Type> type = context.getTypes().fromName(name);
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), definingLoader, type, context);
+        ParserKlass parserKlass = ClassfileParser.parse(context.getClassLoadingEnv(), new ClassfileStream(bytes, null), definingLoader, type);
 
         StringBuilder hierarchy = new StringBuilder();
         StringBuilder methods = new StringBuilder();
