@@ -40,7 +40,6 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetInformation;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
@@ -49,9 +48,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class ModelModule {
 
-    // when running with Polyglot it can be that there is no layout available - we fall back to this
-    // one.
-    private static final TargetDataLayout defaultLayout = TargetDataLayout.fromString("e-i64:64-f80:128-n8:16:32:64-S128");
+    // According to the LLVM documentation (https://llvm.org/docs/LangRef.html#data-layout), below
+    // is the default datalayout
+    public static final String defaultLayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f16:16:16-f32:32:32-f64:64:64-f128:128:128";
 
     private final ArrayList<Type> types = new ArrayList<>();
     private final ArrayList<GlobalVariable> globalVariables = new ArrayList<>();
@@ -63,18 +62,18 @@ public final class ModelModule {
     private final HashMap<LLVMSourceSymbol, SymbolImpl> sourceGlobals = new HashMap<>();
     private final HashMap<LLVMSourceStaticMemberType, SymbolImpl> sourceStaticMembers = new HashMap<>();
     private final HashMap<FunctionDefinition, LazyFunctionParser> lazyFunctionParsers = new HashMap<>();
-    private TargetDataLayout targetDataLayout = defaultLayout;
+    private String targetDataLayout = defaultLayout;
     private DebugInfoFunctionProcessor functionProcessor = null;
     private final ArrayList<LLVMSourceFileReference> sourceFiles = new ArrayList<>();
 
     public ModelModule() {
     }
 
-    public void setTargetDataLayout(TargetDataLayout layout) {
+    public void setTargetDataLayout(String layout) {
         targetDataLayout = layout;
     }
 
-    public TargetDataLayout getTargetDataLayout() {
+    public String getTargetDataLayout() {
         return targetDataLayout;
     }
 

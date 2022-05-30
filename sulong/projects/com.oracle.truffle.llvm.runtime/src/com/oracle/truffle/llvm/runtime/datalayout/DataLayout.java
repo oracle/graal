@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -52,7 +52,7 @@ import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 public final class DataLayout {
 
     private final ArrayList<DataTypeSpecification> dataLayout;
-    private final ByteOrder byteOrder;
+    private ByteOrder byteOrder;
 
     private final IdentityHashMap<Type, Long> sizeCache = new IdentityHashMap<>();
     private final IdentityHashMap<Type, Integer> alignmentCache = new IdentityHashMap<>();
@@ -62,9 +62,12 @@ public final class DataLayout {
         this.byteOrder = byteOrder;
     }
 
-    public DataLayout(String layout) {
+    public DataLayout(String layout, String defaultLayout) {
         this.dataLayout = new ArrayList<>();
-        this.byteOrder = DataLayoutParser.parseDataLayout(layout, dataLayout);
+        this.byteOrder = DataLayoutParser.parseDataLayout(defaultLayout, dataLayout);
+        if (!defaultLayout.equalsIgnoreCase(layout)) {
+            this.byteOrder = DataLayoutParser.parseDataLayout(layout, dataLayout);
+        }
     }
 
     public ByteOrder getByteOrder() {
