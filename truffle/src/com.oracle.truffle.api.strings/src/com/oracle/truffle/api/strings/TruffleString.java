@@ -2717,7 +2717,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to read a single byte from a string. See
-     * {@link #execute(AbstractTruffleString, int, Encoding)} for details.
+     * {@link #execute(AbstractTruffleString, int, TruffleString.Encoding)} for details.
      *
      * @since 22.1
      */
