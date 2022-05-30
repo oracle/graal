@@ -108,8 +108,6 @@ Conversion:
   Convert a MutableTruffleString to an immutable TruffleString.
 * [AsManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsManagedNode.html):
   Convert a TruffleString backed by a native pointer to one backed by a java byte array.
-* [Materialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeNode.html):
-  Force evaluation of lazily calculated string properties and materialization of a string's backing array.
 * [CopyToByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToByteArrayNode.html):
   Copy a string's content into a byte array.
 * [GetInternalByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetInternalByteArrayNode.html):
@@ -129,6 +127,8 @@ Conversion:
 
 Accessing codepoints and bytes:
 
+* [Materialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeNode.html):
+  Use this node to avoid materialization code inside loops iterating over a string's code points or bytes.
 * [ReadByte](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ReadByteNode.html):
   Read a single byte from a string.
 * [ReadCharUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ReadCharUTF16Node.html):
