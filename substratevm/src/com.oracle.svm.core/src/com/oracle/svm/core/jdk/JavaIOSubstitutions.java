@@ -83,8 +83,8 @@ final class Target_java_io_ClassCache {
  * Creates a new instance by calling the no-args constructor of the original value's class.
  */
 final class ConstructCopy implements RecomputeFieldValue.CustomFieldValueTransformer {
-    @Override
-    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+
+    public static RecomputeFieldValue.ValueAvailability valueAvailability() {
         return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
     }
 
