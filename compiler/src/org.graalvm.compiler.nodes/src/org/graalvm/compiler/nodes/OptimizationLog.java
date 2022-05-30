@@ -90,13 +90,15 @@ public class OptimizationLog implements CompilationListener {
      * Represents one performed optimization stored in the optimization log. Additional properties are stored and
      * immediately evaluated. This is a leaf node in the optimization tree.
      */
-    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization")
+    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#eventName}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
         private static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
         private final EconomicMap<String, Object> map;
+        protected final String eventName;
 
         protected OptimizationEntryImpl(String optimizationName, String eventName, int bci) {
             super(TYPE);
+            this.eventName = eventName;
             map = EconomicMap.create();
             map.put("optimizationName", optimizationName);
             map.put("eventName", eventName);
@@ -162,7 +164,7 @@ public class OptimizationLog implements CompilationListener {
      * node in the tree of optimizations that holds its subphases and individual optimizations in the order they were
      * performed.
      */
-    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Phase")
+    @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Phase", nameTemplate = "{p#phaseName/s}")
     public static class OptimizationPhaseScope extends OptimizationTreeNode implements DebugContext.CompilerPhaseScope {
         public static final NodeClass<OptimizationPhaseScope> TYPE = NodeClass.create(OptimizationPhaseScope.class);
         private final OptimizationLog optimizationLog;
