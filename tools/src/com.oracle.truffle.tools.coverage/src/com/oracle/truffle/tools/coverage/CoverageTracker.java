@@ -237,7 +237,7 @@ public final class CoverageTracker implements AutoCloseable {
                 continue;
             }
             final SourceSection section = coverageNode.sourceSection;
-            final RootData rootData = mapping.get(section.getSource()).computeIfAbsent(rootNode.getSourceSection(),
+            final RootData rootData = mapping.computeIfAbsent(section.getSource(), source -> new HashMap<>()).computeIfAbsent(rootNode.getSourceSection(),
                             sourceSection -> new RootData(sourceSection, rootNode.getName()));
             final long count = getCount(coverageNode);
             if (coverageNode.isRoot && coverageNode.isCovered()) {
