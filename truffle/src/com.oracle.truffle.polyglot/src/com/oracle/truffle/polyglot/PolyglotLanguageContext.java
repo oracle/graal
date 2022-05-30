@@ -218,7 +218,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     private volatile boolean created;
     private volatile boolean initialized;
     volatile boolean finalized;
-    volatile boolean exited;
+    volatile TruffleLanguage.ExitMode exited;
     @CompilationFinal private volatile Value hostBindings;
     @CompilationFinal private volatile Lazy lazy;
     @CompilationFinal volatile Env env; // effectively final
@@ -378,6 +378,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean finalizeContext(boolean cancelOrExitOperation, boolean notifyInstruments) {
+        boolean performFinalize = false;
         ReentrantLock lock = lazy.operationLock;
         lock.lock();
         try {
@@ -386,69 +387,85 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             }
             if (!finalized) {
                 finalized = true;
-                try {
-                    LANGUAGE.finalizeContext(env);
-                } catch (Throwable t) {
-                    if (cancelOrExitOperation) {
-                        /*
-                         * finalizeContext can run guest code, and so truffle and cancel exceptions
-                         * are expected. However, they must not fail the cancel operation, and so we
-                         * just log them.
-                         */
-                        assert context.state.isClosing();
-                        assert context.state.isInvalidOrClosed();
-                        if (t instanceof AbstractTruffleException || t instanceof PolyglotEngineImpl.CancelExecution || t instanceof PolyglotContextImpl.ExitException) {
-                            context.engine.getEngineLogger().log(Level.FINE,
-                                            "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting.",
-                                            t);
-                        } else {
-                            throw t;
-                        }
-                    } else {
-                        throw t;
-                    }
-                }
-                if (eventsEnabled && notifyInstruments) {
-                    EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
-                }
-                return true;
+                performFinalize = true;
             }
         } finally {
             lock.unlock();
+        }
+
+        if (performFinalize) {
+            /*
+             * The finalize notification operation is not needed to be under the operationLock. We
+             * know the language context is already initialized and parallel execution with the exit
+             * operation is prevented by other means. Parallel execution of two or more finalize
+             * notification operations is prevented by setting finalized under the operationLock.
+             */
+            try {
+                LANGUAGE.finalizeContext(env);
+            } catch (Throwable t) {
+                if (!cancelOrExitOperation || (!(t instanceof AbstractTruffleException) && !(t instanceof PolyglotEngineImpl.CancelExecution) && !(t instanceof PolyglotContextImpl.ExitException))) {
+                    throw t;
+                } else {
+                    /*
+                     * finalizeContext can run guest code, and so truffle and cancel exceptions are
+                     * expected. However, they must not fail the cancel operation, and so we just
+                     * log them.
+                     */
+                    assert context.state.isClosing();
+                    assert context.state.isInvalidOrClosed();
+                    context.engine.getEngineLogger().log(Level.FINE,
+                                    "Exception was thrown while finalizing a polyglot context that is being cancelled or exited. Such exceptions are expected during cancelling or exiting.",
+                                    t);
+                }
+            }
+            if (eventsEnabled && notifyInstruments) {
+                EngineAccessor.INSTRUMENT.notifyLanguageContextFinalized(context.engine, context.creatorTruffleContext, language.info);
+            }
+            return true;
         }
         return false;
     }
 
     boolean exitContext(TruffleLanguage.ExitMode exitMode, int exitCode) {
+        boolean performExit = false;
         ReentrantLock lock = lazy.operationLock;
         lock.lock();
         try {
             if (!initialized) {
                 return false;
             }
-            if (!exited) {
-                exited = true;
-                try {
-                    LANGUAGE.exitContext(env, exitMode, exitCode);
-                } catch (Throwable t) {
-                    if (exitMode == TruffleLanguage.ExitMode.HARD) {
-                        if (t instanceof AbstractTruffleException || t instanceof PolyglotContextImpl.ExitException) {
-                            if (t instanceof AbstractTruffleException && !context.state.isCancelling()) {
-                                context.engine.getEngineLogger().log(Level.WARNING, "TruffleException thrown during exit notification! Languages are supposed to handle this kind of exceptions.", t);
-                            } else {
-                                context.engine.getEngineLogger().log(Level.FINE, "Exception thrown during exit notification!", t);
-                            }
-                        } else {
-                            throw t;
-                        }
-                    } else {
-                        throw t;
-                    }
-                }
-                return true;
+            if (exited == null || exitMode.ordinal() > exited.ordinal()) {
+                exited = exitMode;
+                performExit = true;
             }
         } finally {
             lock.unlock();
+        }
+
+        if (performExit) {
+            /*
+             * The exit notification operation is not needed to be under the operationLock. We know
+             * the language context is already initialized and parallel execution with the finalize
+             * operation is prevented by other means. Moreover, we need to make it possible for the
+             * natural and the hard exit notifications to be executed in parallel in case the hard
+             * exit is triggered while the natural exit notifications are already in progress.
+             * Parallel execution of two or more exit notification operations of the same type is
+             * prevented by setting exited under the operationLock.
+             */
+            try {
+                LANGUAGE.exitContext(env, exitMode, exitCode);
+            } catch (Throwable t) {
+                if (exitMode == TruffleLanguage.ExitMode.NATURAL || (!(t instanceof AbstractTruffleException) && !(t instanceof PolyglotContextImpl.ExitException))) {
+                    throw t;
+                } else {
+                    if (t instanceof AbstractTruffleException && !context.state.isCancelling()) {
+                        context.engine.getEngineLogger().log(Level.WARNING, "TruffleException thrown during exit notification! Languages are supposed to handle this kind of exceptions.", t);
+                    } else {
+                        context.engine.getEngineLogger().log(Level.FINE, "Exception thrown during exit notification!", t);
+                    }
+                }
+            }
+            return true;
         }
         return false;
     }
@@ -511,7 +528,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         assert isInitialized();
         assert Thread.currentThread() == thread;
         synchronized (context) {
-            Object[] prev = context.engine.enter(context);
+            Object[] prev = context.enterThreadChanged(true, false, true, false, true);
             lazy.activePolyglotThreads.add(thread);
             return prev;
         }
@@ -520,7 +537,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     void leaveAndDisposePolyglotThread(Object[] prev, PolyglotThread thread) {
         assert isInitialized();
         synchronized (context) {
-            context.leaveAndDisposeThread(prev, thread);
+            context.leaveThreadChanged(prev, true, true, true);
             boolean removed = lazy.activePolyglotThreads.remove(thread);
             assert removed : "thread was not removed";
         }

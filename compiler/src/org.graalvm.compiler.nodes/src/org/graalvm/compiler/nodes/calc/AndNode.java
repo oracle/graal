@@ -88,7 +88,7 @@ public final class AndNode extends BinaryArithmeticNode<And> implements Narrowab
      * @return A {@code ValueNode} to use as a replacement input in place of the
      *         {@code usingAndInput} input, null otherwise
      */
-    private static ValueNode eliminateRedundantBinaryArithmeticOp(ValueNode usingAndInput, IntegerStamp usingAndOtherStamp) {
+    public static ValueNode eliminateRedundantBinaryArithmeticOp(ValueNode usingAndInput, IntegerStamp usingAndOtherStamp) {
         if (usingAndOtherStamp.isUnrestricted()) {
             return null;
         }

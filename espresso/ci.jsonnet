@@ -2,12 +2,13 @@
   local graal_common = import '../common.json',
   local common = import 'ci_common/common.jsonnet',
   local jdks = graal_common.jdks,
-  local devkits = graal_common.devkits,
+  local utils = import '../common-utils.libsonnet',
+  local devkits = utils.composable(graal_common.devkits),
 
   suite_name: 'espresso',
 
-  windows_11: devkits["windows-jdk11"] + common.windows,
-  windows_17: devkits["windows-jdk17"] + common.windows,
+  windows_11 : common.windows + devkits["windows-jdk11"],
+  windows_17 : common.windows + devkits["windows-jdk17"],
 
   builds: common.builds + [
     // Benchmarks

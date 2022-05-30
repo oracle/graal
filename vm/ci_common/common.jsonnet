@@ -14,7 +14,7 @@ local devkits = common_json.devkits;
   },
 
   common_vm: graal_common.build_base + vm.vm_setup + {
-    python_version: 3,
+    python_version: "3",
     logs+: [
       '*/mxbuild/dists/stripped/*.map',
       '**/install.packages.R.log',
@@ -380,7 +380,7 @@ local devkits = common_json.devkits;
     targets+: ['ondemand', 'deploy'],
   },
 
-  mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--with-debuginfo', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
+  mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--debuginfo-dists', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
   mx_vm_common: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_installables: vm.mx_cmd_base_no_env + ['--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 

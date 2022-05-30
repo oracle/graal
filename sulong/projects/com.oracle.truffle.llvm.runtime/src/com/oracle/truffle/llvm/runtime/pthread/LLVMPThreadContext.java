@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,18 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.pthread;
 
-import java.lang.ref.WeakReference;
-import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadStart;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
+import java.lang.ref.WeakReference;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class LLVMPThreadContext {
 
@@ -88,8 +88,8 @@ public final class LLVMPThreadContext {
         this.pThreadKeyStorage = new ConcurrentHashMap<>();
         this.pThreadDestructorStorage = new ConcurrentHashMap<>();
 
-        this.pthreadCallTarget = language.createCachedCallTarget(LLVMPThreadStart.LLVMPThreadFunctionRootNode.class,
-                        l -> LLVMPThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
+        this.pthreadCallTarget = language.createCachedCallTarget(LLVMThreadStart.LLVMPThreadFunctionRootNode.class,
+                        l -> LLVMThreadStart.LLVMPThreadFunctionRootNode.create(l, l.getActiveConfiguration().createNodeFactory(l, dataLayout)));
         this.isCreateThreadAllowed = true;
     }
 
@@ -170,9 +170,13 @@ public final class LLVMPThreadContext {
 
     @TruffleBoundary
     public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId) {
+        return getAndRemoveSpecificUnlessNull(keyId, Thread.currentThread().getId());
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId, long threadId) {
         final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
         if (value != null) {
-            final long threadId = Thread.currentThread().getId();
             final LLVMPointer keyMapping = value.get(threadId);
             if (keyMapping != null && !keyMapping.isNull()) {
                 value.remove(threadId);
@@ -231,5 +235,22 @@ public final class LLVMPThreadContext {
 
     public CallTarget getPthreadCallTarget() {
         return pthreadCallTarget;
+    }
+
+    public void callDestructors() {
+        callDestructors(Thread.currentThread().getId());
+    }
+
+    public void callDestructors(long threadId) {
+        for (int key = 1; key <= getNumberOfPthreadKeys(); key++) {
+            final LLVMPointer destructor = getDestructor(key);
+            if (destructor != null && !destructor.isNull()) {
+                final LLVMPointer keyMapping = getAndRemoveSpecificUnlessNull(key, threadId);
+                if (keyMapping != null) {
+                    assert !keyMapping.isNull();
+                    getPthreadCallTarget().call(destructor, keyMapping);
+                }
+            }
+        }
     }
 }

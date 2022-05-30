@@ -25,7 +25,6 @@
 package org.graalvm.nativebridge;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.TypeLiteral;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Array;
@@ -291,10 +290,7 @@ public final class JNIConfig {
          */
         public Builder setAttachThreadAction(LongUnaryOperator action) {
             Objects.requireNonNull(action, "Action must be non null.");
-            if (!ImageInfo.inImageCode()) {
-                this.attachThreadAction = action;
-            }
-
+            this.attachThreadAction = action;
             return this;
         }
 
@@ -307,9 +303,7 @@ public final class JNIConfig {
          */
         public Builder setDetachThreadAction(LongUnaryOperator action) {
             Objects.requireNonNull(action, "Action must be non null.");
-            if (!ImageInfo.inImageCode()) {
-                this.detachThreadAction = action;
-            }
+            this.detachThreadAction = action;
             return this;
         }
 
@@ -322,9 +316,7 @@ public final class JNIConfig {
          */
         public Builder setShutDownIsolateAction(LongBinaryOperator action) {
             Objects.requireNonNull(action, "Action must be non null.");
-            if (!ImageInfo.inImageCode()) {
-                this.shutDownIsolateAction = action;
-            }
+            this.shutDownIsolateAction = action;
             return this;
         }
 
@@ -353,9 +345,7 @@ public final class JNIConfig {
          */
         public Builder setReleaseNativeObjectAction(LongBinaryOperator action) {
             Objects.requireNonNull(action, "Action must be non null.");
-            if (!ImageInfo.inImageCode()) {
-                this.releaseNativeObjectAction = action;
-            }
+            this.releaseNativeObjectAction = action;
             return this;
         }
 

@@ -100,7 +100,13 @@ public final class VectorType extends AggregateType {
 
     @Override
     public long getSize(DataLayout targetDataLayout) throws TypeOverflowException {
-        long size = multiplyUnsignedExact(getElementType().getSize(targetDataLayout), Integer.toUnsignedLong(length));
+        // See https://llvm.org/docs/LangRef.html#vector-type
+        long bitSize = getElementType().getBitSize();
+        long vecBitSize = multiplyUnsignedExact(bitSize, Integer.toUnsignedLong(length));
+        long size = vecBitSize / Byte.SIZE;
+        if (vecBitSize % Byte.SIZE != 0) {
+            size += 1;
+        }
         long hiBitSize = Long.highestOneBit(size);
         return hiBitSize == size ? hiBitSize : hiBitSize << 1;
     }

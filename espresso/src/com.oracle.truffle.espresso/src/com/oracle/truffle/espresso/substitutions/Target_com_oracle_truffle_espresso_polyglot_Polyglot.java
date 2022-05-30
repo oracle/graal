@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -39,8 +40,10 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
@@ -117,14 +120,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
         abstract @JavaType(Object.class) StaticObject execute(EspressoContext context, Klass targetKlass, @JavaType(Object.class) StaticObject value);
 
-        static boolean isPrimitiveKlass(Klass targetKlass) {
-            return targetKlass.isPrimitive();
-        }
-
-        static boolean isArrayKlass(Klass targetKlass) {
-            return targetKlass.isArray();
-        }
-
         static boolean isNull(StaticObject object) {
             return StaticObject.isNull(object);
         }
@@ -155,16 +150,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             throw meta.throwException(meta.java_lang_ClassCastException);
         }
 
-        @Specialization(guards = {
-                        "isPrimitiveKlass(targetKlass)",
-                        "value.isForeignObject()",
-        })
+        @Specialization(guards = "value.isForeignObject()")
         @JavaType(Object.class)
         StaticObject doPrimitive(
                         EspressoContext context,
-                        Klass targetKlass,
+                        PrimitiveKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             try {
@@ -172,20 +164,17 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             } catch (UnsupportedMessageException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                "Couldn't read % value from foreign object", targetKlass.getType());
+                                "Couldn't read %s value from foreign object", targetKlass.getType());
             }
         }
 
-        @Specialization(guards = {
-                        "isArrayKlass(targetKlass)",
-                        "value.isForeignObject()"
-        })
+        @Specialization(guards = "value.isForeignObject()")
         @JavaType(Object.class)
         StaticObject doArray(
                         EspressoContext context,
-                        Klass targetKlass,
+                        ArrayKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             Object foreignObject = value.rawForeignObject(getLanguage());
@@ -207,9 +196,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         @JavaType(Object.class)
         StaticObject doString(
                         EspressoContext context,
-                        @SuppressWarnings("unused") Klass targetKlass,
+                        @SuppressWarnings("unused") ObjectKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             try {
@@ -227,16 +216,16 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         @JavaType(Object.class)
         StaticObject doForeignException(
                         EspressoContext context,
-                        @SuppressWarnings("unused") Klass targetKlass,
+                        @SuppressWarnings("unused") ObjectKlass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile,
                         @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             // Casting to ForeignException skip the field checks.
             Object foreignObject = value.rawForeignObject(getLanguage());
             if (interop.isException(foreignObject)) {
-                initCheck.execute((ObjectKlass) targetKlass);
+                initCheck.execute(targetKlass);
                 return StaticObject.createForeignException(meta, foreignObject, interop);
             }
             exceptionProfile.enter();
@@ -249,7 +238,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                         @Cached BranchProfile exceptionProfile,
                         @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();

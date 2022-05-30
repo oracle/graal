@@ -66,6 +66,8 @@ import java.util.List;
  */
 public interface NodeFactory {
 
+    boolean isCfgOsrEnabled();
+
     LLVMExpressionNode createInsertElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode element, LLVMExpressionNode index);
 
     LLVMExpressionNode createExtractElement(Type resultType, LLVMExpressionNode vector, LLVMExpressionNode index);
@@ -197,6 +199,8 @@ public interface NodeFactory {
                     int[] successors, int successorSlot);
 
     LLVMExpressionNode createGetStackFromFrame();
+
+    boolean boxGlobals();
 
     LLVMStackAccess createStackAccess();
 

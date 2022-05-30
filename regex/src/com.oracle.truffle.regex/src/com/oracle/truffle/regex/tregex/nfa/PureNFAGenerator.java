@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
 import com.oracle.truffle.regex.tregex.parser.ast.SubTreeIndex;
@@ -54,8 +55,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 public final class PureNFAGenerator {
 
     private final RegexAST ast;
-    private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(Short.MAX_VALUE, "PureNFA explosion");
-    private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(Short.MAX_VALUE, "NFA transition explosion");
+    private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxPureNFASize, "PureNFA explosion");
+    private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxPureNFATransitions, "NFA transition explosion");
     private PureNFAState anchoredFinalState;
     private PureNFAState unAnchoredFinalState;
     private final Deque<PureNFAState> expansionQueue = new ArrayDeque<>();

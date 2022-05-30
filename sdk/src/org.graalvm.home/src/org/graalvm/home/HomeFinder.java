@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,6 +109,15 @@ public abstract class HomeFinder {
 }
 
 class HomeFinderFeature implements Feature {
+
+    public String getURL() {
+        return "https://github.com/oracle/graal/blob/master/sdk/src/org.graalvm.home/src/org/graalvm/home/HomeFinder.java";
+    }
+
+    public String getDescription() {
+        return "Finds GraalVM paths and its version number";
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(HomeFinder.class, new DefaultHomeFinder());

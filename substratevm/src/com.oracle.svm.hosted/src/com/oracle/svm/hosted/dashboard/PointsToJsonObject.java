@@ -58,8 +58,6 @@ import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialParamTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialReceiverTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow;
@@ -439,8 +437,6 @@ class PointsToJsonObject extends JsonObject {
             names.put(ArrayElementsTypeFlow.class, "arrayElements");
             names.put(FieldFilterTypeFlow.class, "fieldFilter");
             names.put(ContextInsensitiveFieldTypeFlow.class, "fieldSink");
-            names.put(InitialParamTypeFlow.class, "initialParam");
-            names.put(InitialReceiverTypeFlow.class, "initialReceiver");
         }
 
         /**

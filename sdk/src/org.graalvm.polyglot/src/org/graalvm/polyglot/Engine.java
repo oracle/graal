@@ -623,7 +623,7 @@ public final class Engine implements AutoCloseable {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
             Engine engine = polyglot.buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions,
-                            boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false);
+                            boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false, true, null);
             return engine;
         }
 
@@ -642,17 +642,19 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine newEngine(AbstractEngineDispatch dispatch, Object receiver) {
+        public Engine newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines) {
             Engine engine = new Engine(dispatch, receiver);
-            if (!shutdownHookInitialized) {
-                synchronized (ENGINES) {
-                    if (!shutdownHookInitialized) {
-                        shutdownHookInitialized = true;
-                        Runtime.getRuntime().addShutdownHook(new Thread(new EngineShutDownHook()));
+            if (registerInActiveEngines) {
+                if (!shutdownHookInitialized) {
+                    synchronized (ENGINES) {
+                        if (!shutdownHookInitialized) {
+                            shutdownHookInitialized = true;
+                            Runtime.getRuntime().addShutdownHook(new Thread(new EngineShutDownHook()));
+                        }
                     }
                 }
+                ENGINES.put(engine, null);
             }
-            ENGINES.put(engine, null);
             return engine;
         }
 
@@ -959,8 +961,8 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties,
-                        boolean allowExperimentalOptions, boolean boundEngine,
-                        MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+                        boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage,
+                        boolean hostLanguageOnly, boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
             throw noPolyglotImplementationFound();
         }
 
@@ -1009,6 +1011,16 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public FileSystem newDefaultFileSystem() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
             throw noPolyglotImplementationFound();
         }
 

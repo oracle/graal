@@ -159,7 +159,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
      */
     private static boolean checkUnique(CompilerConfigurationFactory factory, List<CompilerConfigurationFactory> factories) {
         for (CompilerConfigurationFactory other : factories) {
-            if (other != factory) {
+            if (other != factory && factory.autoSelectionPriority == other.autoSelectionPriority) {
                 assert !other.name.equals(factory.name) : factory.getClass().getName() + " cannot have the same selector as " + other.getClass().getName() + ": " + factory.name;
                 assert other.autoSelectionPriority != factory.autoSelectionPriority : factory.getClass().getName() + " cannot have the same auto-selection priority as " +
                                 other.getClass().getName() +
@@ -200,7 +200,7 @@ public abstract class CompilerConfigurationFactory implements Comparable<Compile
             if ("help".equals(value)) {
                 System.out.println("The available compiler configurations are:");
                 for (CompilerConfigurationFactory candidate : getAllCandidates()) {
-                    System.out.println("    " + candidate.name);
+                    System.out.println("    " + candidate.name + " priority " + candidate.autoSelectionPriority);
                 }
                 HotSpotGraalServices.exit(0, runtime);
             } else if (value != null) {

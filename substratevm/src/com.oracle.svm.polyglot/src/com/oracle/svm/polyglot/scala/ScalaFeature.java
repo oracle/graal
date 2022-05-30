@@ -38,12 +38,12 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticFeature
-public class ScalaFeature implements GraalFeature {
+public class ScalaFeature implements InternalFeature {
 
     public static final String UNSUPPORTED_SCALA_VERSION = "This is not a supported Scala version. native-image supports Scala 2.11.x and onwards.";
 

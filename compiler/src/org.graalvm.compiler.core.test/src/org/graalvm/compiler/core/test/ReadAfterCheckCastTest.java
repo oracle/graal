@@ -31,10 +31,9 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -91,7 +90,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             CoreProviders context = getProviders();
             CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(canonicalizer).apply(graph, context);
             new FloatingReadPhase().apply(graph);
             canonicalizer.apply(graph, context);
 

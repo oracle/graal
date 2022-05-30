@@ -171,6 +171,11 @@ final class NodeAccessor extends Accessor {
             return root.getCallTargetWithoutInitialization();
         }
 
+        @Override
+        public EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread) {
+            return new EncapsulatingNodeReference(thread);
+        }
+
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,9 @@ import com.oracle.truffle.llvm.parser.listeners.FunctionMDOnly;
 import com.oracle.truffle.llvm.parser.listeners.MetadataSubprogramOnly.MDSubprogramParsedException;
 import com.oracle.truffle.llvm.parser.listeners.ParameterAttributes;
 import com.oracle.truffle.llvm.parser.listeners.Types;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
+import com.oracle.truffle.llvm.parser.metadata.MetadataVisitor;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
@@ -87,6 +90,18 @@ public final class LazyFunctionParser {
             try {
                 parser.setupScope();
                 scanner.scanBlock(parser);
+                // In some cases, the SUBPROGRAM is not in the METADATA_BLOCK of a given function
+                // block and, instead,
+                // it is emitted earlier and resides in the METADATA_BLOCK of the MODULE_BLOCK.
+                scope.getMetadata().accept(new MetadataVisitor() {
+                    @Override
+                    public void visit(MDSubprogram md) {
+                        String linkageName = MDString.getIfInstance(md.getLinkageName());
+                        if (function.getName().equals(linkageName)) {
+                            throw new MDSubprogramParsedException(linkageName, MDString.getIfInstance(md.getName()));
+                        }
+                    }
+                });
             } catch (MDSubprogramParsedException e) {
                 /*
                  * If linkageName/displayName is found, an exception is thrown (such that

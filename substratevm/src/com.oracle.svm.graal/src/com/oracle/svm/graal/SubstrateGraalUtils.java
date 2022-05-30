@@ -128,7 +128,6 @@ public class SubstrateGraalUtils {
             architectureInitialized = true;
             CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
             if (cpuFeatureAccess != null) {
-                cpuFeatureAccess.verifyHostSupportsArchitecture(graalBackend.getCodeCache().getTarget().arch);
                 Architecture architecture = graalBackend.getCodeCache().getTarget().arch;
                 cpuFeatureAccess.enableFeatures(architecture);
             }

@@ -492,9 +492,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             contextBuilder.option(entry.getKey(), entry.getValue());
         }
 
-        int rc = 1;
-
         contextBuilder.allowCreateThread(true);
+        // We use the host system exit for compatibility with the reference implementation.
+        contextBuilder.useSystemExit(true);
+        contextBuilder.option("java.ExitHost", "true");
 
         try (Context context = contextBuilder.build()) {
 
@@ -540,45 +541,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
                 }
-            } finally {
-                try {
-                    context.eval("java", "<DestroyJavaVM>").execute();
-                } catch (PolyglotException e) {
-                    /*
-                     * If everything went well, an exit exception is expected here. Failure to see
-                     * an exit exception most likely means something went wrong during context
-                     * initialization.
-                     */
-                    if (e.isExit()) {
-                        rc = e.getExitStatus();
-                    } else {
-                        e.printStackTrace();
-                        throw handleUnexpectedDestroy(e);
-                    }
-                }
-            }
-            /*
-             * We abruptly exit the host system for compatibility with the reference implementation,
-             * and because we have no control over un-registering thread from Truffle, which
-             * sometimes leads to getting an exception on exit when trying to close a context with a
-             * rogue thread in native.
-             * 
-             * Note that since the launcher thread and the main thread are the same, a rogue native
-             * main means we may never return.
-             */
-            System.exit(rc);
-        }
-    }
-
-    private AbortException handleUnexpectedDestroy(PolyglotException e) {
-        String message = e.getMessage();
-        if (message != null) {
-            int colonIdx = message.indexOf(':');
-            if (colonIdx >= 0 && colonIdx + 1 < message.length()) {
-                throw abort(message.substring(colonIdx + 1));
             }
         }
-        throw abort(message);
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {

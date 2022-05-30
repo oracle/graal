@@ -120,7 +120,7 @@ public final class ExceptionSynthesizer {
         assert exceptionMethod.isStatic();
 
         StampPair returnStamp = StampFactory.forDeclaredType(b.getGraph().getAssumptions(), exceptionMethod.getSignature().getReturnType(null), false);
-        MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null));
+        MethodCallTargetNode callTarget = b.add(new SubstrateMethodCallTargetNode(InvokeKind.Static, exceptionMethod, new ValueNode[]{messageNode}, returnStamp, null, null, null));
         b.add(new InvokeWithExceptionNode(callTarget, null, b.bci()));
         /* The invoked method always throws an exception, i.e., never returns. */
         b.add(new LoweredDeadEndNode());

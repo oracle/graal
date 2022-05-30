@@ -64,7 +64,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 
-import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -86,6 +85,7 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.LogConfig;
 import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
 
@@ -233,7 +233,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @SuppressWarnings("unchecked")
     @Override
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> originalOptions, boolean useSystemProperties,
-                    final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+                    final boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly,
+                    boolean registerInActiveEngines, AbstractPolyglotHostService polyglotHostService) {
         PolyglotEngineImpl impl = null;
         try {
             if (TruffleOptions.AOT) {
@@ -278,7 +279,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                     options,
                                     useAllowExperimentalOptions,
                                     boundEngine,
-                                    logHandler);
+                                    logHandler,
+                                    polyglotHostService);
 
                 }
             }
@@ -297,9 +299,10 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                                 messageInterceptor,
                                 logHandler,
                                 (TruffleLanguage<Object>) hostLanguage,
-                                hostLanguageOnly);
+                                hostLanguageOnly,
+                                polyglotHostService);
             }
-            return getAPIAccess().newEngine(engineDispatch, impl);
+            return getAPIAccess().newEngine(engineDispatch, impl, registerInActiveEngines);
         } catch (Throwable t) {
             if (impl == null) {
                 throw PolyglotImpl.guestToHostException(this, t);
@@ -356,7 +359,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         Handler logHandler = PolyglotEngineImpl.createLogHandler(logConfig, err);
         EngineLoggerProvider loggerProvider = new PolyglotLoggers.EngineLoggerProvider(logHandler, logConfig.logLevels);
         final PolyglotEngineImpl engine = new PolyglotEngineImpl(this, new String[0], out, err, System.in, engineOptions, logConfig.logLevels, loggerProvider, options, true,
-                        true, true, null, logHandler, hostLanguage, false);
+                        true, true, null, logHandler, hostLanguage, false, null);
         return engine;
     }
 
@@ -460,8 +463,22 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        return FileSystems.allowLanguageHomeAccess(fileSystem);
+    }
+
+    @Override
+    public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+        return FileSystems.newReadOnlyFileSystem(fileSystem);
+    }
+
+    @Override
     public ProcessHandler newDefaultProcessHandler() {
-        return ProcessHandlers.newDefaultProcessHandler();
+        if (PolyglotEngineImpl.ALLOW_CREATE_PROCESS) {
+            return ProcessHandlers.newDefaultProcessHandler();
+        } else {
+            return null;
+        }
     }
 
     @Override
@@ -655,7 +672,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         PolyglotExceptionImpl exceptionImpl;
         PolyglotContextImpl.State localContextState = context.state;
         if (localContextState.isInvalidOrClosed()) {
-            exceptionImpl = new PolyglotExceptionImpl(context.engine, localContextState, context.invalidResourceLimit, context.exitCode, e);
+            exceptionImpl = new PolyglotExceptionImpl(context.engine.impl, context.engine, localContextState, context.invalidResourceLimit, context.exitCode, languageContext, e, false, false);
         } else {
             try {
                 exceptionImpl = new PolyglotExceptionImpl(languageContext.getImpl(), languageContext.context.engine, localContextState, false, 0,

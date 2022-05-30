@@ -33,9 +33,8 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.extended.MonitorExit;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -67,7 +66,7 @@ public class FloatingReadTest extends GraphScheduleTest {
 
             StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
             CoreProviders context = getProviders();
-            new LoweringPhase(createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+            new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
             new FloatingReadPhase().apply(graph);
 
             ReturnNode returnNode = null;

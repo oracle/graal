@@ -119,6 +119,10 @@ final class PolyglotExceptionImpl {
                     boolean entered) {
         this.polyglot = polyglot;
         this.engine = engine;
+        /*
+         * If allowInterop == false, languageContext is passed just to get languageContext.context
+         * from it. It must not be used for anything else!
+         */
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);

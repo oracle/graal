@@ -60,6 +60,9 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.AllSynchronizedTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
@@ -67,6 +70,7 @@ import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTyp
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
+import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -106,6 +110,7 @@ public abstract class PointsToAnalysis implements BigBang {
     private TypeFlow<?> allSynchronizedTypeFlow;
 
     protected final AnalysisUniverse universe;
+    private final AnalysisPolicy analysisPolicy;
     protected final AnalysisMetaAccess metaAccess;
     protected final HostVM hostVM;
     private final UnsupportedFeatures unsupportedFeatures;
@@ -146,6 +151,7 @@ public abstract class PointsToAnalysis implements BigBang {
         this.analysisTimer = timerCollection.get(TimerCollection.Registry.ANALYSIS);
 
         this.universe = universe;
+        this.analysisPolicy = universe.analysisPolicy();
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
         this.replacements = providers.getReplacements();
         this.unsupportedFeatures = unsupportedFeatures;
@@ -325,11 +331,11 @@ public abstract class PointsToAnalysis implements BigBang {
 
     @Override
     public AnalysisPolicy analysisPolicy() {
-        return universe.analysisPolicy();
+        return analysisPolicy;
     }
 
     public AnalysisContextPolicy<AnalysisContext> contextPolicy() {
-        return universe.analysisPolicy().getContextPolicy();
+        return analysisPolicy.getContextPolicy();
     }
 
     @Override
@@ -443,46 +449,29 @@ public abstract class PointsToAnalysis implements BigBang {
 
             AnalysisType declaringClass = aMethod.getDeclaringClass();
             boolean isStatic = aMethod.isStatic();
-            int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
+            WrappedSignature signature = aMethod.getSignature();
+            int paramCount = signature.getParameterCount(!isStatic);
             PointsToAnalysisMethod pointsToMethod = assertPointsToAnalysisMethod(aMethod);
-            final MethodTypeFlow methodFlow = pointsToMethod.getTypeFlow();
-
-            /*
-             * Add the initial parameter flows as uses to the type flow of their respective types.
-             * The initial parameter flows will be linked to the concrete parameter flows after the
-             * method is parsed and the method type flow is linked. This code is shared between
-             * static and non-static methods and the differentiation is made below when the methods
-             * are linked.
-             * 
-             * The parameter iteration skips the primitive parameters, as these are not modeled, and
-             * the receiver for virtual invokes which will be linked below.
-             * 
-             * Note: the Signature doesn't count the receiver of a virtual invoke as a parameter
-             * whereas the MethodTypeFlow does, hence when accessing the parameter type below we use
-             * idx-offset but when setting the initial parameter flow we simply use idx.
-             */
-            int offset = 0;
-            if (!isStatic) {
-                methodFlow.setInitialReceiverFlow(this, aMethod.getDeclaringClass());
-                offset = 1;
-            }
-            for (int idx = offset; idx < paramCount; idx++) {
-                AnalysisType declaredParamType = (AnalysisType) aMethod.getSignature().getParameterType(idx - offset, declaringClass);
-                if (declaredParamType.getJavaKind() == JavaKind.Object) {
-                    methodFlow.setInitialParameterFlow(this, declaredParamType, idx);
-                }
-            }
 
             if (isStatic) {
                 /*
                  * For static methods trigger analysis in the empty context. This will trigger
-                 * parsing and will add the actual parameter flows as uses to the initial parameter
-                 * flows initialized above.
+                 * parsing and return the method flows graph. Then the method parameter type flows
+                 * are initialized with the corresponding parameter declared type.
                  */
                 postTask(() -> {
                     pointsToMethod.registerAsDirectRootMethod();
                     pointsToMethod.registerAsImplementationInvoked(null);
-                    methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext());
+                    MethodTypeFlow methodFlow = pointsToMethod.getTypeFlow();
+                    MethodFlowsGraph methodFlowsGraph = methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext());
+                    for (int idx = 0; idx < paramCount; idx++) {
+                        AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
+                        FormalParamTypeFlow parameter = methodFlowsGraph.getParameter(idx);
+                        if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
+                            TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
+                            initialParameterFlow.addUse(this, parameter);
+                        }
+                    }
                 });
             } else {
                 if (invokeSpecial && pointsToMethod.isAbstract()) {
@@ -498,10 +487,10 @@ public abstract class PointsToAnalysis implements BigBang {
                  * state it will get notified for any future reachable subtypes and will resolve the
                  * method in each subtype.
                  * 
-                 * In both cases when a callee is resolved the method is parsed and the
-                 * corresponding actual parameter flows are added as uses to the initial parameter
-                 * flows initialized above. Then the callee is linked and registered as
-                 * implementation-invoked.
+                 * In both cases the context-insensitive invoke parameters are initialized with the
+                 * corresponding declared type state. When a callee is resolved the method is parsed
+                 * and the actual parameter type state is propagated to the formal parameters. Then
+                 * the callee is linked and registered as implementation-invoked.
                  */
                 postTask(() -> {
                     BytecodePosition location = new BytecodePosition(null, pointsToMethod, 0);
@@ -510,7 +499,30 @@ public abstract class PointsToAnalysis implements BigBang {
                     } else {
                         pointsToMethod.registerAsVirtualRootMethod();
                     }
-                    pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, location, invokeSpecial);
+                    InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, location, invokeSpecial);
+                    /*
+                     * Initialize the type flow of the invoke's actual parameters with the
+                     * corresponding parameter declared type. Thus, when the invoke links callees it
+                     * will propagate the parameter types too.
+                     * 
+                     * The parameter iteration skips the primitive parameters, as these are not
+                     * modeled. The type flow of the receiver is set to the receiver type already
+                     * when the invoke is created.
+                     */
+                    for (int idx = 1; idx < paramCount; idx++) {
+                        /*
+                         * Note: the Signature doesn't count the receiver of a virtual invoke as a
+                         * parameter whereas the MethodTypeFlow does, hence when accessing the
+                         * parameter type below we use idx-1 but when accessing the actual parameter
+                         * flow we simply use idx.
+                         */
+                        AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx - 1, declaringClass);
+                        TypeFlow<?> actualParameterFlow = invoke.getActualParameter(idx);
+                        if (declaredParamType.getJavaKind() == JavaKind.Object && actualParameterFlow != null) {
+                            TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
+                            initialParameterFlow.addUse(this, actualParameterFlow);
+                        }
+                    }
                 });
             }
         }

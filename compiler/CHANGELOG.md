@@ -3,7 +3,11 @@
 This changelog summarizes newly introduced optimizations that may be relevant to other teams.
 
 ## Version 22.2.0
-* (GR-16452) Compute the code emission basic block order after backend control flow optimizations.
+* (GR-23737): New global value numbering optimization for fixed nodes early in the compilation pipeline.
+Early global value numbering and loop invariant code motion is enabled per default.
+Disable early global value numbering with `-Dgraal.EarlyGVN=false`.
+Disable early loop invariant code motion with  `-Dgraal.EarlyLICM=false`.
+* (GR-16452): Compute the code emission basic block order after backend control flow optimizations.
 * (GR-35033): Enable floating and global value numbering of division nodes early on in the compilation pipeline if
   it is known they will not trap.
   

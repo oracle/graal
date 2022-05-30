@@ -75,6 +75,9 @@ public class ByteSequenceTest {
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
+        /*
+         * This test does not use polyglot context, no point running it with isolated context.
+         */
         TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 

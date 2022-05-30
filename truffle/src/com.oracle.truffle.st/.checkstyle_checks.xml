@@ -217,6 +217,11 @@
     <property name="format" value="System\.(out|err)\.print"/>
     <property name="fileExtensions" value="java"/>
   </module>
+  <module name="RegexpSingleline">
+    <property name="format" value="TODO (?!GR-)"/>
+    <property name="fileExtensions" value="java"/>
+    <property name="message" value="TODO should be followed by an issue - e.g. TODO GR-12345."/>
+  </module>
   <module name="SuppressWithPlainTextCommentFilter">
     <property name="offCommentFormat" value="Checkstyle: stop"/>
     <property name="onCommentFormat" value="Checkstyle: resume"/>

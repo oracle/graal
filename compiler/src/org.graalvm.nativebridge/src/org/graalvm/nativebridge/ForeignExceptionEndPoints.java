@@ -24,8 +24,7 @@
  */
 package org.graalvm.nativebridge;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.jniutils.JNIEntryPoint;
 
 final class ForeignExceptionEndPoints {
 
@@ -39,7 +38,7 @@ final class ForeignExceptionEndPoints {
      * @param rawValue marshalled original exception
      * @return a {@link ForeignException} instance
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @JNIEntryPoint
     static Throwable createForeignException(byte[] rawValue) {
         return ForeignException.create(rawValue, ForeignException.HOST_TO_GUEST);
     }
@@ -47,7 +46,7 @@ final class ForeignExceptionEndPoints {
     /**
      * Called by JNI to return a marshalled exception transferred by the {@code exception}.
      */
-    @Platforms(Platform.HOSTED_ONLY.class)
+    @JNIEntryPoint
     static byte[] toByteArray(ForeignException exception) {
         return exception.toByteArray();
     }

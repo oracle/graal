@@ -1,3 +1,13 @@
+# Version 22.2.0
+
+New Features:
+
+* Support for the darwin-aarch64 platform (aka. Apple Silicon).
+
+Changes:
+
+* Updated LLVM toolchain to version 14.0.3.
+
 # Version 22.1.0
 
 New Features:

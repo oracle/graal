@@ -471,7 +471,7 @@ public abstract class NativeImage extends AbstractImage {
                 Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
                 try (Timer.StopTimer t = timer.start()) {
                     ImageSingletons.add(SourceManager.class, new SourceManager());
-                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
+                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap, metaAccess);
                     objectFile.installDebugInfo(provider);
                 }
                 ProgressReporter.singleton().setDebugInfoTimer(timer);
@@ -992,6 +992,6 @@ final class MethodPointerInvalidHandlerFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
+        access.registerAsRoot(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD, true);
     }
 }

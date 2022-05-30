@@ -24,9 +24,6 @@
  */
 package org.graalvm.jniutils;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -36,7 +33,6 @@ import java.io.IOException;
 /**
  * Entry points in HotSpot for exception handling from a JNI native method.
  */
-@Platforms(Platform.HOSTED_ONLY.class)
 final class JNIExceptionWrapperEntryPoints {
 
     /**
@@ -46,6 +42,7 @@ final class JNIExceptionWrapperEntryPoints {
      * @param serializedStackTrace byte serialized stack trace
      * @return the updated {@link Throwable}
      */
+    @JNIEntryPoint
     static Throwable updateStackTrace(Throwable target, byte[] serializedStackTrace) {
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(serializedStackTrace))) {
             int len = in.readInt();
@@ -71,10 +68,12 @@ final class JNIExceptionWrapperEntryPoints {
      * @param message the exception message
      * @return exception
      */
+    @JNIEntryPoint
     static Throwable createException(String message) {
         return new RuntimeException(message);
     }
 
+    @JNIEntryPoint
     static byte[] getStackTrace(Throwable throwable) {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
         try (DataOutputStream out = new DataOutputStream(bout)) {
@@ -93,10 +92,12 @@ final class JNIExceptionWrapperEntryPoints {
         return bout.toByteArray();
     }
 
+    @JNIEntryPoint
     static String getThrowableMessage(Throwable t) {
         return t.getMessage();
     }
 
+    @JNIEntryPoint
     static String getClassName(Class<?> clz) {
         return clz.getName();
     }

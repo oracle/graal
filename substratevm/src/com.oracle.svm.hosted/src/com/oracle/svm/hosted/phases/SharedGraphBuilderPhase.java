@@ -330,7 +330,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 checkWordType(args[i + (isStatic ? 0 : 1)], targetMethod.getSignature().getParameterType(i, null), "call argument");
             }
 
-            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile, null);
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profile, null, profile);
         }
 
         @Override

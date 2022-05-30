@@ -8,6 +8,20 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-37493 Added `@DenyReplace` to deny replacement of final node types. 
 * GR-37493 Potentially breaking: Disabled replace of all Truffle DSL generated uncached nodes. If you call `Node.replace()` on an uncached version of a generated node or library it will now fail with an `IllegalArgumentException`. As a rule of thumb, uncached versions of nodes should not ever be stored in `@Child` fields. Instead, they should always be used as singletons.
 * GR-37493 Removed long time deprecated API `NodeFieldAccessor` without replacement. Added a some utility methods in `NodeUtil` as a replacement for this API: `NodeUtil.collectFieldNames(Class)`, `NodeUtil.collectNodeChildren(Node)` and `NodeUtil.collectNodeProperties(Node)`.
+* GR-37100 Deprecated `BytecodeOSRNode.copyIntoOSRFrame(VirtualFrame, VirtualFrame, int)`, in favor of `BytecodeOSRNode.copyIntoOSRFrame(VirtualFrame, VirtualFrame, int, Object)`.
+* GR-36944 Added new static APIs to `com.oracle.truffle.api.frame.Frame`:
+    * Added new `Static` option to `com.oracle.truffle.api.frame.FrameSlotKind` for index-based slots. Frame slots using this kind cannot be changed to another kind later on. Static frame slots can simultaneously hold one primitive and one object value.
+    * Added new `get.../set...` methods postfixed by `Static` for exclusively accessing static frame slots.
+    * Added new `copy.../clear...` methods postfixed by `Static` for exclusively copying and clearing static frame slots.
+    * Static frame slots are intended for situations where the type of a variable in a frame slots is known ahead of time and does not need any type checks (e.g. in statically typed languages).
+* GR-36557 Introduced `--engine.InliningUseSize` which changes the code size approximation during inlining to an approximation of the size of the graph rather than just the node count. This option is false by default.
+* GR-37310 Add `BytecodeOSRNode.storeParentFrameInArguments` and `BytecodeOSRNode.restoreParentFrameFromArguments` to give languages more control over how frame arguments in bytecode OSR compilations are created.
+* GR-35280 Implemented new domain specific inlining phase for Truffle interpreter host compilation. 
+    * In native image hosts the new optimizations is applied to all methods annotated with `@BytecodeInterpreterSwitch` and methods which were detected to be used for runtime compilation. 
+    * On HotSpot hosts the new optimizations will be applied to methods annotated with `@BytecodeInterpreterSwitch` only.
+    * The annotation `@BytecodeInterpreterSwitchBoundary` was deprecated. Boundaries for the compilation are now inferred from directives like `CompilerDirective.transferToInterpreter()` and `@TruffleBoundary` automatically.
+    * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
+* GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
 
 ## Version 22.1.0
 

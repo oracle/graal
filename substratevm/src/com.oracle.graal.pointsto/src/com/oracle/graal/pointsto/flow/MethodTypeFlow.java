@@ -48,7 +48,6 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -158,20 +157,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         originalMethodFlows.setParameter(index, parameter);
     }
 
-    public void setInitialReceiverFlow(PointsToAnalysis bb, AnalysisType declaringType) {
-        TypeFlow<?> declaringTypeFlow = declaringType.getTypeFlow(bb, false);
-        InitialReceiverTypeFlow initialReceiverFlow = new InitialReceiverTypeFlow(method, declaringType);
-        declaringTypeFlow.addUse(bb, initialReceiverFlow);
-        originalMethodFlows.setInitialParameterFlow(initialReceiverFlow, 0);
-    }
-
-    public void setInitialParameterFlow(PointsToAnalysis bb, AnalysisType declaredType, int i) {
-        TypeFlow<?> declaredTypeFlow = declaredType.getTypeFlow(bb, true);
-        InitialParamTypeFlow initialParameterFlow = new InitialParamTypeFlow(method, declaredType, i);
-        declaredTypeFlow.addUse(bb, initialParameterFlow);
-        originalMethodFlows.setInitialParameterFlow(initialParameterFlow, i);
-    }
-
     protected void addInstanceOf(Object key, InstanceOfTypeFlow instanceOf) {
         originalMethodFlows.addInstanceOf(key, instanceOf);
     }
@@ -216,7 +201,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
              * objects, so that the union operation doesn't merge the concrete objects with abstract
              * objects.
              */
-            TypeState cloneStateCopy = TypeState.forContextInsensitiveTypeState(bb, cloneState);
+            TypeState cloneStateCopy = bb.analysisPolicy().forContextInsensitiveTypeState(bb, cloneState);
             result = TypeState.forUnion(bb, result, cloneStateCopy);
         }
         return result;

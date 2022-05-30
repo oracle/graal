@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -471,8 +472,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         try {
             return doInvoke(args);
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
+            // this is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(location);
         }
     }
 
@@ -496,8 +497,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 throw rethrow(profileExceptionType(t));
             }
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
+            // this is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(location);
         }
     }
 
@@ -507,8 +508,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             ensureInitialized();
             return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments), getTier());
         } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
+            // this is needed to keep the values from being cleared as non-live locals
+            Reference.reachabilityFence(location);
         }
     }
 
@@ -530,10 +531,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         } else {
             return CompilationState.INTERPRETED;
         }
-    }
-
-    private static boolean keepAlive(@SuppressWarnings("unused") Object o) {
-        return true;
     }
 
     // This call method is hidden from stack traces.

@@ -139,7 +139,7 @@ class NativeImageVM(GraalVm):
             self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
-            self.pgo_iteration_num = None
+            self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
             self.profile_file_extension = '.iprof'
@@ -206,6 +206,7 @@ class NativeImageVM(GraalVm):
         self.native_architecture = False
         self.graalvm_edition = None
         self.config = None
+        self.ml = None
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self._configure_from_name(config_name)
@@ -226,7 +227,7 @@ class NativeImageVM(GraalVm):
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
-               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
         match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
@@ -294,6 +295,9 @@ class NativeImageVM(GraalVm):
             else:
                 mx.abort("Unknown inliner configuration: {}".format(inliner))
 
+        if matching.group("ml") is not None:
+            self.ml = matching.group("ml")[:-1]
+
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
             mx.logv("GraalVM edition is set to: {}".format(edition))
@@ -309,15 +313,12 @@ class NativeImageVM(GraalVm):
 
         if matching.group("analysis_context_sensitivity") is not None:
             context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
-            if context_sensitivity == "insens":
-                mx.logv("analysis context sensitivity 'insens' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "insens"
-            elif context_sensitivity == "allocsens":
-                mx.logv("analysis context sensitivity 'allocsens' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "allocsens"
-            elif context_sensitivity == "1obj":
-                mx.logv("analysis context sensitivity '1obj' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "_1obj"
+            if context_sensitivity in ["insens", "allocsens"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = context_sensitivity
+            elif context_sensitivity in ["1obj", "2obj1h", "3obj2h", "4obj3h"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = "_{}".format(context_sensitivity)
             else:
                 mx.abort("Unknown analysis context sensitivity: {}".format(context_sensitivity))
 
@@ -789,7 +790,9 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else [])
+        instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
+        ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
 
@@ -1108,12 +1111,12 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.iteration": ("<iteration>", int),
                 }, startPattern=r"::: Running :::")
             ]
-        elif metric_name == "allocated-memory":
+        elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
             rules += [
                 ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
                     "benchmark": ("<name>", str),
                     "metric.better": "lower",
-                    "metric.name": "allocated-memory",
+                    "metric.name": metric_name,
                     "metric.unit": ("<unit>", str),
                     "metric.value": ("<value>", float),
                     "metric.type": "numeric",
@@ -1135,11 +1138,21 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 })
             ]
         rules += [
-            mx_benchmark.StdOutRule(r"### Truffle Context eval time \(ms\): (?P<delta>[0-9]+)", {
+            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
                 "benchmark": benchmarks[0],
                 "metric.name": "context-eval-time",
                 "metric.value": ("<delta>", float),
-                "metric.unit": "ms",
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0
+            }),
+            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmarks[0],
+                "metric.name": "context-init-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
                 "metric.type": "numeric",
                 "metric.score-function": "id",
                 "metric.better": "lower",
@@ -1263,11 +1276,14 @@ def register_graalvm_vms():
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
     # Inlining before analysis is done by default
-    analysis_context_sensitivity = ['insens', 'allocsens', '1obj']
+    analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
     analysis_context_sensitivity_no_inline = ['{}-{}'.format(analysis_component, 'no-inline') for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity = ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity += ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity_no_inline]
+
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline + pgo_aot_inline_context_sensitivity:
                 final_config_name = '{}-{}'.format(main_config, config_suffix)
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break
@@ -1278,10 +1294,14 @@ def register_graalvm_vms():
 
 
     # Add VMs for libgraal
-    if mx_sdk_vm_impl.has_component('LibGraal'):
-        libgraal_location = mx_sdk_vm_impl.get_native_image_locations('LibGraal', 'jvmcicompiler')
-        if libgraal_location is not None:
-            import mx_graal_benchmark
-            mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                       ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
-                                                       mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)
+    if mx.suite('substratevm', fatalIfMissing=False) is not None:
+        import mx_substratevm
+        # Use `name` rather than `short_name` since the code that follows
+        # should not be executed when "LibGraal Enterprise" is registered
+        if mx_sdk_vm_impl.has_component(mx_substratevm.libgraal.name):
+            libgraal_location = mx_sdk_vm_impl.get_native_image_locations(mx_substratevm.libgraal.name, 'jvmcicompiler')
+            if libgraal_location is not None:
+                import mx_graal_benchmark
+                mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
+                                                           ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                           mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

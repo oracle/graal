@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.FrozenFieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.InitialParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
@@ -335,7 +334,7 @@ public class PointsToStats {
     private static final AtomicInteger nextStateId = new AtomicInteger();
     private static ConcurrentHashMap<TypeState, AtomicInteger> typeStateStats = new ConcurrentHashMap<>();
 
-    static void registerTypeState(PointsToAnalysis bb, TypeState state) {
+    public static void registerTypeState(PointsToAnalysis bb, TypeState state) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -374,7 +373,7 @@ public class PointsToStats {
 
     private static ConcurrentHashMap<UnionOperation, AtomicInteger> unionStats = new ConcurrentHashMap<>();
 
-    static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
+    public static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -552,9 +551,6 @@ public class PointsToStats {
         } else if (flow instanceof InvokeTypeFlow) {
             InvokeTypeFlow invoke = (InvokeTypeFlow) flow;
             return "Invoke(" + formatMethod(invoke.getTargetMethod()) + ")@" + formatSource(flow);
-        } else if (flow instanceof InitialParamTypeFlow) {
-            InitialParamTypeFlow param = (InitialParamTypeFlow) flow;
-            return "InitialParam(" + param.position() + ")@" + formatMethod(param.method());
         } else if (flow instanceof FormalParamTypeFlow) {
             FormalParamTypeFlow param = (FormalParamTypeFlow) flow;
             return "Parameter(" + param.position() + ")@" + formatMethod(param.method());
@@ -636,8 +632,8 @@ public class PointsToStats {
             return "<Null>";
         }
 
-        String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s.isSingleTypeState() ? "Single" : s.isMultiTypeState() ? "Multi" : "";
-        String sSizeOrType = s.isMultiTypeState() ? s.typesCount() + "" : s.exactType().toJavaName(false);
+        String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s instanceof SingleTypeState ? "Single" : s instanceof MultiTypeState ? "Multi" : "";
+        String sSizeOrType = s instanceof MultiTypeState ? s.typesCount() + "" : s.exactType().toJavaName(false);
         int objectsNumber = s.objectsCount();
         String canBeNull = s.canBeNull() ? "null" : "!null";
 

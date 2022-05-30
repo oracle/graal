@@ -28,6 +28,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.Objects;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,6 +53,7 @@ final class RecordSupportJDK17OrLater extends RecordSupport {
     public Method[] getRecordComponentAccessorMethods(Class<?> clazz) {
         return Arrays.stream(clazz.getRecordComponents())
                         .map(RecordComponent::getAccessor)
+                        .filter(Objects::nonNull)
                         .toArray(Method[]::new);
     }
 

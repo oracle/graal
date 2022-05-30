@@ -278,4 +278,5 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
                 return SIZE_UNKNOWN;
         }
     }
+
 }

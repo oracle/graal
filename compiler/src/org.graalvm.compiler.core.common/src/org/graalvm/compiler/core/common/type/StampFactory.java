@@ -182,6 +182,9 @@ public class StampFactory {
     }
 
     public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long downMask, long upMask) {
+        if (Long.compareUnsigned(unsignedLowerBound, unsignedUpperBound) > 0) {
+            return IntegerStamp.createEmptyStamp(bits);
+        }
         long lowerBound = signExtend(unsignedLowerBound, bits);
         long upperBound = signExtend(unsignedUpperBound, bits);
         if (!NumUtil.sameSign(lowerBound, upperBound)) {

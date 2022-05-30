@@ -151,7 +151,7 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver);
+        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines);
 
         public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine);
 
@@ -314,9 +314,10 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
+                    AbstractPolyglotHostService polyglotHostService) {
         return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
-                        hostLanguageOnly);
+                        hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
     public abstract int getPriority();
@@ -732,11 +733,30 @@ public abstract class AbstractPolyglotImpl {
         public abstract RuntimeException unboxEngineException(RuntimeException e);
     }
 
-    public abstract static class AbstractHostService extends AbstractDispatchClass {
+    public abstract static class AbstractPolyglotHostService extends AbstractDispatchClass {
 
-        protected AbstractHostService(AbstractPolyglotImpl polyglot) {
+        protected AbstractPolyglotHostService(AbstractPolyglotImpl polyglot) {
             Objects.requireNonNull(polyglot);
         }
+
+        public abstract void patch(AbstractPolyglotHostService otherService);
+
+        public abstract void notifyClearExplicitContextStack(Object contextReceiver);
+
+        public abstract void notifyContextCancellingOrExiting(Object contextReceiver, boolean exit, int exitCode, boolean resourceLimit, String message);
+
+        public abstract void notifyContextClosed(Object contextReceiver, boolean cancelIfExecuting, boolean resourceLimit, String message);
+
+        public abstract void notifyEngineClosed(Object engineReceiver, boolean cancelIfExecuting);
+    }
+
+    public abstract static class AbstractHostLanguageService extends AbstractDispatchClass {
+
+        protected AbstractHostLanguageService(AbstractPolyglotImpl polyglot) {
+            Objects.requireNonNull(polyglot);
+        }
+
+        public abstract void release();
 
         public abstract void initializeHostContext(Object internalContext, Object context, HostAccess access, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed,
                         boolean hostLookupAllowed);
@@ -1088,6 +1108,14 @@ public abstract class AbstractPolyglotImpl {
 
     public FileSystem newDefaultFileSystem() {
         return getNext().newDefaultFileSystem();
+    }
+
+    public FileSystem allowLanguageHomeAccess(FileSystem fileSystem) {
+        return getNext().allowLanguageHomeAccess(fileSystem);
+    }
+
+    public FileSystem newReadOnlyFileSystem(FileSystem fileSystem) {
+        return getNext().newReadOnlyFileSystem(fileSystem);
     }
 
     public ProcessHandler newDefaultProcessHandler() {

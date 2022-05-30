@@ -29,6 +29,8 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /**
  * Implements a hash set that is concurrent, backed by a concurrent hash map, and memory efficient.
@@ -131,9 +133,30 @@ public final class ConcurrentLightHashSet {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    public static <T, U> void forEach(U holder, AtomicReferenceFieldUpdater<U, Object> updater, Consumer<? super T> action) {
+        Object u = updater.get(holder);
+        if (u == null) {
+            /* No elements. */
+            return;
+        }
+        if (u instanceof ConcurrentHashMap) {
+            /* Multiple elements. */
+            ConcurrentHashMap<T, Object> elementsMap = (ConcurrentHashMap<T, Object>) u;
+            elementsMap.keySet().forEach(action);
+        } else {
+            /* Single element. */
+            action.accept((T) u);
+        }
+    }
+
     public static <T, U> boolean removeElement(U holder, AtomicReferenceFieldUpdater<U, Object> updater, T element) {
         while (true) {
             Object e = updater.get(holder);
+            if (e == null) {
+                /* No elements. */
+                return false;
+            }
             if (e instanceof ConcurrentHashMap) {
                 /*
                  * We already have multiple elements, the ConcurrentHashMap takes care of all
@@ -152,9 +175,39 @@ public final class ConcurrentLightHashSet {
                 }
 
             } else {
+                /* We have no match on the single element. Nothing to remove. */
+                return false;
+            }
+            /* We lost the race with another thread, just try again. */
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T, U> boolean removeElementIf(U holder, AtomicReferenceFieldUpdater<U, Object> updater, Predicate<? super T> filter) {
+        while (true) {
+            Object e = updater.get(holder);
+            if (e == null) {
+                /* No elements. */
+                return false;
+            }
+            if (e instanceof ConcurrentHashMap) {
                 /*
-                 * We have no match on the single element, or no element at all. Nothing to remove.
+                 * We already have multiple elements, the ConcurrentHashMap takes care of all
+                 * concurrency issues so we cannot fail.
                  */
+                ConcurrentHashMap<T, Object> elementsMap = (ConcurrentHashMap<T, Object>) e;
+                return elementsMap.keySet().removeIf(filter);
+            } else if (filter.test((T) e)) {
+                /*
+                 * We have a match for the single element. Try to update the field directly to null
+                 * to remove that element.
+                 */
+                if (updater.compareAndSet(holder, e, null)) {
+                    return true;
+                }
+
+            } else {
+                /* We have no match on the single element. Nothing to remove. */
                 return false;
             }
             /* We lost the race with another thread, just try again. */

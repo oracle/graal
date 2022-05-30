@@ -52,7 +52,6 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
@@ -136,6 +135,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         rootNode = new Program(osrNode, frameDescriptor);
         target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(TwoFixedIterationLoops.NO_OSR, target.call(osrThreshold / 2));
+    }
+
+    /*
+     * Test that OSR is triggered in the expected location when multiple loops are involved, and
+     * makes sure that their cached frame states for transfers are independent.
+     */
+    @Test
+    public void testMultipleLoopsIncompatibleState() {
+        // Each loop runs for osrThreshold + 1 iterations, so the first loop should trigger OSR.
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        TwoLoopsIncompatibleFrames osrNode = new TwoLoopsIncompatibleFrames(builder);
+        RootNode rootNode = new Program(osrNode, builder.build());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(TwoLoopsIncompatibleFrames.OSR_IN_FIRST_LOOP, target.call(osrThreshold + 1, true));
+        Assert.assertEquals(TwoLoopsIncompatibleFrames.OSR_IN_SECOND_LOOP, target.call(osrThreshold + 1, false));
     }
 
     /*
@@ -331,6 +345,17 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         OptimizedCallTarget callerTarget = (OptimizedCallTarget) caller.getCallTarget();
         osrNode.caller = callerTarget;
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, callerTarget.call(osrThreshold + 1));
+    }
+
+    /*
+     * Test storeParentFrameInArguments and restoreParentFrame can be used to preserve selected
+     * frame arguments after OSR.
+     */
+    @Test
+    public void testStoreArguments() {
+        RootNode rootNode = new Program(new PreserveFirstFrameArgumentNode(), new FrameDescriptor());
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+        Assert.assertEquals(42, target.call(PreserveFirstFrameArgumentNode.EXPECTED_FIRST_ARG, 0));
     }
 
     /*
@@ -576,7 +601,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
             setInt(osrFrame, indexSlot, getInt(parentFrame, indexSlot));
             setInt(osrFrame, numIterationsSlot, getInt(parentFrame, numIterationsSlot));
         }
@@ -645,6 +670,90 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
                             Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
                             if (result != null) {
                                 return OSR_IN_SECOND_LOOP;
+                            }
+                        }
+                    }
+                }
+                return NO_OSR;
+            } catch (FrameSlotTypeException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new IllegalStateException("Error accessing index slot");
+            }
+        }
+    }
+
+    /**
+     * Contains two loops whose entry's frame states differs. Makes sure that one's entry frame
+     * state does not spill to the other
+     */
+    public static class TwoLoopsIncompatibleFrames extends BytecodeOSRTestNode {
+        static final String NO_OSR = "no osr";
+        static final String OSR_IN_FIRST_LOOP = "osr in first loop";
+        static final String OSR_IN_SECOND_LOOP = "osr in second loop";
+
+        static final int FIRST_LOOP_TARGET = 0;
+        static final int SECOND_LOOP_TARGET = 1;
+
+        @CompilationFinal int iterationsSlot;
+        @CompilationFinal int indexSlot;
+        @CompilationFinal int selectSlot;
+        @CompilationFinal int localSlot;
+
+        public TwoLoopsIncompatibleFrames(FrameDescriptor.Builder builder) {
+            iterationsSlot = builder.addSlot(FrameSlotKind.Int, "iterations", null);
+            indexSlot = builder.addSlot(FrameSlotKind.Int, "index", null);
+            selectSlot = builder.addSlot(FrameSlotKind.Boolean, "select", null);
+            localSlot = builder.addSlot(FrameSlotKind.Illegal, "local", null);
+        }
+
+        @Override
+        Object execute(VirtualFrame frame) {
+            int numIter = (int) frame.getArguments()[0];
+            boolean select = (boolean) frame.getArguments()[1];
+            frame.setInt(iterationsSlot, numIter);
+            frame.setInt(indexSlot, 0);
+            frame.setBoolean(selectSlot, select);
+            if (select) {
+                frame.setInt(localSlot, 0);
+                return executeLoop(frame, numIter, select);
+            } else {
+                frame.setDouble(localSlot, 0d);
+                return executeLoop(frame, numIter, select);
+            }
+        }
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            return executeLoop(osrFrame, osrFrame.getInt(iterationsSlot), target == FIRST_LOOP_TARGET);
+        }
+
+        protected Object executeLoop(VirtualFrame frame, int numIterations, boolean select) {
+            try {
+                if (select) {
+                    for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                        frame.setInt(indexSlot, i);
+                        int partial = frame.getInt(localSlot);
+                        frame.setInt(localSlot, i + partial);
+                        if (i + 1 < numIterations) { // back-edge will be taken
+                            if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                                Object result = BytecodeOSRNode.tryOSR(this, FIRST_LOOP_TARGET, null, null, frame);
+                                if (result != null) {
+                                    return OSR_IN_FIRST_LOOP;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    for (int i = frame.getInt(indexSlot); i < numIterations; i++) {
+                        frame.setInt(indexSlot, i);
+                        double partial = frame.getDouble(localSlot);
+                        frame.setDouble(localSlot, i + partial);
+                        if (i + 1 < numIterations) { // back-edge will be taken
+                            if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                                Object result = BytecodeOSRNode.tryOSR(this, SECOND_LOOP_TARGET, null, null, frame);
+                                if (result != null) {
+                                    return OSR_IN_SECOND_LOOP;
+                                }
                             }
                         }
                     }
@@ -982,6 +1091,45 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
     }
 
+    public static class PreserveFirstFrameArgumentNode extends BytecodeOSRTestNode {
+        static final Object EXPECTED_FIRST_ARG = new Object();
+
+        @Override
+        public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+            return execute(osrFrame);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            // This node only terminates in compiled code.
+            while (true) {
+                assertEquals(EXPECTED_FIRST_ARG, frame.getArguments()[0]);
+                if (CompilerDirectives.inCompiledCode()) {
+                    return 42;
+                }
+                if (BytecodeOSRNode.pollOSRBackEdge(this)) {
+                    Object result = BytecodeOSRNode.tryOSR(this, DEFAULT_TARGET, null, null, frame);
+                    if (result != null) {
+                        return result;
+                    }
+                }
+            }
+        }
+
+        @Override
+        public Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+            // This node is always called with 2 args, we preserve the first
+            Object[] arguments = parentFrame.getArguments();
+            arguments[1] = parentFrame;
+            return arguments;
+        }
+
+        @Override
+        public Frame restoreParentFrameFromArguments(Object[] arguments) {
+            return (Frame) arguments[1];
+        }
+    }
+
     public static class FrameTransferringNode extends BytecodeOSRTestNode {
         @CompilationFinal com.oracle.truffle.api.frame.FrameSlot booleanSlot;
         @CompilationFinal com.oracle.truffle.api.frame.FrameSlot byteSlot;
@@ -1013,8 +1161,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
-            super.copyIntoOSRFrame(osrFrame, parentFrame, target);
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
+            super.copyIntoOSRFrame(osrFrame, parentFrame, target, targetMetadata);
             // Copying should not trigger a deopt.
             Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
@@ -1128,10 +1276,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         public void restoreParentFrame(VirtualFrame osrFrame, VirtualFrame parentFrame) {
             // The parent implementation asserts we are in compiled code, so we instead explicitly
             // do the transfer here.
-            ((BytecodeOSRMetadata) osrMetadata).transferFrame((FrameWithoutBoxing) osrFrame, (FrameWithoutBoxing) parentFrame);
-            // Since the intSlot tag changed inside the compiled code, the tag speculation should
-            // fail and cause a deopt.
-            Assert.assertFalse(CompilerDirectives.inCompiledCode());
+            super.restoreParentFrame(osrFrame, parentFrame);
+            // Parent frame restoration does not speculate on the state of the frame on return.
+            Assert.assertTrue(CompilerDirectives.inCompiledCode());
         }
     }
 
@@ -1204,9 +1351,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         }
 
         @Override
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
             changeFrame(osrFrame.getFrameDescriptor()); // only changes the first time
-            super.copyIntoOSRFrame(osrFrame, parentFrame, target);
+            super.copyIntoOSRFrame(osrFrame, parentFrame, target, targetMetadata);
         }
 
         @Override
@@ -1335,7 +1482,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         @Override
         @ExplodeLoop
-        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target) {
+        public void copyIntoOSRFrame(VirtualFrame osrFrame, VirtualFrame parentFrame, int target, Object targetMetadata) {
             for (int i = 0; i < regs.length; i++) {
                 setInt(osrFrame, i, getInt(parentFrame, i));
             }

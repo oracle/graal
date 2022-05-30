@@ -28,9 +28,12 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -39,12 +42,13 @@ import jdk.vm.ci.meta.JavaKind;
  * of an array.
  */
 @NodeInfo
-public abstract class AccessIndexedNode extends AccessArrayNode implements Lowerable {
+public abstract class AccessIndexedNode extends AccessArrayNode implements Lowerable, MemoryAccess {
 
     public static final NodeClass<AccessIndexedNode> TYPE = NodeClass.create(AccessIndexedNode.class);
     @Input protected ValueNode index;
     @OptionalInput(InputType.Guard) private GuardingNode boundsCheck;
     protected final JavaKind elementKind;
+    protected final LocationIdentity location;
 
     public ValueNode index() {
         return index;
@@ -65,6 +69,7 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
         this.index = index;
         this.boundsCheck = boundsCheck;
         this.elementKind = elementKind;
+        this.location = NamedLocationIdentity.getArrayLocation(elementKind);
     }
 
     public GuardingNode getBoundsCheck() {
@@ -80,4 +85,8 @@ public abstract class AccessIndexedNode extends AccessArrayNode implements Lower
         return elementKind;
     }
 
+    @Override
+    public LocationIdentity getLocationIdentity() {
+        return location;
+    }
 }

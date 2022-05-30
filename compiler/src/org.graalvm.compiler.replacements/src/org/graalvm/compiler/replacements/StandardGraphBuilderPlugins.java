@@ -33,6 +33,7 @@ import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.RELEASE;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
+import java.lang.ref.Reference;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
@@ -144,6 +145,7 @@ import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
+import org.graalvm.compiler.nodes.java.ReachabilityFenceNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
@@ -156,6 +158,7 @@ import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
@@ -202,6 +205,7 @@ public class StandardGraphBuilderPlugins {
                     boolean arrayEqualsSubstitution,
                     LoweringProvider lowerer) {
         registerObjectPlugins(plugins);
+        registerReferencePlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
         registerStrictMathPlugins(plugins);
@@ -1102,6 +1106,17 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
+    private static void registerReferencePlugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, Reference.class);
+        r.register(new InvocationPlugin("reachabilityFence", Object.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode value) {
+                b.add(ReachabilityFenceNode.create(value));
+                return true;
+            }
+        });
+    }
+
     private static void registerClassPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Class.class);
         r.register(new InvocationPlugin("isInstance", Receiver.class, Object.class) {
@@ -1582,6 +1597,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new RequiredInlineOnlyInvocationPlugin("sideEffect", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
+                b.addPush(JavaKind.Long, new SideEffectNode(a));
+                return true;
+            }
+        });
         r.register(new RequiredInlineOnlyInvocationPlugin("trustedBox", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
@@ -1713,6 +1735,58 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+
+        r.register(new RequiredInvocationPlugin("log", String.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode format) {
+                if (format.isJavaConstant()) {
+                    String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
+                    b.add(new LogNode(formatConst, null, null, null));
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register(new RequiredInvocationPlugin("log", String.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode format, ValueNode l1) {
+                if (format.isJavaConstant()) {
+                    String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
+                    b.add(new LogNode(formatConst, l1, null, null));
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register(new RequiredInvocationPlugin("log", String.class, long.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode format, ValueNode l1, ValueNode l2) {
+                if (format.isJavaConstant()) {
+                    String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
+                    b.add(new LogNode(formatConst, l1, l2, null));
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        r.register(new RequiredInvocationPlugin("log", String.class, long.class, long.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode format, ValueNode l1, ValueNode l2, ValueNode l3) {
+                if (format.isJavaConstant()) {
+                    String formatConst = snippetReflection.asObject(String.class, format.asJavaConstant());
+                    b.add(new LogNode(formatConst, l1, l2, l3));
+                    return true;
+                }
+                return false;
+            }
+        });
+
     }
 
     private static void registerJMHBlackholePlugins(InvocationPlugins plugins, Replacements replacements) {

@@ -1028,19 +1028,14 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         builder.buildStackmap(builder.constantLong(startPatchpointId));
         compilationResult.recordInfopoint(NumUtil.safeToInt(startPatchpointId), null, InfopointReason.METHOD_START);
 
-        LLVMValueRef jumpAddressAddress;
+        LLVMValueRef jumpAddress;
         if (SubstrateOptions.SpawnIsolates.getValue()) {
-            LLVMValueRef thread = buildInlineGetRegister(threadArg.getRegister().name);
-            LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
-            LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
-            LLVMValueRef methodId = buildInlineGetRegister(methodIdArg.getRegister().name);
-            LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
-            jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
+            buildInlineLoad(threadArg.getRegister().name, LLVMTargetSpecific.get().getScratchRegister(), threadIsolateOffset);
+            buildInlineAdd(LLVMTargetSpecific.get().getScratchRegister(), methodIdArg.getRegister().name);
+            jumpAddress = buildInlineLoad(LLVMTargetSpecific.get().getScratchRegister(), LLVMTargetSpecific.get().getScratchRegister(), methodObjEntryPointOffset);
         } else {
-            LLVMValueRef methodBase = buildInlineGetRegister(methodIdArg.getRegister().name);
-            jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
+            jumpAddress = buildInlineLoad(methodIdArg.getRegister().name, LLVMTargetSpecific.get().getScratchRegister(), methodObjEntryPointOffset);
         }
-        LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
         buildInlineJump(jumpAddress);
         builder.buildUnreachable();
     }
@@ -1138,13 +1133,24 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
     }
 
-    private LLVMValueRef buildInlineGetRegister(String registerName) {
+    private LLVMValueRef buildInlineLoad(String inputRegisterName, String outputRegisterName, int offset) {
         LLVMTypeRef inlineAsmType = builder.functionType(builder.rawPointerType());
-        String asmSnippet = LLVMTargetSpecific.get().getRegisterInlineAsm(registerName);
-        InlineAssemblyConstraint outputConstraint = new InlineAssemblyConstraint(Type.Output, Location.namedRegister(LLVMTargetSpecific.get().getLLVMRegisterName(registerName)));
+        String asmSnippet = LLVMTargetSpecific.get().getLoadInlineAsm(inputRegisterName, offset);
+        InlineAssemblyConstraint outputConstraint = new InlineAssemblyConstraint(Type.Output, Location.namedRegister(outputRegisterName));
 
-        LLVMValueRef getRegister = builder.buildInlineAsm(inlineAsmType, asmSnippet, false, false, outputConstraint);
-        LLVMValueRef call = builder.buildCall(getRegister);
+        LLVMValueRef load = builder.buildInlineAsm(inlineAsmType, asmSnippet, false, false, outputConstraint);
+        LLVMValueRef call = builder.buildCall(load);
+        builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
+        return call;
+    }
+
+    private LLVMValueRef buildInlineAdd(String outputRegisterName, String inputRegisterName) {
+        LLVMTypeRef inlineAsmType = builder.functionType(builder.rawPointerType());
+        String asmSnippet = LLVMTargetSpecific.get().getAddInlineAssembly(outputRegisterName, inputRegisterName);
+        InlineAssemblyConstraint outputConstraint = new InlineAssemblyConstraint(Type.Output, Location.namedRegister(outputRegisterName));
+
+        LLVMValueRef add = builder.buildInlineAsm(inlineAsmType, asmSnippet, false, false, outputConstraint);
+        LLVMValueRef call = builder.buildCall(add);
         builder.setCallSiteAttribute(call, Attribute.GCLeafFunction);
         return call;
     }

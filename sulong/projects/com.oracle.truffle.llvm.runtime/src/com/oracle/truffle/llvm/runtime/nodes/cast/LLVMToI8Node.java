@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,6 +36,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 import com.oracle.truffle.llvm.runtime.nodes.cast.LLVMToI64Node.LLVMBitcastToI64Node;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLL
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
@@ -61,10 +63,16 @@ public abstract class LLVMToI8Node extends LLVMExpressionNode {
         return (byte) toLLVM.executeWithTarget(foreigns.asForeign(from.getObject()));
     }
 
-    @Specialization
+    @Specialization(rewriteOn = LLVMException.class)
     protected byte doPointer(LLVMPointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (byte) toNative.executeWithTarget(from).asNative();
+    }
+
+    @Specialization
+    protected byte doFallbackPointerAsComparable(LLVMPointer from,
+                    @Cached ToComparableValue toComparableValue) {
+        return (byte) toComparableValue.executeWithTarget(from);
     }
 
     protected ForeignToLLVM createForeignToLLVM() {

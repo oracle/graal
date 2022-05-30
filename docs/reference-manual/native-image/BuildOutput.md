@@ -18,34 +18,34 @@ GraalVM Native Image: Generating 'helloworld' (executable)...
  C compiler: gcc (linux, x86_64, 9.3.0)
  Garbage collector: Serial GC
 [2/7] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
-   2,565 (82.61%) of  3,105 classes reachable
-   3,216 (60.42%) of  5,323 fields reachable
-  11,652 (72.44%) of 16,086 methods reachable
-      27 classes,     0 fields, and   135 methods registered for reflection
-      57 classes,    59 fields, and    51 methods registered for JNI access
+   2,718 (72.93%) of  3,727 classes reachable
+   3,442 (53.43%) of  6,442 fields reachable
+  12,128 (44.82%) of 27,058 methods reachable
+      27 classes,     0 fields, and   271 methods registered for reflection
+      58 classes,    59 fields, and    52 methods registered for JNI access
 [3/7] Building universe...                                       (0.5s @ 0.61GB)
 [4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
 [5/7] Inlining methods...     [****]                             (0.5s @ 0.73GB)
 [6/7] Compiling methods...    [**]                               (3.7s @ 2.38GB)
 [7/7] Creating image...                                          (2.1s @ 1.04GB)
-   3.69MB (27.19%) for code area:    6,955 compilation units
-   5.86MB (43.18%) for image heap:   1,545 classes and 80,528 objects
-   3.05MB (22.46%) for debug info generated in 1.0s
- 997.25KB ( 7.18%) for other data
-  13.57MB in total
+   4.00MB (28.31%) for code area:     7,073 compilation units
+   5.90MB (41.70%) for image heap:   83,319 objects and 5 resources
+   3.24MB (22.91%) for debug info generated in 1.0s
+   1.00MB ( 7.08%) for other data
+  14.15MB in total
 --------------------------------------------------------------------------------
 Top 10 packages in code area:           Top 10 object types in image heap:
- 607.28KB java.util                      862.66KB byte[] for general heap data
- 288.63KB java.lang                      834.02KB byte[] for code metadata
- 223.34KB java.util.regex                723.00KB java.lang.String
- 220.45KB java.text                      534.05KB java.lang.Class
- 194.21KB com.oracle.svm.jni             457.63KB byte[] for java.lang.String
- 153.69KB java.util.concurrent           363.75KB java.util.HashMap$Node
- 118.78KB java.math                      192.70KB java.util.HashMap$Node[]
-  99.00KB com.oracle.svm.core.reflect    140.03KB java.lang.String[]
-  98.21KB sun.text.normalizer            139.04KB char[]
-  89.95KB c.oracle.svm.core.genscavenge  132.78KB c.o.s.c.h.DynamicHubCompanion
-      ... 112 additional packages             ... 734 additional object types
+ 632.68KB java.util                      871.62KB byte[] for code metadata
+ 324.42KB java.lang                      798.53KB java.lang.String
+ 223.90KB java.util.regex                774.91KB byte[] for general heap data
+ 221.62KB java.text                      614.06KB java.lang.Class
+ 198.30KB com.oracle.svm.jni             492.51KB byte[] for java.lang.String
+ 166.02KB java.util.concurrent           314.81KB java.util.HashMap$Node
+ 115.44KB java.math                      233.58KB c.o.s.c.h.DynamicHubCompanion
+  98.48KB sun.text.normalizer            154.84KB java.lang.String[]
+  97.42KB java.util.logging              139.54KB byte[] for embedded resources
+  95.18KB c.oracle.svm.core.genscavenge  139.04KB char[]
+   1.83MB for 118 more packages            1.29MB for 753 more object types
                        (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
     0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
@@ -72,6 +72,10 @@ The version info of the Native Image process.
 This string is also used for the `java.vm.version` property within the generated image.
 Please report this version info when you [file issues][new_issue].
 
+#### <a name="glossary-java-version-info"></a>Java Version Info
+The Java version info (`java.runtime.version` property) of the Native Image build process.
+Please report this version info when you [file issues][new_issue].
+
 #### <a name="glossary-ccompiler"></a>C Compiler
 The C compiler executable, vendor, target architecture, and version info used by the Native Image build process.
 
@@ -83,8 +87,8 @@ The garbage collector used within the generated image:
 
 For more information see the [docs on Memory Management at Image Run Time][doc_mem_mgmt].
 
-#### <a name="glossary-user-provided-features"></a>User-provided Features
-All [`Features`][jdoc_feature] that are provided by the user or implicitly registered for the user, for example, by a framework.
+#### <a name="glossary-user-specific-features"></a>User-specific Features
+All [`Features`][jdoc_feature] that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
 GraalVM Native Image deploys a number of internal features, which are excluded from this list.
 
 ### <a name="stage-analysis"></a>Performing Analysis
@@ -133,11 +137,14 @@ The code area contains machine code produced by the Graal compiler for all reach
 Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
 
 #### <a name="glossary-image-heap"></a>Image Heap
-The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes.
+The image heap contains reachable objects such as static application data, metadata, and `byte[]` for different purposes (see below).
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
 The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [reflection metadata](#glossary-reflection-metadata), nor [graph encodings](#glossary-graph-encodings).
 Therefore, this can also include `byte[]` objects from application code.
+
+##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
+The total size of all `byte[]` objects used for storing resources (e.g., files accessed via `Class.getResource()`) within the native image. The number of resources is shown in the [Image Heap](#glossary-image-heap) section.
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).

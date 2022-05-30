@@ -41,7 +41,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.code.SubstrateLoweringProviderFactory;
@@ -73,7 +73,7 @@ import com.oracle.svm.util.ModuleSupport;
  */
 @AutomaticFeature
 @Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-public class LLVMFeature implements Feature, GraalFeature {
+public class LLVMFeature implements Feature, InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -119,7 +119,7 @@ public class LLVMFeature implements Feature, GraalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
-        accessImpl.registerAsCompiled((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
+        accessImpl.registerAsRoot((AnalysisMethod) LLVMExceptionUnwind.getRetrieveExceptionMethod(accessImpl.getMetaAccess()), true);
     }
 
     @Override

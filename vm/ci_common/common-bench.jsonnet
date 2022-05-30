@@ -8,6 +8,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
   vm_bench_common: {
     result_file:: 'results.json',
     upload:: ['bench-uploader.py', self.result_file],
+    upload_and_wait_for_indexing:: self.upload + ['--wait-for-indexing'],
     capabilities+: ['tmpfs25g', 'x52'],
     timelimit: '1:30:00',
   },
@@ -28,11 +29,12 @@ local repo_config = import '../../repo-configuration.libsonnet';
       ] else [],
   },
 
-  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
+  vm_bench_polybench_linux_common(env='polybench-${VM_ENV}', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + {
     base_cmd:: ['mx', '--env', env],
-    interpreter_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    compiler_bench_cmd:: self.base_cmd + ['benchmark', 'polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
-    warmup_bench_cmd:: self.base_cmd + ['benchmark', '--fork-count-file', 'ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    bench_cmd:: self.base_cmd + ['benchmark'] + (if (is_gate) then ['--fail-fast'] else []),
+    interpreter_bench_cmd:: self.bench_cmd + ['polybench:~r[(compiler/.*)|(warmup/.*)]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    compiler_bench_cmd:: self.bench_cmd + ['polybench:*[compiler/dispatch.js]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
+    warmup_bench_cmd:: self.bench_cmd + ['--fork-count-file', 'ci_common/benchmark-forks.json',  'polybench:r[warmup/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
 
     downloads+: {
       WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
@@ -85,8 +87,12 @@ local repo_config = import '../../repo-configuration.libsonnet';
     ],
   },
 
-  vm_bench_polybench_linux_allocated_bytes: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+  vm_bench_polybench_linux_memory: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=metaspace-memory'],
+      self.upload,
+      self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-standard', '--metric=application-memory'],
+      self.upload,
       # We run the interprer benchmarks in both interprer and standard mode to compare allocation with and without compilation.
       self.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-interpreter', '--metric=allocated-bytes'],
       self.upload,
@@ -100,7 +106,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     timelimit: '4:00:00',
   },
 
-  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
+  vm_gate_polybench_linux: self.vm_bench_polybench_linux_common(is_gate=true) + vm.vm_java_17 + {
     interpreter_bench_cmd:: super.interpreter_bench_cmd + ['-w', '1', '-i', '1'],
     compiler_bench_cmd:: super.compiler_bench_cmd + ['-w', '0', '-i', '1'],
     warmup_bench_cmd:: super.warmup_bench_cmd + ['-w', '1', '-i', '1'],
@@ -183,7 +189,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_allocated_bytes + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-allocated-bytes-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64'},
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java11-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64'},

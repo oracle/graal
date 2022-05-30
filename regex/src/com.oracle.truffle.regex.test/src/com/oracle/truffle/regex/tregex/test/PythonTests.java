@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -300,5 +300,14 @@ public class PythonTests extends RegexTestBase {
     @Test
     public void testBStar() {
         test("b*", "", "MustAdvance=true", "xyz", 0, true, 1, 1);
+    }
+
+    @Test
+    public void nfaTraversalTests() {
+        // This relies on correctly maneuvering through the necessary capture groups in the
+        // NFATraversalRegexASTVisitor. Unlike Ruby, for Python regexps, capture group updates are
+        // not reflected in quantifier guards. In order for the traversal to find the needed path,
+        // the group boundaries have to be checked when pruning.
+        test("(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())(?:|())\\3\\5\\7", "", "", 0, true, 0, 0, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 7);
     }
 }

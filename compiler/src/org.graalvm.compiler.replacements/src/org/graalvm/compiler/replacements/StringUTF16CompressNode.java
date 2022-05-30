@@ -57,8 +57,7 @@ import jdk.vm.ci.meta.Value;
  * </ul>
  */
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN, cyclesRationale = "depends on length")
-public final class StringUTF16CompressNode extends FixedWithNextNode
-                implements LIRLowerable, MultiMemoryKill, MemoryAccess {
+public final class StringUTF16CompressNode extends FixedWithNextNode implements LIRLowerable, MultiMemoryKill, MemoryAccess {
 
     public static final NodeClass<StringUTF16CompressNode> TYPE = NodeClass.create(StringUTF16CompressNode.class);
 

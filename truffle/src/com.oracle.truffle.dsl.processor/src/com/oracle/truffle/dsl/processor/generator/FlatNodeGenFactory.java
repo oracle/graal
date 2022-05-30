@@ -686,12 +686,14 @@ public class FlatNodeGenFactory {
                 if (field.getGetter() != null && field.getGetter().getModifiers().contains(Modifier.ABSTRACT)) {
                     CodeExecutableElement method = CodeExecutableElement.clone(field.getGetter());
                     method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
                     method.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end().end();
                     uncached.add(method);
                 }
                 if (field.isSettable()) {
                     CodeExecutableElement method = CodeExecutableElement.clone(field.getSetter());
                     method.getModifiers().remove(Modifier.ABSTRACT);
+                    method.addAnnotationMirror(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
                     method.createBuilder().startThrow().startNew(context.getType(UnsupportedOperationException.class)).end().end();
                     uncached.add(method);
                 }
@@ -2020,6 +2022,8 @@ public class FlatNodeGenFactory {
             builder.startTryBlock();
             builder.tree(delegateBuilder.build());
             builder.end().startCatchBlock(types.UnexpectedResultException, "ex");
+            builder.tree(createTransferToInterpreterAndInvalidate());
+
             if (isVoid(type.getReturnType())) {
                 builder.returnStatement();
             } else {
@@ -2664,6 +2668,7 @@ public class FlatNodeGenFactory {
         builder.end();
         if (executeChild.throwsUnexpectedResult) {
             builder.startCatchBlock(types.UnexpectedResultException, "ex");
+            builder.tree(createTransferToInterpreterAndInvalidate());
             FrameState slowPathFrameState = originalFrameState.copy();
             slowPathFrameState.setValue(execution, targetValue.makeGeneric(context).accessWith(CodeTreeBuilder.singleString("ex.getResult()")));
 
@@ -4435,22 +4440,13 @@ public class FlatNodeGenFactory {
         CodeTreeBuilder builder = parent.create();
         builder.startTryBlock();
         builder.tree(execution);
-        boolean nonSlowPath = false;
         TypeMirror[] exceptionTypes = new TypeMirror[specialization.getExceptions().size()];
         for (int i = 0; i < exceptionTypes.length; i++) {
             TypeMirror type = specialization.getExceptions().get(i).getJavaClass();
-            if (!isAssignable(type, types.SlowPathException) && !isAssignable(type, context.getType(ArithmeticException.class))) {
-                nonSlowPath = true;
-            }
             exceptionTypes[i] = type;
         }
         builder.end().startCatchBlock(exceptionTypes, "ex");
-        if (nonSlowPath) {
-            builder.tree(createTransferToInterpreterAndInvalidate());
-        } else {
-            builder.lineComment("implicit transferToInterpreterAndInvalidate()");
-        }
-
+        builder.tree(createTransferToInterpreterAndInvalidate());
         builder.tree(createExcludeThis(builder, frameState, forType, specialization));
 
         builder.end();

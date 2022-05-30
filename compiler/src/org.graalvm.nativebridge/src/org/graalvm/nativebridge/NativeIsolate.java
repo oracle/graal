@@ -99,8 +99,27 @@ public final class NativeIsolate {
      */
     public NativeIsolateThread enter() {
         NativeIsolateThread nativeIsolateThread = getOrCreateNativeIsolateThread();
-        nativeIsolateThread.enter();
-        return nativeIsolateThread;
+        if (nativeIsolateThread != null && nativeIsolateThread.enter()) {
+            return nativeIsolateThread;
+        } else {
+            throw throwClosedException();
+        }
+    }
+
+    /**
+     * Tries to enter this {@link NativeIsolate} on the current thread.
+     *
+     * @return {@link NativeIsolateThread} on success or {@code null} when this
+     *         {@link NativeIsolate} is closed or being closed.
+     * @see #enter()
+     */
+    public NativeIsolateThread tryEnter() {
+        NativeIsolateThread nativeIsolateThread = getOrCreateNativeIsolateThread();
+        if (nativeIsolateThread != null && nativeIsolateThread.enter()) {
+            return nativeIsolateThread;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -117,6 +136,10 @@ public final class NativeIsolate {
      * {@link NativeIsolate} has active threads the isolate is freed by the last leaving thread.
      */
     public boolean shutdown() {
+        NativeIsolateThread currentIsolateThread = attachedIsolateThread.get();
+        if (currentIsolateThread != null && currentIsolateThread.isNativeThread()) {
+            return false;
+        }
         boolean deferredClose = false;
         synchronized (this) {
             if (state == State.DISPOSED) {
@@ -200,6 +223,13 @@ public final class NativeIsolate {
             cleanHandles();
             cleaners.add(new Cleaner(cleanersQueue, cleanableObject, cleanupAction));
         }
+    }
+
+    /*
+     * Returns true if the isolate shutdown process has already begun or is finished.
+     */
+    public boolean isDisposed() {
+        return state == State.DISPOSED;
     }
 
     void lastLeave() {
@@ -286,7 +316,7 @@ public final class NativeIsolate {
         if (nativeIsolateThread == null) {
             synchronized (this) {
                 if (!state.isValid()) {
-                    throw throwClosedException();
+                    return null;
                 }
                 nativeIsolateThread = new NativeIsolateThread(Thread.currentThread(), this, false, config.attachThread(isolateId));
                 threads.add(nativeIsolateThread);
@@ -308,18 +338,12 @@ public final class NativeIsolate {
 
     private enum State {
 
-        ACTIVE(true),
-        DISPOSING(false),
-        DISPOSED(false);
-
-        private final boolean valid;
-
-        State(boolean valid) {
-            this.valid = valid;
-        }
+        ACTIVE,
+        DISPOSING,
+        DISPOSED;
 
         boolean isValid() {
-            return valid;
+            return this == ACTIVE;
         }
     }
 }

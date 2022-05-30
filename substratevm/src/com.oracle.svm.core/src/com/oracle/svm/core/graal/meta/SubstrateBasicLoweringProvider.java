@@ -97,6 +97,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     private final Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings;
 
     private RuntimeConfiguration runtimeConfig;
+    private final KnownOffsets knownOffsets;
     private final AbstractObjectStamp hubStamp;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -111,6 +112,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             hubRefStamp = SubstrateNarrowOopStamp.compressed(hubRefStamp, ReferenceAccess.singleton().getCompressEncoding());
         }
         hubStamp = hubRefStamp;
+        knownOffsets = KnownOffsets.singleton();
     }
 
     @Override
@@ -155,7 +157,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method) {
-        int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
+        int vtableEntryOffset = knownOffsets.getVTableOffset(method.getVTableIndex());
         assert vtableEntryOffset > 0;
         /*
          * Method pointer will always exist in the vtable due to the fact that all reachable methods
@@ -189,7 +191,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
 
     @Override
     protected ValueNode createReadArrayComponentHub(StructuredGraph graph, ValueNode arrayHub, boolean isKnownObjectArray, FixedNode anchor) {
-        ConstantNode componentHubOffset = ConstantNode.forIntegerKind(target.wordJavaKind, runtimeConfig.getComponentHubOffset(), graph);
+        ConstantNode componentHubOffset = ConstantNode.forIntegerKind(target.wordJavaKind, knownOffsets.getComponentHubOffset(), graph);
         AddressNode componentHubAddress = graph.unique(new OffsetAddressNode(arrayHub, componentHubOffset));
         FloatingReadNode componentHubRef = graph.unique(new FloatingReadNode(componentHubAddress, NamedLocationIdentity.FINAL_LOCATION, null, hubStamp, null, BarrierType.NONE));
         return maybeUncompress(componentHubRef);

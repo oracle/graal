@@ -53,7 +53,7 @@ public final class AllocatedBytesMetric extends Metric {
     @Override
     public Map<String, String> getEngineOptions(Config config) {
         HashMap<String, String> map = new HashMap<>();
-        map.put("allocated-bytes", "true");
+        map.put("memory-usage", "true");
         return map;
     }
 

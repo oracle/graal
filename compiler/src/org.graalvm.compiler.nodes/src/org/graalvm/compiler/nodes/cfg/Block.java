@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
@@ -361,10 +362,10 @@ public final class Block extends AbstractBlockBase<Block> {
     private LocationSet calcKillLocations() {
         LocationSet result = new LocationSet();
         for (FixedNode node : this.getNodes()) {
-            if (node instanceof SingleMemoryKill) {
+            if (MemoryKill.isSingleMemoryKill(node)) {
                 LocationIdentity identity = ((SingleMemoryKill) node).getKilledLocationIdentity();
                 result.add(identity);
-            } else if (node instanceof MultiMemoryKill) {
+            } else if (MemoryKill.isMultiMemoryKill(node)) {
                 for (LocationIdentity identity : ((MultiMemoryKill) node).getKilledLocationIdentities()) {
                     result.add(identity);
                 }

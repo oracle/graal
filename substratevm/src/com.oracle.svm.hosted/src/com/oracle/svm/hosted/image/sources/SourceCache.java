@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.OptionUtils;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 
@@ -144,14 +145,21 @@ public class SourceCache {
                     fileNameString = fileNameString.substring(0, length - 3) + "src.zip";
                 }
                 Path srcPath = sourcePath.getParent().resolve(fileNameString);
-                if (srcPath.toFile().exists()) {
-                    try {
-                        FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
-                        for (Path root : fileSystem.getRootDirectories()) {
-                            srcRoots.add(new SourceRoot(root));
+                File srcFile = srcPath.toFile();
+                if (srcFile.exists()) {
+                    if (srcFile.isFile()) {
+                        try {
+                            FileSystem fileSystem = FileSystems.newFileSystem(srcPath, (ClassLoader) null);
+                            for (Path root : fileSystem.getRootDirectories()) {
+                                srcRoots.add(new SourceRoot(root));
+                            }
+                        } catch (IOException | FileSystemNotFoundException ioe) {
+                            /* ignore this entry */
                         }
-                    } catch (IOException | FileSystemNotFoundException ioe) {
-                        /* ignore this entry */
+                    } else if (srcFile.isDirectory()) { /* Support for `MX_BUILD_EXPLODED=true` */
+                        srcRoots.add(new SourceRoot(srcPath));
+                    } else {
+                        throw VMError.shouldNotReachHere();
                     }
                 }
             } else {
@@ -265,7 +273,7 @@ public class SourceCache {
     /**
      * Given a prototype path for a file to be resolved return a File identifying a cached candidate
      * for for that Path or null if no cached candidate exists.
-     * 
+     *
      * @param filePath a prototype path for a file to be included in the cache derived from the name
      *            of some associated class.
      * @return a File identifying a cached candidate or null.
@@ -285,7 +293,7 @@ public class SourceCache {
     /**
      * Attempt to copy a source file from one of this cache's source roots to the local sources
      * directory storing it in the subdirectory that belongs to this cache.
-     * 
+     *
      * @param filePath a path appended to each of the cache's source roots in turn until an
      *            acceptable source file is found and copied to the local source directory.
      * @return the supplied path if the file has been located and copied to the local sources
@@ -349,7 +357,7 @@ public class SourceCache {
      * Check whether the copy of a given source file in the local source cache is up to date with
      * respect to any original located in this cache's and if not copy the original to the
      * subdirectory that belongs to this cache.
-     * 
+     *
      * @param filePath a path appended to each of the cache's source roots in turn until an matching
      *            original source is found for comparison against the local source directory.
      * @return the supplied path if the file is up to date or if an updated version has been copied
@@ -429,7 +437,7 @@ public class SourceCache {
      * Extend a root path form one file system using a path potentially derived from another file
      * system by converting he latter to a text string and replacing the file separator if
      * necessary.
-     * 
+     *
      * @param root the path to be extended
      * @param filePath the subpath to extend it with
      * @return the extended path
@@ -446,7 +454,7 @@ public class SourceCache {
 
     /**
      * Convert a potential resolved candidate path to the corresponding local Path in this cache.
-     * 
+     *
      * @param candidate a resolved candidate path for some given resolution request
      * @return the corresponding local Path
      */
@@ -456,7 +464,7 @@ public class SourceCache {
 
     /**
      * Convert a potential resolved candidate path to the corresponding local File in this cache.
-     * 
+     *
      * @param candidate a resolved candidate path for some given resolution request
      * @return the corresponding local File
      */
@@ -466,7 +474,7 @@ public class SourceCache {
 
     /**
      * Indicate whether a source path identifies a file in the associated file system.
-     * 
+     *
      * @param sourcePath the path to check
      * @return true if the path identifies a file or false if no such file can be found.
      */
@@ -476,7 +484,7 @@ public class SourceCache {
 
     /**
      * Ensure the directory hierarchy for a path exists creating any missing directories if needed.
-     * 
+     *
      * @param targetDir a path to the desired directory
      */
     protected static void ensureTargetDirs(Path targetDir) {
@@ -490,7 +498,7 @@ public class SourceCache {
 
     /**
      * Add a path to the list of classpath entries.
-     * 
+     *
      * @param path The path to add.
      */
     private static void addClassPathEntry(Path path) {
@@ -499,7 +507,7 @@ public class SourceCache {
 
     /**
      * Add a path to the list of source path entries.
-     * 
+     *
      * @param path The path to add.
      */
     private static void addSourcePathEntry(String path) {

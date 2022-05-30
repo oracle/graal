@@ -29,16 +29,6 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.stream.Collectors;
-
-import org.graalvm.polyglot.io.ByteSequence;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
@@ -86,6 +76,15 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
+import org.graalvm.polyglot.io.ByteSequence;
+
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -368,6 +367,7 @@ final class ParserDriver {
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
+        binaryParserResult.getExportSymbolsMapper().registerExports(fileScope, publicFileScope);
         createDebugInfo(module, new LLVMSymbolReadResolver(runtime, null, GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
         return result;
     }

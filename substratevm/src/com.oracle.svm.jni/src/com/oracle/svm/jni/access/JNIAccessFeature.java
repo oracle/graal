@@ -185,7 +185,7 @@ public class JNIAccessFeature implements Feature {
         access.registerAsAccessed(access.getUniverse().lookup(field));
         String name = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, name);
-        access.registerAsCompiled(method, true);
+        access.registerAsRoot(method, true);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {

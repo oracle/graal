@@ -1,4 +1,5 @@
 {
+  local common_json = (import '../../common.json'),
   local c = (import '../../common.jsonnet'),
   local bc = (import '../../bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
@@ -7,7 +8,7 @@
   // convenient sets of benchmark suites for easy reuse
   groups:: {
     open_suites:: std.set([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance, $.renaissance_0_13], keyF=uniq_key),
-    spec_suites:: std.set([$.specjvm2008, $.specjbb2005, $.specjbb2015], keyF=uniq_key),
+    spec_suites:: std.set([$.specjvm2008, $.specjbb2015], keyF=uniq_key),
     legacy_and_secondary_suites:: std.set([$.renaissance_legacy], keyF=uniq_key),
     jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
@@ -168,21 +169,6 @@
     max_jdk_version:: 11
   },
 
-  specjbb2005: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
-    suite:: "specjbb2005",
-    downloads+: {
-      "SPECJBB2005": { name: "specjbb2005", version: "1.07" }
-    },
-    run+: [
-      self.benchmark_cmd + ["specjbb2005", "--"] + self.extra_vm_args + ["--", "input.ending_number_warehouses=77"]
-    ],
-    timelimit: "4:00:00",
-    forks_batches:: 1,
-    forks_timelimit:: "20:00:00",
-    min_jdk_version:: 8,
-    max_jdk_version:: null
-  },
-
   specjbb2015: cc.compiler_benchmark + c.heap.large_with_large_young_gen + {
     suite:: "specjbb2015",
     downloads+: {
@@ -233,7 +219,7 @@
   microservice_benchmarks: cc.compiler_benchmark + {
     suite:: "microservices",
     packages+: {
-      "python3": "==3.6.5",
+      "python3": common_json.deps.common.packages["python3"],
       "pip:psutil": "==5.8.0"
     },
     local bench_upload = ["bench-uploader.py", "bench-results.json"],

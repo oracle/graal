@@ -41,6 +41,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.coff.CoffFile;
+import com.oracle.truffle.llvm.parser.coff.PEExportSymbolsMapper;
 import com.oracle.truffle.llvm.parser.coff.CoffFile.ImageSectionHeader;
 import com.oracle.truffle.llvm.parser.elf.ElfDynamicSection;
 import com.oracle.truffle.llvm.parser.elf.ElfFile;
@@ -51,6 +52,7 @@ import com.oracle.truffle.llvm.parser.macho.MachOLibraryLocator;
 import com.oracle.truffle.llvm.parser.macho.Xar;
 import com.oracle.truffle.llvm.parser.scanner.BitStream;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
+import com.oracle.truffle.llvm.runtime.ExportSymbolsMapper;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.Magic;
@@ -65,6 +67,7 @@ public final class BinaryParser {
     private String libraryName = null;
     private ArrayList<String> paths = new ArrayList<>();
     private LibraryLocator locator = DefaultLibraryLocator.INSTANCE;
+    private ExportSymbolsMapper exportSymbolsMapper = ExportSymbolsMapper.DEFAULT;
 
     public static Magic getMagic(BitStream b) {
         try {
@@ -93,7 +96,7 @@ public final class BinaryParser {
         if (bcSource != null) {
             LibraryLocator.traceParseBitcode(context, bcSource.getPath());
         }
-        return new BinaryParserResult(libraries, paths, bitcode, locator, bcSource, libraryName);
+        return new BinaryParserResult(libraries, paths, bitcode, locator, exportSymbolsMapper, bcSource, libraryName);
     }
 
     public static String getOrigin(Source source) {
@@ -187,6 +190,7 @@ public final class BinaryParser {
                     return null;
                 }
                 libraries.addAll(peFile.getImportLibraries());
+                exportSymbolsMapper = new PEExportSymbolsMapper(peFile);
                 locator = new WindowsLibraryLocator(source);
                 return parseBitcode(peBcSection.getData(), source);
             default:

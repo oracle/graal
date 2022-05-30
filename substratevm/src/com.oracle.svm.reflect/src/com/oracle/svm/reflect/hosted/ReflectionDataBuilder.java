@@ -58,7 +58,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -72,11 +71,13 @@ import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
+import com.oracle.svm.core.reflect.SubstrateAccessor;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
+import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -89,7 +90,7 @@ import sun.reflect.annotation.EnumConstantNotPresentExceptionProxy;
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeNotPresentExceptionProxy;
 
-public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements RuntimeReflectionSupport {
+public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements InternalRuntimeReflectionSupport {
 
     private final Set<Class<?>> modifiedClasses = ConcurrentHashMap.newKeySet();
     private boolean sealed;
@@ -290,7 +291,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                  * We must also generate the accessor for a method that was registered as queried
                  * and then registered again as accessed
                  */
-                methodAccessors.putIfAbsent(method, ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method));
+                SubstrateAccessor accessor = ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor(method);
+                if (methodAccessors.putIfAbsent(method, accessor) == null) {
+                    access.rescanObject(accessor);
+                }
             }
         }
         for (AccessibleObject object : heapReflectionObjects) {

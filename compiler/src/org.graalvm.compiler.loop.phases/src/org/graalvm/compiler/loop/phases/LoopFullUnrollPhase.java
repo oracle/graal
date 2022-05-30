@@ -72,7 +72,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                 do {
                     peeled = false;
                     final LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
-                    dataCounted.detectedCountedLoops();
+                    dataCounted.detectCountedLoops();
                     List<LoopEx> countedLoops = dataCounted.countedLoops();
                     countedLoops.sort(LOOP_COMPARATOR);
                     for (LoopEx loop : countedLoops) {

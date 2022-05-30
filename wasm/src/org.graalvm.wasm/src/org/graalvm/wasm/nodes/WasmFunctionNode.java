@@ -45,9 +45,9 @@ import static org.graalvm.wasm.BinaryStreamParser.value;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_COUNT;
@@ -58,17 +58,17 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_OFFSET;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_SIZE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_NODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_PROFILE;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_RETURN_LENGTH_SHIFT;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_STACK_SIZE_MASK;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
@@ -258,6 +258,7 @@ import static org.graalvm.wasm.constants.Instructions.RETURN;
 import static org.graalvm.wasm.constants.Instructions.SELECT;
 import static org.graalvm.wasm.constants.Instructions.UNREACHABLE;
 import static org.graalvm.wasm.nodes.WasmFrame.drop;
+import static org.graalvm.wasm.nodes.WasmFrame.popBoolean;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
@@ -267,8 +268,6 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-import com.oracle.truffle.api.nodes.LoopNode;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -290,11 +289,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitchBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
@@ -426,7 +426,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @BytecodeInterpreterSwitch
-    @BytecodeInterpreterSwitchBoundary
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings("UnusedAssignment")
     public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startExtraOffset, int startStackPointer) {
@@ -794,8 +793,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case SELECT: {
-                    int cond = popInt(frame, stackPointer - 1);
-                    if (cond != 0) {
+                    if (popBoolean(frame, stackPointer - 1)) {
                         drop(frame, stackPointer - 2);
                     } else {
                         WasmFrame.copy(frame, stackPointer - 2, stackPointer - 3);
@@ -1245,9 +1243,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer--;
                     break;
                 case F32_CONST: {
-                    // region Load int value
                     float value = Float.intBitsToFloat(BinaryStreamParser.peek4(data, offset));
-                    // endregion
                     offset += 4;
                     pushFloat(frame, stackPointer, value);
                     stackPointer++;
@@ -1303,9 +1299,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     stackPointer--;
                     break;
                 case F64_CONST: {
-                    // region Load long value
                     double value = Double.longBitsToDouble(BinaryStreamParser.peek8(data, offset));
-                    // endregion
                     offset += 8;
                     pushDouble(frame, stackPointer, value);
                     stackPointer++;
@@ -1506,7 +1500,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    @BytecodeInterpreterSwitchBoundary
     private Object executeDirectCall(int callNodeIndex, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
@@ -1538,7 +1531,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return true;
     }
 
-    @BytecodeInterpreterSwitchBoundary
     private Object executeIndirectCallNode(int callNodeIndex, CallTarget target, Object[] args) {
         WasmIndirectCallNode callNode = (WasmIndirectCallNode) callNodes[callNodeIndex];
         return callNode.execute(target, args);
@@ -1735,155 +1727,18 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     private static void local_tee(VirtualFrame frame, int stackPointer, int index) {
-        frame.copy(stackPointer, index);
+        WasmFrame.copy(frame, stackPointer, index);
     }
 
     private static void local_set(VirtualFrame frame, int stackPointer, int index) {
-        frame.copy(stackPointer, index);
+        WasmFrame.copy(frame, stackPointer, index);
         if (CompilerDirectives.inCompiledCode()) {
-            frame.clear(stackPointer);
+            drop(frame, stackPointer);
         }
     }
 
     private static void local_get(VirtualFrame frame, int stackPointer, int index) {
-        frame.copy(index, stackPointer);
-    }
-
-    @SuppressWarnings("unused")
-    private void unary_op(int opcode, VirtualFrame frame, int stackPointer) {
-        switch (opcode) {
-            case I32_EQZ:
-                i32_eqz(frame, stackPointer);
-                break;
-            case I64_EQZ:
-                i64_eqz(frame, stackPointer);
-                break;
-            case I32_CLZ:
-                i32_clz(frame, stackPointer);
-                break;
-            case I32_CTZ:
-                i32_ctz(frame, stackPointer);
-                break;
-            case I32_POPCNT:
-                i32_popcnt(frame, stackPointer);
-                break;
-            case I64_CLZ:
-                i64_clz(frame, stackPointer);
-                break;
-            case I64_CTZ:
-                i64_ctz(frame, stackPointer);
-                break;
-            case I64_POPCNT:
-                i64_popcnt(frame, stackPointer);
-                break;
-            case F32_ABS:
-                f32_abs(frame, stackPointer);
-                break;
-            case F32_NEG:
-                f32_neg(frame, stackPointer);
-                break;
-            case F32_CEIL:
-                f32_ceil(frame, stackPointer);
-                break;
-            case F32_FLOOR:
-                f32_floor(frame, stackPointer);
-                break;
-            case F32_TRUNC:
-                f32_trunc(frame, stackPointer);
-                break;
-            case F32_NEAREST:
-                f32_nearest(frame, stackPointer);
-                break;
-            case F32_SQRT:
-                f32_sqrt(frame, stackPointer);
-                break;
-            case F64_ABS:
-                f64_abs(frame, stackPointer);
-                break;
-            case F64_NEG:
-                f64_neg(frame, stackPointer);
-                break;
-            case F64_CEIL:
-                f64_ceil(frame, stackPointer);
-                break;
-            case F64_FLOOR:
-                f64_floor(frame, stackPointer);
-                break;
-            case F64_TRUNC:
-                f64_trunc(frame, stackPointer);
-                break;
-            case F64_NEAREST:
-                f64_nearest(frame, stackPointer);
-                break;
-            case F64_SQRT:
-                f64_sqrt(frame, stackPointer);
-                break;
-            case I32_WRAP_I64:
-                i32_wrap_i64(frame, stackPointer);
-                break;
-            case I32_TRUNC_F32_S:
-                i32_trunc_f32_s(frame, stackPointer);
-                break;
-            case I32_TRUNC_F32_U:
-                i32_trunc_f32_u(frame, stackPointer);
-                break;
-            case I32_TRUNC_F64_S:
-                i32_trunc_f64_s(frame, stackPointer);
-                break;
-            case I32_TRUNC_F64_U:
-                i32_trunc_f64_u(frame, stackPointer);
-                break;
-            case I64_EXTEND_I32_S:
-                i64_extend_i32_s(frame, stackPointer);
-                break;
-            case I64_EXTEND_I32_U:
-                i64_extend_i32_u(frame, stackPointer);
-                break;
-            case I64_TRUNC_F32_S:
-                i64_trunc_f32_s(frame, stackPointer);
-                break;
-            case I64_TRUNC_F32_U:
-                i64_trunc_f32_u(frame, stackPointer);
-                break;
-            case I64_TRUNC_F64_S:
-                i64_trunc_f64_s(frame, stackPointer);
-                break;
-            case I64_TRUNC_F64_U:
-                i64_trunc_f64_u(frame, stackPointer);
-                break;
-            case F32_CONVERT_I32_S:
-                f32_convert_i32_s(frame, stackPointer);
-                break;
-            case F32_CONVERT_I32_U:
-                f32_convert_i32_u(frame, stackPointer);
-                break;
-            case F32_CONVERT_I64_S:
-                f32_convert_i64_s(frame, stackPointer);
-                break;
-            case F32_CONVERT_I64_U:
-                f32_convert_i64_u(frame, stackPointer);
-                break;
-            case F32_DEMOTE_F64:
-                f32_demote_f64(frame, stackPointer);
-                break;
-            case F64_CONVERT_I32_S:
-                f64_convert_i32_s(frame, stackPointer);
-                break;
-            case F64_CONVERT_I32_U:
-                f64_convert_i32_u(frame, stackPointer);
-                break;
-            case F64_CONVERT_I64_S:
-                f64_convert_i64_s(frame, stackPointer);
-                break;
-            case F64_CONVERT_I64_U:
-                f64_convert_i64_u(frame, stackPointer);
-                break;
-            case F64_PROMOTE_F32:
-                f64_promote_f32(frame, stackPointer);
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
+        WasmFrame.copy(frame, index, stackPointer);
     }
 
     private static void i32_eqz(VirtualFrame frame, int stackPointer) {
@@ -1894,242 +1749,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private static void i64_eqz(VirtualFrame frame, int stackPointer) {
         long x = popLong(frame, stackPointer - 1);
         pushInt(frame, stackPointer - 1, x == 0 ? 1 : 0);
-    }
-
-    @SuppressWarnings("unused")
-    private void binary_op(int opcode, VirtualFrame frame, int stackPointer) {
-        switch (opcode) {
-            case I32_EQ:
-                i32_eq(frame, stackPointer);
-                break;
-            case I32_NE:
-                i32_ne(frame, stackPointer);
-                break;
-            case I32_LT_S:
-                i32_lt_s(frame, stackPointer);
-                break;
-            case I32_LT_U:
-                i32_lt_u(frame, stackPointer);
-                break;
-            case I32_GT_S:
-                i32_gt_s(frame, stackPointer);
-                break;
-            case I32_GT_U:
-                i32_gt_u(frame, stackPointer);
-                break;
-            case I32_LE_S:
-                i32_le_s(frame, stackPointer);
-                break;
-            case I32_LE_U:
-                i32_le_u(frame, stackPointer);
-                break;
-            case I32_GE_S:
-                i32_ge_s(frame, stackPointer);
-                break;
-            case I32_GE_U:
-                i32_ge_u(frame, stackPointer);
-                break;
-            case I64_EQ:
-                i64_eq(frame, stackPointer);
-                break;
-            case I64_NE:
-                i64_ne(frame, stackPointer);
-                break;
-            case I64_LT_S:
-                i64_lt_s(frame, stackPointer);
-                break;
-            case I64_LT_U:
-                i64_lt_u(frame, stackPointer);
-                break;
-            case I64_GT_S:
-                i64_gt_s(frame, stackPointer);
-                break;
-            case I64_GT_U:
-                i64_gt_u(frame, stackPointer);
-                break;
-            case I64_LE_S:
-                i64_le_s(frame, stackPointer);
-                break;
-            case I64_LE_U:
-                i64_le_u(frame, stackPointer);
-                break;
-            case I64_GE_S:
-                i64_ge_s(frame, stackPointer);
-                break;
-            case I64_GE_U:
-                i64_ge_u(frame, stackPointer);
-                break;
-            case F32_EQ:
-                f32_eq(frame, stackPointer);
-                break;
-            case F32_NE:
-                f32_ne(frame, stackPointer);
-                break;
-            case F32_LT:
-                f32_lt(frame, stackPointer);
-                break;
-            case F32_GT:
-                f32_gt(frame, stackPointer);
-                break;
-            case F32_LE:
-                f32_le(frame, stackPointer);
-                break;
-            case F32_GE:
-                f32_ge(frame, stackPointer);
-                break;
-            case F64_EQ:
-                f64_eq(frame, stackPointer);
-                break;
-            case F64_NE:
-                f64_ne(frame, stackPointer);
-                break;
-            case F64_LT:
-                f64_lt(frame, stackPointer);
-                break;
-            case F64_GT:
-                f64_gt(frame, stackPointer);
-                break;
-            case F64_LE:
-                f64_le(frame, stackPointer);
-                break;
-            case F64_GE:
-                f64_ge(frame, stackPointer);
-                break;
-            case I32_ADD:
-                i32_add(frame, stackPointer);
-                break;
-            case I32_SUB:
-                i32_sub(frame, stackPointer);
-                break;
-            case I32_MUL:
-                i32_mul(frame, stackPointer);
-                break;
-            case I32_DIV_S:
-                i32_div_s(frame, stackPointer);
-                break;
-            case I32_DIV_U:
-                i32_div_u(frame, stackPointer);
-                break;
-            case I32_REM_S:
-                i32_rem_s(frame, stackPointer);
-                break;
-            case I32_REM_U:
-                i32_rem_u(frame, stackPointer);
-                break;
-            case I32_AND:
-                i32_and(frame, stackPointer);
-                break;
-            case I32_OR:
-                i32_or(frame, stackPointer);
-                break;
-            case I32_XOR:
-                i32_xor(frame, stackPointer);
-                break;
-            case I32_SHL:
-                i32_shl(frame, stackPointer);
-                break;
-            case I32_SHR_S:
-                i32_shr_s(frame, stackPointer);
-                break;
-            case I32_SHR_U:
-                i32_shr_u(frame, stackPointer);
-                break;
-            case I32_ROTL:
-                i32_rotl(frame, stackPointer);
-                break;
-            case I32_ROTR:
-                i32_rotr(frame, stackPointer);
-                break;
-            case I64_ADD:
-                i64_add(frame, stackPointer);
-                break;
-            case I64_SUB:
-                i64_sub(frame, stackPointer);
-                break;
-            case I64_MUL:
-                i64_mul(frame, stackPointer);
-                break;
-            case I64_DIV_S:
-                i64_div_s(frame, stackPointer);
-                break;
-            case I64_DIV_U:
-                i64_div_u(frame, stackPointer);
-                break;
-            case I64_REM_S:
-                i64_rem_s(frame, stackPointer);
-                break;
-            case I64_REM_U:
-                i64_rem_u(frame, stackPointer);
-                break;
-            case I64_AND:
-                i64_and(frame, stackPointer);
-                break;
-            case I64_OR:
-                i64_or(frame, stackPointer);
-                break;
-            case I64_XOR:
-                i64_xor(frame, stackPointer);
-                break;
-            case I64_SHL:
-                i64_shl(frame, stackPointer);
-                break;
-            case I64_SHR_S:
-                i64_shr_s(frame, stackPointer);
-                break;
-            case I64_SHR_U:
-                i64_shr_u(frame, stackPointer);
-                break;
-            case I64_ROTL:
-                i64_rotl(frame, stackPointer);
-                break;
-            case I64_ROTR:
-                i64_rotr(frame, stackPointer);
-                break;
-            case F32_ADD:
-                f32_add(frame, stackPointer);
-                break;
-            case F32_SUB:
-                f32_sub(frame, stackPointer);
-                break;
-            case F32_MUL:
-                f32_mul(frame, stackPointer);
-                break;
-            case F32_DIV:
-                f32_div(frame, stackPointer);
-                break;
-            case F32_MIN:
-                f32_min(frame, stackPointer);
-                break;
-            case F32_MAX:
-                f32_max(frame, stackPointer);
-                break;
-            case F32_COPYSIGN:
-                f32_copysign(frame, stackPointer);
-                break;
-            case F64_ADD:
-                f64_add(frame, stackPointer);
-                break;
-            case F64_SUB:
-                f64_sub(frame, stackPointer);
-                break;
-            case F64_MUL:
-                f64_mul(frame, stackPointer);
-                break;
-            case F64_DIV:
-                f64_div(frame, stackPointer);
-                break;
-            case F64_MIN:
-                f64_min(frame, stackPointer);
-                break;
-            case F64_MAX:
-                f64_max(frame, stackPointer);
-                break;
-            case F64_COPYSIGN:
-                f64_copysign(frame, stackPointer);
-                break;
-            default:
-                throw CompilerDirectives.shouldNotReachHere();
-        }
     }
 
     private static void i32_eq(VirtualFrame frame, int stackPointer) {
@@ -3107,11 +2726,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     // Checkstyle: resume method name check
 
-    private static boolean popBoolean(VirtualFrame frame, int stackPointer) {
-        int condition = popInt(frame, stackPointer);
-        return condition != 0;
-    }
-
     @TruffleBoundary
     public void resolveCallNode(int callNodeIndex) {
         final WasmFunction function = ((WasmCallStubNode) callNodes[callNodeIndex]).function();
@@ -3152,7 +2766,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     /**
      * Populates the stack with the return values of the current block (the one we are escaping
      * from). Reset the stack pointer to the target block stack pointer.
-     * 
+     *
      * @param frame The current frame.
      * @param stackPointer The current stack pointer.
      * @param targetStackPointer The stack pointer of the target block.

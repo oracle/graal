@@ -43,15 +43,18 @@
  #include "llvm/IR/Module.h"
  #include "llvm/IR/Verifier.h"
  #include "llvm/IRReader/IRReader.h"
-@@ -30,6 +34,7 @@
- #include "llvm/Support/TargetRegistry.h"
+@@ -28,8 +32,10 @@
+ #include "llvm/Support/CommandLine.h"
+ #include "llvm/Support/DataTypes.h"
+ #include "llvm/Support/Debug.h"
++#include "llvm/Support/FileSystem.h"
+ #include "llvm/Support/SourceMgr.h"
  #include "llvm/Support/TargetSelect.h"
- #include "llvm/Target/TargetMachine.h"
 +#include "llvm/Support/ToolOutputFile.h"
+ #include "llvm/Target/TargetMachine.h"
  
  #define DEBUG_TYPE "isel-fuzzer"
- 
-@@ -45,38 +50,52 @@
+@@ -48,38 +54,52 @@ OptLevel("O",
  
  static cl::opt<std::string>
  TargetTriple("mtriple", cl::desc("Override target triple for module"));
@@ -60,7 +63,7 @@
 +static cl::opt<unsigned>
 +Seed("seed", cl::desc("Random seed used when selecting instructions for mutation"), cl::init(0));
 +static cl::opt<std::string>
-+OutputFilename("o", 
++OutputFilename("o",
 +         cl::desc("Override output filename"),
 +         cl::value_desc("filename"),
 +         cl::init("-"));
@@ -87,7 +90,7 @@
 +
 +  // Delete the instruction.
 +  mutate(*RS.getSelection(), IB);
-+  
++
 + }
 +};
 +
@@ -123,31 +126,29 @@
  extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
    if (Size <= 1)
      // We get bogus data given an empty corpus - ignore it.
-@@ -89,23 +108,30 @@
+@@ -92,23 +112,30 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
      return 0;
    }
  
 -  // Set up the module to build for our target.
 -  M->setTargetTriple(TM->getTargetTriple().normalize());
 -  M->setDataLayout(TM->createDataLayout());
--
++  srand(Seed);
++  for(unsigned i = 0; i < NumberMutations; i++){
++     Mutator->mutateModule(*M, rand(), 1000, 1000);
++  }
+ 
 -  // Build up a PM to do instruction selection.
--  legacy::PassManager PM;
+   legacy::PassManager PM;
 -  TargetLibraryInfoImpl TLII(TM->getTargetTriple());
 -  PM.add(new TargetLibraryInfoWrapperPass(TLII));
 -  raw_null_ostream OS;
 -  TM->addPassesToEmitFile(PM, OS, nullptr, CGFT_Null);
-+  srand(Seed);
-+  for(unsigned i = 0; i < NumberMutations; i++){
-+     Mutator->mutateModule(*M, rand(), 1000, 1000);
-+  }    
-+
-+  legacy::PassManager PM;  
 +
 +  std::unique_ptr<ToolOutputFile> Out;
 +
 +  std::error_code EC;
-+  Out.reset(new ToolOutputFile(OutputFilename, EC, sys::fs::F_None));
++  Out.reset(new ToolOutputFile(OutputFilename, EC, sys::fs::OF_None));
 +  if (EC) {
 +    errs() << EC.message() << '\n';
 +    return 1;
@@ -160,12 +161,12 @@
    return 0;
  }
  
- static void handleLLVMFatalError(void *, const std::string &Message, bool) {
+ static void handleLLVMFatalError(void *, const char *Message, bool) {
 -  // TODO: Would it be better to call into the fuzzer internals directly?
    dbgs() << "LLVM ERROR: " << Message << "\n"
           << "Aborting to trigger fuzzer exit handling.\n";
    abort();
-@@ -164,6 +190,11 @@
+@@ -168,6 +195,11 @@ extern "C" LLVM_ATTRIBUTE_USED int LLVMFuzzerInitialize(int *argc,
    install_fatal_error_handler(handleLLVMFatalError, nullptr);
  
    // Finally, create our mutator.

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import com.oracle.svm.core.IsolateListenerSupport;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
@@ -450,6 +451,7 @@ public abstract class VMThreads {
             VMOperationControl.shutdownAndDetachVMOperationThread();
         }
         // At this point, it is guaranteed that all other threads were detached.
+        IsolateListenerSupport.singleton().onIsolateTeardown();
         waitUntilLastOsThreadExited();
     }
 

@@ -158,11 +158,13 @@ public interface JvmtiInterface extends PointerBase {
         JvmtiError invoke(JvmtiEnv env, JNIMethodId method, long location);
     }
 
+    /*
+     * Note that the GetLocal*() functions execute a safepoint operation even for the current thread
+     * and we have seen it cause serious scalability issues, presumably from the fix of JDK-8249293.
+     */
+
     @CField("GetLocalObject")
     GetLocalFunctionPointer GetLocalObject();
-
-    @CField("GetLocalInt")
-    GetLocalFunctionPointer GetLocalInt();
 
     interface GetLocalFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer

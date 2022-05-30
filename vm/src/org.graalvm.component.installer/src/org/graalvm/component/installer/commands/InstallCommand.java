@@ -206,12 +206,6 @@ public class InstallCommand implements InstallerCommand {
             executeStep(this::doInstallation, false);
             // execute the post-install steps for all processed installers
             executeStep(this::printMessages, true);
-            /*
-             * if (rebuildPolyglot && WARN_REBUILD_IMAGES) { Path p =
-             * SystemUtils.fromCommonString(CommonConstants.PATH_JRE_BIN);
-             * feedback.output("INSTALL_RebuildPolyglotNeeded", File.separator,
-             * input.getGraalHomePath().resolve(p).normalize()); }
-             */
         } finally {
             for (Map.Entry<ComponentParam, Installer> e : realInstallers.entrySet()) {
                 ComponentParam p = e.getKey();
@@ -238,7 +232,7 @@ public class InstallCommand implements InstallerCommand {
     /**
      * Adds a license to be accepted. Does not add a license ID that has been already processed in
      * previous round(s).
-     * 
+     *
      * @param id license ID
      * @param ldr loader that can deliver the license details.
      */
@@ -782,7 +776,7 @@ public class InstallCommand implements InstallerCommand {
 
     /**
      * Forces the user to accept the licenses.
-     * 
+     *
      * @throws IOException
      */
     void acceptLicenses() throws IOException {

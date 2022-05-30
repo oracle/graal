@@ -56,7 +56,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -70,7 +70,8 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 
 @AutomaticFeature
-public class ClassInitializationFeature implements GraalFeature {
+public class ClassInitializationFeature implements InternalFeature {
+    private static final String NATIVE_IMAGE_CLASS_REASON = "Native Image classes are always initialized at build time";
 
     private ClassInitializationSupport classInitializationSupport;
     private AnalysisUniverse universe;
@@ -95,17 +96,21 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     private static void initializeNativeImagePackagesAtBuildTime(ClassInitializationSupport initializationSupport) {
-        initializationSupport.initializeAtBuildTime("com.oracle.svm", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("com.oracle.graal", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("com.oracle.svm", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("com.oracle.graal", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("com.oracle.objectfile", NATIVE_IMAGE_CLASS_REASON);
 
-        initializationSupport.initializeAtBuildTime("org.graalvm.collections", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.compiler", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.word", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.util", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.home", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.polyglot", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("org.graalvm.options", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.collections", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.compiler", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.word", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.nativebridge", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.util", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.home", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.polyglot", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.options", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.graphio", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("org.graalvm.jniutils", NATIVE_IMAGE_CLASS_REASON);
     }
 
     @Override

@@ -57,4 +57,10 @@ public interface MetaAccessExtensionProvider {
      *            contain a safepoint.
      */
     boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect);
+
+    /**
+     * Returns true if the partial escape analysis is allowed to virtualize object allocations of a
+     * given type.
+     */
+    boolean canVirtualize(ResolvedJavaType instanceType);
 }

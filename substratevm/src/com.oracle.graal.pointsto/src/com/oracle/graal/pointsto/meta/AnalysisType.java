@@ -36,7 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 
@@ -61,6 +61,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
@@ -87,13 +88,31 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private static final AtomicReferenceFieldUpdater<AnalysisType, Object> INTERCEPTORS_UPDATER = //
                     AtomicReferenceFieldUpdater.newUpdater(AnalysisType.class, Object.class, "interceptors");
 
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> subtypeReachableNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "subtypeReachableNotifications");
+
+    private static final AtomicReferenceFieldUpdater<AnalysisType, Object> overrideReachableNotificationsUpdater = AtomicReferenceFieldUpdater
+                    .newUpdater(AnalysisType.class, Object.class, "overrideReachableNotifications");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisType> isInHeapUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisType.class, "isInHeap");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisType> isAllocatedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisType.class, "isAllocated");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisType> isReachableUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisType.class, "isReachable");
+
+    private static final AtomicIntegerFieldUpdater<AnalysisType> isAnySubtypeInstantiatedUpdater = AtomicIntegerFieldUpdater
+                    .newUpdater(AnalysisType.class, "isAnySubtypeInstantiated");
+
     protected final AnalysisUniverse universe;
     private final ResolvedJavaType wrapped;
 
-    private final AtomicBoolean isInHeap = new AtomicBoolean();
-    private final AtomicBoolean isAllocated = new AtomicBoolean();
-    private final AtomicBoolean isReachable = new AtomicBoolean();
-    private final AtomicBoolean isAnySubtypeInstantiated = new AtomicBoolean();
+    @SuppressWarnings("unused") private volatile int isInHeap;
+    @SuppressWarnings("unused") private volatile int isAllocated;
+    @SuppressWarnings("unused") private volatile int isReachable;
+    @SuppressWarnings("unused") private volatile int isAnySubtypeInstantiated;
     private boolean reachabilityListenerNotified;
     private boolean unsafeFieldsRecomputed;
     private boolean unsafeAccessedFieldsRegistered;
@@ -168,14 +187,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      * Contains reachability handlers that are notified when any of the subtypes are marked as
      * reachable. Each handler is notified only once per subtype.
      */
-    private final Set<SubtypeReachableNotification> subtypeReachableNotifications = ConcurrentHashMap.newKeySet();
+    @SuppressWarnings("unused") private volatile Object subtypeReachableNotifications;
 
     /**
      * Contains reachability handlers that are notified when any of the method override becomes
      * reachable *and* the declaring class of the override (or any subtype) is instantiated. Each
      * handler is notified only once per method override.
      */
-    private final Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrideReachableNotifications = new ConcurrentHashMap<>();
+    @SuppressWarnings("unused") private volatile Object overrideReachableNotifications;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -435,7 +454,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean registerAsInHeap() {
         registerAsReachable();
-        if (AtomicUtils.atomicMark(isInHeap)) {
+        if (AtomicUtils.atomicMark(this, isInHeapUpdater)) {
             onInstantiated(UsageKind.InHeap);
             return true;
         }
@@ -447,7 +466,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean registerAsAllocated(Node node) {
         registerAsReachable();
-        if (AtomicUtils.atomicMark(isAllocated)) {
+        if (AtomicUtils.atomicMark(this, isAllocatedUpdater)) {
             onInstantiated(UsageKind.Allocated);
             return true;
         }
@@ -474,9 +493,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          */
         Set<AnalysisType> seenSubtypes = new HashSet<>();
         forAllSuperTypes(superType -> {
-            AtomicUtils.atomicMark(superType.isAnySubtypeInstantiated);
+            AtomicUtils.atomicMark(superType, isAnySubtypeInstantiatedUpdater);
             seenSubtypes.add(superType);
-            for (var entry : superType.overrideReachableNotifications.entrySet()) {
+            Map<AnalysisMethod, Set<MethodOverrideReachableNotification>> overrides = ConcurrentLightHashMap.getEntries(superType, overrideReachableNotificationsUpdater);
+            for (var entry : overrides.entrySet()) {
                 AnalysisMethod baseMethod = entry.getKey();
                 Set<MethodOverrideReachableNotification> overrideNotifications = entry.getValue();
                 for (AnalysisType subType : seenSubtypes) {
@@ -506,9 +526,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public boolean registerAsReachable() {
-        if (!isReachable.get()) {
+        if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicMarkAndRun(type.isReachable, type::onReachable));
+            forAllSuperTypes(type -> AtomicUtils.atomicMarkAndRun(type, isReachableUpdater, type::onReachable));
             return true;
         }
         return false;
@@ -517,7 +537,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     @Override
     protected void onReachable() {
         notifyReachabilityCallbacks(universe);
-        forAllSuperTypes(type -> type.subtypeReachableNotifications.forEach(n -> n.notifyCallback(universe, this)));
+        forAllSuperTypes(type -> ConcurrentLightHashSet.forEach(type, subtypeReachableNotificationsUpdater,
+                        (SubtypeReachableNotification n) -> n.notifyCallback(universe, this)));
         universe.notifyReachableType();
         universe.hostVM.checkForbidden(this, UsageKind.Reachable);
         if (isArray()) {
@@ -533,16 +554,18 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerSubtypeReachabilityNotification(SubtypeReachableNotification notification) {
-        subtypeReachableNotifications.add(notification);
+        ConcurrentLightHashSet.addElement(this, subtypeReachableNotificationsUpdater, notification);
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
         assert declaredMethod.getDeclaringClass() == this;
-        overrideReachableNotifications.computeIfAbsent(declaredMethod, m -> ConcurrentHashMap.newKeySet()).add(notification);
+        Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
+                        overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
+        overrideNotifications.add(notification);
     }
 
     public Set<MethodOverrideReachableNotification> getOverrideReachabilityNotifications(AnalysisMethod method) {
-        return overrideReachableNotifications.getOrDefault(method, Collections.emptySet());
+        return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
     /**
@@ -597,7 +620,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public TypeData getOrComputeData() {
-        GraalError.guarantee(isReachable.get(), "TypeData is only available for reachable types");
+        GraalError.guarantee(isReachable(), "TypeData is only available for reachable types");
         return this.typeData.ensureDone();
     }
 
@@ -730,14 +753,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public boolean isInstantiated() {
-        boolean instantiated = isInHeap.get() || isAllocated.get();
-        assert !instantiated || isReachable.get();
+        boolean instantiated = isInHeap() || isAllocated();
+        assert !instantiated || isReachable();
         return instantiated;
     }
 
     /** Returns true if this type or any of its subtypes was marked as instantiated. */
     public boolean isAnySubtypeInstantiated() {
-        return isAnySubtypeInstantiated.get();
+        return AtomicUtils.isSet(this, isAnySubtypeInstantiatedUpdater);
     }
 
     /**
@@ -751,7 +774,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     @Override
     public boolean isReachable() {
-        return isReachable.get();
+        return AtomicUtils.isSet(this, isReachableUpdater);
     }
 
     /**
@@ -1171,11 +1194,11 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public boolean isInHeap() {
-        return isInHeap.get();
+        return AtomicUtils.isSet(this, isInHeapUpdater);
     }
 
     public boolean isAllocated() {
-        return isAllocated.get();
+        return AtomicUtils.isSet(this, isAllocatedUpdater);
     }
 
     @Override

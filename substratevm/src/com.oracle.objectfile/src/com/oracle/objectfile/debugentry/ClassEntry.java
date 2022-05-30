@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugRangeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
@@ -285,24 +286,15 @@ public class ClassEntry extends StructureTypeEntry {
         String methodName = debugMethodInfo.name();
         String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
         int modifiers = debugMethodInfo.modifiers();
-        List<String> paramTypes = debugMethodInfo.paramTypes();
-        List<String> paramNames = debugMethodInfo.paramNames();
-        assert paramTypes.size() == paramNames.size();
-        int paramCount = paramTypes.size();
+        DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
+        DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
+        int paramCount = paramInfos.length;
         debugContext.log("typename %s adding %s method %s %s(%s)\n",
-                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramTypes, paramNames));
+                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
         TypeEntry resultType = debugInfoBase.lookupTypeEntry(resultTypeName);
-        TypeEntry[] paramTypeArray = null;
-        String[] paramNameArray = null;
-        if (paramCount != 0) {
-            paramTypeArray = new TypeEntry[paramCount];
-            paramNameArray = new String[paramCount];
-            int idx = 0;
-            for (String paramTypeName : paramTypes) {
-                TypeEntry paramType = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramTypeName));
-                paramTypeArray[idx++] = paramType;
-            }
-            paramNameArray = paramNames.toArray(paramNameArray);
+        TypeEntry[] typeEntries = new TypeEntry[paramCount];
+        for (int i = 0; i < paramCount; i++) {
+            typeEntries[i] = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramInfos[i].typeName()));
         }
         /*
          * n.b. the method file may differ from the owning class file when the method is a
@@ -310,7 +302,7 @@ public class ClassEntry extends StructureTypeEntry {
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
-                        this, resultType, paramTypeArray, paramNameArray);
+                        this, resultType, typeEntries, paramInfos, thisParam);
         indexMethodEntry(methodEntry);
 
         return methodEntry;
@@ -326,21 +318,18 @@ public class ClassEntry extends StructureTypeEntry {
         return fieldEntry;
     }
 
-    private static String formatParams(List<String> paramTypes, List<String> paramNames) {
-        if (paramNames.size() == 0) {
+    private static String formatParams(DebugLocalInfo[] paramInfo) {
+        if (paramInfo.length == 0) {
             return "";
         }
         StringBuilder builder = new StringBuilder();
-        String separator = "";
-        for (int i = 0; i < paramNames.size(); i++) {
-            builder.append(separator);
-            builder.append(paramTypes.get(i));
-            String paramName = paramNames.get(i);
-            if (paramName.length() > 0) {
-                builder.append(' ');
-                builder.append(paramName);
+        for (int i = 0; i < paramInfo.length; i++) {
+            if (i > 0) {
+                builder.append(", ");
             }
-            separator = ", ";
+            builder.append(paramInfo[i].typeName());
+            builder.append(' ');
+            builder.append(paramInfo[i].name());
         }
 
         return builder.toString();

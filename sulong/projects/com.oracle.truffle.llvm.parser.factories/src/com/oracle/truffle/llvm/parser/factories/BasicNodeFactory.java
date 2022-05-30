@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.UnaryOperation;
+import com.oracle.truffle.llvm.runtime.config.CommonLanguageOptions;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -117,10 +118,10 @@ import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMLandingpadNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMResumeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMTypeIdForExceptionNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSmaxOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMSminOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUmaxOperator;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsics.LLVMUminOperator;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMAbsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMFAbsNodeGen;
@@ -346,6 +347,7 @@ import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI32VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI64VectorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.vector.LLVMShuffleVectorNodeFactory.LLVMShuffleI8VectorNodeGen;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.AggregateType;
@@ -371,16 +373,21 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class BasicNodeFactory implements NodeFactory {
+
     protected final LLVMLanguage language;
     protected DataLayout dataLayout;
 
-    protected final Type vaListType;
+    protected final CommonLanguageOptions engineOptions;
 
-    public BasicNodeFactory(LLVMLanguage language, DataLayout dataLayout) {
+    public BasicNodeFactory(LLVMLanguage language, DataLayout dataLayout, CommonLanguageOptions engineOptions) {
         this.language = language;
         this.dataLayout = dataLayout;
+        this.engineOptions = engineOptions;
+    }
 
-        this.vaListType = language.getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
+    @Override
+    public boolean isCfgOsrEnabled() {
+        return engineOptions.osrMode == SulongEngineOption.OSRMode.CFG;
     }
 
     @Override
@@ -1007,19 +1014,15 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    protected boolean isVAListType(Type type) {
-        // If type == vaListType, it is an indication that createAlloca is called from the toNative
-        // message implementation to obtain the stack allocation node. The condition type !=
-        // vaListType prevents from obtaining another managed va_list factory node. See
-        // LLVMX86_64VaListStorage.
-        return type != null && vaListType.equals(type) && type != vaListType;
+    protected boolean isManagedVAListType(Type type) {
+        return language.getActiveConfiguration().getCapability(PlatformCapability.class).isManagedVAListType(type);
     }
 
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
-        if (isVAListType(type)) {
+        if (isManagedVAListType(type)) {
             // Create a factory node for a managed va_list instead of the stack allocation node.
-            return LLVMVAListNodeGen.create();
+            return LLVMVAListNodeGen.create(type);
         } else {
             try {
                 return LLVMAllocaConstInstructionNodeGen.create(getByteSize(type), alignment);
@@ -1133,7 +1136,7 @@ public class BasicNodeFactory implements NodeFactory {
                     LLVMSourceLocation location, LLVMFunction rootFunction) {
         LLVMUniquesRegionAllocNode uniquesRegionAllocNode = uniquesRegion.isEmpty() ? null
                         : LLVMUniquesRegionAllocNodeGen.create(createAlloca(uniquesRegion.getSize(), uniquesRegion.getAlignment()));
-        LLVMDispatchBasicBlockNode body = LLVMDispatchBasicBlockNodeGen.create(exceptionValueSlot, allFunctionNodes, loopSuccessorSlot, debugInfo);
+        LLVMDispatchBasicBlockNode body = LLVMDispatchBasicBlockNodeGen.create(exceptionValueSlot, allFunctionNodes, loopSuccessorSlot, debugInfo, engineOptions.osrMode);
         body.setSourceLocation(LLVMSourceLocation.orDefault(location));
         LLVMStackAccess stackAccess = createStackAccess();
         LLVMFunctionRootNode functionRoot = LLVMFunctionRootNodeGen.create(uniquesRegionAllocNode, stackAccess, copyArgumentsToFrame, body, frameDescriptor);
@@ -1843,6 +1846,9 @@ public class BasicNodeFactory implements NodeFactory {
                 return CommonNodeFactory.createSignedCast(args[1], retType);
             case "fcmp":
                 return CommonNodeFactory.createComparison(getCompareOp(args[3]), retType, args[1], args[2]);
+            case "fmuladd":
+                LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.ADD, retType, mulNodeF80, args[3]);
         }
 
         return LLVMX86_MissingBuiltin.create(declaration.getName());
@@ -2132,6 +2138,11 @@ public class BasicNodeFactory implements NodeFactory {
     public RepeatingNode createLoopDispatchNode(int exceptionValueSlot, List<? extends LLVMStatementNode> bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId,
                     int[] indexMapping, int[] successors, int successorSlot) {
         return new LLVMLoopDispatchNode(exceptionValueSlot, bodyNodes.toArray(new LLVMBasicBlockNode[bodyNodes.size()]), originalBodyNodes, headerId, indexMapping, successors, successorSlot);
+    }
+
+    @Override
+    public boolean boxGlobals() {
+        return true;
     }
 
     @Override

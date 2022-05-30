@@ -147,6 +147,7 @@ public class TruffleGraphBuilderPlugins {
         registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types, primitiveBoxTypes);
         registerTruffleSafepointPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerNodePlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
+        registerDynamicObjectPlugins(plugins, metaAccess, canDelayIntrinsification);
     }
 
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
@@ -612,7 +613,17 @@ public class TruffleGraphBuilderPlugins {
                 return false;
             }
         });
-
+        r.register(new RequiredInvocationPlugin("get" + nameSuffix + "Static", Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
+                if (frameSlotIndex >= 0) {
+                    b.addPush(accessKind, new VirtualFrameGetNode(frameNode, frameSlotIndex, accessKind, accessTag, VirtualFrameAccessType.Indexed, true));
+                    return true;
+                }
+                return false;
+            }
+        });
         r.register(new RequiredInvocationPlugin("set" + nameSuffix, Receiver.class, int.class, getJavaClass(accessKind)) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
@@ -624,7 +635,17 @@ public class TruffleGraphBuilderPlugins {
                 return false;
             }
         });
-
+        r.register(new RequiredInvocationPlugin("set" + nameSuffix + "Static", Receiver.class, int.class, getJavaClass(accessKind)) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode, ValueNode value) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(frameNode, frameSlotNode);
+                if (frameSlotIndex >= 0) {
+                    b.add(new VirtualFrameSetNode(frameNode, frameSlotIndex, accessTag, value, VirtualFrameAccessType.Indexed, true));
+                    return true;
+                }
+                return false;
+            }
+        });
         r.register(new RequiredInvocationPlugin("is" + nameSuffix, Receiver.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver frameNode, ValueNode frameSlotNode) {
@@ -774,6 +795,30 @@ public class TruffleGraphBuilderPlugins {
                 return false;
             }
         });
+        r.register(new RequiredInvocationPlugin("clearPrimitiveStatic", Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot);
+                if (frameSlotIndex >= 0) {
+                    TruffleCompilerRuntime runtime = getRuntime();
+                    b.add(new VirtualFrameClearNode(receiver, frameSlotIndex, runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal), VirtualFrameAccessType.Indexed, true, true));
+                    return true;
+                }
+                return false;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("clearObjectStatic", Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot) {
+                int frameSlotIndex = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot);
+                if (frameSlotIndex >= 0) {
+                    TruffleCompilerRuntime runtime = getRuntime();
+                    b.add(new VirtualFrameClearNode(receiver, frameSlotIndex, runtime.getFrameSlotKindTagForJavaKind(JavaKind.Illegal), VirtualFrameAccessType.Indexed, true, false));
+                    return true;
+                }
+                return false;
+            }
+        });
         r.register(new RequiredInvocationPlugin("swap", Receiver.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
@@ -793,6 +838,30 @@ public class TruffleGraphBuilderPlugins {
                 int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
                 if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
                     b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed));
+                    return true;
+                }
+                return false;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("copyPrimitiveStatic", Receiver.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
+                int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
+                int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
+                if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
+                    b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, true, true));
+                    return true;
+                }
+                return false;
+            }
+        });
+        r.register(new RequiredInvocationPlugin("copyObjectStatic", Receiver.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode frameSlot1, ValueNode frameSlot2) {
+                int frameSlot1Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot1);
+                int frameSlot2Index = maybeGetConstantNumberedFrameSlotIndex(receiver, frameSlot2);
+                if (frameSlot1Index >= 0 && frameSlot2Index >= 0) {
+                    b.add(new VirtualFrameCopyNode(receiver, frameSlot1Index, frameSlot2Index, VirtualFrameAccessType.Indexed, true, false));
                     return true;
                 }
                 return false;
@@ -849,6 +918,13 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerDynamicObjectPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+        TruffleCompilerRuntime rt = TruffleCompilerRuntime.getRuntime();
+        ResolvedJavaType unsafeAccessType = rt.resolveType(metaAccess, "com.oracle.truffle.object.UnsafeAccess");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(unsafeAccessType));
+        registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Long);
     }
 
     public static void registerUnsafeCast(Registration r, boolean canDelayIntrinsification, EconomicSet<ResolvedJavaType> primitiveBoxTypes) {

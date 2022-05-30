@@ -571,8 +571,8 @@ supr java.lang.Object
 CLSS public final static !enum org.graalvm.nativeimage.c.function.CEntryPoint$Publish
  outer org.graalvm.nativeimage.c.function.CEntryPoint
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish NotPublished
-fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolOnly
 fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolAndHeader
+fld public final static org.graalvm.nativeimage.c.function.CEntryPoint$Publish SymbolOnly
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish valueOf(java.lang.String)
 meth public static org.graalvm.nativeimage.c.function.CEntryPoint$Publish[] values()
 supr java.lang.Enum<org.graalvm.nativeimage.c.function.CEntryPoint$Publish>
@@ -871,6 +871,8 @@ innr public abstract interface static IsInConfigurationAccess
 innr public abstract interface static OnAnalysisExitAccess
 innr public abstract interface static QueryReachabilityAccess
 meth public boolean isInConfiguration(org.graalvm.nativeimage.hosted.Feature$IsInConfigurationAccess)
+meth public java.lang.String getDescription()
+meth public java.lang.String getURL()
 meth public java.util.List<java.lang.Class<? extends org.graalvm.nativeimage.hosted.Feature>> getRequiredFeatures()
 meth public void afterAnalysis(org.graalvm.nativeimage.hosted.Feature$AfterAnalysisAccess)
 meth public void afterCompilation(org.graalvm.nativeimage.hosted.Feature$AfterCompilationAccess)

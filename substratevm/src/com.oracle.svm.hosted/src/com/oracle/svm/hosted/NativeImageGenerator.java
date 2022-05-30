@@ -63,6 +63,7 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -129,8 +130,8 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
-import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
+import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
+import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -141,7 +142,6 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccessExtensionProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -555,7 +555,7 @@ public class NativeImageGenerator {
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
-            reporter.printFeatures(featureHandler.getUserFeatureNames());
+            reporter.printFeatures(featureHandler.getUserSpecificFeatures());
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -625,8 +625,6 @@ public class NativeImageGenerator {
             BeforeCompilationAccessImpl beforeCompilationConfig = new BeforeCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtime);
             featureHandler.forEachFeature(feature -> feature.beforeCompilation(beforeCompilationConfig));
 
-            runtime.updateLazyState(hMetaAccess);
-
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.COMPILE_TOTAL)) {
@@ -681,6 +679,11 @@ public class NativeImageGenerator {
                 }
             }
 
+            ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
+            compileQueue.purge();
+
+            int numCompilations = codeCache.getCompilations().size();
+
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 bb.getHeartbeatCallback().run();
                 BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
@@ -702,11 +705,8 @@ public class NativeImageGenerator {
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
-            reporter.printCreationEnd(image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
-                            codeCache.getCompilations().size(), image.getDebugInfoSize());
-            if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-                ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
-            }
+            reporter.printCreationEnd(image.getImageSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
+                            numCompilations, image.getDebugInfoSize());
         }
     }
 
@@ -1045,7 +1045,7 @@ public class NativeImageGenerator {
         aMetaAccess.lookupJavaType(Reference.class).registerAsReachable();
         BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(aMetaAccess);
         SubstratePlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
-        AnalysisMetaAccessExtensionProvider aMetaAccessExtensionProvider = new AnalysisMetaAccessExtensionProvider();
+        MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
         LoweringProvider aLoweringProvider = SubstrateLoweringProvider.createForHosted(aMetaAccess, null, platformConfig, aMetaAccessExtensionProvider);
         StampProvider aStampProvider = new SubstrateStampProvider(aMetaAccess);
         HostedProviders aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, null, aStampProvider, aSnippetReflection,
@@ -1247,7 +1247,7 @@ public class NativeImageGenerator {
             Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings = lowerer.getLowerings();
 
             lowerer.setConfiguration(runtimeConfig, options, providers);
-            TypeSnippets.registerLowerings(runtimeConfig, options, providers, lowerings);
+            TypeSnippets.registerLowerings(options, providers, lowerings);
             ExceptionSnippets.registerLowerings(options, providers, lowerings);
 
             if (hosted) {
@@ -1663,17 +1663,13 @@ public class NativeImageGenerator {
                 System.out.print("interface  ");
             } else if (LayoutEncoding.isAbstract(le)) {
                 System.out.print("abstract  ");
-            } else if (LayoutEncoding.isInstance(le)) {
-                System.out.format("instance size %d  ", LayoutEncoding.getInstanceSize(le).rawValue());
-            } else if (LayoutEncoding.isObjectArray(le)) {
-                System.out.format("object array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isPrimitiveArray(le)) {
-                System.out.format("primitive array base %d shift %d scale %d  ", LayoutEncoding.getArrayBaseOffset(le).rawValue(), LayoutEncoding.getArrayIndexShift(le),
-                                LayoutEncoding.getArrayIndexScale(le));
-            } else if (LayoutEncoding.isStoredContinuation(le)) {
-                // can exist as HostedType even if unreachable and continuations are disabled
-                System.out.print("stored continuation  ");
+            } else if (LayoutEncoding.isPureInstance(le)) {
+                System.out.format("instance size %d  ", LayoutEncoding.getPureInstanceSize(le).rawValue());
+            } else if (LayoutEncoding.isArrayLike(le)) {
+                String arrayType = LayoutEncoding.isHybrid(le) ? "hybrid" : "array";
+                String elements = LayoutEncoding.isArrayLikeWithPrimitiveElements(le) ? "primitives" : "objects";
+                System.out.format("%s containing %s, base %d shift %d scale %d  ", arrayType, elements, LayoutEncoding.getArrayBaseOffset(le).rawValue(),
+                                LayoutEncoding.getArrayIndexShift(le), LayoutEncoding.getArrayIndexScale(le));
             } else {
                 throw VMError.shouldNotReachHere();
             }

@@ -44,8 +44,8 @@
     local use_libgraal_profile = libgraal_profiling_only(config.compiler.use_libgraal_profile),
 
     job_prefix:: "bench-compiler",
+    python_version : "3",
     environment+: {
-      MX_PYTHON_VERSION : "3",
       BENCH_RESULTS_FILE_PATH : "bench-results.json"
     },
     plain_benchmark_cmd::
@@ -134,6 +134,13 @@
     platform+:: "-economy",
     environment+: {
       "JVM_CONFIG"+: "-economy",
+    }
+  },
+
+  no_tiered_comp:: {
+    platform+:: "-no-tiered-comp",
+    environment+: {
+      "JVM_CONFIG"+: "-no-tiered-comp",
     }
   },
 

@@ -646,7 +646,7 @@ class CodeInfoVerifier {
     private static ValueInfo findActualField(ValueInfo[] actualObject, UnsignedWord expectedOffset) {
         DynamicHub hub = (DynamicHub) SubstrateObjectConstant.asObject(actualObject[0].getValue());
         ObjectLayout objectLayout = ConfigurationValues.getObjectLayout();
-        assert LayoutEncoding.isInstance(hub.getLayoutEncoding());
+        assert LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
         return findActualValue(actualObject, expectedOffset, objectLayout, WordFactory.unsigned(objectLayout.getFirstFieldOffset()), 1);
     }
 

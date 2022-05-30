@@ -30,6 +30,7 @@ import java.io.IOException;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -256,9 +257,11 @@ public class PosixUtils {
      */
     public static Signal.SignalDispatcher installSignalHandler(int signum, Signal.SignalDispatcher handler) {
         Signal.sigaction old = StackValue.get(Signal.sigaction.class);
-        Signal.sigaction act = StackValue.get(Signal.sigaction.class);
-        Signal.sigemptyset(act.sa_mask());
-        Signal.sigaddset(act.sa_mask(), signum);
+
+        int structSigActionSize = SizeOf.get(Signal.sigaction.class);
+        Signal.sigaction act = StackValue.get(structSigActionSize);
+        LibC.memset(act, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));
+
         act.sa_flags(Signal.SA_RESTART());
         act.sa_handler(handler);
         if (Signal.sigaction(signum, act, old) != 0) {

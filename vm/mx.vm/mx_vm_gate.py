@@ -259,31 +259,38 @@ def gate_body(args, tasks):
             # 2. the build must be JVMCI-enabled since the 'GraalVM compiler' component is registered
             mx_sdk_vm_impl.check_versions(mx_sdk_vm_impl.graalvm_output(), graalvm_version_regex=mx_sdk_vm_impl.graalvm_version_regex, expect_graalvm=True, check_jvmci=True)
 
-    if mx_sdk_vm_impl.has_component('LibGraal'):
-        libgraal_location = mx_sdk_vm_impl.get_native_image_locations('LibGraal', 'jvmcicompiler')
-        if libgraal_location is None:
-            mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
+    libgraal_suite_name = 'substratevm'
+    if mx.suite(libgraal_suite_name, fatalIfMissing=False) is not None:
+        import mx_substratevm
+        # Use `short_name` rather than `name` since the code that follows
+        # should be executed also when "LibGraal Enterprise" is registered
+        if mx_sdk_vm_impl.has_component(mx_substratevm.libgraal.short_name):
+            libgraal_location = mx_sdk_vm_impl.get_native_image_locations(mx_substratevm.libgraal.short_name, 'jvmcicompiler')
+            if libgraal_location is None:
+                mx.warn("Skipping libgraal tests: no library enabled in the LibGraal component")
+            else:
+                extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
+                if args.extra_vm_argument:
+                    extra_vm_arguments += args.extra_vm_argument
+
+                # run avrora on the GraalVM binary itself
+                with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_basic(extra_vm_arguments)
+                with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_fatal_error_handling()
+
+                with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_ctw(extra_vm_arguments)
+
+                import mx_compiler
+                mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
+
+                with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal]) as t:
+                    if t: _test_libgraal_truffle(extra_vm_arguments)
         else:
-            extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
-            if args.extra_vm_argument:
-                extra_vm_arguments += args.extra_vm_argument
-
-            # run avrora on the GraalVM binary itself
-            with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t: _test_libgraal_basic(extra_vm_arguments)
-            with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t: _test_libgraal_fatal_error_handling()
-
-            with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t: _test_libgraal_ctw(extra_vm_arguments)
-
-            import mx_compiler
-            mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
-
-            with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t: _test_libgraal_truffle(extra_vm_arguments)
+            mx.warn("Skipping libgraal tests: component not enabled")
     else:
-        mx.warn("Skipping libgraal tests: component not enabled")
+        mx.warn("Skipping libgraal tests: suite '{suite}' not found. Did you forget to dynamically import it? (--dynamicimports {suite})".format(suite=libgraal_suite_name))
 
     gate_substratevm(tasks)
     gate_substratevm(tasks, quickbuild=True)
@@ -435,7 +442,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
         build_deps = []
         unittests_file = None
         if unit_tests:
-            build_options = build_options + ['-ea']
+            build_options = build_options + ['-ea', '-esa']
             unittest_deps = []
             unittests_file = join(image_dir, 'unittest.tests')
             mx_unittest._run_tests(unit_tests,

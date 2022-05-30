@@ -42,10 +42,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
@@ -167,7 +166,7 @@ class LibGraalOptions {
     static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
 }
 
-public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
+public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
@@ -513,29 +512,41 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
      */
     private static void verifyReachableTruffleClasses(AfterAnalysisAccess access) {
         AnalysisUniverse universe = ((FeatureImpl.AfterAnalysisAccessImpl) access).getUniverse();
-        Set<AnalysisMethod> seen = new HashSet<>();
+        Map<AnalysisMethod, Object> seen = new LinkedHashMap<>();
         for (AnalysisMethod analysisMethod : universe.getMethods()) {
             if (analysisMethod.isDirectRootMethod() && analysisMethod.isImplementationInvoked()) {
-                seen.add(analysisMethod);
+                seen.put(analysisMethod, "direct root");
             }
             if (analysisMethod.isVirtualRootMethod()) {
                 for (AnalysisMethod impl : analysisMethod.getImplementations()) {
                     VMError.guarantee(impl.isImplementationInvoked());
-                    seen.add(analysisMethod);
+                    seen.put(impl, "virtual root");
                 }
             }
         }
-        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen);
+        Deque<AnalysisMethod> todo = new ArrayDeque<>(seen.keySet());
         SortedSet<String> disallowedTypes = new TreeSet<>();
         while (!todo.isEmpty()) {
             AnalysisMethod m = todo.removeFirst();
             String className = m.getDeclaringClass().toClassName();
             if (!isAllowedType(className)) {
-                disallowedTypes.add(className);
+                StringBuilder msg = new StringBuilder(className);
+                Object reason = m;
+                while (true) {
+                    msg.append("<-");
+                    if (reason instanceof ResolvedJavaMethod) {
+                        msg.append(((ResolvedJavaMethod) reason).format("%H.%n(%p)"));
+                        reason = seen.get(reason);
+                    } else {
+                        msg.append(reason);
+                        break;
+                    }
+                }
+                disallowedTypes.add(msg.toString());
             }
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
-                    if (seen.add(callee)) {
+                    if (seen.putIfAbsent(callee, m) == null) {
                         todo.add(callee);
                     }
                 }

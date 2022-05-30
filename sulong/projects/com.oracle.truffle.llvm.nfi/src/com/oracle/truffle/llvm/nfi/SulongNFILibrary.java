@@ -67,7 +67,6 @@ final class SulongNFILibrary implements TruffleObject {
     @ExportMessage
     Object readMember(String name,
                     @CachedLibrary("this.library") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
-        Object ret = interop.readMember(library, name);
-        return SulongNFI.get(interop).getTools().createBindableSymbol(ret);
+        return interop.readMember(library, name);
     }
 }

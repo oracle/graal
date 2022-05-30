@@ -40,10 +40,10 @@ local add_excludes_guard(build) = build + {
 };
 
 {
-  # Ensure that entries in common.jsonnet can be resolved
+  # Ensure that entries in common.jsonnet can be resolved.
   _checkCommon: (import 'common.jsonnet'),
   ci_resources:: (import 'ci-resources.libsonnet'),
-  specVersion: "2",
+  specVersion: "3",
   builds: [add_excludes_guard(b) for b in (
     compiler.builds +
     wasm.builds +

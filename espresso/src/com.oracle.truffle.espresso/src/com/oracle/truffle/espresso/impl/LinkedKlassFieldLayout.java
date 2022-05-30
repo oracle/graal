@@ -260,7 +260,10 @@ final class LinkedKlassFieldLayout {
                 return new HiddenField[]{
                                 new HiddenField(Name.HIDDEN_INTERRUPTED, Type._boolean, VersionRange.lower(13), NO_ADDITIONAL_FLAGS),
                                 new HiddenField(Name.HIDDEN_HOST_THREAD),
+                                new HiddenField(Name.HIDDEN_ESPRESSO_MANAGED, Type._boolean, VersionRange.ALL, NO_ADDITIONAL_FLAGS),
                                 new HiddenField(Name.HIDDEN_DEPRECATION_SUPPORT),
+                                new HiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS, Type._int, VersionRange.ALL, Constants.ACC_VOLATILE),
+                                new HiddenField(Name.HIDDEN_THREAD_PARK_LOCK, Type.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
 
                                 // Only used for j.l.management bookkeeping.
                                 new HiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT),

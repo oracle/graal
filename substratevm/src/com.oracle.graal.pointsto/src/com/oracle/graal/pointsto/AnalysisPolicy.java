@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto;
 
+import java.util.BitSet;
+
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -41,7 +43,10 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.typestate.MultiTypeState;
+import com.oracle.graal.pointsto.typestate.SingleTypeState;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 
@@ -65,6 +70,8 @@ public abstract class AnalysisPolicy {
         removeSaturatedTypeFlows = PointstoOptions.RemoveSaturatedTypeFlows.getValue(options);
         typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
     }
+
+    public abstract boolean isContextSensitiveAnalysis();
 
     public boolean aliasArrayTypeFlows() {
         return aliasArrayTypeFlows;
@@ -167,4 +174,75 @@ public abstract class AnalysisPolicy {
         /* The default analysis policy doesn't use properties. */
         return 0;
     }
+
+    /**
+     * Simplifies a type state by replacing all context sensitive objects with context insensitive
+     * objects.
+     */
+    public abstract TypeState forContextInsensitiveTypeState(PointsToAnalysis bb, TypeState state);
+
+    public abstract SingleTypeState singleTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, AnalysisType type, AnalysisObject... objects);
+
+    public abstract MultiTypeState multiTypeState(PointsToAnalysis bb, boolean canBeNull, int properties, BitSet typesBitSet, AnalysisObject... objects);
+
+    public abstract TypeState doUnion(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
+
+    @SuppressWarnings("static-method")
+    public final TypeState doIntersection(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
+        if (s1.exactType().equals(s2.exactType())) {
+            /* The inputs have the same type, the result will be s1. */
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        } else {
+            /* The inputs have different types then the result is empty or null. */
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    public final TypeState doIntersection(PointsToAnalysis bb, SingleTypeState s1, MultiTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && s2.canBeNull();
+        if (s2.containsType(s1.exactType())) {
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        } else {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    public abstract TypeState doIntersection(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doIntersection(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
+
+    @SuppressWarnings("static-method")
+    public final TypeState doSubtraction(PointsToAnalysis bb, SingleTypeState s1, SingleTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && !s2.canBeNull();
+        if (s1.exactType().equals(s2.exactType())) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else {
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    public final TypeState doSubtraction(PointsToAnalysis bb, SingleTypeState s1, MultiTypeState s2) {
+        assert !bb.extendedAsserts() || TypeStateUtils.isContextInsensitiveTypeState(bb, s2) : "Current implementation limitation.";
+        boolean resultCanBeNull = s1.canBeNull() && !s2.canBeNull();
+        if (s2.containsType(s1.exactType())) {
+            return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
+        } else {
+            return s1.forCanBeNull(bb, resultCanBeNull);
+        }
+    }
+
+    public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
+
+    public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
+
 }

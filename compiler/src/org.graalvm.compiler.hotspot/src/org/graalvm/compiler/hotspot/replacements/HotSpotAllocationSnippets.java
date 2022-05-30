@@ -41,6 +41,7 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Tra
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_INIT_STATE_LOCATION;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_INIT_THREAD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.HUB_WRITE_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.PROTOTYPE_MARK_WORD_LOCATION;
@@ -571,7 +572,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                             TLAB_END_LOCATION, PROTOTYPE_MARK_WORD_LOCATION, CLASS_INIT_STATE_LOCATION);
             newmultiarray = snippet(HotSpotAllocationSnippets.class, "newmultiarray", null, receiver, TLAB_TOP_LOCATION, TLAB_END_LOCATION);
             verifyHeap = snippet(HotSpotAllocationSnippets.class, "verifyHeap", null, receiver);
-            threadBeingInitializedCheck = snippet(HotSpotAllocationSnippets.class, "threadBeingInitializedCheck", null, receiver);
+            threadBeingInitializedCheck = snippet(HotSpotAllocationSnippets.class, "threadBeingInitializedCheck", null, receiver, CLASS_INIT_STATE_LOCATION, CLASS_INIT_THREAD_LOCATION);
         }
 
         private HotSpotAllocationProfilingData getProfilingData(OptionValues localOptions, String path, ResolvedJavaType type) {

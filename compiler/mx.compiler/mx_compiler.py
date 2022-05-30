@@ -202,7 +202,7 @@ def _nodeCostDump(args, extraVMarguments=None):
     import csv
     parser = ArgumentParser(prog='mx nodecostdump')
     parser.add_argument('--regex', action='store', help="Node Name Regex", default=False, metavar='<regex>')
-    parser.add_argument('--markdown', action='store_const', const=True, help="Format to Markdown table", default=False)
+    parser.add_argument('--markdown', action='store_true', help="Format to Markdown table")
     args, vmargs = parser.parse_known_args(args)
     additionalPrimarySuiteClassPath = '-Dprimary.suite.cp=' + mx.primary_suite().dir
     vmargs.extend([additionalPrimarySuiteClassPath, '-cp', mx.classpath('org.graalvm.compiler.hotspot.test'), '-XX:-UseJVMCIClassLoader', 'org.graalvm.compiler.hotspot.test.NodeCostDumpUtil'])

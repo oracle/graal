@@ -61,8 +61,6 @@ import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.CoreLocations.LongLocation;
 import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 
-import sun.misc.Unsafe;
-
 @SuppressWarnings("deprecation")
 class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
@@ -210,7 +208,6 @@ class DefaultLayout extends LayoutImpl {
         final LongLocation[] primitiveFields;
 
         private static final ConcurrentMap<Class<? extends DynamicObject>, LayoutInfo> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
-        private static final Unsafe UNSAFE = CoreLocations.getUnsafe();
 
         static LayoutInfo getOrCreateLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass) {
             LayoutInfo layoutInfo = LAYOUT_INFO_MAP.get(dynamicObjectClass);
@@ -279,7 +276,7 @@ class DefaultLayout extends LayoutImpl {
                     if (field.getType() == Object.class) {
                         objectFieldList.add(new CoreLocations.DynamicObjectFieldLocation(objectFieldList.size(), field));
                     } else if (field.getType() == long.class) {
-                        long offset = UNSAFE.objectFieldOffset(field);
+                        long offset = UnsafeAccess.objectFieldOffset(field);
                         if (offset % Long.BYTES == 0) {
                             primitiveFieldList.add(new CoreLocations.DynamicLongFieldLocation(primitiveFieldList.size(), offset, clazz));
                         }

@@ -68,8 +68,6 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.vm.ci.code.Architecture;
-
 @InternalVMMethod
 public class JavaMainWrapper {
     /*
@@ -135,10 +133,6 @@ public class JavaMainWrapper {
      * {@link org.graalvm.nativeimage.hosted.Feature.AfterRegistrationAccess}).
      */
     private static int runCore0() {
-        Architecture imageArchitecture = ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-        CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
-        cpuFeatureAccess.verifyHostSupportsArchitecture(imageArchitecture);
-
         try {
             if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
                 /*
@@ -196,6 +190,8 @@ public class JavaMainWrapper {
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
     public static int run(int argc, CCharPointerPointer argv) {
         try {
+            CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
+            cpuFeatureAccess.verifyHostSupportsArchitectureEarlyOrExit();
             // Create the isolate and attach the current C thread as the main Java thread.
             EnterCreateIsolateWithCArgumentsPrologue.enter(argc, argv);
             assert !VMThreads.wasStartedByCurrentIsolate(CurrentIsolate.getCurrentThread()) : "re-attach would cause issues otherwise";

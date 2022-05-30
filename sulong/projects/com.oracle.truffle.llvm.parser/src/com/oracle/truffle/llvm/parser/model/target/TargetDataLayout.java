@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,11 @@ public final class TargetDataLayout implements TargetInformation {
     }
 
     public static TargetDataLayout fromString(String layout) {
+        if (layout.equals("e-m:o-i64:64-i128:128-n32:64-S128")) {
+            // FIXME(GR-36935): workaround for darwin-aarch64. provided target layout string assumes
+            // a default set
+            return new TargetDataLayout("e-m:o-i8:8-i16:16-i64:64-i128:128-n32:64-S128");
+        }
         return new TargetDataLayout(layout);
     }
 }

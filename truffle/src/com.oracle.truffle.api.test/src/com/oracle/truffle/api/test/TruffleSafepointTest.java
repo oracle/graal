@@ -1130,7 +1130,7 @@ public class TruffleSafepointTest {
                 public void accept(Throwable throwable) {
                     exceptions.add(throwable);
                 }
-            })) {
+            }, true)) {
                 AtomicBoolean closed = new AtomicBoolean();
                 List<Future<?>> threadLocals = new ArrayList<>();
 
@@ -1272,7 +1272,7 @@ public class TruffleSafepointTest {
 
     @Test
     public void testBigAllocationInLoop() {
-        final int loopCount = 1024;
+        final int loopCount = 1024 * 32;
         Object[] values = new Object[loopCount];
         CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
@@ -1294,13 +1294,13 @@ public class TruffleSafepointTest {
 
             setup.stopAndAwait();
             int count = counter.counter.get();
-            assertTrue(String.valueOf(count), count >= 10);
+            assertTrue(String.valueOf(count), count >= 5);
         }
     }
 
     @Test
     public void testSimpleAllocationInLoop() {
-        final int loopCount = 1024;
+        final int loopCount = 1024 * 32;
         Object[] values = new Object[loopCount];
         CountDownLatch await = new CountDownLatch(2);
         try (TestSetup setup = setupSafepointLoop(1, (s, node) -> {
@@ -1322,7 +1322,7 @@ public class TruffleSafepointTest {
 
             setup.stopAndAwait();
             int count = counter.counter.get();
-            assertTrue(String.valueOf(count), count >= 10);
+            assertTrue(String.valueOf(count), count >= 5);
         }
     }
 
@@ -1752,8 +1752,12 @@ public class TruffleSafepointTest {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private TestSetup setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler) {
+        return setupSafepointLoop(threads, callable, exHandler, false);
+    }
+
+    @SuppressWarnings("unchecked")
+    private TestSetup setupSafepointLoop(int threads, NodeCallable callable, Consumer<Throwable> exHandler, boolean ignoreCancelOnClose) {
         Context c = createTestContext();
         TestSetup setup = null;
         try {
@@ -1767,7 +1771,7 @@ public class TruffleSafepointTest {
             Object targetEnter = env.getContext().enter(null);
             AtomicBoolean stopped = new AtomicBoolean();
 
-            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped);
+            TestSetup finalSetup = setup = new TestSetup(c, env, instrument, stopped, ignoreCancelOnClose);
             setup.root = new TestRootNode(proxyLanguage, stopped, setup, latch, callable);
             setup.target = setup.root.getCallTarget();
             env.getContext().leave(null, targetEnter);
@@ -1836,12 +1840,14 @@ public class TruffleSafepointTest {
         @CompilationFinal RootCallTarget target;
         @CompilationFinal TestRootNode root;
         final AtomicBoolean stopped;
+        final boolean ignoreCancelOnClose;
 
-        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped) {
+        TestSetup(Context context, Env env, TruffleInstrument.Env instrumentEnv, AtomicBoolean stopped, boolean ignoreCancelOnClose) {
             this.context = context;
             this.env = env;
             this.instrumentEnv = instrumentEnv;
             this.stopped = stopped;
+            this.ignoreCancelOnClose = ignoreCancelOnClose;
         }
 
         void stopAndAwait() {
@@ -1852,7 +1858,13 @@ public class TruffleSafepointTest {
         @Override
         public void close() {
             stopAndAwait();
-            context.close();
+            try {
+                context.close();
+            } catch (PolyglotException pe) {
+                if (!ignoreCancelOnClose || !pe.isCancelled()) {
+                    throw pe;
+                }
+            }
         }
     }
 

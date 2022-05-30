@@ -1,6 +1,6 @@
 # pylint: disable=line-too-long
 suite = {
-    "mxversion": "5.316.15",
+    "mxversion": "6.0.1",
     "name": "substratevm",
     "version" : "22.2.0",
     "release" : False,
@@ -795,6 +795,9 @@ suite = {
                     "jdk.internal.ref",
                     "sun.nio.ch",
                 ],
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance": "11+",
@@ -808,7 +811,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.hosted",
-                "truffle:TRUFFLE_API",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -879,6 +881,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.graal",
+                "truffle:TRUFFLE_API",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -898,9 +901,6 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.svm.truffle",
-            ],
-            "requires": [
-                "jdk.unsupported",  # workaround to make TRUFFLE_DSL_PROCESSOR work with ECJ
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "11+",
@@ -1133,6 +1133,7 @@ suite = {
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
+                    "com.oracle.svm.core.option                   to com.oracle.svm_enterprise.ml_dataset",
                     "* to org.graalvm.nativeimage.base,jdk.internal.vm.compiler,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.configure,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.junitsupport,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,com.oracle.svm.svm_enterprise",
                 ],
                 "opens" : [
@@ -1202,6 +1203,7 @@ suite = {
                     ],
                 },
             },
+            "noMavenJavadoc": True,
         },
 
         "SVM_LIBFFI": {
@@ -1234,6 +1236,7 @@ suite = {
                     "com.oracle.svm.jvmtiagentbase.jvmti",
                 ],
             },
+            "maven": False,
         },
 
         "LIBRARY_SUPPORT": {
@@ -1321,6 +1324,7 @@ suite = {
                 "SVM",
             ],
             "defaultBuild": False,
+            "maven": False,
         },
 
         #
@@ -1375,6 +1379,7 @@ suite = {
                 "jdk.management",
               ],
             },
+            "maven": False,
         },
 
         "SVM_AGENT": {
@@ -1402,6 +1407,7 @@ suite = {
                 }
             },
             # vm: included as binary, tool descriptor intentionally not copied
+            "maven": False,
         },
 
         "SVM_DIAGNOSTICS_AGENT": {
@@ -1420,6 +1426,7 @@ suite = {
                     "com.oracle.svm.diagnosticsagent",
                 ],
             },
+            "maven": False,
         },
 
         "SVM_CONFIGURE": {
@@ -1439,6 +1446,7 @@ suite = {
                     "com.oracle.svm.configure",
                 ],
             },
+            "maven": False,
         },
 
         "NATIVE_IMAGE_BASE": {
@@ -1494,6 +1502,7 @@ suite = {
                 "com.oracle.graal.pointsto.typestate",
                 "com.oracle.graal.pointsto.infrastructure",
                 "com.oracle.graal.pointsto.flow.context.object",
+                "com.oracle.graal.pointsto.flow.context.bytecode",
               ],
               "requires": [
                 "java.management",
