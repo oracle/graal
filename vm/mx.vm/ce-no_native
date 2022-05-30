@@ -1,4 +1,4 @@
-DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/tools,/truffle
-COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,nil,poly,polynative,pro,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+DYNAMIC_IMPORTS=/compiler,/regex,/sdk,/substratevm,/sulong,/tools,/truffle
+COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,nil,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
 NATIVE_IMAGES=false
 DISABLE_INSTALLABLES=ni,nil
