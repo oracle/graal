@@ -146,6 +146,8 @@ Accessing codepoints and bytes:
   Return the number of bytes occupied by the codepoint starting at a given byte index.
 * [CodePointIndexToByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointIndexToByteIndexNode.html):
   Convert a given codepoint index to a byte index on a given string.
+* [ByteIndexToCodePointIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ByteIndexToCodePointIndexNode.html):
+  Convert a given byte index to a codepoint index on a given string.
 
 Search:
 
