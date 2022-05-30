@@ -42,6 +42,7 @@ import static org.graalvm.compiler.nodes.loop.DefaultLoopPolicies.Options.Unroll
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.util.UnsignedLong;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
@@ -336,7 +338,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * 2500 times as loop2 has a local loop frequency of 10. Invariant (2) could be unswitched from
      * loop2 so we only count a frequency of 250 for it. Finally the result is the sum of the two
      * frequencies which is 750. This mean that on average each time the loop is executed, the
-     * invariant is computed 750 times.
+     * invariant is used 750 times.
      */
     private static double splitLocalLoopFrequency(LoopEx loop, List<ControlSplitNode> controlSplits) {
         int loopDepth = loop.loop().getDepth();
@@ -379,7 +381,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+    public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
         if (loop.loopBegin().unswitches() >= LoopMaxUnswitch.getValue(loop.loopBegin().graph().getOptions())) {
             return UnswitchingDecision.NO;
         }
@@ -399,7 +401,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         double bestSplitFrequency = 0.0;
         int bestCodeSizeChange = 0;
         double bestFactor = 0.0;
-        for (List<ControlSplitNode> split : controlSplits) {
+        for (List<ControlSplitNode> split : controlSplits.getValues()) {
             boolean isTrusted = true;
             for (ControlSplitNode node : split) {
                 isTrusted = isTrusted && ProfileSource.isTrusted(node.getProfileData().getProfileSource());
@@ -426,23 +428,122 @@ public class DefaultLoopPolicies implements LoopPolicies {
             double splitFrequency = splitLocalLoopFrequency(loop, split);
             if (splitFrequency < LoopUnswitchMinSplitFrequency.getValue(options)) {
                 /*
-                 * When a invariant is unswitched then it is computed each time the loop is executed
-                 * so we only want to unswitch conditions that are on average executed at least once
-                 * par execution of the whole loop.
+                 * When a invariant is unswitched then its corresponding control split node is
+                 * reached once each time the loop is executed so we only want to unswitch
+                 * conditions that are on average reached at least once par execution of the whole
+                 * loop.
                  */
                 debug.log("control split %s discarded because infrequent, f=%.2f", split, splitFrequency);
                 continue;
             }
 
             /**
-             * Guards should only be unswitched if they are executed very often because otherwise it
-             * might change the hottest path. However if the successor probabilities of the control
-             * split nodes are evenly distributed then it is good to unswitch them.
+             * Even if invariants don't depend from any of a loop's local variable, it doesn't mean
+             * that their values are not correlated with the value of an other condition. For
+             * example in the following code, the compiler adds a null check before accessing in the
+             * array. This condition only depends on the variable {@code array} and is an invariant.
              *
-             * {@link factor} is 0 for guards and 1 for evenly distributed splits.
+             * <pre>
+             * final class A {
+             *     final int length;
+             *     final int[] array;
              *
-             * The idea behind this heuristic is that when a guard is executed often, unswitching it
-             * will not change the hottest path. For example:
+             *     public A(int length, int[] array) {
+             *         assert length >= 0;
+             *         assert array == null || length < array.length;
+             *         assert array != null || length == 0;
+             *         this.length = length;
+             *         this.array = array;
+             *     }
+             *
+             *     public int foo(int upto) {
+             *         int res = 1;
+             *         for (int i = 0; i < upto; ++i) {
+             *             if (i < length) {
+             *                 // The compiler adds a null check and an index in bound check.
+             *                 res += this.array[i];
+             *             } else {
+             *                 res *= 2;
+             *             }
+             *         }
+             *         return res;
+             *     }
+             * }
+             * </pre>
+             *
+             * However the fields of A are final and the constructor checks that if array is null
+             * then length must be zero. So we know that each time the condition {@code i < length}
+             * evaluates to true then array is not null. As a consequence the success probability of
+             * the invariant (i.e. is array null) is 0.0.
+             *
+             * So if the compiler unswitch the null check the code becomes :
+             *
+             * <pre>
+             *  int foo(int upto) {
+             *      int res = 1;
+             *      if (this.array == null) {
+             *          // Frequency = ~0
+             *          for (int i = 0; i < upto; ++i) {
+             *              if (i < length) {
+             *                  Deop null pointer exception.
+             *              } else {
+             *                  res *= 2;
+             *              }
+             *          }
+             *      } else {
+             *          // Frequency = 1.0
+             *          for (int i = 0; i < upto; ++i) {
+             *              if (i < length) {
+             *                  // With an index in bound check (but no null check)
+             *                  res += this.array[i];
+             *              } else {
+             *                  res *= 2;
+             *              }
+             *          }
+             *      }
+             *      return res;
+             *  }
+             * </pre>
+             *
+             * But if the method is mostly called on instances that have {@code array == null} then
+             * the hottest path is wrong!
+             *
+             * The previous behavior happens when the compiler changes the order of correlated ifs.
+             * In the simple case where we only have two ifs:
+             *
+             * <pre>
+             *  if (C) {
+             *      if (I) { ... } else { ... }
+             *  } else { ... }
+             * </pre>
+             *
+             * The profile data gives probabilities about C ( P(C) ) and about I knowing that C is
+             * true ( P(I|C) ). However when moving I out of C, we are interested in the probability
+             * of I : P(I)=P(I|C)P(C) + P(I|!C)(1-P(C)) but we don't know P(I|!C). We can bound P(I)
+             * by P(I|C)P(C) and P(I|C)P(C) + (1-P(C)) (by respectively taking P(I|!C) equal to 0
+             * and 1).
+             *
+             * This range is proportional to P(C). So when an invariant might be correlated with a
+             * an other condition (i.e. it's success probability is close to 0 or 1), the compiler
+             * only unswitches it if it is executed often. Otherwise if its success probability is
+             * close to 0.5, it is probably uncorrelated and can safely be unswitched.
+             *
+             * This is the idea behind the following heuristic. {@link factor} is 0 for control
+             * split with success probabilities close to 1 or 0 and 1 for evenly distributed splits.
+             *
+             * The initial value of {@link factor} is computed such that if all the successor
+             * probabilities are equals (i.e. 1 / successorCount) then its final value is 1 and the
+             * its inverted and capped value is close to 0 meaning that the invariant can have any
+             * frequency and it will be unswitched. On the other hand when one of the successor
+             * probabilities is close to 0 then factor will be close to 0 and so its inverted and
+             * capped version will be closed to 1 meaning that for the invariant to be unswitched it
+             * must be executed often.
+             *
+             * Let's consider the following program with a probability of 0.1 for the null check.
+             * The initial value of factor is 2^(2*1) = 4 and its final value is 4 * 0.9 * 0.1 =
+             * 0.36. Then its inverted and capped value is 1 - 0.36 = 0.64 meaning that for this
+             * invariant to be unswitched it must be used during more that 64% of the loop's
+             * iterations.
              *
              * <pre>
              *  Object o = [...];
@@ -452,40 +553,6 @@ public class DefaultLoopPolicies implements LoopPolicies {
              *      } else { [.2.] }
              *  }
              * </pre>
-             *
-             * The hottest path goes trough the block 1 and as the invariant is computed frequently
-             * we can be confident that it is most of the time true. Thus after unswitching it:
-             *
-             * <pre>
-             *  Object o = [...];
-             *  if (o == null) {
-             *      for (int i = 0; i < 1000; ++i) {
-             *          if (very_likely(i)) { Deop } else { [.2.] }
-             *      }
-             *  } else {
-             *      for (int i = 0; i < 1000; ++i) {
-             *          if (very_likely(i)) { [.1.] } else { [.2.] }
-             *      }
-             *  }
-             * </pre>
-             *
-             * The hottest path still goes through block [.1.].
-             *
-             * On the other hand when an invariant is not frequently computed, it is possible that
-             * it is not independent from outer conditions. This can specially happens for guards,
-             * as usually programmers avoid null pointer exceptions but the compiler cannot check
-             * that it will not happen. Thus their profile data might not be correct after
-             * unswitching and so it might change the hottest path.
-             *
-             * The initial value of factor is computed such that if all the successor probabilities
-             * are equals (i.e. 1 / successorCount) then its final value is 1 and the its inverted
-             * and capped value is close to 0 meaning that the invariant can have any frequency and
-             * it will be unswitched.
-             *
-             * Let's consider the previous program with a probability of 0.1 for the null check. The
-             * initial value of factor is 2^(2*1) = 4 and its final value is 4 * 0.9 * 0.1 = 0.36.
-             * Then its inverted and capped value is 1 - 0.36 = 0.64 meaning that for this invariant
-             * to be unswitched is must be computed during more that 64% of the loop's iterations.
              */
             double factor = Math.pow(split.get(0).getSuccessorCount(), split.get(0).getSuccessorCount() * split.size());
             for (ControlSplitNode s : split) {

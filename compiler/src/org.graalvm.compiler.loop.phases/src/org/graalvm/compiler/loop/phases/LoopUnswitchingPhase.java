@@ -27,12 +27,14 @@ package org.graalvm.compiler.loop.phases;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
@@ -59,7 +61,7 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
                 for (LoopEx loop : dataUnswitch.outerFirst()) {
                     if (canUnswitch(loop)) {
                         if (getPolicies().shouldTryUnswitch(loop)) {
-                            List<List<ControlSplitNode>> controlSplits = LoopTransformations.findUnswitchable(loop);
+                            EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits = LoopTransformations.findUnswitchable(loop);
                             UNSWITCH_CANDIDATES.increment(debug);
                             UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
                             if (decision.shouldUnswitch()) {

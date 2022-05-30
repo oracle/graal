@@ -26,7 +26,9 @@ package org.graalvm.compiler.nodes.loop;
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.nodes.ControlSplitNode;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
@@ -95,5 +97,12 @@ public interface LoopPolicies {
         }
     }
 
-    UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits);
+    /**
+     * Decide which control split invariant should be unswitched in the given loop.
+     *
+     * @param loop the loop to unswitch.
+     * @param controlSplits the invariant grouped by their condition.
+     * @return the decision to unswitch or not.
+     */
+    UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits);
 }

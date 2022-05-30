@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.test;
 
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
@@ -34,6 +35,7 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopEx;
@@ -251,8 +253,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // Only the switch is unswitched
         test("test3Snippet", "reference3SwitchSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
-                for (List<ControlSplitNode> nodes : controlSplits) {
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+                for (List<ControlSplitNode> nodes : controlSplits.getValues()) {
                     Assert.assertEquals(1, nodes.size());
                     if (nodes.get(0) instanceof SwitchNode) {
                         return UnswitchingDecision.yes(nodes);
@@ -268,8 +270,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // Only the if is unswitched
         test("test3Snippet", "reference3IfSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
-                for (List<ControlSplitNode> nodes : controlSplits) {
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
+                for (List<ControlSplitNode> nodes : controlSplits.getValues()) {
                     Assert.assertEquals(1, nodes.size());
                     if (nodes.get(0) instanceof IfNode) {
                         return UnswitchingDecision.yes(nodes);
@@ -285,16 +287,21 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // First the if is unswitched then the switch
         test("test3Snippet", "reference3IfSwitchSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
                 if (controlSplits.size() == 2) {
-                    Assert.assertEquals(1, controlSplits.get(0).size());
-                    Assert.assertEquals(1, controlSplits.get(1).size());
-
-                    return UnswitchingDecision.yes(controlSplits.get(0).get(0) instanceof IfNode ? controlSplits.get(0) : controlSplits.get(1));
+                    for (List<ControlSplitNode> split : controlSplits.getValues()) {
+                        Assert.assertEquals(1, split.size());
+                        if (split.get(0) instanceof IfNode) {
+                            return UnswitchingDecision.yes(split);
+                        }
+                    }
+                    Assert.fail();
+                    return null;
                 } else if (controlSplits.size() == 1) {
-                    Assert.assertEquals(1, controlSplits.get(0).size());
-                    Assert.assertTrue(controlSplits.get(0).get(0) instanceof SwitchNode);
-                    return UnswitchingDecision.yes(controlSplits.get(0));
+                    List<ControlSplitNode> split = controlSplits.getValues().iterator().next();
+                    Assert.assertEquals(1, split.size());
+                    Assert.assertTrue(split.get(0) instanceof SwitchNode);
+                    return UnswitchingDecision.yes(split);
                 } else {
                     return UnswitchingDecision.NO;
                 }
@@ -307,16 +314,21 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         // First the switch is unswitched then the if
         test("test3Snippet", "reference3SwitchIfSnippet", new DefaultLoopPolicies() {
             @Override
-            public UnswitchingDecision shouldUnswitch(LoopEx loop, List<List<ControlSplitNode>> controlSplits) {
+            public UnswitchingDecision shouldUnswitch(LoopEx loop, EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits) {
                 if (controlSplits.size() == 2) {
-                    Assert.assertEquals(1, controlSplits.get(0).size());
-                    Assert.assertEquals(1, controlSplits.get(1).size());
-
-                    return UnswitchingDecision.yes(controlSplits.get(0).get(0) instanceof SwitchNode ? controlSplits.get(0) : controlSplits.get(1));
+                    for (List<ControlSplitNode> split : controlSplits.getValues()) {
+                        Assert.assertEquals(1, split.size());
+                        if (split.get(0) instanceof SwitchNode) {
+                            return UnswitchingDecision.yes(split);
+                        }
+                    }
+                    Assert.fail();
+                    return null;
                 } else if (controlSplits.size() == 1) {
-                    Assert.assertEquals(1, controlSplits.get(0).size());
-                    Assert.assertTrue(controlSplits.get(0).get(0) instanceof IfNode);
-                    return UnswitchingDecision.yes(controlSplits.get(0));
+                    List<ControlSplitNode> split = controlSplits.getValues().iterator().next();
+                    Assert.assertEquals(1, split.size());
+                    Assert.assertTrue(split.get(0) instanceof IfNode);
+                    return UnswitchingDecision.yes(split);
                 } else {
                     return UnswitchingDecision.NO;
                 }

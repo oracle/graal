@@ -721,9 +721,9 @@ public abstract class LoopTransformations {
      *
      * @param loop search control split nodes in this loop.
      * @return the unswitchable control split nodes grouped by condition meaning that every control
-     *         split node within the same inner list share the same condition.
+     *         split node within the same inner list share the same condition (the key for the map).
      */
-    public static List<List<ControlSplitNode>> findUnswitchable(LoopEx loop) {
+    public static EconomicMap<ValueNode, List<ControlSplitNode>> findUnswitchable(LoopEx loop) {
         EconomicMap<ValueNode, List<ControlSplitNode>> controls = EconomicMap.create(Equivalence.IDENTITY);
         for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
             if (loop.isOutsideLoop(ifNode.condition())) {
@@ -755,10 +755,7 @@ public abstract class LoopTransformations {
             }
         }
 
-        List<List<ControlSplitNode>> res = new ArrayList<>(controls.size());
-        controls.getValues().forEach(res::add);
-
-        return res;
+        return controls;
     }
 
     public static boolean isUnrollableLoop(LoopEx loop) {
