@@ -77,6 +77,7 @@ import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
+import org.graalvm.compiler.nodes.memory.SideEffectFreeWrite;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
@@ -309,7 +310,8 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
                      * kill or not, after lowering the deleted node no longer has inputs TODO solve
                      * more generically?
                      */
-                    if (!(n instanceof ForeignCall || n instanceof UnreachableBeginNode || node instanceof WithExceptionNode || n instanceof MemoryMapNode || node instanceof CommitAllocationNode) &&
+                    if (!(n instanceof ForeignCall || n instanceof UnreachableBeginNode || node instanceof WithExceptionNode || n instanceof MemoryMapNode || node instanceof CommitAllocationNode ||
+                                    n instanceof SideEffectFreeWrite) &&
                                     MemoryKill.isMemoryKill(n)) {
 
                         // lowered to a kill verify the original node was a kill
