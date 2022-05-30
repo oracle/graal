@@ -24,6 +24,7 @@
  */
 package org.graalvm.bisect.core.optimization;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -45,8 +46,14 @@ public class OptimizationImpl implements Optimization {
         return optimizationName;
     }
 
+    /**
+     * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it
+     * should return a more specific description of the optimization.
+     * 
+     * @return the name of the event that occurred
+     */
     @Override
-    public String getEventName() {
+    public String getName() {
         return eventName;
     }
 
@@ -74,5 +81,10 @@ public class OptimizationImpl implements Optimization {
         OptimizationImpl other = (OptimizationImpl) object;
         return bci == other.bci && optimizationName.equals(other.optimizationName) &&
                 eventName.equals(other.eventName) && Objects.equals(properties, other.properties);
+    }
+
+    @Override
+    public List<OptimizationTreeNode> getChildren() {
+        return List.of();
     }
 }

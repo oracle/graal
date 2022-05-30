@@ -24,9 +24,23 @@
  */
 package org.graalvm.bisect.core.optimization;
 
+import java.util.List;
+
 /**
  * Represents a node in the optimization tree.
  */
 public interface OptimizationTreeNode {
+    /**
+     * Gets the children of this node.
+     * 
+     * @return the children of this node
+     */
+    List<OptimizationTreeNode> getChildren();
 
+    /**
+     * Gets the name of this node.
+     * 
+     * @return the name of this node
+     */
+    String getName();
 }

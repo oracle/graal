@@ -22,15 +22,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.bisect.core.optimization;
+package org.graalvm.bisect.test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-public interface OptimizationPhase extends OptimizationTreeNode {
-    /**
-     * Creates and returns a list of all optimizations performed directly in this phase and indirectly in its subphases,
-     * preserving the order.
-     * @return the list of direct and indirect optimizations
-     */
-    List<Optimization> getOptimizationsRecursive();
+import org.graalvm.bisect.util.ConcatList;
+import org.junit.Test;
+
+public class ConcatListTest {
+    @Test
+    public void concat() {
+        ConcatList<Integer> foo = new ConcatList<>();
+        foo.add(1);
+        ConcatList<Integer> bar = new ConcatList<>();
+        bar.add(2);
+        foo.concat(bar);
+        assertEquals(List.of(1, 2), foo.toList());
+        assertTrue(bar.isEmpty());
+    }
+
+    @Test
+    public void concatEmpty() {
+        ConcatList<Integer> foo = new ConcatList<>();
+        ConcatList<Integer> bar = new ConcatList<>();
+        bar.add(1);
+        bar.add(2);
+        foo.concat(bar);
+        assertEquals(List.of(1, 2), foo.toList());
+        assertTrue(bar.isEmpty());
+    }
+
+    @Test
+    public void concatWithEmpty() {
+        ConcatList<Integer> foo = new ConcatList<>();
+        ConcatList<Integer> bar = new ConcatList<>();
+        foo.add(1);
+        foo.add(2);
+        foo.concat(bar);
+        assertEquals(List.of(1, 2), foo.toList());
+        assertTrue(bar.isEmpty());
+    }
 }

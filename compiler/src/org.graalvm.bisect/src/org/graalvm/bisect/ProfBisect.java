@@ -33,13 +33,9 @@ import org.graalvm.bisect.matching.method.GreedyMethodMatcher;
 import org.graalvm.bisect.matching.method.MatchedExecutedMethod;
 import org.graalvm.bisect.matching.method.MatchedMethod;
 import org.graalvm.bisect.matching.method.MethodMatching;
-import org.graalvm.bisect.matching.tree.FlatTreeMatcher;
+import org.graalvm.bisect.matching.tree.SelkowTreeMatcher;
 import org.graalvm.bisect.matching.tree.TreeMatcher;
 import org.graalvm.bisect.matching.tree.TreeMatching;
-import org.graalvm.bisect.parser.experiment.ExperimentFiles;
-import org.graalvm.bisect.parser.experiment.ExperimentFilesImpl;
-import org.graalvm.bisect.parser.experiment.ExperimentParser;
-import org.graalvm.bisect.parser.experiment.ExperimentParserException;
 import org.graalvm.bisect.parser.args.ArgumentParser;
 import org.graalvm.bisect.parser.args.DoubleArgument;
 import org.graalvm.bisect.parser.args.IntegerArgument;
@@ -47,6 +43,10 @@ import org.graalvm.bisect.parser.args.InvalidArgumentException;
 import org.graalvm.bisect.parser.args.MissingArgumentException;
 import org.graalvm.bisect.parser.args.StringArgument;
 import org.graalvm.bisect.parser.args.UnknownArgumentException;
+import org.graalvm.bisect.parser.experiment.ExperimentFiles;
+import org.graalvm.bisect.parser.experiment.ExperimentFilesImpl;
+import org.graalvm.bisect.parser.experiment.ExperimentParser;
+import org.graalvm.bisect.parser.experiment.ExperimentParserException;
 import org.graalvm.bisect.util.StdoutWriter;
 import org.graalvm.bisect.util.Writer;
 
@@ -118,7 +118,7 @@ public class ProfBisect {
 
         GreedyMethodMatcher matcher = new GreedyMethodMatcher();
         MethodMatching matching = matcher.match(experiment1, experiment2);
-        TreeMatcher treeMatcher = new FlatTreeMatcher();
+        TreeMatcher treeMatcher = new SelkowTreeMatcher();
 
         for (MatchedMethod matchedMethod : matching.getMatchedMethods()) {
             matchedMethod.writeSummary(writer, experiment1, experiment2);

@@ -41,13 +41,6 @@ public interface Optimization extends OptimizationTreeNode {
     String getOptimizationName();
 
     /**
-     * Gets the name of the event that occurred. Compared to {@link #getOptimizationName()}, it should return a more
-     * specific description of the optimization.
-     * @return the name of the event that occurred
-     */
-    String getEventName();
-
-    /**
      * Gets the map of additional properties of this optimization, mapped by the name of the property.
      * @return the map of additional properties
      */
@@ -73,7 +66,7 @@ public interface Optimization extends OptimizationTreeNode {
     static void writeOptimizations(Writer writer, List<Optimization> optimizations) {
         for (Optimization optimization : optimizations) {
             writer.writeln(optimization.getOptimizationName() + " "
-                    + optimization.getEventName() + " at bci " + optimization.getBCI());
+                            + optimization.getName() + " at bci " + optimization.getBCI());
             if (optimization.getProperties() == null) {
                 return;
             }

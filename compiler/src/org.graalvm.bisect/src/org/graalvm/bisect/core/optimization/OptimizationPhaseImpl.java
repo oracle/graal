@@ -26,9 +26,7 @@ package org.graalvm.bisect.core.optimization;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
@@ -48,11 +46,21 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
         children.add(optimizationTreeNode);
     }
 
+    /**
+     * Gets the name of the optimization phase.
+     * 
+     * @return the name of the optimization phase
+     */
     @Override
     public String getName() {
         return name;
     }
 
+    /**
+     * Gets the list of optimization phases triggered inside this phase.
+     * 
+     * @return the list of phases triggered by this phase
+     */
     @Override
     public List<OptimizationTreeNode> getChildren() {
         if (children == null) {
@@ -69,7 +77,7 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
         while (!stack.isEmpty()) {
             OptimizationTreeNode treeNode = stack.pop();
             if (treeNode instanceof OptimizationPhase) {
-                List<OptimizationTreeNode> children = ((OptimizationPhase) treeNode).getChildren();
+                List<OptimizationTreeNode> children = treeNode.getChildren();
                 ListIterator<OptimizationTreeNode> iterator = children.listIterator(children.size());
                 while (iterator.hasPrevious()) {
                     stack.push(iterator.previous());
