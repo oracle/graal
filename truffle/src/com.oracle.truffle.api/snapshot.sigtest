@@ -1061,7 +1061,7 @@ meth public com.oracle.truffle.api.nodes.Node get()
 meth public com.oracle.truffle.api.nodes.Node set(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.EncapsulatingNodeReference getCurrent()
 supr java.lang.Object
-hfds CURRENT,reference,thread
+hfds CURRENT,reference,seenNullContext,thread
 
 CLSS public abstract com.oracle.truffle.api.nodes.ExecutableNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
