@@ -99,9 +99,10 @@ public final class InternalByteArray {
     }
 
     /**
-     * Read the byte at {@code array[offset + index]} and return it as a byte (offset is a logical index into the string).
-     * Consider using {@link TruffleString.ReadByteNode} (and {@link TruffleString.MaterializeNode} before) instead if
-     * not needing the byte[] for other purposes, as that will avoid extra copying if the string is stored in native memory.
+     * Read the byte at {@code array[offset + index]} and return it as a byte (offset is a logical
+     * index into the string). Consider using {@link TruffleString.ReadByteNode} (and
+     * {@link TruffleString.MaterializeNode} before) instead if not needing the byte[] for other
+     * purposes, as that will avoid extra copying if the string is stored in native memory.
      *
      * @since 22.2
      */
