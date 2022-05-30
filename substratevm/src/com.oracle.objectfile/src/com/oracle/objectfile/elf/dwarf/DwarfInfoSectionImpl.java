@@ -1214,8 +1214,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeArraySuperReference(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /* Arrays all inherit from java.lang.Object */
-        String superName = "java.lang.Object";
-        TypeEntry objectType = lookupType(superName);
+        TypeEntry objectType = lookupObjectClass();
+        String superName = objectType.getTypeName();
+        assert objectType != null;
         assert objectType instanceof ClassEntry;
         int superOffset = getLayoutIndex((ClassEntry) objectType);
         return writeSuperReference(context, superOffset, superName, buffer, pos);

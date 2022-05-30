@@ -98,7 +98,7 @@ public abstract class DebugInfoBase {
     /**
      * index of already seen classes.
      */
-    private Map<String, TypeEntry> typesIndex = new HashMap<>();
+    private Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
     /**
      * List of class entries detailing class info for primary ranges.
      */
@@ -107,6 +107,10 @@ public abstract class DebugInfoBase {
      * index of already seen classes.
      */
     private Map<ResolvedJavaType, ClassEntry> primaryClassesIndex = new HashMap<>();
+    /**
+     * Handle on class entry for java.lang.Object.
+     */
+    private ClassEntry objectClass;
     /**
      * Index of files which contain primary or secondary ranges.
      */
@@ -213,6 +217,7 @@ public abstract class DebugInfoBase {
 
         /* Create all the types. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
+            ResolvedJavaType idType = debugTypeInfo.idType();
             String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
             typeName = stringTable.uniqueDebugString(typeName);
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
@@ -222,16 +227,17 @@ public abstract class DebugInfoBase {
             String fileName = debugTypeInfo.fileName();
             Path filePath = debugTypeInfo.filePath();
             Path cachePath = debugTypeInfo.cachePath();
-            addTypeEntry(typeName, fileName, filePath, cachePath, byteSize, typeKind);
+            addTypeEntry(idType, typeName, fileName, filePath, cachePath, byteSize, typeKind);
         }));
 
         /* Now we can cross reference static and instance field details. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
+            ResolvedJavaType idType = debugTypeInfo.idType();
             String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
 
             debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
-            TypeEntry typeEntry = lookupTypeEntry(typeName);
+            TypeEntry typeEntry = lookupTypeEntry(idType);
             typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
         }));
 
@@ -309,12 +315,15 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    private TypeEntry addTypeEntry(String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    private TypeEntry addTypeEntry(ResolvedJavaType idType, String typeName, String fileName, Path filePath, Path cachePath, int size, DebugTypeKind typeKind) {
+        TypeEntry typeEntry = typesIndex.get(idType);
         if (typeEntry == null) {
             typeEntry = createTypeEntry(typeName, fileName, filePath, cachePath, size, typeKind);
             types.add(typeEntry);
-            typesIndex.put(typeName, typeEntry);
+            typesIndex.put(idType, typeEntry);
+            if (typeName.equals("java.lang.Object")) {
+                objectClass = (ClassEntry) typeEntry;
+            }
         } else {
             if (!(typeEntry.isClass())) {
                 assert ((ClassEntry) typeEntry).getFileName().equals(fileName);
@@ -323,20 +332,24 @@ public abstract class DebugInfoBase {
         return typeEntry;
     }
 
-    public TypeEntry lookupTypeEntry(String typeName) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    public TypeEntry lookupTypeEntry(ResolvedJavaType type) {
+        TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null) {
-            throw new RuntimeException("type entry not found " + typeName);
+            throw new RuntimeException("type entry not found " + TypeEntry.canonicalize(type.getName()));
         }
         return typeEntry;
     }
 
-    ClassEntry lookupClassEntry(String typeName) {
-        TypeEntry typeEntry = typesIndex.get(typeName);
+    ClassEntry lookupClassEntry(ResolvedJavaType type) {
+        TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null || !(typeEntry.isClass())) {
-            throw new RuntimeException("class entry not found " + typeName);
+            throw new RuntimeException("class entry not found " + TypeEntry.canonicalize(type.getName()));
         }
         return (ClassEntry) typeEntry;
+    }
+
+    public ClassEntry lookupObjectClass() {
+        return objectClass;
     }
 
     /**
@@ -396,7 +409,7 @@ public abstract class DebugInfoBase {
         /* See if we already have an entry. */
         ClassEntry classEntry = primaryClassesIndex.get(type);
         if (classEntry == null) {
-            TypeEntry typeEntry = typesIndex.get(TypeEntry.canonicalize(type.toJavaName()));
+            TypeEntry typeEntry = typesIndex.get(type);
             assert (typeEntry != null && typeEntry.isClass());
             classEntry = (ClassEntry) typeEntry;
             primaryClasses.add(classEntry);

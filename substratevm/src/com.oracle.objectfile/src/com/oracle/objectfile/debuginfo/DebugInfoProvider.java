@@ -71,7 +71,7 @@ public interface DebugInfoProvider {
     /**
      * An interface implemented by items that can be located in a file.
      */
-    interface DebugFileInfo {
+    public interface DebugFileInfo {
         /**
          * @return the name of the file containing a file element excluding any path.
          */
@@ -90,7 +90,9 @@ public interface DebugInfoProvider {
         Path cachePath();
     }
 
-    interface DebugTypeInfo extends DebugFileInfo {
+    public interface DebugTypeInfo extends DebugFileInfo {
+        ResolvedJavaType idType();
+
         enum DebugTypeKind {
             PRIMITIVE,
             ENUM,
@@ -132,35 +134,35 @@ public interface DebugInfoProvider {
         int size();
     }
 
-    interface DebugInstanceTypeInfo extends DebugTypeInfo {
+    public interface DebugInstanceTypeInfo extends DebugTypeInfo {
         int headerSize();
 
         Stream<DebugFieldInfo> fieldInfoProvider();
 
         Stream<DebugMethodInfo> methodInfoProvider();
 
-        String superName();
+        ResolvedJavaType superClass();
 
-        Stream<String> interfaces();
+        Stream<ResolvedJavaType> interfaces();
     }
 
-    interface DebugEnumTypeInfo extends DebugInstanceTypeInfo {
+    public interface DebugEnumTypeInfo extends DebugInstanceTypeInfo {
     }
 
-    interface DebugInterfaceTypeInfo extends DebugInstanceTypeInfo {
+    public interface DebugInterfaceTypeInfo extends DebugInstanceTypeInfo {
     }
 
-    interface DebugArrayTypeInfo extends DebugTypeInfo {
+    public interface DebugArrayTypeInfo extends DebugTypeInfo {
         int baseSize();
 
         int lengthOffset();
 
-        String elementType();
+        ResolvedJavaType elementType();
 
         Stream<DebugFieldInfo> fieldInfoProvider();
     }
 
-    interface DebugPrimitiveTypeInfo extends DebugTypeInfo {
+    public interface DebugPrimitiveTypeInfo extends DebugTypeInfo {
         /*
          * NUMERIC excludes LOGICAL types boolean and void
          */
@@ -181,27 +183,27 @@ public interface DebugInfoProvider {
         int flags();
     }
 
-    interface DebugHeaderTypeInfo extends DebugTypeInfo {
+    public interface DebugHeaderTypeInfo extends DebugTypeInfo {
 
         Stream<DebugFieldInfo> fieldInfoProvider();
     }
 
-    interface DebugMemberInfo extends DebugFileInfo {
+    public interface DebugMemberInfo extends DebugFileInfo {
 
         String name();
 
-        String valueType();
+        ResolvedJavaType valueType();
 
         int modifiers();
     }
 
-    interface DebugFieldInfo extends DebugMemberInfo {
+    public interface DebugFieldInfo extends DebugMemberInfo {
         int offset();
 
         int size();
     }
 
-    interface DebugMethodInfo extends DebugMemberInfo {
+    public interface DebugMethodInfo extends DebugMemberInfo {
         /**
          * @return an array of DebugLocalInfo objects holding details of this method's parameters
          */
@@ -256,7 +258,7 @@ public interface DebugInfoProvider {
      * Access details of a compiled top level or inline method producing the code in a specific
      * {@link com.oracle.objectfile.debugentry.Range}.
      */
-    interface DebugRangeInfo extends DebugMethodInfo {
+    public interface DebugRangeInfo extends DebugMethodInfo {
 
         /**
          * @return the lowest address containing code generated for an outer or inlined code segment
@@ -280,7 +282,7 @@ public interface DebugInfoProvider {
     /**
      * Access details of a specific compiled method.
      */
-    interface DebugCodeInfo extends DebugRangeInfo {
+    public interface DebugCodeInfo extends DebugRangeInfo {
         void debugContext(Consumer<DebugContext> action);
 
         /**
@@ -304,7 +306,7 @@ public interface DebugInfoProvider {
     /**
      * Access details of a specific heap object.
      */
-    interface DebugDataInfo {
+    public interface DebugDataInfo {
         void debugContext(Consumer<DebugContext> action);
 
         String getProvenance();
@@ -324,7 +326,7 @@ public interface DebugInfoProvider {
      * Access details of code generated for a specific outer or inlined method at a given line
      * number.
      */
-    interface DebugLocationInfo extends DebugRangeInfo {
+    public interface DebugLocationInfo extends DebugRangeInfo {
         /**
          * @return the {@link DebugLocationInfo} of the nested inline caller-line
          */
@@ -341,7 +343,9 @@ public interface DebugInfoProvider {
      * A DebugLocalInfo details a local or parameter variable recording its name and type, the
      * (abstract machine) local slot index it resides in and the number of slots it occupies.
      */
-    interface DebugLocalInfo {
+    public interface DebugLocalInfo {
+        ResolvedJavaType valueType();
+
         String name();
 
         String typeName();
@@ -360,7 +364,7 @@ public interface DebugInfoProvider {
      * frame. The value may be undefined. If not then the instance records its type and either its
      * (constant) value or the register or stack location in which the value resides.
      */
-    interface DebugLocalValueInfo extends DebugLocalInfo {
+    public interface DebugLocalValueInfo extends DebugLocalInfo {
         enum LocalKind {
             UNDEFINED,
             REGISTER,
@@ -379,7 +383,7 @@ public interface DebugInfoProvider {
         JavaConstant constantValue();
     }
 
-    interface DebugFrameSizeChange {
+    public interface DebugFrameSizeChange {
         enum Type {
             EXTEND,
             CONTRACT

@@ -40,6 +40,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
@@ -607,8 +608,12 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return dwarfSections.uniqueDebugString(str);
     }
 
-    protected TypeEntry lookupType(String typeName) {
-        return dwarfSections.lookupTypeEntry(typeName);
+    protected TypeEntry lookupType(ResolvedJavaType type) {
+        return dwarfSections.lookupTypeEntry(type);
+    }
+
+    protected TypeEntry lookupObjectClass() {
+        return dwarfSections.lookupObjectClass();
     }
 
     protected int getTypeIndex(String typeName) {

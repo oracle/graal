@@ -29,6 +29,7 @@ package com.oracle.objectfile.debugentry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugArrayTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 public class ArrayTypeEntry extends StructureTypeEntry {
@@ -48,13 +49,13 @@ public class ArrayTypeEntry extends StructureTypeEntry {
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
         DebugArrayTypeInfo debugArrayTypeInfo = (DebugArrayTypeInfo) debugTypeInfo;
-        String elementTypeName = TypeEntry.canonicalize(debugArrayTypeInfo.elementType());
-        this.elementType = debugInfoBase.lookupTypeEntry(elementTypeName);
+        ResolvedJavaType eltType = debugArrayTypeInfo.elementType();
+        this.elementType = debugInfoBase.lookupTypeEntry(eltType);
         this.baseSize = debugArrayTypeInfo.baseSize();
         this.lengthOffset = debugArrayTypeInfo.lengthOffset();
         /* Add details of fields and field types */
         debugArrayTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        debugContext.log("typename %s element type %s base size %d length offset %d\n", typeName, elementTypeName, baseSize, lengthOffset);
+        debugContext.log("typename %s element type %s base size %d length offset %d\n", typeName, this.elementType.getTypeName(), baseSize, lengthOffset);
     }
 
     public TypeEntry getElementType() {

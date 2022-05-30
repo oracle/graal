@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
@@ -130,15 +131,18 @@ public class ClassEntry extends StructureTypeEntry {
         assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
-        String superName = debugInstanceTypeInfo.superName();
-        if (superName != null) {
-            superName = TypeEntry.canonicalize(superName);
+        ResolvedJavaType superClass = debugInstanceTypeInfo.superClass();
+        String superName;
+        if (superClass != null) {
+            superName = TypeEntry.canonicalize(superClass.toJavaName());
+        } else {
+            superName = "";
         }
         debugContext.log("typename %s adding super %s\n", typeName, superName);
-        if (superName != null) {
-            this.superClass = debugInfoBase.lookupClassEntry(superName);
+        if (superClass != null) {
+            this.superClass = debugInfoBase.lookupClassEntry(superClass);
         }
-        debugInstanceTypeInfo.interfaces().forEach(interfaceName -> processInterface(interfaceName, debugInfoBase, debugContext));
+        debugInstanceTypeInfo.interfaces().forEach(interfaceType -> processInterface(interfaceType, debugInfoBase, debugContext));
         /* Add details of fields and field types */
         debugInstanceTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
         /* Add details of methods and method types */
@@ -273,9 +277,10 @@ public class ClassEntry extends StructureTypeEntry {
         return "";
     }
 
-    private void processInterface(String interfaceName, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+    private void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
+        String interfaceName = interfaceType.toJavaName();
         debugContext.log("typename %s adding interface %s\n", typeName, interfaceName);
-        ClassEntry entry = debugInfoBase.lookupClassEntry(TypeEntry.canonicalize(interfaceName));
+        ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
         assert entry instanceof InterfaceClassEntry;
         InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
         interfaces.add(interfaceClassEntry);
@@ -284,17 +289,18 @@ public class ClassEntry extends StructureTypeEntry {
 
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String methodName = debugMethodInfo.name();
-        String resultTypeName = TypeEntry.canonicalize(debugMethodInfo.valueType());
+        ResolvedJavaType resultType = debugMethodInfo.valueType();
+        String resultTypeName = TypeEntry.canonicalize(resultType.toJavaName());
         int modifiers = debugMethodInfo.modifiers();
         DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
         int paramCount = paramInfos.length;
         debugContext.log("typename %s adding %s method %s %s(%s)\n",
                         typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
-        TypeEntry resultType = debugInfoBase.lookupTypeEntry(resultTypeName);
+        TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
         for (int i = 0; i < paramCount; i++) {
-            typeEntries[i] = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramInfos[i].typeName()));
+            typeEntries[i] = debugInfoBase.lookupTypeEntry(paramInfos[i].valueType());
         }
         /*
          * n.b. the method file may differ from the owning class file when the method is a
@@ -302,7 +308,7 @@ public class ClassEntry extends StructureTypeEntry {
          */
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
-                        this, resultType, typeEntries, paramInfos, thisParam);
+                        this, resultTypeEntry, typeEntries, paramInfos, thisParam);
         indexMethodEntry(methodEntry);
 
         return methodEntry;
