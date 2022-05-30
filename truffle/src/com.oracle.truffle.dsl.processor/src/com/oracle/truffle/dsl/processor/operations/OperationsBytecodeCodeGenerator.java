@@ -255,6 +255,8 @@ public class OperationsBytecodeCodeGenerator {
                                 context.getDeclaredType("com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind"), "MERGE_EXPLODE")));
             }
 
+            mContinueAt.addAnnotationMirror(new CodeAnnotationMirror(context.getDeclaredType("com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch")));
+
             CodeTreeBuilder b = mContinueAt.getBuilder();
 
             CodeVariableElement varSp = new CodeVariableElement(context.getType(int.class), "sp");

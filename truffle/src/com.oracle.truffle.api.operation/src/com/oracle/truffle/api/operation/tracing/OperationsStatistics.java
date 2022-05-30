@@ -121,7 +121,7 @@ public class OperationsStatistics {
         public void writeDecisions() throws IOException {
             setNames();
             EnabledExecutionTracer tracer = collect();
-            try (FileChannel ch = FileChannel.open(Path.of(decisionsFile), StandardOpenOption.WRITE)) {
+            try (FileChannel ch = FileChannel.open(Path.of(decisionsFile), StandardOpenOption.WRITE, StandardOpenOption.CREATE)) {
                 JSONArray result = tracer.serializeDecisions(this);
                 ch.truncate(0);
                 ch.write(ByteBuffer.wrap(result.toString(4).getBytes(StandardCharsets.UTF_8)));

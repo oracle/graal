@@ -2,6 +2,7 @@ package com.oracle.truffle.dsl.processor.operations.instructions;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
@@ -70,7 +71,9 @@ public class QuickenedInstruction extends CustomInstruction {
                 }
             }
 
-            List<String> realSpecNames = data.getNodeData().getSpecializations().stream().map(x -> x.getId()).toList();
+            List<String> realSpecNames = data.getNodeData().getSpecializations().stream()//
+                            .map(x -> x.getId()) //
+                            .collect(Collectors.toUnmodifiableList());
             data.addWarning("Invalid specialization id '%s' for operation %s. Expected one of %s.", activeSpec, data.getName(), realSpecNames);
             hasErrors = true;
         }

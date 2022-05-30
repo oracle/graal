@@ -116,21 +116,6 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             opData.redirectMessagesOnGeneratedElements(data);
         }
 
-        // find and bind all sc operations
-        List<AnnotationMirror> scOperations = ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation);
-        for (AnnotationMirror mir : scOperations) {
-            SingleOperationData opData = new SingleOperationParser(data, mir, true).parse(null, null);
-            if (opData == null) {
-                data.addError(mir, ElementUtils.getAnnotationValue(mir, "name"), "Clould not proxy short circuit operation");
-                continue;
-            }
-
-            data.addOperationData(opData);
-            opData.redirectMessages(data);
-            opData.redirectMessagesOnGeneratedElements(data);
-            opData.setShortCircuitContinueWhen((boolean) ElementUtils.getAnnotationValue(mir, "continueWhen").getValue());
-        }
-
         // find and bind all inner declared operations
         for (TypeElement inner : operationTypes) {
             if (ElementUtils.findAnnotationMirror(inner, types.Operation) == null) {
@@ -146,6 +131,21 @@ public class OperationsParser extends AbstractParser<OperationsData> {
             }
 
             opData.redirectMessagesOnGeneratedElements(data);
+        }
+
+        // find and bind all sc operations
+        List<AnnotationMirror> scOperations = ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation);
+        for (AnnotationMirror mir : scOperations) {
+            SingleOperationData opData = new SingleOperationParser(data, mir, true).parse(null, null);
+            if (opData == null) {
+                data.addError(mir, ElementUtils.getAnnotationValue(mir, "name"), "Clould not proxy short circuit operation");
+                continue;
+            }
+
+            data.addOperationData(opData);
+            opData.redirectMessages(data);
+            opData.redirectMessagesOnGeneratedElements(data);
+            opData.setShortCircuitContinueWhen((boolean) ElementUtils.getAnnotationValue(mir, "continueWhen").getValue());
         }
 
         if (opProxies.isEmpty() && operationTypes.isEmpty()) {

@@ -232,6 +232,7 @@ public class TruffleTypes {
     public static final String BuilderSourceInfo_Name = "com.oracle.truffle.api.operation.BuilderSourceInfo";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String GenerateOperations_Metadata_Name = "com.oracle.truffle.api.operation.GenerateOperations.Metadata";
+    public static final String InterpreterLocal_Name = "com.oracle.truffle.api.operation.InterpreterLocal";
     public static final String MetadataKey_Name = "com.oracle.truffle.api.operation.MetadataKey";
     public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
     public static final String OperationBytecodeNode_Name = "com.oracle.truffle.api.operation.OperationBuilder.BytecodeNode";
@@ -254,6 +255,7 @@ public class TruffleTypes {
     public final DeclaredType BuilderSourceInfo = c.getDeclaredTypeOptional(BuilderSourceInfo_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
     public final DeclaredType GenerateOperations_Metadata = c.getDeclaredTypeOptional(GenerateOperations_Metadata_Name);
+    public final DeclaredType InterpreterLocal = c.getDeclaredTypeOptional(InterpreterLocal_Name);
     public final DeclaredType MetadataKey = c.getDeclaredTypeOptional(MetadataKey_Name);
     public final DeclaredType Operation = c.getDeclaredTypeOptional(Operation_Name);
     public final DeclaredType OperationBytecodeNode = c.getDeclaredTypeOptional(OperationBytecodeNode_Name);

@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
@@ -202,7 +203,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         });
 
-        if (proxyMirror == null) {
+        if (proxyMirror == null || isShortCircuit) {
             clonedType.setSuperClass(types.Node);
         }
 
@@ -376,6 +377,6 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                         .filter(x -> x instanceof ExecutableElement) //
                         .map(x -> (ExecutableElement) x) //
                         .filter(this::isSpecializationFunction) //
-                        .toList();
+                        .collect(Collectors.toUnmodifiableList());
     }
 }
