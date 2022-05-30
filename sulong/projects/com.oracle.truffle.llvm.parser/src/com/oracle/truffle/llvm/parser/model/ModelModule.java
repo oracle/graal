@@ -48,9 +48,9 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class ModelModule {
 
-    // when running with Polyglot it can be that there is no layout available - we fall back to this
-    // one.
-    private static final String defaultLayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f16:16:16-f32:32:32-f64:64:64-f128:128:128";
+    // According to the LLVM documentation (https://llvm.org/docs/LangRef.html#data-layout), below
+    // is the default datalayout
+    public static final String defaultLayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f16:16:16-f32:32:32-f64:64:64-f128:128:128";
 
     private final ArrayList<Type> types = new ArrayList<>();
     private final ArrayList<GlobalVariable> globalVariables = new ArrayList<>();

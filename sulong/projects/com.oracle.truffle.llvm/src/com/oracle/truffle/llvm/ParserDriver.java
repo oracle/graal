@@ -354,7 +354,7 @@ final class ParserDriver {
         ModelModule module = new ModelModule();
         Source source = binaryParserResult.getSource();
         LLVMScanner.parseBitcode(binaryParserResult.getBitcode(), module, source);
-        DataLayout targetDataLayout = new DataLayout(module.getTargetDataLayout());
+        DataLayout targetDataLayout = new DataLayout(module.getTargetDataLayout(), ModelModule.defaultLayout);
         verifyBitcodeSource(source, targetDataLayout, getTargetTriple(module));
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
         // Create a new public file scope to be returned inside sulong library.
