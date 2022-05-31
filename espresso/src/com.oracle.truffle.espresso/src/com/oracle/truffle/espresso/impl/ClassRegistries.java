@@ -65,7 +65,7 @@ public final class ClassRegistries {
 
     public ClassRegistries(EspressoContext context) {
         this.context = context;
-        this.bootClassRegistry = new BootClassRegistry(context);
+        this.bootClassRegistry = new BootClassRegistry(context.getClassLoadingEnv().getNewLoaderId());
         this.constraints = new LoadingConstraints(context);
     }
 
@@ -103,7 +103,7 @@ public final class ClassRegistries {
     private ClassRegistry registerRegistry(@JavaType(ClassLoader.class) StaticObject classLoader) {
         assert Thread.holdsLock(weakClassLoaderSet);
         ClassRegistry classRegistry;
-        classRegistry = new GuestClassRegistry(context, classLoader);
+        classRegistry = new GuestClassRegistry(context.getClassLoadingEnv(), classLoader);
         context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY.setHiddenObject(classLoader, classRegistry, true);
         // Register the class loader in the weak set.
         weakClassLoaderSet.add(classLoader);
@@ -138,7 +138,7 @@ public final class ClassRegistries {
 
         ClassRegistry registry = getClassRegistry(classLoader);
         assert registry != null;
-        return registry.findLoadedKlass(type);
+        return registry.findLoadedKlass(context.getClassLoadingEnv(), type);
     }
 
     @TruffleBoundary
@@ -226,7 +226,7 @@ public final class ClassRegistries {
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.loadKlass(type, protectionDomain);
+        return registry.loadKlass(context, type, protectionDomain);
     }
 
     @TruffleBoundary
@@ -238,7 +238,7 @@ public final class ClassRegistries {
     public ObjectKlass defineKlass(Symbol<Type> type, byte[] bytes, StaticObject classLoader, ClassRegistry.ClassDefinitionInfo info) {
         assert classLoader != null;
         ClassRegistry registry = getClassRegistry(classLoader);
-        return registry.defineKlass(type, bytes, info);
+        return registry.defineKlass(context, type, bytes, info);
     }
 
     public BootClassRegistry getBootClassRegistry() {

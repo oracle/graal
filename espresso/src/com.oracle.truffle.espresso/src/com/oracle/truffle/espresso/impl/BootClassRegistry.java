@@ -60,27 +60,28 @@ public final class BootClassRegistry extends ClassRegistry {
 
     private final Map<String, String> packageMap = new ConcurrentHashMap<>();
 
-    public BootClassRegistry(EspressoContext context) {
-        super(context);
+    public BootClassRegistry(long loaderID) {
+        super(loaderID);
     }
 
     @Override
     @SuppressWarnings("try")
-    public Klass loadKlassImpl(Symbol<Type> type) {
+    public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) {
+        ClassLoadingEnv env = context.getClassLoadingEnv();
         if (Types.isPrimitive(type)) {
             return null;
         }
         ClasspathFile classpathFile;
-        try (DebugCloseable scope = BOOT_KLASS_READ.scope(getContext().getTimers())) {
-            classpathFile = getContext().getBootClasspath().readClassFile(type);
+        try (DebugCloseable scope = BOOT_KLASS_READ.scope(env.getTimers())) {
+            classpathFile = context.getBootClasspath().readClassFile(type);
             if (classpathFile == null) {
                 return null;
             }
         }
         // Defining a class also loads the superclass and the superinterfaces which excludes the
         // use of computeIfAbsent to insert the class since the map is modified.
-        ObjectKlass result = defineKlass(type, classpathFile.contents);
-        getRegistries().recordConstraint(type, result, getClassLoader());
+        ObjectKlass result = defineKlass(context, type, classpathFile.contents);
+        context.getRegistries().recordConstraint(type, result, getClassLoader());
         packageMap.put(result.getRuntimePackage().toString(), classpathFile.classpathEntry.path());
         return result;
     }

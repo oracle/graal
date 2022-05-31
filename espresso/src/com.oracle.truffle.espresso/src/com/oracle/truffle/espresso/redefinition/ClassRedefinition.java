@@ -268,19 +268,19 @@ public final class ClassRedefinition {
                     // otherwise, don't eagerly define the new class
                     Symbol<Symbol.Type> type = context.getTypes().fromName(classInfo.getName());
                     ClassRegistry classRegistry = context.getRegistries().getClassRegistry(classInfo.getClassLoader());
-                    Klass loadedKlass = classRegistry.findLoadedKlass(type);
+                    Klass loadedKlass = classRegistry.findLoadedKlass(context.getClassLoadingEnv(), type);
                     if (loadedKlass != null) {
                         // OK, we have to define the new klass instance and
                         // inject it under the existing JDWP ID
                         classRegistry.onInnerClassRemoved(type);
-                        ObjectKlass newKlass = classRegistry.defineKlass(type, classInfo.getBytes());
-                        assert newKlass != loadedKlass && newKlass == classRegistry.findLoadedKlass(type);
+                        ObjectKlass newKlass = classRegistry.defineKlass(context, type, classInfo.getBytes());
+                        assert newKlass != loadedKlass && newKlass == classRegistry.findLoadedKlass(context.getClassLoadingEnv(), type);
 
                         packet.info.setKlass(newKlass);
                     } else if (classInfo.isNewInnerTestKlass()) {
                         // New inner test classes cannot be loaded because they'll
                         // have a versioned name on disk, so let's define them directly
-                        classRegistry.defineKlass(type, classInfo.getBytes());
+                        classRegistry.defineKlass(context, type, classInfo.getBytes());
                     }
                     return 0;
                 default:
