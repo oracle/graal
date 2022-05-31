@@ -39,6 +39,10 @@ import java.io.PrintStream;
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
+import com.oracle.truffle.llvm.parser.listeners.ParserListener;
+import com.oracle.truffle.llvm.parser.scanner.BitStream;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
 import java.util.Arrays;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -89,12 +93,8 @@ public final class ExtractBitcode {
     public static byte[] getBitcode(BinaryParserResult result) {
         ByteSequence bitcode = result.getBitcode();
         if (result.getLocator() instanceof WindowsLibraryLocator) {
-            int lastpos = bitcode.length();
-            while (bitcode.byteAt(--lastpos) == 0) {
-                // find the position of the last zero
-            }
-            // align the bitcodes to the nearest end of 16 byte block
-            return bitcode.subSequence(0, (lastpos + 16) & ~0x7).toByteArray();
+            long lastpos = LLVMScanner.ToEndScanner.parseToEnd(bitcode);
+            return bitcode.subSequence(0, (int)lastpos).toByteArray();
         } else {
             return bitcode.toByteArray();
         }

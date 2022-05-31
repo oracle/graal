@@ -46,7 +46,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public final class LLVMScanner {
+public class LLVMScanner {
 
     private static final String CHAR6 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._";
 
@@ -70,7 +70,7 @@ public final class LLVMScanner {
 
     private int idSize;
 
-    private long offset;
+    protected long offset;
 
     private LLVMScanner(BitStream bitstream, ParserListener listener) {
         this.bitstream = bitstream;
@@ -106,6 +106,45 @@ public final class LLVMScanner {
         fileParser.exit();
     }
 
+    public static class ToEndScanner extends LLVMScanner {
+        boolean inBlock = false;
+
+        public ToEndScanner(BitStream bitstream) {
+            super(bitstream, null);
+        }
+
+        public static long parseToEnd(ByteSequence bitcode) {
+            final BitStream bitstream = BitStream.create(bitcode);
+            final ToEndScanner scanner = new ToEndScanner(bitstream);
+            final long actualMagicWord = scanner.read(Integer.SIZE);
+            if (actualMagicWord != Magic.BC_MAGIC_WORD.magic) {
+                throw new LLVMParserException("Not a valid Bitcode File!");
+            }
+
+            scanner.scanToEnd();
+            return scanner.offset / Byte.BYTES;
+        }
+
+        @Override
+        protected void enterSubBlock(long blockId, long newIdSize, long numWords) {
+            assert !inBlock;
+            offset += numWords + Integer.SIZE;
+            inBlock = true;
+        }
+
+        @Override
+        protected void exitBlock() {
+            if (!inBlock) {
+                System.out.println("At end of file.");
+            }
+            inBlock = false;
+        }
+
+        @Override
+        protected void unabbreviatedRecord(@SuppressWarnings("unused") RecordBuffer buffer) {
+        }
+    }
+
     private static <V> List<V> subList(List<V> original, int from) {
         final List<V> newList = new ArrayList<>(original.size() - from);
         for (int i = from; i < original.size(); i++) {
@@ -114,7 +153,7 @@ public final class LLVMScanner {
         return newList;
     }
 
-    private long read(int bits) {
+    protected long read(int bits) {
         final long value = bitstream.read(offset, bits);
         offset += bits;
         return value;
@@ -139,47 +178,53 @@ public final class LLVMScanner {
         return value;
     }
 
-    private void scanToEnd() {
+    protected void scanToEnd() {
         scanToOffset(bitstream.size());
+    }
+
+    protected void scan() {
+        final int id = (int) read(idSize);
+
+        switch (id) {
+            case BuiltinIDs.END_BLOCK:
+                onEndBlock();
+                break;
+
+            case BuiltinIDs.ENTER_SUBBLOCK:
+                onEnterSubBlock();
+                break;
+
+            case BuiltinIDs.DEFINE_ABBREV:
+                defineAbbreviation();
+                break;
+
+            case BuiltinIDs.UNABBREV_RECORD:
+                onUnabbreviatedRecord();
+                break;
+
+            default:
+                // custom defined abbreviation
+                onAbbreviatedRecord(id);
+                break;
+        }
     }
 
     private void scanToOffset(long to) {
         while (offset < to) {
-            final int id = (int) read(idSize);
-
-            switch (id) {
-                case BuiltinIDs.END_BLOCK:
-                    exitBlock();
-                    break;
-
-                case BuiltinIDs.ENTER_SUBBLOCK:
-                    enterSubBlock();
-                    break;
-
-                case BuiltinIDs.DEFINE_ABBREV:
-                    defineAbbreviation();
-                    break;
-
-                case BuiltinIDs.UNABBREV_RECORD:
-                    unabbreviatedRecord();
-                    break;
-
-                default:
-                    // custom defined abbreviation
-                    abbreviatedRecord(id);
-                    break;
-            }
+            scan();
         }
     }
 
-    private void abbreviatedRecord(int recordId) {
+    private void onAbbreviatedRecord(int recordId) {
         AbbreviatedRecord[] records = abbreviationDefinitions.get(recordId - BuiltinIDs.CUSTOM_ABBREV_OFFSET);
         for (AbbreviatedRecord record : records) {
             if (record != null) {
                 record.scan(this);
             }
         }
-        passRecordToParser();
+
+        unabbreviatedRecord(recordBuffer);
+        recordBuffer.invalidate();
     }
 
     private void alignInt() {
@@ -340,11 +385,7 @@ public final class LLVMScanner {
         abbreviationDefinitions.add(operandScanners);
     }
 
-    private void enterSubBlock() {
-        final long blockId = read(Primitive.SUBBLOCK_ID);
-        final long newIdSize = read(Primitive.SUBBLOCK_ID_SIZE);
-        alignInt();
-        final long numWords = read(Integer.SIZE);
+    protected void enterSubBlock(long blockId, long newIdSize, long numWords) {
         final long endingOffset = offset + (numWords * Integer.SIZE);
 
         final Block subBlock = Block.lookup(blockId);
@@ -362,6 +403,15 @@ public final class LLVMScanner {
             parser = parser.enter(subBlock);
             startSubBlock(subBlock, (int) newIdSize);
         }
+    }
+
+    private void onEnterSubBlock() {
+        final long blockId = read(Primitive.SUBBLOCK_ID);
+        final long newIdSize = read(Primitive.SUBBLOCK_ID_SIZE);
+        alignInt();
+        final long numWords = read(Integer.SIZE);
+
+        enterSubBlock(blockId, newIdSize, numWords);
     }
 
     private void startSubBlock(Block subBlock, int newIdSize) {
@@ -410,8 +460,7 @@ public final class LLVMScanner {
         }
     }
 
-    private void exitBlock() {
-        alignInt();
+    protected void exitBlock() {
         parser.exit();
 
         if (parents.isEmpty()) {
@@ -430,12 +479,16 @@ public final class LLVMScanner {
         parser = parentState.getParser();
     }
 
-    private void passRecordToParser() {
-        parser.record(recordBuffer);
-        recordBuffer.invalidate();
+    private void onEndBlock() {
+        alignInt();
+        exitBlock();
     }
 
-    private void unabbreviatedRecord() {
+    protected void unabbreviatedRecord(RecordBuffer buffer) {
+        parser.record(buffer);
+    }
+
+    private void onUnabbreviatedRecord() {
         final long recordId = read(Primitive.UNABBREVIATED_RECORD_ID);
         recordBuffer.addOp(recordId);
 
@@ -447,7 +500,9 @@ public final class LLVMScanner {
             op = read(Primitive.UNABBREVIATED_RECORD_OPERAND);
             recordBuffer.addOpNoCheck(op);
         }
-        passRecordToParser();
+
+        unabbreviatedRecord(recordBuffer);
+        recordBuffer.invalidate();
     }
 
     public static final class LazyScanner {
