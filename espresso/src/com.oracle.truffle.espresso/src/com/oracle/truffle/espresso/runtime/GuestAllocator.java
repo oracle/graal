@@ -46,13 +46,13 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * is also available, and provides checks for validating invocations.
  * <p>
  * Note that methods in {@link GuestAllocator} does not perform validating checks, and assumes they
- * have been performed beforehand. This allows profiling in the caller (for example,
- * {@code BytecodeNode#checkNewMultiArray(Klass, int[])}).
+ * have been performed beforehand.
  * <p>
  * Paths that do not require profiling can use the methods in {@link AllocationChecks} to validate
- * the arguments passed to the methods of {@link GuestAllocator}. Additionally, variations of these
- * methods with a {@link AllocationProfiler} argument can be used to simplify the profiling in the
- * caller.
+ * the arguments passed to the methods of {@link GuestAllocator}.
+ * <p>
+ * Additionally, variations of these methods with a {@link AllocationProfiler} argument can be used
+ * to simplify the profiling in the caller (for example, {@code BytecodeNode#allocateMultiArray()}).
  * <p>
  * <p>
  * Methods in this class wil exploit as much as possible the constant-ness of arguments, exploding
@@ -120,17 +120,18 @@ public final class GuestAllocator implements ContextAccess {
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         StaticObject newObj = guestClass.getLinkedKlass().getShape(false).getFactory().create(guestClass);
         initInstanceFields(newObj, guestClass);
-        klass.getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
+
+        getMeta().java_lang_Class_classLoader.setObject(newObj, klass.getDefiningClassLoader());
         if (klass.getContext().getJavaVersion().modulesEnabled()) {
             setModule(newObj, klass);
         }
-        if (klass.isArray() && klass.getMeta().java_lang_Class_componentType != null) {
-            klass.getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
+        if (klass.isArray() && getMeta().java_lang_Class_componentType != null) {
+            getMeta().java_lang_Class_componentType.setObject(newObj, ((ArrayKlass) klass).getComponentType().mirror());
         }
         // Will be overriden if necessary, but should be initialized to non-host null.
-        klass.getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
+        getMeta().HIDDEN_PROTECTION_DOMAIN.setHiddenObject(newObj, StaticObject.NULL);
         // Final hidden field assignment
-        klass.getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
+        getMeta().HIDDEN_MIRROR_KLASS.setHiddenObject(newObj, klass);
         return trackAllocation(klass, newObj);
     }
 
