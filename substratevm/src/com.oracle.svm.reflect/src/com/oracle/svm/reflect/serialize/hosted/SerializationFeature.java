@@ -26,7 +26,6 @@
 package com.oracle.svm.reflect.serialize.hosted;
 
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.capturingClasses;
-import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.warn;
 
 import java.io.Externalizable;
@@ -260,14 +259,8 @@ public class SerializationFeature implements Feature {
         }
     }
 
-    static void println(String str) {
-        System.out.println(str);
-    }
-
     static void warn(String str) {
-        // Checkstyle: stop
-        System.err.println("Warning:" + str);
-        // Checkstyle: resume
+        System.err.println("Warning: " + str);
     }
 }
 
@@ -320,7 +313,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
         boolean denied = deniedClasses.containsKey(clazz);
         if (denied && deniedClasses.get(clazz)) {
             deniedClasses.put(clazz, false); /* Warn only once */
-            println("Warning: Serialization deny list contains " + clazz.getName() + ". Image will not support serialization/deserialization of this class.");
+            warn("Serialization deny list contains " + clazz.getName() + ". Image will not support serialization/deserialization of this class.");
         }
         return !denied;
     }
@@ -468,19 +461,19 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
 
         if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
-            println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
+            warn("Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
             return;
         }
 
         if (denyRegistry.isAllowed(serializationTargetClass)) {
             if (customTargetConstructorClass != null) {
                 if (!customTargetConstructorClass.isAssignableFrom(serializationTargetClass)) {
-                    println("Warning: The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
+                    warn("The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
                                     " is not a superclass of the serialization target " + serializationTargetClass + ".");
                     return;
                 }
                 if (ReflectionUtil.lookupConstructor(true, customTargetConstructorClass) == null) {
-                    println("Warning: The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
+                    warn("The given customTargetConstructorClass " + customTargetConstructorClass.getName() +
                                     " does not declare a parameterless constructor.");
                     return;
                 }
@@ -518,21 +511,10 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         RuntimeReflection.register(serializationTargetClass);
         /*
          * ObjectStreamClass.computeDefaultSUID is always called at runtime to verify serialization
-         * class consistency, so need to register all constructors, methods and fields/
+         * class consistency, so need to register all constructors, methods and fields.
          */
         RuntimeReflection.register(serializationTargetClass.getDeclaredConstructors());
-        registerMethods(serializationTargetClass);
-        registerFields(serializationTargetClass);
-    }
-
-    private static void registerMethods(Class<?> serializationTargetClass) {
         RuntimeReflection.register(serializationTargetClass.getDeclaredMethods());
-        // computeDefaultSUID will be reflectively called at runtime to verify class consistency
-        Method computeDefaultSUID = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "computeDefaultSUID", Class.class);
-        RuntimeReflection.register(computeDefaultSUID);
-    }
-
-    private static void registerFields(Class<?> serializationTargetClass) {
         RuntimeReflection.register(serializationTargetClass.getDeclaredFields());
     }
 
@@ -580,13 +562,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             }
         }
 
-        /*
-         * Using reflection to make sure code is compatible with both JDK 8 and above. Reflectively
-         * call method ReflectionFactory.newConstructorForSerialization(Class) to get the
-         * SerializationConstructorAccessor instance.
-         */
         Constructor<?> targetConstructor;
-        Class<?> targetConstructorClass;
         if (Modifier.isAbstract(serializationTargetClass.getModifiers())) {
             targetConstructor = stubConstructor;
         } else {
@@ -604,7 +580,8 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
                 targetConstructor = newConstructorForSerialization(Object.class, customConstructorToCall);
             }
         }
-        targetConstructorClass = targetConstructor.getDeclaringClass();
+
+        Class<?> targetConstructorClass = targetConstructor.getDeclaringClass();
         serializationSupport.addConstructorAccessor(serializationTargetClass, targetConstructorClass, getConstructorAccessor(targetConstructor));
         return targetConstructorClass;
     }
