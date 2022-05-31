@@ -72,7 +72,6 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
@@ -86,6 +85,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 
 /**
@@ -2507,6 +2507,39 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isMetaObject"})
     public boolean isMetaInstance(Object receiver, Object instance) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver value {@link #isMetaObject(Object) is a metaobject}
+     * which has parents (super types).
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaParents(Object)} must be implemented.
+     *
+     * @param receiver a metaobject
+     * @see #getMetaParents(Object)
+     * @since 22.1
+     */
+    @Abstract(ifExported = {"getMetaParents"})
+    public boolean hasMetaParents(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns a list of metaobjects that are direct parents (super types) of this metaobject.
+     * <p>
+     * The returned object is an {@link #hasArrayElements(Object) array} of objects that return
+     * <code>true</code> from {@link #isMetaObject(Object)}.
+     *
+     * @param receiver a metaobject
+     * @throws UnsupportedMessageException if and only if {@link #hasMetaParents(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #hasMetaParents(Object)
+     * @since 22.1
+     */
+    @Abstract(ifExported = {"hasMetaParents"})
+    public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
