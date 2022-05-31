@@ -43,6 +43,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import java.util.EnumSet;
 import java.util.Objects;
 
 import org.graalvm.compiler.asm.Label;
@@ -59,7 +60,6 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -119,8 +119,9 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     @Temp({REG}) Value[] vectorArray;
 
     private AMD64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, int constOffset, int nValues, LIRGeneratorTool tool,
-                    Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value searchValue1, Value searchValue2, Value searchValue3, Value searchValue4) {
-        super(TYPE, tool, AVXSize.YMM);
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value searchValue1, Value searchValue2,
+                    Value searchValue3, Value searchValue4) {
+        super(TYPE, tool, runtimeCheckedCPUFeatures, AVXSize.YMM);
         this.valueKind = valueKind;
         this.arrayIndexScale = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(valueKind)));
         this.arrayBaseOffset = arrayBaseOffset;
@@ -128,12 +129,12 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         this.withMask = withMask;
         this.constOffset = constOffset;
         this.nValues = nValues;
-        assert 0 < nValues && nValues <= 4;
-        assert valueKind == JavaKind.Byte || valueKind == JavaKind.Char || valueKind == JavaKind.Int;
-        assert supports(tool.target(), CPUFeature.SSE2) || supports(tool.target(), CPUFeature.AVX) || supports(tool.target(), CPUFeature.AVX2);
-        assert !(!withMask && findTwoConsecutive) || nValues == 2;
-        assert !(withMask && findTwoConsecutive) || nValues == 4;
-        assert !(withMask && !findTwoConsecutive) || nValues == 2;
+        GraalError.guarantee(0 < nValues && nValues <= 4, "only 1 - 4 values supported");
+        GraalError.guarantee(valueKind == JavaKind.Byte || valueKind == JavaKind.Char || valueKind == JavaKind.Int, "supported strides are 1, 2 and 4 bytes");
+        GraalError.guarantee(supports(tool.target(), runtimeCheckedCPUFeatures, CPUFeature.SSE2), "needs at least SSE2 support");
+        GraalError.guarantee(!(!withMask && findTwoConsecutive) || nValues == 2, "findTwoConsecutive mode requires exactly 2 search values");
+        GraalError.guarantee(!(withMask && findTwoConsecutive) || nValues == 4, "findTwoConsecutive mode with mask requires exactly 4 search values");
+        GraalError.guarantee(!(withMask && !findTwoConsecutive) || nValues == 2, "with mask mode requires exactly 2 search values");
 
         resultValue = result;
         this.arrayTmp = this.arrayReg = arrayPtr;
@@ -167,7 +168,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
     }
 
     public static AMD64ArrayIndexOfOp movParamsAndCreate(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, LIRGeneratorTool tool,
-                    Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
+                    EnumSet<CPUFeature> runtimeCheckedCPUFeatures, Value result, Value arrayPtr, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
 
         int nValues = searchValues.length;
         RegisterValue regArray = REG_ARRAY.asValue(arrayPtr.getValueKind());
@@ -194,7 +195,7 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             constOffset = -1;
         }
         return new AMD64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, constOffset, nValues, tool,
-                        result, regArray, regOffset, regLength, regFromIndex, regSearchValue1, regSearchValue2, regSearchValue3, regSearchValue4);
+                        runtimeCheckedCPUFeatures, result, regArray, regOffset, regLength, regFromIndex, regSearchValue1, regSearchValue2, regSearchValue3, regSearchValue4);
     }
 
     private boolean useConstantOffset() {
@@ -203,7 +204,6 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm) {
-        TTY.println("INDEXOF: EMITTING " + vectorSize);
         int nVectors = withMask ? 1 : nValues == 1 ? 4 : nValues == 2 ? 2 : 1;
         Register arrayPtr = asRegister(arrayReg);
         Register arrayLength = asRegister(lengthReg);

@@ -76,7 +76,7 @@ public final class AMD64StringUTF16CompressOp extends AMD64ComplexVectorOp {
     @Temp({REG}) private Value rtmp5;
 
     public AMD64StringUTF16CompressOp(LIRGeneratorTool tool, int useAVX3Threshold, Value res, Value src, Value dst, Value len) {
-        super(TYPE, tool, supportsAVX512VLBW(tool.target()) && supports(tool.target(), CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
+        super(TYPE, tool, null, supportsAVX512VLBW(tool.target(), null) && supports(tool.target(), null, CPUFeature.BMI2) ? AVXSize.ZMM : AVXSize.XMM);
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;

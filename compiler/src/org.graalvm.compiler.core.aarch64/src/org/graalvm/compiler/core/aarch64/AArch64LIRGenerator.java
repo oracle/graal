@@ -29,6 +29,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
 
+import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
@@ -503,7 +504,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length1, Value length2) {
+    public Variable emitArrayCompareTo(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value array1, Value array2, Value length1, Value length2) {
         LIRKind resultKind = LIRKind.value(AArch64Kind.DWORD);
         // DMS TODO: check calling conversion and registers used
         RegisterValue res = AArch64.r0.asValue(resultKind);
@@ -518,7 +520,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
                         asAllocatable(array1), null, asAllocatable(array2), null, asAllocatable(length)));
@@ -526,7 +529,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value array1, Value offset1, Value array2, Value offset2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
         append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
                         asAllocatable(array1), asAllocatable(offset1), asAllocatable(array2), asAllocatable(offset2), asAllocatable(length)));
@@ -534,8 +538,8 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex,
-                    Value... searchValues) {
+    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, EnumSet<?> runtimeCheckedCPUFeatures,
+                    Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex, Value... searchValues) {
         if (findTwoConsecutive) {
             GraalError.guarantee(searchValues.length == 2, "findTwoConsecutive requires exactly two search values");
         } else if (searchValues.length > 1) {

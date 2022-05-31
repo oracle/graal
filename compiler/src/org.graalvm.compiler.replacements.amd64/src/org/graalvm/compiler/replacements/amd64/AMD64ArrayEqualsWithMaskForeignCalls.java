@@ -27,6 +27,8 @@ package org.graalvm.compiler.replacements.amd64;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -35,9 +37,10 @@ import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
-
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.replacements.nodes.ForeignCalls;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.JavaKind;
 
 public final class AMD64ArrayEqualsWithMaskForeignCalls {
     private static final ForeignCallDescriptor STUB_REGION_EQUALS_B_S1_S1_S1 = foreignCallDescriptorByteArray("arrayRegionEqualsBS1S1S1");
@@ -87,6 +90,7 @@ public final class AMD64ArrayEqualsWithMaskForeignCalls {
         return ForeignCalls.pureFunctionForeignCallDescriptor(name, boolean.class, byte[].class, long.class, byte[].class, long.class, byte[].class, int.class);
     }
 
+    @SuppressWarnings("unchecked")
     public static ForeignCallDescriptor getStub(AMD64ArrayRegionEqualsWithMaskNode node, LIRGenerator gen) {
         JavaKind strideA = node.getStrideA();
         JavaKind strideB = node.getStrideB();
@@ -96,8 +100,10 @@ public final class AMD64ArrayEqualsWithMaskForeignCalls {
         GraalError.guarantee(-1 <= directStubCallIndex && directStubCallIndex < 9, "invalid direct stub call index");
         if (directStubCallIndex >= 0 && length.isJavaConstant() &&
                         AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(),
+                                        (EnumSet<AMD64.CPUFeature>) node.getRuntimeCheckedCPUFeatures(),
                                         StrideUtil.getConstantStrideA(directStubCallIndex),
-                                        StrideUtil.getConstantStrideB(directStubCallIndex), length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize())) {
+                                        StrideUtil.getConstantStrideB(directStubCallIndex),
+                                        length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize(node.getRuntimeCheckedCPUFeatures()))) {
             // Yield constant-length arrays comparison assembly
             return null;
         }

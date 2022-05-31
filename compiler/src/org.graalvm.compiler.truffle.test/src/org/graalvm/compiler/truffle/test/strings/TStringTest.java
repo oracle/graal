@@ -135,12 +135,12 @@ public abstract class TStringTest extends MethodSubstitutionTest {
 
     protected AVXKind.AVXSize getMaxVectorSize() {
         int maxVectorSize = getConfigMaxVectorSize();
-        if (supports(getTarget(), AMD64.CPUFeature.AVX512VL)) {
+        if (supports(getTarget(), null, AMD64.CPUFeature.AVX512VL)) {
             if (maxVectorSize < 0 || maxVectorSize >= 64) {
                 return AVXKind.AVXSize.ZMM;
             }
         }
-        if (supports(getTarget(), AMD64.CPUFeature.AVX2)) {
+        if (supports(getTarget(), null, AMD64.CPUFeature.AVX2)) {
             if (maxVectorSize < 0 || maxVectorSize >= 32) {
                 return AVXKind.AVXSize.YMM;
             }

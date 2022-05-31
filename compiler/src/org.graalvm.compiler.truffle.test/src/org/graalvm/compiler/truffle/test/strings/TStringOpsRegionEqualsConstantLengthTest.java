@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test.strings;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -34,7 +35,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -87,7 +87,7 @@ public class TStringOpsRegionEqualsConstantLengthTest extends TStringOpsRegionEq
     @Test
     public void testRegionEquals() {
         Assume.assumeTrue(getTarget().arch instanceof AMD64);
-        Assume.assumeTrue(AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(getTarget(), StrideUtil.log2ToStride(strideA), StrideUtil.log2ToStride(strideB), lengthCMP, getMaxVectorSize()));
+        Assume.assumeTrue(AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(getTarget(), null, StrideUtil.log2ToStride(strideA), StrideUtil.log2ToStride(strideB), lengthCMP, getMaxVectorSize()));
         constantArgs[4] = strideA;
         constantArgs[9] = strideB;
         constantArgs[12] = lengthCMP;

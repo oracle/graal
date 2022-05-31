@@ -25,24 +25,21 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1024;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1024;
+
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -60,7 +57,7 @@ import jdk.vm.ci.meta.Value;
  * Compares two arrays lexicographically.
  */
 @NodeInfo(cycles = CYCLES_1024, size = SIZE_1024)
-public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
+public class ArrayCompareToNode extends PureFunctionStubIntrinsicNode implements LIRLowerable, Canonicalizable, Virtualizable {
 
     public static final NodeClass<ArrayCompareToNode> TYPE = NodeClass.create(ArrayCompareToNode.class);
 
@@ -82,15 +79,30 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
     /** Length of the other array. */
     @Input protected ValueNode length2;
 
-    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
-
-    public ArrayCompareToNode(ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
+    public ArrayCompareToNode(ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2,
+                    @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2) {
         this(TYPE, array1, array2, length1, length2, kind1, kind2);
     }
 
-    protected ArrayCompareToNode(NodeClass<? extends ArrayCompareToNode> c, ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2, @ConstantNodeParameter JavaKind kind1,
+    public ArrayCompareToNode(ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2,
+                    @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, array1, array2, length1, length2, kind1, kind2, runtimeCheckedCPUFeatures);
+    }
+
+    protected ArrayCompareToNode(NodeClass<? extends ArrayCompareToNode> c, ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2,
+                    @ConstantNodeParameter JavaKind kind1,
                     @ConstantNodeParameter JavaKind kind2) {
-        super(c, StampFactory.forKind(JavaKind.Int));
+        this(c, array1, array2, length1, length2, kind1, kind2, null);
+    }
+
+    protected ArrayCompareToNode(NodeClass<? extends ArrayCompareToNode> c, ValueNode array1, ValueNode array2, ValueNode length1, ValueNode length2,
+                    @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, kind1 != kind2 ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(kind1));
         this.kind1 = kind1;
         this.kind2 = kind2;
         this.array1 = array1;
@@ -123,7 +135,15 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
     }
 
     @NodeIntrinsic
-    public static native int compareTo(Object array1, Object array2, int length1, int length2, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2);
+    public static native int compareTo(Object array1, Object array2, int length1, int length2,
+                    @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2);
+
+    @NodeIntrinsic
+    public static native int compareTo(Object array1, Object array2, int length1, int length2,
+                    @ConstantNodeParameter JavaKind kind1,
+                    @ConstantNodeParameter JavaKind kind2,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     public JavaKind getKind1() {
         return kind1;
@@ -166,24 +186,8 @@ public class ArrayCompareToNode extends FixedWithNextNode implements LIRLowerabl
         MetaAccessProvider metaAccess = gen.getLIRGeneratorTool().getMetaAccess();
         int array1BaseOffset = metaAccess.getArrayBaseOffset(kind1);
         int array2BaseOffset = metaAccess.getArrayBaseOffset(kind2);
-        Value result = gen.getLIRGeneratorTool().emitArrayCompareTo(kind1, kind2, array1BaseOffset, array2BaseOffset, gen.operand(array1), gen.operand(array2), gen.operand(length1),
-                        gen.operand(length2));
+        Value result = gen.getLIRGeneratorTool().emitArrayCompareTo(kind1, kind2, array1BaseOffset, array2BaseOffset, getRuntimeCheckedCPUFeatures(),
+                        gen.operand(array1), gen.operand(array2), gen.operand(length1), gen.operand(length2));
         gen.setResult(this, result);
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return kind1 != kind2 ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(kind1);
-    }
-
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill lla) {
-        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
-        lastLocationAccess = lla;
     }
 }

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -42,13 +44,15 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64ComplexVectorOp> TYPE = LIRInstructionClass.create(AMD64ComplexVectorOp.class);
 
     protected final AVXSize vectorSize;
+    protected final EnumSet<CPUFeature> runtimeCheckedCPUFeatures;
     protected final TargetDescription targetDescription;
 
-    public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, LIRGeneratorTool tool, AVXSize maxUsedVectorSize) {
+    public AMD64ComplexVectorOp(LIRInstructionClass<? extends AMD64ComplexVectorOp> c, LIRGeneratorTool tool, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, AVXSize maxUsedVectorSize) {
         super(c);
 
         this.targetDescription = tool.target();
-        AVXSize maxSupportedVectorSize = (AVXSize) tool.getMaxVectorSize();
+        this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
+        AVXSize maxSupportedVectorSize = (AVXSize) tool.getMaxVectorSize(runtimeCheckedCPUFeatures);
         assert isXMMOrGreater(maxUsedVectorSize) && isXMMOrGreater(maxSupportedVectorSize);
 
         if (maxUsedVectorSize.fitsWithin(maxSupportedVectorSize)) {
@@ -120,24 +124,28 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         }
     }
 
-    public static boolean supports(TargetDescription target, CPUFeature cpuFeature) {
-        return ((AMD64) target.arch).getFeatures().contains(cpuFeature);
+    public static boolean supports(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures, CPUFeature cpuFeature) {
+        return runtimeCheckedCPUFeatures != null && runtimeCheckedCPUFeatures.contains(cpuFeature) || ((AMD64) target.arch).getFeatures().contains(cpuFeature);
     }
 
-    public static boolean supportsAVX512VLBW(TargetDescription target) {
-        return supports(target, CPUFeature.AVX512VL) && supports(target, CPUFeature.AVX512BW);
+    public static boolean supportsAVX512VLBW(TargetDescription target, EnumSet<CPUFeature> runtimeCheckedCPUFeatures) {
+        return supports(target, runtimeCheckedCPUFeatures, CPUFeature.AVX512VL) && supports(target, runtimeCheckedCPUFeatures, CPUFeature.AVX512BW);
+    }
+
+    protected boolean supports(CPUFeature cpuFeature) {
+        return supports(targetDescription, runtimeCheckedCPUFeatures, cpuFeature);
     }
 
     protected boolean supportsAVX2AndYMM() {
-        return AVXSize.YMM.fitsWithin(vectorSize) && supports(targetDescription, CPUFeature.AVX2);
+        return AVXSize.YMM.fitsWithin(vectorSize) && supports(CPUFeature.AVX2);
     }
 
     protected boolean supportsAVX512VLBWAndZMM() {
-        return AVXSize.ZMM.fitsWithin(vectorSize) && supportsAVX512VLBW(targetDescription);
+        return AVXSize.ZMM.fitsWithin(vectorSize) && supportsAVX512VLBW(targetDescription, runtimeCheckedCPUFeatures);
     }
 
     protected boolean supportsBMI2() {
-        return supports(targetDescription, CPUFeature.BMI2);
+        return supports(CPUFeature.BMI2);
     }
 
     @Override

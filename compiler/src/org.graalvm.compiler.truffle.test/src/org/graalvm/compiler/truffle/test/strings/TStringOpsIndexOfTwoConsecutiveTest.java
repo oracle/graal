@@ -27,7 +27,7 @@ package org.graalvm.compiler.truffle.test.strings;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.replacements.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

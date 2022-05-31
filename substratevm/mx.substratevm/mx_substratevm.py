@@ -39,6 +39,7 @@ import pipes
 from argparse import ArgumentParser
 import fnmatch
 import collections
+from pathlib import Path
 
 import mx
 import mx_compiler
@@ -1763,3 +1764,102 @@ if is_musl_supported():
     def musl_helloworld(args, config=None):
         final_args = ['--static', '--libc=musl'] + args
         run_helloworld_command(final_args, config, 'muslhelloworld')
+
+
+SNIPPET_ANNOTATION = '@Snippet'
+RUNTIME_CHECKED_SUFFIX = 'RTC'
+RUNTIME_CHECKED_FEATURES = 'Stubs.getRuntimeCheckedCPUFeatures()'
+
+
+def _check_file_exists(path: Path):
+    if not path.exists():
+        mx.abort(f'file "${path}" not found')
+
+
+def _transform_hotspot_snippet_stub(snippet: str, name_suffix: str = None):
+    if name_suffix is not None:
+        if 'ArrayIndexOfNode.optimizedArrayIndexOf' in snippet:
+            snippet = snippet.replace('array, offset,', f'{RUNTIME_CHECKED_FEATURES}, array, offset,')
+        else:
+            snippet = snippet.replace(');', f', {RUNTIME_CHECKED_FEATURES});')
+        snippet = snippet.replace('(', name_suffix + '(', 1)
+    snippet = snippet.replace(
+        SNIPPET_ANNOTATION,
+        ('@Uninterruptible(reason = "Must not do a safepoint check.")\n'
+         '    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)'))
+
+    if name_suffix is not None:
+        snippet = snippet.replace(
+            '{\n',
+            ('{\n'
+             '        RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(%s);\n'
+             '        try {\n    ') % RUNTIME_CHECKED_FEATURES).replace(
+            '}',
+            ('    } finally {\n'
+             '            region.leave();\n'
+             '        }\n'
+             '    }'))
+    return '\n' + snippet + '\n'
+
+
+@mx.command(suite.name, 'svm-sync-graal-stubs')
+def sync_graal_stubs(args):
+    base_path = Path(suite.vc_dir)
+    files = [
+        (
+            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64CalcStringAttributesStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64CalcStringAttributesForeignCalls.java'
+        ),
+        (
+            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsWithMaskStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64ArrayEqualsWithMaskForeignCalls.java'
+        ),
+        (
+            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCompareToStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCompareToForeignCalls.java'
+        ),
+        (
+            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCopyWithConversionsStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCopyWithConversionsForeignCalls.java'
+        ),
+        (
+            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayEqualsForeignCalls.java'
+        ),
+        (
+            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayRegionCompareToStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayRegionCompareToForeignCalls.java'),
+        (
+            'compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/ArrayIndexOfStub.java',
+            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayIndexOfForeignCalls.java'
+        ),
+    ]
+    marker_begin = 'GENERATED CODE BEGIN'
+    marker_end = 'GENERATED CODE END'
+    for src_rel, dst_rel in files:
+        src = base_path / Path(src_rel)
+        dst = base_path / Path(dst_rel)
+        _check_file_exists(src)
+        _check_file_exists(dst)
+        content = dst.read_text()
+        i_begin = content.find(marker_begin)
+        i_end = content.find(marker_end)
+        if i_begin < 0:
+            mx.abort(f'could not find insertion marker "{marker_begin}" in ${dst}')
+        if i_end < 0:
+            mx.abort(f'could not find end of insertion marker "{marker_begin}" in ${dst}')
+        generated = ''
+        generated_runtime_checked = ''
+        content_src = src.read_text()
+        pos = content_src.find(SNIPPET_ANNOTATION)
+        while pos >= 0:
+            start = content_src.rfind('\n', 0, pos) + 1
+            end = content_src.find('}', pos) + 1
+            generated += _transform_hotspot_snippet_stub(content_src[start:end])
+            generated_runtime_checked += _transform_hotspot_snippet_stub(content_src[start:end], RUNTIME_CHECKED_SUFFIX)
+            pos = content_src.find(SNIPPET_ANNOTATION, pos + len(SNIPPET_ANNOTATION))
+        before_generated = content[0:content.find('\n', i_begin) + 1]
+        after_generated = content[content.rfind('\n', i_begin, i_end):]
+        comment = f'\n    // GENERATED FROM:\n    // {src.relative_to(base_path)}\n    // BY: "mx svm-sync-graal-stubs"\n'
+        new_text = before_generated + comment + generated + generated_runtime_checked + after_generated
+        dst.write_text(new_text)

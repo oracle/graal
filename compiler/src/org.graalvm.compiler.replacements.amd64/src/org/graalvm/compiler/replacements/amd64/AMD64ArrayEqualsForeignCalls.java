@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
+import java.util.EnumSet;
+
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -35,28 +37,35 @@ import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.JavaKind;
 
 public final class AMD64ArrayEqualsForeignCalls {
 
+    @SuppressWarnings("unchecked")
     public static ForeignCallDescriptor getArrayEqualsStub(ArrayEqualsNode arrayEqualsNode, LIRGenerator gen) {
         JavaKind stride = arrayEqualsNode.getKind();
         ValueNode length = arrayEqualsNode.getLength();
-        if (length.isJavaConstant() && AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(), stride, stride, length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize())) {
+        if (length.isJavaConstant() && AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(),
+                        (EnumSet<AMD64.CPUFeature>) arrayEqualsNode.getRuntimeCheckedCPUFeatures(), stride, stride,
+                        length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize(arrayEqualsNode.getRuntimeCheckedCPUFeatures()))) {
             // Yield constant-length arrays comparison assembly
             return null;
         }
         return ArrayEqualsForeignCalls.getArrayEqualsStub(arrayEqualsNode);
     }
 
+    @SuppressWarnings("unchecked")
     public static ForeignCallDescriptor getRegionEqualsStub(ArrayRegionEqualsNode regionEqualsNode, LIRGenerator gen) {
         int directStubCallIndex = regionEqualsNode.getDirectStubCallIndex();
         GraalError.guarantee(-1 <= directStubCallIndex && directStubCallIndex < 9, "invalid direct stub call index");
         ValueNode length = regionEqualsNode.getLength();
         if (directStubCallIndex >= 0 && length.isJavaConstant() &&
                         AMD64ArrayEqualsOp.canGenerateConstantLengthCompare(gen.target(),
+                                        (EnumSet<AMD64.CPUFeature>) regionEqualsNode.getRuntimeCheckedCPUFeatures(),
                                         StrideUtil.getConstantStrideA(directStubCallIndex),
-                                        StrideUtil.getConstantStrideB(directStubCallIndex), length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize())) {
+                                        StrideUtil.getConstantStrideB(directStubCallIndex),
+                                        length.asJavaConstant().asInt(), (AVXKind.AVXSize) gen.getMaxVectorSize(regionEqualsNode.getRuntimeCheckedCPUFeatures()))) {
             // Yield constant-length arrays comparison assembly
             return null;
         }

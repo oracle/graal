@@ -33,7 +33,7 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.SnippetStub;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 
 public class ArrayIndexOfStub extends SnippetStub {
 

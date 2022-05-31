@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,6 +84,12 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
                 return createRegionEnterNode(providers, snippetReflection, b, arg0, arg1, arg2);
             }
         });
+        r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("enterSet", EnumSet.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
+                return createRegionEnterSetNode(providers, snippetReflection, b, arg0);
+            }
+        });
         r.register(new InvocationPlugin.RequiredInlineOnlyInvocationPlugin("leave", InvocationPlugin.Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -97,6 +103,14 @@ class RuntimeCPUFeatureRegionFeature implements InternalFeature {
         Enum<?> firstEnum = constValueToEnum(snippetReflection, first);
         Enum<?>[] restEnum = Arrays.stream(rest).map(n -> constValueToEnum(snippetReflection, n)).toArray(Enum<?>[]::new);
         EnumSet<?> features = toEnumSet(firstEnum, restEnum);
+        b.add(new CPUFeatureRegionEnterNode(features));
+        b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(RuntimeCPUFeatureRegion.INSTANCE), providers.getMetaAccess()));
+        return true;
+    }
+
+    private static boolean createRegionEnterSetNode(Providers providers, SnippetReflectionProvider snippetReflection, GraphBuilderContext b, ValueNode set) {
+        GraalError.guarantee(set.isConstant(), "Must be a constant: %s", set);
+        EnumSet<?> features = snippetReflection.asObject(EnumSet.class, set.asJavaConstant());
         b.add(new CPUFeatureRegionEnterNode(features));
         b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(RuntimeCPUFeatureRegion.INSTANCE), providers.getMetaAccess()));
         return true;
@@ -213,6 +227,8 @@ public final class RuntimeCPUFeatureRegion {
      * All arguments must be compile-time constant.
      */
     public static native RuntimeCPUFeatureRegion enter(@ConstantNodeParameter Enum<?> arg0);
+
+    public static native RuntimeCPUFeatureRegion enterSet(@ConstantNodeParameter EnumSet<?> arg0);
 
     /**
      * @see #enter(Enum)

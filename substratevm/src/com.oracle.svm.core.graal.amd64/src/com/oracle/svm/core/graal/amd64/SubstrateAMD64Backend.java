@@ -39,7 +39,9 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
 import java.util.Collection;
+import java.util.EnumSet;
 
+import com.oracle.svm.core.cpufeature.Stubs;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -119,8 +121,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.AddressLoweringPhase;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.ArrayIndexOfForeignCalls;
-import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
@@ -131,6 +131,8 @@ import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
@@ -1011,7 +1013,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return lookupForeignCall(getForeignCallDescriptor(valueNode, gen));
+            return lookupForeignCall(getForeignCallDescriptor(valueNode, gen), valueNode);
         }
 
         private ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, LIRGenerator gen) {
@@ -1035,8 +1037,22 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             return null;
         }
 
-        private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
-            return descriptor == null ? null : gen.getForeignCalls().lookupForeignCall(descriptor);
+        private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor, ValueNode valueNode) {
+            if (descriptor == null) {
+                return null;
+            }
+            ForeignCallDescriptor descriptor1 = chooseCPUFeatureVariant(descriptor, gen.target());
+            return gen.getForeignCalls().lookupForeignCall(descriptor1);
+        }
+    }
+
+    private static ForeignCallDescriptor chooseCPUFeatureVariant(ForeignCallDescriptor descriptor, TargetDescription target) {
+        EnumSet<?> buildtimeCPUFeatures = ImageSingletons.lookup(CPUFeatureAccess.class).buildtimeCPUFeatures();
+        if (buildtimeCPUFeatures.containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64) || !((AMD64) target.arch).getFeatures().containsAll(Stubs.RUNTIME_CHECKED_CPU_FEATURES_AMD64)) {
+            return descriptor;
+        } else {
+            return new ForeignCallDescriptor(descriptor.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, descriptor.getResultType(), descriptor.getArgumentTypes(),
+                            descriptor.isReexecutable(), descriptor.getKilledLocations(), descriptor.canDeoptimize(), descriptor.isGuaranteedSafepoint());
         }
     }
 

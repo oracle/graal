@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements;
+package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
@@ -34,7 +34,6 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.replacements.nodes.ForeignCalls;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -281,33 +280,4 @@ public class ArrayIndexOfForeignCalls {
             }
         }
     }
-
-    /**
-     * Index of two consecutive bytes in a byte array.
-     */
-    public static int indexOfTwoConsecutiveBS1(byte[] array, int length, int fromIndex, byte b1, byte b2) {
-        return ArrayIndexOfNode.indexOf2Consecutive(S1, S1, array, 0, length, fromIndex, Byte.toUnsignedInt(b1), Byte.toUnsignedInt(b2));
-    }
-
-    /**
-     * Index of two consecutive chars in a byte array, type punned as a char array (stride 1).
-     */
-    public static int indexOfTwoConsecutiveBS2(byte[] array, int length, int fromIndex, char c1, char c2) {
-        return ArrayIndexOfNode.indexOf2Consecutive(S1, S2, array, 0, length, fromIndex, c1, c2);
-    }
-
-    /**
-     * Index of one byte in a byte array.
-     */
-    public static int indexOfB1S1(byte[] array, int length, int fromIndex, byte b) {
-        return ArrayIndexOfNode.indexOf(S1, S1, array, 0, length, fromIndex, Byte.toUnsignedInt(b));
-    }
-
-    /**
-     * Index of one char in a byte array, type punned as a char array (stride 1).
-     */
-    public static int indexOfB1S2(byte[] array, int length, int fromIndex, char c) {
-        return ArrayIndexOfNode.indexOf(S1, S2, array, 0, length, fromIndex, c);
-    }
-
 }

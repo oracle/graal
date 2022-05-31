@@ -158,6 +158,7 @@ import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
@@ -1995,7 +1996,7 @@ public class StandardGraphBuilderPlugins {
                 LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
                 // fromIndex = max(fromIndex, 0)
                 ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
-                helper.emitFinalReturn(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Byte, false, false, nonNullValue, ConstantNode.forLong(0), length, fromIndex, ch));
+                helper.emitFinalReturn(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(JavaKind.Byte, JavaKind.Byte, nonNullValue, length, fromIndex, ch));
             }
             return true;
         }

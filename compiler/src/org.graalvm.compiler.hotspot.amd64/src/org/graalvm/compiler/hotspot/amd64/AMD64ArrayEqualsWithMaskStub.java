@@ -44,82 +44,82 @@ public final class AMD64ArrayEqualsWithMaskStub extends SnippetStub {
 
     @Snippet
     private static boolean arrayRegionEqualsBS1S1S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S1, S1, S1, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S1, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsBS1S2S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S1, S1, S2, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S2, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsBS1S2S2(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S1, S1, S2, S2, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S2, S2);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsBS2S1S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S1, S2, S1, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S1, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsBS2S2S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S1, S2, S2, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S2, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsBS2S2S2(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S1, S2, S2, S2, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S2, S2);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsC(char[] arrayA, long offsetA, char[] arrayB, long offsetB, char[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(S2, S2, S2, S2, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S2, S2, S2, S2);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S1, S1, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S1, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S1, S2, S2, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S2, S2);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S1, S4, S4, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S4, S4);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S2, S1, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S1, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S2, S2, S2, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S2, S2);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S2, S4, S4, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S4, S4);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S4, S1, S1, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S1, S1);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S4, S2, S2, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S2, S2);
     }
 
     @Snippet
     private static boolean arrayRegionEqualsS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
-        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(NONE, S4, S4, S4, arrayA, offsetA, arrayB, offsetB, mask, length);
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S4, S4);
     }
 
     @Snippet

@@ -83,7 +83,7 @@ public final class AMD64EncodeArrayOp extends AMD64ComplexVectorOp {
     private final CharsetName charset;
 
     public AMD64EncodeArrayOp(LIRGeneratorTool tool, Value result, Value src, Value dst, Value length, CharsetName charset) {
-        super(TYPE, tool, YMM);
+        super(TYPE, tool, null, YMM);
 
         this.resultValue = result;
         this.originSrcValue = src;

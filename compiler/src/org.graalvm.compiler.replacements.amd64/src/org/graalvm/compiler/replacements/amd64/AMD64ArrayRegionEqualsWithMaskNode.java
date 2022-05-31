@@ -29,7 +29,8 @@ import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 import static org.graalvm.compiler.core.common.StrideUtil.S4;
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+
+import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
@@ -39,19 +40,16 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.replacements.NodeStrideUtil;
+import org.graalvm.compiler.replacements.nodes.PureFunctionStubIntrinsicNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -62,7 +60,7 @@ import jdk.vm.ci.meta.Value;
 // JaCoCo Exclude
 
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public final class AMD64ArrayRegionEqualsWithMaskNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<AMD64ArrayRegionEqualsWithMaskNode> TYPE = NodeClass.create(AMD64ArrayRegionEqualsWithMaskNode.class);
 
@@ -91,7 +89,6 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
      * {@link JavaKind#Byte}, {@link JavaKind#Char} and {@link JavaKind#Int}.
      */
     private final JavaKind strideMask;
-    private final LocationIdentity locationIdentity;
 
     @Input protected ValueNode arrayA;
     @Input protected ValueNode offsetA;
@@ -107,20 +104,31 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
      */
     @OptionalInput protected ValueNode dynamicStrides;
 
-    @OptionalInput(Memory) private MemoryKill lastLocationAccess;
+    public AMD64ArrayRegionEqualsWithMaskNode(
+                    ValueNode arrayA, ValueNode offsetA,
+                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayMask,
+                    ValueNode length,
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind strideA,
+                    @ConstantNodeParameter JavaKind strideB,
+                    @ConstantNodeParameter JavaKind strideMask) {
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, arrayKind, strideA, strideB, strideMask, null,
+                        defaultLocationIdentity(arrayKind, strideA, strideB, strideMask));
+    }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
+                    ValueNode arrayA, ValueNode offsetA,
+                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayMask,
+                    ValueNode length,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind strideA,
                     @ConstantNodeParameter JavaKind strideB,
                     @ConstantNodeParameter JavaKind strideMask,
-                    ValueNode arrayA,
-                    ValueNode offsetA,
-                    ValueNode arrayB,
-                    ValueNode offsetB,
-                    ValueNode arrayMask,
-                    ValueNode length) {
-        this(arrayKind, strideA, strideB, strideMask, defaultLocationIdentity(arrayKind, strideA, strideB, strideMask), arrayA, offsetA, arrayB, offsetB, arrayMask, length, null);
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, null, arrayKind, strideA, strideB, strideMask, runtimeCheckedCPUFeatures,
+                        defaultLocationIdentity(arrayKind, strideA, strideB, strideMask));
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
@@ -128,23 +136,31 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                     ValueNode arrayB, ValueNode offsetB,
                     ValueNode arrayMask,
                     ValueNode length, ValueNode dynamicStrides) {
-        this(NONE, null, null, null, LocationIdentity.ANY_LOCATION, arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides);
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, NONE, null, null, null, null, LocationIdentity.ANY_LOCATION);
     }
 
     public AMD64ArrayRegionEqualsWithMaskNode(
+                    ValueNode arrayA, ValueNode offsetA,
+                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayMask,
+                    ValueNode length, ValueNode dynamicStrides,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(arrayA, offsetA, arrayB, offsetB, arrayMask, length, dynamicStrides, NONE, null, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
+    }
+
+    public AMD64ArrayRegionEqualsWithMaskNode(
+                    ValueNode arrayA, ValueNode offsetA,
+                    ValueNode arrayB, ValueNode offsetB,
+                    ValueNode arrayMask,
+                    ValueNode length,
+                    ValueNode dynamicStrides,
                     JavaKind arrayKind,
                     JavaKind strideA,
                     JavaKind strideB,
                     JavaKind strideMask,
-                    LocationIdentity locationIdentity,
-                    ValueNode arrayA,
-                    ValueNode offsetA,
-                    ValueNode arrayB,
-                    ValueNode offsetB,
-                    ValueNode arrayMask,
-                    ValueNode length,
-                    ValueNode dynamicStrides) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean));
+                    EnumSet<?> runtimeCheckedCPUFeatures,
+                    LocationIdentity locationIdentity) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), runtimeCheckedCPUFeatures, locationIdentity);
         assert validStride(strideA);
         assert validStride(strideB);
         assert validStride(strideMask);
@@ -152,7 +168,6 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
         this.strideA = strideA;
         this.strideB = strideB;
         this.strideMask = strideMask;
-        this.locationIdentity = locationIdentity;
         this.arrayA = arrayA;
         this.offsetA = offsetA;
         this.arrayB = arrayB;
@@ -245,7 +260,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
         if (getDirectStubCallIndex() < 0) {
             result = gen.getLIRGeneratorTool().emitArrayEquals(
                             0, 0, maskBaseOffset,
-                            gen.operand(arrayA),
+                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA),
                             gen.operand(offsetA),
                             gen.operand(arrayB),
                             gen.operand(offsetB),
@@ -258,7 +273,7 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                             NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
                             NodeStrideUtil.getConstantStrideB(dynamicStrides, strideMask),
                             0, 0, maskBaseOffset,
-                            gen.operand(arrayA),
+                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA),
                             gen.operand(offsetA),
                             gen.operand(arrayB),
                             gen.operand(offsetB),
@@ -268,32 +283,27 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
         gen.setResult(this, result);
     }
 
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return locationIdentity;
-    }
-
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill lla) {
-        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
-        lastLocationAccess = lla;
-    }
-
     @NodeIntrinsic
-    public static native boolean regionEquals(
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length,
                     @ConstantNodeParameter JavaKind arrayKind,
-                    @ConstantNodeParameter JavaKind kind1,
-                    @ConstantNodeParameter JavaKind kind2,
-                    @ConstantNodeParameter JavaKind kindMask,
-                    Object array1, long offset1, Object array2, long offset2, Object mask, int length);
+                    @ConstantNodeParameter JavaKind kindA,
+                    @ConstantNodeParameter JavaKind kindB,
+                    @ConstantNodeParameter JavaKind kindMask);
 
     @NodeIntrinsic
-    public static native boolean regionEquals(Object array1, long offset1, Object array2, long offset2, Object mask, int length, int stride);
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length,
+                    @ConstantNodeParameter JavaKind arrayKind,
+                    @ConstantNodeParameter JavaKind kindA,
+                    @ConstantNodeParameter JavaKind kindB,
+                    @ConstantNodeParameter JavaKind kindMask,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
+
+    @NodeIntrinsic
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length, int stride);
+
+    @NodeIntrinsic
+    public static native boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, Object mask, int length, int stride,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
@@ -306,9 +316,9 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, constStrideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, constStrideB, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayMask, null, constStrideMask, len, this)) {
-                Integer startIndex1 = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), constStrideA, this);
-                Integer startIndex2 = ConstantReflectionUtil.startIndex(tool, arrayB, offsetB.asJavaConstant(), constStrideB, this);
-                return ConstantNode.forBoolean(constantFold(tool, arrayA, startIndex1, arrayB, startIndex2, arrayMask, len, constStrideA, constStrideB, constStrideMask));
+                Integer startIndexA = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), constStrideA, this);
+                Integer startIndexB = ConstantReflectionUtil.startIndex(tool, arrayB, offsetB.asJavaConstant(), constStrideB, this);
+                return ConstantNode.forBoolean(constantFold(tool, arrayA, startIndexA, arrayB, startIndexB, arrayMask, len, constStrideA, constStrideB, constStrideMask));
             }
         }
         return this;

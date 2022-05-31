@@ -25,7 +25,6 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
 import java.util.EnumSet;
 
@@ -38,13 +37,9 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValueNodeUtil;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -81,14 +76,13 @@ import jdk.vm.ci.meta.Value;
  * {@code arrayA[i] != arrayB[i]}. If no such index exists, returns 0.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
-public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
+public class ArrayRegionCompareToNode extends PureFunctionStubIntrinsicNode implements Canonicalizable, LIRLowerable, ConstantReflectionUtil.ArrayBaseOffsetProvider {
 
     public static final NodeClass<ArrayRegionCompareToNode> TYPE = NodeClass.create(ArrayRegionCompareToNode.class);
 
     /** {@link JavaKind} of the arrays to compare. */
     protected final JavaKind strideA;
     protected final JavaKind strideB;
-    protected final LocationIdentity locationIdentity;
 
     /**
      * Pointer to the first array object.
@@ -122,35 +116,47 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
      */
     @OptionalInput protected ValueNode dynamicStrides;
 
-    @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
-
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, JavaKind strideA, JavaKind strideB, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, locationIdentity);
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null, locationIdentity);
     }
 
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides, LocationIdentity locationIdentity) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, locationIdentity);
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, locationIdentity);
     }
 
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, LocationIdentity.ANY_LOCATION);
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, null, LocationIdentity.ANY_LOCATION);
+    }
+
+    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length, ValueNode dynamicStrides,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, null, null, runtimeCheckedCPUFeatures, LocationIdentity.ANY_LOCATION);
     }
 
     public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     @ConstantNodeParameter JavaKind strideA,
                     @ConstantNodeParameter JavaKind strideB) {
-        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, null,
+                        strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
+    }
+
+    public ArrayRegionCompareToNode(ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
+                    @ConstantNodeParameter JavaKind strideA,
+                    @ConstantNodeParameter JavaKind strideB,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures) {
+        this(TYPE, arrayA, offsetA, arrayB, offsetB, length, null, strideA, strideB, runtimeCheckedCPUFeatures,
+                        strideA != strideB ? LocationIdentity.ANY_LOCATION : NamedLocationIdentity.getArrayLocation(strideA));
     }
 
     protected ArrayRegionCompareToNode(NodeClass<? extends ArrayRegionCompareToNode> c, ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length,
                     ValueNode dynamicStrides,
                     JavaKind strideA,
                     JavaKind strideB,
+                    EnumSet<?> runtimeCheckedCPUFeatures,
                     LocationIdentity locationIdentity) {
-        super(c, StampFactory.forKind(JavaKind.Int));
+        super(c, StampFactory.forKind(JavaKind.Int), runtimeCheckedCPUFeatures, locationIdentity);
         this.strideA = strideA;
         this.strideB = strideB;
-        this.locationIdentity = locationIdentity;
         this.arrayA = arrayA;
         this.offsetA = offsetA;
         this.arrayB = arrayB;
@@ -166,10 +172,22 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
     }
 
     @NodeIntrinsic
-    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, @ConstantNodeParameter JavaKind strideA, @ConstantNodeParameter JavaKind strideB);
+    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length,
+                    @ConstantNodeParameter JavaKind strideA,
+                    @ConstantNodeParameter JavaKind strideB);
+
+    @NodeIntrinsic
+    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length,
+                    @ConstantNodeParameter JavaKind strideA,
+                    @ConstantNodeParameter JavaKind strideB,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     @NodeIntrinsic
     public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride);
+
+    @NodeIntrinsic
+    public static native int compare(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int stride,
+                    @ConstantNodeParameter EnumSet<?> runtimeCheckedCPUFeatures);
 
     public ValueNode getArrayA() {
         return arrayA;
@@ -230,28 +248,12 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
     protected void generateArrayCompare(NodeLIRBuilderTool gen) {
         if (getDirectStubCallIndex() < 0) {
             gen.setResult(this, gen.getLIRGeneratorTool().emitArrayRegionCompareTo(
-                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(dynamicStrides)));
+                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length), gen.operand(dynamicStrides)));
         } else {
             gen.setResult(this,
                             gen.getLIRGeneratorTool().emitArrayRegionCompareTo(NodeStrideUtil.getConstantStrideA(dynamicStrides, strideA), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideB),
-                                            gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length)));
+                                            getRuntimeCheckedCPUFeatures(), gen.operand(arrayA), gen.operand(offsetA), gen.operand(arrayB), gen.operand(offsetB), gen.operand(length)));
         }
-    }
-
-    @Override
-    public LocationIdentity getLocationIdentity() {
-        return locationIdentity;
-    }
-
-    @Override
-    public MemoryKill getLastLocationAccess() {
-        return lastLocationAccess;
-    }
-
-    @Override
-    public void setLastLocationAccess(MemoryKill lla) {
-        updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
-        lastLocationAccess = lla;
     }
 
     @Override

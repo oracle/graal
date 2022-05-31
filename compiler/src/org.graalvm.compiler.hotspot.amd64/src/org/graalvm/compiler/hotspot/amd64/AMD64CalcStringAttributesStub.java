@@ -40,36 +40,36 @@ public final class AMD64CalcStringAttributesStub extends SnippetStub {
 
     @Snippet
     private static int calcStringAttributesLatin1(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.intReturnValue(AMD64CalcStringAttributesOp.Op.LATIN1, false, array, offset, length);
+        return AMD64CalcStringAttributesNode.intReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.LATIN1, false);
     }
 
     @Snippet
     private static int calcStringAttributesBMP(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.intReturnValue(AMD64CalcStringAttributesOp.Op.BMP, false, array, offset, length);
+        return AMD64CalcStringAttributesNode.intReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.BMP, false);
     }
 
     @Snippet
     private static long calcStringAttributesUTF8Valid(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.longReturnValue(AMD64CalcStringAttributesOp.Op.UTF_8, true, array, offset, length);
+        return AMD64CalcStringAttributesNode.longReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.UTF_8, true);
     }
 
     @Snippet
     private static long calcStringAttributesUTF8Unknown(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.longReturnValue(AMD64CalcStringAttributesOp.Op.UTF_8, false, array, offset, length);
+        return AMD64CalcStringAttributesNode.longReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.UTF_8, false);
     }
 
     @Snippet
     private static long calcStringAttributesUTF16Valid(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.longReturnValue(AMD64CalcStringAttributesOp.Op.UTF_16, true, array, offset, length);
+        return AMD64CalcStringAttributesNode.longReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.UTF_16, true);
     }
 
     @Snippet
     private static long calcStringAttributesUTF16Unknown(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.longReturnValue(AMD64CalcStringAttributesOp.Op.UTF_16, false, array, offset, length);
+        return AMD64CalcStringAttributesNode.longReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.UTF_16, false);
     }
 
     @Snippet
     private static int calcStringAttributesUTF32(Object array, long offset, int length) {
-        return AMD64CalcStringAttributesNode.intReturnValue(AMD64CalcStringAttributesOp.Op.UTF_32, false, array, offset, length);
+        return AMD64CalcStringAttributesNode.intReturnValue(array, offset, length, AMD64CalcStringAttributesOp.Op.UTF_32, false);
     }
 }

@@ -62,7 +62,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
 import org.graalvm.compiler.replacements.SnippetTemplate;
@@ -361,7 +361,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             r.register(new InvocationPlugin("indexOfChar", byte[].class, int.class, int.class, int.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
-                    b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Byte, false, false, value, ConstantNode.forLong(0), max, fromIndex, ch));
+                    b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(JavaKind.Byte, JavaKind.Byte, value, max, fromIndex, ch));
                     return true;
                 }
             });
@@ -459,7 +459,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
-                b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Char, false, false, value, ConstantNode.forLong(0), max, fromIndex, toChar));
+                b.addPush(JavaKind.Int, ArrayIndexOfNode.createIndexOfSingle(JavaKind.Byte, JavaKind.Char, value, max, fromIndex, toChar));
                 return true;
             }
         });

@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.amd64;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -123,14 +124,14 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
     }
 
     @Override
-    public AVXSize getMaxVectorSize() {
+    public AVXSize getMaxVectorSize(EnumSet<?> runtimeCheckedCPUFeatures) {
         int maxVectorSize = config.maxVectorSize;
-        if (supports(CPUFeature.AVX512VL)) {
+        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX512VL)) {
             if (maxVectorSize < 0 || maxVectorSize >= 64) {
                 return AVXSize.ZMM;
             }
         }
-        if (supports(CPUFeature.AVX2)) {
+        if (supports(runtimeCheckedCPUFeatures, CPUFeature.AVX2)) {
             if (maxVectorSize < 0 || maxVectorSize >= 32) {
                 return AVXSize.YMM;
             }
