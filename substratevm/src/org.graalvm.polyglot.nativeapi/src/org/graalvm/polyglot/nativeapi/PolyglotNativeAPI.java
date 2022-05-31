@@ -84,12 +84,14 @@ import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExcep
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExceptionHandlePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfo;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotExtendedErrorInfoPointer;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotHandle;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotIsolateThread;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguage;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotLanguagePointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotStatus;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValue;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValuePointer;
+import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.PolyglotValuePointerPointer;
 import org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.SizeTPointer;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -1510,16 +1512,46 @@ public final class PolyglotNativeAPI {
                     " @since 19.0",
     })
     public static PolyglotStatus poly_get_callback_info(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info, SizeTPointer argc, PolyglotValuePointer argv, WordPointer data) {
+        return poly_get_callback_info_internal(thread, callback_info, argc, argv, data, false);
+    }
+
+    @CEntryPoint(name = "poly_get_callback_info_dynamic", documentation = {
+                    "Retrieves details about the call within a callback (e.g., the arguments from a given callback info).",
+                    "This function would allocate memory for argv, so the caller has responsibility to release it via free().",
+                    "",
+                    " @param callback_info from the callback.",
+                    " @param argc number of arguments to the callback.",
+                    " @param argv double pointer of poly_value for arguments for the callback. If the call succeed, memory for arguments is allocated dynamically.",
+                    " @param the data pointer for the callback.",
+                    " @since 20.2",
+    })
+    public static PolyglotStatus poly_get_callback_info_dynamic(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info,
+                    SizeTPointer argc, PolyglotValuePointerPointer argv, WordPointer data) {
+        return poly_get_callback_info_internal(thread, callback_info, argc, argv, data, true);
+    }
+
+    private static PolyglotStatus poly_get_callback_info_internal(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info,
+                    SizeTPointer argc, PolyglotHandle argv, WordPointer data, boolean needAlloc) {
         return withHandledErrors(() -> {
             PolyglotCallbackInfoInternal callbackInfo = fetchHandle(callback_info);
             UnsignedWord numberOfArguments = WordFactory.unsigned(callbackInfo.arguments.length);
-            UnsignedWord bufferSize = argc.read();
-            UnsignedWord size = bufferSize.belowThan(numberOfArguments) ? bufferSize : numberOfArguments;
-            argc.write(size);
-            for (UnsignedWord i = WordFactory.zero(); i.belowThan(size); i = i.add(1)) {
+            PolyglotValuePointer arglist;
+            if (needAlloc) {
+                arglist = UnmanagedMemory.malloc(numberOfArguments.multiply(SizeOf.unsigned(PolyglotValue.class)));
+                ((PolyglotValuePointerPointer) argv).write(arglist);
+            } else {
+                arglist = (PolyglotValuePointer) argv;
+                UnsignedWord bufferSize = argc.read();
+                if (bufferSize.belowThan(numberOfArguments)) {
+                    numberOfArguments = bufferSize;
+                }
+            }
+            argc.write(numberOfArguments);
+
+            for (UnsignedWord i = WordFactory.zero(); i.belowThan(numberOfArguments); i = i.add(1)) {
                 int index = (int) i.rawValue();
                 ObjectHandle argument = callbackInfo.arguments[index];
-                argv.write(index, argument);
+                arglist.write(index, argument);
             }
             data.write(callbackInfo.data);
         });
