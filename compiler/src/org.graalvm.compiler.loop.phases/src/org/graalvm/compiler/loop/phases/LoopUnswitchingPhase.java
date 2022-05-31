@@ -27,12 +27,14 @@ package org.graalvm.compiler.loop.phases;
 import java.util.Iterator;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies.UnswitchingDecision;
@@ -59,20 +61,19 @@ public class LoopUnswitchingPhase extends LoopPhase<LoopPolicies> {
                 for (LoopEx loop : dataUnswitch.outerFirst()) {
                     if (canUnswitch(loop)) {
                         if (getPolicies().shouldTryUnswitch(loop)) {
-                            List<ControlSplitNode> controlSplits = LoopTransformations.findUnswitchable(loop);
-                            if (controlSplits != null) {
-                                UNSWITCH_CANDIDATES.increment(debug);
-                                UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
-                                if (decision.shouldUnswitch()) {
-                                    if (debug.isLogEnabled()) {
-                                        logUnswitch(loop, controlSplits);
-                                    }
-                                    LoopTransformations.unswitch(loop, controlSplits, decision.isTrivial());
-                                    debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", controlSplits);
-                                    UNSWITCHED.increment(debug);
-                                    unswitched = true;
-                                    break;
+                            EconomicMap<ValueNode, List<ControlSplitNode>> controlSplits = LoopTransformations.findUnswitchable(loop);
+                            UNSWITCH_CANDIDATES.increment(debug);
+                            UnswitchingDecision decision = getPolicies().shouldUnswitch(loop, controlSplits);
+                            if (decision.shouldUnswitch()) {
+                                List<ControlSplitNode> splits = decision.getControlSplits();
+                                if (debug.isLogEnabled()) {
+                                    logUnswitch(loop, splits);
                                 }
+                                LoopTransformations.unswitch(loop, splits, decision.isTrivial());
+                                debug.dump(DebugContext.DETAILED_LEVEL, graph, "After unswitch %s", splits);
+                                UNSWITCHED.increment(debug);
+                                unswitched = true;
+                                break;
                             }
                         } else {
                             UNSWITCH_EARLY_REJECTS.increment(debug);
