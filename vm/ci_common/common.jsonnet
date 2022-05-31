@@ -178,6 +178,8 @@ local devkits = common_json.devkits;
 
   graalpython_darwin_amd64: self.sulong_darwin_amd64 + {},
 
+  graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
+
   vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
   },
@@ -406,7 +408,7 @@ local devkits = common_json.devkits;
   full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin_amd64,
 
   ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64 + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
-  full_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64,
+  full_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
 
 
   libgraal_build(build_args):: {
