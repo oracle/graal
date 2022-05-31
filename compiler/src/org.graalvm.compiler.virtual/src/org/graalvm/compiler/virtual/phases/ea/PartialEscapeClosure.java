@@ -403,16 +403,18 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      * materializing if necessary. Also takes care of frame states, adding the necessary
      * {@link VirtualObjectState}.
      */
-    private void processNodeInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
+    protected void processNodeInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
         VirtualUtil.trace(node.getOptions(), debug, "processing nodewithstate: %s", node);
         for (Node input : node.inputs()) {
             if (input instanceof ValueNode) {
                 ValueNode alias = getAlias((ValueNode) input);
                 if (alias instanceof VirtualObjectNode) {
                     int id = ((VirtualObjectNode) alias).getObjectId();
-                    ensureMaterialized(state, id, insertBefore, effects, COUNTER_MATERIALIZATIONS_UNHANDLED);
-                    effects.replaceFirstInput(node, input, state.getObjectState(id).getMaterializedValue());
-                    VirtualUtil.trace(node.getOptions(), debug, "replacing input %s at %s", input, node);
+                    if (shouldMaterializeNonVirtualizable(state, id, insertBefore)) {
+                        ensureMaterialized(state, id, insertBefore, effects, COUNTER_MATERIALIZATIONS_UNHANDLED);
+                        effects.replaceFirstInput(node, input, state.getObjectState(id).getMaterializedValue());
+                        VirtualUtil.trace(node.getOptions(), debug, "replacing input %s at %s", input, node);
+                    }
                 }
             }
         }
@@ -421,7 +423,12 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    private void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {
+    @SuppressWarnings("unused")
+    protected boolean shouldMaterializeNonVirtualizable(BlockT state, int id, FixedNode insertBefore) {
+        return true;
+    }
+
+    protected void processNodeWithState(NodeWithState nodeWithState, BlockT state, GraphEffectList effects) {
         for (FrameState fs : nodeWithState.states()) {
             FrameState frameState = getUniqueFramestate(nodeWithState, fs);
             EconomicSet<VirtualObjectNode> virtual = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);

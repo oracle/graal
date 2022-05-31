@@ -385,6 +385,21 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
     }
 
     @Override
+    public VirtualizerTool createSnapshot() {
+        VirtualizerToolImpl snapshot = new VirtualizerToolImpl(getProviders(), closure, assumptions, options, debug);
+        snapshot.current = this.current;
+        snapshot.position = this.position;
+        snapshot.effects = new GraphEffectList(this.debug);
+        snapshot.state = new PartialEscapeBlockState.Final(this.getOptions(), this.getDebug());
+        for (int i = 0; i < this.state.getStateCount(); i++) {
+            if (this.state.hasObjectState(i)) {
+                snapshot.state.addObject(i, this.state.getObjectState(i).cloneState());
+            }
+        }
+        return snapshot;
+    }
+
+    @Override
     public boolean divisionOverflowIsJVMSCompliant() {
         if (getLowerer() != null) {
             return getLowerer().divisionOverflowIsJVMSCompliant();
