@@ -106,6 +106,21 @@ public class LLVMScope implements TruffleObject {
      * @return A handle to the global if found, null otherwise.
      */
     @TruffleBoundary
+    public LLVMThreadLocalSymbol getThreadLocalVariable(String name) {
+        LLVMSymbol symbol = get(name);
+        if (symbol != null && symbol.isThreadLocalSymbol()) {
+            return symbol.asThreadLocalSymbol();
+        }
+        return null;
+    }
+
+    /**
+     * Lookup a global variable in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
+    @TruffleBoundary
     public LLVMGlobal getGlobalVariable(String name) {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
