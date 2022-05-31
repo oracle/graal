@@ -25,16 +25,10 @@
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
 import static com.oracle.graal.pointsto.util.ListUtils.getTLArrayList;
-import static jdk.vm.ci.common.JVMCIError.guarantee;
 
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.options.OptionValues;
 
@@ -50,7 +44,6 @@ import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.DirectInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -78,7 +71,6 @@ import com.oracle.graal.pointsto.typestore.SplitArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.SplitFieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ListUtils;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayList;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayListClosable;
@@ -385,303 +377,8 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
     }
 
-    private static BytecodeAnalysisContextPolicy contextPolicy(BigBang bb) {
+    static BytecodeAnalysisContextPolicy contextPolicy(BigBang bb) {
         return ((BytecodeSensitiveAnalysisPolicy) bb.analysisPolicy()).getContextPolicy();
-    }
-
-    /**
-     * Bytecode context sensitive implementation of the invoke virtual type flow update.
-     *
-     * TODO Can we merge the slow path (i.e., this class) and fast path (i.e., the default, context
-     * insensitive virtual invoke implementation) to be able to fall back to fast path when context
-     * sensitivity is disabled or reaches budget threshold?
-     */
-    private static class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
-
-        /*
-         * Remember all the callee clones that were already linked in each context at this
-         * invocation site to avoid redundant relinking. MethodFlows is unique for each method type
-         * flow and context combination.
-         */
-        private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
-        private final AnalysisContext callerContext;
-
-        protected BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-            callerContext = null;
-        }
-
-        protected BytecodeSensitiveVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveVirtualInvokeTypeFlow original) {
-            super(bb, methodFlows, original);
-            callerContext = ((MethodFlowsGraphClone) methodFlows).context();
-        }
-
-        @Override
-        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new BytecodeSensitiveVirtualInvokeTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone() || this.isContextInsensitive();
-
-            /*
-             * Capture the current receiver state before the update. The type state objects are
-             * immutable and a later call to getState() can yield a different value.
-             */
-            TypeState receiverState = getReceiver().getState();
-            receiverState = filterReceiverState(bb, receiverState);
-
-            if (receiverState.isEmpty() || receiverState.isNull()) {
-                return;
-            }
-
-            /* Use the tandem types - objects iterator. */
-            TypesObjectsIterator toi = new TypesObjectsIterator(receiverState);
-            while (toi.hasNextType()) {
-                AnalysisType type = toi.nextType();
-
-                AnalysisMethod method = type.resolveConcreteMethod(getTargetMethod());
-                if (method == null || Modifier.isAbstract(method.getModifiers())) {
-                    /*
-                     * Type states can be conservative, i.e., we can have receiver types that do not
-                     * implement the method. Just ignore such types.
-                     */
-                    while (toi.hasNextObject(type)) {
-                        // skip the rest of the objects of the same type
-                        toi.nextObject(type);
-                    }
-                    continue;
-                }
-
-                assert !Modifier.isAbstract(method.getModifiers());
-
-                CallSiteSensitiveMethodTypeFlow callee = (CallSiteSensitiveMethodTypeFlow) PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
-
-                while (toi.hasNextObject(type)) {
-                    AnalysisObject actualReceiverObject = toi.nextObject(type);
-
-                    // get the context based on the actualReceiverObject
-                    AnalysisContext calleeContext = contextPolicy(bb).calleeContext(bb, actualReceiverObject, (BytecodeAnalysisContext) callerContext, callee);
-
-                    MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
-
-                    if (calleesFlows.put(calleeFlows, Boolean.TRUE) == null) {
-                        /* register the analysis method as a callee for this invoke */
-                        addCallee(calleeFlows.getMethod());
-                        /* linkCallee() does not link the receiver object. */
-                        linkCallee(bb, false, calleeFlows);
-                    }
-
-                    updateReceiver(bb, calleeFlows, actualReceiverObject);
-                }
-
-            }
-        }
-
-        @Override
-        public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            /* When the receiver flow saturates start observing the flow of the receiver type. */
-            replaceObservedWith(bb, receiverType);
-        }
-
-        @Override
-        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-            return new ArrayList<>(calleesFlows.keySet());
-        }
-    }
-
-    /**
-     * This is a special iterator for the type state. It iterates over analysis types and objects in
-     * tandem doing a single pass over the objects array. It relies on the fact that the types and
-     * objects are sorted by ID. It is meant for situations where the types need some pre-processing
-     * or checking before processing their respective objects, e.g., as in virtual method resolution
-     * for InvokeTypeFlow. It those situations it avoids iterating over the types first and then
-     * searching for the range of objects corresponding to that type. When only objects, or only
-     * types, or only objects of a certain type need to be iterated use the other provided
-     * iterators. A correct use of this iterator is as follows:
-     *
-     * <code>
-     * TypesObjectsIterator toi = state.getTypesObjectsIterator();
-     *
-     * while(toi.hasNextType()) {
-     *      AnalysisType t = toi.nextType();
-     *      // use type here
-     *
-     *      while(toi.hasNextObject(t)) {
-     *          AnalysisObject o = toi.nextObject(t);
-     *          // use object here
-     *      }
-     * }
-     * </code>
-     */
-    public static class TypesObjectsIterator {
-        private final int typesCount;
-        private final AnalysisObject[] objects;
-        private int typeIdx = 0;
-        private int objectIdx = 0;
-
-        public TypesObjectsIterator(TypeState state) {
-            typesCount = state.typesCount();
-            objects = objectsArray(state);
-        }
-
-        private static AnalysisObject[] objectsArray(TypeState state) {
-            if (state.isEmpty() || state.isNull()) {
-                return AnalysisObject.EMPTY_ARRAY;
-            }
-            if (state instanceof ContextSensitiveSingleTypeState) {
-                return ((ContextSensitiveSingleTypeState) state).objects;
-            }
-            if (state instanceof ContextSensitiveMultiTypeState) {
-                return ((ContextSensitiveMultiTypeState) state).objects;
-            }
-            throw AnalysisError.shouldNotReachHere();
-        }
-
-        /**
-         * Returns true if there is a next type in the objects array, i.e., there are objects of a
-         * type other than the current type.
-         */
-        public boolean hasNextType() {
-            return typeIdx < typesCount;
-        }
-
-        /** Returns true if there are more objects of the current type. */
-        public boolean hasNextObject(AnalysisType type) {
-            return objectIdx < objects.length && objects[objectIdx].getTypeId() == type.getId();
-        }
-
-        /** Gets the next type. */
-        public AnalysisType nextType() {
-            /* Check that there is a next type. */
-            assert hasNextType();
-            /* Increment the type index. */
-            typeIdx++;
-            /* Return the type at the 'objectIdx. */
-            return objects[objectIdx].type();
-        }
-
-        /** Gets the next object. */
-        public AnalysisObject nextObject(AnalysisType type) {
-            /* Check that there is a next object of the desired type. */
-            assert hasNextObject(type);
-            /* Return the next object and increment objectIdx. */
-            return objects[objectIdx++];
-        }
-    }
-
-    private static final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
-
-        private AnalysisContext calleeContext;
-        /**
-         * Context of the caller.
-         */
-        private AnalysisContext callerContext;
-
-        private BytecodeSensitiveStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-            calleeContext = null;
-        }
-
-        private BytecodeSensitiveStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveStaticInvokeTypeFlow original) {
-            super(bb, methodFlows, original);
-            this.callerContext = ((MethodFlowsGraphClone) methodFlows).context();
-        }
-
-        @Override
-        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new BytecodeSensitiveStaticInvokeTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public void update(PointsToAnalysis bb) {
-            assert this.isClone();
-            /* The static invokes should be updated only once and the callee should be null. */
-            guarantee(callee == null, "static invoke updated multiple times!");
-
-            // Unlinked methods can not be parsed
-            if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
-                return;
-            }
-
-            /*
-             * Initialize the callee lazily so that if the invoke flow is not reached in this
-             * context, i.e. for this clone, there is no callee linked/
-             */
-            callee = targetMethod.getTypeFlow();
-            // set the callee in the original invoke too
-            ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
-
-            calleeContext = contextPolicy(bb).staticCalleeContext(bb, location, (BytecodeAnalysisContext) callerContext, callee);
-            MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
-            linkCallee(bb, true, calleeFlows);
-        }
-
-        @Override
-        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-            if (callee == null || calleeContext == null) {
-                /* This static invoke was not updated. */
-                return Collections.emptyList();
-            } else {
-                MethodFlowsGraph methodFlows = ((CallSiteSensitiveMethodTypeFlow) callee).getFlows(calleeContext);
-                return Collections.singletonList(methodFlows);
-            }
-        }
-    }
-
-    private static final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
-
-        /**
-         * Contexts of the resolved method.
-         */
-        private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
-
-        /**
-         * Context of the caller.
-         */
-        private AnalysisContext callerContext;
-
-        BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-        }
-
-        private BytecodeSensitiveSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
-            super(bb, methodFlows, original);
-            this.callerContext = ((MethodFlowsGraphClone) methodFlows).context();
-        }
-
-        @Override
-        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new BytecodeSensitiveSpecialInvokeTypeFlow(bb, methodFlows, this);
-        }
-
-        @Override
-        public void onObservedUpdate(PointsToAnalysis bb) {
-            /* The receiver state has changed. Process the invoke. */
-
-            initCallee();
-
-            TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
-            for (AnalysisObject receiverObject : invokeState.objects(bb)) {
-                AnalysisContext calleeContext = contextPolicy(bb).calleeContext(bb, receiverObject, (BytecodeAnalysisContext) callerContext, callee);
-                MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
-
-                if (calleesFlows.putIfAbsent(calleeFlows, Boolean.TRUE) == null) {
-                    linkCallee(bb, false, calleeFlows);
-                }
-
-                updateReceiver(bb, calleeFlows, receiverObject);
-            }
-        }
-
-        @Override
-        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-            return new ArrayList<>(calleesFlows.keySet());
-        }
     }
 
     @Override
