@@ -124,7 +124,17 @@ final class HostObject implements TruffleObject {
         this.extraInfo = extraInfo;
     }
 
+    /**
+     * This method is guaranteed to return the same HostObject
+     * for the same host class instance.
+     */
+    @TruffleBoundary
     static HostObject forClass(Class<?> clazz, HostContext context) {
+        assert clazz != null;
+        return context.classValue.get(clazz);
+    }
+
+    static HostObject forClassNoCache(Class<?> clazz, HostContext context) {
         assert clazz != null;
         return new HostObject(clazz, context, null);
     }
@@ -2190,6 +2200,78 @@ final class HostObject implements TruffleObject {
         } else {
             error.enter();
             throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasMetaParents() {
+        return isClass() && asClass().getSuperclass() != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaParents() throws UnsupportedMessageException {
+        Class<?>[] types = null;
+        if (isClass()) {
+            Class<?> superClass = asClass().getSuperclass();
+            Class<?>[] interfaces = asClass().getInterfaces();
+            if (superClass != null || interfaces.length > 0) {
+                int n = interfaces.length + ((superClass != null) ? 1 : 0);
+                types = (Class<?>[]) Array.newInstance(Class.class, n);
+                int i = 0;
+                if (superClass != null) {
+                    types[i++] = superClass;
+                }
+                for (int j = 0; j < interfaces.length; j++) {
+                    types[i++] = interfaces[j];
+                }
+            }
+        }
+        if (types != null) {
+            Object[] metaObjects = new Object[types.length];
+            for (int i = 0; i < types.length; i++) {
+                metaObjects[i] = HostObject.forClass(types[i], context);
+            }
+            return new TypesArray(metaObjects);
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class TypesArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final Object[] types;
+
+        TypesArray(Object[] types) {
+            this.types = types;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return types.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < types.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                                @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                error.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return types[(int) idx];
         }
     }
 
