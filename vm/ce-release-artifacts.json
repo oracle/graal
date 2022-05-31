@@ -100,6 +100,52 @@
         ]
     },
     {
+        "name": "llvm-installable-java11",
+        "core": false,
+        "jdk": "jdk_11",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            }
+        ]
+    },
+    {
+        "name": "llvm-installable-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64"
+            }
+        ]
+    },
+    {
         "name": "llvm-toolchain-installable-java11",
         "core": false,
         "jdk": "jdk_11",
