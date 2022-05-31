@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -72,13 +73,18 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     protected final OptimisticOptimizations optimisticOpts;
     private final AllowAssumptions allowAssumptions;
     private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache;
+    private final Supplier<AutoCloseable> createCachedGraphScope;
     private final BasePhase<? super CoreProviders> postParsingPhase;
+
+    @FunctionalInterface
+    public interface CreateCachedGraphScope extends Supplier<AutoCloseable> {
+    }
 
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, boolean needsExplicitException) {
+                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, CreateCachedGraphScope createGraphScope, boolean needsExplicitException) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
                         new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), needsExplicitException);
@@ -89,6 +95,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.allowAssumptions = allowAssumptions;
         this.graphCache = graphCache;
         this.postParsingPhase = postParsingPhase;
+        this.createCachedGraphScope = createGraphScope;
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
@@ -157,7 +164,12 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                     boolean trackNodeSourcePosition) {
         EncodedGraph result = graphCache.get(method);
         if (result == null && method.hasBytecodes()) {
-            result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
+            try (AutoCloseable scope = (createCachedGraphScope == null) ? null : createCachedGraphScope.get()) {
+                //
+                result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
+            } catch (Throwable ex) {
+                throw debug.handle(ex);
+            }
         }
         return result;
     }

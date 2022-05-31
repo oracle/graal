@@ -60,6 +60,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
+import org.graalvm.compiler.replacements.CachingPEGraphDecoder.CreateCachedGraphScope;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
@@ -395,7 +396,7 @@ public abstract class PartialEvaluator {
 
     @SuppressWarnings("unused")
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
+                                                NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, CreateCachedGraphScope createGraphScope) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
@@ -416,7 +417,7 @@ public abstract class PartialEvaluator {
         return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, false);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createGraphScope, false);
     }
 
     @SuppressWarnings("try")
@@ -430,12 +431,21 @@ public abstract class PartialEvaluator {
                         new InterceptReceiverPlugin(context.compilable),
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(context.task.inliningData()),
-                        graphCache);
+                        graphCache, getCreateCachedGraphScope());
         GraphSizeListener listener = new GraphSizeListener(context.options, context.graph);
         try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
             decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
         }
         assert listener.graphSize == NodeCostUtil.computeGraphSize(listener.graph);
+    }
+
+    /**
+     * Returns a scope
+     *
+     * @return a {@link AutoCloseable} that must  null if no scope is required, otherwise
+     */
+    protected CreateCachedGraphScope getCreateCachedGraphScope() {
+        return null;
     }
 
     /**

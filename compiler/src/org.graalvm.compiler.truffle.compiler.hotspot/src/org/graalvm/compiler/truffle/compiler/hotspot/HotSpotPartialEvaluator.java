@@ -29,11 +29,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
+import org.graalvm.compiler.replacements.CachingPEGraphDecoder.CreateCachedGraphScope;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
@@ -115,5 +119,15 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     public void purgeEncodedGraphCache() {
         graphCacheRef.set(null);
+    }
+
+    @Override
+    protected CreateCachedGraphScope getCreateCachedGraphScope() {
+        if (isEncodedGraphCacheEnabled()) {
+            // The interpreter graphs may be cached across compilations, keep JavaConstants references to the application heap alive in the libgraal global scope.
+            return HotSpotGraalServices::enterGlobalCompilationContext;
+        } else {
+            return super.getCreateCachedGraphScope();
+        }
     }
 }
