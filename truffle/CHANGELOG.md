@@ -21,7 +21,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * On HotSpot hosts the new optimizations will be applied to methods annotated with `@BytecodeInterpreterSwitch` only.
     * The annotation `@BytecodeInterpreterSwitchBoundary` was deprecated. Boundaries for the compilation are now inferred from directives like `CompilerDirective.transferToInterpreter()` and `@TruffleBoundary` automatically.
     * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
-* GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
+* GR-38387 Updated the `InteropLibrary.getMembers()` message regarding ordering and determinism. 
+* GR-38945 Truffle IGV dumping with log level 5 (e.g. `-Dgraal.Dump=Truffle:5`) now dumps the graph after each method that was fully partially evaluated. This enables debugging of problems only visible during partial evaluation.
 
 ## Version 22.1.0
 
