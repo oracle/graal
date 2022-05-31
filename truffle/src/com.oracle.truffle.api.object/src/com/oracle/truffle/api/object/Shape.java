@@ -926,6 +926,26 @@ public abstract class Shape {
     }
 
     /**
+     * Makes a property getter for this shape and the given property key, if it exists. Otherwise,
+     * returns {@code null}.
+     *
+     * Note that the returned {@link PropertyGetter} only accepts objects of this particular
+     * {@link Shape}.
+     *
+     * @param key the identifier to look up
+     * @return a {@link PropertyGetter}, or {@code null} if the property was not found in this shape
+     * @since 22.2
+     */
+    @CompilerDirectives.TruffleBoundary
+    public PropertyGetter makePropertyGetter(Object key) {
+        Property property = getProperty(key);
+        if (property == null) {
+            return null;
+        }
+        return new PropertyGetter(this, property);
+    }
+
+    /**
      * Utility class to allocate locations in an object layout.
      *
      * @since 0.8 or earlier

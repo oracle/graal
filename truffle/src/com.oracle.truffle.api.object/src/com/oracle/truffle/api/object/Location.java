@@ -42,6 +42,7 @@ package com.oracle.truffle.api.object;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /**
  * Property location.
@@ -108,6 +109,42 @@ public abstract class Location {
     @Deprecated(since = "22.2")
     public final Object get(DynamicObject store) {
         return get(store, false);
+    }
+
+    /**
+     * Gets this location's value as int.
+     *
+     * @param store storage object
+     * @param guard the result of a shape check or {@code false}
+     * @throws UnexpectedResultException if the location does not contain an int value.
+     * @since 22.2
+     */
+    protected int getInt(DynamicObject store, boolean guard) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    /**
+     * Gets this location's value as long.
+     *
+     * @param store storage object
+     * @param guard the result of a shape check or {@code false}
+     * @throws UnexpectedResultException if the location does not contain a long value.
+     * @since 22.2
+     */
+    protected long getLong(DynamicObject store, boolean guard) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    /**
+     * Gets this location's value as double.
+     *
+     * @param store storage object
+     * @param guard the result of a shape check or {@code false}
+     * @throws UnexpectedResultException if the location does not contain a double value.
+     * @since 22.2
+     */
+    protected double getDouble(DynamicObject store, boolean guard) throws UnexpectedResultException {
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**

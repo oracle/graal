@@ -122,6 +122,7 @@ public abstract class LocationImpl extends Location {
     /**
      * @see #get(DynamicObject, boolean)
      */
+    @Override
     protected long getLong(DynamicObject store, boolean guard) throws UnexpectedResultException {
         return expectLong(get(store, guard));
     }
@@ -129,6 +130,7 @@ public abstract class LocationImpl extends Location {
     /**
      * @see #get(DynamicObject, boolean)
      */
+    @Override
     protected int getInt(DynamicObject store, boolean guard) throws UnexpectedResultException {
         return expectInteger(get(store, guard));
     }
@@ -136,6 +138,7 @@ public abstract class LocationImpl extends Location {
     /**
      * @see #get(DynamicObject, boolean)
      */
+    @Override
     protected double getDouble(DynamicObject store, boolean guard) throws UnexpectedResultException {
         return expectDouble(get(store, guard));
     }
