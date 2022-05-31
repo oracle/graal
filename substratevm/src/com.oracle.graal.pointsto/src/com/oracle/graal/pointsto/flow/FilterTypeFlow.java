@@ -128,12 +128,6 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
         }
     }
 
-    @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        assert this.isClone();
-        return super.addState(bb, add);
-    }
-
     public boolean isExact() {
         return isExact;
     }

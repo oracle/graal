@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,29 +24,40 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.graph.Node;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-
+import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import jdk.vm.ci.code.BytecodePosition;
 
-public class MergeTypeFlow extends TypeFlow<BytecodePosition> {
+import java.util.Collection;
+import java.util.Collections;
 
-    public MergeTypeFlow(Node node) {
-        super(node.getNodeSourcePosition(), null);
+public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
+
+    public MethodTypeFlow callee;
+
+    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
-    public MergeTypeFlow(MergeTypeFlow original, MethodFlowsGraph methodFlows) {
-        super(original, methodFlows);
+    protected DirectInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {
+        super(bb, methodFlows, original);
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return new MergeTypeFlow(this, methodFlows);
+    public final boolean isDirectInvoke() {
+        return true;
     }
 
     @Override
-    public String toString() {
-        return "MergeTypeFlow<" + getState() + ">";
+    public Collection<AnalysisMethod> getCallees() {
+        if (callee != null && callee.getMethod().isImplementationInvoked()) {
+            return Collections.singletonList(callee.getMethod());
+        } else {
+            return Collections.emptyList();
+        }
     }
 }

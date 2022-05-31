@@ -30,12 +30,15 @@ import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -89,13 +92,7 @@ public abstract class AnalysisPolicy {
         return typeFlowSaturationCutoff;
     }
 
-    /** Provide an analysis context policy. */
-    protected abstract AnalysisContextPolicy<? extends AnalysisContext> contextPolicy();
-
-    @SuppressWarnings("unchecked")
-    public AnalysisContextPolicy<AnalysisContext> getContextPolicy() {
-        return (AnalysisContextPolicy<AnalysisContext>) contextPolicy();
-    }
+    public abstract MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method);
 
     /**
      * Specifies if this policy models constants objects context sensitively, i.e., by creating a
@@ -159,9 +156,27 @@ public abstract class AnalysisPolicy {
     public abstract AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
 
-    /** Provides implementation for the virtual invoke type flow. */
+    /** Provides implementation for the special invoke type flow. */
     public abstract AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
+
+    /** Provides implementation for the static invoke type flow. */
+    public abstract AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
+
+    public abstract MethodFlowsGraph staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod pointsToMethod);
+
+    public abstract AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph);
+
+    public abstract TypeFlow<?> proxy(BytecodePosition source, TypeFlow<?> input);
+
+    public abstract boolean addOriginalUse(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> use);
+
+    public abstract boolean addOriginalObserver(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> observer);
+
+    public abstract void linkActualReturn(PointsToAnalysis bb, boolean isStatic, InvokeTypeFlow invoke);
+
+    public abstract void registerAsImplementationInvoked(InvokeTypeFlow invoke, MethodFlowsGraph calleeFlows);
 
     @SuppressWarnings("unused")
     public int makeProperties(BigBang bb, AnalysisObject... objects) {
@@ -244,5 +259,4 @@ public abstract class AnalysisPolicy {
     public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, SingleTypeState s2);
 
     public abstract TypeState doSubtraction(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2);
-
 }

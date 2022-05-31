@@ -25,30 +25,38 @@
 package com.oracle.graal.pointsto.flow.context.bytecode;
 
 import static com.oracle.graal.pointsto.util.ListUtils.getTLArrayList;
+import static jdk.vm.ci.common.JVMCIError.guarantee;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
+import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.DirectInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraphClone;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -70,6 +78,7 @@ import com.oracle.graal.pointsto.typestore.SplitArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.SplitFieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.ListUtils;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayList;
 import com.oracle.graal.pointsto.util.ListUtils.UnsafeArrayListClosable;
@@ -79,7 +88,7 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
-    private BytecodeAnalysisContextPolicy contextPolicy;
+    private final BytecodeAnalysisContextPolicy contextPolicy;
 
     public BytecodeSensitiveAnalysisPolicy(OptionValues options) {
         super(options);
@@ -91,9 +100,13 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return true;
     }
 
-    @Override
-    public BytecodeAnalysisContextPolicy contextPolicy() {
+    public BytecodeAnalysisContextPolicy getContextPolicy() {
         return contextPolicy;
+    }
+
+    @Override
+    public MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method) {
+        return new CallSiteSensitiveMethodTypeFlow(options, method);
     }
 
     @Override
@@ -161,7 +174,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         TypeState resultState = TypeState.forEmpty();
         for (AnalysisType type : newState.types(bb)) {
             if (!currentState.containsType(type)) {
-                TypeState typeState = TypeState.forAllocation(bb, allocationSite, type, allocationContext);
+                TypeState typeState = forAllocation(bb, allocationSite, type, allocationContext);
                 resultState = TypeState.forUnion(bb, resultState, typeState);
             }
         }
@@ -179,13 +192,32 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             resultState = TypeState.forEmpty();
             for (AnalysisType type : inputState.types(bb)) {
                 if (!currentState.containsType(type)) {
-                    TypeState typeState = TypeState.forClone(bb, cloneSite, type, allocationContext);
+                    TypeState typeState = forClone(bb, cloneSite, type, allocationContext);
                     resultState = TypeState.forUnion(bb, resultState, typeState);
                 }
             }
         }
         assert !resultState.canBeNull();
         return resultState;
+    }
+
+    /**
+     * Wraps the analysis object corresponding to a clone site for a given context into a non-null
+     * type state.
+     */
+    private static TypeState forClone(PointsToAnalysis bb, BytecodeLocation cloneSite, AnalysisType type, AnalysisContext allocationContext) {
+        return forAllocation(bb, cloneSite, type, allocationContext);
+    }
+
+    /**
+     * Wraps the analysis object corresponding to an allocation site for a given context into a
+     * non-null type state.
+     */
+    private static TypeState forAllocation(PointsToAnalysis bb, BytecodeLocation allocationSite, AnalysisType objectType, AnalysisContext allocationContext) {
+        assert objectType.isArray() || (objectType.isInstanceClass() && !Modifier.isAbstract(objectType.getModifiers())) : objectType;
+
+        AnalysisObject allocationObject = bb.analysisPolicy().createHeapObject(bb, objectType, allocationSite, allocationContext);
+        return TypeState.forNonNullObject(bb, allocationObject);
     }
 
     @Override
@@ -306,6 +338,57 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         return new BytecodeSensitiveSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
+    @Override
+    public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        return new BytecodeSensitiveStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+    }
+
+    @Override
+    public MethodFlowsGraph staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod pointsToMethod) {
+        return ((CallSiteSensitiveMethodTypeFlow) pointsToMethod.getTypeFlow()).addContext(bb, contextPolicy.emptyContext());
+    }
+
+    @Override
+    public AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph) {
+        return contextPolicy.allocationContext((BytecodeAnalysisContext) ((MethodFlowsGraphClone) callerGraph).context(), PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
+    }
+
+    @Override
+    public TypeFlow<?> proxy(BytecodePosition source, TypeFlow<?> input) {
+        return new ProxyTypeFlow(source, input);
+    }
+
+    @Override
+    public boolean addOriginalUse(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> use) {
+        /* Adds the use, if not already present, without propagating the type state. */
+        return flow.addUse(bb, use, false);
+    }
+
+    @Override
+    public boolean addOriginalObserver(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> observer) {
+        /* Adds the observer, if not already present, without triggering an update. */
+        return flow.addObserver(bb, observer, false);
+    }
+
+    @Override
+    public void linkActualReturn(PointsToAnalysis bb, boolean isStatic, InvokeTypeFlow invoke) {
+        /* Nothing to do, the cloning mechanism does all the linking. */
+    }
+
+    @Override
+    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, MethodFlowsGraph calleeFlows) {
+        if (invoke.isContextInsensitive()) {
+            calleeFlows.getMethod().registerAsImplementationInvoked(invoke);
+        } else {
+            calleeFlows.getMethod().registerAsImplementationInvoked(invoke.getOriginalInvoke());
+        }
+    }
+
+    private static BytecodeAnalysisContextPolicy contextPolicy(BigBang bb) {
+        return ((BytecodeSensitiveAnalysisPolicy) bb.analysisPolicy()).getContextPolicy();
+    }
+
     /**
      * Bytecode context sensitive implementation of the invoke virtual type flow update.
      *
@@ -331,7 +414,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         protected BytecodeSensitiveVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveVirtualInvokeTypeFlow original) {
             super(bb, methodFlows, original);
-            callerContext = methodFlows.context();
+            callerContext = ((MethodFlowsGraphClone) methodFlows).context();
         }
 
         @Override
@@ -374,13 +457,13 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
                 assert !Modifier.isAbstract(method.getModifiers());
 
-                MethodTypeFlow callee = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
+                CallSiteSensitiveMethodTypeFlow callee = (CallSiteSensitiveMethodTypeFlow) PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
 
                 while (toi.hasNextObject(type)) {
                     AnalysisObject actualReceiverObject = toi.nextObject(type);
 
                     // get the context based on the actualReceiverObject
-                    AnalysisContext calleeContext = bb.contextPolicy().calleeContext(bb, actualReceiverObject, callerContext, callee);
+                    AnalysisContext calleeContext = contextPolicy(bb).calleeContext(bb, actualReceiverObject, (BytecodeAnalysisContext) callerContext, callee);
 
                     MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
 
@@ -399,7 +482,6 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone();
             /* When the receiver flow saturates start observing the flow of the receiver type. */
             replaceObservedWith(bb, receiverType);
         }
@@ -490,12 +572,77 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         }
     }
 
+    private static final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
+
+        private AnalysisContext calleeContext;
+        /**
+         * Context of the caller.
+         */
+        private AnalysisContext callerContext;
+
+        private BytecodeSensitiveStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+            calleeContext = null;
+        }
+
+        private BytecodeSensitiveStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveStaticInvokeTypeFlow original) {
+            super(bb, methodFlows, original);
+            this.callerContext = ((MethodFlowsGraphClone) methodFlows).context();
+        }
+
+        @Override
+        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
+            return new BytecodeSensitiveStaticInvokeTypeFlow(bb, methodFlows, this);
+        }
+
+        @Override
+        public void update(PointsToAnalysis bb) {
+            assert this.isClone();
+            /* The static invokes should be updated only once and the callee should be null. */
+            guarantee(callee == null, "static invoke updated multiple times!");
+
+            // Unlinked methods can not be parsed
+            if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
+                return;
+            }
+
+            /*
+             * Initialize the callee lazily so that if the invoke flow is not reached in this
+             * context, i.e. for this clone, there is no callee linked/
+             */
+            callee = targetMethod.getTypeFlow();
+            // set the callee in the original invoke too
+            ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
+
+            calleeContext = contextPolicy(bb).staticCalleeContext(bb, location, (BytecodeAnalysisContext) callerContext, callee);
+            MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
+            linkCallee(bb, true, calleeFlows);
+        }
+
+        @Override
+        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
+            if (callee == null || calleeContext == null) {
+                /* This static invoke was not updated. */
+                return Collections.emptyList();
+            } else {
+                MethodFlowsGraph methodFlows = ((CallSiteSensitiveMethodTypeFlow) callee).getFlows(calleeContext);
+                return Collections.singletonList(methodFlows);
+            }
+        }
+    }
+
     private static final class BytecodeSensitiveSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
 
         /**
          * Contexts of the resolved method.
          */
-        private ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
+        private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
+
+        /**
+         * Context of the caller.
+         */
+        private AnalysisContext callerContext;
 
         BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
@@ -504,6 +651,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         private BytecodeSensitiveSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {
             super(bb, methodFlows, original);
+            this.callerContext = ((MethodFlowsGraphClone) methodFlows).context();
         }
 
         @Override
@@ -513,15 +661,14 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone() || this.isContextInsensitive();
             /* The receiver state has changed. Process the invoke. */
 
             initCallee();
 
             TypeState invokeState = filterReceiverState(bb, getReceiver().getState());
             for (AnalysisObject receiverObject : invokeState.objects(bb)) {
-                AnalysisContext calleeContext = bb.contextPolicy().calleeContext(bb, receiverObject, callerContext, callee);
-                MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
+                AnalysisContext calleeContext = contextPolicy(bb).calleeContext(bb, receiverObject, (BytecodeAnalysisContext) callerContext, callee);
+                MethodFlowsGraph calleeFlows = ((CallSiteSensitiveMethodTypeFlow) callee).addContext(bb, calleeContext, this);
 
                 if (calleesFlows.putIfAbsent(calleeFlows, Boolean.TRUE) == null) {
                     linkCallee(bb, false, calleeFlows);
@@ -1333,5 +1480,4 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
             }
         }
     }
-
 }

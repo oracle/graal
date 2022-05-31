@@ -62,13 +62,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        /* Only a clone should be updated */
-        assert this.isClone();
-        return super.addState(bb, add);
-    }
-
-    @Override
     public void setObserved(TypeFlow<?> newObjectFlow) {
         this.objectFlow = newObjectFlow;
     }
@@ -78,7 +71,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
         if (!isSaturated()) {
             /*
              * When the receiver flow saturates start observing the flow of the object type, unless
@@ -126,9 +118,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState arrayState = getObjectState();
             for (AnalysisObject object : arrayState.objects(bb)) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
@@ -175,7 +164,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         protected abstract AbstractUnsafeLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
         @Override
-        public void initClone(PointsToAnalysis bb) {
+        public void initFlow(PointsToAnalysis bb) {
             /*
              * Unsafe load type flow models unsafe reads from both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe load can
@@ -204,9 +193,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState objectState = getObjectState();
             for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType objectType = object.type();
@@ -276,9 +262,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState objectState = getObjectState();
 
             for (AnalysisObject object : objectState.objects(bb)) {

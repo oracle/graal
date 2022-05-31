@@ -66,7 +66,6 @@ public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        assert this.isClone();
         if (bb.analysisPolicy().aliasArrayTypeFlows()) {
             /* All arrays are aliased, no need to model the array copy operation. */
             return;

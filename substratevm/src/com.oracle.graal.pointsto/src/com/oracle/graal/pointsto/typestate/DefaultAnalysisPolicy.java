@@ -24,6 +24,8 @@
  */
 package com.oracle.graal.pointsto.typestate;
 
+import static jdk.vm.ci.common.JVMCIError.guarantee;
+
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -37,10 +39,12 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.AbstractStaticInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -56,17 +60,15 @@ import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.UnifiedFieldTypeStore;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
-    private DefaultAnalysisContextPolicy contextPolicy;
-
     public DefaultAnalysisPolicy(OptionValues options) {
         super(options);
-        this.contextPolicy = new DefaultAnalysisContextPolicy();
     }
 
     @Override
@@ -75,8 +77,8 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public DefaultAnalysisContextPolicy contextPolicy() {
-        return contextPolicy;
+    public MethodTypeFlow createMethodTypeFlow(PointsToAnalysisMethod method) {
+        return new MethodTypeFlow(method);
     }
 
     @Override
@@ -183,6 +185,56 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
+    @Override
+    public AbstractStaticInvokeTypeFlow createStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        return new DefaultStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+    }
+
+    @Override
+    public MethodFlowsGraph staticRootMethodGraph(PointsToAnalysis bb, PointsToAnalysisMethod pointsToMethod) {
+        return pointsToMethod.getTypeFlow().getOrCreateMethodFlowsGraph(bb, null);
+    }
+
+    @Override
+    public AnalysisContext allocationContext(PointsToAnalysis bb, MethodFlowsGraph callerGraph) {
+        throw AnalysisError.shouldNotReachHere();
+    }
+
+    @Override
+    public TypeFlow<?> proxy(BytecodePosition source, TypeFlow<?> input) {
+        return input;
+    }
+
+    @Override
+    public boolean addOriginalUse(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> use) {
+        /* Adds the use, if not already present, and propagates the type state. */
+        return flow.addUse(bb, use, true);
+    }
+
+    @Override
+    public boolean addOriginalObserver(PointsToAnalysis bb, TypeFlow<?> flow, TypeFlow<?> observer) {
+        /* Adds the observer, if not already present, and triggers an update. */
+        return flow.addObserver(bb, observer, true);
+    }
+
+    @Override
+    public void linkActualReturn(PointsToAnalysis bb, boolean isStatic, InvokeTypeFlow invoke) {
+        /* Link the actual return with the formal return of already linked callees. */
+        for (AnalysisMethod callee : invoke.getCallees()) {
+            invoke.linkReturn(bb, isStatic, ((PointsToAnalysisMethod) callee).getTypeFlow().getMethodFlowsGraph());
+        }
+        if (invoke.isSaturated()) {
+            InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke();
+            contextInsensitiveInvoke.getActualReturn().addUse(bb, invoke.getActualReturn());
+        }
+    }
+
+    @Override
+    public void registerAsImplementationInvoked(InvokeTypeFlow invoke, MethodFlowsGraph calleeFlows) {
+        calleeFlows.getMethod().registerAsImplementationInvoked(invoke);
+    }
+
     /** Explicitly context insensitive implementation of the invoke virtual type flow update. */
     private static class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
@@ -193,18 +245,8 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }
 
-        protected DefaultVirtualInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DefaultVirtualInvokeTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
-
-        @Override
-        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new DefaultVirtualInvokeTypeFlow(bb, methodFlows, this);
-        }
-
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert this.isClone() || this.isContextInsensitive();
             if (isSaturated()) {
                 /* The receiver can saturate while the invoke update was waiting to be scheduled. */
                 return;
@@ -223,7 +265,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                     /*-
                      * The receiver can become saturated during the callees linking, which saturates
                      * the invoke, when linking the return flow of callees for code patterns like:
-                     * 
+                     *
                      *  Object cur = ...
                      *  while {
                      *      cur = cur.next();
@@ -255,9 +297,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                 assert !Modifier.isAbstract(method.getModifiers());
 
                 MethodTypeFlow callee = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
-                MethodFlowsGraph calleeFlows = callee.addContext(bb, bb.contextPolicy().emptyContext(), this);
-
-                assert callee.getContexts()[0] == bb.contextPolicy().emptyContext();
+                MethodFlowsGraph calleeFlows = callee.getOrCreateMethodFlowsGraph(bb, this);
 
                 /*
                  * Different receiver type can yield the same target method; although it is correct
@@ -278,8 +318,6 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone() && !this.isContextInsensitive();
-
             setSaturated();
 
             /*
@@ -295,7 +333,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
             /* Unlink all callees. */
             for (AnalysisMethod callee : super.getCallees()) {
-                MethodFlowsGraph calleeFlows = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getFlows(bb.contextPolicy().emptyContext());
+                MethodFlowsGraph calleeFlows = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getMethodFlowsGraph();
                 /* Iterate over the actual parameters in caller context. */
                 for (int i = 0; i < actualParameters.length; i++) {
                     /* Get the formal parameter from the callee. */
@@ -359,7 +397,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             Collection<AnalysisMethod> calleesList = getCallees();
             List<MethodFlowsGraph> methodFlowsGraphs = new ArrayList<>(calleesList.size());
             for (AnalysisMethod method : calleesList) {
-                methodFlowsGraphs.add(PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow().getFlows(bb.contextPolicy().emptyContext()));
+                methodFlowsGraphs.add(PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow().getMethodFlowsGraph());
             }
             return methodFlowsGraphs;
         }
@@ -375,18 +413,9 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }
 
-        private DefaultSpecialInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DefaultSpecialInvokeTypeFlow original) {
-            super(bb, methodFlows, original);
-        }
-
-        @Override
-        public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-            return new DefaultSpecialInvokeTypeFlow(bb, methodFlows, this);
-        }
-
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            assert (this.isClone() || this.isContextInsensitive()) && !isSaturated();
+            assert !isSaturated();
             /* The receiver state has changed. Process the invoke. */
 
             /*
@@ -396,7 +425,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
              */
             initCallee();
             if (calleeFlows == null) {
-                calleeFlows = callee.addContext(bb, bb.contextPolicy().emptyContext(), this);
+                calleeFlows = callee.getOrCreateMethodFlowsGraph(bb, this);
                 linkCallee(bb, false, calleeFlows);
             }
 
@@ -415,8 +444,44 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                 /* This static invoke was not updated. */
                 return Collections.emptyList();
             } else {
-                MethodFlowsGraph methodFlows = callee.getFlows(bb.contextPolicy().emptyContext());
-                return Collections.singletonList(methodFlows);
+                return Collections.singletonList(callee.getMethodFlowsGraph());
+            }
+        }
+    }
+
+    private static final class DefaultStaticInvokeTypeFlow extends AbstractStaticInvokeTypeFlow {
+        private DefaultStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                        TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+        }
+
+        @Override
+        public void update(PointsToAnalysis bb) {
+            /* The static invokes should be updated only once and the callee should be null. */
+            guarantee(callee == null, "static invoke updated multiple times!");
+
+            // Unlinked methods can not be parsed
+            if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
+                return;
+            }
+
+            /*
+             * Initialize the callee lazily so that if the invoke flow is not reached in this
+             * context, i.e. for this clone, there is no callee linked/
+             */
+            callee = targetMethod.getTypeFlow();
+
+            MethodFlowsGraph calleeFlows = callee.getOrCreateMethodFlowsGraph(bb, this);
+            linkCallee(bb, true, calleeFlows);
+        }
+
+        @Override
+        public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
+            if (callee == null) {
+                /* This static invoke was not updated. */
+                return Collections.emptyList();
+            } else {
+                return Collections.singletonList(callee.getMethodFlowsGraph());
             }
         }
     }
@@ -456,6 +521,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
              * types, just construct the types bit set.
              */
             BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
+
             TypeState result = new MultiTypeState(bb, resultCanBeNull, 0, typesBitSet);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;

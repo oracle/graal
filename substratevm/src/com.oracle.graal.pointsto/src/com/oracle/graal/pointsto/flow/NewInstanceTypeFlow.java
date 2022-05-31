@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
@@ -83,10 +82,7 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
     /** Create the type state for a clone. */
     protected TypeState cloneSourceState(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        assert !this.isClone();
-
-        AnalysisContext allocatorContext = methodFlows.context();
-        AnalysisContext allocationContext = bb.contextPolicy().allocationContext(allocatorContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
+        AnalysisContext allocationContext = bb.analysisPolicy().allocationContext(bb, methodFlows);
 
         if (bb.analysisPolicy().isContextSensitiveAllocation(bb, type, allocationContext)) {
             /*
@@ -108,8 +104,6 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
     }
 
     private AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisContext objContext) {
-        assert !this.isClone();
-
         if (heapObjectsCache == null) {
             /* Lazily initialize the cache. */
             HEAP_OBJECTS_CACHE_UPDATER.compareAndSet(this, null, new ConcurrentHashMap<>());

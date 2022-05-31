@@ -33,8 +33,6 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.BitArrayUtils;
@@ -190,30 +188,6 @@ public abstract class TypeState {
 
         AnalysisObject constantObject = bb.analysisPolicy().createConstantObject(bb, constant, exactType);
         return forNonNullObject(bb, constantObject);
-    }
-
-    /** Wraps the analysis object corresponding to an allocation site into a non-null type state. */
-    public static TypeState forAllocation(PointsToAnalysis bb, BytecodeLocation allocationLabel, AnalysisType exactType) {
-        return forAllocation(bb, allocationLabel, exactType, bb.contextPolicy().emptyContext());
-    }
-
-    /**
-     * Wraps the analysis object corresponding to an allocation site for a given context into a
-     * non-null type state.
-     */
-    public static TypeState forAllocation(PointsToAnalysis bb, BytecodeLocation allocationSite, AnalysisType objectType, AnalysisContext allocationContext) {
-        assert objectType.isArray() || (objectType.isInstanceClass() && !Modifier.isAbstract(objectType.getModifiers())) : objectType;
-
-        AnalysisObject allocationObject = bb.analysisPolicy().createHeapObject(bb, objectType, allocationSite, allocationContext);
-        return forNonNullObject(bb, allocationObject);
-    }
-
-    /**
-     * Wraps the analysis object corresponding to a clone site for a given context into a non-null
-     * type state.
-     */
-    public static TypeState forClone(PointsToAnalysis bb, BytecodeLocation cloneSite, AnalysisType type, AnalysisContext allocationContext) {
-        return forAllocation(bb, cloneSite, type, allocationContext);
     }
 
     public static SingleTypeState forExactType(PointsToAnalysis bb, AnalysisType exactType, boolean canBeNull) {
