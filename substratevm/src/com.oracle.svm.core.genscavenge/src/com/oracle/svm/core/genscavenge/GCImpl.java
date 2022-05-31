@@ -32,10 +32,8 @@ import java.lang.ref.Reference;
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.heap.ParallelGC;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -773,8 +771,6 @@ public final class GCImpl implements GC {
 
             startTicks = JfrGCEvents.startGCPhasePause();
             try {
-                ParallelGCImpl.QUEUE.put(getCollectionEpoch());
-
                 /* Visit all the Objects promoted since the snapshot, transitively. */
                 scanGreyObjects(true);
 
@@ -1144,6 +1140,7 @@ public final class GCImpl implements GC {
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
+        ParallelGCImpl.waitForIdle();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

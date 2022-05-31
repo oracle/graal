@@ -1,25 +1,23 @@
 package com.oracle.svm.core.genscavenge.parallel;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.genscavenge.HeapImpl;
+import com.oracle.svm.core.genscavenge.GCImpl;
+import com.oracle.svm.core.genscavenge.Space;
 import com.oracle.svm.core.heap.ParallelGC;
-import com.oracle.svm.core.locks.VMCondition;
-import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.word.UnsignedWord;
 
+import java.util.function.BiConsumer;
 import java.util.stream.IntStream;
 
 public class ParallelGCImpl extends ParallelGC {
 
+    /// static -> ImageSingletons
     public static final int WORKERS_COUNT = 2;
-    public static final TaskQueue QUEUE = new TaskQueue("pargc");
+    public static final ObjectQueue QUEUE = new ObjectQueue("pargc");
 
     @Override
     public void startWorkerThreads() {
@@ -27,16 +25,24 @@ public class ParallelGCImpl extends ParallelGC {
     }
 
     public void startWorkerThread(int n) {
-        Log trace = Log.log();
+        final Log trace = Log.log();
+        final BiConsumer<Object, Object> releaseChunks = (s, cr) -> {
+            Space space = (Space) s;
+            GCImpl.ChunkReleaser chunkReleaser = (GCImpl.ChunkReleaser) cr;
+//                        trace.string("  got space ").object(space)
+//                                .string(", chunkReleaser ").object(chunkReleaser)
+//                                .string(" on PGCWorker-").unsigned(n).newline();
+            space.releaseChunks(chunkReleaser);
+//            space.setInd(n);
+        };
         Thread t = new Thread() {
             @Override
-            @Uninterruptible(reason = "Trying to ignore safepoints", calleeMustBe = false)
             public void run() {
-                VMThreads.ParallelGCSupport.setParallelGCThread();
+//                VMThreads.ParallelGCSupport.setParallelGCThread();
+                VMThreads.SafepointBehavior.markThreadAsCrashed();
                 try {
                     while (!stopped) {
-                        UnsignedWord token = QUEUE.get();
-                        trace.string("  got token ").unsigned(token).string(" on PGCWorker-").unsigned(n).newline();
+                        QUEUE.consume(releaseChunks);
                     }
                 } catch (Throwable e) {
                     VMError.shouldNotReachHere(e.getClass().getName());
@@ -46,6 +52,10 @@ public class ParallelGCImpl extends ParallelGC {
         t.setName("ParallelGCWorker-" + n);
         t.setDaemon(true);
         t.start();
+    }
+
+    public static void waitForIdle() {
+        QUEUE.waitUntilIdle(WORKERS_COUNT);
     }
 }
 

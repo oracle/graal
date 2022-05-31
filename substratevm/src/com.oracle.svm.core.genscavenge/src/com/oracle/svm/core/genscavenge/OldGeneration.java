@@ -99,7 +99,8 @@ public final class OldGeneration extends Generation {
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
-        getFromSpace().releaseChunks(chunkReleaser);
+//        getFromSpace().setInd(1000);
+        getFromSpace().releaseChunksParallel(chunkReleaser);
     }
 
     void prepareForPromotion() {

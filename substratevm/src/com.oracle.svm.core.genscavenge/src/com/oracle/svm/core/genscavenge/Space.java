@@ -28,6 +28,8 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLO
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.locks.VMMutex;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -36,7 +38,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
@@ -45,7 +46,6 @@ import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VMThreads;
 
 /**
  * A Space is a collection of HeapChunks.
@@ -183,6 +183,37 @@ public final class Space {
             return AlignedHeapChunk.allocateMemory(newChunk, objectSize);
         }
         return WordFactory.nullPointer();
+    }
+
+    private int ind;///rm
+
+    private final VMMutex mutex = new VMMutex("Space.ind.mutex");
+
+    private void setInd(int ind) {
+        try {
+            mutex.lock();
+            if (ind < 10) {
+                Log.log().string("## ind ").unsigned(this.ind).string(" -> ").unsigned(ind).newline();
+            }
+            this.ind = ind;
+        } finally {
+            mutex.unlock();
+        }
+    }
+
+    private int getInd() {
+        try {
+            mutex.lock();
+            return ind;
+        } finally {
+            mutex.unlock();
+        }
+    }
+
+    public void releaseChunksParallel(ChunkReleaser chunkReleaser) {
+//        Log.log().string("  put space ").object(this)
+//                .string(", chunkReleaser ").object(chunkReleaser).newline();
+        ParallelGCImpl.QUEUE.put(this, chunkReleaser);
     }
 
     public void releaseChunks(ChunkReleaser chunkReleaser) {

@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
-import static com.oracle.svm.core.thread.VMThreads.StatusSupport.STATUS_IN_SAFEPOINT;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -666,7 +665,7 @@ public final class Safepoint {
         /** Send each of the threads (except myself) a request to come to a safepoint. */
         private static int requestSafepoints(String reason) {
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex while requesting a safepoint.");
-            final Log trace = Log.log().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
+            final Log trace = Log.noopLog().string("[Safepoint.Master.requestSafepoints:  reason: ").string(reason);
             int numOfThreads = 0;
 
             // Walk the threads list and ask each thread (except myself) to come to a safepoint.
@@ -767,8 +766,6 @@ public final class Safepoint {
                         notAtSafepoint++;
                     } else if (safepointBehavior == SafepointBehavior.THREAD_CRASHED) {
                         ignoreSafepoints++;
-                    } else if (VMThreads.ParallelGCSupport.isParallelGCThread(vmThread)) {
-                        ignoreSafepoints++;
                     } else {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         switch (status) {
@@ -856,7 +853,7 @@ public final class Safepoint {
 
         /** Release each thread at a safepoint. */
         private static void releaseSafepoints(String reason) {
-            final Log trace = Log.log().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
+            final Log trace = Log.noopLog().string("[Safepoint.Master.releaseSafepoints:").string("  reason: ").string(reason).newline();
             VMThreads.THREAD_MUTEX.assertIsOwner("Must hold mutex when releasing safepoints.");
             // Set all the thread statuses that are at safepoint back to being in native code.
             for (IsolateThread vmThread = VMThreads.firstThread(); vmThread.isNonNull(); vmThread = VMThreads.nextThread(vmThread)) {
@@ -918,7 +915,7 @@ public final class Safepoint {
                         assert safepointBehavior == SafepointBehavior.ALLOW_SAFEPOINT;
                         // Check if the thread is at a safepoint or in native code.
                         switch (status) {
-                            case STATUS_IN_SAFEPOINT:
+                            case StatusSupport.STATUS_IN_SAFEPOINT:
                                 atSafepoint += 1;
                                 break;
                             default:
