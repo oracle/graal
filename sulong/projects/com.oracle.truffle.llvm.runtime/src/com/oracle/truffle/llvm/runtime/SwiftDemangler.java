@@ -115,11 +115,15 @@ public class SwiftDemangler {
         return new SwiftDemangler(name).decode();
     }
 
-    class MethodDescriptor {
+    public class MethodDescriptor {
         ArrayList<String> className;
         String methodName;
         String returnType;
         List<Pair<String, String>> parameters = new ArrayList<>(); // List<[type, name]>
+
+        public String getMethodName() {
+            return methodName;
+        }
 
         @Override
         public String toString() {
