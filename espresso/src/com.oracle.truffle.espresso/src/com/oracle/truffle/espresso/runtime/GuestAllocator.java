@@ -50,7 +50,9 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * {@code BytecodeNode#checkNewMultiArray(Klass, int[])}).
  * <p>
  * Paths that do not require profiling can use the methods in {@link AllocationChecks} to validate
- * the arguments passed to the methods of {@link GuestAllocator}.
+ * the arguments passed to the methods of {@link GuestAllocator}. Additionally, variations of these
+ * methods with a {@link AllocationProfiler} argument can be used to simplify the profiling in the
+ * caller.
  * <p>
  * <p>
  * Methods in this class wil exploit as much as possible the constant-ness of arguments, exploding
@@ -425,43 +427,85 @@ public final class GuestAllocator implements ContextAccess {
         return context;
     }
 
+    public interface AllocationProfiler {
+        AllocationProfiler NO_PROFILE = new AllocationProfiler() {
+            @Override
+            public void enterNewReference() {
+
+            }
+
+            @Override
+            public void enterNewArray() {
+
+            }
+
+            @Override
+            public void enterNewMultiArray() {
+
+            }
+        };
+
+        void enterNewReference();
+
+        void enterNewArray();
+
+        void enterNewMultiArray();
+    }
+
     public static final class AllocationChecks {
         private AllocationChecks() {
         }
 
-        public static void checkCanAllocateNewReference(Meta meta, Klass klass) {
-            if (!canAllocateNewReference(klass)) {
-                throw meta.throwException(meta.java_lang_InstantiationException);
-            }
+        public static void checkCanAllocateNewReference(Meta meta, Klass klass, boolean error) {
+            checkCanAllocateNewReference(meta, klass, error, AllocationProfiler.NO_PROFILE);
         }
 
         public static void checkCanAllocateArray(Meta meta, int size) {
-            if (!canAllocateNewArray(size)) {
-                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-            }
+            checkCanAllocateArray(meta, size, AllocationProfiler.NO_PROFILE);
         }
 
         public static void checkCanAllocateMultiArray(Meta meta, Klass component, int[] dimensions) {
-            if (invalidComponent(meta, component)) {
-                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            checkCanAllocateMultiArray(meta, component, dimensions, AllocationProfiler.NO_PROFILE);
+        }
+
+        public static void checkCanAllocateNewReference(Meta meta, Klass klass, boolean error, AllocationProfiler profile) {
+            if (!canAllocateNewReference(klass)) {
+                profile.enterNewReference();
+                throw meta.throwException(error ? meta.java_lang_InstantiationError : meta.java_lang_InstantiationException);
             }
-            if (invalidDimensionsArray(dimensions)) {
-                throw meta.throwException(meta.java_lang_IllegalArgumentException);
-            }
-            if (invalidDimensions(dimensions)) {
+        }
+
+        public static void checkCanAllocateArray(Meta meta, int size, AllocationProfiler profile) {
+            if (!canAllocateNewArray(size)) {
+                profile.enterNewArray();
                 throw meta.throwException(meta.java_lang_NegativeArraySizeException);
             }
         }
 
-        static boolean canAllocateNewReference(Klass klass) {
+        public static void checkCanAllocateMultiArray(Meta meta, Klass component, int[] dimensions, AllocationProfiler profile) {
+            if (invalidComponent(meta, component)) {
+                profile.enterNewMultiArray();
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            }
+            if (invalidDimensionsArray(dimensions)) {
+                profile.enterNewMultiArray();
+                throw meta.throwException(meta.java_lang_IllegalArgumentException);
+            }
+            if (invalidDimensions(dimensions)) {
+                profile.enterNewMultiArray();
+                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
+            }
+        }
+
+        private static boolean canAllocateNewReference(Klass klass) {
             return (klass instanceof ObjectKlass) && !klass.isAbstract() && !klass.isInterface();
         }
 
-        static boolean canAllocateNewArray(int size) {
+        private static boolean canAllocateNewArray(int size) {
             return size >= 0;
         }
 
-        static boolean canAllocateMultiArray(Meta meta, Klass component, int[] dimensions) {
+        private static boolean canAllocateMultiArray(Meta meta, Klass component, int[] dimensions) {
             if (invalidComponent(meta, component)) {
                 return false;
             }
@@ -478,7 +522,26 @@ public final class GuestAllocator implements ContextAccess {
             return dimensions.length == 0 || dimensions.length > 255;
         }
 
+        @ExplodeLoop
         private static boolean invalidDimensions(int[] dimensions) {
+            if (CompilerDirectives.isPartialEvaluationConstant(dimensions)) {
+                return invalidDimensionsExplode(dimensions);
+            } else {
+                return invalidDimensionsNoExplode(dimensions);
+            }
+        }
+
+        private static boolean invalidDimensionsNoExplode(int[] dimensions) {
+            for (int dim : dimensions) {
+                if (!canAllocateNewArray(dim)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @ExplodeLoop
+        private static boolean invalidDimensionsExplode(int[] dimensions) {
             for (int dim : dimensions) {
                 if (!canAllocateNewArray(dim)) {
                     return true;

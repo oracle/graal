@@ -40,6 +40,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -176,7 +177,7 @@ public abstract class InvokeVirtual extends EspressoNode {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
-            Method.MethodVersion target = genericMethodLookup(EspressoContext.get(this), resolutionSeed, receiver.getKlass(), error);
+            Method.MethodVersion target = genericMethodLookup(getContext(), resolutionSeed, receiver.getKlass(), error);
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -256,7 +257,7 @@ public abstract class InvokeVirtual extends EspressoNode {
                             @Cached IndirectCallNode indirectCallNode) {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                Method.MethodVersion target = genericMethodLookup(EspressoContext.get(this), resolutionSeed, receiver.getKlass(), error);
+                Method.MethodVersion target = genericMethodLookup(getContext(), resolutionSeed, receiver.getKlass(), error);
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }

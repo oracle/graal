@@ -228,7 +228,6 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SLIM_QUICK;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.WIDE;
-import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
 import java.util.Arrays;
 import java.util.List;
@@ -297,7 +296,6 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 import com.oracle.truffle.espresso.meta.JavaKind;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.helper.EspressoReferenceArrayStoreNode;
 import com.oracle.truffle.espresso.nodes.quick.BaseQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastQuickNode;
@@ -335,6 +333,7 @@ import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.ReturnAddress;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -353,7 +352,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * bytecode is first processed/executed without growing or shrinking the stack and only then the
  * {@code top} of the stack index is adjusted depending on the bytecode stack offset.
  */
-public final class BytecodeNode extends EspressoMethodNode implements BytecodeOSRNode {
+public final class BytecodeNode extends EspressoMethodNode implements BytecodeOSRNode, GuestAllocator.AllocationProfiler {
 
     private static final DebugCounter EXECUTED_BYTECODES_COUNT = DebugCounter.create("Executed bytecodes");
     private static final DebugCounter QUICKENED_BYTECODES = DebugCounter.create("Quickened bytecodes");
@@ -1538,19 +1537,34 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
     }
 
+    @Override
+    public void enterNewReference() {
+        enterImplicitExceptionProfile();
+    }
+
+    @Override
+    public void enterNewArray() {
+        enterImplicitExceptionProfile();
+    }
+
+    @Override
+    public void enterNewMultiArray() {
+        enterImplicitExceptionProfile();
+    }
+
     private StaticObject newReferenceObject(Klass klass) {
         assert !klass.isPrimitive() : "Verifier guarantee";
-        checkConcreteClass(klass);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), klass, true, this);
         return getAllocator().createNew((ObjectKlass) klass);
     }
 
     private StaticObject newPrimitiveArray(byte jvmPrimitiveType, int length) {
-        checkNegativeArraySize(length);
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
         return getAllocator().createNewPrimitiveArray(jvmPrimitiveType, length);
     }
 
     private StaticObject newReferenceArray(Klass componentType, int length) {
-        checkNegativeArraySize(length);
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(getMeta(), length, this);
         return getAllocator().createNewReferenceArray(componentType, length);
     }
 
@@ -2316,7 +2330,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             dimensions[i] = popInt(frame, top - allocatedDimensions + i);
         }
         Klass component = ((ArrayKlass) klass).getComponentType();
-        checkNewMultiArray(component, dimensions);
+        GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(getMeta(), component, dimensions, this);
         StaticObject value = getAllocator().createNewMultiArray(component, dimensions);
         putObject(frame, top - allocatedDimensions, value);
         return -allocatedDimensions; // Does not include the created (pushed) array.
@@ -2453,34 +2467,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         }
         enterImplicitExceptionProfile();
         throw throwBoundary(getMeta().java_lang_ArithmeticException, "/ by zero");
-    }
-
-    private void checkNegativeArraySize(int size) {
-        if (size < 0) {
-            enterImplicitExceptionProfile();
-            Meta meta = getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_NegativeArraySizeException, cat("Invalid array size: ", size));
-        }
-    }
-
-    private void checkConcreteClass(Klass klass) {
-        if (klass.isAbstract() || klass.isInterface()) {
-            enterImplicitExceptionProfile();
-            Meta meta = getMeta();
-            throw meta.throwException(meta.java_lang_InstantiationError);
-        }
-    }
-
-    @ExplodeLoop
-    private void checkNewMultiArray(Klass component, int[] dimensions) {
-        if (component == getMeta()._void) {
-            enterImplicitExceptionProfile();
-            Meta meta = getMeta();
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
-        }
-        for (int size : dimensions) {
-            checkNegativeArraySize(size);
-        }
     }
 
     // endregion Misc. checks

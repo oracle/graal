@@ -844,7 +844,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @TruffleBoundary
     public Object invokeMethod(Object callee, Object[] args) {
         if (isConstructor()) {
-            GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), getDeclaringKlass());
+            GuestAllocator.AllocationChecks.checkCanAllocateNewReference(getMeta(), getDeclaringKlass(), false);
             Object theCallee = getAllocator().createNew(getDeclaringKlass());
             invokeWithConversions(theCallee, args);
             return theCallee;

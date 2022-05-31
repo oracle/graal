@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -52,8 +51,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -375,7 +374,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                 assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
                 initMethod.getDeclaringKlass().safeInitialize();
                 EspressoContext context = EspressoContext.get(invoke);
-                GuestAllocator.AllocationChecks.checkCanAllocateNewReference(context.getMeta(), objectKlass);
+                GuestAllocator.AllocationChecks.checkCanAllocateNewReference(context.getMeta(), objectKlass, false);
                 StaticObject newObject = context.getAllocator().createNew(objectKlass);
                 invoke.execute(initMethod, newObject, arguments);
                 return newObject;
@@ -1355,7 +1354,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     public final StaticObject allocateInstance(EspressoContext ctx) {
         assert this instanceof ObjectKlass;
-        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(ctx.getMeta(), this);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(ctx.getMeta(), this, false);
         return ctx.getAllocator().createNew((ObjectKlass) this);
     }
 

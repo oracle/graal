@@ -1272,7 +1272,7 @@ public final class Target_sun_misc_Unsafe {
     public static @JavaType(Object.class) StaticObject allocateInstance(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Class.class) StaticObject clazz,
                     @Inject Meta meta) {
         Klass mirrorKlass = clazz.getMirrorKlass(meta);
-        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(meta, mirrorKlass);
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(meta, mirrorKlass, false);
         return meta.getAllocator().createNew((ObjectKlass) mirrorKlass);
     }
 
