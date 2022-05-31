@@ -40,7 +40,7 @@ public class FinalCanonicalizerPhase extends CanonicalizerPhase {
     }
 
     @Override
-    protected boolean isFinalCanonicalization() {
+    protected boolean isFinalCanonicalizationPhase() {
         return true;
     }
 

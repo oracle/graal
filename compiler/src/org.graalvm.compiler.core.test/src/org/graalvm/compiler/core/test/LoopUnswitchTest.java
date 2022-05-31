@@ -40,9 +40,8 @@ import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.junit.Assert;
-import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class LoopUnswitchTest extends GraalCompilerTest {

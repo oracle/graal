@@ -192,7 +192,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
-    protected boolean isFinalCanonicalization() {
+    protected boolean isFinalCanonicalizationPhase() {
         return false;
     }
 
@@ -259,7 +259,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
     @SuppressWarnings("try")
     protected int processWorkSet(StructuredGraph graph, Tool tool) {
-        if (!isFinalCanonicalization() && graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
+        if (!tool.finalCanonicalization() && graph.isAfterStage(StageFlag.FINAL_CANONICALIZATION)) {
             GraalError.shouldNotReachHere("cannot run further canonicalizations after the final canonicalization");
         }
 
@@ -303,7 +303,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 ++sum;
             }
         }
-        if (isFinalCanonicalization()) {
+        if (tool.finalCanonicalization()) {
             graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
         }
         return sum;
@@ -574,7 +574,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         private final NodeView nodeView;
         private final DebugContext debug;
         private final boolean afterMidTierLowering;
-        private final boolean isFinalCanonicalization;
 
         Tool(StructuredGraph graph, CoreProviders context, NodeWorkList workList) {
             super(context);
@@ -585,7 +584,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             this.afterMidTierLowering = graph.isAfterStage(StageFlag.MID_TIER_LOWERING);
             this.context = context;
             this.workList = workList;
-            this.isFinalCanonicalization = isFinalCanonicalization();
         }
 
         @Override
@@ -617,7 +615,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
 
         @Override
         public boolean finalCanonicalization() {
-            return isFinalCanonicalization;
+            return isFinalCanonicalizationPhase();
         }
 
         @Override
@@ -659,6 +657,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         public boolean divisionOverflowIsJVMSCompliant() {
             return context.getLowerer().divisionOverflowIsJVMSCompliant();
         }
+
     }
 
     public boolean getCanonicalizeReads() {
