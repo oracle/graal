@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
+import com.oracle.truffle.espresso.impl.EspressoClassLoadingException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -290,6 +291,8 @@ public final class ClassRedefinition {
             // TODO(Gregersen) - return appropriate error code based on the exception type
             // we get from parsing the class file
             return ErrorCodes.INVALID_CLASS_FORMAT;
+        } catch (EspressoClassLoadingException e) {
+            throw e.asGuestException(context.getMeta());
         }
     }
 

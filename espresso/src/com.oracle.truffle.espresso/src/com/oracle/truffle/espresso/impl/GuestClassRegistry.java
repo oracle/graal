@@ -96,7 +96,7 @@ public final class GuestClassRegistry extends ClassRegistry {
 
     @SuppressWarnings("sync-override")
     @Override
-    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) {
+    public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ObjectKlass klass = super.defineKlass(context, typeOrNull, bytes, info);
         // Register class in guest CL. Mimics HotSpot behavior.
         if (info.addedToRegistry()) {

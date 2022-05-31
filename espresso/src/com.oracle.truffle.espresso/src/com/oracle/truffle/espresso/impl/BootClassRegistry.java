@@ -66,7 +66,7 @@ public final class BootClassRegistry extends ClassRegistry {
 
     @Override
     @SuppressWarnings("try")
-    public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) {
+    public Klass loadKlassImpl(EspressoContext context, Symbol<Type> type) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
         if (Types.isPrimitive(type)) {
             return null;

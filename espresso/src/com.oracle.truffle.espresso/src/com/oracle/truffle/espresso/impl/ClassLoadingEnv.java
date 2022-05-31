@@ -28,6 +28,7 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -66,6 +67,11 @@ public class ClassLoadingEnv implements LanguageAccess {
 
     public TimerCollection getTimers() {
         return timers;
+    }
+
+    public boolean loaderIsBootOrPlatform(StaticObject loader) {
+        return StaticObject.isNull(loader) ||
+                        (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     public long getNewKlassId() {
