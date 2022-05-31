@@ -140,6 +140,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=False,
 ))
 
+if mx.suite('tools', fatalIfMissing=False) is not None and mx.suite('graal-js', fatalIfMissing=False) is not None:
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
+        suite=_suite,
+        name='VisualVM',
+        short_name='vvm',
+        dir_name='visualvm',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['Graal.js'],
+        support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
+        provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')],
+        installable=True,
+        extra_installable_qualifiers=['ce'],
+    ))
 
 polybench_benchmark_methods = ["_run"]
 
