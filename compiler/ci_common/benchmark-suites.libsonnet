@@ -118,37 +118,31 @@
     max_jdk_version:: null
   },
 
-  renaissance: cc.compiler_benchmark + c.heap.default + {
-    suite:: "renaissance",
-    environment+: {
-      "SPARK_LOCAL_IP": "127.0.0.1"
-    },
+  renaissance_template(suite_version=null, suite_name="renaissance", max_jdk_version=null):: cc.compiler_benchmark + c.heap.default + {
+    suite:: suite_name,
+    local suite_version_args = if suite_version != null then ["--bench-suite-version=" + suite_version] else [],
     run+: [
-      self.benchmark_cmd + ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
+      self.benchmark_cmd + ["renaissance:*"] + suite_version_args + ["--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00",
+    timelimit: "4:00:00",
     forks_batches:: 4,
     forks_timelimit:: "06:30:00",
     min_jdk_version:: 8,
-    max_jdk_version:: 11
+    max_jdk_version:: max_jdk_version
   },
 
-  renaissance_0_10: self.renaissance + {
-    suite:: "renaissance-0-10",
+  renaissance: self.renaissance_template(),
+
+  renaissance_0_10: self.renaissance_template(suite_version="0.10.0", suite_name="renaissance-0-10", max_jdk_version=11) + {
     environment+: {
-      "RENAISSANCE_VERSION": "0.10.0"
-    },
-    min_jdk_version:: 8,
-    max_jdk_version:: 11
+      "SPARK_LOCAL_IP": "127.0.0.1"
+    }
   },
 
-  renaissance_0_13: self.renaissance + {
-    suite:: "renaissance-0-13",
+  renaissance_0_13: self.renaissance_template(suite_version="0.13.0", suite_name="renaissance-0-13", max_jdk_version=11) + {
     environment+: {
-      "RENAISSANCE_VERSION": "0.13.0"
-    },
-    min_jdk_version:: 8,
-    max_jdk_version:: null
+      "SPARK_LOCAL_IP": "127.0.0.1"
+    }
   },
 
   renaissance_legacy: cc.compiler_benchmark + c.heap.default + {
