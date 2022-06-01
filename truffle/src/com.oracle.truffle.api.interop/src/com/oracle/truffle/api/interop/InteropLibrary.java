@@ -5068,6 +5068,41 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasMetaParents(Object receiver) {
+            assert preCondition(receiver);
+            boolean wasMetaObject = delegate.isMetaObject(receiver);
+            boolean result = delegate.hasMetaParents(receiver);
+            if (result) {
+                assert wasMetaObject : violationInvariant(receiver);
+            } else if (!wasMetaObject) {
+                assert assertNoMetaObject(receiver);
+                assert notOtherType(receiver, Type.META_OBJECT);
+            }
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getMetaParents(receiver);
+            }
+            boolean wasMetaObject = delegate.isMetaObject(receiver);
+            boolean hadMetaParents = delegate.hasMetaParents(receiver);
+            try {
+                Object result = delegate.getMetaParents(receiver);
+                assert wasMetaObject : violationInvariant(receiver);
+                assert hadMetaParents : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !hadMetaParents : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
         protected TriState isIdenticalOrUndefined(Object receiver, Object other) {
             assert preCondition(receiver);
             assert validInteropArgument(receiver, other);
