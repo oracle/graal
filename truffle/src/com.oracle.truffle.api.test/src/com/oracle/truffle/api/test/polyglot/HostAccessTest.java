@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage.
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
@@ -52,6 +51,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
@@ -82,7 +82,6 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
-import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -96,7 +95,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
-public class HostAccessTest {
+public class HostAccessTest extends AbstractHostAccessTest {
 
     public static final String INSTANTIATION_FAILED = "Instantiation failed";
     public static final String RETURNED_STRING = "Returned string";
@@ -130,14 +129,6 @@ public class HostAccessTest {
         verifyObjectImpl(HostAccess.EXPLICIT);
         verifyObjectImpl(HostAccess.SCOPED);
         verifyObjectImpl(HostAccess.ALL);
-    }
-
-    private static void verifyObjectImpl(HostAccess access) {
-        HostAccess otherAccess = HostAccess.newBuilder(access).build();
-        assertNotSame(access, otherAccess);
-        assertEquals(access, otherAccess);
-        assertEquals(access.hashCode(), otherAccess.hashCode());
-        assertNotNull(access.toString());
     }
 
     public static class MyEquals {
@@ -607,34 +598,6 @@ public class HostAccessTest {
         ValueAssert.assertValue(value, false, Trait.MEMBERS, Trait.HOST_OBJECT);
     }
 
-    private Context context;
-
-    private void setupEnv(HostAccess.Builder builder) {
-        tearDown();
-        if (builder != null) {
-            builder.allowImplementationsAnnotatedBy(FunctionalInterface.class);
-            builder.allowImplementationsAnnotatedBy(HostAccess.Implementable.class);
-            builder.allowAccessAnnotatedBy(HostAccess.Export.class);
-            HostAccess access = builder.build();
-            verifyObjectImpl(access);
-            setupEnv(access);
-        }
-    }
-
-    private void setupEnv(HostAccess access) {
-        tearDown();
-        verifyObjectImpl(access);
-        context = Context.newBuilder().allowHostAccess(access).build();
-    }
-
-    @After
-    public void tearDown() {
-        if (context != null) {
-            context.close();
-            context = null;
-        }
-    }
-
     public static final class TargetClass1 {
 
         private final Object o;
@@ -965,6 +928,44 @@ public class HostAccessTest {
         });
         ConverterFunction f = identity.as(ConverterFunction.class);
         assertEquals("42", f.m("42").o);
+    }
+
+    public static class OverloadedFunctionalMethod implements Function<String, Object> {
+        @Export
+        @Override
+        public Object apply(String arg0) {
+            return arg0;
+        }
+
+        @Export
+        public Object apply(int intArg) {
+            return intArg;
+        }
+
+        @Export
+        public Object apply(@SuppressWarnings("unused") String arg0, Object arg1) {
+            return arg1;
+        }
+    }
+
+    @Test
+    public void testOverloadedFunctionalMethod() throws Exception {
+        setupEnv(HostAccess.EXPLICIT);
+
+        Value function = context.asValue(new OverloadedFunctionalMethod());
+        function.execute("ok");
+        // when calling a functional interface implementation, only dispatch to implementations of
+        // the single abstract method and not other methods with the same name in the subclass.
+        assertFails(() -> function.execute(42), PolyglotException.class, e -> {
+            assertTrue(e.toString(), e.isHostException());
+            assertTrue(e.asHostException().toString(), e.asHostException() instanceof ClassCastException);
+        });
+        assertFails(() -> function.execute("ok", "not ok"), IllegalArgumentException.class);
+
+        // of course, this does not apply when invoking "apply" as a method.
+        assertEquals("ok", function.invokeMember("apply", "ok").asString());
+        assertEquals(42, function.invokeMember("apply", 42).asInt());
+        assertEquals("also ok", function.invokeMember("apply", "ok", "also ok").asString());
     }
 
     static class CountingPredicate implements Predicate<Value> {
@@ -1736,6 +1737,253 @@ public class HostAccessTest {
         assertTrue(c1.asValue(v1).equals(c2.asValue(v1)));
 
         c2.close();
+    }
+
+    @Test
+    public void testInterfaceMethodExportsWithInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build());
+
+        Value point;
+        point = context.asValue(new BarePoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new AnnotatedPoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new PrivatePoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+    }
+
+    @Test
+    public void testInterfaceMethodExportsWithNoInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build());
+
+        Value point;
+        point = context.asValue(new BarePoint());
+        assertFalse(point.hasMember("x"));
+        assertFalse(point.hasMember("y"));
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new AnnotatedPoint());
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(new PrivatePoint());
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertEquals(44, point.invokeMember("z").asInt());
+    }
+
+    public interface PointInterface {
+        @Export
+        int x();
+
+        @Export
+        int y();
+
+        @Export
+        default int z() {
+            return 44;
+        }
+    }
+
+    public static class BarePoint implements PointInterface {
+        @Override
+        public int x() {
+            return 42;
+        }
+
+        @Override
+        public int y() {
+            return 43;
+        }
+    }
+
+    public static class AnnotatedPoint implements PointInterface {
+        @Export
+        @Override
+        public int x() {
+            return 42;
+        }
+
+        @Export
+        @Override
+        public int y() {
+            return 43;
+        }
+    }
+
+    static class PrivatePoint implements PointInterface {
+        @Export
+        @Override
+        public int x() {
+            return 42;
+        }
+
+        public int y() {
+            return 43;
+        }
+    }
+
+    /**
+     * Referenced in {@code proxys.json}.
+     */
+    public interface ProxiedPoint {
+        /** Not exported. */
+        default int w() {
+            return 41;
+        }
+
+        @Export
+        int x();
+
+        @Export
+        default int y() {
+            return 43;
+        }
+
+        @Export
+        default int z() {
+            return 44;
+        }
+    }
+
+    /**
+     * Referenced in {@code proxys.json}.
+     */
+    public interface ProxiedPoint2 extends ProxiedPoint {
+        @Export
+        @Override
+        int x();
+
+        /** Exported in {@link ProxiedPoint} but not in {@link ProxiedPoint2}. */
+        @Override
+        int z();
+    }
+
+    @Test
+    public void testProxyInterfaceMethodExportInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build());
+
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        InvocationHandler invocationHandler = (proxy, method, args) -> {
+            if (method.getName().equals("x")) {
+                return 42;
+            } else if (method.getName().equals("y")) {
+                return 43;
+            } else if (method.getName().equals("z")) {
+                return 44;
+            } else {
+                throw new IllegalArgumentException(method.getName());
+            }
+        };
+
+        Object proxy = Proxy.newProxyInstance(classLoader, new Class<?>[]{ProxiedPoint.class}, invocationHandler);
+        Value point;
+        point = context.asValue(proxy);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertFalse(point.canInvokeMember("z"));
+
+        Object proxy2 = Proxy.newProxyInstance(classLoader, new Class<?>[]{ProxiedPoint2.class}, invocationHandler);
+        point = context.asValue(proxy2);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertFalse(point.canInvokeMember("y"));
+        assertFalse(point.canInvokeMember("z"));
+
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build());
+
+        point = context.asValue(proxy);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(proxy2);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        // @Export on ProxiedPoint.x is inherited
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+    }
+
+    @FunctionalInterface
+    public interface LambdaInterface {
+        /** Not exported. */
+        default int w() {
+            return 41;
+        }
+
+        @Export
+        int x();
+
+        @Export
+        default int y() {
+            return 43;
+        }
+
+        @Export
+        default int z() {
+            return 44;
+        }
+    }
+
+    @FunctionalInterface
+    public interface LambdaInterface2 extends LambdaInterface {
+        @Export
+        @Override
+        int x();
+
+        /** Exported in {@link LambdaInterface} but not in {@link LambdaInterface2}. */
+        @Override
+        default int z() {
+            return 44;
+        }
+    }
+
+    @Test
+    public void testLambdaInterfaceMethodExportInheritance() {
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(false).build());
+
+        LambdaInterface lambda = () -> 42;
+        Value point;
+        point = context.asValue(lambda);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        LambdaInterface2 lambda2 = () -> 42;
+        point = context.asValue(lambda2);
+        assertFalse(point.canInvokeMember("w"));
+        assertFalse(point.canInvokeMember("x"));
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertFalse(point.canInvokeMember("z"));
+
+        setupEnv(HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build());
+
+        point = context.asValue(lambda);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
+
+        point = context.asValue(lambda2);
+        assertFalse(point.canInvokeMember("w"));
+        assertEquals(42, point.invokeMember("x").asInt());
+        assertEquals(43, point.invokeMember("y").asInt());
+        assertEquals(44, point.invokeMember("z").asInt());
     }
 
     public static class MyClassLoader extends URLClassLoader {

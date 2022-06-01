@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,48 +40,52 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import java.util.List;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.Builder;
+import org.graalvm.polyglot.HostAccess.Export;
+import org.graalvm.polyglot.HostAccess.Implementable;
+import org.junit.After;
 
-import com.oracle.truffle.tck.tests.ValueAssert;
+public class AbstractHostAccessTest {
 
-/**
- * Register all <i>named</i> inner classes under {@link #TEST_CLASSES} for reflection, so that they
- * do not need to be listed in {@code reflection.json}. Anonymous inner classes however must be
- * listed in {@code reflection.json}, as Java provides no way to list those.
- */
-public class RegisterTestClassesForReflectionFeature implements Feature {
+    protected Context context;
 
-    private static final List<Class<?>> TEST_CLASSES = List.of(
-                    ValueHostInteropTest.class,
-                    ValueHostConversionTest.class,
-                    ValueAssert.class,
-                    ValueAPITest.class,
-                    ValueScopingTest.class,
-                    PolyglotExceptionTest.class,
-                    LanguageSPIHostInteropTest.class,
-                    HostAccessTest.class,
-                    ExposeToGuestTest.class,
-                    ContextAPITest.class);
-
-    protected static void registerClass(Class<?> clazz) {
-        RuntimeReflection.register(clazz);
-        RuntimeReflection.register(clazz.getConstructors());
-        RuntimeReflection.register(clazz.getDeclaredConstructors());
-        RuntimeReflection.register(clazz.getMethods());
-        RuntimeReflection.register(clazz.getDeclaredMethods());
-        RuntimeReflection.register(clazz.getFields());
-        RuntimeReflection.register(clazz.getDeclaredFields());
-    }
-
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        for (Class<?> testClass : TEST_CLASSES) {
-            for (Class<?> innerClass : testClass.getDeclaredClasses()) {
-                registerClass(innerClass);
-            }
+    protected void setupEnv(Builder builder) {
+        tearDown();
+        if (builder != null) {
+            builder.allowImplementationsAnnotatedBy(FunctionalInterface.class);
+            builder.allowImplementationsAnnotatedBy(Implementable.class);
+            builder.allowAccessAnnotatedBy(Export.class);
+            HostAccess access = builder.build();
+            verifyObjectImpl(access);
+            setupEnv(access);
         }
     }
 
+    protected void setupEnv(HostAccess access) {
+        tearDown();
+        verifyObjectImpl(access);
+        context = Context.newBuilder().allowHostAccess(access).build();
+    }
+
+    @After
+    public void tearDown() {
+        if (context != null) {
+            context.close();
+            context = null;
+        }
+    }
+
+    protected static void verifyObjectImpl(HostAccess access) {
+        HostAccess otherAccess = HostAccess.newBuilder(access).build();
+        assertNotSame(access, otherAccess);
+        assertEquals(access, otherAccess);
+        assertEquals(access.hashCode(), otherAccess.hashCode());
+        assertNotNull(access.toString());
+    }
 }
