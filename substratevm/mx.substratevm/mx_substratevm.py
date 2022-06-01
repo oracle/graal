@@ -1043,7 +1043,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='polyglot',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['SubstrateVM'],
+    dependencies=[],
     jar_distributions=['substratevm:POLYGLOT_NATIVE_API'],
     support_distributions=[
         "substratevm:POLYGLOT_NATIVE_API_HEADERS",
@@ -1134,7 +1134,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
     dir_name=False,
     license_files=[],
     third_party_license_files=[],
-    dependencies=['SubstrateVM'],
+    dependencies=[],
     jar_distributions=[],
     builder_jar_distributions=[],
     support_distributions=[],
