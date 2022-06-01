@@ -501,9 +501,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled) (default: 0).", usageSyntax = "[-1, inf)", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> EncodedGraphCacheCapacity = new OptionKey<>(0);
 
-    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle." +
-                    "The option is only supported on the HotSpot (non-libgraal) Truffle runtime." +
-                    "On runtimes which doesn't support it the option has no effect (default: 10000).", //
+    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle (default: 10000).", //
                     usageSyntax = "<ms>", category = OptionCategory.EXPERT) //
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
 
