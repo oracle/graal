@@ -316,7 +316,7 @@ public class BackgroundCompileQueue {
      * during the delay period, the idling criteria is thread-based, not queue-based.
      */
     @SuppressWarnings("serial")
-    private final class IdlingPriorityBlockingDeque<E> extends PriorityBlockingQueue<E> {
+    private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
         @Override
         public E take() throws InterruptedException {
             while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
