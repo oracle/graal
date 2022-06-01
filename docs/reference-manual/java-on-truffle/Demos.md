@@ -134,7 +134,7 @@ This makes using some language features like dynamic class loading or reflection
 Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](../../../truffle/docs/README.md).
 It is essentially a Java application, as are the Truffle framework itself and the GraalVM JIT compiler.
 All three of them can be compiled ahead-of-time with `native-image`.
-Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native image on the rest of your code.
+Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native executable on the rest of your code.
 
 Consider a canonical Java Shell tool (JShell) as an example command line application.
 It is a REPL capable of evaluating Java code and consists of two parts:
@@ -178,7 +178,7 @@ There is more code to pass the values correctly and transform the exceptions.
 To try it out, build the `espresso-jshell` binary using the provided script, which will:
 1. Build the Java sources to the bytecode
 2. Build the JAR file
-3. Build a native image
+3. Build a native executable
 
 The most important configuration line in the `native-image` command is `--language:java` which instructs to include the Java on Truffle implementation into the binary.
 After the build you can observe the resulting binary file (`file` and `ldd` are Linux commands)
