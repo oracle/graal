@@ -33,7 +33,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -48,7 +47,6 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class ClassRegistries {
 
-    @CompilerDirectives.CompilationFinal //
     private ModuleTable.ModuleEntry javaBaseModule;
 
     private final ClassRegistry bootClassRegistry;
