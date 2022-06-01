@@ -417,13 +417,28 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     @Override
     public void registerLambdaCapturingClass(ConfigurationCondition condition, String lambdaCapturingClassName) {
+        abortIfSealed();
+
+        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        if (conditionClass == null) {
+            return;
+        }
+
         Class<?> serializationTargetClass = typeResolver.resolveType(lambdaCapturingClassName);
+        if (serializationTargetClass == null) {
+            return;
+        }
+
+        if (ReflectionUtil.lookupMethod(true, serializationTargetClass, "$deserializeLambda$", SerializedLambda.class) == null) {
+            warn("Could not register " + serializationTargetClass + " for lambda serialization as it does not capture any serializable lambda.");
+            return;
+        }
 
         registerConditionalConfiguration(condition, () -> {
             capturingClasses.add(serializationTargetClass);
             RuntimeReflection.register(serializationTargetClass);
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
         });
-        RuntimeReflection.register(ReflectionUtil.lookupMethod(true, serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
     }
 
     @Override
