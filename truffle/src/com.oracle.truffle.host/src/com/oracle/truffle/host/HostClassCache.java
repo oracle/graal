@@ -74,6 +74,8 @@ final class HostClassCache {
     private final boolean iterableAccess;
     private final boolean iteratorAccess;
     private final boolean mapAccess;
+    final boolean allowsPublicAccess;
+    final boolean allowsAccessInheritance;
     private final Map<Class<?>, Object> targetMappings;
     private final Object unnamedModule;
     private final WeakReference<HostClassCache> weakHostClassRef = new WeakReference<>(this);
@@ -100,6 +102,8 @@ final class HostClassCache {
         this.iterableAccess = apiAccess.isIterableAccessible(hostAccess);
         this.iteratorAccess = apiAccess.isIteratorAccessible(hostAccess);
         this.mapAccess = apiAccess.isMapAccessible(hostAccess);
+        this.allowsPublicAccess = apiAccess.allowsPublicAccess(hostAccess);
+        this.allowsAccessInheritance = apiAccess.allowsAccessInheritance(hostAccess);
         this.targetMappings = groupMappings(apiAccess, conf);
         this.unnamedModule = HostContext.getUnnamedModule(classLoader);
     }

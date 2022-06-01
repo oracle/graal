@@ -7,7 +7,10 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * (GR-38351) Added [FileSystem#newReadOnlyFileSystem](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newReadOnlyFileSystem-org.graalvm.polyglot.io.FileSystem-) returning a read-only decorator for the given file system.
 * Changed the behavior of [`Context.close()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#close--) (as well as `Context.close(false)` which is equivalent). In case the context was cancelled during the close operation or the context was exited during the close operation at request of the guest application, or it was already cancelled or exited before the close operation begins,
 the close operation throws a [`PolyglotException`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException) with [`PolyglotException.isCancelled()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException#isCancelled--) or [`PolyglotException.isExit()`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/PolyglotException#isExit--), respectively, equal to `true`.
-
+* (GR-29138)(EE-only) Added the ability to spawn a native-image isolate for a each `Engine` or `Context` in a native launcher or library.  This feature was previously supported only for the JVM deployment (GR-22699).
+* Added [HostAccess.Builder.allowAccessInheritance](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#allowAccessInheritance-boolean-) to inherit access to methods that have been explicitly exported in an interface or superclass vs. only explicitly vetted method implementations (e.g. via `@HostAccess.Export`).
+* Made `HostAccess.Builder.allowAccessInheritance(false)` the default. This restricts the set of accessible methods and might break existing code. To restore the previous behavior of `HostAccess.EXPLICIT`, you can use `HostAccess.newBuilder(HostAccess.EXPLICIT).allowAccessInheritance(true).build()`.
+* Added List#add support for polyglot values that are mapped to java.util.List.
 
 ## Version 22.1.0
 * Changed the default [`Object` target type mapping (`Value.as(Object.class)`)](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-) for values that have both array elements and members from `Map` to `List`.

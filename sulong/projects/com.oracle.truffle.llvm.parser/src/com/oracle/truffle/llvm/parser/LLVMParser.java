@@ -54,6 +54,10 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.Type;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -61,10 +65,12 @@ import java.util.function.Supplier;
 public final class LLVMParser {
     private final Source source;
     private final LLVMParserRuntime runtime;
+    private int threadLocalGlobalObjectCounter;
 
     public LLVMParser(Source source, LLVMParserRuntime runtime) {
         this.source = source;
         this.runtime = runtime;
+        threadLocalGlobalObjectCounter = 0;
     }
 
     public LLVMParserResult parse(ModelModule module, DataLayout targetDataLayout) {
@@ -78,7 +84,7 @@ public final class LLVMParser {
         defineFunctions(module, definedFunctions, externalFunctions, targetDataLayout);
         defineAliases(module.getAliases(), targetDataLayout);
 
-        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, threadLocalGlobals, targetDataLayout,
+        return new LLVMParserResult(runtime, definedFunctions, externalFunctions, definedGlobals, externalGlobals, threadLocalGlobals, threadLocalGlobalObjectCounter, targetDataLayout,
                         module.getTargetInformation(TargetTriple.class));
     }
 
@@ -119,6 +125,10 @@ public final class LLVMParser {
         LLVMSymbol symbol;
         if (global.isThreadLocal()) {
             symbol = LLVMThreadLocalSymbol.create(global.getName(), global.getSourceSymbol(), runtime.getBitcodeID(), global.getIndex(), global.isExported(), global.isExternalWeak());
+            Type type = global.getType().getPointeeType();
+            if (isSpecialGlobalSlot(type)) {
+                threadLocalGlobalObjectCounter++;
+            }
             threadLocalGlobals.add(global);
         } else {
             symbol = LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), runtime.getBitcodeID(), global.isExported(),
@@ -127,6 +137,18 @@ public final class LLVMParser {
         }
         runtime.getFileScope().register(symbol);
         registerInPublicFileScope(symbol);
+    }
+
+    /**
+     * Globals of pointer type need to be handles specially because they can potentially contain a
+     * foreign object.
+     */
+    public static boolean isSpecialGlobalSlot(Type type) {
+        if (type instanceof PointerType) {
+            return true;
+        } else {
+            return type == PrimitiveType.I64;
+        }
     }
 
     private void defineFunction(FunctionSymbol functionSymbol, ModelModule model, DataLayout dataLayout) {

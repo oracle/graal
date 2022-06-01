@@ -114,6 +114,7 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -197,6 +198,8 @@ public abstract class Accessor {
         public abstract boolean countsTowardsStackTraceLimit(RootNode rootNode);
 
         public abstract CallTarget getCallTargetWithoutInitialization(RootNode root);
+
+        public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -532,6 +535,8 @@ public abstract class Accessor {
 
         public abstract boolean isIOAllowed();
 
+        public abstract boolean isCreateProcessAllowed();
+
         public abstract ZoneId getTimeZone(Object polyglotLanguageContext);
 
         public abstract Set<String> getLanguageIds();
@@ -709,6 +714,8 @@ public abstract class Accessor {
         public abstract Engine getPolyglotEngineAPI(Object polyglotEngineImpl);
 
         public abstract Context getPolyglotContextAPI(Object polyglotContextImpl);
+
+        public abstract EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1111,7 +1118,7 @@ public abstract class Accessor {
          * Restores state from the {@code source} frame into the {@code target} frame. This method
          * should only be used inside OSR code. The frames must have the same layout as the frame
          * passed when executing the {@code osrNode}.
-         * 
+         *
          * @param osrNode the node being on-stack replaced.
          * @param source the frame to transfer state from
          * @param target the frame to transfer state into

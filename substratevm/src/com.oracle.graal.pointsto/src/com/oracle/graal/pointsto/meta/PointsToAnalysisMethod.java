@@ -61,7 +61,7 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
 
     PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped);
-        typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
+        typeFlow = universe.analysisPolicy().createMethodTypeFlow(this);
     }
 
     @Override

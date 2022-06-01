@@ -2716,7 +2716,8 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to read a single byte from a string.
+     * Node to read a single byte from a string. See
+     * {@link #execute(AbstractTruffleString, int, TruffleString.Encoding)} for details.
      *
      * @since 22.1
      */
@@ -2729,7 +2730,8 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Read a single byte from a string.
+         * Read a single byte from a string. If used inside a loop or repetitively,
+         * {@link MaterializeNode} should be used before.
          *
          * @since 22.1
          */
@@ -4995,6 +4997,18 @@ public final class TruffleString extends AbstractTruffleString {
     public abstract static class CopyToByteArrayNode extends Node {
 
         CopyToByteArrayNode() {
+        }
+
+        /**
+         * Copy the entire string to a byte[] and return it.
+         *
+         * @since 22.2
+         */
+        public final byte[] execute(AbstractTruffleString string, Encoding expectedEncoding) {
+            int byteLength = string.byteLength(expectedEncoding);
+            byte[] copy = new byte[byteLength];
+            execute(string, 0, copy, 0, byteLength, expectedEncoding);
+            return copy;
         }
 
         /**

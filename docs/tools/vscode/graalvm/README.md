@@ -229,11 +229,7 @@ Open VisualVM by just clicking the play button:
 
 ![VisualVM and VS Code Integration](images/open_visualvm.png)
 
-If you go to **View**, then **Command Palette**, and search for "visualvm", the following actions related to VisualVM are available:
-
-![VisualVM Commands available from Command Palette](images/visualvm_commands.png)
-
-For more information about using VisualVM from VS Code, see [this guide](visualvm-integration.md).
+For more information, see the [dedicated guide](visualvm-integration.md) how to start using VisualVM from within VS Code.
 
 ## Micronaut Support
 

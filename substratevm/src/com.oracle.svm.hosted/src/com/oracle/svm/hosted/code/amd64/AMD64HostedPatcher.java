@@ -36,10 +36,8 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.objectfile.ObjectFile;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.meta.MethodPointer;
@@ -54,7 +52,6 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Reference;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticFeature
@@ -127,23 +124,14 @@ public class AMD64HostedPatcher extends CompilationResult.CodeAnnotation impleme
             relocs.addRelocationWithAddend((int) siteOffset, ObjectFile.RelocationKind.getPCRelative(annotation.operandSize), addend, ref);
         } else if (ref instanceof ConstantReference) {
             VMConstant constant = ((ConstantReference) ref).getConstant();
+            Object relocVal = ref;
             if (constant instanceof SubstrateMethodPointerConstant) {
                 MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
-                ResolvedJavaMethod method = pointer.getMethod();
-                assert method instanceof HostedMethod;
-                HostedMethod hMethod = (HostedMethod) method;
-                if (hMethod.isCompiled()) {
-                    int pointerSize = ConfigurationValues.getTarget().wordSize;
-                    assert pointerSize == annotation.operandSize;
-                    ObjectFile.RelocationKind relocationKind = pointerSize == 8 ? ObjectFile.RelocationKind.DIRECT_8 : ObjectFile.RelocationKind.DIRECT_4;
-                    relocs.addRelocationWithoutAddend((int) siteOffset, relocationKind, pointer);
-                } else {
-                    VMError.shouldNotReachHere(String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
-                }
-                return;
+                HostedMethod hMethod = (HostedMethod) pointer.getMethod();
+                VMError.guarantee(hMethod.isCompiled(), String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
+                relocVal = pointer;
             }
-            assert SubstrateOptions.SpawnIsolates.getValue() : "Inlined object references must be base-relative";
-            relocs.addRelocationWithoutAddend((int) siteOffset, ObjectFile.RelocationKind.getDirect(annotation.operandSize), ref);
+            relocs.addRelocationWithoutAddend((int) siteOffset, ObjectFile.RelocationKind.getDirect(annotation.operandSize), relocVal);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

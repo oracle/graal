@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.memory.FloatableThreadLocalAccess;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -50,7 +51,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Loads {@code JavaThread::_jvmci_reserved_oop0} for the current thread.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
-public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode implements Lowerable, MemoryAccess {
+public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode implements Lowerable, MemoryAccess, FloatableThreadLocalAccess {
 
     static final LocationIdentity JVMCI_RESERVED_REFERENCE = NamedLocationIdentity.mutable("JavaThread::<JVMCIReservedOop0>");
 
@@ -83,6 +84,12 @@ public final class HotSpotLoadReservedReferenceNode extends FixedWithNextNode im
     @Override
     public LocationIdentity getLocationIdentity() {
         return JVMCI_RESERVED_REFERENCE;
+    }
+
+    @Override
+    public boolean canFloat() {
+        // We always lower this to a floatable read.
+        return true;
     }
 
 }

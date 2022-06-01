@@ -68,7 +68,7 @@ public abstract class AllocationSnippets implements Snippets {
         return verifyOop(result);
     }
 
-    protected Object allocateArrayImpl(Word hub,
+    public Object allocateArrayImpl(Word hub,
                     int length,
                     int arrayBaseOffset,
                     int log2ElementSize,
@@ -112,7 +112,7 @@ public abstract class AllocationSnippets implements Snippets {
         return callNewMultiArrayStub(hub, rank, dims);
     }
 
-    private UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
+    protected UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
         int alignment = objectAlignment();
         return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
@@ -259,7 +259,7 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatObject(Word hub,
+    public Object formatObject(Word hub,
                     UnsignedWord size,
                     Word memory,
                     FillContent fillContents,
@@ -280,7 +280,7 @@ public abstract class AllocationSnippets implements Snippets {
     /**
      * Formats some allocated memory with an object header and zeroes out the rest.
      */
-    protected Object formatArray(Word hub,
+    public Object formatArray(Word hub,
                     UnsignedWord allocationSize,
                     int length,
                     Word memory,
@@ -379,14 +379,14 @@ public abstract class AllocationSnippets implements Snippets {
     }
 
     public static class AllocationProfilingData {
-        final AllocationSnippetCounters snippetCounters;
+        public final AllocationSnippetCounters snippetCounters;
 
         public AllocationProfilingData(AllocationSnippetCounters snippetCounters) {
             this.snippetCounters = snippetCounters;
         }
     }
 
-    protected static class AllocationSnippetCounters {
+    public static class AllocationSnippetCounters {
         public AllocationSnippetCounters(SnippetCounter.Group.Factory factory) {
             Group allocations = factory.createSnippetCounterGroup("Allocations");
             unrolledInit = new SnippetCounter(allocations, "tlabSeqInit", "TLAB alloc with unrolled zeroing");
@@ -395,9 +395,9 @@ public abstract class AllocationSnippets implements Snippets {
             stub = new SnippetCounter(allocations, "stub", "alloc and zeroing via stub");
         }
 
-        final SnippetCounter unrolledInit;
-        final SnippetCounter loopInit;
-        final SnippetCounter bulkInit;
-        final SnippetCounter stub;
+        public final SnippetCounter unrolledInit;
+        public final SnippetCounter loopInit;
+        public final SnippetCounter bulkInit;
+        public final SnippetCounter stub;
     }
 }

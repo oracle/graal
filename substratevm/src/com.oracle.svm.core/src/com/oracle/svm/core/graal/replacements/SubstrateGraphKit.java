@@ -96,9 +96,9 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
-    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes, GraphBuilderConfiguration.Plugins graphBuilderPlugins,
-                    CompilationIdentifier compilationId) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, SubstrateOptions.parseOnce(), false);
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, forceTrackNodeSourcePosition || SubstrateOptions.parseOnce(), false);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
@@ -108,7 +108,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     @Override
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null);
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {

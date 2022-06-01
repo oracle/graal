@@ -31,6 +31,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.debug.DebugContext;
@@ -714,41 +715,46 @@ public abstract class LoopTransformations {
         compareNode.replaceFirstInput(ub, compareNode.graph().addOrUniqueWithInputs(newLimit));
     }
 
-    public static List<ControlSplitNode> findUnswitchable(LoopEx loop) {
-        List<ControlSplitNode> controls = null;
-        ValueNode invariantValue = null;
+    /**
+     * Find all unswichable control split nodes in the given loop. When multiple control split nodes
+     * have the same invariant condition, group them together.
+     *
+     * @param loop search control split nodes in this loop.
+     * @return the unswitchable control split nodes grouped by condition meaning that every control
+     *         split node within the same inner list share the same condition (the key for the map).
+     */
+    public static EconomicMap<ValueNode, List<ControlSplitNode>> findUnswitchable(LoopEx loop) {
+        EconomicMap<ValueNode, List<ControlSplitNode>> controls = EconomicMap.create(Equivalence.IDENTITY);
         for (IfNode ifNode : loop.whole().nodes().filter(IfNode.class)) {
             if (loop.isOutsideLoop(ifNode.condition())) {
-                if (controls == null) {
-                    invariantValue = ifNode.condition();
-                    controls = new ArrayList<>();
-                    controls.add(ifNode);
-                } else if (ifNode.condition() == invariantValue) {
-                    controls.add(ifNode);
+                ValueNode invariantValue = ifNode.condition();
+                List<ControlSplitNode> ifs = controls.get(invariantValue);
+                if (ifs == null) {
+                    ifs = new ArrayList<>();
+                    controls.put(invariantValue, ifs);
                 }
+                ifs.add(ifNode);
             }
         }
-        if (controls == null) {
-            SwitchNode firstSwitch = null;
-            for (SwitchNode switchNode : loop.whole().nodes().filter(SwitchNode.class)) {
-                if (switchNode.successors().count() > 1 && loop.isOutsideLoop(switchNode.value())) {
-                    if (controls == null) {
-                        firstSwitch = switchNode;
-                        invariantValue = switchNode.value();
-                        controls = new ArrayList<>();
-                        controls.add(switchNode);
-                    } else if (switchNode.value() == invariantValue) {
-                        // Fortify: Suppress Null Dereference false positive
-                        assert firstSwitch != null;
-
-                        if (firstSwitch.structureEquals(switchNode)) {
-                            // Only collect switches which test the same values in the same order
-                            controls.add(switchNode);
-                        }
+        for (SwitchNode switchNode : loop.whole().nodes().filter(SwitchNode.class)) {
+            if (switchNode.successors().count() > 1 && loop.isOutsideLoop(switchNode.value())) {
+                ValueNode invariantValue = switchNode.value();
+                List<ControlSplitNode> switchs = controls.get(invariantValue);
+                if (switchs == null) {
+                    switchs = new ArrayList<>();
+                    switchs.add(switchNode);
+                    controls.put(invariantValue, switchs);
+                } else {
+                    // The list is not empty because we always add a node when we create it and
+                    // switch cannot match on boolean so we don't have to check before the cast.
+                    if (((SwitchNode) switchs.get(0)).structureEquals(switchNode)) {
+                        // Only collect switches which test the same values in the same order
+                        switchs.add(switchNode);
                     }
                 }
             }
         }
+
         return controls;
     }
 

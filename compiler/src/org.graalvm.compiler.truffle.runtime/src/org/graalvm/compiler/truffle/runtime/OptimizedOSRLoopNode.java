@@ -29,6 +29,7 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
@@ -589,11 +590,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                 byte currentSourceTag = currentSourceTags[index];
                 if (CompilerDirectives.inInterpreter()) {
                     if (currentSourceTag == 0 && speculatedTag != 0) {
-                        if (frameSlots == readFrameSlots) {
-                            throw new AssertionError("Frame slot " + slot + " was never written outside the loop but virtualized as read frame slot.");
-                        } else {
-                            throw new AssertionError("Frame slot " + slot + " was never written in the loop but virtualized as written frame slot.");
-                        }
+                        throw failInvalidSlot(frameSlots, slot);
                     }
                 }
 
@@ -623,7 +620,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                                 break;
                             default:
                                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                                throw new AssertionError("Defined frame slot " + slot + " is illegal. Revirtualization failed. Please initialize frame slot with a FrameSlotKind.");
+                                throw failIllegalSlot(slot);
                         }
                     } catch (FrameSlotTypeException e) {
                         // The tag for this slot may have changed; if so, deoptimize and update it.
@@ -635,6 +632,20 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                     }
                     break;
                 }
+            }
+        }
+
+        @TruffleBoundary
+        private static RuntimeException failIllegalSlot(com.oracle.truffle.api.frame.FrameSlot slot) throws AssertionError {
+            throw new AssertionError("Defined frame slot " + slot + " is illegal. Revirtualization failed. Please initialize frame slot with a FrameSlotKind.");
+        }
+
+        @TruffleBoundary
+        private RuntimeException failInvalidSlot(com.oracle.truffle.api.frame.FrameSlot[] frameSlots, com.oracle.truffle.api.frame.FrameSlot slot) throws AssertionError {
+            if (frameSlots == readFrameSlots) {
+                throw new AssertionError("Frame slot " + slot + " was never written outside the loop but virtualized as read frame slot.");
+            } else {
+                throw new AssertionError("Frame slot " + slot + " was never written in the loop but virtualized as written frame slot.");
             }
         }
 

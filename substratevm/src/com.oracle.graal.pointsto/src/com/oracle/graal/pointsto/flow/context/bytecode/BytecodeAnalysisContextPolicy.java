@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.flow.context.bytecode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.CallSiteSensitiveMethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -77,7 +78,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
      */
     @Override
     public BytecodeAnalysisContext calleeContext(PointsToAnalysis bb, AnalysisObject receiverObject, BytecodeAnalysisContext callerContext, MethodTypeFlow callee) {
-        int maxCalleeContextDepth = callee.getLocalCallingContextDepth();
+        int maxCalleeContextDepth = ((CallSiteSensitiveMethodTypeFlow) callee).getLocalCallingContextDepth();
 
         /*
          * If the calling context depth is 0 return ContextChain.EMPTY_CONTEXT so that the unique
@@ -120,7 +121,7 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
             return callerContext;
         }
 
-        int maxCallingContextDepth = callee.getLocalCallingContextDepth();
+        int maxCallingContextDepth = ((CallSiteSensitiveMethodTypeFlow) callee).getLocalCallingContextDepth();
 
         /*
          * If the calling context depth is 0 return ContextChain.EMPTY_CONTEXT so that the unique

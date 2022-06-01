@@ -315,7 +315,7 @@ public class DebugHelper {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean isInstance(DynamicHub hub) {
-        return LayoutEncoding.isInstance(hub.getLayoutEncoding());
+        return LayoutEncoding.isPureInstance(hub.getLayoutEncoding());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

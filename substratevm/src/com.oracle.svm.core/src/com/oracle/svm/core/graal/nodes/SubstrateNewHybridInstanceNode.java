@@ -69,4 +69,7 @@ public final class SubstrateNewHybridInstanceNode extends AbstractNewArrayNode {
     public ResolvedJavaType elementType() {
         return elementType;
     }
+
+    @NodeIntrinsic
+    public static native Object allocate(@ConstantNodeParameter Class<?> instanceType, @ConstantNodeParameter Class<?> elementType, int arrayLength);
 }

@@ -59,7 +59,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 @SuppressWarnings("unused")
 public class SharedCachedTest {
 
-    // TODO how to share primitive caches? maybe through a specialization class?
+    // TODO GR-38632 how to share primitive caches? maybe through a specialization class?
     abstract static class UnboundCachedPrimitiveNode extends Node {
 
         abstract Object execute(Object arg);

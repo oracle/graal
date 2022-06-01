@@ -145,6 +145,7 @@ intf java.lang.annotation.Annotation
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.HostCompilerDirectives$BytecodeInterpreterSwitchBoundary
  outer com.oracle.truffle.api.HostCompilerDirectives
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.2")
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD, CONSTRUCTOR])
 intf java.lang.annotation.Annotation
@@ -1016,6 +1017,8 @@ intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract java.lang.Object executeOSR(com.oracle.truffle.api.frame.VirtualFrame,int,java.lang.Object)
 meth public abstract java.lang.Object getOSRMetadata()
 meth public abstract void setOSRMetadata(java.lang.Object)
+meth public com.oracle.truffle.api.frame.Frame restoreParentFrameFromArguments(java.lang.Object[])
+meth public java.lang.Object[] storeParentFrameInArguments(com.oracle.truffle.api.frame.VirtualFrame)
 meth public static boolean pollOSRBackEdge(com.oracle.truffle.api.nodes.BytecodeOSRNode)
 meth public static java.lang.Object tryOSR(com.oracle.truffle.api.nodes.BytecodeOSRNode,int,java.lang.Object,java.lang.Runnable,com.oracle.truffle.api.frame.VirtualFrame)
 meth public void copyIntoOSRFrame(com.oracle.truffle.api.frame.VirtualFrame,com.oracle.truffle.api.frame.VirtualFrame,int)
@@ -1058,7 +1061,7 @@ meth public com.oracle.truffle.api.nodes.Node get()
 meth public com.oracle.truffle.api.nodes.Node set(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.EncapsulatingNodeReference getCurrent()
 supr java.lang.Object
-hfds CURRENT,reference,thread
+hfds CURRENT,reference,seenNullContext,thread
 
 CLSS public abstract com.oracle.truffle.api.nodes.ExecutableNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)

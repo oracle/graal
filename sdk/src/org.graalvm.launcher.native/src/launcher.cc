@@ -269,9 +269,13 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         const char *launcherOptionVars[] = LAUNCHER_OPTION_VARS;
     #endif
 
-    /* set org.graalvm.launcher.class system property - only needed for jvm mode */
+    /* set system properties only needed for jvm mode */
     if (jvmMode) {
         vmArgs.push_back("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
+        std::stringstream executablename;
+        executablename << "-Dorg.graalvm.launcher.executablename=";
+        executablename << argv[0];
+        vmArgs.push_back(executablename.str());
     }
 
     /* construct classpath - only needed for jvm mode */

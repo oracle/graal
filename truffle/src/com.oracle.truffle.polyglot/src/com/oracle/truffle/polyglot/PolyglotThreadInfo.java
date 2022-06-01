@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.tracing.OperationsStatistics;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
@@ -77,6 +78,7 @@ final class PolyglotThreadInfo {
 
     // only accessed from PolyglotFastThreadLocals
     final Object[] fastThreadLocals;
+    final EncapsulatingNodeReference encapsulatingNodeReference;
 
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
         this.context = context;
@@ -95,7 +97,13 @@ final class PolyglotThreadInfo {
         } else {
             this.polyglotThreadOwnerContext = null;
         }
-        this.fastThreadLocals = context == null ? null : PolyglotFastThreadLocals.createFastThreadLocals(this);
+        if (context == null) {
+            this.encapsulatingNodeReference = null;
+            this.fastThreadLocals = null;
+        } else {
+            this.encapsulatingNodeReference = EngineAccessor.NODES.createEncapsulatingNodeReference(thread);
+            this.fastThreadLocals = PolyglotFastThreadLocals.createFastThreadLocals(this);
+        }
     }
 
     Thread getThread() {

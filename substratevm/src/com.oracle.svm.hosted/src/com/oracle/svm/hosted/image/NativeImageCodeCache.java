@@ -54,7 +54,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -93,6 +92,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.site.Call;
@@ -245,7 +245,7 @@ public abstract class NativeImageCodeCache {
         }
 
         ReflectionMetadataEncoder reflectionMetadataEncoder = ImageSingletons.lookup(ReflectionMetadataEncoderFactory.class).create(encoders);
-        RuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        InternalRuntimeReflectionSupport reflectionSupport = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class);
         HostedUniverse hUniverse = imageHeap.getUniverse();
         HostedMetaAccess hMetaAccess = imageHeap.getMetaAccess();
 

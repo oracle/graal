@@ -24,14 +24,10 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import static jdk.vm.ci.common.JVMCIError.guarantee;
-
 import java.util.Collection;
-import java.util.Collections;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -123,6 +119,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         return actualParameters[0];
     }
 
+    public InvokeTypeFlow getOriginalInvoke() {
+        return originalInvoke;
+    }
+
     @Override
     public void setObserved(TypeFlow<?> newReceiver) {
         actualParameters[0] = newReceiver;
@@ -136,19 +136,13 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         return actualReturn;
     }
 
-    public void setActualReturn(ActualReturnTypeFlow actualReturn) {
+    public void setActualReturn(PointsToAnalysis bb, boolean isStatic, ActualReturnTypeFlow actualReturn) {
         this.actualReturn = actualReturn;
+        bb.analysisPolicy().linkActualReturn(bb, isStatic, this);
     }
 
     public TypeFlow<?> getResult() {
         return actualReturn;
-    }
-
-    @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        /* Only a clone should be updated */
-        assert this.isClone();
-        return super.addState(bb, add);
     }
 
     /**
@@ -210,6 +204,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
             }
         }
 
+        linkReturn(bb, isStatic, calleeFlows);
+
+        bb.analysisPolicy().registerAsImplementationInvoked(this, calleeFlows);
+    }
+
+    public void linkReturn(PointsToAnalysis bb, boolean isStatic, MethodFlowsGraph calleeFlows) {
         if (actualReturn != null) {
             if (PointstoOptions.DivertParameterReturningMethod.getValue(bb.getOptions())) {
                 int paramNodeIndex = calleeFlows.getMethod().getTypeFlow().getReturnedParameterIndex();
@@ -240,13 +240,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
                     calleeFlows.getReturnFlow().addUse(bb, actualReturn);
                 }
             }
-        }
-
-        assert isClone() || this.isContextInsensitive();
-        if (this.isContextInsensitive()) {
-            calleeFlows.getMethod().registerAsImplementationInvoked(this);
-        } else {
-            calleeFlows.getMethod().registerAsImplementationInvoked(originalInvoke);
         }
     }
 
@@ -305,103 +298,4 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
      * from this invoke are returned.
      */
     public abstract Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb);
-}
-
-abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
-
-    public MethodTypeFlow callee;
-
-    /**
-     * Context of the caller.
-     */
-    protected AnalysisContext callerContext;
-
-    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-        callerContext = null;
-    }
-
-    protected DirectInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
-        this.callerContext = methodFlows.context();
-    }
-
-    @Override
-    public final boolean isDirectInvoke() {
-        return true;
-    }
-
-    @Override
-    public Collection<AnalysisMethod> getCallees() {
-        if (callee != null && callee.getMethod().isImplementationInvoked()) {
-            return Collections.singletonList(callee.getMethod());
-        } else {
-            return Collections.emptyList();
-        }
-    }
-
-}
-
-final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
-
-    private AnalysisContext calleeContext;
-
-    protected StaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
-        calleeContext = null;
-    }
-
-    protected StaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, StaticInvokeTypeFlow original) {
-        super(bb, methodFlows, original);
-    }
-
-    @Override
-    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        return new StaticInvokeTypeFlow(bb, methodFlows, this);
-    }
-
-    @Override
-    public void update(PointsToAnalysis bb) {
-        assert this.isClone();
-
-        /* The static invokes should be updated only once and the callee should be null. */
-        guarantee(callee == null, "static invoke updated multiple times!");
-
-        // Unlinked methods can not be parsed
-        if (!targetMethod.getWrapped().getDeclaringClass().isLinked()) {
-            return;
-        }
-
-        /*
-         * Initialize the callee lazily so that if the invoke flow is not reached in this context,
-         * i.e. for this clone, there is no callee linked/
-         */
-        callee = targetMethod.getTypeFlow();
-        // set the callee in the original invoke too
-        ((DirectInvokeTypeFlow) originalInvoke).callee = callee;
-
-        calleeContext = bb.contextPolicy().staticCalleeContext(bb, location, callerContext, callee);
-        MethodFlowsGraph calleeFlows = callee.addContext(bb, calleeContext, this);
-        linkCallee(bb, true, calleeFlows);
-    }
-
-    @Override
-    public Collection<MethodFlowsGraph> getCalleesFlows(PointsToAnalysis bb) {
-        if (callee == null || calleeContext == null) {
-            /* This static invoke was not updated. */
-            return Collections.emptyList();
-        } else {
-            assert calleeContext != null;
-            MethodFlowsGraph methodFlows = callee.getFlows(calleeContext);
-            return Collections.singletonList(methodFlows);
-        }
-    }
-
-    @Override
-    public String toString() {
-        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
-    }
-
 }

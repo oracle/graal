@@ -66,7 +66,6 @@ class ArtifactParser {
     private static final String META_DEPENDENCY = "requireBundle";
     private static final String META_REQUIRED = "requiredCapabilities";
     private static final String META_PROVIDED = "providedCapabilities";
-    private static final String META_POLYGLOT = "polyglot";
     private static final String META_WORK_DIR = "workingDirectories";
 
     private final JSONObject json;
@@ -156,10 +155,6 @@ class ArtifactParser {
         return getMetadata(META_PROVIDED);
     }
 
-    private boolean getRebuildPolyglot() {
-        return Boolean.parseBoolean(getMetadata(META_POLYGLOT, "False"));
-    }
-
     private String getWorkingDir() {
         return getMetadata(META_WORK_DIR);
     }
@@ -180,7 +175,6 @@ class ArtifactParser {
         info.addProvidedValues(translateProvidedValues(fb));
         info.setDependencies(translateDependency(fb));
         info.setStability(translateStability());
-        info.setPolyglotRebuild(getRebuildPolyglot());
         info.addWorkingDirectories(translateWorkingDirs());
         info.setLicenseType(getLicenseName());
         info.setLicensePath(connector.makeLicenseURL(getLicenseId()));
@@ -239,10 +233,6 @@ class ArtifactParser {
 
     private String getMetadata(String key) {
         return getMetadata(key, () -> null);
-    }
-
-    private String getMetadata(String key, String defValue) {
-        return getMetadata(key, () -> defValue);
     }
 
     private String getMetadata(String key, Supplier<String> defValue) {

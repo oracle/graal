@@ -182,20 +182,20 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
              */
             length += 2 * 8;
             log(context, "  [0x%08x] %s CU %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
-            pos = putInt(length, buffer, pos);
+            pos = writeInt(length, buffer, pos);
             /* DWARF version is always 2. */
-            pos = putShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
-            pos = putInt(cuIndex, buffer, pos);
+            pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+            pos = writeInt(cuIndex, buffer, pos);
             /* Address size is always 8. */
-            pos = putByte((byte) 8, buffer, pos);
+            pos = writeByte((byte) 8, buffer, pos);
             /* Segment size is always 0. */
-            pos = putByte((byte) 0, buffer, pos);
+            pos = writeByte((byte) 0, buffer, pos);
             assert (pos - lastpos) == DW_AR_HEADER_SIZE;
             /*
              * Align to 2 * address size.
              */
             for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
-                pos = putByte((byte) 0, buffer, pos);
+                pos = writeByte((byte) 0, buffer, pos);
             }
             log(context, "  [0x%08x] Address          Length           Name", pos);
             for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
@@ -205,12 +205,12 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                  */
                 if (!primary.isDeoptTarget()) {
                     log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
-                    pos = putRelocatableCodeOffset(primary.getLo(), buffer, pos);
-                    pos = putLong(primary.getHi() - primary.getLo(), buffer, pos);
+                    pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
+                    pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
                 }
             }
-            pos = putLong(0, buffer, pos);
-            pos = putLong(0, buffer, pos);
+            pos = writeLong(0, buffer, pos);
+            pos = writeLong(0, buffer, pos);
         }
         /* now write ranges for deopt targets */
         for (ClassEntry classEntry : getPrimaryClasses()) {
@@ -235,20 +235,20 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                  */
                 length += 2 * 8;
                 log(context, "  [0x%08x] %s CU linkage stubs %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
-                pos = putInt(length, buffer, pos);
+                pos = writeInt(length, buffer, pos);
                 /* DWARF version is always 2. */
-                pos = putShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
-                pos = putInt(cuIndex, buffer, pos);
+                pos = writeShort(DwarfDebugInfo.DW_VERSION_2, buffer, pos);
+                pos = writeInt(cuIndex, buffer, pos);
                 /* Address size is always 8. */
-                pos = putByte((byte) 8, buffer, pos);
+                pos = writeByte((byte) 8, buffer, pos);
                 /* Segment size is always 0. */
-                pos = putByte((byte) 0, buffer, pos);
+                pos = writeByte((byte) 0, buffer, pos);
                 assert (pos - lastpos) == DW_AR_HEADER_SIZE;
                 /*
                  * Align to 2 * address size.
                  */
                 for (int i = 0; i < DW_AR_HEADER_PAD_SIZE; i++) {
-                    pos = putByte((byte) 0, buffer, pos);
+                    pos = writeByte((byte) 0, buffer, pos);
                 }
                 log(context, "  [0x%08x] Address          Length           Name", pos);
                 for (PrimaryEntry classPrimaryEntry : classPrimaryEntries) {
@@ -258,12 +258,12 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                      */
                     if (primary.isDeoptTarget()) {
                         log(context, "  [0x%08x] %016x %016x %s", pos, debugTextBase + primary.getLo(), primary.getHi() - primary.getLo(), primary.getFullMethodNameWithParams());
-                        pos = putRelocatableCodeOffset(primary.getLo(), buffer, pos);
-                        pos = putLong(primary.getHi() - primary.getLo(), buffer, pos);
+                        pos = writeRelocatableCodeOffset(primary.getLo(), buffer, pos);
+                        pos = writeLong(primary.getHi() - primary.getLo(), buffer, pos);
                     }
                 }
-                pos = putLong(0, buffer, pos);
-                pos = putLong(0, buffer, pos);
+                pos = writeLong(0, buffer, pos);
+                pos = writeLong(0, buffer, pos);
             }
         }
         assert pos == size;

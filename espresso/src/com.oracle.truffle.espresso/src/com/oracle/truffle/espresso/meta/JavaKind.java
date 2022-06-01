@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.meta;
 
 import java.lang.reflect.Array;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -257,6 +258,7 @@ public enum JavaKind {
             case 'V':
                 return Void;
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalArgumentException("unknown primitive or void type character: " + ch);
         }
     }

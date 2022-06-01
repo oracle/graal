@@ -122,22 +122,22 @@ suite = {
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "sha1" : "dfa3a1fbc55bf5db8c6e79fc0935ac7ab1202950",
-      "sourceSha1" : "21551c094193ab59d284b434c1e33a3ddf4b5c0e",
+      "sha1" : "9e7d3304c23f9ba5cb71915f7cce23231a57a445",
+      "sourceSha1" : "cc9684d401adeb1a90404a5d77fd38d348a41ec1",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "70.1",
+        "version" : "71.1",
       },
     },
     "ICU4J-CHARSET" : {
       "moduleName" : "com.ibm.icu.charset",
-      "sha1" : "9d220e65da007d8ed60cd7970a74d14a8205dfe7",
-      "sourceSha1" : "8f38201691b79d28e424daaa1c9a95039468e946",
+      "sha1" : "43a0c57f34daf0107810d5840a21f4e8a5ecfa5a",
+      "sourceSha1" : "9306ea1978df483a85d84f1fe61795f1e0786aec",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j-charset",
-        "version" : "70.1",
+        "version" : "71.1",
       },
     },
 
@@ -244,6 +244,20 @@ suite = {
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "API,Truffle,Test",
       "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.api.test.jdk17": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.test",
+      ],
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
     },
 
     "com.oracle.truffle.api.benchmark" : {
@@ -365,7 +379,7 @@ suite = {
         "mx:JUNIT",
         "sdk:POLYGLOT_TCK"
       ],
-      "checkstyle" : "com.oracle.truffle.sl",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
       "workingSets" : "SimpleLanguage,Test",
       "jacoco" : "exclude",
@@ -903,7 +917,7 @@ suite = {
         "jdk.unsupported", # GR-36880
       ],
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -914,7 +928,7 @@ suite = {
       "dependencies" : [
         "sdk:GRAAL_SDK",
       ],
-      "checkstyle" : "com.oracle.truffle.sl",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,SimpleLanguage",
     },
@@ -930,7 +944,7 @@ suite = {
       "requires" : [
         "java.logging",
       ],
-      "checkstyle" : "com.oracle.truffle.sl",
+      "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "11+",
       "workingSets" : "Truffle,SimpleLanguage,Test",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR", "mx:JMH_1_21"],
@@ -958,9 +972,9 @@ suite = {
         "com.oracle.truffle.st"
       ],
       "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "checkstyle" : "com.oracle.truffle.api",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
-      "workingSets" : "Truffle,SimpleLanguage",
+      "workingSets" : "Truffle",
       "testProject" : True,
       "jacoco" : "exclude",
     },
@@ -1137,6 +1151,7 @@ suite = {
           "linux-amd64",
           "linux-aarch64",
           "darwin-amd64",
+          "darwin-aarch64",
       ],
       "layout" : {
         "bin/" : "dependency:com.oracle.truffle.nfi.native",
@@ -1350,6 +1365,7 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.api.staticobject.test.jdk17",
+        "com.oracle.truffle.api.test.jdk17",
       ],
       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
       "distDependencies" : [
@@ -1395,6 +1411,15 @@ suite = {
       "description" : "Truffle NFI support distribution for the GraalVM",
       "layout" : {
         "./" : ["dependency:com.oracle.truffle.nfi.native"],
+      },
+      "maven" : False,
+    },
+
+    "TRUFFLE_ICU4J_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for ICU4J",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-icu4j.properties",
       },
       "maven" : False,
     },

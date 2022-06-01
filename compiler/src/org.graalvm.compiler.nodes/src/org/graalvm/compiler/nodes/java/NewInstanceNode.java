@@ -80,7 +80,8 @@ public class NewInstanceNode extends AbstractNewObjectNode implements Virtualiza
          * Reference objects can escape into their ReferenceQueue at any safepoint, therefore
          * they're excluded from escape analysis.
          */
-        if (!tool.getMetaAccess().lookupJavaType(Reference.class).isAssignableFrom(instanceClass)) {
+        if (!tool.getMetaAccess().lookupJavaType(Reference.class).isAssignableFrom(instanceClass) &&
+                        tool.getMetaAccessExtensionProvider().canVirtualize(instanceClass)) {
             VirtualInstanceNode virtualObject = new VirtualInstanceNode(instanceClass(), true);
             ResolvedJavaField[] fields = virtualObject.getFields();
             ValueNode[] state = new ValueNode[fields.length];

@@ -256,6 +256,8 @@ def _truffle_gate_runner(args, tasks):
         with Task('Truffle DSL max state bit tests', tasks) as t:
             if t:
                 _truffle_gate_state_bitwidth_tests()
+    with Task('Validate parsers', tasks) as t:
+        if t: validate_parsers()
 
 # The Truffle DSL specialization state bit width computation is complicated and
 # rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
@@ -680,6 +682,30 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         with open(filename, 'w') as content_file:
             content_file.write(content)
 
+def validate_parsers(args=None, out=None):
+    validate_parser("com.oracle.truffle.sl", "com/oracle/truffle/sl/parser/SimpleLanguage.g4", create_sl_parser)
+    validate_parser("com.oracle.truffle.dsl.processor", "com/oracle/truffle/dsl/processor/expression/Expression.g4", create_dsl_parser)
+
+def validate_parser(grammar_project, grammar_path, create_command, args=None, out=None):
+    def read_file(path):
+        with open(path, "r") as f:
+            return f.readlines()
+    parser_path = grammar_path.replace(".g4", "Parser.java")
+    lexer_path = grammar_path.replace(".g4", "Lexer.java")
+    parser = mx.project(grammar_project).source_dirs()[0] + "/" + parser_path
+    lexer = mx.project(grammar_project).source_dirs()[0] + "/" + lexer_path
+    parser_before = read_file(parser)
+    lexer_before = read_file(lexer)
+    create_command([], out)
+    parser_after = read_file(parser)
+    lexer_after = read_file(lexer)
+    if (parser_before != parser_after or lexer_before != lexer_after):
+        with open(parser, "w") as f:
+            f.writelines(parser_before)
+        with open(lexer, "w") as f:
+            f.writelines(lexer_before)
+        mx.abort("Parser generated from " + grammar_path + " does not match content of " + parser_path + " or " + lexer_path + "." +
+            " Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.
@@ -896,15 +922,16 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     stability="supported",
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='ICU4J',
     short_name='icu4j',
-    dir_name='truffle',
+    dir_name='icu4j',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    jar_distributions=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    truffle_jars=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))

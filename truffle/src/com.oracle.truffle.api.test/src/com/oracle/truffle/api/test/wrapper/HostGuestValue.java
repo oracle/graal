@@ -111,7 +111,7 @@ class HostGuestValue implements TruffleObject {
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
             if (arg instanceof Long) {
-                // TODO handle long
+                // TODO GR-38632 handle long
                 throw new UnsupportedOperationException();
             } else if (arg instanceof HostGuestValue) {
                 newArgs[i] = ((HostGuestValue) arg).id;
@@ -120,12 +120,12 @@ class HostGuestValue implements TruffleObject {
             } else if (arg instanceof Object[]) {
                 newArgs[i] = marshalToRemote(hostToGuest, (Object[]) arg);
             } else if (arg instanceof InteropLibrary) {
-                // TODO many more types to serialize
+                // TODO GR-38632 many more types to serialize
                 newArgs[i] = null;
             } else if (arg instanceof String) {
                 newArgs[i] = arg;
             } else {
-                // TODO many more types to serialize
+                // TODO GR-38632 many more types to serialize
                 throw new UnsupportedOperationException(arg.getClass().getName());
             }
         }

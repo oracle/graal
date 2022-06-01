@@ -42,7 +42,7 @@ import jdk.vm.ci.meta.MetaUtil;
 public final class JNIAccessibleClass {
     private final Class<?> classObject;
     private EconomicMap<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methods;
-    private EconomicMap<String, JNIAccessibleField> fields;
+    private EconomicMap<CharSequence, JNIAccessibleField> fields;
 
     JNIAccessibleClass(Class<?> clazz) {
         this.classObject = clazz;
@@ -56,18 +56,18 @@ public final class JNIAccessibleClass {
         return (fields != null) ? fields.getValues() : Collections::emptyIterator;
     }
 
-    MapCursor<String, JNIAccessibleField> getFieldsByName() {
+    MapCursor<CharSequence, JNIAccessibleField> getFieldsByName() {
         return (fields != null) ? fields.getEntries() : EconomicMap.emptyCursor();
     }
 
-    public JNIAccessibleField getField(String name) {
+    public JNIAccessibleField getField(CharSequence name) {
         return (fields != null) ? fields.get(name) : null;
     }
 
     @Platforms(HOSTED_ONLY.class)
     void addFieldIfAbsent(String name, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
-            fields = ImageHeapMap.create();
+            fields = ImageHeapMap.create(JNIReflectionDictionary.WRAPPED_CSTRING_EQUIVALENCE);
         }
         if (!fields.containsKey(name)) {
             fields.put(name, mappingFunction.apply(name));

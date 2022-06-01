@@ -162,14 +162,6 @@ public final class Support {
         return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, JvmtiAgentBase.singleton().handles().javaIoSerializable);
     }
 
-    public static JNIObjectHandle getCallerClass(int depth) {
-        return getMethodDeclaringClass(getCallerMethod(depth));
-    }
-
-    public static JNIObjectHandle getDirectCallerClass() {
-        return getCallerClass(1);
-    }
-
     public static JNIMethodId getCallerMethod(int depth) {
         JvmtiFrameInfo frameInfo = StackValue.get(JvmtiFrameInfo.class);
         CIntPointer countPtr = StackValue.get(CIntPointer.class);
@@ -183,6 +175,20 @@ public final class Support {
     public static JNIObjectHandle getObjectArgument(int slot) {
         WordPointer handlePtr = StackValue.get(WordPointer.class);
         if (jvmtiFunctions().GetLocalObject().invoke(jvmtiEnv(), nullHandle(), 0, slot, handlePtr) != JvmtiError.JVMTI_ERROR_NONE) {
+            return nullHandle();
+        }
+        return handlePtr.read();
+    }
+
+    /**
+     * This method might be slightly faster than {@link #getObjectArgument}, but can only be used
+     * for instance methods, not static methods.
+     */
+    public static JNIObjectHandle getReceiver() {
+        WordPointer handlePtr = StackValue.get(WordPointer.class);
+        JvmtiError result = jvmtiFunctions().GetLocalInstance().invoke(jvmtiEnv(), nullHandle(), 0, handlePtr);
+        if (result != JvmtiError.JVMTI_ERROR_NONE) {
+            assert result != JvmtiError.JVMTI_ERROR_INVALID_SLOT : "not an instance method";
             return nullHandle();
         }
         return handlePtr.read();

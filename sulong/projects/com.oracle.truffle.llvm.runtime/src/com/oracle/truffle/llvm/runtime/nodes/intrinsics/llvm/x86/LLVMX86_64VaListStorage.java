@@ -133,7 +133,7 @@ import java.util.Arrays;
  * which is appended to the AST when {@link NodeFactory#createAlloca(Type, int)} is called. That
  * method is the place where the request to allocate a <code>va_list</code> variable on the stack is
  * intercepted by comparing the type argument with the predefined platform specific
- * <code>va_list</code> type (obtained via {@link PlatformCapability#getVAListType()}).
+ * <code>va_list</code> type (obtained via {@link PlatformCapability#isManagedVAListType(Type)}).
  * <p>
  * The initialization is deferred until the moment when the <code>va_start</code> macro is invoked,
  * which corresponds to the invocation of the node {@link LLVMVAStart}. That node is platform
@@ -181,6 +181,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     public static final ArrayType VA_LIST_TYPE = new ArrayType(StructureType.createNamedFromList("struct.__va_list_tag", false,
                     new ArrayList<>(Arrays.asList(PrimitiveType.I32, PrimitiveType.I32, PointerType.I8, PointerType.I8))), 1);
 
+    private final Type vaListType;
+
     private int initGPOffset;
     private int gpOffset;
     private int initFPOffset;
@@ -193,8 +195,9 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     private LLVMPointer overflowArgAreaBaseNativePtr;
     private LLVMPointer regSaveAreaNativePtr;
 
-    public LLVMX86_64VaListStorage(LLVMPointer vaListStackPtr) {
+    public LLVMX86_64VaListStorage(LLVMPointer vaListStackPtr, Type vaListType) {
         super(vaListStackPtr);
+        this.vaListType = vaListType;
     }
 
     // NativeTypeLibrary library
@@ -208,9 +211,8 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
     @SuppressWarnings("static-method")
     @ExportMessage
     @TruffleBoundary
-    Object getNativeType(@CachedLibrary("this") NativeTypeLibrary self) {
-        // This method should never be invoked
-        return LLVMLanguage.get(self).getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, findDataLayoutFromCurrentFrame()));
+    Object getNativeType() {
+        return LLVMLanguage.get(null).getInteropType(LLVMSourceTypeFactory.resolveType(vaListType, findDataLayoutFromCurrentFrame()));
     }
 
     // LLVMManagedReadLibrary implementation
@@ -530,7 +532,7 @@ public final class LLVMX86_64VaListStorage extends LLVMVaListStorage {
         @GenerateAOT.Exclude // recursion cut
         static void copyManagedToNative(LLVMX86_64VaListStorage source, NativeVAListWrapper dest, Frame frame,
                         @CachedLibrary(limit = "1") LLVMVaListLibrary vaListLibrary) {
-            LLVMX86_64VaListStorage dummyClone = new LLVMX86_64VaListStorage(dest.nativeVAListPtr);
+            LLVMX86_64VaListStorage dummyClone = new LLVMX86_64VaListStorage(dest.nativeVAListPtr, source.vaListType);
             dummyClone.nativized = true;
             vaListLibrary.initialize(dummyClone, source.realArguments, source.numberOfExplicitArguments, frame);
         }

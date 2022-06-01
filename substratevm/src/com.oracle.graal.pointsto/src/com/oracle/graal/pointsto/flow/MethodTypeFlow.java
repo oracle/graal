@@ -28,11 +28,8 @@ import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
@@ -41,12 +38,9 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -54,31 +48,21 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
-    protected MethodFlowsGraph originalMethodFlows;
-    protected final ConcurrentMap<AnalysisContext, MethodFlowsGraph> clonedMethodFlows;
-    private int localCallingContextDepth;
-
-    private final PointsToAnalysisMethod method;
-
-    private volatile boolean typeFlowCreated;
+    protected final PointsToAnalysisMethod method;
+    protected MethodFlowsGraph flowsGraph;
+    private volatile boolean flowsGraphCreated;
     private InvokeTypeFlow parsingReason;
 
     private int returnedParameterIndex;
 
-    public MethodTypeFlow(OptionValues options, PointsToAnalysisMethod method) {
+    public MethodTypeFlow(PointsToAnalysisMethod method) {
         super(method, null);
         this.method = method;
-        this.localCallingContextDepth = PointstoOptions.MaxCallingContextDepth.getValue(options);
-        this.originalMethodFlows = new MethodFlowsGraph(method);
-        this.clonedMethodFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
+        this.flowsGraph = new MethodFlowsGraph(method);
     }
 
     public PointsToAnalysisMethod getMethod() {
         return method;
-    }
-
-    public InvokeTypeFlow getParsingReason() {
-        return parsingReason;
     }
 
     public StackTraceElement[] getParsingContext() {
@@ -92,147 +76,80 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             parsingContext.add(invokeFlow.getSource().getMethod().asStackTraceElement(invokeFlow.getSource().getBCI()));
             invokeFlow = ((PointsToAnalysisMethod) invokeFlow.getSource().getMethod()).getTypeFlow().parsingReason;
         }
-        return parsingContext.toArray(new StackTraceElement[parsingContext.size()]);
+        return parsingContext.toArray(new StackTraceElement[0]);
     }
 
     /**
-     * Add the context, if not already added, and return the method flows clone from that context.
+     * Returns the flows graph corresponding to this method, blocking until parsing is finished if
+     * necessary.
      */
-    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext) {
-        return addContext(bb, calleeContext, null);
+    public MethodFlowsGraph getOrCreateMethodFlowsGraph(PointsToAnalysis bb, InvokeTypeFlow reason) {
+        ensureFlowsGraphCreated(bb, reason);
+        return flowsGraph;
     }
 
-    public MethodFlowsGraph addContext(PointsToAnalysis bb, AnalysisContext calleeContext, InvokeTypeFlow reason) {
-
-        // make sure that the method is parsed before attempting to clone it;
-        // the parsing should always happen on the same thread
-        this.ensureTypeFlowCreated(bb, reason);
-
-        AnalysisContext newContext = bb.contextPolicy().peel(calleeContext, localCallingContextDepth);
-
-        MethodFlowsGraph methodFlows = clonedMethodFlows.get(newContext);
-        if (methodFlows == null) {
-            MethodFlowsGraph newFlows = new MethodFlowsGraph(method, newContext);
-            newFlows.cloneOriginalFlows(bb);
-            MethodFlowsGraph oldFlows = clonedMethodFlows.putIfAbsent(newContext, newFlows);
-            methodFlows = oldFlows != null ? oldFlows : newFlows;
-            if (oldFlows == null) {
-                // link uses after adding the clone to the map since linking uses might trigger
-                // updates to the current method in the current context
-                methodFlows.linkClones(bb);
-            }
-        }
-
-        return methodFlows;
-    }
-
-    public AnalysisContext[] getContexts() {
-        Set<AnalysisContext> contexts = clonedMethodFlows.keySet();
-        return contexts.toArray(new AnalysisContext[contexts.size()]);
-    }
-
-    public int getLocalCallingContextDepth() {
-        return localCallingContextDepth;
-    }
-
-    public Map<AnalysisContext, MethodFlowsGraph> getMethodContextFlows() {
-        return clonedMethodFlows;
+    public MethodFlowsGraph getMethodFlowsGraph() {
+        assert flowsGraph != null;
+        return flowsGraph;
     }
 
     public Collection<MethodFlowsGraph> getFlows() {
-        // TODO enforce the use of this method only after the analysis phase is finished
-        return clonedMethodFlows.values();
-    }
-
-    public MethodFlowsGraph getFlows(AnalysisContext calleeContext) {
-        // TODO enforce the use of this method only after the analysis phase is finished
-        return clonedMethodFlows.get(calleeContext);
+        return flowsGraphCreated ? List.of(flowsGraph) : Collections.emptyList();
     }
 
     public void setResult(FormalReturnTypeFlow result) {
-        originalMethodFlows.setReturnFlow(result);
+        flowsGraph.setReturnFlow(result);
     }
 
     public void setParameter(int index, FormalParamTypeFlow parameter) {
-        originalMethodFlows.setParameter(index, parameter);
+        flowsGraph.setParameter(index, parameter);
     }
 
     protected void addInstanceOf(Object key, InstanceOfTypeFlow instanceOf) {
-        originalMethodFlows.addInstanceOf(key, instanceOf);
+        flowsGraph.addInstanceOf(key, instanceOf);
     }
 
     public void addNodeFlow(PointsToAnalysis bb, Node node, TypeFlow<?> input) {
         if (bb.strengthenGraalGraphs()) {
-            originalMethodFlows.addNodeFlow(new EncodedNodeReference(node), input);
+            flowsGraph.addNodeFlow(new EncodedNodeReference(node), input);
         } else {
-            originalMethodFlows.addMiscEntryFlow(input);
+            flowsGraph.addMiscEntryFlow(input);
         }
     }
 
     public void addMiscEntry(TypeFlow<?> input) {
-        originalMethodFlows.addMiscEntryFlow(input);
+        flowsGraph.addMiscEntryFlow(input);
     }
 
     protected void addInvoke(Object key, InvokeTypeFlow invokeTypeFlow) {
-        originalMethodFlows.addInvoke(key, invokeTypeFlow);
-    }
-
-    public MethodFlowsGraph getOriginalMethodFlows() {
-        return originalMethodFlows;
+        flowsGraph.addInvoke(key, invokeTypeFlow);
     }
 
     /**
-     * Get a type state containing the union of states over all the clones of the original flow.
-     *
-     * @param originalTypeFlow the original type flow
-     * @return the resulting type state object
+     * Return the type state of the original flow.
      */
-    public TypeState foldTypeFlow(PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
+    public TypeState foldTypeFlow(@SuppressWarnings("unused") PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
         if (originalTypeFlow == null) {
             return null;
         }
-
-        TypeState result = TypeState.forEmpty();
-        for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
-            TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
-            TypeState cloneState = clonedTypeFlow.getState();
-            /*
-             * Make a shallow copy of the clone state, i.e., only the types and not the concrete
-             * objects, so that the union operation doesn't merge the concrete objects with abstract
-             * objects.
-             */
-            TypeState cloneStateCopy = TypeState.forContextInsensitiveTypeState(bb, cloneState);
-            result = TypeState.forUnion(bb, result, cloneStateCopy);
-        }
-        return result;
+        return originalTypeFlow.getState();
     }
 
     /** Check if the type flow is saturated, i.e., any of its clones is saturated. */
-    public boolean isSaturated(PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
-        boolean saturated = false;
-        for (MethodFlowsGraph methodFlows : clonedMethodFlows.values()) {
-            TypeFlow<?> clonedTypeFlow = methodFlows.lookupCloneOf(bb, originalTypeFlow);
-            saturated |= clonedTypeFlow.isSaturated();
-        }
-        return saturated;
-    }
-
-    // get original parameter
-    public FormalParamTypeFlow getParameterFlow(int idx) {
-        return originalMethodFlows.getParameter(idx);
+    public boolean isSaturated(@SuppressWarnings("unused") PointsToAnalysis bb, TypeFlow<?> originalTypeFlow) {
+        return originalTypeFlow.isSaturated();
     }
 
     public TypeState getParameterTypeState(PointsToAnalysis bb, int parameter) {
-        return foldTypeFlow(bb, originalMethodFlows.getParameter(parameter));
+        return foldTypeFlow(bb, flowsGraph.getParameter(parameter));
     }
 
-    // original result
     protected FormalReturnTypeFlow getResultFlow() {
-        return originalMethodFlows.getReturnFlow();
+        return flowsGraph.getReturnFlow();
     }
 
     public Iterable<InvokeTypeFlow> getInvokes() {
-        return originalMethodFlows.getInvokes().getValues();
+        return flowsGraph.getInvokes().getValues();
     }
 
     private static int computeReturnedParameterIndex(StructuredGraph graph) {
@@ -264,15 +181,15 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         return returnedParameterIndex;
     }
 
-    public void ensureTypeFlowCreated(PointsToAnalysis bb, InvokeTypeFlow reason) {
-        if (!typeFlowCreated) {
-            createTypeFlow(bb, reason);
+    protected void ensureFlowsGraphCreated(PointsToAnalysis bb, InvokeTypeFlow reason) {
+        if (!flowsGraphCreated) {
+            createFlowsGraph(bb, reason);
         }
     }
 
     /* All threads that try to parse the current method synchronize and only the first parses. */
-    private synchronized void createTypeFlow(PointsToAnalysis bb, InvokeTypeFlow reason) {
-        if (!typeFlowCreated) {
+    private synchronized void createFlowsGraph(PointsToAnalysis bb, InvokeTypeFlow reason) {
+        if (!flowsGraphCreated) {
             parsingReason = reason;
             StructuredGraph graph = null;
             try {
@@ -298,21 +215,26 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
                 throw AnalysisError.parsingError(method, t);
             }
 
-            originalMethodFlows.linearizeGraph();
+            initFlowsGraph(bb);
 
             bb.numParsedGraphs.incrementAndGet();
 
             returnedParameterIndex = computeReturnedParameterIndex(graph);
 
-            typeFlowCreated = true;
+            flowsGraphCreated = true;
         }
+    }
+
+    protected void initFlowsGraph(PointsToAnalysis bb) {
+        flowsGraph.init(bb);
     }
 
     @Override
     public void update(PointsToAnalysis bb) {
-        // method type flow update (which is effectively method parsing) is done by
-        // MethodTypeFlow.ensureParsed which should always be executed on the same thread as
-        // MethodTypeFlow.addContext
+        /*
+         * Method type flow update (which is effectively method parsing) is done by
+         * MethodTypeFlow.ensureTypeFlowCreated().
+         */
         shouldNotReachHere();
     }
 

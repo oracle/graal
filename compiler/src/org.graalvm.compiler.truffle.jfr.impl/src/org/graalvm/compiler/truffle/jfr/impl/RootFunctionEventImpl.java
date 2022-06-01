@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.jfr.impl;
 
+import com.oracle.truffle.api.nodes.LanguageInfo;
 import jdk.jfr.Event;
 import jdk.jfr.Label;
 import jdk.jfr.Description;
@@ -35,13 +36,15 @@ import org.graalvm.compiler.truffle.jfr.RootFunctionEvent;
 abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent {
 
     @Label("Source") @Description("Compiled Source") public String source;
+    @Label("Language") @Description("Guest Language") public String language;
     @Label("Root Function") @Description("Root Function") public String rootFunction;
 
     RootFunctionEventImpl() {
     }
 
-    RootFunctionEventImpl(String source, String rootFunction) {
+    RootFunctionEventImpl(String source, String language, String rootFunction) {
         this.source = source;
+        this.language = language;
         this.rootFunction = rootFunction;
     }
 
@@ -49,6 +52,8 @@ abstract class RootFunctionEventImpl extends Event implements RootFunctionEvent 
     public void setRootFunction(RootCallTarget target) {
         RootNode rootNode = target.getRootNode();
         this.source = targetName(rootNode);
+        LanguageInfo languageInfo = rootNode.getLanguageInfo();
+        this.language = languageInfo != null ? languageInfo.getId() : null;
         this.rootFunction = rootNode.getName();
     }
 

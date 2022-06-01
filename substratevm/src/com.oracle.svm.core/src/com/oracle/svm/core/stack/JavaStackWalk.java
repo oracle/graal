@@ -66,12 +66,6 @@ public interface JavaStackWalk extends PointerBase {
     @RawField
     void setAnchor(JavaFrameAnchor anchor);
 
-    /**
-     * The delimitation of this walk when we're walking on a delimited continuation/virtual thread.
-     * Otherwise null.
-     * 
-     * This field will be ignored by {@link JavaStackWalker#continueWalk} for now.
-     */
     @RawField
     Pointer getEndSP();
 

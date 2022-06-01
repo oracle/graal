@@ -237,6 +237,13 @@ class NativeImageBenchmarkMixin(object):
         else:
             return None
 
+    def pgo_iteration_num(self, _, args):
+        parsed_args = parse_prefixed_args('-Dnative-image.benchmark.pgo-iteration-num=', args)
+        if parsed_args:
+            return int(parsed_args[0])
+        else:
+            return None
+
     def stages(self, args):
         parsed_arg = parse_prefixed_arg('-Dnative-image.benchmark.stages=', args, 'Native Image benchmark stages should only be specified once.')
         return parsed_arg.split(',') if parsed_arg else ['agent', 'instrument-image', 'instrument-run', 'image', 'run']
@@ -321,7 +328,7 @@ class BaseMicroserviceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, NativeImag
         self.measureLatency = None
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument("--workload-configuration", type=str, default=None, help="Path to workload configuration.")
-        self.parser.add_argument("--skip-latency-measurements", action='store_true', default=False, help="Determines if the latency measurements should be skipped.")
+        self.parser.add_argument("--skip-latency-measurements", action='store_true', help="Determines if the latency measurements should be skipped.")
 
     def benchMicroserviceName(self):
         """

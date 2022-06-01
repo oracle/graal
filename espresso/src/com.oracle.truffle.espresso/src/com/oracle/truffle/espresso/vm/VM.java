@@ -453,7 +453,9 @@ public final class VM extends NativeEnv {
     }
 
     public void dispose() {
-        assert !getUncached().isNull(mokapotEnvPtr) : "Mokapot already disposed";
+        if (mokapotEnvPtr == null || getUncached().isNull(mokapotEnvPtr)) {
+            return; // Mokapot disposed or uninitialized.
+        }
         try {
             if (management != null) {
                 assert getContext().EnableManagement;
@@ -467,7 +469,7 @@ public final class VM extends NativeEnv {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso libjvm (mokapot).");
         }
-        assert getUncached().isNull(mokapotEnvPtr);
+        assert mokapotEnvPtr == null || getUncached().isNull(mokapotEnvPtr);
     }
 
     private StaticObject nonReflectionClassLoader(StaticObject loader) {
@@ -1476,7 +1478,7 @@ public final class VM extends NativeEnv {
     public static int DestroyJavaVM(@Inject EspressoContext context) {
         assert context.getCurrentThread() != null;
         try {
-            context.destroyVM(!context.ExitHost);
+            context.destroyVM();
         } catch (AbstractTruffleException exit) {
             // expected
         }
@@ -1581,6 +1583,8 @@ public final class VM extends NativeEnv {
         } catch (Throwable t) {
             context.getLogger().severe("Host exception thrown while trying to terminate thread");
             t.printStackTrace();
+        } finally {
+            context.unregisterThread(currentThread);
         }
 
         return JNI_OK;
@@ -2190,15 +2194,14 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl
-    public void JVM_Halt(int code) {
-        getContext().doExit(code);
+    public void JVM_Halt(int code, @Inject SubstitutionProfiler location) {
+        getContext().truffleExit(location, code);
     }
 
     @VmImpl
-    public void JVM_Exit(int code) {
-        getContext().doExit(code);
-        // System.exit(code);
-        // Unlike Halt, runs finalizers
+    public void JVM_Exit(int code, @Inject SubstitutionProfiler location) {
+        // Unlike Halt, finalizers were ran before in guest code.
+        getContext().truffleExit(location, code);
     }
 
     // endregion halting

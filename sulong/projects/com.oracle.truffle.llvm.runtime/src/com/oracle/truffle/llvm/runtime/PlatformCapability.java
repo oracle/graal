@@ -29,11 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.reflect.Array;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
@@ -43,6 +38,11 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorage.VAListPointerWrapperFactory;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.lang.reflect.Array;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.util.List;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
@@ -75,6 +75,11 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     public void initializeThread(@SuppressWarnings("unused") LLVMContext context,
                     @SuppressWarnings("unused") Thread thread) {
         // Nothing needs to be done in Sulong for native thread initialization.
+    }
+
+    public void disposeThread(@SuppressWarnings("unused") LLVMContext context,
+                    @SuppressWarnings("unused") Thread thread) {
+        context.getpThreadContext().callDestructors(thread.getId());
     }
 
     @SuppressWarnings("unchecked")
@@ -128,12 +133,47 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      * @param vaListStackPtr
      * @return a new instance of a platform specific managed va_list object
      */
-    public abstract Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr);
+    public abstract Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType);
 
     /**
-     * @return the type of the platform specific va_list structure
+     * Normally, there is a single va_list type instance. Then this method returns true as long as
+     * the <code>type</code> is equal to the constant global va_list type, but is not the same. If
+     * <code>type == vaListType</code>, it is an indication that <code>createAlloca</code> is called
+     * from the <code>toNative</code> message implementation to obtain the stack allocation node.
+     * The condition <code>type != vaListType</code> prevents from obtaining another managed va_list
+     * factory node in such a case.
+     * <p>
+     * This method along with {@link PlatformCapability#getGlobalVAListType(Type)} replace
+     * <code>getVAListType</code> as it did not suit platforms where there are more possible va_list
+     * types.
      */
-    public abstract Type getVAListType();
+    public final boolean isManagedVAListType(Type type) {
+        Type global = getGlobalVAListType(type);
+        return global != null && type != global;
+    }
+
+    /**
+     * Returns true if the <code>type</code> is the instance used to recognize a request from
+     * vaList's toNative message.
+     */
+    public final boolean isVAListTypeInstanceForToNative(Type type) {
+        Type global = getGlobalVAListType(type);
+        return global != null && type == global;
+    }
+
+    public Object createActualVAListStorage() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    /**
+     * Used to get the constant global instance of the va_list type for the <code>type</code>, which
+     * must be another va_list type instance used for an <code>alloca</code> instruction.
+     * 
+     * @see LLVMVAListNode
+     * @return the global constant va_list as long as the type is a va_list type instance, otherwise
+     *         null
+     */
+    public abstract Type getGlobalVAListType(Type type);
 
     /**
      * @return the alignment of the platform specific va_list structure

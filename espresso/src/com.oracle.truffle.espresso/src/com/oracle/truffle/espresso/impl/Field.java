@@ -724,6 +724,12 @@ public class Field extends Member<Type> implements FieldRef {
         }
     }
 
+    public int getAndSetInt(StaticObject obj, int value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+        return linkedField.getAndSetInt(obj, value);
+    }
+
     public boolean compareAndSwapInt(StaticObject obj, int before, int after) {
         obj.checkNotForeign();
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
@@ -766,6 +772,13 @@ public class Field extends Member<Type> implements FieldRef {
         } else {
             linkedField.setLong(obj, value);
         }
+    }
+
+    public long getAndSetLong(StaticObject obj, long value) {
+        obj.checkNotForeign();
+        assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
+        assert getKind().needsTwoSlots();
+        return linkedField.getAndSetLong(obj, value);
     }
 
     public boolean compareAndSwapLong(StaticObject obj, long before, long after) {

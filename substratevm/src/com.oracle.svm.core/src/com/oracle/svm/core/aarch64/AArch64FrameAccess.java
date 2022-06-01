@@ -50,13 +50,19 @@ public class AArch64FrameAccess extends FrameAccess {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CodePointer readReturnAddress(Pointer sourceSp) {
         /* Read the return address, which is stored immediately below the stack pointer. */
-        return (CodePointer) sourceSp.readWord(-returnAddressSize());
+        return sourceSp.readWord(-returnAddressSize());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeReturnAddress(Pointer sourceSp, CodePointer newReturnAddress) {
         sourceSp.writeWord(-returnAddressSize(), newReturnAddress);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public Pointer getReturnAddressLocation(Pointer sourceSp) {
+        return sourceSp.subtract(returnAddressSize());
     }
 
     @Fold

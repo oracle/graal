@@ -186,11 +186,12 @@ public final class InitializeSymbolsNode extends LLVMNode {
             int offset = threadLocalGlobalOffsets[i];
             LLVMThreadLocalPointer pointer = new LLVMThreadLocalPointer(threadLocalGlobalsArray[i], offset);
             LLVMSymbol symbol = pointer.getSymbol();
+            LLVMPointer llvmPointer = LLVMManagedPointer.create(pointer);
             if (symbol == null) {
                 exception.enter();
-                throw new LLVMLinkerException(this, "Thread local global variable %s not found", pointer.getSymbol().getName());
+                throw new LLVMLinkerException(this, "Thread local global variable %s not found", pointer.toString());
             }
-            context.initializeSymbol(symbol, LLVMManagedPointer.create(pointer));
+            context.initializeSymbol(symbol, llvmPointer);
         }
     }
 

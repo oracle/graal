@@ -90,9 +90,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
     public abstract TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
     @Override
-    public abstract boolean addState(PointsToAnalysis bb, TypeState add);
-
-    @Override
     public void setObserved(TypeFlow<?> newObjectFlow) {
         this.objectFlow = newObjectFlow;
     }
@@ -134,20 +131,10 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public boolean addState(PointsToAnalysis bb, TypeState add) {
-            /* Only a clone should be updated */
-            assert this.isClone() || this.isContextInsensitive();
-            return super.addState(bb, add, true);
-        }
-
-        @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone() || this.isContextInsensitive();
-
             TypeState objectState = objectFlow.getState();
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
                     /* Ignore non-array types when type flow constraints are relaxed. */
                     continue;
@@ -165,7 +152,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone() && !this.isContextInsensitive();
             /*
              * When receiver flow saturates swap in the saturated indexed store type flow. When the
              * store itself saturates it propagates the saturation state to the uses/observers and
@@ -216,7 +202,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         protected abstract AbstractUnsafeStoreTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
         @Override
-        public void initClone(PointsToAnalysis bb) {
+        public void initFlow(PointsToAnalysis bb) {
             /*
              * Unsafe store type flow models unsafe writes to both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe store
@@ -225,13 +211,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
                 this.addUse(bb, field.getStaticFieldFlow().filterFlow(bb));
             }
-        }
-
-        @Override
-        public boolean addState(PointsToAnalysis bb, TypeState add) {
-            /* Only a clone or a context insensitive flow should be updated */
-            assert this.isClone() || this.isContextInsensitive();
-            return super.addState(bb, add, true);
         }
 
         void handleUnsafeAccessedFields(PointsToAnalysis bb, List<AnalysisField> unsafeAccessedFields, AnalysisObject object) {
@@ -268,12 +247,9 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone or a context insensitive flow should be updated */
-            assert this.isClone() || this.isContextInsensitive();
-
             TypeState objectState = objectFlow.getState();
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType type = object.type();
                 if (type.isArray()) {
                     if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
@@ -296,7 +272,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone() && !this.isContextInsensitive();
             /*
              * When receiver flow saturates swap in the saturated unsafe store type flow. When the
              * store itself saturates it propagates the saturation state to the uses/observers and
@@ -349,13 +324,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
         }
 
         @Override
-        public boolean addState(PointsToAnalysis bb, TypeState add) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-            return super.addState(bb, add, true);
-        }
-
-        @Override
         public TypeState filter(PointsToAnalysis bb, TypeState update) {
             if (partitionType.equals(bb.getObjectType())) {
                 /* No need to filter. */
@@ -368,13 +336,10 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState objectState = objectFlow.getState();
 
             /* Iterate over the receiver objects. */
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType type = object.type();
                 assert !type.isArray();
 
@@ -384,7 +349,6 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone();
             /* When receiver object flow saturates start observing the flow of the object type. */
             replaceObservedWith(bb, objectType);
         }

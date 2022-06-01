@@ -471,7 +471,7 @@ public abstract class NativeImage extends AbstractImage {
                 Timer timer = TimerCollection.singleton().get(TimerCollection.Registry.DEBUG_INFO);
                 try (Timer.StopTimer t = timer.start()) {
                     ImageSingletons.add(SourceManager.class, new SourceManager());
-                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);
+                    DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap, metaAccess);
                     objectFile.installDebugInfo(provider);
                 }
                 ProgressReporter.singleton().setDebugInfoTimer(timer);
@@ -586,8 +586,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
-        final int functionPointerRelocationSize = 8;
-        assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
+
         // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
@@ -596,7 +595,9 @@ public abstract class NativeImage extends AbstractImage {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
         // A reference to a method. Mark the relocation site using the symbol name.
-        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(target), 0L);
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
+        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), localSymbolNameForMethod(target), 0L);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {

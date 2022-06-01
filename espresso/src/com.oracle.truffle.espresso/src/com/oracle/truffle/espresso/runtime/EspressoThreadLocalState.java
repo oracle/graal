@@ -23,39 +23,16 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.vm.VM;
 
 public class EspressoThreadLocalState {
     private EspressoException pendingJniException;
     private final ClassRegistry.TypeStack typeStack;
     private final VM.PrivilegedStack privilegedStack;
-
-    /**
-     * This is declared as a compilation final for whenever Truffle is able to constant-fold
-     * accesses to ContextThreadLocals (Which might be the case when running single-threaded, for
-     * example).
-     * <p>
-     * Consistency is guaranteed because a call to {@link #setCurrentThread(StaticObject)} must have
-     * been performed before execution of guest code on the current thread. Guest threads are
-     * coupled with host threads on 4 occasions within Espresso:
-     * <ul>
-     * <li>Main thread creation.</li>
-     * <li>Guest code creation of threads. The coupling is performed before execution of the guest
-     * {@link Thread#run()} (see {@code GuestRunnable})</li>
-     * <li>Attaching through JNI
-     * {@link VM#AttachCurrentThread(TruffleObject, TruffleObject, TruffleObject)}.</li>
-     * <li>Attaching through Truffle
-     * {@code EspressoLanguage#initializeThread(EspressoContext, Thread)}.</li>
-     * </ul>
-     * For these two last cases, coupling is performed right as the supporting guest thread is
-     * allocated (see
-     * {@link com.oracle.truffle.espresso.threads.EspressoThreadRegistry#createGuestThreadFromHost(Thread, Meta, VM, String, StaticObject)}).
-     */
-    @CompilationFinal //
+    // Not compilation final. A single host thread can be associated with multiple different guest
+    // threads during its lifetime (for example: on natural exits, the host main thread will be both
+    // the guest main thread, and the DestroyVM thread).
     private StaticObject currentThread;
 
     @SuppressWarnings("unused")
@@ -90,6 +67,12 @@ public class EspressoThreadLocalState {
         assert t != null && StaticObject.notNull(t);
         assert t.getKlass().getContext().getThreadAccess().getHost(t) == Thread.currentThread() : "Current thread fast access set by non-current thread";
         currentThread = t;
+    }
+
+    public void clearCurrentThread(StaticObject expectedGuest) {
+        if (currentThread == expectedGuest) {
+            currentThread = null;
+        }
     }
 
     public StaticObject getCurrentThread(EspressoContext context) {

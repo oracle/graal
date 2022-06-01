@@ -78,7 +78,6 @@ import org.graalvm.compiler.options.OptionDescriptorsMap;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
@@ -166,7 +165,7 @@ class LibGraalOptions {
     static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
 }
 
-public class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
+public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeature {
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
@@ -430,7 +429,6 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
         GraalServices.load(GraphDecoderInvocationPluginProvider.class);
         GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
-        GraalServices.load(HotSpotMBeanOperationProvider.class);
         GraalServices.load(DisassemblerProvider.class);
 
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {

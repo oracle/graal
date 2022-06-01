@@ -4,7 +4,6 @@ Bundle-Version: 19.3.0.0
 Require-Bundle: org.graalvm.llvm-toolchain
 Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=19.3.0.0
  )(os_arch=amd64))"
-x-GraalVM-Polyglot-Part: False
 x-GraalVM-Working-Directories: jre/languages/R
 x-GraalVM-Message-PostInst: NOTES:\n---------------\nSome R packages nee
  d a system-dependent configuration before they can be installed. A gener

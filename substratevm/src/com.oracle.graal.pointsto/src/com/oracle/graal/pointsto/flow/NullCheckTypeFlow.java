@@ -73,12 +73,6 @@ public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        assert this.isClone();
-        return super.addState(bb, add);
-    }
-
-    @Override
     public String toString() {
         return "NullCheckTypeFlow<" + (getDeclaredType() != null ? getDeclaredType().toJavaName(false) : "null") + " : " + getState() + ">";
     }

@@ -60,7 +60,6 @@ import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -79,6 +78,7 @@ import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 import com.oracle.svm.hosted.substitute.DeletedElementException;
 import com.oracle.svm.reflect.hosted.ReflectionMetadata.AccessibleObjectMetadata;
 import com.oracle.svm.reflect.hosted.ReflectionMetadata.ClassMetadata;
@@ -656,7 +656,7 @@ public class ReflectionMetadataEncoderImpl implements ReflectionMetadataEncoder 
     }
 
     private RecordComponentMetadata[] getRecordComponents(MetaAccessProvider metaAccess, HostedType declaringType, Class<?> clazz) {
-        Object[] recordComponents = ImageSingletons.lookup(RuntimeReflectionSupport.class).getRecordComponents(clazz);
+        Object[] recordComponents = ImageSingletons.lookup(InternalRuntimeReflectionSupport.class).getRecordComponents(clazz);
         if (recordComponents == null) {
             return null;
         }

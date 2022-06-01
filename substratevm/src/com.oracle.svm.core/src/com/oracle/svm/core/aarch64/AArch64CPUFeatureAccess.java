@@ -26,37 +26,26 @@ package com.oracle.svm.core.aarch64;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.List;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.SubstrateTargetDescription;
+import com.oracle.svm.core.CPUFeatureAccessImpl;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 
-public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
-
-    private final EnumSet<?> buildtimeCPUFeatures;
+public class AArch64CPUFeatureAccess extends CPUFeatureAccessImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public AArch64CPUFeatureAccess() {
-        var targetDescription = ImageSingletons.lookup(SubstrateTargetDescription.class);
-        var arch = (AArch64) targetDescription.arch;
-        buildtimeCPUFeatures = EnumSet.copyOf(arch.getFeatures());
-    }
-
-    @Override
-    public EnumSet<?> buildtimeCPUFeatures() {
-        return buildtimeCPUFeatures;
+    public AArch64CPUFeatureAccess(EnumSet<?> buildtimeCPUFeatures, int[] offsets, byte[] errorMessageBytes, byte[] buildtimeFeatureMaskBytes) {
+        super(buildtimeCPUFeatures, offsets, errorMessageBytes, buildtimeFeatureMaskBytes);
     }
 
     /**
@@ -65,53 +54,6 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static EnumSet<AArch64.Flag> enabledAArch64Flags() {
         return EnumSet.of(AArch64.Flag.UseLSE);
-    }
-
-    /**
-     * Determines whether a given JVMCI AArch64.CPUFeature is present on the current hardware.
-     * Because the CPUFeatures available vary across different JDK versions, the features are
-     * queried via their name, as opposed to the actual enum.
-     */
-    private static boolean isFeaturePresent(String featureName, AArch64LibCHelper.CPUFeatures cpuFeatures, List<String> unknownFeatures) {
-        switch (featureName) {
-            case "FP":
-                return cpuFeatures.fFP();
-            case "ASIMD":
-                return cpuFeatures.fASIMD();
-            case "EVTSTRM":
-                return cpuFeatures.fEVTSTRM();
-            case "AES":
-                return cpuFeatures.fAES();
-            case "PMULL":
-                return cpuFeatures.fPMULL();
-            case "SHA1":
-                return cpuFeatures.fSHA1();
-            case "SHA2":
-                return cpuFeatures.fSHA2();
-            case "CRC32":
-                return cpuFeatures.fCRC32();
-            case "LSE":
-                return cpuFeatures.fLSE();
-            case "DCPOP":
-                return cpuFeatures.fDCPOP();
-            case "SHA3":
-                return cpuFeatures.fSHA3();
-            case "SHA512":
-                return cpuFeatures.fSHA512();
-            case "SVE":
-                return cpuFeatures.fSVE();
-            case "SVE2":
-                return cpuFeatures.fSVE2();
-            case "STXR_PREFETCH":
-                return cpuFeatures.fSTXRPREFETCH();
-            case "A53MAC":
-                return cpuFeatures.fA53MAC();
-            case "DMB_ATOMICS":
-                return cpuFeatures.fDMBATOMICS();
-            default:
-                unknownFeatures.add(featureName);
-                return false;
-        }
     }
 
     @Override
@@ -127,7 +69,7 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
 
         ArrayList<String> unknownFeatures = new ArrayList<>();
         for (AArch64.CPUFeature feature : AArch64.CPUFeature.values()) {
-            if (isFeaturePresent(feature.name(), cpuFeatures, unknownFeatures)) {
+            if (isFeaturePresent(feature, (Pointer) cpuFeatures, unknownFeatures)) {
                 features.add(feature);
             }
         }
@@ -138,21 +80,16 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
         return features;
     }
 
+    @Uninterruptible(reason = "Thread state not set up yet.")
     @Override
-    public void verifyHostSupportsArchitecture(Architecture imageArchitecture) {
-        AArch64 architecture = (AArch64) imageArchitecture;
-        EnumSet<AArch64.CPUFeature> features = determineHostCPUFeatures();
+    public int verifyHostSupportsArchitectureEarly() {
+        return AArch64LibCHelper.checkCPUFeatures(BUILDTIME_CPU_FEATURE_MASK.get());
+    }
 
-        if (!features.containsAll(architecture.getFeatures())) {
-            List<AArch64.CPUFeature> missingFeatures = new ArrayList<>();
-            for (AArch64.CPUFeature feature : architecture.getFeatures()) {
-                if (!features.contains(feature)) {
-                    missingFeatures.add(feature);
-                }
-            }
-            throw VMError.shouldNotReachHere("Current target does not support the following CPU features that are required by the image: " + missingFeatures);
-        }
-
+    @Uninterruptible(reason = "Thread state not set up yet.")
+    @Override
+    public void verifyHostSupportsArchitectureEarlyOrExit() {
+        AArch64LibCHelper.checkCPUFeaturesOrExit(BUILDTIME_CPU_FEATURE_MASK.get(), IMAGE_CPU_FEATURE_ERROR_MSG.get());
     }
 
     @Override

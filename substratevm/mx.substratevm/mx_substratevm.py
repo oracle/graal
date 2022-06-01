@@ -202,6 +202,7 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'helloworld_debug',
+    'helloworld_native',
     'helloworld_quickbuild',
     'debuginfotest',
     'debuginfotest_quickbuild',
@@ -360,6 +361,11 @@ def svm_gate_body(args, tasks):
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(['-H:GenerateDebugInfo=1'], flightrecorder=False)
+
+    with Task('image demos native', tasks, tags=[GraalTags.helloworld_native]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                image_demo_task(['-H:+NativeArchitecture'], flightrecorder=False)
 
     with Task('image demos quickbuild', tasks, tags=[GraalTags.helloworld_quickbuild]) as t:
         if t:
@@ -587,6 +593,8 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=['substratevm:LIBRARY_SUPPORT'])
         macro_junit = '--macro:junit' + ('' if builder_on_modulepath else 'cp')
         unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir])
+        image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
+        run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
@@ -825,6 +833,7 @@ def _debuginfotest(native_image, path, build_only, args):
                          '-Dgraal.LogFile=graal.log',
                          '-g',
                          '-H:-OmitInlinedMethodDebugLineInfo',
+                         '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
                          'hello.Hello'] + args
@@ -838,12 +847,14 @@ def _debuginfotest(native_image, path, build_only, args):
 
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest.isolates' : 'yes'})
+        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
+    if mx.get_os() == 'linux' and not build_only:
+        os.environ.update({'debuginfotest_isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 
     build_debug_test(['-H:-SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
-        os.environ.update({'debuginfotest.isolates' : 'no'})
+        os.environ.update({'debuginfotest_isolates' : 'no'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=False"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
 
 def _javac_image(native_image, path, args=None):
@@ -1079,7 +1090,7 @@ libgraal_jar_distributions = [
     'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
 
 libgraal_build_args = [
-    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,org.graalvm.jniutils,org.graalvm.graphio,com.oracle.truffle',
+    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-H:+ReportExceptionStackTraces',
@@ -1095,7 +1106,7 @@ libgraal_build_args = [
     '-R:-AutomaticReferenceHandling',
 ]
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='LibGraal',
     short_name='lg',
@@ -1117,7 +1128,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     stability="supported",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
@@ -1161,7 +1173,7 @@ def run_helloworld_command(args, config, command_name):
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
-    parser.add_argument(all_args[2], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
@@ -1184,7 +1196,7 @@ def debuginfotest(args, config=None):
     all_args = ['--output-path', '--build-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
-    parser.add_argument(all_args[1], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]

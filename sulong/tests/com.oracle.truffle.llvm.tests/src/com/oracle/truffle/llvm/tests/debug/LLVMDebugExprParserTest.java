@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,29 +29,6 @@
  */
 package com.oracle.truffle.llvm.tests.debug;
 
-import static com.oracle.truffle.llvm.tests.debug.LLVMDebugTestBase.TEST_FOLDER_EXT;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Map.Entry;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.AssumptionViolatedException;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugException;
@@ -63,6 +40,28 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.tests.TestCaseCollector;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.tck.DebuggerTester;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.AssumptionViolatedException;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import static com.oracle.truffle.llvm.tests.debug.LLVMDebugTestBase.TEST_FOLDER_EXT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(Parameterized.class)
 public final class LLVMDebugExprParserTest {
@@ -71,7 +70,10 @@ public final class LLVMDebugExprParserTest {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "testExpr");
 
-    private static final String CONFIGURATION = "bitcode-O1.bc";
+    // Use the no-optimization BC file as the evaluation of the debug expressions in the optimized
+    // one fails due to
+    // missing variables removed during constant folding.
+    private static final String CONFIGURATION = "bitcode-O0.bc";
 
     public LLVMDebugExprParserTest(Path testPath, String testName, String excludeReason) {
         this.testPath = testPath;

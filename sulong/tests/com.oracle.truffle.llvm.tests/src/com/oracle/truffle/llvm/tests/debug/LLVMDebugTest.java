@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,14 @@
  */
 package com.oracle.truffle.llvm.tests.debug;
 
+import com.oracle.truffle.llvm.tests.CommonTestUtils;
+import com.oracle.truffle.llvm.tests.TestCaseCollector;
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import org.graalvm.polyglot.Context;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -36,15 +44,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import org.graalvm.polyglot.Context;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
-
-import com.oracle.truffle.llvm.tests.CommonTestUtils;
-import com.oracle.truffle.llvm.tests.TestCaseCollector;
-import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(CommonTestUtils.ExcludingParametersFactory.class)
@@ -55,7 +54,6 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "trace");
 
     private static final String BC_O0 = "bitcode-O0.bc";
-    private static final String BC_O1 = "bitcode-O1.bc";
     private static final String BC_MEM2REG = "bitcode-O0-MEM2REG.bc";
 
     public LLVMDebugTest(String testName, String configuration, String exclusionReasion) {
@@ -65,24 +63,24 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
     @Parameters(name = "{0}" + TEST_FOLDER_EXT + "/{1}")
     public static Collection<Object[]> getConfigurations() {
         final Map<String, String[]> configs = new HashMap<>();
-        configs.put("testUnions.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testDecorators.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testUnions.c", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testDecorators.c", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testControlFlow.c", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testPrimitives.c", new String[]{BC_O0, BC_MEM2REG});
         String clangCC = System.getenv("CLANG_CC");
         if (clangCC == null || !clangCC.contains("-4.0")) {
             // LLVM4 provides no debug info in some cases (esp. with O1)
-            configs.put("testStructures.c", new String[]{BC_O1});
-            configs.put("testClasses.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            configs.put("testStructures.c", new String[]{BC_O0});
+            configs.put("testClasses.cpp", new String[]{BC_O0, BC_MEM2REG});
         }
         configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testGlobalVars.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testGlobalVars.c", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testLongDouble.cpp", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testBitFields.cpp", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testScopes.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testScopes.cpp", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testObjectPointer.cpp", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG});
         configs.put("testLoop.c", new String[]{BC_O0, BC_MEM2REG});
         TestCaseCollector.ExcludeMap excludes = TestCaseCollector.getExcludedTests(LLVMDebugTest.class);
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v, excludes.get(e.getKey())})).collect(Collectors.toSet());

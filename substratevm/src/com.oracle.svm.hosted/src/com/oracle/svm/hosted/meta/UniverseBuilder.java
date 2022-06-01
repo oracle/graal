@@ -91,6 +91,7 @@ import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
@@ -400,6 +401,18 @@ public class UniverseBuilder {
         layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0]);
     }
 
+    private static boolean mustReserveLengthField(HostedInstanceClass clazz) {
+        if (PodSupport.isPresent() && PodSupport.singleton().mustReserveLengthField(clazz.getJavaClass())) {
+            return true;
+        }
+        if (HybridLayout.isHybrid(clazz)) {
+            // A pod ancestor subclassing Object must have already reserved a length field, unless
+            // the pod subclasses Object itself, in which case we would have returned true earlier.
+            return !PodSupport.isPresent() || !PodSupport.singleton().isPodClass(clazz.getJavaClass());
+        }
+        return false;
+    }
+
     private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
@@ -413,15 +426,14 @@ public class UniverseBuilder {
             startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
-        if (HybridLayout.isHybrid(clazz)) {
-            /* Set start after array length field */
-            assert startSize == layout.getArrayLengthOffset();
+        if (mustReserveLengthField(clazz)) {
+            VMError.guarantee(startSize == layout.getArrayLengthOffset());
             int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
             /*
              * Set start after typecheck slots field, if the hybrid class has one. For now, only
-             * DynamicHubs can this field(s).
+             * DynamicHubs can have such field(s).
              */
             if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
                 /* Each type check id slot is 2 bytes. */
@@ -890,20 +902,21 @@ public class UniverseBuilder {
             hUniverse.bb.getHeartbeatCallback().run();
 
             int layoutHelper;
+            boolean canInstantiateAsInstance = false;
             int monitorOffset = 0;
             if (type.isInstanceClass()) {
                 HostedInstanceClass instanceClass = (HostedInstanceClass) type;
                 if (instanceClass.isAbstract()) {
                     layoutHelper = LayoutEncoding.forAbstract();
                 } else if (HybridLayout.isHybrid(type)) {
-                    HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
+                    HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol, hMetaAccess);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forArray(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
-                } else if (instanceClass.getJavaClass().equals(StoredContinuation.class)) {
-                    layoutHelper = LayoutEncoding.forStoredContinuation();
+                    layoutHelper = LayoutEncoding.forHybrid(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                    canInstantiateAsInstance = type.isInstantiated() && HybridLayout.canInstantiateAsInstance(type);
                 } else {
-                    layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
+                    layoutHelper = LayoutEncoding.forPureInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
+                    canInstantiateAsInstance = type.isInstantiated();
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
             } else if (type.isArray()) {
@@ -943,8 +956,8 @@ public class UniverseBuilder {
             }
 
             DynamicHub hub = type.getHub();
-            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(), type.getTypeCheckSlots(),
-                            vtable, referenceMapIndex, type.isInstantiated());
+            hub.setData(layoutHelper, type.getTypeID(), monitorOffset, type.getTypeCheckStart(), type.getTypeCheckRange(), type.getTypeCheckSlot(),
+                            type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance);
         }
     }
 

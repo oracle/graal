@@ -8,6 +8,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
   vm_bench_common: {
     result_file:: 'results.json',
     upload:: ['bench-uploader.py', self.result_file],
+    upload_and_wait_for_indexing:: self.upload + ['--wait-for-indexing'],
     capabilities+: ['tmpfs25g', 'x52'],
     timelimit: '1:30:00',
   },

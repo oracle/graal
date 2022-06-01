@@ -151,7 +151,7 @@ public abstract class AbstractPolyglotImpl {
             }
         }
 
-        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver);
+        public abstract Engine newEngine(AbstractEngineDispatch dispatch, Object receiver, boolean registerInActiveEngines);
 
         public abstract Context newContext(AbstractContextDispatch dispatch, Object receiver, Engine engine);
 
@@ -228,6 +228,10 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean isIteratorAccessible(HostAccess access);
 
         public abstract boolean isMapAccessible(HostAccess access);
+
+        public abstract boolean allowsPublicAccess(HostAccess hostAccess);
+
+        public abstract boolean allowsAccessInheritance(HostAccess hostAccess);
 
         public abstract Object getHostAccessImpl(HostAccess conf);
 
@@ -314,10 +318,10 @@ public abstract class AbstractPolyglotImpl {
 
     public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> options, boolean useSystemProperties,
                     boolean allowExperimentalOptions,
-                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly,
+                    boolean boundEngine, MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly, boolean registerInActiveEngines,
                     AbstractPolyglotHostService polyglotHostService) {
         return getNext().buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions, boundEngine, messageInterceptor, logHandlerOrStream, hostLanguage,
-                        hostLanguageOnly, polyglotHostService);
+                        hostLanguageOnly, registerInActiveEngines, polyglotHostService);
     }
 
     public abstract int getPriority();

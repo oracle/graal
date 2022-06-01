@@ -26,9 +26,9 @@ package org.graalvm.compiler.core.phases;
 
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 import org.graalvm.compiler.lir.phases.EconomyAllocationStage;
+import org.graalvm.compiler.lir.phases.EconomyFinalCodeAnalysisStage;
 import org.graalvm.compiler.lir.phases.EconomyPostAllocationOptimizationStage;
 import org.graalvm.compiler.lir.phases.EconomyPreAllocationOptimizationStage;
-import org.graalvm.compiler.lir.phases.EconomyFinalCodeAnalysisStage;
 import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisContext;
 import org.graalvm.compiler.lir.phases.LIRPhaseSuite;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
@@ -80,4 +80,5 @@ public class EconomyCompilerConfiguration implements CompilerConfiguration {
     public LIRPhaseSuite<FinalCodeAnalysisContext> createFinalCodeAnalysisStage(OptionValues options) {
         return new EconomyFinalCodeAnalysisStage();
     }
+
 }

@@ -133,7 +133,6 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -156,9 +155,6 @@ public final class GraalFeature implements Feature {
     public static class Options {
         @Option(help = "Print call tree of methods available for runtime compilation")//
         public static final HostedOptionKey<Boolean> PrintRuntimeCompileMethods = new HostedOptionKey<>(false);
-
-        @Option(help = "Print truffle boundaries found during the analysis")//
-        public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> MaxRuntimeCompileMethods = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
@@ -321,30 +317,22 @@ public final class GraalFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess c) {
-        DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
-        AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
-
-        try {
-            /*
-             * Check early that the classpath is set up correctly. The base class of SubstrateType
-             * is the NodeClass from Truffle. So we require Truffle on the class path for any images
-             * and tests that use Graal at run time.
-             */
-            aMetaAccess.lookupJavaType(SubstrateType.class);
-        } catch (NoClassDefFoundError ex) {
-            throw VMError.shouldNotReachHere("Building a native image with Graal support requires Truffle on the class path. For unit tests run with 'svmtest', add the option '--truffle'.");
-        }
-
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
-
         if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
             ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
         }
+
+        DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
+        AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
         GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class).getProviderObjectReplacements(aMetaAccess);
         objectReplacer = new GraalObjectReplacer(config.getUniverse(), aMetaAccess, providerReplacements);
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
+    }
+
+    public Map<AnalysisMethod, CallTreeNode> getRuntimeCompiledMethods() {
+        return methods;
     }
 
     @Override
@@ -539,7 +527,11 @@ public final class GraalFeature implements Feature {
                 parse = true;
                 graph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES)
                                 .method(method)
-                                .recordInlinedMethods(false)
+                                /*
+                                 * Needed for computation of the list of all runtime compilable
+                                 * methods in TruffleFeature.
+                                 */
+                                .recordInlinedMethods(true)
                                 .build();
             }
 
@@ -583,7 +575,7 @@ public final class GraalFeature implements Feature {
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
             PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
-            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvokes().get(targetNode.invoke().bci());
+            InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getMethodFlowsGraph().getInvokes().get(targetNode.invoke().bci());
 
             if (invokeFlow == null) {
                 continue;
@@ -659,10 +651,6 @@ public final class GraalFeature implements Feature {
 
         if (Options.PrintRuntimeCompileMethods.getValue()) {
             printCallTree();
-        }
-
-        if (Options.PrintStaticTruffleBoundaries.getValue()) {
-            printStaticTruffleBoundaries();
         }
 
         int maxMethods = 0;
@@ -834,30 +822,6 @@ public final class GraalFeature implements Feature {
         }
     }
 
-    private void printStaticTruffleBoundaries() {
-        HashSet<ResolvedJavaMethod> foundBoundaries = new HashSet<>();
-        int callSiteCount = 0;
-        int calleeCount = 0;
-        for (CallTreeNode node : methods.values()) {
-            StructuredGraph graph = node.graph;
-            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-                TruffleBoundary truffleBoundary = targetMethod.getAnnotation(TruffleBoundary.class);
-                if (truffleBoundary != null) {
-                    ++callSiteCount;
-                    if (foundBoundaries.contains(targetMethod)) {
-                        // nothing to do
-                    } else {
-                        foundBoundaries.add(targetMethod);
-                        System.out.println("Truffle boundary found: " + targetMethod);
-                        calleeCount++;
-                    }
-                }
-            }
-        }
-        System.out.println(String.format("Number of Truffle call boundaries: %d, number of unique called methods outside the boundary: %d", callSiteCount, calleeCount));
-    }
-
     private void printCallTree() {
         System.out.println("depth;method;Graal nodes;invoked from source;full method name;full name of invoked virtual method");
         for (CallTreeNode node : methods.values()) {
@@ -991,5 +955,10 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     @Override
     public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
         throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public boolean canVirtualize(ResolvedJavaType instanceType) {
+        return true;
     }
 }

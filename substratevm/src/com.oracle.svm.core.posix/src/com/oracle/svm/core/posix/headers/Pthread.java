@@ -178,6 +178,9 @@ public class Pthread {
     public static native int pthread_key_create(pthread_key_tPointer key, PointerBase keyDestructor);
 
     @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int pthread_key_delete(pthread_key_t key);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
     public static native int pthread_setspecific(pthread_key_t key, VoidPointer value);
 
     @CFunction(transition = Transition.NO_TRANSITION)

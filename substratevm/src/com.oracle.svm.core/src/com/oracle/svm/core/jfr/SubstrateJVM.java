@@ -261,7 +261,9 @@ public class SubstrateJVM {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getThreadId(IsolateThread isolateThread) {
-        return threadLocal.getTraceId(isolateThread);
+        long threadId = threadLocal.getTraceId(isolateThread);
+        VMError.guarantee(threadId > 0);
+        return threadId;
     }
 
     /** See {@link JVM#storeMetadataDescriptor}. */

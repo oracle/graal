@@ -185,8 +185,16 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li> Level 2/3 DIEs
          *
          * <li><code>code == method_parameter_declaration1/2/3, tag == formal_parameter, parent =
-         * method_declaration1/2, method_location, abstract_inline_method</code> - details of method
-         * parameters
+         * method_declaration1/2, abstract_inline_method</code> - details of method parameters
+         *
+         * <li><code>code == method_local_declaration1/2, tag == variable, parent =
+         * method_declaration1/2, abstract_inline_method</code> - details of method parameters
+         *
+         * <li> Level 3 DIEs
+         *
+         * <li><code>code == method_local_location, tag == formal_parameter, parent =
+         * method_location, concrete_inline_method</code> - details of method parameter or local
+         * locations
          *
          * Details of each specific DIE contents are as follows:
          *
@@ -416,6 +424,25 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>Dw_AT_artificial : ... DW_FORM_flag</code> n.b. only for
          * method_parameter_declaration1 used for this and access vars
          *
+         * <li><code>Dw_AT_declaration : ... DW_FORM_flag</code>
+         *
+         * </ul>
+         *
+         * <li><code>abbrev_code == method_local_declaration1/2, tag == DW_TAG_variable,
+         * no_children</code>
+         *
+         * <li><code>Dw_AT_name : ... DW_FORM_strp</code> (may be empty string)
+         *
+         * <li><code>Dw_AT_file : ... DW_FORM_data1/2</code> n.b. only for
+         * method_parameter_declaration1
+         *
+         * <li><code>Dw_AT_line : ... DW_FORM_data1/2</code> n.b. only for
+         * method_parameter_declaration1
+         *
+         * <li><code>Dw_AT_type : ... DW_FORM_ref_addr</code>
+         *
+         * <li><code>Dw_AT_declaration : ... DW_FORM_flag</code>
+         *
          * </ul>
          *
          * Indirect Instance Class Structure: The level 1 class layout DIE may be followed by a
@@ -499,9 +526,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * corresponding level 1 DIE providing details of the location of the compiled code for the
          * method. This DIE should inherit attributes from the method_definition DIE referenced from
          * its specification attribute without the need to repeat them, including attributes
-         * specified in child DIEs of the method_definition. However, it is actually necessary to
-         * replicate the method_parameter DIEs as children of this DIE because gdb does not carry
-         * these attributes across from the specification DIE.
+         * specified in child DIEs of the method_definition. It is actually necessary to provide the
+         * method_location DIE with method_parameter child DIES in order to ensure that gdb carries
+         * across parameter attributes across from the specification DIE. The local method_parameter
+         * DIEs refer to their originals using a specification attribute.
          *
          * Note that for methods which only occur as inlined code rather than as a top-level
          * compiles method the method location DIE will be omitted
@@ -518,6 +546,27 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * <li><code>DW_AT_external : ........ DW_FORM_flag</code>
          *
          * <li><code>DW_AT_specification : ... DW_FORM_ref_addr</code>
+         *
+         * </ul>
+         *
+         * Method local locations: A method location is followed by zero or more
+         * method_local_location DIEs that refer back to the corresponding
+         * method_parameter_declaration or method_local_declaration that follows the method
+         * declaration. These DIEs also specify a location list which defines address ranges where
+         * the parameter or local is valid and provide details of where to find the value of the
+         * parameter or local in memory. Likewise, an inline concrete method DIE is followed by zero
+         * or more method_local_location DIEs providing details of where to find the specification
+         * of inlined parameters or locals and their value in memory.
+         *
+         * <ul>
+         *
+         * <li><code>abbrev_code == DW_ABBREV_CODE_method_local_location1/2, tag ==
+         * DW_TAG_formal_parameter, no_children</code>
+         *
+         * <li><code>DW_AT_specification : .......... DW_FORM_ref_addr</code>
+         *
+         * <li><code>DW_AT_location: ................ DW_FORM_sec_offset</code> n.b. only for
+         * method_local_location2
          *
          * </ul>
          *
@@ -691,8 +740,6 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>Dw_AT_name : ....... DW_FORM_strp</code>
          *
-         * <li><code>DW_AT_location : ... DW_FORM_expr_loc</code>
-         *
          * </ul>
          *
          * A second level 1 DIE provides an indirect_layout that wraps the interface layout as its
@@ -817,6 +864,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
 
         pos = writeParameterDeclarationAbbrevs(context, buffer, pos);
+        pos = writeLocalDeclarationAbbrevs(context, buffer, pos);
+
+        pos = writeParameterLocationAbbrevs(context, buffer, pos);
+        pos = writeLocalLocationAbbrevs(context, buffer, pos);
 
         /* write a null abbrev to terminate the sequence */
         pos = writeNullAbbrev(context, buffer, pos);
@@ -824,19 +875,11 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     }
 
     private int writeAttrType(long code, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(code, scratch, 0);
-        } else {
-            return putSLEB(code, buffer, pos);
-        }
+        return writeSLEB(code, buffer, pos);
     }
 
     private int writeAttrForm(long code, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(code, scratch, 0);
-        } else {
-            return putSLEB(code, buffer, pos);
-        }
+        return writeSLEB(code, buffer, pos);
     }
 
     private int writeBuiltInUnitAbbrev(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
@@ -1399,15 +1442,14 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DwarfDebugInfo.DW_TAG_formal_parameter, buffer, pos);
         pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
-        /* We don't yet have parameter names. */
-        // pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
-        // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_declaration2) {
             /* Line numbers for parameter declarations are not (yet?) available. */
             pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_file, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
-            // pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
-            // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
         }
         pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
         pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
@@ -1416,12 +1458,93 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
             pos = writeAttrType(DwarfDebugInfo.DW_AT_artificial, buffer, pos);
             pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
         }
-        /*-
-          * We don't yet have locations for method parameters,
-          * not even at the start of the method.
-          */
-        // pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
-        // pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data4, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeLocalDeclarationAbbrevs(DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeLocalDeclarationAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_method_local_declaration1, buffer, pos);
+        pos = writeLocalDeclarationAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_method_local_declaration2, buffer, pos);
+        return pos;
+    }
+
+    private int writeLocalDeclarationAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_variable, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_strp, buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_declaration1) {
+            /* Line numbers for parameter declarations are not (yet?) available. */
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_file, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_decl_line, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_data2, buffer, pos);
+        }
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_type, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_declaration, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_flag, buffer, pos);
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeParameterLocationAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeParameterLocationAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location1, buffer, pos);
+        pos = writeParameterLocationAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2, buffer, pos);
+        return pos;
+    }
+
+    private int writeLocalLocationAbbrevs(@SuppressWarnings("unused") DebugContext context, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeLocalLocationAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_method_local_location1, buffer, pos);
+        pos = writeLocalLocationAbbrev(context, DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2, buffer, pos);
+        return pos;
+    }
+
+    private int writeParameterLocationAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_formal_parameter, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
+        }
+        /*
+         * Now terminate.
+         */
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeLocalLocationAbbrev(@SuppressWarnings("unused") DebugContext context, int abbrevCode, byte[] buffer, int p) {
+        int pos = p;
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
+        pos = writeTag(DwarfDebugInfo.DW_TAG_variable, buffer, pos);
+        pos = writeFlag(DwarfDebugInfo.DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DwarfDebugInfo.DW_AT_specification, buffer, pos);
+        pos = writeAttrForm(DwarfDebugInfo.DW_FORM_ref_addr, buffer, pos);
+        if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2) {
+            pos = writeAttrType(DwarfDebugInfo.DW_AT_location, buffer, pos);
+            pos = writeAttrForm(DwarfDebugInfo.DW_FORM_sec_offset, buffer, pos);
+        }
         /*
          * Now terminate.
          */

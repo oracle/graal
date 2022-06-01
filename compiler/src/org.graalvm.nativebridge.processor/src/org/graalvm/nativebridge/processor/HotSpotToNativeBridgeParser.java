@@ -29,7 +29,6 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.util.Arrays;
 import java.util.Collection;
@@ -41,25 +40,15 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
     static final String GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION = "org.graalvm.nativebridge.GenerateHotSpotToNativeBridge";
 
-    private final TypeCache typeCache;
-    private final HotSpotToNativeBridgeGenerator generator;
-
     private HotSpotToNativeBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
         super(processor, typeCache,
                         createConfiguration(processor.env().getTypeUtils(), typeCache),
                         NativeToHotSpotBridgeParser.createConfiguration(typeCache));
-        this.typeCache = typeCache;
-        this.generator = new HotSpotToNativeBridgeGenerator(this, typeCache);
     }
 
     @Override
-    List<TypeMirror> getExceptionHandlerTypes() {
-        return Arrays.asList(typeCache.jniEnv, typeCache.throwable);
-    }
-
-    @Override
-    AbstractBridgeGenerator getGenerator() {
-        return generator;
+    AbstractBridgeGenerator createGenerator(DefinitionData definitionData) {
+        return new HotSpotToNativeBridgeGenerator(this, (TypeCache) typeCache, definitionData);
     }
 
     @Override
@@ -102,14 +91,12 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
         final DeclaredType centryPoint;
         final DeclaredType isolateThreadContext;
-        final DeclaredType jniExceptionWrapper;
         final DeclaredType nativeIsolateThread;
 
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
             this.centryPoint = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint");
             this.isolateThreadContext = (DeclaredType) processor.getType("org.graalvm.nativeimage.c.function.CEntryPoint.IsolateThreadContext");
-            this.jniExceptionWrapper = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper");
             this.nativeIsolateThread = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolateThread");
         }
     }

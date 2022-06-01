@@ -54,7 +54,6 @@ public abstract class ValueNode extends org.graalvm.compiler.graph.Node implemen
     public static final NodeClass<ValueNode> TYPE = NodeClass.create(ValueNode.class);
 
     public static final ValueNode[] EMPTY_ARRAY = {};
-
     /**
      * The kind of this value. This is {@link JavaKind#Void} for instructions that produce no value.
      * This kind is guaranteed to be a {@linkplain JavaKind#getStackKind() stack kind}.

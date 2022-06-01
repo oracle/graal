@@ -136,6 +136,9 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
       ],
+      "exclude" : [
+        "truffle:ICU4J",
+      ],
       "maven" : {
         "artifactId" : "regex",
       },

@@ -139,7 +139,7 @@ class NativeImageVM(GraalVm):
             self.extra_profile_run_args = bm_suite.extra_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
-            self.pgo_iteration_num = None
+            self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
             self.profile_file_extension = '.iprof'
@@ -197,7 +197,6 @@ class NativeImageVM(GraalVm):
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
         self.pgo_inline_explored = False
-        self.hotspot_pgo = False
         self.is_gate = False
         self.is_quickbuild = False
         self.use_string_inlining = False
@@ -206,6 +205,7 @@ class NativeImageVM(GraalVm):
         self.native_architecture = False
         self.graalvm_edition = None
         self.config = None
+        self.ml = None
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
         self._configure_from_name(config_name)
@@ -225,8 +225,8 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
-               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<edition>ce-|ee-)?$'
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+               r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
         match_name = "{}-".format(config_name)  # adding trailing dash to simplify the regex
@@ -267,9 +267,6 @@ class NativeImageVM(GraalVm):
             if pgo_mode == "pgo":
                 mx.logv("'pgo' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 1
-            elif pgo_mode == "pgo-hotspot":
-                mx.logv("'pgo-hotspot' is enabled for {}".format(config_name))
-                self.hotspot_pgo = True
             elif pgo_mode == "pgo-ctx-insens":
                 mx.logv("'pgo-ctx-insens' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 1
@@ -294,6 +291,9 @@ class NativeImageVM(GraalVm):
             else:
                 mx.abort("Unknown inliner configuration: {}".format(inliner))
 
+        if matching.group("ml") is not None:
+            self.ml = matching.group("ml")[:-1]
+
         if matching.group("edition") is not None:
             edition = matching.group("edition")[:-1]
             mx.logv("GraalVM edition is set to: {}".format(edition))
@@ -309,15 +309,12 @@ class NativeImageVM(GraalVm):
 
         if matching.group("analysis_context_sensitivity") is not None:
             context_sensitivity = matching.group("analysis_context_sensitivity")[:-1]
-            if context_sensitivity == "insens":
-                mx.logv("analysis context sensitivity 'insens' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "insens"
-            elif context_sensitivity == "allocsens":
-                mx.logv("analysis context sensitivity 'allocsens' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "allocsens"
-            elif context_sensitivity == "1obj":
-                mx.logv("analysis context sensitivity '1obj' is enabled for {}".format(config_name))
-                self.analysis_context_sensitivity = "_1obj"
+            if context_sensitivity in ["insens", "allocsens"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = context_sensitivity
+            elif context_sensitivity in ["1obj", "2obj1h", "3obj2h", "4obj3h"]:
+                mx.logv("analysis context sensitivity {} is enabled for {}".format(context_sensitivity, config_name))
+                self.analysis_context_sensitivity = "_{}".format(context_sensitivity)
             else:
                 mx.abort("Unknown analysis context sensitivity: {}".format(context_sensitivity))
 
@@ -725,9 +722,7 @@ class NativeImageVM(GraalVm):
         ] + self.image_build_statistics_rules(benchmarks[0]) + self.image_build_timers_rules(benchmarks[0])
 
     def run_stage_agent(self, config, stages):
-        profile_path = config.profile_path_no_extension + '-agent' + config.profile_file_extension
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
-        hotspot_run_args = []
         hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
 
         # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
@@ -740,23 +735,9 @@ class NativeImageVM(GraalVm):
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
 
-        if self.hotspot_pgo:
-            hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
-
-        if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
-            hotspot_run_args += config.extra_agent_profile_run_args
-        else:
-            hotspot_run_args += config.extra_agent_run_args
-
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + hotspot_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
-            if self.hotspot_pgo and s.exit_code == 0:
-                # Hotspot instrumentation does not produce profiling information for the helloworld benchmark
-                if os.path.exists(profile_path):
-                    mx.copyfile(profile_path, config.latest_profile_path)
-                else:
-                    mx.warn("No profile information emitted during agent run.")
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
@@ -789,7 +770,9 @@ class NativeImageVM(GraalVm):
         pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if self.pgo_instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else [])
+        instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
+        ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
 
@@ -837,20 +820,19 @@ class NativeImageVM(GraalVm):
                 config.last_stage = 'agent'
             self.run_stage_agent(config, stages)
 
-        if not self.hotspot_pgo:
-            # Native Image profile collection
-            for i in range(instrumented_iterations):
-                profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
-                instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
-                instrumentation_image_latest = config.executable_name + '-instrument-latest'
+        # Native Image profile collection
+        for i in range(instrumented_iterations):
+            profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
+            instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
+            instrumentation_image_latest = config.executable_name + '-instrument-latest'
 
-                image_path = os.path.join(config.output_dir, instrumentation_image_name)
-                image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
-                if stages.change_stage('instrument-image', str(i)):
-                    self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
+            image_path = os.path.join(config.output_dir, instrumentation_image_name)
+            image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
+            if stages.change_stage('instrument-image', str(i)):
+                self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
 
-                if stages.change_stage('instrument-run', str(i)):
-                    self.run_stage_instrument_run(config, stages, image_path, profile_path)
+            if stages.change_stage('instrument-run', str(i)):
+                self.run_stage_instrument_run(config, stages, image_path, profile_path)
 
         # Build the final image
         if stages.change_stage('image'):
@@ -1273,11 +1255,14 @@ def register_graalvm_vms():
             _gu_vm_registry.add_vm(GuVm(host_vm_name, 'default', [], []), _suite, 10)
 
     # Inlining before analysis is done by default
-    analysis_context_sensitivity = ['insens', 'allocsens', '1obj']
+    analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
     analysis_context_sensitivity_no_inline = ['{}-{}'.format(analysis_component, 'no-inline') for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity = ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity]
+    pgo_aot_inline_context_sensitivity += ['{}-{}'.format('pgo-aot-inline', analysis_component) for analysis_component in analysis_context_sensitivity_no_inline]
+
     for short_name, config_suffix in [('niee', 'ee'), ('ni', 'ce')]:
         if any(component.short_name == short_name for component in mx_sdk_vm_impl.registered_graalvm_components(stage1=False)):
-            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+            for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline + pgo_aot_inline_context_sensitivity:
                 final_config_name = '{}-{}'.format(main_config, config_suffix)
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
             break
@@ -1288,10 +1273,14 @@ def register_graalvm_vms():
 
 
     # Add VMs for libgraal
-    if mx_sdk_vm_impl.has_component('LibGraal'):
-        libgraal_location = mx_sdk_vm_impl.get_native_image_locations('LibGraal', 'jvmcicompiler')
-        if libgraal_location is not None:
-            import mx_graal_benchmark
-            mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                       ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
-                                                       mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)
+    if mx.suite('substratevm', fatalIfMissing=False) is not None:
+        import mx_substratevm
+        # Use `name` rather than `short_name` since the code that follows
+        # should not be executed when "LibGraal Enterprise" is registered
+        if mx_sdk_vm_impl.has_component(mx_substratevm.libgraal.name):
+            libgraal_location = mx_sdk_vm_impl.get_native_image_locations(mx_substratevm.libgraal.name, 'jvmcicompiler')
+            if libgraal_location is not None:
+                import mx_graal_benchmark
+                mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
+                                                           ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                           mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

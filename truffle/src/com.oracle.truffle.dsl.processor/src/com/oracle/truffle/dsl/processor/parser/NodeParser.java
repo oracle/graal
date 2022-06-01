@@ -2012,7 +2012,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
             Set<SpecializationData> resolvedSpecializations = specialization.getReplaces();
             Set<String> includeNames = specialization.getReplacesNames();
             for (String includeName : includeNames) {
-                // TODO reduce complexity of this lookup.
+                // TODO GR-38632 reduce complexity of this lookup.
                 List<SpecializationData> foundSpecializations = lookupSpecialization(node, includeName);
 
                 AnnotationValue value = getAnnotationValue(specialization.getMarkerAnnotation(), "replaces");
@@ -3035,7 +3035,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         }
 
         if (fallbackSpecializations.size() == 1 && node.getSpecializations().size() == 1) {
-            // TODO this limitation should be lifted
+            // TODO GR-38632 this limitation should be lifted
             for (SpecializationData fallback : fallbackSpecializations) {
                 fallback.addError("@%s defined but no @%s.", getSimpleName(types.Fallback), getSimpleName(types.Specialization));
             }

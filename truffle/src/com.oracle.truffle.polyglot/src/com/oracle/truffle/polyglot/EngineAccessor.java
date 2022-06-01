@@ -111,6 +111,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -486,7 +487,7 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean isEvalRoot(RootNode target) {
-            // TODO no eval root nodes anymore on the stack for the polyglot api
+            // TODO GR-38632 no eval root nodes anymore on the stack for the polyglot api
             return false;
         }
 
@@ -1235,6 +1236,11 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isCreateProcessAllowed() {
+            return PolyglotEngineImpl.ALLOW_CREATE_PROCESS;
+        }
+
+        @Override
         public String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey) {
             if (!(optionValues instanceof OptionValuesImpl)) {
                 throw new IllegalArgumentException(String.format("Only %s is supported.", OptionValuesImpl.class.getName()));
@@ -1712,6 +1718,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Context getPolyglotContextAPI(Object polyglotContextImpl) {
             return ((PolyglotContextImpl) polyglotContextImpl).api;
+        }
+
+        @Override
+        public EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
+            return PolyglotFastThreadLocals.getEncapsulatingNodeReference(invalidateOnNull);
         }
     }
 

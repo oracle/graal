@@ -60,7 +60,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
 
         MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
-        MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
+        MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
 
         ArrayList<JavaTypeProfile> paramProfiles = new ArrayList<>(originalFlows.getParameters().length);
         for (int i = 0; i < originalFlows.getParameters().length; i++) {
@@ -117,7 +117,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                 if (typeProfile != null) {
                     ensureSize(entries, bci);
                     assert entries.get(bci) == null : "In " + method.format("%h.%n(%p)") + " a profile with bci=" + bci + " already exists: " + entries.get(bci);
-                    entries.set(bci, createBytecodeEntry(method, bci, typeProfile, null, null));
+                    entries.set(bci, createBytecodeEntry(method, bci, typeProfile, null, null, typeProfile));
                 }
             }
         }
@@ -150,7 +150,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                 if (hasStaticProfiles(typeProfile, methodProfile, invokeResultTypeProfile) || hasRuntimeProfiles()) {
                     ensureSize(entries, bci);
                     assert entries.get(bci) == null : "In " + method.format("%h.%n(%p)") + " a profile with bci=" + bci + " already exists: " + entries.get(bci);
-                    entries.set(bci, createBytecodeEntry(method, bci, typeProfile, methodProfile, invokeResultTypeProfile));
+                    entries.set(bci, createBytecodeEntry(method, bci, typeProfile, methodProfile, invokeResultTypeProfile, typeProfile));
                 }
             }
         }
@@ -197,8 +197,8 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
     }
 
     protected BytecodeEntry createBytecodeEntry(@SuppressWarnings("unused") AnalysisMethod method, int bci, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile,
-                    JavaTypeProfile invokeResultTypeProfile) {
-        return new BytecodeEntry(bci, typeProfile, methodProfile, invokeResultTypeProfile);
+                    JavaTypeProfile invokeResultTypeProfile, JavaTypeProfile staticTypeProfile) {
+        return new BytecodeEntry(bci, typeProfile, methodProfile, invokeResultTypeProfile, staticTypeProfile);
     }
 
     protected StaticAnalysisResults createStaticAnalysisResults(AnalysisMethod method, JavaTypeProfile[] parameterTypeProfiles, JavaTypeProfile resultTypeProfile, BytecodeEntry first) {

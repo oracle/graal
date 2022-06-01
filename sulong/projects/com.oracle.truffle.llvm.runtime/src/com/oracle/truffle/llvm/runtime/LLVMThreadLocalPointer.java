@@ -31,10 +31,12 @@ package com.oracle.truffle.llvm.runtime;
 
 public class LLVMThreadLocalPointer {
 
-    private LLVMSymbol symbol;
-    private long offset;
+    private final LLVMSymbol symbol;
 
-    public LLVMThreadLocalPointer(LLVMSymbol symbol, long offset) {
+    // if the offset is -1, then the global contains an object.
+    private final int offset;
+
+    public LLVMThreadLocalPointer(LLVMSymbol symbol, int offset) {
         this.symbol = symbol;
         this.offset = offset;
     }
@@ -43,7 +45,7 @@ public class LLVMThreadLocalPointer {
         return symbol;
     }
 
-    public long getOffset() {
+    public int getOffset() {
         return offset;
     }
 

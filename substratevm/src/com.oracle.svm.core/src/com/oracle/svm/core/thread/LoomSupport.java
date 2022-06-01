@@ -30,7 +30,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -78,7 +77,7 @@ public final class LoomSupport {
             }
 
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(vmThread);
-            if (anchor.isNonNull() && cont.internal.getBottomSP().aboveThan(anchor.getLastJavaSP())) {
+            if (anchor.isNonNull() && cont.internal.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
                 return PINNED_NATIVE;
             }
         }
@@ -89,12 +88,8 @@ public final class LoomSupport {
         return cont.isStarted();
     }
 
-    public static Pointer getBottomSP(Target_java_lang_Continuation cont) {
-        return cont.internal.getBottomSP();
-    }
-
-    public static CodePointer getIP(Target_java_lang_Continuation cont) {
-        return cont.internal.getIP();
+    public static Pointer getBaseSP(Target_java_lang_Continuation cont) {
+        return cont.internal.getBaseSP();
     }
 
     /**

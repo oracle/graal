@@ -677,7 +677,7 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                 # add `LauncherConfig.destination` to the layout
                 launcher_project = GraalVmLauncher.launcher_project_name(_launcher_config, stage1)
                 _add(layout, _launcher_dest, 'dependency:' + launcher_project, _component)
-                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().is_debug_supported():
+                if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().is_debug_supported(_launcher_config):
                     _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/*.debug', _component)
                     if _include_sources(launcher_project):
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/sources', _component)
@@ -1148,8 +1148,8 @@ class SvmSupport(object):
         ]
         return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
-    def is_debug_supported(self):
-        return self._debug_supported
+    def is_debug_supported(self, image_config=None):
+        return self._debug_supported and (image_config is None or _generate_debuginfo(image_config))
 
     def is_pgo_supported(self):
         return self._pgo_supported
@@ -1281,7 +1281,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             ]
             if _debug_images():
                 build_args += ['-ea', '-O0', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
-            if _get_svm_support().is_debug_supported():
+            if _get_svm_support().is_debug_supported(image_config):
                 build_args += ['-g']
             if getattr(image_config, 'link_at_build_time', True):
                 build_args += ['--link-at-build-time']
@@ -1714,7 +1714,7 @@ class GraalVmNativeImage(_with_metaclass(ABCMeta, GraalVmProject)):
     def debug_file(self):
         if not self.is_native():
             return None
-        if _get_svm_support().is_debug_supported() and mx.get_os() == 'linux':
+        if _get_svm_support().is_debug_supported(self.native_image_config) and mx.get_os() == 'linux':
             return join(self.get_output_base(), self.name, self.native_image_name + '.debug')
         return None
 
@@ -2255,8 +2255,6 @@ def _gen_gu_manifest(components, formatter, bundled=False):
                                                                  arch=mx.get_arch(),
                                                                  java_version=_src_jdk_version,
                                                                  version=version)
-    manifest["x-GraalVM-Polyglot-Part"] = str(isinstance(main_component, mx_sdk.GraalVmTruffleComponent) and main_component.include_in_polyglot
-                                              and (not isinstance(main_component, mx_sdk.GraalVmTool) or main_component.include_by_default))
 
     if main_component.stability is not None:
         stability = _get_component_stability(main_component)
@@ -2887,7 +2885,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 workingSets=None,
             ))
 
-    if _with_debuginfo():
+    if _debuginfo_dists():
         if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars:
             for d in with_debuginfo:
                 register_distribution(DebuginfoDistribution(d))
@@ -3377,7 +3375,8 @@ mx.add_argument('--force-bash-launchers', action='store', help='Force the use of
 mx.add_argument('--skip-libraries', action='store', help='Do not build native images for these libraries.'
                                                          'This can be a comma-separated list of disabled libraries or `true` to disable all libraries.', default=None)
 mx.add_argument('--sources', action='store', help='Comma-separated list of projects and distributions of open-source components for which source file archives must be included (all by default).', default=None)
-mx.add_argument('--with-debuginfo', action='store_true', help='Generate debuginfo distributions.')
+mx.add_argument('--debuginfo-dists', action='store_true', help='Generate debuginfo distributions.')
+mx.add_argument('--generate-debuginfo', action='store', help='Comma-separated list of launchers and libraries (syntax: lib:polyglot) for which to generate debug information (`native-image -g`) (all by default)', default=None)
 mx.add_argument('--snapshot-catalog', action='store', help='Change the default URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--gds-snapshot-catalog', action='store', help='Change the default appended URL of the component catalog for snapshots.', default=None)
 mx.add_argument('--release-catalog', action='store', help='Change the default URL of the component catalog for releases.', default=None)
@@ -3653,8 +3652,24 @@ def _include_sources_str():
     return ','.join(sources)
 
 
-def _with_debuginfo():
-    return mx.get_opts().with_debuginfo or _env_var_to_bool('WITH_DEBUGINFO')
+def _debuginfo_dists():
+    return mx.get_opts().debuginfo_dists or _env_var_to_bool('DEBUGINFO_DISTS')
+
+
+def _generate_debuginfo(image_config):
+    generate_debuginfo = _parse_cmd_arg('generate_debuginfo')
+    if generate_debuginfo is None:
+        return True
+    elif isinstance(generate_debuginfo, bool):
+        return generate_debuginfo
+    else:
+        destination = image_config.destination if isinstance(image_config, mx_sdk.AbstractNativeImageConfig) else image_config
+        if isinstance(image_config, mx_sdk.LauncherConfig):
+            name = basename(remove_exe_suffix(destination, require_suffix=False))
+        elif isinstance(image_config, mx_sdk.LibraryConfig):
+            name = remove_lib_prefix_suffix(basename(destination), require_suffix_prefix=False)
+            generate_debuginfo = [lib[4:] for lib in generate_debuginfo if lib.startswith('lib:')]
+        return name in generate_debuginfo
 
 
 def _snapshot_catalog():

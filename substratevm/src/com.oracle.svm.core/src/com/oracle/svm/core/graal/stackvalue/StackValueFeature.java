@@ -36,10 +36,10 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 
 @AutomaticFeature
-public class StackValueFeature implements GraalFeature {
+public class StackValueFeature implements InternalFeature {
     @Override
     public void registerGraalPhases(Providers providers, SnippetReflectionProvider snippetReflection, Suites suites, boolean hosted) {
         ListIterator<BasePhase<? super MidTierContext>> midTierPos = suites.getMidTier().findPhase(FrameStateAssignmentPhase.class);

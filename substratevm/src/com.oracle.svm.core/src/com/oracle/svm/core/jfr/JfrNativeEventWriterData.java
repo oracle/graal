@@ -73,14 +73,13 @@ public interface JfrNativeEventWriterData extends PointerBase {
     void setCurrentPos(Pointer value);
 
     /**
-     * Returns the end position for the current event write. Writing of data cannot exceed this
-     * position.
+     * Returns the position where the buffer ends. Writing of data cannot exceed this position.
      */
     @RawField
     Pointer getEndPos();
 
     /**
-     * Sets the end position for the current event write.
+     * Sets the position where the buffer ends.
      */
     @RawField
     void setEndPos(Pointer value);
