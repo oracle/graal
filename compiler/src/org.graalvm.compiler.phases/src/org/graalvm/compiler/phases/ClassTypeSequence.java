@@ -93,6 +93,6 @@ public final class ClassTypeSequence implements JavaType, CharSequence {
 
     @Override
     public String toString() {
-        return clazz.getName();
+        return toJavaName(false);
     }
 }

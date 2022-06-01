@@ -206,7 +206,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            mark are processed
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Mark newNodesMark) {
-        new IncrementalCanonicalizerPhase(graph, context, newNodesMark).apply(graph, context);
+        new IncrementalCanonicalizerPhase(features, graph, context, newNodesMark).apply(graph, context);
     }
 
     /**
@@ -214,7 +214,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
      *            be an auto-grow node bitmap
      */
     public void applyIncremental(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
-        new IncrementalCanonicalizerPhase(graph, context, workingSet).apply(graph, context);
+        new IncrementalCanonicalizerPhase(features, graph, context, workingSet).apply(graph, context);
     }
 
     private static NodeView getNodeView() {

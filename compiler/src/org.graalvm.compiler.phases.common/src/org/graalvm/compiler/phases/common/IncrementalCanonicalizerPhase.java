@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.debug.DebugCloseable;
+import java.util.EnumSet;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
@@ -43,11 +44,12 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
     private final StructuredGraph initialGraph;
     private final Tool theTool;
 
-    IncrementalCanonicalizerPhase(StructuredGraph graph, CoreProviders context, Graph.Mark newNodesMark) {
-        this(graph, context, graph.getNewNodes(newNodesMark));
+    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, StructuredGraph graph, CoreProviders context, Graph.Mark newNodesMark) {
+        this(features, graph, context, graph.getNewNodes(newNodesMark));
     }
 
-    IncrementalCanonicalizerPhase(StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
+    IncrementalCanonicalizerPhase(EnumSet<CanonicalizerFeature> features, StructuredGraph graph, CoreProviders context, Iterable<? extends Node> workingSet) {
+        super(features);
         this.initialGraph = graph;
         NodeWorkList workList = graph.createIterativeNodeWorkList(false, MAX_ITERATION_PER_NODE);
         workList.addAll(workingSet);
@@ -68,7 +70,7 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
     /**
      * Helper class to apply incremental canonicalization using scopes.
      */
-    public static class Apply implements DebugCloseable {
+    public static class Apply implements ApplyScope {
         private final EconomicSetNodeEventListener listener;
         private final StructuredGraph graph;
         private final CoreProviders context;
@@ -93,10 +95,12 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
         }
 
         @Override
-        public void close() {
+        public void close(Throwable throwable) {
             scope.close();
-            if (!listener.getNodes().isEmpty()) {
-                canonicalizer.applyIncremental(graph, context, listener.getNodes());
+            if (throwable == null) {
+                if (!listener.getNodes().isEmpty()) {
+                    canonicalizer.applyIncremental(graph, context, listener.getNodes());
+                }
             }
         }
     }

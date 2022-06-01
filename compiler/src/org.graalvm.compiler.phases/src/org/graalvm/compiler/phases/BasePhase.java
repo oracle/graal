@@ -206,6 +206,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    public interface ApplyScope {
+        void close(Throwable t);
+    }
+
     /**
      * An extension point for subclasses, called at the start of
      * {@link BasePhase#apply(StructuredGraph, Object, boolean)}. The return value is a
@@ -214,7 +218,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
      * the application of this phase.
      */
     @SuppressWarnings("unused")
-    protected DebugCloseable applyScope(StructuredGraph graph, C context) {
+    protected ApplyScope applyScope(StructuredGraph graph, C context) {
         return null;
     }
 
@@ -247,9 +251,21 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             }
             inputNodesCount.add(debug, graph.getNodeCount());
 
-            try (DebugCloseable s2 = applyScope(graph, context)) {
-                this.run(graph, context);
+            ApplyScope applyScope = applyScope(graph, context);
+            Throwable throwable = null;
+            try {
+                try {
+                    this.run(graph, context);
+                } catch (Throwable t) {
+                    throwable = t;
+                    throw t;
+                }
+            } finally {
+                if (applyScope != null) {
+                    applyScope.close(throwable);
+                }
             }
+
             executionCount.increment(debug);
             edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {

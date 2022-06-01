@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
@@ -47,7 +46,7 @@ public abstract class PostRunCanonicalizationPhase<C extends CoreProviders> exte
     }
 
     @Override
-    protected DebugCloseable applyScope(StructuredGraph graph, C context) {
+    protected ApplyScope applyScope(StructuredGraph graph, C context) {
         return new IncrementalCanonicalizerPhase.Apply(graph, context, canonicalizer);
     }
 }
