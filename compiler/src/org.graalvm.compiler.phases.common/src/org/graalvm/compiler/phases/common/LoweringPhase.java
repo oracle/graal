@@ -90,7 +90,6 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.word.LocationIdentity;
@@ -259,7 +258,11 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
 
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
-            new Round(context, mode).apply(graph, context);
+            ScheduleResult schedule = graph.getLastSchedule();
+            schedule.getCFG().computePostdominators();
+            Block startBlock = schedule.getCFG().getStartBlock();
+            ProcessFrame rootFrame = new ProcessFrame(context, startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null, schedule);
+            LoweringPhase.processBlock(rootFrame);
         }
 
         if (!listener.getNodes().isEmpty()) {
@@ -498,188 +501,147 @@ public abstract class LoweringPhase extends BasePhase<CoreProviders> {
         }
     };
 
-    private final class Round extends Phase {
-
+    private class ProcessFrame extends Frame<ProcessFrame> {
+        private final NodeBitMap activeGuards;
+        private AnchoringNode anchor;
+        private final ScheduleResult schedule;
         private final CoreProviders context;
-        private final LoweringMode mode;
-        private final TimerKey totalTimer;
 
-        private Round(CoreProviders context, LoweringMode mode) {
+        ProcessFrame(CoreProviders context, Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent, ScheduleResult schedule) {
+            super(block, parent);
             this.context = context;
-            this.mode = mode;
-            this.totalTimer = loweringStage.timer;
+            this.activeGuards = activeGuards;
+            this.anchor = anchor;
+            this.schedule = schedule;
         }
 
         @Override
-        public CharSequence getName() {
-            switch (mode) {
-                case LOWERING:
-                    return "LoweringRoundPhase";
-                case VERIFY_LOWERING:
-                    return "VerifyLoweringRoundPhase";
-                default:
-                    throw GraalError.shouldNotReachHere();
-            }
+        public void preprocess() {
+            this.anchor = process(context, block, activeGuards, anchor, schedule);
         }
 
         @Override
-        public boolean checkContract() {
-            /*
-             * lowering with snippets cannot be fully built in the node costs of all high level
-             * nodes
-             */
-            return false;
+        public ProcessFrame enter(Block b) {
+            return new ProcessFrame(context, b, activeGuards, b.getBeginNode(), this, schedule);
         }
 
         @Override
-        public void run(StructuredGraph graph) {
-            ScheduleResult schedule = graph.getLastSchedule();
-            schedule.getCFG().computePostdominators();
-            Block startBlock = schedule.getCFG().getStartBlock();
-            ProcessFrame rootFrame = new ProcessFrame(startBlock, graph.createNodeBitMap(), startBlock.getBeginNode(), null, schedule);
-            LoweringPhase.processBlock(rootFrame);
+        public Frame<?> enterAlwaysReached(Block b) {
+            AnchoringNode newAnchor = anchor;
+            if (parent != null && b.getLoop() != parent.block.getLoop() && !b.isLoopHeader()) {
+                // We are exiting a loop => cannot reuse the anchor without inserting loop
+                // proxies.
+                newAnchor = b.getBeginNode();
+            }
+            return new ProcessFrame(context, b, activeGuards, newAnchor, this, schedule);
         }
 
-        private class ProcessFrame extends Frame<ProcessFrame> {
-            private final NodeBitMap activeGuards;
-            private AnchoringNode anchor;
-            private final ScheduleResult schedule;
-
-            ProcessFrame(Block block, NodeBitMap activeGuards, AnchoringNode anchor, ProcessFrame parent, ScheduleResult schedule) {
-                super(block, parent);
-                this.activeGuards = activeGuards;
-                this.anchor = anchor;
-                this.schedule = schedule;
-            }
-
-            @Override
-            public void preprocess() {
-                this.anchor = Round.this.process(block, activeGuards, anchor, schedule);
-            }
-
-            @Override
-            public ProcessFrame enter(Block b) {
-                return new ProcessFrame(b, activeGuards, b.getBeginNode(), this, schedule);
-            }
-
-            @Override
-            public Frame<?> enterAlwaysReached(Block b) {
-                AnchoringNode newAnchor = anchor;
-                if (parent != null && b.getLoop() != parent.block.getLoop() && !b.isLoopHeader()) {
-                    // We are exiting a loop => cannot reuse the anchor without inserting loop
-                    // proxies.
-                    newAnchor = b.getBeginNode();
-                }
-                return new ProcessFrame(b, activeGuards, newAnchor, this, schedule);
-            }
-
-            @Override
-            public void postprocess() {
-                if (anchor == block.getBeginNode() && OptEliminateGuards.getValue(activeGuards.graph().getOptions())) {
-                    for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
-                        if (activeGuards.isMarkedAndGrow(guard)) {
-                            activeGuards.clear(guard);
-                        }
+        @Override
+        public void postprocess() {
+            if (anchor == block.getBeginNode() && OptEliminateGuards.getValue(activeGuards.graph().getOptions())) {
+                for (GuardNode guard : anchor.asNode().usages().filter(GuardNode.class)) {
+                    if (activeGuards.isMarkedAndGrow(guard)) {
+                        activeGuards.clear(guard);
                     }
                 }
             }
         }
+    }
 
-        @SuppressWarnings("try")
-        private AnchoringNode process(final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
+    @SuppressWarnings("try")
+    private AnchoringNode process(CoreProviders context, final Block b, final NodeBitMap activeGuards, final AnchoringNode startAnchor, ScheduleResult schedule) {
 
-            final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
+        final LoweringToolImpl loweringTool = new LoweringToolImpl(context, startAnchor, activeGuards, b.getBeginNode(), schedule.getNodeToBlockMap());
 
-            DebugContext debug = startAnchor.asNode().getDebug();
+        DebugContext debug = startAnchor.asNode().getDebug();
 
-            // Lower the instructions of this block.
-            List<Node> nodes = schedule.nodesFor(b);
-            for (Node node : nodes) {
+        // Lower the instructions of this block.
+        List<Node> nodes = schedule.nodesFor(b);
+        for (Node node : nodes) {
 
-                if (node.isDeleted()) {
-                    // This case can happen when previous lowerings deleted nodes.
-                    continue;
-                }
+            if (node.isDeleted()) {
+                // This case can happen when previous lowerings deleted nodes.
+                continue;
+            }
 
-                // Cache the next node to be able to reconstruct the previous of the next node
-                // after lowering.
-                FixedNode nextNode = null;
-                if (node instanceof FixedWithNextNode) {
-                    nextNode = ((FixedWithNextNode) node).next();
-                } else {
-                    nextNode = loweringTool.lastFixedNode().next();
-                }
+            // Cache the next node to be able to reconstruct the previous of the next node
+            // after lowering.
+            FixedNode nextNode = null;
+            if (node instanceof FixedWithNextNode) {
+                nextNode = ((FixedWithNextNode) node).next();
+            } else {
+                nextNode = loweringTool.lastFixedNode().next();
+            }
 
-                if (node instanceof Lowerable) {
-                    Collection<Node> unscheduledUsages = null;
-                    assert (unscheduledUsages = getUnscheduledUsages(node, schedule)) != null;
-                    Mark preLoweringMark = node.graph().getMark();
-                    try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
-                        TimerKey timer = null;
-                        if (debug.areMetricsEnabled()) {
-                            LoweringStatistics statistics = statisticsClassValue.get(node.getClass());
-                            statistics.counters[loweringStage.ordinal()].increment(debug);
-                            timer = statistics.timers[loweringStage.ordinal()];
-                        }
-                        try (DebugCloseable a = timer != null ? timer.start(debug) : null;
-                                        DebugCloseable a2 = totalTimer.start(debug)) {
-                            ((Lowerable) node).lower(loweringTool);
-                        }
+            if (node instanceof Lowerable) {
+                Collection<Node> unscheduledUsages = null;
+                assert (unscheduledUsages = getUnscheduledUsages(node, schedule)) != null;
+                Mark preLoweringMark = node.graph().getMark();
+                try (DebugCloseable s = node.graph().withNodeSourcePosition(node)) {
+                    TimerKey timer = null;
+                    if (debug.areMetricsEnabled()) {
+                        LoweringStatistics statistics = statisticsClassValue.get(node.getClass());
+                        statistics.counters[loweringStage.ordinal()].increment(debug);
+                        timer = statistics.timers[loweringStage.ordinal()];
                     }
-                    if (loweringTool.guardAnchor.asNode().isDeleted()) {
-                        // TODO nextNode could be deleted but this is not currently supported
-                        assert nextNode.isAlive();
-                        loweringTool.guardAnchor = AbstractBeginNode.prevBegin(nextNode);
+                    try (DebugCloseable a = timer != null ? timer.start(debug) : null;
+                                    DebugCloseable a2 = loweringStage.timer.start(debug)) {
+                        ((Lowerable) node).lower(loweringTool);
                     }
-                    assert checkPostNodeLowering(node, loweringTool, preLoweringMark, unscheduledUsages);
                 }
+                if (loweringTool.guardAnchor.asNode().isDeleted()) {
+                    // TODO nextNode could be deleted but this is not currently supported
+                    assert nextNode.isAlive();
+                    loweringTool.guardAnchor = AbstractBeginNode.prevBegin(nextNode);
+                }
+                assert checkPostNodeLowering(node, loweringTool, preLoweringMark, unscheduledUsages);
+            }
 
-                if (!nextNode.isAlive()) {
-                    // can happen when the rest of the block is killed by lowering
-                    // (e.g. by an unconditional deopt)
-                    break;
-                } else {
-                    Node nextLastFixed = nextNode.predecessor();
-                    if (!(nextLastFixed instanceof FixedWithNextNode)) {
-                        // insert begin node, to have a valid last fixed for next lowerable node.
-                        // This is about lowering a FixedWithNextNode to a control split while this
-                        // FixedWithNextNode is followed by some kind of BeginNode.
-                        // For example the when a FixedGuard followed by a loop exit is lowered to a
-                        // control-split + deopt.
-                        AbstractBeginNode begin = node.graph().add(new BeginNode());
-                        nextLastFixed.replaceFirstSuccessor(nextNode, begin);
-                        begin.setNext(nextNode);
-                        nextLastFixed = begin;
+            if (!nextNode.isAlive()) {
+                // can happen when the rest of the block is killed by lowering
+                // (e.g. by an unconditional deopt)
+                break;
+            } else {
+                Node nextLastFixed = nextNode.predecessor();
+                if (!(nextLastFixed instanceof FixedWithNextNode)) {
+                    // insert begin node, to have a valid last fixed for next lowerable node.
+                    // This is about lowering a FixedWithNextNode to a control split while this
+                    // FixedWithNextNode is followed by some kind of BeginNode.
+                    // For example the when a FixedGuard followed by a loop exit is lowered to a
+                    // control-split + deopt.
+                    AbstractBeginNode begin = node.graph().add(new BeginNode());
+                    nextLastFixed.replaceFirstSuccessor(nextNode, begin);
+                    begin.setNext(nextNode);
+                    nextLastFixed = begin;
+                }
+                loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
+            }
+        }
+        return loweringTool.getCurrentGuardAnchor();
+    }
+
+    /**
+     * Gets all usages of a floating, lowerable node that are unscheduled.
+     * <p>
+     * Given that the lowering of such nodes may introduce fixed nodes, they must be lowered in the
+     * context of a usage that dominates all other usages. The fixed nodes resulting from lowering
+     * are attached to the fixed node context of the dominating usage. This ensures the
+     * post-lowering graph still has a valid schedule.
+     *
+     * @param node a {@link Lowerable} node
+     */
+    private static Collection<Node> getUnscheduledUsages(Node node, ScheduleResult schedule) {
+        List<Node> unscheduledUsages = new ArrayList<>();
+        if (node instanceof FloatingNode) {
+            for (Node usage : node.usages()) {
+                if (usage instanceof ValueNode && !(usage instanceof PhiNode) && !(usage instanceof ProxyNode)) {
+                    if (schedule.getCFG().getNodeToBlock().isNew(usage) || schedule.getCFG().blockFor(usage) == null) {
+                        unscheduledUsages.add(usage);
                     }
-                    loweringTool.setLastFixedNode((FixedWithNextNode) nextLastFixed);
                 }
             }
-            return loweringTool.getCurrentGuardAnchor();
         }
-
-        /**
-         * Gets all usages of a floating, lowerable node that are unscheduled.
-         * <p>
-         * Given that the lowering of such nodes may introduce fixed nodes, they must be lowered in
-         * the context of a usage that dominates all other usages. The fixed nodes resulting from
-         * lowering are attached to the fixed node context of the dominating usage. This ensures the
-         * post-lowering graph still has a valid schedule.
-         *
-         * @param node a {@link Lowerable} node
-         */
-        private Collection<Node> getUnscheduledUsages(Node node, ScheduleResult schedule) {
-            List<Node> unscheduledUsages = new ArrayList<>();
-            if (node instanceof FloatingNode) {
-                for (Node usage : node.usages()) {
-                    if (usage instanceof ValueNode && !(usage instanceof PhiNode) && !(usage instanceof ProxyNode)) {
-                        if (schedule.getCFG().getNodeToBlock().isNew(usage) || schedule.getCFG().blockFor(usage) == null) {
-                            unscheduledUsages.add(usage);
-                        }
-                    }
-                }
-            }
-            return unscheduledUsages;
-        }
+        return unscheduledUsages;
     }
 
     enum ProcessBlockState {

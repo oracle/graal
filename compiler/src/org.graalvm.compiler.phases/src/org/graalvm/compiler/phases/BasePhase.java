@@ -254,12 +254,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             ApplyScope applyScope = applyScope(graph, context);
             Throwable throwable = null;
             try {
-                try {
-                    this.run(graph, context);
-                } catch (Throwable t) {
-                    throwable = t;
-                    throw t;
-                }
+                this.run(graph, context);
+            } catch (Throwable t) {
+                throwable = t;
+                throw t;
             } finally {
                 if (applyScope != null) {
                     applyScope.close(throwable);
