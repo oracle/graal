@@ -266,6 +266,43 @@ public final class Value extends AbstractValue {
     }
 
     /**
+     * Returns <code>true</code> if the value represents a metaobject and the metaobject has meta
+     * parents. Returns <code>false</code> by default.
+     * <p>
+     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
+     * Further, the superclass and the implemented interfaces types of that type constitute the meta
+     * parents. In JavaScript any function instance is a metaobject. For example, the metaobject of
+     * a JavaScript class is the associated constructor function.
+     * <p>
+     * This method does not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaParents()} must be implemented as well.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #getMetaParents()
+     * @since 22.2
+     */
+    public boolean hasMetaParents() {
+        return dispatch.hasMetaParents(this.context, receiver);
+    }
+
+    /**
+     * Returns the meta parents of a meta object as an array object {@link #hasArrayElements()}.
+     * This method does not cause any observable side-effects. If this method is implemented then
+     * also {@link #hasMetaParents()} must be implemented as well.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws UnsupportedOperationException if the value does not have any
+     *             {@link #hasMetaParents()} meta parents.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #hasMetaParents()
+     * @since 22.2
+     */
+    public Value getMetaParents() {
+        return dispatch.getMetaParents(this.context, receiver);
+    }
+
+    /**
      * Returns <code>true</code> if this polyglot value has array elements. In this case array
      * elements can be accessed using {@link #getArrayElement(long)},
      * {@link #setArrayElement(long, Object)}, {@link #removeArrayElement(long)} and the array size
