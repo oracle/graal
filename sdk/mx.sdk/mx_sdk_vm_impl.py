@@ -2434,13 +2434,13 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             return any(_get_launcher_configs(comp) or _get_library_configs(comp) for comp in components)
 
         other_comp_names = []
-        involved_components = [component] + [get_component(dep) for dep in component.standalone_dependencies]
-        if _get_svm_support().is_supported() and require_svm(involved_components):
+        self.involved_components = [component] + [get_component(dep) for dep in component.standalone_dependencies]
+        if _get_svm_support().is_supported() and require_svm(self.involved_components):
             if 'svm' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svmee')
-        for _component in involved_components:
+        for _component in self.involved_components:
             other_comp_names += _component.extra_installable_qualifiers
 
         other_comp_names = sorted(other_comp_names)
@@ -3211,6 +3211,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
     parser.add_argument('--print-env', action='store_true', help='print the contents of an env file that reproduces the current GraalVM config')
+    parser.add_argument('-v', '--verbose', action='store_true', help='print additional information about installables and standalones')
     args = parser.parse_args(args)
 
     graalvm_dist = forced_graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
@@ -3255,6 +3256,9 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("Installables:")
             for i in installables:
                 print(" - {}".format(i))
+                if args.verbose:
+                    for c in i.components:
+                        print("    - {}".format(c.name))
         else:
             print("No installable")
 
@@ -3263,6 +3267,9 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("Standalones:")
             for s in standalones:
                 print(" - {}".format(s))
+                if args.verbose:
+                    for c in s.involved_components:
+                        print("    - {}".format(c.name))
         else:
             print("No standalone")
 
