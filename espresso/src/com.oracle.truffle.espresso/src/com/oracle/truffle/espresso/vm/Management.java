@@ -130,8 +130,6 @@ public final class Management extends NativeEnv {
     public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
     public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.7
 
-    private final EspressoContext context;
-
     @CompilationFinal //
     private @Pointer TruffleObject managementPtr;
     @CompilationFinal //
@@ -141,8 +139,8 @@ public final class Management extends NativeEnv {
     private final @Pointer TruffleObject disposeManagementContext;
 
     public Management(EspressoContext context, TruffleObject mokapotLibrary) {
+        super(context);
         assert context.EnableManagement;
-        this.context = context;
         this.initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeManagementContext",
                         NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
 
@@ -206,11 +204,6 @@ public final class Management extends NativeEnv {
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
         return MANAGEMENT_IMPL_FACTORIES;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     @Override

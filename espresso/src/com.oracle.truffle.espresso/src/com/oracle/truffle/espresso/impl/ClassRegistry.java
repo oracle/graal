@@ -55,7 +55,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  *
  * This class is analogous to the ClassLoaderData C++ class in HotSpot.
  */
-public abstract class ClassRegistry implements ContextAccess {
+public abstract class ClassRegistry extends ContextAccessImpl {
 
     /**
      * Storage class used to propagate information in the case of special kinds of class definition
@@ -206,8 +206,6 @@ public abstract class ClassRegistry implements ContextAccess {
         }
     }
 
-    private final EspressoContext context;
-
     private final int loaderID;
 
     private ModuleEntry unnamed;
@@ -258,13 +256,8 @@ public abstract class ClassRegistry implements ContextAccess {
         }
     }
 
-    @Override
-    public final EspressoContext getContext() {
-        return context;
-    }
-
     protected ClassRegistry(EspressoContext context) {
-        this.context = context;
+        super(context);
         this.loaderID = context.getNewLoaderId();
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         this.packages = new PackageTable(rwLock);
@@ -341,7 +334,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     public Klass findLoadedKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
-            Symbol<Type> elemental = context.getTypes().getElementalType(type);
+            Symbol<Type> elemental = getContext().getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(elemental);
             if (elementalKlass == null) {
                 return null;
@@ -388,7 +381,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, context, info);
+        ParserKlass parserKlass = ClassfileParser.parse(new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, getContext(), info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -450,11 +443,11 @@ public abstract class ClassRegistry implements ContextAccess {
 
         ObjectKlass klass;
 
-        try (DebugCloseable define = KLASS_DEFINE.scope(context.getTimers())) {
+        try (DebugCloseable define = KLASS_DEFINE.scope(getContext().getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion());
+            ContextDescription description = new ContextDescription(getContext().getLanguage(), getContext().getJavaVersion());
             LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
-            klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
+            klass = new ObjectKlass(getContext(), linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
         if (superKlass != null) {
@@ -527,12 +520,12 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Klass loadedKlass = findLoadedKlass(renamedKlass.getType());
         if (loadedKlass != null) {
-            context.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
+            getContext().getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
         }
 
         classes.put(renamedKlass.getType(), new ClassRegistries.RegistryEntry(renamedKlass));
         // record the new loading constraint
-        context.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
+        getContext().getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
     }
 
     public void onInnerClassRemoved(Symbol<Symbol.Type> type) {

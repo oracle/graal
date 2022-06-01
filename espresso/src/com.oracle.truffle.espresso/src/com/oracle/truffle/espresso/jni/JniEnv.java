@@ -108,8 +108,6 @@ public final class JniEnv extends NativeEnv {
     // TODO(peterssen): Add user-configurable option.
     private static final int MAX_JNI_LOCAL_CAPACITY = 1 << 16;
 
-    private final EspressoContext context;
-
     private final JNIHandles handles;
 
     private @Pointer TruffleObject jniEnvPtr;
@@ -324,8 +322,8 @@ public final class JniEnv extends NativeEnv {
     }
 
     private JniEnv(EspressoContext context) {
+        super(context);
         EspressoProperties props = context.getVmProperties();
-        this.context = context;
         Path espressoLibraryPath = props.espressoHome().resolve("lib");
         nespressoLibrary = getNativeAccess().loadLibrary(Collections.singletonList(espressoLibraryPath), "nespresso", true);
         initializeNativeContext = getNativeAccess().lookupAndBindSymbol(nespressoLibrary, "initializeNativeContext",
@@ -381,11 +379,6 @@ public final class JniEnv extends NativeEnv {
 
     public static JniEnv create(EspressoContext context) {
         return new JniEnv(context);
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     public @Pointer TruffleObject getNativePointer() {
@@ -1697,7 +1690,7 @@ public final class JniEnv extends NativeEnv {
     @TruffleBoundary
     public void FatalError(@Pointer TruffleObject msgPtr, @Inject SubstitutionProfiler profiler) {
         String msg = NativeUtils.interopPointerToString(msgPtr);
-        PrintWriter writer = new PrintWriter(context.getEnv().err(), true);
+        PrintWriter writer = new PrintWriter(getContext().getEnv().err(), true);
         writer.println("FATAL ERROR in native method: " + msg);
         // TODO print stack trace
         getContext().truffleExit(profiler, 1);

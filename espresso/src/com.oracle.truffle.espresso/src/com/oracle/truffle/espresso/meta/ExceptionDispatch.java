@@ -25,31 +25,21 @@ package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Allows fast-path runtime guest exception creation.
  */
-public final class ExceptionDispatch implements ContextAccess {
+public final class ExceptionDispatch extends ContextAccessImpl {
     private final Meta meta;
 
     private final ObjectKlass runtimeException;
 
-    @Override
-    public EspressoContext getContext() {
-        return meta.getContext();
-    }
-
-    @Override
-    public Meta getMeta() {
-        return meta;
-    }
-
     public ExceptionDispatch(Meta meta) {
+        super(meta.getContext());
         this.meta = meta;
         this.runtimeException = meta.java_lang_RuntimeException;
     }

@@ -299,6 +299,7 @@ public final class VM extends NativeEnv {
     }
 
     private VM(JniEnv jniEnv) {
+        super(jniEnv.getContext());
         this.jniEnv = jniEnv;
         try {
             EspressoProperties props = getContext().getVmProperties();
@@ -361,11 +362,6 @@ public final class VM extends NativeEnv {
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return jniEnv.getContext();
     }
 
     @Override

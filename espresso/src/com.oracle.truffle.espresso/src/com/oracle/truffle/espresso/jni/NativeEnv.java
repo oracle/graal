@@ -51,7 +51,7 @@ import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
 import com.oracle.truffle.espresso.ffi.nfi.NativeUtils;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -75,7 +75,11 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
  * <li>Finally, implement the interface in native code (most likely in mokapot. See the management
  * implementation there for reference.)</li>
  */
-public abstract class NativeEnv implements ContextAccess {
+public abstract class NativeEnv extends ContextAccessImpl {
+
+    public NativeEnv(EspressoContext context) {
+        super(context);
+    }
 
     private static final int LOOKUP_CALLBACK_ARGS_COUNT = 1;
 

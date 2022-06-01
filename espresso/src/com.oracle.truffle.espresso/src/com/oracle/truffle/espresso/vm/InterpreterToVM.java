@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -60,12 +60,10 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
 
-public final class InterpreterToVM implements ContextAccess {
-
-    private final EspressoContext context;
+public final class InterpreterToVM extends ContextAccessImpl {
 
     public InterpreterToVM(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -101,11 +99,6 @@ public final class InterpreterToVM implements ContextAccess {
     @TruffleBoundary(allowInlining = true)
     public static boolean holdsLock(EspressoLock lock) {
         return lock.isHeldByCurrentThread();
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     // region Get (array) operations

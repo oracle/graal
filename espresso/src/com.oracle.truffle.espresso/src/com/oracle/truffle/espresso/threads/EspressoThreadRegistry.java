@@ -34,30 +34,24 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.VM;
 
-public final class EspressoThreadRegistry implements ContextAccess {
+public final class EspressoThreadRegistry extends ContextAccessImpl {
     private static final int DEFAULT_THREAD_ARRAY_SIZE = 8;
 
     private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoThreadRegistry.class);
-    private final EspressoContext context;
 
     private final Set<StaticObject> activeThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Object activeThreadLock = new Object() {
     };
 
-    @Override
-    public EspressoContext getContext() {
-        return context;
-    }
-
     public EspressoThreadRegistry(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     /**
@@ -107,7 +101,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             guestMainThread = self;
         }
         activeThreads.add(self);
-        context.registerCurrentThread(self);
+        getContext().registerCurrentThread(self);
     }
 
     public final AtomicLong createdThreadCount = new AtomicLong();
@@ -151,7 +145,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
         }
         pushThread(Math.toIntExact(host.getId()), guest);
         if (host == Thread.currentThread()) {
-            context.registerCurrentThread(guest);
+            getContext().registerCurrentThread(guest);
         }
     }
 
@@ -203,8 +197,8 @@ public final class EspressoThreadRegistry implements ContextAccess {
                 }
             }
         }
-        context.getLanguage().getThreadLocalState().clearCurrentThread(thread);
-        context.notifyShutdownSynchronizer();
+        getLanguage().getThreadLocalState().clearCurrentThread(thread);
+        getContext().notifyShutdownSynchronizer();
     }
 
     /**
@@ -398,7 +392,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
         int newOffset = minID - 1;
         newThreads[0] = newOffset;
         for (StaticObject guestThread : toRelocate) {
-            int hostId = (int) context.getThreadAccess().getHost(guestThread).getId();
+            int hostId = (int) getThreadAccess().getHost(guestThread).getId();
             newThreads[hostId - newOffset] = guestThread;
         }
         newThreads[id - newOffset] = self;

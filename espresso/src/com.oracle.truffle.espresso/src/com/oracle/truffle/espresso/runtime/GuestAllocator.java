@@ -32,7 +32,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
@@ -59,12 +59,11 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * initialization loops whenever possible. Note that performance will be impacted if {@code this} is
  * not PE constant.
  */
-public final class GuestAllocator implements ContextAccess {
-    private final EspressoContext context;
+public final class GuestAllocator extends ContextAccessImpl {
     private final EspressoLanguage lang;
 
     public GuestAllocator(EspressoContext context) {
-        this.context = context;
+        super(context);
         this.lang = context.getLanguage();
     }
 
@@ -103,6 +102,7 @@ public final class GuestAllocator implements ContextAccess {
                 // of generated subtypes.
                 obj = (StaticObject) toCopy.clone();
             } catch (CloneNotSupportedException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -240,8 +240,8 @@ public final class GuestAllocator implements ContextAccess {
     public @JavaType(internalName = "Lcom/oracle/truffle/espresso/polyglot/ForeignException;") StaticObject createForeignException(
                     Object foreignObject,
                     InteropLibrary interopLibrary) {
-        assert context.Polyglot;
-        Meta meta = context.getMeta();
+        assert getContext().Polyglot;
+        Meta meta = getContext().getMeta();
         assert meta.polyglot != null;
         assert interopLibrary.isException(foreignObject);
         assert !(foreignObject instanceof StaticObject);
@@ -352,13 +352,13 @@ public final class GuestAllocator implements ContextAccess {
     private void setModule(StaticObject obj, Klass klass) {
         StaticObject module = klass.module().module();
         if (StaticObject.isNull(module)) {
-            if (context.getRegistries().javaBaseDefined()) {
-                context.getMeta().java_lang_Class_module.setObject(obj, klass.getRegistries().getJavaBaseModule().module());
+            if (getContext().getRegistries().javaBaseDefined()) {
+                getContext().getMeta().java_lang_Class_module.setObject(obj, klass.getRegistries().getJavaBaseModule().module());
             } else {
-                context.getRegistries().addToFixupList(klass);
+                getContext().getRegistries().addToFixupList(klass);
             }
         } else {
-            context.getMeta().java_lang_Class_module.setObject(obj, module);
+            getContext().getMeta().java_lang_Class_module.setObject(obj, module);
         }
     }
 
@@ -397,14 +397,14 @@ public final class GuestAllocator implements ContextAccess {
     }
 
     private StaticObject trackAllocation(Klass klass, StaticObject obj) {
-        if (klass == null || context == null) {
+        if (klass == null || getContext() == null) {
             return obj;
         }
-        if (!CompilerDirectives.isPartialEvaluationConstant(context)) {
+        if (!CompilerDirectives.isPartialEvaluationConstant(getContext())) {
             // TODO: fail here ?
-            return trackAllocationBoundary(context, obj);
+            return trackAllocationBoundary(getContext(), obj);
         }
-        return context.trackAllocation(obj);
+        return getContext().trackAllocation(obj);
     }
 
     private static StaticObject trackForeignAllocation(Klass klass, StaticObject obj) {
@@ -421,11 +421,6 @@ public final class GuestAllocator implements ContextAccess {
     @TruffleBoundary
     private static StaticObject trackAllocationBoundary(EspressoContext context, StaticObject obj) {
         return context.trackAllocation(obj);
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     public interface AllocationProfiler {
