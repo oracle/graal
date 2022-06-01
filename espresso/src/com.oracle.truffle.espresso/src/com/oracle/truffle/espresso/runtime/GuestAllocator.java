@@ -23,6 +23,15 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Boolean;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Byte;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Char;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Double;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Float;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Int;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Long;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Short;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -173,14 +182,14 @@ public final class GuestAllocator extends ContextAccessImpl {
         Meta meta = getMeta();
         // @formatter:off
         switch (jvmPrimitiveType) {
-            case 4  : return wrapArrayAs(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
-            case 5  : return StaticObject.wrap(new char[length], meta);
-            case 6  : return StaticObject.wrap(new float[length], meta);
-            case 7  : return StaticObject.wrap(new double[length], meta);
-            case 8  : return StaticObject.wrap(new byte[length], meta);
-            case 9  : return StaticObject.wrap(new short[length], meta);
-            case 10 : return StaticObject.wrap(new int[length], meta);
-            case 11 : return StaticObject.wrap(new long[length], meta);
+            case JVM_Number_Boolean:    return wrapArrayAs(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
+            case JVM_Number_Char:       return StaticObject.wrap(new char[length], meta);
+            case JVM_Number_Float:      return StaticObject.wrap(new float[length], meta);
+            case JVM_Number_Double:     return StaticObject.wrap(new double[length], meta);
+            case JVM_Number_Byte:       return StaticObject.wrap(new byte[length], meta);
+            case JVM_Number_Short:      return StaticObject.wrap(new short[length], meta);
+            case JVM_Number_Int:        return StaticObject.wrap(new int[length], meta);
+            case JVM_Number_Long:       return StaticObject.wrap(new long[length], meta);
             default :
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();

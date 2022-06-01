@@ -22,6 +22,19 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Boolean;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Byte;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Char;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Double;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Float;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Illegal;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Int;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Long;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Object;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_ReturnAddress;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Short;
+import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Void;
+
 import java.lang.reflect.Array;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -39,40 +52,59 @@ import com.oracle.truffle.espresso.jdwp.api.TagConstants;
  */
 public enum JavaKind {
     /** The primitive boolean kind, represented as an int on the stack. */
-    Boolean('Z', 4, "boolean", 1, true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
+    Boolean('Z', JVM_Number_Boolean, "boolean", 1, true, java.lang.Boolean.TYPE, java.lang.Boolean.class),
 
     /** The primitive byte kind, represented as an int on the stack. */
-    Byte('B', 8, "byte", 1, true, java.lang.Byte.TYPE, java.lang.Byte.class),
+    Byte('B', JVM_Number_Byte, "byte", 1, true, java.lang.Byte.TYPE, java.lang.Byte.class),
 
     /** The primitive short kind, represented as an int on the stack. */
-    Short('S', 9, "short", 1, true, java.lang.Short.TYPE, java.lang.Short.class),
+    Short('S', JVM_Number_Short, "short", 1, true, java.lang.Short.TYPE, java.lang.Short.class),
 
     /** The primitive char kind, represented as an int on the stack. */
-    Char('C', 5, "char", 1, true, java.lang.Character.TYPE, java.lang.Character.class),
+    Char('C', JVM_Number_Char, "char", 1, true, java.lang.Character.TYPE, java.lang.Character.class),
 
     /** The primitive int kind, represented as an int on the stack. */
-    Int('I', 10, "int", 1, true, java.lang.Integer.TYPE, java.lang.Integer.class),
+    Int('I', JVM_Number_Int, "int", 1, true, java.lang.Integer.TYPE, java.lang.Integer.class),
 
     /** The primitive float kind. */
-    Float('F', 6, "float", 1, false, java.lang.Float.TYPE, java.lang.Float.class),
+    Float('F', JVM_Number_Float, "float", 1, false, java.lang.Float.TYPE, java.lang.Float.class),
 
     /** The primitive long kind. */
-    Long('J', 11, "long", 2, false, java.lang.Long.TYPE, java.lang.Long.class),
+    Long('J', JVM_Number_Long, "long", 2, false, java.lang.Long.TYPE, java.lang.Long.class),
 
     /** The primitive double kind. */
-    Double('D', 7, "double", 2, false, java.lang.Double.TYPE, java.lang.Double.class),
+    Double('D', JVM_Number_Double, "double", 2, false, java.lang.Double.TYPE, java.lang.Double.class),
 
     /** The Object kind, also used for arrays. */
-    Object('A', 12, "Object", 1, false, null, null),
+    Object('A', JVM_Number_Object, "Object", 1, false, null, null),
 
     /** The void kind. */
-    Void('V', 14, "void", 0, false, java.lang.Void.TYPE, java.lang.Void.class),
+    Void('V', JVM_Number_Void, "void", 0, false, java.lang.Void.TYPE, java.lang.Void.class),
 
     /** The return address type. */
-    ReturnAddress('r', 98, "return address", 1, false, null, null),
+    ReturnAddress('r', JVM_Number_ReturnAddress, "return address", 1, false, null, null),
 
     /** The non-type. */
-    Illegal('-', 99, "illegal", 0, false, null, null);
+    Illegal('-', JVM_Number_Illegal, "illegal", 0, false, null, null);
+
+    public static final class JVMBasicTypesConstants {
+        private JVMBasicTypesConstants() {
+        }
+
+        public static final int JVM_Number_Boolean = 4;
+        public static final int JVM_Number_Char = 5;
+        public static final int JVM_Number_Float = 6;
+        public static final int JVM_Number_Double = 7;
+        public static final int JVM_Number_Byte = 8;
+        public static final int JVM_Number_Short = 9;
+        public static final int JVM_Number_Int = 10;
+        public static final int JVM_Number_Long = 11;
+        public static final int JVM_Number_Object = 12;
+        public static final int JVM_Number_Void = 14;
+        public static final int JVM_Number_ReturnAddress = 98;
+        public static final int JVM_Number_Illegal = 99;
+
+    }
 
     private final char typeChar;
     private final String javaName;
