@@ -29,6 +29,9 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -38,7 +41,6 @@ import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MonitorEnterTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -100,7 +102,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
 
         var instanceOfCursor = originalFlows.getInstanceOfFlows().getEntries();
         while (instanceOfCursor.advance()) {
-            if (BytecodeLocation.isValidBci(instanceOfCursor.getKey())) {
+            if (isValidBci(instanceOfCursor.getKey())) {
                 int bci = (int) instanceOfCursor.getKey();
                 InstanceOfTypeFlow originalInstanceOf = instanceOfCursor.getValue();
 
@@ -127,7 +129,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
 
         var invokesCursor = originalFlows.getInvokes().getEntries();
         while (invokesCursor.advance()) {
-            if (BytecodeLocation.isValidBci(invokesCursor.getKey())) {
+            if (isValidBci(invokesCursor.getKey())) {
                 int bci = (int) invokesCursor.getKey();
                 InvokeTypeFlow originalInvoke = invokesCursor.getValue();
 
@@ -171,8 +173,8 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                                 StringBuilder strb = new StringBuilder();
                                 strb.append("Location: ");
                                 String methodName = method.format("%h.%n(%p)");
-                                int bci = monitorEnter.getLocation().getBci();
-                                if (bci != BytecodeLocation.UNKNOWN_BCI) {
+                                int bci = monitorEnter.getLocation().getBCI();
+                                if (isValidBci(bci)) {
                                     StackTraceElement traceElement = method.asStackTraceElement(bci);
                                     String sourceLocation = traceElement.getFileName() + ":" + traceElement.getLineNumber();
                                     strb.append("@(").append(methodName).append(":").append(bci).append(")");
@@ -197,6 +199,35 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
         }
 
         return createStaticAnalysisResults(method, parameterTypeProfiles, resultTypeProfile, first);
+    }
+
+    /**
+     * This method returns a unique key for the given node, used to store and query invoke and
+     * instance-of type flows.
+     * 
+     * Unless the node comes from a substitution, the unique key is the BCI of the node. Every
+     * newinstance/newarray/newmultiarray/instanceof/checkcast node coming from a substitution
+     * method cannot have a BCI. If one substitution has multiple nodes of the same type, then the
+     * BCI would not be unique. In the later case the key is a unique object.
+     */
+    public static Object uniqueKey(Node node) {
+        NodeSourcePosition position = node.getNodeSourcePosition();
+        /* If 'position' has a 'caller' then it is inlined, so the BCI is probably not unique. */
+        if (position != null && position.getCaller() == null) {
+            if (position.getBCI() >= 0) {
+                return position.getBCI();
+            }
+        }
+        return new Object();
+    }
+
+    /** Check if the key, provided by {@link #uniqueKey(Node)} above is an actual BCI. */
+    public static boolean isValidBci(Object key) {
+        if (key instanceof Integer) {
+            int bci = (int) key;
+            return bci >= 0;
+        }
+        return false;
     }
 
     protected BytecodeEntry createBytecodeEntry(@SuppressWarnings("unused") AnalysisMethod method, int bci, JavaTypeProfile typeProfile, JavaMethodProfile methodProfile,

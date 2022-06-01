@@ -24,18 +24,15 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public class BoxTypeFlow extends NewInstanceTypeFlow {
 
-    public BoxTypeFlow(ValueNode node, AnalysisType type, BytecodeLocation boxSite) {
-        super(node, type, boxSite);
+    public BoxTypeFlow(BytecodePosition position, AnalysisType type) {
+        super(position, type);
     }
 
     public BoxTypeFlow(PointsToAnalysis bb, BoxTypeFlow original, MethodFlowsGraph methodFlows) {

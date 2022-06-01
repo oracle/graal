@@ -568,7 +568,7 @@ public class PointsToStats {
             return "Clone @ " + formatSource(flow);
         } else if (flow instanceof MonitorEnterTypeFlow) {
             MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
-            return "MonitorEnter @ " + formatMethod(monitor.getMethod());
+            return "MonitorEnter @ " + formatMethod(monitor.getSource().getMethod());
         } else {
             return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }

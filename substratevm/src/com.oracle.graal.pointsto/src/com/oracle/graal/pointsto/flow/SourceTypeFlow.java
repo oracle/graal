@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -36,8 +34,8 @@ public class SourceTypeFlow extends SourceTypeFlowBase {
     /**
      * Source flow has an immutable type state.
      */
-    public SourceTypeFlow(ValueNode node, TypeState state) {
-        super(node, state);
+    public SourceTypeFlow(BytecodePosition position, TypeState state) {
+        super(position, state);
     }
 
     public SourceTypeFlow(PointsToAnalysis bb, SourceTypeFlow original, MethodFlowsGraph methodFlows) {

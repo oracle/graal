@@ -24,20 +24,19 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ParameterNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * Represents the type flow for 'this' parameter for instance methods.
  */
 public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
 
-    public FormalReceiverTypeFlow(ParameterNode source, AnalysisType declaredType, AnalysisMethod method) {
-        super(source, declaredType, method, 0);
+    public FormalReceiverTypeFlow(BytecodePosition sourcePosition, AnalysisType declaredType) {
+        super(sourcePosition, declaredType, 0);
     }
 
     public FormalReceiverTypeFlow(FormalReceiverTypeFlow original, MethodFlowsGraph methodFlows) {
@@ -89,7 +88,7 @@ public class FormalReceiverTypeFlow extends FormalParamTypeFlow {
 
     @Override
     public String format(boolean withState, boolean withSource) {
-        return "Formal receiver of " + method.format("%H.%n(%p)") +
+        return "Formal receiver of " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
                         (withState ? " with state <" + getState() + ">" : "");
     }

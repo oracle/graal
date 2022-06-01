@@ -24,30 +24,18 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
-
-    protected final AnalysisMethod method;
-
-    public FormalReturnTypeFlow(ValueNode source, AnalysisType declaredType, AnalysisMethod method) {
-        this(source.getNodeSourcePosition(), declaredType, method);
-    }
-
-    public FormalReturnTypeFlow(BytecodePosition source, AnalysisType declaredType, AnalysisMethod method) {
+    public FormalReturnTypeFlow(BytecodePosition source, AnalysisType declaredType) {
         super(source, declaredType);
-        this.method = method;
     }
 
     public FormalReturnTypeFlow(FormalReturnTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
-        this.method = original.method;
     }
 
     @Override
@@ -56,13 +44,8 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public AnalysisMethod method() {
-        return method;
-    }
-
-    @Override
     public String format(boolean withState, boolean withSource) {
-        return "Formal return from " + method.format("%H.%n(%p)") +
+        return "Formal return from " + method().format("%H.%n(%p)") +
                         (withSource ? " at " + formatSource() : "") +
                         (withState ? " with state <" + getState() + ">" : "");
     }

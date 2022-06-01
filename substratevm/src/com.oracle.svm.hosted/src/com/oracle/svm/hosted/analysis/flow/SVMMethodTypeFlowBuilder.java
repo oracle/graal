@@ -29,7 +29,6 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -56,6 +55,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
@@ -142,7 +142,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * if it was properly intercepted or not is LoadFieldNode.
          */
 
-        NodeSourcePosition pos = offsetNode.getNodeSourcePosition();
+        BytecodePosition pos = sourcePosition(offsetNode);
         if (offsetNode instanceof LoadFieldNode) {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
@@ -189,7 +189,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                      * writing the objects to the all-instantiated.
                      */
                     result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                        SourceTypeFlow src = new SourceTypeFlow(node, TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
+                        SourceTypeFlow src = new SourceTypeFlow(sourcePosition(node), TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
                         flowsGraph.addMiscEntryFlow(src);
                         return src;
                     });
@@ -197,7 +197,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                     /* Use a type state which consists of the entire node's type hierarchy. */
                     AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
                     result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
-                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(node.getNodeSourcePosition(), type.getTypeFlow(bb, true));
+                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(node), type.getTypeFlow(bb, true));
                         flowsGraph.addMiscEntryFlow(proxy);
                         return proxy;
                     });
@@ -226,7 +226,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             AnalysisType valueType = (AnalysisType) (valueStamp.type() == null ? bb.getObjectType() : valueStamp.type());
 
             TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, TypeFlow.class, () -> {
-                TypeFlow<?> proxy = bb.analysisPolicy().proxy(storeNode.getNodeSourcePosition(), valueType.getTypeFlow(bb, false));
+                TypeFlow<?> proxy = bb.analysisPolicy().proxy(sourcePosition(storeNode), valueType.getTypeFlow(bb, false));
                 flowsGraph.addMiscEntryFlow(proxy);
                 return proxy;
             });
