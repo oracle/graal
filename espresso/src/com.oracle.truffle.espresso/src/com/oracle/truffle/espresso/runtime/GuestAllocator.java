@@ -23,14 +23,14 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Boolean;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Byte;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Char;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Double;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Float;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Int;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Long;
-import static com.oracle.truffle.espresso.meta.JavaKind.JVMBasicTypesConstants.JVM_Number_Short;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Boolean;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Byte;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Char;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Double;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Float;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Int;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Long;
+import static com.oracle.truffle.espresso.classfile.Constants.JVM_ArrayType_Short;
 
 import java.util.Arrays;
 
@@ -182,14 +182,14 @@ public final class GuestAllocator extends ContextAccessImpl {
         Meta meta = getMeta();
         // @formatter:off
         switch (jvmPrimitiveType) {
-            case JVM_Number_Boolean:    return wrapArrayAs(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
-            case JVM_Number_Char:       return StaticObject.wrap(new char[length], meta);
-            case JVM_Number_Float:      return StaticObject.wrap(new float[length], meta);
-            case JVM_Number_Double:     return StaticObject.wrap(new double[length], meta);
-            case JVM_Number_Byte:       return StaticObject.wrap(new byte[length], meta);
-            case JVM_Number_Short:      return StaticObject.wrap(new short[length], meta);
-            case JVM_Number_Int:        return StaticObject.wrap(new int[length], meta);
-            case JVM_Number_Long:       return StaticObject.wrap(new long[length], meta);
+            case JVM_ArrayType_Boolean:    return wrapArrayAs(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
+            case JVM_ArrayType_Char:       return StaticObject.wrap(new char[length], meta);
+            case JVM_ArrayType_Float:      return StaticObject.wrap(new float[length], meta);
+            case JVM_ArrayType_Double:     return StaticObject.wrap(new double[length], meta);
+            case JVM_ArrayType_Byte:       return StaticObject.wrap(new byte[length], meta);
+            case JVM_ArrayType_Short:      return StaticObject.wrap(new short[length], meta);
+            case JVM_ArrayType_Int:        return StaticObject.wrap(new int[length], meta);
+            case JVM_ArrayType_Long:       return StaticObject.wrap(new long[length], meta);
             default :
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
