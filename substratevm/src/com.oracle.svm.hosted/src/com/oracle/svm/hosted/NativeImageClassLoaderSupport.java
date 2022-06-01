@@ -102,13 +102,19 @@ public class NativeImageClassLoaderSupport {
     public final ModuleLayer moduleLayerForImageBuild;
     public final ModuleFinder modulepathModuleFinder;
 
+    static final class ClassPathClassLoader extends URLClassLoader {
+        ClassPathClassLoader(URL[] urls, ClassLoader parent) {
+            super(urls, parent);
+        }
+    }
+
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
         classes = EconomicMap.create();
         packages = EconomicMap.create();
         emptySet = EconomicSet.create();
 
-        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
+        classPathClassLoader = new ClassPathClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
                         .map(Util::urlToPath)
