@@ -56,9 +56,12 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     private int encodedGraphCacheCapacity;
     private int jvmciReservedReference0Offset = -1;
 
+    private boolean allowGraphCachePurges;
+
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot, new HotSpotKnownTruffleTypes(config.lastTier().providers().getMetaAccess()));
         this.graphCacheRef = new AtomicReference<>();
+        this.allowGraphCachePurges = true;
     }
 
     void setJvmciReservedReference0Offset(int jvmciReservedReference0Offset) {
@@ -118,7 +121,14 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     public void purgeEncodedGraphCache() {
-        graphCacheRef.set(null);
+        if (allowGraphCachePurges) {
+            graphCacheRef.set(null);
+        }
+    }
+
+    // Called reflectively from EncodedGraphCacheTest.
+    public void setAllowGraphCachePurges(boolean value) {
+        allowGraphCachePurges = value;
     }
 
     @Override
