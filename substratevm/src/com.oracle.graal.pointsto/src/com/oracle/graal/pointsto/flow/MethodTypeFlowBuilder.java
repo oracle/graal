@@ -334,9 +334,9 @@ public class MethodTypeFlowBuilder {
                  */
                 TypeFlow<?> returnTypeFlow = methodFlow.getResultFlow().getDeclaredType().getTypeFlow(this.bb, true);
                 BytecodePosition source = new BytecodePosition(null, method, 0);
-                returnTypeFlow = new ProxyTypeFlow(source, returnTypeFlow);
+                returnTypeFlow = bb.analysisPolicy().proxy(source, returnTypeFlow);
                 FormalReturnTypeFlow resultFlow = new FormalReturnTypeFlow(source, returnType, method);
-                returnTypeFlow.addOriginalUse(this.bb, resultFlow);
+                bb.analysisPolicy().addOriginalUse(bb, returnTypeFlow, resultFlow);
                 methodFlow.addMiscEntry(returnTypeFlow);
                 methodFlow.setResult(resultFlow);
             }
@@ -458,7 +458,7 @@ public class MethodTypeFlowBuilder {
          * after static analysis.
          */
         if (bb.strengthenGraalGraphs()) {
-            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, methodFlow.originalMethodFlows.getNodeFlows().getKeys()));
+            method.setAnalyzedGraph(GraphEncoder.encodeSingleGraph(graph, AnalysisParsedGraph.HOST_ARCHITECTURE, methodFlow.flowsGraph.getNodeFlows().getKeys()));
         }
     }
 
@@ -528,14 +528,14 @@ public class MethodTypeFlowBuilder {
 
                     if (type.isJavaLangObject()) {
                         /* Return a proxy to the all-instantiated type flow. */
-                        result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
-                            ProxyTypeFlow proxy = new ProxyTypeFlow(node, bb.getAllInstantiatedTypeFlow());
+                        result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
+                            TypeFlow<?> proxy = bb.analysisPolicy().proxy(node.getNodeSourcePosition(), bb.getAllInstantiatedTypeFlow());
                             methodFlow.addMiscEntry(proxy);
                             return proxy;
                         });
                     } else {
-                        result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
-                            ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, true));
+                        result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
+                            TypeFlow<?> proxy = bb.analysisPolicy().proxy(node.getNodeSourcePosition(), type.getTypeFlow(bb, true));
                             methodFlow.addMiscEntry(proxy);
                             return proxy;
                         });
@@ -772,9 +772,9 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof ExceptionObjectNode) {
                 ExceptionObjectNode node = (ExceptionObjectNode) n;
-                TypeFlowBuilder<?> exceptionObjectBuilder = TypeFlowBuilder.create(bb, node, ExceptionObjectTypeFlow.class, () -> {
+                TypeFlowBuilder<?> exceptionObjectBuilder = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
                     TypeFlow<?> input = ((AnalysisType) StampTool.typeOrNull(node)).getTypeFlow(bb, false);
-                    ExceptionObjectTypeFlow exceptionObjectFlow = new ExceptionObjectTypeFlow(node, input);
+                    TypeFlow<?> exceptionObjectFlow = bb.analysisPolicy().proxy(node.getNodeSourcePosition(), input);
                     methodFlow.addMiscEntry(exceptionObjectFlow);
                     return exceptionObjectFlow;
                 });
@@ -1161,9 +1161,9 @@ public class MethodTypeFlowBuilder {
                      */
                 } else {
                     /* Word-to-object: Any object can flow out from a low level memory read. */
-                    TypeFlowBuilder<?> wordToObjectBuilder = TypeFlowBuilder.create(bb, node, WordToObjectTypeFlow.class, () -> {
+                    TypeFlowBuilder<?> wordToObjectBuilder = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
                         /* Use the all-instantiated type flow. */
-                        WordToObjectTypeFlow objectFlow = new WordToObjectTypeFlow(node, bb.getAllInstantiatedTypeFlow());
+                        TypeFlow<?> objectFlow = bb.analysisPolicy().proxy(node.getNodeSourcePosition(), bb.getAllInstantiatedTypeFlow());
                         methodFlow.addMiscEntry(objectFlow);
                         return objectFlow;
                     });
@@ -1387,7 +1387,7 @@ public class MethodTypeFlowBuilder {
             InvokeTypeFlow invokeFlow = null;
             switch (invokeKind) {
                 case Static:
-                    invokeFlow = new StaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
                     break;
                 case Special:
                     invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
@@ -1422,7 +1422,7 @@ public class MethodTypeFlowBuilder {
                  * Only set the actual return in the invoke when it is materialized, i.e., it is
                  * used by other flows.
                  */
-                invokeFlow.setActualReturn(actualReturn);
+                invokeFlow.setActualReturn(bb, targetIsStatic, actualReturn);
                 actualReturn.setInvokeFlow(invokeFlow);
                 return actualReturn;
             });

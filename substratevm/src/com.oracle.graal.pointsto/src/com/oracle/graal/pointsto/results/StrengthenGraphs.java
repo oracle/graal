@@ -121,7 +121,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod m) {
         DebugContext debug = new DebugContext.Builder(bb.getOptions(), new GraalDebugHandlersFactory(bb.getProviders().getSnippetReflection())).build();
         PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-        StructuredGraph graph = method.decodeAnalyzedGraph(debug, method.getTypeFlow().getOriginalMethodFlows().getNodeFlows().getKeys());
+        StructuredGraph graph = method.decodeAnalyzedGraph(debug, method.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getKeys());
         if (graph != null) {
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
@@ -135,7 +135,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         /* Ensure that the temporarily decoded graph is not kept alive via the node references. */
-        var cursor = method.getTypeFlow().getOriginalMethodFlows().getNodeFlows().getEntries();
+        var cursor = method.getTypeFlow().getMethodFlowsGraph().getNodeFlows().getEntries();
         while (cursor.advance()) {
             cursor.getKey().clear();
         }
@@ -194,7 +194,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             this.methodFlow = method.getTypeFlow();
             this.createdPiNodes = new NodeBitMap(graph);
 
-            MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
+            MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
             parameterFlows = originalFlows.getParameters();
             nodeFlows = new NodeMap<>(graph);
             var cursor = originalFlows.getNodeFlows().getEntries();

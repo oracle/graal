@@ -1456,10 +1456,10 @@ public class NativeImageGenerator {
              */
             for (AnalysisMethod m : aUniverse.getMethods()) {
                 PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-                for (int i = 0; i < method.getTypeFlow().getOriginalMethodFlows().getParameters().length; i++) {
+                for (int i = 0; i < method.getTypeFlow().getMethodFlowsGraph().getParameters().length; i++) {
                     TypeState parameterState = method.getTypeFlow().getParameterTypeState(bigbang, i);
                     if (parameterState != null) {
-                        AnalysisType declaredType = method.getTypeFlow().getOriginalMethodFlows().getParameter(i).getDeclaredType();
+                        AnalysisType declaredType = method.getTypeFlow().getMethodFlowsGraph().getParameter(i).getDeclaredType();
                         if (declaredType.isInterface()) {
                             TypeState declaredTypeState = declaredType.getAssignableTypes(true);
                             parameterState = TypeState.forSubtraction(bigbang, parameterState, declaredTypeState);

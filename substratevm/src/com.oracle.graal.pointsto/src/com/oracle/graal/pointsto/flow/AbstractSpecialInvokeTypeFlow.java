@@ -75,7 +75,6 @@ public abstract class AbstractSpecialInvokeTypeFlow extends DirectInvokeTypeFlow
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
         /* When the receiver flow saturates start observing the flow of the receiver type. */
         replaceObservedWith(bb, receiverType);
     }

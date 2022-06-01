@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,24 +24,25 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.graph.Node;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 
-/**
- * Models an 'word to object' operation, i.e., reading an object from a pointer.
- */
-public class WordToObjectTypeFlow extends ProxyTypeFlow {
+import jdk.vm.ci.code.BytecodePosition;
 
-    public WordToObjectTypeFlow(Node source, TypeFlow<?> input) {
-        super(source, input);
+public abstract class AbstractStaticInvokeTypeFlow extends DirectInvokeTypeFlow {
+    protected AbstractStaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
-    @Override
-    public boolean canSaturate() {
-        return false;
+    protected AbstractStaticInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractStaticInvokeTypeFlow original) {
+        super(bb, methodFlows, original);
     }
 
     @Override
     public String toString() {
-        return "WordToObjectFlow<" + input + ">";
+        return "StaticInvoke<" + targetMethod.format("%h.%n") + ">" + ":" + getState();
     }
 }

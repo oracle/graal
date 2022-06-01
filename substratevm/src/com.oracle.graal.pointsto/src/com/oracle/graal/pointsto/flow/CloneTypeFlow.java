@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -63,17 +62,12 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        AnalysisContext enclosingContext = methodFlows.context();
-        AnalysisContext allocContext = bb.contextPolicy().allocationContext(enclosingContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
-
+        AnalysisContext allocContext = bb.analysisPolicy().allocationContext(bb, methodFlows);
         return new CloneTypeFlow(bb, this, methodFlows, allocContext);
     }
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        /* Only a clone should be updated */
-        assert this.isClone() && context != null;
-
         /* The input state has changed, clone its objects. */
         TypeState inputState = input.getState();
 
@@ -92,8 +86,6 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void update(PointsToAnalysis bb) {
-        assert this.isClone();
-
         /* Link the elements of the cloned objects to the elements of the source objects. */
         bb.analysisPolicy().linkClonedObjects(bb, input, this, source);
 
@@ -103,7 +95,6 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
         if (!isSaturated()) {
             /*
              * When the input flow saturates start observing the flow of the declared type, unless

@@ -40,8 +40,8 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
 import com.oracle.graal.pointsto.flow.SourceTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -196,8 +196,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
                 } else {
                     /* Use a type state which consists of the entire node's type hierarchy. */
                     AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
-                    result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
-                        ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, true));
+                    result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
+                        TypeFlow<?> proxy = bb.analysisPolicy().proxy(node.getNodeSourcePosition(), type.getTypeFlow(bb, true));
                         methodFlow.addMiscEntry(proxy);
                         return proxy;
                     });
@@ -225,8 +225,8 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             ObjectStamp valueStamp = (ObjectStamp) stamp;
             AnalysisType valueType = (AnalysisType) (valueStamp.type() == null ? bb.getObjectType() : valueStamp.type());
 
-            TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, ProxyTypeFlow.class, () -> {
-                ProxyTypeFlow proxy = new ProxyTypeFlow(storeNode, valueType.getTypeFlow(bb, false));
+            TypeFlowBuilder<?> storeBuilder = TypeFlowBuilder.create(bb, storeNode, TypeFlow.class, () -> {
+                TypeFlow<?> proxy = bb.analysisPolicy().proxy(storeNode.getNodeSourcePosition(), valueType.getTypeFlow(bb, false));
                 methodFlow.addMiscEntry(proxy);
                 return proxy;
             });

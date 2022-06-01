@@ -70,7 +70,7 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void initClone(PointsToAnalysis bb) {
+        public void initFlow(PointsToAnalysis bb) {
             fieldFlow.addUse(bb, this);
         }
 
@@ -121,9 +121,6 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             /*
              * The state of the receiver object of the load operation has changed. Link the new heap
              * sensitive field flows.
@@ -144,7 +141,6 @@ public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone();
             if (!isSaturated()) {
                 /*
                  * When the receiver flow saturates start observing the flow of the field declaring
