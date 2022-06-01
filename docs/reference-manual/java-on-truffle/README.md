@@ -22,7 +22,7 @@ Besides complete language interoperability, with Java on Truffle you can:
 - run either a Java 8, Java 11, Java 17 guest JVM, allowing to embed e.g. a Java 8 context in a Java 11 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html)
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
-- run in the context of a native image while still allowing dynamically-loaded bytecode.
+- run in the context of a native executable while still allowing dynamically-loaded bytecode.
 - take advantage of unlimited [HotSwap capabilities](HotSwap.md) during a debugging session.
 
 Java on Truffle is an experimental technology in GraalVM, but already passes the Java Compatibility Kit (JCK or TCK for Java SE).
@@ -82,10 +82,10 @@ You can still influence the performance by passing the following options to `jav
 * `--engine.MultiTier=true` to enable multi-tier compilation;
 * `--engine.Inlining=false` in combination with `--java.InlineFieldAccessors=true` to make the compilation faster, in exchange for slower performance.
 
-The `--vm.XX:` syntax ensures the option is passed to the underlying [native image VM](../native-image/HostedvsRuntimeOptions.md).
+The `--vm.XX:` syntax ensures the option is passed to the underlying [Native Image VM](../native-image/HostedvsRuntimeOptions.md).
 When using the `-XX:` syntax, the VM first checks if there is such an option in the Java on Truffle runtime.
-If there is none, it will try to apply this option to the underlying native image VM.
-This might be important for options such as `MaxDirectMemorySize` which can be set independently at both levels: `-XX:MaxDirectMemorySize=256M` controls how much native memory can be reserved by the Java program running on Truffle (the guest VM), while `--vm.XX:MaxDirectMemorySize=256M` controls how much native memory can be reserved by native image (the host VM).
+If there is none, it will try to apply this option to the underlying Native Image VM.
+This might be important for options such as `MaxDirectMemorySize` which can be set independently at both levels: `-XX:MaxDirectMemorySize=256M` controls how much native memory can be reserved by the Java program running on Truffle (the guest VM), while `--vm.XX:MaxDirectMemorySize=256M` controls how much native memory can be reserved by Native Image (the host VM).
 
 ## Start Running Applications
 
