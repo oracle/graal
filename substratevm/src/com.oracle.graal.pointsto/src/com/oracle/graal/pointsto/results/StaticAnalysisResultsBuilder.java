@@ -60,6 +60,9 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
 
         MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
+        if (!methodFlow.flowsGraphCreated()) {
+            return StaticAnalysisResults.NO_RESULTS;
+        }
         MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
 
         ArrayList<JavaTypeProfile> paramProfiles = new ArrayList<>(originalFlows.getParameters().length);

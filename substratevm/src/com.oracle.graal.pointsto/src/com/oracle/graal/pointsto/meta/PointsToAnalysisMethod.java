@@ -107,7 +107,7 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public Iterable<? extends InvokeInfo> getInvokes() {
-        return getTypeFlow().getInvokes();
+        return getTypeFlow().getInvokes().getValues();
     }
 
     @Override

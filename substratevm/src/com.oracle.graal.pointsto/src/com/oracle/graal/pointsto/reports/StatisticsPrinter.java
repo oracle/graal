@@ -188,6 +188,9 @@ public final class StatisticsPrinter {
 
             boolean runtimeMethod = isRuntimeLibraryType(method.getDeclaringClass());
             MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
+            if (!methodFlow.flowsGraphCreated()) {
+                continue;
+            }
             MethodFlowsGraph originalFlows = methodFlow.getMethodFlowsGraph();
 
             var cursor = originalFlows.getInstanceOfFlows().getEntries();

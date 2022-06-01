@@ -35,9 +35,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTyp
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
 
@@ -87,17 +88,6 @@ public class MethodFlowsGraph {
         boolean isStatic = Modifier.isStatic(method.getModifiers());
         int parameterCount = method.getSignature().getParameterCount(!isStatic);
         parameters = new FormalParamTypeFlow[parameterCount];
-
-        // lookup the parameters type so that they are added to the universe even if the method is
-        // never linked and parsed
-        int offset = isStatic ? 0 : 1;
-        for (int i = offset; i < parameters.length; i++) {
-            method.getSignature().getParameterType(i - offset, method.getDeclaringClass());
-        }
-
-        // lookup the return type so that it is added to the universe even if the method is
-        // never linked and parsed
-        method.getSignature().getReturnType(method.getDeclaringClass());
     }
 
     public <T extends TypeFlow<?>> T lookupCloneOf(@SuppressWarnings("unused") PointsToAnalysis bb, T original) {
@@ -286,6 +276,14 @@ public class MethodFlowsGraph {
 
     public TypeFlow<?>[] getParameters() {
         return parameters;
+    }
+
+    public void addNodeFlow(PointsToAnalysis bb, Node node, TypeFlow<?> input) {
+        if (bb.strengthenGraalGraphs()) {
+            addNodeFlow(new EncodedNodeReference(node), input);
+        } else {
+            addMiscEntryFlow(input);
+        }
     }
 
     public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
