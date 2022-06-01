@@ -229,17 +229,22 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private void addBoxingEliminationNodeChildAnnotations(MethodProperties props, CodeTypeElement ct) {
         int i = 0;
+        int localI = 0;
         CodeTypeElement childType = createRegularNodeChild();
         CodeAnnotationMirror repAnnotation = new CodeAnnotationMirror(types.NodeChildren);
         List<CodeAnnotationValue> anns = new ArrayList<>();
         for (ParameterKind param : props.parameters) {
+            CodeAnnotationMirror ann = new CodeAnnotationMirror(types.NodeChild);
             if (param == ParameterKind.STACK_VALUE) {
-                CodeAnnotationMirror ann = new CodeAnnotationMirror(types.NodeChild);
-                // CodeTypeElement childType = createRegularNodeChild();
                 ann.setElementValue("value", new CodeAnnotationValue("$child" + i));
                 ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(childType)));
                 anns.add(new CodeAnnotationValue(ann));
                 i++;
+            } else if (param == ParameterKind.LOCAL_SETTER) {
+                ann.setElementValue("value", new CodeAnnotationValue("$localRef" + localI));
+                ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterNodeChild())));
+                anns.add(new CodeAnnotationValue(ann));
+                localI++;
             }
         }
         repAnnotation.setElementValue("value", new CodeAnnotationValue(anns));
@@ -283,6 +288,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
     private MethodProperties processMethod(SingleOperationData data, ExecutableElement method) {
         boolean isVariadic = false;
+        int numLocalSetters = 0;
         List<ParameterKind> parameters = new ArrayList<>();
 
         for (VariableElement param : method.getParameters()) {
@@ -290,11 +296,20 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 if (isVariadic) {
                     data.addError(method, "Multiple @Variadic arguments not allowed");
                 }
+                if (numLocalSetters > 0) {
+                    data.addError(param, "Value arguments after LocalSetter not allowed");
+                }
                 isVariadic = true;
                 parameters.add(ParameterKind.VARIADIC);
+            } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetter)) {
+                parameters.add(ParameterKind.LOCAL_SETTER);
+                numLocalSetters++;
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
                     data.addError(method, "Value arguments after @Variadic not allowed");
+                }
+                if (numLocalSetters > 0) {
+                    data.addError(param, "Value arguments after LocalSetter not allowed");
                 }
                 if (ElementUtils.typeEquals(param.asType(), types.Frame) || ElementUtils.typeEquals(param.asType(), types.VirtualFrame)) {
                     parameters.add(ParameterKind.VIRTUAL_FRAME);
@@ -306,7 +321,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
 
         boolean returnsValue = method.getReturnType().getKind() != TypeKind.VOID;
 
-        MethodProperties props = new MethodProperties(method, parameters, isVariadic, returnsValue);
+        MethodProperties props = new MethodProperties(method, parameters, isVariadic, returnsValue, numLocalSetters);
 
         return props;
     }
@@ -339,6 +354,15 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         for (TypeKind unboxKind : parentData.getBoxingEliminatedTypes()) {
             result.add(createChildExecuteMethod(unboxKind.name(), new CodeTypeMirror(unboxKind)));
         }
+
+        return result;
+    }
+
+    private CodeTypeElement createLocalSetterNodeChild() {
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        result.setSuperClass(types.Node);
+
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetter));
 
         return result;
     }

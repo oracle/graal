@@ -71,6 +71,10 @@ public abstract class Operation {
 
     public abstract List<TypeMirror> getBuilderArgumentTypes();
 
+    public boolean needsOperationData() {
+        return true;
+    }
+
     @SuppressWarnings("unused")
     public CodeTree createBeginCode(BuilderVariables vars) {
         return null;
@@ -102,6 +106,14 @@ public abstract class Operation {
 
     public int getNumAuxValues() {
         return 0;
+    }
+
+    public int numLocalReferences() {
+        return 0;
+    }
+
+    public boolean isRealOperation() {
+        return true;
     }
 
     public abstract CodeTree createPushCountCode(BuilderVariables vars);
@@ -141,6 +153,11 @@ public abstract class Operation {
         @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
             return instruction.getBuilderArgumentTypes();
+        }
+
+        @Override
+        public int numLocalReferences() {
+            return instruction.numLocalReferences();
         }
     }
 
@@ -439,6 +456,11 @@ public abstract class Operation {
         @Override
         public List<TypeMirror> getBuilderArgumentTypes() {
             return List.of(ProcessorContext.getInstance().getTypes().OperationLabel);
+        }
+
+        @Override
+        public boolean needsOperationData() {
+            return false;
         }
     }
 
@@ -815,6 +837,42 @@ public abstract class Operation {
             return b.build();
         }
 
+    }
+
+    public static class LocalSetter extends Operation {
+
+        protected LocalSetter(OperationsContext context, int id) {
+            super(context, "LocalSetter", id, 0);
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(getTypes().OperationLocal);
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startStatement().variable(vars.operationData).string(".localReferences[").variable(vars.operationData).string(".numLocalReferences++] = arg0").end();
+
+            return b.build();
+        }
+
+        @Override
+        public boolean needsOperationData() {
+            return false;
+        }
+
+        @Override
+        public boolean isRealOperation() {
+            return false;
+        }
     }
 
     private static final CodeTree createSetAux(BuilderVariables vars, int index, CodeTree value) {

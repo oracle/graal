@@ -7,6 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.dsl.processor.java.model.CodeTree;
+import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
 import com.oracle.truffle.dsl.processor.operations.Operation.ShortCircuitOperation;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.instructions.BranchInstruction;
@@ -88,6 +92,8 @@ public class OperationsContext {
         createLoadArgument();
         createLoadStoreLocal();
         createReturn();
+
+        add(new Operation.LocalSetter(this, operationId++));
 
         add(new Operation.InstrumentTag(this, operationId++,
                         add(new InstrumentationEnterInstruction(instructionId++)),

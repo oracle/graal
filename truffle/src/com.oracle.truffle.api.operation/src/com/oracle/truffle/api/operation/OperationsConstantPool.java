@@ -20,10 +20,16 @@ public class OperationsConstantPool {
     }
 
     public synchronized int reserve() {
+        return reserve(1);
+    }
+
+    public synchronized int reserve(int count) {
         if (frozen)
             throw new IllegalStateException("constant pool already frozen");
         int idx = values.size();
-        values.add(null);
+        for (int i = 0; i < count; i++) {
+            values.add(null);
+        }
         return idx;
     }
 
@@ -31,6 +37,10 @@ public class OperationsConstantPool {
         this.frozen = false;
         this.values = new ArrayList<>();
         this.frozenValues = null;
+    }
+
+    public void setValue(int offset, Object value) {
+        values.set(offset, value);
     }
 
     public synchronized void freeze() {

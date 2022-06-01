@@ -12,7 +12,9 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.Operation.BuilderVariables;
+import com.oracle.truffle.dsl.processor.operations.OperationGeneratorUtils;
 import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs;
+import com.oracle.truffle.dsl.processor.operations.OperationsBytecodeNodeGeneratorPlugs.LocalRefHandle;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.MethodProperties;
 import com.oracle.truffle.dsl.processor.operations.SingleOperationData.ParameterKind;
@@ -36,6 +38,7 @@ public class CustomInstruction extends Instruction {
     private final List<QuickenedInstruction> quickenedVariants = new ArrayList<>();
     private int boxingEliminationBitOffset;
     private int boxingEliminationBitMask;
+    private ArrayList<Integer> localRefIndices;
 
     public SingleOperationData getData() {
         return data;
@@ -114,22 +117,34 @@ public class CustomInstruction extends Instruction {
                     b.end();
                     break;
                 case CONST:
+                    b.startAssign("int constantOffset").startCall(vars.consts, "reserve").string("" + numConsts).end(2);
+
                     b.startStatement();
                     b.startCall("LE_BYTES", "putShort");
                     b.variable(vars.bc);
                     b.tree(index);
-                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).startCall(vars.consts, "reserve").end(2);
+                    b.startGroup().cast(new CodeTypeMirror(TypeKind.SHORT)).string("constantOffset").end();
                     b.end();
                     break;
                 case CONTINUATION:
                     break;
+                default:
+                    throw new UnsupportedOperationException("unexpected value: " + dataKinds[i]);
             }
 
             b.end();
         }
 
-        for (int i = 1; i < numConsts; i++) {
-            b.startStatement().startCall(vars.consts, "reserve").end(2);
+        int iLocal = 0;
+        for (int localIndex : localRefIndices) {
+            b.startStatement().startCall(vars.consts, "setValue");
+            b.string("constantOffset + " + localIndex);
+            b.startStaticCall(OperationGeneratorUtils.getTypes().LocalSetter, "create");
+            b.startCall("getLocalIndex");
+            b.startGroup().variable(vars.operationData).string(".localReferences[" + (iLocal++) + "]").end();
+            b.end();
+            b.end();
+            b.end(2);
         }
 
         return b.build();
@@ -266,8 +281,16 @@ public class CustomInstruction extends Instruction {
         this.numChildNodes = numChildNodes;
     }
 
-    public void setNumConsts(int numConsts) {
-        this.numConsts = numConsts;
+    public void setNumConsts(List<Object> consts) {
+        this.numConsts = consts.size();
+        this.localRefIndices = new ArrayList<>();
+        int i = 0;
+        for (Object c : consts) {
+            if (c instanceof LocalRefHandle) {
+                localRefIndices.add(i);
+            }
+            i++;
+        }
     }
 
     public void setPrepareAOTMethod(CodeExecutableElement prepareAOTMethod) {
@@ -336,5 +359,10 @@ public class CustomInstruction extends Instruction {
 
     public List<QuickenedInstruction> getQuickenedVariants() {
         return quickenedVariants;
+    }
+
+    @Override
+    public int numLocalReferences() {
+        return data.getMainProperties().numLocalReferences;
     }
 }

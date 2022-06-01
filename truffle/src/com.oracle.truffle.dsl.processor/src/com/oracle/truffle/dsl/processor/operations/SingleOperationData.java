@@ -29,7 +29,8 @@ public class SingleOperationData extends Template {
     public static enum ParameterKind {
         STACK_VALUE,
         VARIADIC,
-        VIRTUAL_FRAME;
+        VIRTUAL_FRAME,
+        LOCAL_SETTER;
 
         public TypeMirror getParameterType(ProcessorContext context) {
             switch (this) {
@@ -39,6 +40,8 @@ public class SingleOperationData extends Template {
                     return new ArrayCodeTypeMirror(context.getType(Object.class));
                 case VIRTUAL_FRAME:
                     return context.getTypes().VirtualFrame;
+                case LOCAL_SETTER:
+                    return context.getTypes().LocalSetter;
                 default:
                     throw new IllegalArgumentException("" + this);
             }
@@ -50,6 +53,7 @@ public class SingleOperationData extends Template {
                 case VARIADIC:
                     return true;
                 case VIRTUAL_FRAME:
+                case LOCAL_SETTER:
                     return false;
                 default:
                     throw new IllegalArgumentException(this.toString());
@@ -63,8 +67,9 @@ public class SingleOperationData extends Template {
         public final boolean isVariadic;
         public final boolean returnsValue;
         public final int numStackValues;
+        public final int numLocalReferences;
 
-        public MethodProperties(ExecutableElement element, List<ParameterKind> parameters, boolean isVariadic, boolean returnsValue) {
+        public MethodProperties(ExecutableElement element, List<ParameterKind> parameters, boolean isVariadic, boolean returnsValue, int numLocalReferences) {
             this.element = element;
             this.parameters = parameters;
             int stackValues = 0;
@@ -76,6 +81,7 @@ public class SingleOperationData extends Template {
             this.numStackValues = stackValues;
             this.isVariadic = isVariadic;
             this.returnsValue = returnsValue;
+            this.numLocalReferences = numLocalReferences;
         }
 
         public void checkMatches(SingleOperationData data, MethodProperties other) {
@@ -90,11 +96,16 @@ public class SingleOperationData extends Template {
             if (other.returnsValue != returnsValue) {
                 data.addError(element, "All methods must (not) return value");
             }
+
+            if (other.numLocalReferences != numLocalReferences) {
+                data.addError(element, "All methods must have same number of local references");
+            }
         }
 
         @Override
         public String toString() {
-            return "Props[parameters=" + parameters + ", variadic=" + isVariadic + ", returns=" + returnsValue + ", numStackValues=" + numStackValues + "]";
+            return "Props[parameters=" + parameters + ", variadic=" + isVariadic + ", returns=" + returnsValue + ", numStackValues=" + numStackValues + ", numLocalReferences=" + numLocalReferences +
+                            "]";
         }
     }
 

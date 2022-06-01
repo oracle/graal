@@ -67,7 +67,7 @@ public abstract class OperationBuilder {
         numLocals = 0;
         constPool.reset();
 
-        operationData = new BuilderOperationData(null, getBlockOperationIndex(), 0, 0, false);
+        operationData = new BuilderOperationData(null, getBlockOperationIndex(), 0, 0, false, 0);
 
         labelFills.clear();
 

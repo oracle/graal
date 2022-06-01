@@ -519,8 +519,31 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
         return OperationsData.convertToFrameType(type);
     }
 
+    public static final class LocalRefHandle {
+        private final String name;
+
+        private LocalRefHandle(String name) {
+            this.name = name;
+
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof LocalRefHandle && ((LocalRefHandle) obj).name.equals(this.name);
+        }
+
+        @Override
+        public int hashCode() {
+            return name.hashCode();
+        }
+    }
+
     @Override
     public CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
+        if (execution.getName().startsWith("$localRef")) {
+            return createArrayReference(frameState, new LocalRefHandle(execution.getName()), true, types.LocalSetter, false);
+        }
+
         int childIndex = execution.getIndex();
         int offset = cinstr.numPopStatic() - childIndex;
 

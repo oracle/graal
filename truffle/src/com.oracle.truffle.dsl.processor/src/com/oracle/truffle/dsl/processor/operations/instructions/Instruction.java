@@ -631,4 +631,8 @@ public abstract class Instruction {
     public CodeTree[] createTracingArguments(ExecutionVariables vars) {
         return new CodeTree[0];
     }
+
+    public int numLocalReferences() {
+        return 0;
+    }
 }

@@ -424,11 +424,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("System.out.print(\"\\n\" + \" \".repeat(indent) + \"(" + op.name + ")\")");
         }
 
-        b.statement("doBeforeChild()");
+        if (op.isRealOperation()) {
+            b.statement("doBeforeChild()");
+        }
 
-        boolean isLabel = op instanceof Operation.Label;
+        boolean needsData = op.needsOperationData();
 
-        if (!isLabel) {
+        if (needsData) {
             b.startAssign(vars.operationData);
             b.startNew(types.BuilderOperationData);
 
@@ -437,6 +439,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.string("getCurStack()");
             b.string("" + op.getNumAuxValues());
             b.string("false");
+
+            b.string("" + op.numLocalReferences());
 
             for (VariableElement v : metEmit.getParameters()) {
                 b.variable(v);
@@ -449,11 +453,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
 
         b.startAssign(vars.lastChildPushCount).tree(op.createPushCountCode(vars)).end();
 
-        if (!isLabel) {
+        if (needsData) {
             b.startAssign(vars.operationData).variable(vars.operationData).string(".parent").end();
         }
 
-        b.statement("doAfterChild()");
+        if (op.isRealOperation()) {
+            b.statement("doAfterChild()");
+        }
 
         return metEmit;
     }
@@ -517,9 +523,13 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.startAssign(vars.lastChildPushCount).tree(lastPush).end();
         }
 
-        b.startAssign(vars.operationData).variable(vars.operationData).string(".parent").end();
+        if (op.needsOperationData()) {
+            b.startAssign(vars.operationData).variable(vars.operationData).string(".parent").end();
+        }
 
-        b.statement("doAfterChild()");
+        if (op.isRealOperation()) {
+            b.statement("doAfterChild()");
+        }
 
         vars.numChildren = null;
 
@@ -547,21 +557,27 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsDa
             b.statement("indent++");
         }
 
-        b.statement("doBeforeChild()");
-
-        b.startAssign(vars.operationData).startNew(types.BuilderOperationData);
-
-        b.variable(vars.operationData);
-        b.variable(op.idConstantField);
-        b.string("getCurStack()");
-        b.string("" + op.getNumAuxValues());
-        b.string("" + op.hasLeaveCode());
-
-        for (VariableElement el : metBegin.getParameters()) {
-            b.variable(el);
+        if (op.isRealOperation()) {
+            b.statement("doBeforeChild()");
         }
 
-        b.end(2);
+        if (op.needsOperationData()) {
+            b.startAssign(vars.operationData).startNew(types.BuilderOperationData);
+
+            b.variable(vars.operationData);
+            b.variable(op.idConstantField);
+            b.string("getCurStack()");
+            b.string("" + op.getNumAuxValues());
+            b.string("" + op.hasLeaveCode());
+
+            b.string("" + op.numLocalReferences());
+
+            for (VariableElement el : metBegin.getParameters()) {
+                b.variable(el);
+            }
+
+            b.end(2);
+        }
 
         b.tree(op.createBeginCode(vars));
 

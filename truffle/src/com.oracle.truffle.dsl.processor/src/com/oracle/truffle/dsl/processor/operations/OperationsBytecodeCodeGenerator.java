@@ -206,7 +206,7 @@ public class OperationsBytecodeCodeGenerator {
                 cinstr.setExecuteMethod(uncExec);
                 cinstr.setDataKinds(additionalDataKinds.toArray(new DataKind[additionalDataKinds.size()]));
                 cinstr.setNumChildNodes(childIndices.size());
-                cinstr.setNumConsts(constIndices.size());
+                cinstr.setNumConsts(constIndices);
                 cinstr.setPrepareAOTMethod(metPrepareForAOT);
 
                 if (m.isTracing()) {

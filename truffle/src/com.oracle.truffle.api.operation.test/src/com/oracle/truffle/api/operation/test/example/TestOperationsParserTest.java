@@ -906,4 +906,25 @@ public class TestOperationsParserTest {
         Assert.assertEquals(TestOperations.TestData.getDefaultValue(), node.getMetadata(TestOperations.TestData));
         Assert.assertEquals(TestOperations.TestData.getDefaultValue(), TestOperations.TestData.getValue(node));
     }
+
+    @Test
+    public void testTeeLocal() {
+        RootCallTarget root = parse(b -> {
+
+            OperationLocal local = b.createLocal();
+
+            b.beginTeeLocal();
+            b.emitConstObject(1L);
+            b.emitLocalSetter(local);
+            b.endTeeLocal();
+
+            b.beginReturn();
+            b.emitLoadLocal(local);
+            b.endReturn();
+
+            b.publish();
+        });
+
+        Assert.assertEquals(1L, root.call());
+    }
 }

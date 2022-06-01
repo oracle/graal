@@ -8,9 +8,11 @@ public class BuilderOperationData {
     public final boolean needsLeave;
     public final Object[] aux;
     public final Object[] arguments;
+    public final OperationLocal[] localReferences;
     public int numChildren = 0;
+    public int numLocalReferences = 0;
 
-    public BuilderOperationData(BuilderOperationData parent, int id, int stackDepth, int numAux, boolean needsLeave, Object... arguments) {
+    public BuilderOperationData(BuilderOperationData parent, int id, int stackDepth, int numAux, boolean needsLeave, int numLocalReferences, Object... arguments) {
         this.parent = parent;
         this.depth = parent == null ? 0 : parent.depth + 1;
         this.operationId = id;
@@ -18,5 +20,6 @@ public class BuilderOperationData {
         this.aux = new Object[numAux];
         this.needsLeave = needsLeave || (parent != null ? parent.needsLeave : false);
         this.arguments = arguments;
+        this.localReferences = new OperationLocal[numLocalReferences];
     }
 }
