@@ -722,6 +722,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Create a heap dump and exit.")//
+    public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new ImmutableRuntimeOptionKey<>(false);
+
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new ImmutableRuntimeOptionKey<>(false);
 
