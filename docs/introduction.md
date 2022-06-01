@@ -40,8 +40,8 @@ The JVM passes bytecodes for Java or any other JVM-native language to the compil
 Interpreters for supported languages, written on top of the [Truffle framework](../truffle/docs/README.md), are themselves Java programs that run on the JVM.
 
 #### Native Image
-[Native Image](reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone binary executable or a native shared library.
-The Java bytecode that is processed during the native image build includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
+[Native Image](reference-manual/native-image/README.md) is an innovative technology that compiles Java code into a standalone native executable or a native shared library.
+The Java bytecode that is processed during the build of a native executable includes all application classes, dependencies, third party dependent libraries, and any JDK classes that are required.
 A generated self-contained native executable is specific to each individual operating systems and machine architecture that does not require a JVM.
 
 #### Java on Truffle
