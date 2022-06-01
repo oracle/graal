@@ -28,10 +28,17 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 class TraversingBlockingQueue implements BlockingQueue<Runnable> {
-    final BlockingQueue<Runnable> entries = new LinkedBlockingDeque<>();
+
+    TraversingBlockingQueue(BlockingQueue<Runnable> entries) {
+        this.entries = entries;
+    }
+
+    final BlockingQueue<Runnable> entries;
 
     @SuppressWarnings("unchecked")
     private static CompilationTask task(Runnable entry) {
