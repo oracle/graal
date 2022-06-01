@@ -90,7 +90,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
+public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject {
 
     // region Interop
 
@@ -485,7 +485,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     protected Symbol<Name> name;
     protected Symbol<Type> type;
-    private final EspressoContext context;
 
     private final int id;
 
@@ -604,7 +603,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
-        this.context = context;
+        super(context);
         this.name = name;
         this.type = type;
         this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
@@ -689,14 +688,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
-    public final EspressoContext getContext() {
-        if (!CompilerDirectives.isPartialEvaluationConstant(this)) {
-            CompilerAsserts.neverPartOfCompilation("Klass.getContext() does not return a constant context.");
-        }
-        return context;
-    }
-
-    @Override
     public final boolean equals(Object that) {
         return this == that;
     }
@@ -704,19 +695,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public final int hashCode() {
         return getType().hashCode();
-    }
-
-    /**
-     * Final override for performance reasons.
-     * <p>
-     * The compiler cannot see that the {@link Klass} hierarchy is sealed, there's a single
-     * {@link ContextAccess#getMeta} implementation.
-     * <p>
-     * This final override avoids the virtual call in compiled code.
-     */
-    @Override
-    public final Meta getMeta() {
-        return getContext().getMeta();
     }
 
     public final StaticObject tryInitializeAndGetStatics() {

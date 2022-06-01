@@ -37,6 +37,7 @@ import java.util.Arrays;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -70,10 +71,15 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  */
 public final class GuestAllocator extends ContextAccessImpl {
     private final EspressoLanguage lang;
+    private final AllocationReporter allocationReporter;
 
-    public GuestAllocator(EspressoContext context) {
+    public GuestAllocator(EspressoContext context, AllocationReporter allocationReporter) {
         super(context);
         this.lang = context.getLanguage();
+        this.allocationReporter = allocationReporter;
+        if (allocationReporter != null) {
+            lang.invalidateAllocationTrackingDisabled();
+        }
     }
 
     /**
@@ -355,7 +361,7 @@ public final class GuestAllocator extends ContextAccessImpl {
         if (klass != null) {
             klass.safeInitialize();
         }
-        return trackForeignAllocation(klass, newObj);
+        return trackAllocation(klass, newObj, lang, klass);
     }
 
     private void setModule(StaticObject obj, Klass klass) {
@@ -406,30 +412,31 @@ public final class GuestAllocator extends ContextAccessImpl {
     }
 
     private StaticObject trackAllocation(Klass klass, StaticObject obj) {
-        if (klass == null || getContext() == null) {
-            return obj;
-        }
-        if (!CompilerDirectives.isPartialEvaluationConstant(getContext())) {
-            // TODO: fail here ?
-            return trackAllocationBoundary(getContext(), obj);
-        }
-        return getContext().trackAllocation(obj);
+        return trackAllocation(klass, obj, lang, this);
     }
 
-    private static StaticObject trackForeignAllocation(Klass klass, StaticObject obj) {
-        if (klass == null) {
+    private static StaticObject trackAllocation(Klass klass, StaticObject obj, EspressoLanguage lang, ContextAccessImpl contextAccess) {
+        if (klass == null || lang.isAllocationTrackingDisabled()) {
             return obj;
         }
-        if (CompilerDirectives.isPartialEvaluationConstant(klass)) {
-            return klass.getContext().trackAllocation(obj);
-        } else {
-            return trackAllocationBoundary(klass.getContext(), obj);
+        if (!CompilerDirectives.isPartialEvaluationConstant(contextAccess)) {
+            return trackAllocationBoundary(contextAccess, obj);
         }
+        return contextAccess.getAllocator().trackAllocation(obj);
     }
 
     @TruffleBoundary
-    private static StaticObject trackAllocationBoundary(EspressoContext context, StaticObject obj) {
-        return context.trackAllocation(obj);
+    private static StaticObject trackAllocationBoundary(ContextAccessImpl context, StaticObject obj) {
+        return context.getAllocator().trackAllocation(obj);
+    }
+
+    public <T> T trackAllocation(T object) {
+        if (allocationReporter != null) {
+            CompilerAsserts.partialEvaluationConstant(allocationReporter);
+            allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
+            allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
+        }
+        return object;
     }
 
     public interface AllocationProfiler {

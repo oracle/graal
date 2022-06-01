@@ -137,10 +137,6 @@ public final class EspressoContext {
     private final TimerCollection timers;
     // endregion Debug
 
-    // region Profiling
-    private final AllocationReporter allocationReporter;
-    // endregion Profiling
-
     // region Runtime
     private final StringTable strings;
     private final ClassRegistries registries;
@@ -273,10 +269,9 @@ public final class EspressoContext {
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
 
-        this.allocator = new GuestAllocator(this);
+        this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
-        this.allocationReporter = env.lookup(AllocationReporter.class);
 
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
@@ -807,20 +802,6 @@ public final class EspressoContext {
 
     public EspressoException getOutOfMemory() {
         return outOfMemory;
-    }
-
-    public <T> T trackAllocation(T object) {
-        if (allocationReporter != null) {
-            /*
-             * These methods expects the allocation reporter to be PE-constant, if not, compilation
-             * will bail out. It should be left as-is and not be put behind a boundary. A compiled
-             * code path that triggers the compilation assert is wrongly made, as most compiled
-             * paths should be able to obtain a constant context.
-             */
-            allocationReporter.onEnter(null, 0, AllocationReporter.SIZE_UNKNOWN);
-            allocationReporter.onReturnValue(object, 0, AllocationReporter.SIZE_UNKNOWN);
-        }
-        return object;
     }
 
     public void prepareDispose() {

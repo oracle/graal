@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -35,10 +34,6 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-/**
- * Partial Evaluation friendly implementation of {@link ContextAccess}. Prevents svm reachability
- * analysis from reaching PE-unfriendly implementations (such as {@link Klass#getContext()}.
- */
 public abstract class ContextAccessImpl implements ContextAccess {
     private final EspressoContext context;
 
@@ -48,7 +43,6 @@ public abstract class ContextAccessImpl implements ContextAccess {
 
     @Override
     public final EspressoContext getContext() {
-        CompilerAsserts.partialEvaluationConstant(this);
         return context;
     }
 

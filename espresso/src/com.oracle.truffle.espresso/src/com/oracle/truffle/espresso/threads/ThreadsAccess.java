@@ -36,7 +36,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterrupter;
-import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -47,7 +46,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 /**
  * Provides bridges to guest world thread implementation.
  */
-public final class ThreadsAccess extends ContextAccessImpl implements ContextAccess, GuestInterrupter<StaticObject> {
+public final class ThreadsAccess extends ContextAccessImpl implements GuestInterrupter<StaticObject> {
 
     private final Meta meta;
 
