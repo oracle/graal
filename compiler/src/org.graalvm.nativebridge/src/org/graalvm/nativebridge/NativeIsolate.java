@@ -24,6 +24,10 @@
  */
 package org.graalvm.nativebridge;
 
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -31,6 +35,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
+import java.util.function.LongPredicate;
+import java.util.function.Supplier;
+
+import jdk.vm.ci.services.Services;
 
 /**
  * Represents a single native image isolate. All {@link NativeObject}s have a {@link NativeIsolate}
@@ -42,6 +51,7 @@ public final class NativeIsolate {
     private static final long NULL = 0L;
     private static final Map<Long, NativeIsolate> isolates = new ConcurrentHashMap<>();
     private static final AtomicInteger UUIDS = new AtomicInteger(0);
+    private static final Method createTerminatingThreadLocal = methodOrNull(Services.class, "createTerminatingThreadLocal", Supplier.class, Consumer.class);
 
     private final long uuid;
     private final long isolateId;
@@ -60,7 +70,8 @@ public final class NativeIsolate {
         this.config = config;
         this.cleaners = Collections.newSetFromMap(new ConcurrentHashMap<>());
         this.threads = new ArrayList<>();
-        this.attachedIsolateThread = new ThreadLocal<>();
+        this.attachedIsolateThread = createTerminatingThreadLocal != null ? NativeIsolate.invoke(createTerminatingThreadLocal, null,
+                        (Supplier<NativeIsolateThread>) () -> null, (Consumer<NativeIsolateThread>) this::detachThread) : new ThreadLocal<>();
         this.state = State.ACTIVE;
     }
 
@@ -266,12 +277,36 @@ public final class NativeIsolate {
                 if (!state.isValid()) {
                     return null;
                 }
-                nativeIsolateThread = new NativeIsolateThread(Thread.currentThread(), this, false, config.attachThread(isolateId));
+                long isolateThreadAddress = config.attachThread(isolateId);
+                nativeIsolateThread = new NativeIsolateThread(Thread.currentThread(), this, false, isolateThreadAddress);
                 threads.add(nativeIsolateThread);
                 attachedIsolateThread.set(nativeIsolateThread);
             }
         }
         return nativeIsolateThread;
+    }
+
+    private synchronized void detachThread(NativeIsolateThread nativeIsolateThread) {
+        if (state.isValid() && !nativeIsolateThread.isNativeThread()) {
+            config.detachThread(nativeIsolateThread.isolateThread);
+        }
+    }
+
+    private static Method methodOrNull(Class<?> enclosingClass, String methodName, Class<?>... parameterTypes) {
+        try {
+            return enclosingClass.getDeclaredMethod(methodName, parameterTypes);
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T invoke(Method method, Object receiver, Object... args) {
+        try {
+            return (T) method.invoke(receiver, args);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new InternalError(e);
+        }
     }
 
     private enum State {

@@ -372,8 +372,14 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "JVMCI_SERVICES",
         "org.graalvm.jniutils",
       ],
+      "requiresConcealed" : {
+        "jdk.internal.vm.ci" : [
+          "jdk.vm.ci.services",
+        ],
+      },
       "annotationProcessors" : [
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
