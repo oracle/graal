@@ -85,6 +85,14 @@ public final class LibGraalEntryPoints {
      */
     static final CGlobalData<Pointer> MANAGEMENT_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
+    /**
+     * A flag used by the
+     * {@code org.graalvm.compiler.hotspot.management.libgraal.LibGraalHotSpotGraalManagement#initialize}
+     * to show a deprecated option warning only once even in case of multiple compiler isolates per
+     * process.
+     */
+    static final CGlobalData<Pointer> MANAGEMENT_OPTION_WARNING = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
+
     static final CGlobalData<Pointer> GLOBAL_TIMESTAMP = CGlobalDataFactory.createBytes(() -> 8);
 
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")

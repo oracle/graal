@@ -760,6 +760,12 @@ final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
     private static Pointer getDefineClassesStatePointer() {
         return LibGraalEntryPoints.MANAGEMENT_BARRIER.get();
     }
+
+    @Substitute
+    private static Pointer getOptionWarningStatePointer() {
+        return LibGraalEntryPoints.MANAGEMENT_OPTION_WARNING.get();
+    }
+
 }
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
