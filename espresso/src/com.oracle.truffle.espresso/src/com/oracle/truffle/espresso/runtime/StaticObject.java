@@ -282,7 +282,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         return Array.getLength(getArray(language));
     }
 
-    Object cloneWrappedArray(EspressoLanguage language) {
+    final Object cloneWrappedArray(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
         Object array = getArray(language);
@@ -310,7 +310,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         return ((Object[]) array).clone();
     }
 
-    public StaticObject copy(EspressoContext context) {
+    public final StaticObject copy(EspressoContext context) {
         return context.getAllocator().copy(this);
     }
 

@@ -236,7 +236,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck,
-                                         @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
+                    @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
             checkHasAllFieldsOrThrow(value, klass, interop, meta);
         } catch (ClassCastException e) {
