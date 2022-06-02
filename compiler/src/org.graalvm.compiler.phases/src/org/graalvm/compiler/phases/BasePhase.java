@@ -206,6 +206,10 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         return false;
     }
 
+    /**
+     * Similar to a {@link DebugCloseable} but the {@link #close} operation gets a {@link Throwable}
+     * argument indicating whether the call to {@link #run} completed normally or with an exception.
+     */
     public interface ApplyScope {
         void close(Throwable t);
     }
@@ -213,9 +217,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     /**
      * An extension point for subclasses, called at the start of
      * {@link BasePhase#apply(StructuredGraph, Object, boolean)}. The return value is a
-     * {@link DebugCloseable scope} which will surround all the work performed by the
-     * {@link #apply}. This allows subclaseses to inject work which will performed before and after
-     * the application of this phase.
+     * {@link ApplyScope} which will surround all the work performed by the {@link #apply}. This
+     * allows subclaseses to inject work which will performed before and after the application of
+     * this phase.
      */
     @SuppressWarnings("unused")
     protected ApplyScope applyScope(StructuredGraph graph, C context) {
@@ -251,6 +255,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             }
             inputNodesCount.add(debug, graph.getNodeCount());
 
+            // This is a manual version of a try/resource pattern since the close operation might
+            // want to know whether the run call completed with an exception or not.
             ApplyScope applyScope = applyScope(graph, context);
             Throwable throwable = null;
             try {

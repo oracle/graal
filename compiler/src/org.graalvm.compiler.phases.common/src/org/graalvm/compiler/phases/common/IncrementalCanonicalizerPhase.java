@@ -98,6 +98,7 @@ public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
         public void close(Throwable throwable) {
             scope.close();
             if (throwable == null) {
+                // Perform the canonicalization if the main work completed without an exception.
                 if (!listener.getNodes().isEmpty()) {
                     canonicalizer.applyIncremental(graph, context, listener.getNodes());
                 }
