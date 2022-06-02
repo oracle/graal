@@ -1754,7 +1754,7 @@ public class ValueAPITest {
 
     }
 
-    public abstract static class AbstractClass1 extends AbstractList implements OtherInterface0, OtherInterface1 {
+    public abstract static class AbstractClass1<T> extends AbstractList<T> implements OtherInterface0, OtherInterface1 {
 
     }
 
@@ -2294,6 +2294,7 @@ public class ValueAPITest {
 
         Value metaParents = v.getMetaParents();
         assertTrue(metaParents.hasArrayElements());
+        assertEquals(superTypes.length, metaParents.getArraySize());
         for (int i = 0; i < superTypes.length; i++) {
             assertEquals(superTypes[i].getSimpleName(), metaParents.getArrayElement(i).getMetaSimpleName());
             assertEquals(superTypes[i].getTypeName(), metaParents.getArrayElement(i).getMetaQualifiedName());
