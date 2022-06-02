@@ -283,7 +283,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
     public static class SubstrateAMD64ComputedIndirectCallOp extends AMD64Call.MethodCallOp {
         public static final LIRInstructionClass<SubstrateAMD64ComputedIndirectCallOp> TYPE = LIRInstructionClass.create(SubstrateAMD64ComputedIndirectCallOp.class);
 
+        // addressBase is killed during code generation
         @Use({REG}) private Value addressBase;
+        @Temp({REG}) private Value addressBaseTemp;
+
         @Temp({REG, OperandFlag.ILLEGAL}) private Value exceptionTemp;
         private final Computation[] addressComputation;
         private final LIRKindTool lirKindTool;
@@ -293,7 +296,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                         Value addressBase, Computation[] addressComputation,
                         LIRFrameState state, Value exceptionTemp, LIRKindTool lirKindTool, SharedConstantReflectionProvider constantReflection) {
             super(TYPE, callTarget, result, parameters, temps, state);
-            this.addressBase = addressBase;
+            this.addressBase = this.addressBaseTemp = addressBase;
             this.exceptionTemp = exceptionTemp;
             this.addressComputation = addressComputation;
             this.lirKindTool = lirKindTool;
