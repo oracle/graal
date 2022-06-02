@@ -4720,9 +4720,10 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             @Specialization(limit = "CACHE_LIMIT")
             static Object doCached(PolyglotLanguageContext context, Object receiver, Object[] args,
                                    @CachedLibrary("receiver") InteropLibrary objects,
+                                   @Cached("createToHost()") ToHostValueNode toHost,
                                    @Cached BranchProfile unsupported) {
                 try {
-                    return objects.getMetaParents(receiver);
+                    return toHost.execute(context, objects.getMetaParents(receiver));
                 } catch (UnsupportedMessageException e) {
                     unsupported.enter();
                     throw unsupported(context, receiver, "throwException()", "isException()");

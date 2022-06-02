@@ -123,7 +123,7 @@ final class HostAccessor extends Accessor {
         @Override
         public Object toDisconnectedHostObject(Object hostValue) {
             if (hostValue instanceof Class) {
-                return HostObject.forClass((Class<?>) hostValue, null);
+                return HostObject.forClassNoCache((Class<?>) hostValue, null);
             } else {
                 return HostObject.forObject(hostValue, null);
             }

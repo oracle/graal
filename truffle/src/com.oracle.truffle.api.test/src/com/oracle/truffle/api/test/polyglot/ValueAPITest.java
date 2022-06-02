@@ -86,6 +86,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -1753,6 +1754,10 @@ public class ValueAPITest {
 
     }
 
+    public abstract static class AbstractClass1 extends AbstractList implements OtherInterface0, OtherInterface1 {
+
+    }
+
     @SuppressWarnings("unused")
     public static class AmbiguousType {
 
@@ -2275,6 +2280,24 @@ public class ValueAPITest {
                 return null;
             }
         }));
+    }
+
+    @Test
+    public void testMetaParents() {
+        Value v = context.asValue(AbstractClass1.class);
+        assertTrue(v.isMetaObject());
+        assertTrue(v.hasMetaParents());
+        Class<?>[] superTypes = new Class<?>[3];
+        superTypes[0] = AbstractClass1.class.getSuperclass();
+        superTypes[1] = AbstractClass1.class.getInterfaces()[0];
+        superTypes[2] = AbstractClass1.class.getInterfaces()[1];
+
+        Value metaParents = v.getMetaParents();
+        assertTrue(metaParents.hasArrayElements());
+        for (int i = 0; i < superTypes.length; i++) {
+            assertEquals(superTypes[i].getSimpleName(), metaParents.getArrayElement(i).getMetaSimpleName());
+            assertEquals(superTypes[i].getTypeName(), metaParents.getArrayElement(i).getMetaQualifiedName());
+        }
     }
 
     @Test

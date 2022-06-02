@@ -126,7 +126,7 @@ final class HostObject implements TruffleObject {
 
     /**
      * This method is guaranteed to return the same HostObject
-     * for the same host class instance.
+     * for the same host class instance and HostContext.
      */
     @TruffleBoundary
     static HostObject forClass(Class<?> clazz, HostContext context) {
@@ -2139,7 +2139,7 @@ final class HostObject implements TruffleObject {
         if (hasMetaObject()) {
             Object javaObject = this.obj;
             Class<?> javaType = javaObject.getClass();
-            return HostObject.forClass(javaType, context);
+            return context != null ? HostObject.forClass(javaType, context) : HostObject.forClassNoCache(javaType, null);
         } else {
             throw UnsupportedMessageException.create();
         }
