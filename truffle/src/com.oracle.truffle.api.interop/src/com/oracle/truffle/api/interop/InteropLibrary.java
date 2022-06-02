@@ -4985,6 +4985,11 @@ public abstract class InteropLibrary extends Library {
                 assert false : violationInvariant(receiver);
             } catch (UnsupportedMessageException e) {
             }
+            try {
+                delegate.getMetaParents(receiver);
+                assert false : violationInvariant(receiver);
+            } catch (UnsupportedMessageException e) {
+            }
             return true;
         }
 
@@ -5076,7 +5081,6 @@ public abstract class InteropLibrary extends Library {
                 assert wasMetaObject : violationInvariant(receiver);
             } else if (!wasMetaObject) {
                 assert assertNoMetaObject(receiver);
-                assert notOtherType(receiver, Type.META_OBJECT);
             }
             assert validProtocolReturn(receiver, result);
             return result;
