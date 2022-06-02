@@ -55,6 +55,7 @@ from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
 from binascii import b2a_hex
 from collections import OrderedDict
+from argparse import ArgumentParser
 
 from mx_javamodules import as_java_module, JavaModuleDescriptor
 
@@ -80,6 +81,7 @@ def _with_metaclass(meta, *bases):
     return type.__new__(MetaClass, '_with_metaclass({}, {})'.format(meta, bases), (), {})  # pylint: disable=unused-variable
 
 
+_suite = mx.suite('sdk')
 _graalvm_components = dict()  # By short_name
 _graalvm_components_by_name = dict()
 _vm_configs = []
@@ -1057,6 +1059,15 @@ def parse_release_file(release_file_path):
 def format_release_file(release_dict, skip_quoting=None):
     skip_quoting = skip_quoting or set()
     return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
+
+
+@mx.command(_suite, 'verify-graalvm-configs')
+def _verify_graalvm_configs(args):
+    parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
+    parser.add_argument('--suites', help='comma-separated list of suites')
+    args = parser.parse_args(args)
+    suites = args.suites if args.suites is None else args.suites.split(',')
+    verify_graalvm_configs(suites=suites)
 
 
 def verify_graalvm_configs(suites=None):
