@@ -29,14 +29,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder.CreateCachedGraphScope;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
@@ -56,12 +54,12 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     private int encodedGraphCacheCapacity;
     private int jvmciReservedReference0Offset = -1;
 
-    private boolean allowGraphCachePurges;
+    private boolean disableEncodedGraphCachePurges;
 
     public HotSpotPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration configForRoot) {
         super(config, configForRoot, new HotSpotKnownTruffleTypes(config.lastTier().providers().getMetaAccess()));
         this.graphCacheRef = new AtomicReference<>();
-        this.allowGraphCachePurges = true;
+        this.disableEncodedGraphCachePurges = false;
     }
 
     void setJvmciReservedReference0Offset(int jvmciReservedReference0Offset) {
@@ -121,14 +119,18 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     public void purgeEncodedGraphCache() {
-        if (allowGraphCachePurges) {
+        // Disabling purges only for tests.
+        if (!disableEncodedGraphCachePurges) {
             graphCacheRef.set(null);
         }
     }
 
-    // Called reflectively from EncodedGraphCacheTest.
-    public void setAllowGraphCachePurges(boolean value) {
-        allowGraphCachePurges = value;
+    /**
+     * Used only in unit-tests, to avoid transient failures caused by multiple compiler threads racing to purge the cache.
+     * Called reflectively from EncodedGraphCacheTest.
+     */
+    public void disableEncodedGraphCachePurges(boolean value) {
+        disableEncodedGraphCachePurges = value;
     }
 
     @Override

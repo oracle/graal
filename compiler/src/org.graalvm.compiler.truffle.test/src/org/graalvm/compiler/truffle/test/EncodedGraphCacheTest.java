@@ -74,10 +74,10 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         }
     }
 
-    public static void setAllowGraphCachePurges(TruffleCompilerImpl truffleCompiler, boolean value) {
+    public static void disableEncodedGraphCachePurges(TruffleCompilerImpl truffleCompiler, boolean value) {
         try {
             PartialEvaluator pe = truffleCompiler.getPartialEvaluator();
-            Method m = pe.getClass().getMethod("setAllowGraphCachePurges", boolean.class);
+            Method m = pe.getClass().getMethod("disableEncodedGraphCachePurges", boolean.class);
             m.invoke(pe, value);
         } catch (Exception e) {
             throw new AssertionError(e);
@@ -210,7 +210,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
             callTarget = compileAST(rootTestNode);
             truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
             // Disable graph cache purges to reduce transient failures with many compiler threads.
-            setAllowGraphCachePurges(truffleCompiler, false);
+            disableEncodedGraphCachePurges(truffleCompiler, true);
             graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod);
         }
         assertTrue("InvalidationTestNode.execute is cached", graphWasCached);
@@ -249,7 +249,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
         OptimizedCallTarget callTarget = compileAST(rootTestNode());
         TruffleCompilerImpl truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
-        setAllowGraphCachePurges(truffleCompiler, false);
+        disableEncodedGraphCachePurges(truffleCompiler, true);
         assertFalse("InvalidationTestNode.execute is not cached",
                         encodedGraphCacheContains(truffleCompiler, testMethod));
     }
@@ -259,7 +259,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         boolean[] cacheContainsTargetGraph = {false};
         for (int attempts = 0; attempts < 10 && !cacheContainsTargetGraph[0]; attempts++) {
             testHelper(100, 100_000, compiler -> {
-                setAllowGraphCachePurges(compiler, false);
+                disableEncodedGraphCachePurges(compiler, true);
                 cacheContainsTargetGraph[0] = encodedGraphCacheContains(compiler, testMethod);
             });
         }
@@ -271,7 +271,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         boolean[] cacheHolds1Element = {false};
         for (int attempts = 0; attempts < 10 && !cacheHolds1Element[0]; attempts++) {
             testHelper(1, 100_000, compiler -> {
-                setAllowGraphCachePurges(compiler, false);
+                disableEncodedGraphCachePurges(compiler, true);
                 EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
                 // The cache can have at most 1 element, but it could have been purged right before.
                 Assert.assertTrue("Cache holds at most 1 element", cache.size() <= 1);
@@ -286,7 +286,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         boolean[] nonEmptyGraphCache = {false};
         for (int attempts = 0; attempts < 10 && !nonEmptyGraphCache[0]; attempts++) {
             testHelper(-1, 100_000, compiler -> {
-                setAllowGraphCachePurges(compiler, false);
+                disableEncodedGraphCachePurges(compiler, true);
                 EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
                 nonEmptyGraphCache[0] = !cache.isEmpty();
             });
@@ -309,7 +309,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         boolean[] graphWasCached = {false};
         for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
             testHelper(1024, purgeDelay, compiler -> {
-                setAllowGraphCachePurges(compiler, true);
+                disableEncodedGraphCachePurges(compiler, false);
                 graphWasCached[0] = encodedGraphCacheContains(compiler, testMethod);
                 /*
                  * The compile queue can purge the encoded cache at any time, there's no guarantee
