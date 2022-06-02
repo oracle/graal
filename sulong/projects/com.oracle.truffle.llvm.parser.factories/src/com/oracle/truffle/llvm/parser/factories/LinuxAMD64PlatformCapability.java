@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaLis
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAMD64Syscall> {
+final class LinuxAMD64PlatformCapability extends BasicAMD64PlatformCapability<LinuxAMD64Syscall> {
 
     LinuxAMD64PlatformCapability(boolean loadCxxLibraries) {
         super(LinuxAMD64Syscall.class, loadCxxLibraries);

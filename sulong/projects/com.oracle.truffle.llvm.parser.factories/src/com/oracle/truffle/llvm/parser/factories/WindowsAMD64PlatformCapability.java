@@ -42,7 +42,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class WindowsAMD64PlatformCapability extends BasicPlatformCapability<WindowsAMD64PlatformCapability.UnknownSyscalls> {
+final class WindowsAMD64PlatformCapability extends BasicAMD64PlatformCapability<WindowsAMD64PlatformCapability.UnknownSyscalls> {
 
     /**
      * We don't know anything about this platform.

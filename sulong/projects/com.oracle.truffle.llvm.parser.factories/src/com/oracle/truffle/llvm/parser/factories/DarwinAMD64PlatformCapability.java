@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaLis
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinSyscall> {
+final class DarwinAMD64PlatformCapability extends BasicAMD64PlatformCapability<DarwinSyscall> {
 
     public static final int RTLD_GLOBAL_DARWIN = 8;
     public static final int RTLD_FIRST_DARWIN = 100;
