@@ -963,7 +963,7 @@ public class NativeImage {
         String clibrariesBuilderArg = config.getBuilderCLibrariesPaths().stream()
                         .map(path -> canonicalize(path.resolve(clibrariesPath)).toString())
                         .collect(Collectors.joining(",", oHCLibraryPath, ""));
-        addPlainImageBuilderArg(clibrariesBuilderArg);
+        imageBuilderArgs.add(0, clibrariesBuilderArg);
 
         if (printFlagsOptionQuery != null) {
             addPlainImageBuilderArg(NativeImage.oH + enablePrintFlags + "=" + printFlagsOptionQuery);
