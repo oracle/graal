@@ -127,7 +127,7 @@ public class SerializationFeature implements Feature {
                         ConfigurationFiles.Options.SerializationConfigurationFiles, ConfigurationFiles.Options.SerializationConfigurationResources,
                         ConfigurationFile.SERIALIZATION.getFileName());
 
-        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, SerializationFeature.class, ObjectStreamClass.class);
+        ModuleSupport.openModuleByClass(ObjectStreamClass.class, SerializationFeature.class);
     }
 
     private static GraphBuilderConfiguration buildLambdaParserConfig() {
