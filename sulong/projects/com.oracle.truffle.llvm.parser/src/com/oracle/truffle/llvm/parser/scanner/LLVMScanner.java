@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,6 +72,8 @@ public class LLVMScanner {
 
     protected long offset;
 
+    protected long oldOffset;
+
     private LLVMScanner(BitStream bitstream, ParserListener listener) {
         this.bitstream = bitstream;
         this.parser = listener;
@@ -107,8 +109,6 @@ public class LLVMScanner {
     }
 
     public static class ToEndScanner extends LLVMScanner {
-        boolean inBlock = false;
-
         public ToEndScanner(BitStream bitstream) {
             super(bitstream, null);
         }
@@ -122,22 +122,19 @@ public class LLVMScanner {
             }
 
             scanner.scanToEnd();
-            return scanner.offset / Byte.BYTES;
+            return scanner.offset / Byte.SIZE;
         }
 
         @Override
         protected void enterSubBlock(long blockId, long newIdSize, long numWords) {
-            assert !inBlock;
-            offset += numWords + Integer.SIZE;
-            inBlock = true;
+            offset += numWords * Integer.SIZE;
         }
 
         @Override
-        protected void exitBlock() {
-            if (!inBlock) {
-                System.out.println("At end of file.");
-            }
-            inBlock = false;
+        protected boolean exitBlock() {
+            // return to the beginning of the end block
+            offset = oldOffset;
+            return true;
         }
 
         @Override
@@ -182,13 +179,13 @@ public class LLVMScanner {
         scanToOffset(bitstream.size());
     }
 
-    protected void scan() {
+    protected boolean scan() {
+        oldOffset = offset;
         final int id = (int) read(idSize);
 
         switch (id) {
             case BuiltinIDs.END_BLOCK:
-                onEndBlock();
-                break;
+                return onEndBlock();
 
             case BuiltinIDs.ENTER_SUBBLOCK:
                 onEnterSubBlock();
@@ -207,11 +204,15 @@ public class LLVMScanner {
                 onAbbreviatedRecord(id);
                 break;
         }
+
+        return false;
     }
 
     private void scanToOffset(long to) {
         while (offset < to) {
-            scan();
+            if (scan()) {
+                return;
+            }
         }
     }
 
@@ -227,7 +228,7 @@ public class LLVMScanner {
         recordBuffer.invalidate();
     }
 
-    private void alignInt() {
+    protected void alignInt() {
         long mask = Integer.SIZE - 1;
         if ((offset & mask) != 0) {
             offset = (offset & ~mask) + Integer.SIZE;
@@ -460,12 +461,12 @@ public class LLVMScanner {
         }
     }
 
-    protected void exitBlock() {
+    protected boolean exitBlock() {
         parser.exit();
 
         if (parents.isEmpty()) {
             // after lazily parsed block
-            return;
+            return false;
         }
 
         final ScannerState parentState = parents.pop();
@@ -477,11 +478,13 @@ public class LLVMScanner {
 
         idSize = parentState.getIdSize();
         parser = parentState.getParser();
+
+        return false;
     }
 
-    private void onEndBlock() {
+    private boolean onEndBlock() {
         alignInt();
-        exitBlock();
+        return exitBlock();
     }
 
     protected void unabbreviatedRecord(RecordBuffer buffer) {

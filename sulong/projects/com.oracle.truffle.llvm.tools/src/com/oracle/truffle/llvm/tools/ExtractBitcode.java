@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,16 +35,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.Arrays;
 
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
-import com.oracle.truffle.llvm.parser.listeners.ParserListener;
-import com.oracle.truffle.llvm.parser.scanner.BitStream;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
-import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
-import java.util.Arrays;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ExtractBitcode {
@@ -94,7 +91,7 @@ public final class ExtractBitcode {
         ByteSequence bitcode = result.getBitcode();
         if (result.getLocator() instanceof WindowsLibraryLocator) {
             long lastpos = LLVMScanner.ToEndScanner.parseToEnd(bitcode);
-            return bitcode.subSequence(0, (int)lastpos).toByteArray();
+            return bitcode.subSequence(0, (int) lastpos).toByteArray();
         } else {
             return bitcode.toByteArray();
         }
