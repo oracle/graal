@@ -39,10 +39,12 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -1469,7 +1471,7 @@ public final class PolyglotNativeAPI {
                     "",
                     " @param data user defined data to be passed into the function.",
                     " @param callback function that is called from the polyglot engine.",
-                    " @return information about the last failure on this thread.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @see org::graalvm::polyglot::ProxyExecutable",
                     " @since 19.0",
     })
@@ -1713,6 +1715,38 @@ public final class PolyglotNativeAPI {
                 }
             }
             writeString(sw.toString(), buffer, buffer_size, result, UTF8_CHARSET);
+        });
+    }
+
+    @CEntryPoint(name = "poly_register_recurring_callback", documentation = {
+                    "Registers (or unregisters) a recurring callback in the current thread to be",
+                    "called approximately at the specified interval. The callback's result value is",
+                    "ignored. Any previously registered callback is replaced. Passing NULL for the",
+                    "the callback function removes a previously registered callback (in which case",
+                    "the interval and data parameters are ignored).",
+                    "",
+                    " @param intervalNanos interval between invocations in nanoseconds.",
+                    " @param callback the function that is invoked.",
+                    " @param data a custom pointer to be passed to each invocation of the callback.",
+                    " @return poly_ok if all works, poly_generic_error if there is a failure.",
+                    " @since 22.2",
+    })
+    public static PolyglotStatus poly_register_recurring_callback(PolyglotIsolateThread thread, long intervalNanos, PolyglotCallback callback, VoidPointer data) {
+        return withHandledErrors(() -> {
+            if (callback.isNull()) {
+                Threading.registerRecurringCallback(-1, null, null);
+                return;
+            }
+            ObjectHandle[] handleArgs = new ObjectHandle[0];
+            PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
+            Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, access -> {
+                callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
+                CallbackException ce = exceptionsTL.get();
+                if (ce != null) {
+                    exceptionsTL.remove();
+                    access.throwException(ce);
+                }
+            });
         });
     }
 
