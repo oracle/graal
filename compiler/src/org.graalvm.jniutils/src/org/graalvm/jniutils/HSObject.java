@@ -37,6 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JWeak;
 import org.graalvm.word.WordFactory;
 
 /**
@@ -212,7 +213,7 @@ public class HSObject {
 
         private void delete(JNIEnv env) {
             if (weak) {
-                DeleteWeakGlobalRef(env, handle);
+                DeleteWeakGlobalRef(env, (JWeak) handle);
             } else {
                 DeleteGlobalRef(env, handle);
             }

@@ -118,6 +118,9 @@ public final class JNI {
     public interface JThrowable extends JObject {
     }
 
+    public interface JWeak extends JObject {
+    }
+
     /**
      * Access to the {@code jvalue} JNI union.
      *
@@ -607,7 +610,7 @@ public final class JNI {
 
     public interface DeleteWeakGlobalRef extends CFunctionPointer {
         @InvokeCFunctionPointer
-        void call(JNIEnv env, JObject wref);
+        void call(JNIEnv env, JWeak wref);
     }
 
     public interface DeleteLocalRef extends CFunctionPointer {
@@ -809,7 +812,7 @@ public final class JNI {
 
     public interface NewWeakGlobalRef extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JObject call(JNIEnv env, JObject lobj);
+        JWeak call(JNIEnv env, JObject lobj);
     }
 
     public interface NewObjectA extends CFunctionPointer {
