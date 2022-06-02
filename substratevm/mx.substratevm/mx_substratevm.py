@@ -896,6 +896,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='SubstrateVM',
     short_name='svm',
+    installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
     dependencies=['GraalVM compiler', 'Truffle Macro', 'SVM Truffle NFI Support'],
@@ -909,20 +910,22 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
     jlink=False,
+    installable=True,
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=suite,
     name='SVM Truffle NFI Support',
     short_name='svmnfi',
+    dir_name='nfi',
+    installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dir_name='nfi',
     dependencies=['SubstrateVM', 'Truffle NFI'],
     truffle_jars=[],
     builder_jar_distributions=['substratevm:SVM_LIBFFI'],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
-    installable=False,
+    installable=True,
 ))
 
 def _native_image_launcher_main_class():
@@ -1022,6 +1025,7 @@ if llvm_supported:
         name='SubstrateVM LLVM',
         short_name='svml',
         dir_name='svm',
+        installable_id='native-image',
         license_files=[],
         third_party_license_files=[],
         dependencies=['SubstrateVM'],
@@ -1033,6 +1037,7 @@ if llvm_supported:
         ],
         stability="experimental-earlyadopter",
         jlink=False,
+        installable=True,
     ))
 
 
