@@ -325,9 +325,6 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         if (tryCanonicalize(node, nodeClass, tool)) {
             return true;
         }
-        if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass, tool)) {
-            return true;
-        }
         if (node instanceof ValueNode) {
             ValueNode valueNode = (ValueNode) node;
             boolean improvedStamp = tryInferStamp(valueNode, tool);
@@ -345,6 +342,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 }
                 tool.workList.addAll(valueNode.usages());
             }
+        }
+        // Perform GVN after possibly inferring the stamp since a stale stamp will inhibit GVN.
+        if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass, tool)) {
+            return true;
         }
         return false;
     }
