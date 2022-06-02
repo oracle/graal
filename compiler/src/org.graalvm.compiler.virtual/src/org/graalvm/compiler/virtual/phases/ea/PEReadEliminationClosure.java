@@ -139,8 +139,9 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
         }
 
         if (deleted) {
-            cfg.graph.getOptimizationLog().report(getClass(), "ReadElimination", node)
-                    .setProperty("deletedNodeClass", () -> node.getNodeClass().shortName());
+            effects.addLog(cfg.graph.getOptimizationLog(),
+                            optimizationLog -> optimizationLog.report(getClass(), "ReadElimination", node)
+                                            .setProperty("deletedNodeClass", node.getNodeClass().shortName()));
         }
         return deleted;
     }

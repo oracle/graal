@@ -248,7 +248,10 @@ public class OptimizationLog implements CompilationListener {
          * @param virtualObjectNode the object that was materialized
          */
         public void objectMaterialized(VirtualObjectNode virtualObjectNode) {
-            virtualNodes.put(virtualObjectNode, virtualNodes.get(virtualObjectNode) + 1);
+            Integer count = virtualNodes.get(virtualObjectNode);
+            if (count != null) {
+                virtualNodes.put(virtualObjectNode, count + 1);
+            }
         }
     }
 

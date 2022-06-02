@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.OptimizationLog;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -50,7 +49,6 @@ import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
@@ -469,52 +467,6 @@ public final class GraphEffectList extends EffectList {
             @Override
             void format(StringBuilder str) {
                 format(str, new String[]{"node", "oldInput", "newInput"}, new Object[]{node, oldInput, newInput});
-            }
-        });
-    }
-
-    /**
-     * Creates an effect which logs that an allocation was removed.
-     * 
-     * @param optimizationLog the optimization log
-     * @param virtualObjectNode the virtualized node
-     */
-    public void logAllocationRemoved(OptimizationLog optimizationLog, VirtualObjectNode virtualObjectNode) {
-        if (!optimizationLog.isOptimizationLogEnabled()) {
-            return;
-        }
-        add("log allocation removed", new Effect() {
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                optimizationLog.getPartialEscapeLog().allocationRemoved(virtualObjectNode);
-            }
-
-            @Override
-            public boolean isVisible() {
-                return false;
-            }
-        });
-    }
-
-    /**
-     * Creates an effect which logs that an object was materialized
-     * 
-     * @param optimizationLog the optimization log
-     * @param virtualObjectNode the object that was materialized
-     */
-    public void logObjectMaterialized(OptimizationLog optimizationLog, VirtualObjectNode virtualObjectNode) {
-        if (!optimizationLog.isOptimizationLogEnabled()) {
-            return;
-        }
-        add("log object materialized", new Effect() {
-            @Override
-            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
-                optimizationLog.getPartialEscapeLog().objectMaterialized(virtualObjectNode);
-            }
-
-            @Override
-            public boolean isVisible() {
-                return false;
             }
         });
     }

@@ -295,7 +295,8 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
             otherAllocations.add(representation);
             assert obj.getLocks() == null;
         }
-        materializeEffects.logObjectMaterialized(fixed.graph().getOptimizationLog(), virtual);
+        materializeEffects.addLog(fixed.graph().getOptimizationLog(),
+                        optimizationLog -> optimizationLog.getPartialEscapeLog().objectMaterialized(virtual));
     }
 
     protected void objectMaterialized(VirtualObjectNode virtual, AllocatedObjectNode representation, List<ValueNode> values) {
