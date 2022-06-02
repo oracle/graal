@@ -46,8 +46,6 @@ import java.lang.reflect.Parameter;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.AccessControlContext;
-import java.security.ProtectionDomain;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1444,7 +1442,7 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl(isJni = true)
-    public @JavaType(ProtectionDomain.class) StaticObject JVM_GetProtectionDomain(@JavaType(Class.class) StaticObject current) {
+    public @JavaType(internalName = "Ljava/security/ProtectionDomain;") StaticObject JVM_GetProtectionDomain(@JavaType(Class.class) StaticObject current) {
         if (StaticObject.isNull(current)) {
             return StaticObject.NULL;
         }
@@ -1853,7 +1851,7 @@ public final class VM extends NativeEnv {
                     @Pointer TruffleObject namePtr,
                     @Pointer TruffleObject bufPtr,
                     int len,
-                    @JavaType(ProtectionDomain.class) StaticObject pd,
+                    @JavaType(internalName = "Ljava/security/ProtectionDomain;") StaticObject pd,
                     boolean initialize,
                     int flags,
                     @JavaType(Object.class) StaticObject classData) {
@@ -1917,7 +1915,7 @@ public final class VM extends NativeEnv {
     public @JavaType(Class.class) StaticObject JVM_DefineClass(@Pointer TruffleObject namePtr,
                     @JavaType(ClassLoader.class) StaticObject loader,
                     @Pointer TruffleObject bufPtr, int len,
-                    @JavaType(ProtectionDomain.class) StaticObject pd) {
+                    @JavaType(internalName = "Ljava/security/ProtectionDomain;") StaticObject pd) {
         ByteBuffer buf = NativeUtils.directByteBuffer(bufPtr, len, JavaKind.Byte);
         final byte[] bytes = new byte[len];
         buf.get(bytes);
@@ -1931,7 +1929,7 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(Class.class) StaticObject JVM_DefineClassWithSource(@Pointer TruffleObject namePtr, @JavaType(ClassLoader.class) StaticObject loader, @Pointer TruffleObject bufPtr, int len,
-                    @JavaType(ProtectionDomain.class) StaticObject pd, @SuppressWarnings("unused") @Pointer TruffleObject source) {
+                    @JavaType(internalName = "Ljava/security/ProtectionDomain;") StaticObject pd, @SuppressWarnings("unused") @Pointer TruffleObject source) {
         // FIXME(peterssen): Source is ignored.
         return JVM_DefineClass(namePtr, loader, bufPtr, len, pd);
     }
@@ -2645,9 +2643,9 @@ public final class VM extends NativeEnv {
 
     // region privileged
 
-    private @JavaType(AccessControlContext.class) StaticObject createACC(@JavaType(ProtectionDomain[].class) StaticObject context,
+    private @JavaType(internalName = "Ljava/security/AccessControlContext;") StaticObject createACC(@JavaType(internalName = "[Ljava/security/ProtectionDomain;") StaticObject context,
                     boolean isPriviledged,
-                    @JavaType(AccessControlContext.class) StaticObject priviledgedContext) {
+                    @JavaType(internalName = "Ljava/security/AccessControlContext;") StaticObject priviledgedContext) {
         Klass accKlass = getMeta().java_security_AccessControlContext;
         StaticObject acc = accKlass.allocateInstance();
         getMeta().java_security_AccessControlContext_context.setObject(acc, context);
@@ -2659,7 +2657,7 @@ public final class VM extends NativeEnv {
         return acc;
     }
 
-    private @JavaType(AccessControlContext.class) StaticObject createDummyACC() {
+    private @JavaType(internalName = "Ljava/security/AccessControlContext;") StaticObject createDummyACC() {
         Klass pdKlass = getMeta().java_security_ProtectionDomain;
         StaticObject pd = pdKlass.allocateInstance();
         getMeta().java_security_ProtectionDomain_init_CodeSource_PermissionCollection.invokeDirect(pd, StaticObject.NULL, StaticObject.NULL);
@@ -2737,7 +2735,7 @@ public final class VM extends NativeEnv {
     @SuppressWarnings("unused")
     public @JavaType(Object.class) StaticObject JVM_DoPrivileged(@JavaType(Class.class) StaticObject cls,
                     /* PrivilegedAction or PrivilegedActionException */ @JavaType(Object.class) StaticObject action,
-                    @JavaType(AccessControlContext.class) StaticObject context,
+                    @JavaType(internalName = "Ljava/security/AccessControlContext;") StaticObject context,
                     boolean wrapException,
                     @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
