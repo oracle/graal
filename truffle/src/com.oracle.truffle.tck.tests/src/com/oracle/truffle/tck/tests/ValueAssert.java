@@ -451,6 +451,8 @@ public class ValueAssert {
                     assertFails(() -> value.getMetaQualifiedName(), UnsupportedOperationException.class);
                     assertFails(() -> value.getMetaSimpleName(), UnsupportedOperationException.class);
                     assertFails(() -> value.isMetaInstance(""), UnsupportedOperationException.class);
+                    assertFalse(value.hasMetaParents());
+                    assertFails(() -> value.getMetaParents(), UnsupportedOperationException.class);
                     break;
                 case ITERABLE:
                     assertFalse(value.hasIterator());
@@ -687,6 +689,25 @@ public class ValueAssert {
                     assertNotNull(value.getMetaQualifiedName());
                     assertNotNull(value.getMetaSimpleName());
                     value.isMetaInstance("");
+                    if (value.hasMetaParents()) {
+                        try {
+                            Value metaParent = value.getMetaParents();
+                            assertValue(metaParent);
+                        } catch (PolyglotException notExpected) {
+                            throw new AssertionError(notExpected);
+                        } catch (UnsupportedOperationException expected) {
+                            // caught expected exception
+                        }
+                    } else {
+                        try {
+                            value.getMetaParents();
+                            fail("should have thrown");
+                        } catch (PolyglotException expected) {
+                            throw new AssertionError(expected);
+                        } catch (UnsupportedOperationException expected) {
+                            // caught expected exception
+                        }
+                    }
                     break;
                 case ITERABLE:
                     assertTrue(msg, value.hasIterator());
