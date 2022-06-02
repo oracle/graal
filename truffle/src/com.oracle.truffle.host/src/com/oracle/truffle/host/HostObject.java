@@ -2212,6 +2212,9 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object getMetaParents() throws UnsupportedMessageException {
+        if (!hasMetaParents()) {
+            throw UnsupportedMessageException.create();
+        }
         Class<?>[] types = null;
         if (isClass()) {
             Class<?> superClass = asClass().getSuperclass();
