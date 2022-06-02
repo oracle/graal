@@ -1240,7 +1240,11 @@ public final class ObjectKlass extends Klass {
     public int getModifiers() {
         // getKlassVersion().getModifiers() introduces a ~10%
         // perf hit on some benchmarks, so put behind a check
-        return getKlassVersion().getModifiers();
+        if (getContext().advancedRedefinitionEnabled()) {
+            return getKlassVersion().getModifiers();
+        } else {
+            return super.getModifiers();
+        }
     }
 
     @Override
