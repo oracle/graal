@@ -163,6 +163,24 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
         localVariableTable = newLocalVariableTable;
         this.qualifiedName = format("%H.%n(%P)");
+
+        registerSignatureTypes();
+    }
+
+    /**
+     * Lookup the parameters and return type so that they are added to the universe even if the
+     * method is never linked and parsed.
+     */
+    private void registerSignatureTypes() {
+        boolean isStatic = Modifier.isStatic(getModifiers());
+        int parameterCount = getSignature().getParameterCount(!isStatic);
+
+        int offset = isStatic ? 0 : 1;
+        for (int i = offset; i < parameterCount; i++) {
+            getSignature().getParameterType(i - offset, getDeclaringClass());
+        }
+
+        getSignature().getReturnType(getDeclaringClass());
     }
 
     public String getQualifiedName() {

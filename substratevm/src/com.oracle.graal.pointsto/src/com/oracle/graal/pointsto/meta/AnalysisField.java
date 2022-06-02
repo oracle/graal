@@ -41,7 +41,6 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AtomicUtils;
@@ -109,8 +108,8 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
      */
     private boolean canBeNull;
 
-    private ConcurrentMap<MethodTypeFlow, Boolean> readBy;
-    private ConcurrentMap<MethodTypeFlow, Boolean> writtenBy;
+    private ConcurrentMap<AnalysisMethod, Boolean> readBy;
+    private ConcurrentMap<AnalysisMethod, Boolean> writtenBy;
 
     protected TypeState instanceFieldTypeState;
 
@@ -265,7 +264,7 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
         return firstAttempt;
     }
 
-    public boolean registerAsRead(MethodTypeFlow method) {
+    public boolean registerAsRead(AnalysisMethod method) {
         boolean firstAttempt = AtomicUtils.atomicMark(this, isReadUpdater);
         notifyUpdateAccessInfo();
         if (readBy != null && method != null) {
@@ -285,7 +284,7 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
      * @param method The method where the field is written or null if the method is not known, e.g.
      *            for an unsafe accessed field.
      */
-    public boolean registerAsWritten(MethodTypeFlow method) {
+    public boolean registerAsWritten(AnalysisMethod method) {
         boolean firstAttempt = AtomicUtils.atomicMark(this, isWrittenUpdater);
         notifyUpdateAccessInfo();
         if (writtenBy != null && method != null) {
@@ -364,7 +363,7 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
         return AtomicUtils.isSet(this, unsafeFrozenTypeStateUpdater);
     }
 
-    public Set<MethodTypeFlow> getReadBy() {
+    public Set<AnalysisMethod> getReadBy() {
         return readBy.keySet();
     }
 
@@ -372,7 +371,7 @@ public abstract class AnalysisField extends AnalysisElement implements ResolvedJ
      * Returns all methods where the field is written. It does not include the methods where the
      * field is written with unsafe access.
      */
-    public Set<MethodTypeFlow> getWrittenBy() {
+    public Set<AnalysisMethod> getWrittenBy() {
         return writtenBy.keySet();
     }
 
