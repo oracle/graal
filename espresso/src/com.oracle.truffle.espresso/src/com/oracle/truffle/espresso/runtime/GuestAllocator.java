@@ -78,7 +78,15 @@ public final class GuestAllocator extends ContextAccessImpl {
         this.lang = context.getLanguage();
         this.allocationReporter = allocationReporter;
         if (allocationReporter != null) {
-            lang.invalidateAllocationTrackingDisabled();
+            if (allocationReporter.isActive()) {
+                lang.invalidateAllocationTrackingDisabled();
+            } else {
+                allocationReporter.addActiveListener((isActive) -> {
+                    if (isActive) {
+                        lang.invalidateAllocationTrackingDisabled();
+                    }
+                });
+            }
         }
     }
 
