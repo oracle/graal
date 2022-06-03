@@ -219,7 +219,7 @@ public abstract class TypeFlow<T> {
         if (graphRef != null) {
             return graphRef.getMethod();
         }
-        if (source instanceof BytecodePosition && !isClone) {
+        if (source instanceof BytecodePosition) {
             BytecodePosition position = (BytecodePosition) source;
             return (AnalysisMethod) position.getMethod();
         }

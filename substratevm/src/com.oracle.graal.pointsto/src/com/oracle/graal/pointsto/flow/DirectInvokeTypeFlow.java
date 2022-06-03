@@ -24,23 +24,23 @@
  */
 package com.oracle.graal.pointsto.flow;
 
+import java.util.Collection;
+import java.util.Collections;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import jdk.vm.ci.code.BytecodePosition;
 
-import java.util.Collection;
-import java.util.Collections;
+import jdk.vm.ci.code.BytecodePosition;
 
 public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
 
     public MethodTypeFlow callee;
 
     protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
-                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
     }
 
     protected DirectInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {

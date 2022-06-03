@@ -24,16 +24,14 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.graph.Node;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
 
 import jdk.vm.ci.code.BytecodePosition;
 
 public class MergeTypeFlow extends TypeFlow<BytecodePosition> {
 
-    public MergeTypeFlow(Node node) {
-        super(node.getNodeSourcePosition(), null);
+    public MergeTypeFlow(BytecodePosition position) {
+        super(position, null);
     }
 
     public MergeTypeFlow(MergeTypeFlow original, MethodFlowsGraph methodFlows) {

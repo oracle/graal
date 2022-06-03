@@ -27,8 +27,9 @@ package com.oracle.graal.pointsto.typestate;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 public class DefaultAnalysisContextPolicy extends AnalysisContextPolicy<DefaultAnalysisContext> {
 
@@ -63,7 +64,7 @@ public class DefaultAnalysisContextPolicy extends AnalysisContextPolicy<DefaultA
     }
 
     @Override
-    public DefaultAnalysisContext staticCalleeContext(PointsToAnalysis bb, BytecodeLocation invokeLocation, DefaultAnalysisContext callerContext, MethodTypeFlow callee) {
+    public DefaultAnalysisContext staticCalleeContext(PointsToAnalysis bb, BytecodePosition invokeLocation, DefaultAnalysisContext callerContext, MethodTypeFlow callee) {
         assert callerContext.equals(emptyContext());
         return callerContext;
     }
@@ -80,16 +81,16 @@ public class DefaultAnalysisContextPolicy extends AnalysisContextPolicy<DefaultA
         return peel(context, maxHeapContextDepth);
     }
 
-    public DefaultAnalysisContext getContext(BytecodeLocation bcl) {
-        return getContext(new BytecodeLocation[]{bcl});
+    public DefaultAnalysisContext getContext(BytecodePosition bcl) {
+        return getContext(new BytecodePosition[]{bcl});
     }
 
-    public DefaultAnalysisContext getContext(BytecodeLocation[] bytecodeLocations) {
-        return lookupContext(bytecodeLocations);
+    public DefaultAnalysisContext getContext(BytecodePosition[] positions) {
+        return lookupContext(positions);
     }
 
-    private DefaultAnalysisContext lookupContext(BytecodeLocation[] bytecodeLocations) {
-        assert bytecodeLocations.length == 0;
+    private DefaultAnalysisContext lookupContext(BytecodePosition[] positions) {
+        assert positions.length == 0;
         return emptyContext();
     }
 }
