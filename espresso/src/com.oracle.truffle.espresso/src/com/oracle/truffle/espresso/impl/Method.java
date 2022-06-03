@@ -70,7 +70,6 @@ import com.oracle.truffle.espresso.classfile.attributes.ExceptionsAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
-import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -225,8 +224,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         Objects.requireNonNull(accessor);
         return isLeaf;
     }
-
-    private Source source;
 
     public int getRefKind() {
         return getMethodVersion().getRefKind();
@@ -654,24 +651,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         getMethodVersion().poisonPill = true;
     }
 
-    public String getSourceFile() {
-        // we have to do this atomically with regard to class redefinition
-        ObjectKlass.KlassVersion klassVersion = declaringKlass.getKlassVersion();
-
-        SourceFileAttribute sfa = (SourceFileAttribute) klassVersion.getAttribute(Name.SourceFile);
-
-        if (sfa == null) {
-            return null;
-        }
-        return klassVersion.getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
-    }
-
     public boolean hasSourceFileAttribute() {
         return declaringKlass.getAttribute(Name.SourceFile) != null;
     }
 
     public String report(int curBCI) {
-        String sourceFile = getSourceFile();
+        String sourceFile = getDeclaringKlass().getSourceFile();
         if (sourceFile == null) {
             sourceFile = "unknown source";
         }
@@ -762,11 +747,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      */
 
     public Source getSource() {
-        Source localSource = this.source;
-        if (localSource == null) {
-            this.source = localSource = getContext().findOrCreateSource(this);
-        }
-        return localSource;
+        return getDeclaringKlass().getSource();
     }
 
     @TruffleBoundary
@@ -1335,7 +1316,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         @Override
         public String getSourceFile() {
-            return getMethod().getSourceFile();
+            return getDeclaringKlass().getSourceFile();
         }
 
         @Override
@@ -1553,7 +1534,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return klassVersion;
         }
 
-        public Klass getDeclaringKlass() {
+        public ObjectKlass getDeclaringKlass() {
             return declaringKlass;
         }
 

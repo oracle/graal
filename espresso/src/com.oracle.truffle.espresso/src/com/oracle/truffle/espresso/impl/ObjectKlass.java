@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
@@ -66,6 +67,7 @@ import com.oracle.truffle.espresso.classfile.attributes.PermittedSubclassesAttri
 import com.oracle.truffle.espresso.classfile.attributes.RecordAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -136,6 +138,8 @@ public final class ObjectKlass extends Klass {
 
     // used for class redefinition when refreshing vtables etc.
     private volatile ArrayList<WeakReference<ObjectKlass>> subTypes;
+
+    private Source source;
 
     public static final int LOADED = 0;
     public static final int LINKING = 1;
@@ -1565,6 +1569,14 @@ public final class ObjectKlass extends Klass {
         return null;
     }
 
+    public String getSourceFile() {
+        return getKlassVersion().getSourceFile();
+    }
+
+    public Source getSource() {
+        return getKlassVersion().getSource();
+    }
+
     public final class KlassVersion {
         final Assumption assumption;
         final RuntimeConstantPool pool;
@@ -1882,6 +1894,21 @@ public final class ObjectKlass extends Klass {
                 supertypes[depth] = this.getKlass();
             }
             return new HierarchyInfo(supertypes, depth, iKlassTable);
+        }
+
+        public String getSourceFile() {
+            SourceFileAttribute sfa = (SourceFileAttribute) getAttribute(Name.SourceFile);
+            if (sfa == null) {
+                return null;
+            }
+            return getConstantPool().utf8At(sfa.getSourceFileIndex()).toString();
+        }
+
+        public Source getSource() {
+            if (source == null) {
+                source = getContext().findOrCreateSource(ObjectKlass.this);
+            }
+            return source;
         }
     }
 }

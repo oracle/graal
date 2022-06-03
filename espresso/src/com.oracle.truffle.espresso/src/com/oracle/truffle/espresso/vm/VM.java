@@ -1741,13 +1741,14 @@ public final class VM extends NativeEnv {
         int bci = stackElement.getBCI();
 
         String result = "unknown source";
-        String source = method.getSourceFile();
+        ObjectKlass declaringKlass = method.getDeclaringKlass();
+        String source = declaringKlass.getSourceFile();
         if (source != null) {
             result = source;
         }
         getMeta().java_lang_StackTraceElement_init.invokeDirect(
                         /* this */ ste,
-                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(method.getDeclaringKlass().getType().toString(), true, true)),
+                        /* declaringClass */ meta.toGuestString(MetaUtil.internalNameToJava(declaringKlass.getType().toString(), true, true)),
                         /* methodName */ meta.toGuestString(method.getName()),
                         /* fileName */ meta.toGuestString(result),
                         /* lineNumber */ method.bciToLineNumber(bci));
@@ -3673,7 +3674,7 @@ public final class VM extends NativeEnv {
     private void fillInElement(@JavaType(StackTraceElement.class) StaticObject ste, VM.StackElement element,
                     Method classGetName) {
         Method m = element.getMethod();
-        Klass k = m.getDeclaringKlass();
+        ObjectKlass k = m.getDeclaringKlass();
         StaticObject guestClass = k.mirror();
         StaticObject loader = k.getDefiningClassLoader();
         ModuleEntry module = k.module();
@@ -3701,7 +3702,7 @@ public final class VM extends NativeEnv {
         }
 
         // Fill in source information
-        getMeta().java_lang_StackTraceElement_fileName.setObject(ste, getMeta().toGuestString(m.getSourceFile()));
+        getMeta().java_lang_StackTraceElement_fileName.setObject(ste, getMeta().toGuestString(k.getSourceFile()));
         getMeta().java_lang_StackTraceElement_lineNumber.setInt(ste, m.bciToLineNumber(element.getBCI()));
     }
 
