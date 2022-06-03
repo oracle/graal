@@ -61,10 +61,10 @@
     },
   },
 
-  local linux_amd64_jdk11 = common.linux_amd64   + common.oraclejdk11,
-  local linux_amd64_jdk17 = common.linux_amd64   + common.oraclejdk17,
-  local darwin_jdk17      = common.darwin_amd64  + common.oraclejdk17,
-  local windows_jdk17     = common.windows_amd64 + common.oraclejdk17 + common.devkits["windows-jdk17"],
+  local linux_amd64_jdk11 = common.linux_amd64   + common.labsjdk11,
+  local linux_amd64_jdk17 = common.linux_amd64   + common.labsjdk17,
+  local darwin_jdk17      = common.darwin_amd64  + common.labsjdk17,
+  local windows_jdk17     = common.windows_amd64 + common.labsjdk17 + common.devkits["windows-jdk17"],
 
   builds: [
     linux_amd64_jdk17 + gate("js", "build,js") + clone_js_benchmarks + t("35:00"),
