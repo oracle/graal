@@ -1138,9 +1138,9 @@ public class CompileQueue {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
                 }
 
-                afterParse(method, graph);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
+                afterParse(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
