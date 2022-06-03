@@ -218,6 +218,7 @@ final class EngineAccessor extends Accessor {
             return new DefaultLanguageView<>(truffleLanguage, value);
         }
 
+        @TruffleBoundary
         @Override
         public Object getLanguageView(LanguageInfo viewLanguage, Object value) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
@@ -226,6 +227,7 @@ final class EngineAccessor extends Accessor {
             return languageContext.getLanguageView(value);
         }
 
+        @TruffleBoundary
         @Override
         public Object getScopedView(LanguageInfo viewLanguage, Node location, Frame frame, Object value) {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
