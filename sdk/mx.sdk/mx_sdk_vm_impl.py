@@ -3028,11 +3028,11 @@ def graalvm_version():
     return _suite.release_version()
 
 
-def graalvm_home(fatalIfMissing=False):
-    _graalvm_dist = get_final_graalvm_distribution()
+def graalvm_home(stage1=False, fatalIfMissing=False):
+    _graalvm_dist = get_stage1_graalvm_distribution() if stage1 else get_final_graalvm_distribution()
     _graalvm_home = join(_graalvm_dist.output, _graalvm_dist.jdk_base)
     if fatalIfMissing and not exists(_graalvm_home):
-        mx.abort("GraalVM home '{}' does not exist. Did you forget to build with this set of dynamic imports and mx options?".format(_graalvm_home))
+        mx.abort("{}GraalVM home '{}' does not exist. Did you forget to build with this set of dynamic imports and mx options?".format('Stage1 ' if stage1 else '', _graalvm_home))
     return _graalvm_home
 
 
@@ -3067,8 +3067,9 @@ def print_graalvm_version(args):
 def print_graalvm_home(args):
     """print the GraalVM home dir"""
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
-    _ = parser.parse_args(args)
-    print(graalvm_home())
+    parser.add_argument('--stage1', action='store_true', help='show the home directory of the stage1 distribution')
+    args = parser.parse_args(args)
+    print(graalvm_home(stage1=args.stage1, fatalIfMissing=False))
 
 
 def print_standalone_home(args):
