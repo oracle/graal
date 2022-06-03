@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,8 +54,20 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public byte getByte(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        return getByte(buffer, (int) byteOffset);
+    }
+
+    @Override
     public void putByte(byte[] buffer, int byteOffset, byte value) throws IndexOutOfBoundsException {
         buffer[byteOffset] = value;
+    }
+
+    @Override
+    public void putByte(byte[] buffer, long byteOffset, byte value) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        putByte(buffer, (int) byteOffset, value);
     }
 
     @Override
@@ -65,9 +77,21 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public short getShort(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        return getShort(buffer, (int) byteOffset);
+    }
+
+    @Override
     public void putShort(byte[] buffer, int byteOffset, short value) throws IndexOutOfBoundsException {
         buffer[byteOffset + 0] = (byte) (value >> Byte.SIZE);
         buffer[byteOffset + 1] = (byte) (value);
+    }
+
+    @Override
+    public void putShort(byte[] buffer, long byteOffset, short value) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        putShort(buffer, (int) byteOffset, value);
     }
 
     @Override
@@ -79,11 +103,23 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public int getInt(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        return getInt(buffer, (int) byteOffset);
+    }
+
+    @Override
     public void putInt(byte[] buffer, int byteOffset, int value) throws IndexOutOfBoundsException {
         buffer[byteOffset + 0] = (byte) (value >> Byte.SIZE * 3);
         buffer[byteOffset + 1] = (byte) (value >> Byte.SIZE * 2);
         buffer[byteOffset + 2] = (byte) (value >> Byte.SIZE);
         buffer[byteOffset + 3] = (byte) (value);
+    }
+
+    @Override
+    public void putInt(byte[] buffer, long byteOffset, int value) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        putInt(buffer, (int) byteOffset, value);
     }
 
     @Override
@@ -99,6 +135,12 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public long getLong(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        return getLong(buffer, (int) byteOffset);
+    }
+
+    @Override
     public void putLong(byte[] buffer, int byteOffset, long value) throws IndexOutOfBoundsException {
         buffer[byteOffset + 0] = (byte) (value >> (Byte.SIZE * 7));
         buffer[byteOffset + 1] = (byte) (value >> (Byte.SIZE * 6));
@@ -111,8 +153,20 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putLong(byte[] buffer, long byteOffset, long value) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        putLong(buffer, (int) byteOffset, value);
+    }
+
+    @Override
     public float getFloat(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
         return Float.intBitsToFloat(getInt(buffer, byteOffset));
+    }
+
+    @Override
+    public float getFloat(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        return getFloat(buffer, (int) byteOffset);
     }
 
     @Override
@@ -121,12 +175,30 @@ final class SimpleByteArraySupport extends ByteArraySupport {
     }
 
     @Override
+    public void putFloat(byte[] buffer, long byteOffset, float value) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        putFloat(buffer, (int) byteOffset, value);
+    }
+
+    @Override
     public double getDouble(byte[] buffer, int byteOffset) throws IndexOutOfBoundsException {
         return Double.longBitsToDouble(getLong(buffer, byteOffset));
     }
 
     @Override
+    public double getDouble(byte[] buffer, long byteOffset) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        return getDouble(buffer, (int) byteOffset);
+    }
+
+    @Override
     public void putDouble(byte[] buffer, int byteOffset, double value) throws IndexOutOfBoundsException {
         putLong(buffer, byteOffset, Double.doubleToRawLongBits(value));
+    }
+
+    @Override
+    public void putDouble(byte[] buffer, long byteOffset, double value) throws IndexOutOfBoundsException {
+        assert byteOffset < Integer.MAX_VALUE;
+        putDouble(buffer, (int) byteOffset, value);
     }
 }
