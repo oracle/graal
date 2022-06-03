@@ -6,7 +6,7 @@ permalink: /getting-started/installation-linux-aarch64/
 # Installation on Linux ARM64 systems
 
 As of version 21.0, Oracle provides GraalVM Enterprise distributions based on Oracle JDK11 and Oracle JDK17 for AArch64 architecture.
- This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux(RHEL) systems for AArch64 CPU architecture.
+This distribution can be installed on Oracle Linux and Red Hat Enterprise Linux(RHEL) systems for AArch64 CPU architecture.
 
 You can install the GraalVM distribution for Linux ARM64 systems from an archive file (_.tar.gz_).
 This allows you to install GraalVM for the current user into any location, without affecting other JDK installations.
