@@ -121,7 +121,7 @@ public final class DAPInstrument extends TruffleInstrument {
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable e) {
-            String message = String.format(Locale.US, "[Graal DAP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
+            String message = String.format(Locale.ENGLISH, "[Graal DAP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
             new DAPIOException(message, e).printStackTrace(err);
         }
     }

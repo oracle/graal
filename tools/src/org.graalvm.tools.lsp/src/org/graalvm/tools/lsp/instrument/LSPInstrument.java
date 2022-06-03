@@ -239,7 +239,7 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable e) {
-                String message = String.format(Locale.US, "[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
+                String message = String.format(Locale.ENGLISH, "[Graal LSP] Starting server on %s failed: %s", hostAndPort.getHostPort(), e.getLocalizedMessage());
                 new LSPIOException(message, e).printStackTrace(err);
             }
 

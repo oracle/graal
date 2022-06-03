@@ -263,7 +263,7 @@ public final class MemoryTracer implements Closeable {
     public synchronized void setStackLimit(int stackLimit) {
         verifyConfigAllowed();
         if (stackLimit < 1) {
-            throw new ProfilerException(String.format(Locale.US, "Invalid stack limit %s.", stackLimit));
+            throw new ProfilerException(String.format(Locale.ENGLISH, "Invalid stack limit %s.", stackLimit));
         }
         this.stackLimit = stackLimit;
     }

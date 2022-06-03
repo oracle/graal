@@ -190,7 +190,7 @@ final class CoverageCLI {
     }
 
     private static String format(String format, Object... args) {
-        return String.format(Locale.US, format, args);
+        return String.format(Locale.ENGLISH, format, args);
     }
 
 }

@@ -38,7 +38,7 @@ class DAPIOException extends AbstractTruffleException {
     private static final long serialVersionUID = 3185713689380729847L;
 
     DAPIOException(String hostAndPort, Throwable e) {
-        super(String.format(Locale.US, "Starting Debug Protocol Server on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
+        super(String.format(Locale.ENGLISH, "Starting Debug Protocol Server on %s failed: %s", hostAndPort, e.getLocalizedMessage()), e, UNLIMITED_STACK_TRACE, null);
     }
 
     @ExportMessage

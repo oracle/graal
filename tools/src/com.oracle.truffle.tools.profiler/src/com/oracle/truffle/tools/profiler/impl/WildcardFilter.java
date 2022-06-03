@@ -54,7 +54,7 @@ class WildcardFilter {
                                         patterns.add(Pattern.compile(wildcardToRegex(expression)));
                                     } catch (PatternSyntaxException e) {
                                         throw new IllegalArgumentException(
-                                                        String.format(Locale.US, "Invalid wildcard pattern %s.", expression), e);
+                                                        String.format(Locale.ENGLISH, "Invalid wildcard pattern %s.", expression), e);
                                     }
                                 } else {
                                     strings.add(expression);
