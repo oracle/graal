@@ -108,14 +108,22 @@ public final class Continuation {
     }
 
     /**
-     * @return {@link Object} because we return here via {@link KnownIntrinsics#farReturn} which
-     *         passes an object result.
+     * This method's frame is not part of the continuation stack. We can determine and store the SP
+     * and IP of {@link #enter0} here and use them to directly return there from {@link #yield}.
+     * Yielding destroys our frame, and when {@link #enter1} is invoked again to resume the
+     * continuation, it creates a new frame at the base of the continuation stack. When the
+     * continuation eventually finishes, {@link #enter2} would return to {@link #enter1} at the
+     * instruction after its call site. However, the new frame contains different data than that of
+     * the {@link #enter1} call that originally started the continuation, which would lead to
+     * undefined behavior. Instead, {@link #enter2} must have its own frame that is part of the
+     * continuation stack and, like yielding, must return directly to {@link #enter0}.
+     *
+     * @return {@link Object} because we return to the caller via {@link KnownIntrinsics#farReturn},
+     *         which passes an object result.
      */
     @NeverInline("Accesses caller stack pointer and return address.")
     @Uninterruptible(reason = "Prevent safepoint checks between copying frames and farReturn.")
     private Object enter1(boolean isContinue) {
-        // Note that the frame of this method will remain on the stack, and yielding will ignore it
-        // and return past it to our caller.
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
         CodePointer callerIP = KnownIntrinsics.readReturnAddress();
         Pointer currentSP = KnownIntrinsics.readStackPointer();
@@ -142,7 +150,7 @@ public final class Continuation {
             this.sp = callerSP;
             this.baseSP = currentSP;
             this.stored = null;
-            KnownIntrinsics.farReturn(0, topSP, enterIP, false);
+            KnownIntrinsics.farReturn(YIELD_SUCCESS, topSP, enterIP, false);
             throw VMError.shouldNotReachHere();
 
         } else {
@@ -152,17 +160,30 @@ public final class Continuation {
             this.baseSP = currentSP;
 
             enter2();
-            return null;
+            throw VMError.shouldNotReachHere();
         }
     }
 
+    @NeverInline("Needs a separate frame which is part of the continuation stack that we can eventually return to.")
     @Uninterruptible(reason = "Not actually, but because caller is uninterruptible.", calleeMustBe = false)
     private void enter2() {
         try {
             target.run();
-        } finally {
-            finish();
+        } catch (Throwable t) {
+            throw VMError.shouldNotReachHere(t);
         }
+
+        Pointer returnSP = sp;
+        CodePointer returnIP = ip;
+
+        done = true;
+        ip = WordFactory.nullPointer();
+        sp = WordFactory.nullPointer();
+        baseSP = WordFactory.nullPointer();
+        assert isEmpty();
+
+        KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
+        throw VMError.shouldNotReachHere();
     }
 
     int tryPreempt(Thread thread) {
@@ -188,7 +209,7 @@ public final class Continuation {
 
     /**
      * @return {@link Integer} because we return here via {@link KnownIntrinsics#farReturn} and pass
-     *         boxed 0 as result code.
+     *         boxed {@link #YIELD_SUCCESS} as result code.
      */
     @NeverInline("access stack pointer")
     private Integer yield1() {
@@ -207,7 +228,7 @@ public final class Continuation {
         sp = WordFactory.nullPointer();
         baseSP = WordFactory.nullPointer();
 
-        KnownIntrinsics.farReturn(0, returnSP, returnIP, false);
+        KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
         throw VMError.shouldNotReachHere();
     }
 
@@ -221,14 +242,6 @@ public final class Continuation {
 
     public boolean isDone() {
         return done;
-    }
-
-    public void finish() {
-        done = true;
-        ip = WordFactory.nullPointer();
-        sp = WordFactory.nullPointer();
-        baseSP = WordFactory.nullPointer();
-        assert isEmpty();
     }
 
     private static final class TryPreemptOperation extends JavaVMOperation {
@@ -250,7 +263,7 @@ public final class Continuation {
             Pointer returnSP = cont.sp;
             CodePointer returnIP = cont.ip;
             preemptStatus = StoredContinuationAccess.allocateToPreempt(cont, baseSP, vmThread);
-            if (preemptStatus == 0) {
+            if (preemptStatus == YIELD_SUCCESS) {
                 cont.sp = WordFactory.nullPointer();
                 cont.baseSP = WordFactory.nullPointer();
                 cont.ip = WordFactory.nullPointer();
