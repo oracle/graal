@@ -73,13 +73,8 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
     }
 
     @Override
-    public void setCallCount(int count) {
-        setCallCount0(IsolatedCompileContext.get().getClient(), handle, count);
-    }
-
-    @Override
-    public void setInlinedCallCount(int count) {
-        setInlinedCallCount0(IsolatedCompileContext.get().getClient(), handle, count);
+    public void setCallCounts(int total, int inlined) {
+        setCallCount0(IsolatedCompileContext.get().getClient(), handle, total, inlined);
     }
 
     @Override
@@ -137,16 +132,9 @@ final class IsolatedTruffleInlining<T extends TruffleInliningData> extends Isola
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static void setCallCount0(@SuppressWarnings("unused") ClientIsolateThread client,
-                    ClientHandle<? extends TruffleInliningData> handle, int count) {
+                    ClientHandle<? extends TruffleInliningData> handle, int total, int inlined) {
         TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
-        truffleInliningData.setCallCount(count);
-    }
-
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
-    private static void setInlinedCallCount0(@SuppressWarnings("unused") ClientIsolateThread client,
-                    ClientHandle<? extends TruffleInliningData> handle, int count) {
-        TruffleInliningData truffleInliningData = IsolatedCompileClient.get().unhand(handle);
-        truffleInliningData.setInlinedCallCount(count);
+        truffleInliningData.setCallCounts(total, inlined);
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)

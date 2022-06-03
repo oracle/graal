@@ -123,8 +123,7 @@ public final class CallTree extends Graph {
 
     public void updateTracingInfo(TruffleInliningData inliningPlan) {
         final int inlinedWithoutRoot = inlined - 1;
-        inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
-        inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
+        inliningPlan.setCallCounts(inlinedWithoutRoot + frontierSize, inlinedWithoutRoot);
         if (loggingInlinedTargets()) {
             root.collectInlinedTargets(inliningPlan);
         }
