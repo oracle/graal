@@ -31,9 +31,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -57,6 +54,7 @@ import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.ImplicitLIRFrameState;
@@ -580,12 +578,11 @@ public class CompilationResultBuilder {
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         AbstractBlockBase<?> previousBlock = null;
-        Writer dumpBBInfoWriter = null;
+        LogStream loggerBBInfo = null;
         if (DebugOptions.PrintBBInfoPath.getValue(options) != null && debug.getDescription() != null) {
             try {
                 final String path = PathUtilities.getPath(PathUtilities.createDirectories(DebugOptions.PrintBBInfoPath.getValue(options)), debug.getDescription().identifier + ".blocks");
-                final OutputStream out = PathUtilities.openOutputStream(path);
-                dumpBBInfoWriter = new OutputStreamWriter(out);
+                loggerBBInfo = new LogStream(PathUtilities.openOutputStream(path));
             } catch (IOException e) {
                 throw debug.handle(e);
             }
@@ -602,24 +599,16 @@ public class CompilationResultBuilder {
                 int pcBBStart = asm.position();
                 emitBlock(b);
                 int pcBBEnd = asm.position();
-                if (dumpBBInfoWriter != null) {
-                    try {
-                        // b.getId(),pcBBStart,pcBBEnd,b.getRelativeFrequency()
-                        dumpBBInfoWriter.write(b.getId() + "," + pcBBStart + "," + pcBBEnd + "," + b.getRelativeFrequency() + "\n");
-                    } catch (IOException e) {
-                        throw debug.handle(e);
-                    }
+                if (loggerBBInfo != null) {
+                    // b.getId(),pcBBStart,pcBBEnd,b.getRelativeFrequency()
+                    loggerBBInfo.printf("%d, %d, %d, %f \n", b.getId(), pcBBStart, pcBBEnd, b.getRelativeFrequency());
                 }
                 previousBlock = b;
             }
             currentBlockIndex++;
         }
-        if (dumpBBInfoWriter != null) {
-            try {
-                dumpBBInfoWriter.close();
-            } catch (IOException e) {
-                throw debug.handle(e);
-            }
+        if (loggerBBInfo != null) {
+            loggerBBInfo.out().close();
         }
         this.lir = null;
         this.currentBlockIndex = 0;
