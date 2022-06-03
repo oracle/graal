@@ -52,6 +52,7 @@ import org.graalvm.jniutils.JNI.JShortArray;
 import org.graalvm.jniutils.JNI.JString;
 import org.graalvm.jniutils.JNI.JThrowable;
 import org.graalvm.jniutils.JNI.JValue;
+import org.graalvm.jniutils.JNI.JWeak;
 import org.graalvm.jniutils.JNI.JavaVM;
 import org.graalvm.jniutils.JNI.JavaVMAttachArgs;
 import org.graalvm.jniutils.JNI.JavaVMPointer;
@@ -469,6 +470,31 @@ public final class JNIUtil {
             trace(3, "Delete global reference 0x%x", ref.rawValue());
         }
         env.getFunctions().getDeleteGlobalRef().call(env, ref);
+    }
+
+    /**
+     * Creates a new weak global reference.
+     *
+     * @param env the JNIEnv
+     * @param ref JObject to create JNI weak global reference for
+     * @param type type of the object, used only for tracing to distinguish global references
+     * @return JNI weak global reference for given {@link JObject}
+     */
+    public static JWeak NewWeakGlobalRef(JNIEnv env, JObject ref, String type) {
+        traceJNI("NewWeakGlobalRef");
+        JWeak res = env.getFunctions().getNewWeakGlobalRef().call(env, ref);
+        if (tracingAt(3)) {
+            trace(3, "New weak global reference for 0x%x of type %s -> 0x%x", ref.rawValue(), type, res.rawValue());
+        }
+        return res;
+    }
+
+    public static void DeleteWeakGlobalRef(JNIEnv env, JWeak ref) {
+        traceJNI("DeleteWeakGlobalRef");
+        if (tracingAt(3)) {
+            trace(3, "Delete weak global reference 0x%x", ref.rawValue());
+        }
+        env.getFunctions().getDeleteWeakGlobalRef().call(env, ref);
     }
 
     public static VoidPointer GetDirectBufferAddress(JNIEnv env, JObject buf) {

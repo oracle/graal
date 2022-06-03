@@ -166,11 +166,11 @@ public abstract class Accessor {
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
 
-        public abstract Object getPolyglotLanguage(LanguageInfo languageInfo);
+        public abstract Object getLanguageCache(LanguageInfo languageInfo);
 
         public abstract TruffleLanguage<?> getLanguage(RootNode languageInfo);
 
-        public abstract LanguageInfo createLanguage(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal,
+        public abstract LanguageInfo createLanguage(Object cache, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal,
                         boolean interactive);
 
         public abstract Object getSharingLayer(RootNode rootNode);
@@ -466,7 +466,7 @@ public abstract class Accessor {
 
         public abstract boolean isInternal(TruffleFile file);
 
-        public abstract String getLanguageHome(Object engineObject);
+        public abstract String getLanguageHome(LanguageInfo languageInfo);
 
         public abstract void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entries);
 
@@ -518,7 +518,7 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(URI uri);
 
-        public abstract int getAsynchronousStackDepth(Object polylgotLanguage);
+        public abstract int getAsynchronousStackDepth(Object polylgotLanguageInstance);
 
         public abstract void setAsynchronousStackDepth(Object polyglotInstrument, int depth);
 
@@ -873,7 +873,7 @@ public abstract class Accessor {
         public abstract Object createInstrumentationHandler(Object polyglotEngine, DispatchOutputStream out, DispatchOutputStream err, InputStream in, MessageTransport messageInterceptor,
                         boolean strongReferences);
 
-        public abstract void collectEnvServices(Set<Object> collectTo, Object polyglotLanguage, TruffleLanguage<?> language);
+        public abstract void collectEnvServices(Set<Object> collectTo, Object polyglotLanguageContext, TruffleLanguage<?> language);
 
         public abstract void onFirstExecution(RootNode rootNode, boolean validate);
 
