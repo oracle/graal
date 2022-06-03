@@ -100,14 +100,14 @@ Managed mode can be selected when creating a context `(Context.create())` or whe
 
 ## Native Image
 
-The native image builder generates a snapshot of an application after startup and bundles it in a binary executable.
+The `native-image` builder generates a snapshot of an application after startup and bundles it in a binary executable.
 
-By default, the native image builder executes the static initializers of classes at build time and persists the state in the native image heap.
-This means that any information that is obtained or computed in static initializers becomes part of the native image executable.
+By default, the `native-image` builder executes the static initializers of classes at build time and persists the state in the image heap.
+This means that any information that is obtained or computed in static initializers becomes part of a native executable.
 This can lead to unintentionally including properties of the build environment, such as environment variables in the image heap.
 This can either result in sensitive data ending up in the snapshot or fixing initialization data that is supposed to be obtained at startup, such as random number seeds.
 
-Developers can request static initializers that process sensitive information to be instead executed at runtime by either specifying the `--initialize-at-run-time` CLI parameter when building a native image, or making use of the `RuntimeClassInitialization` API.
+Developers can request static initializers that process sensitive information to be instead executed at runtime by either specifying the `--initialize-at-run-time` CLI parameter when building a native executable, or making use of the `RuntimeClassInitialization` API.
 
 Native-image provides multiple ways to specify the certificate file used to
 define the default TrustStore. While the default behavior for native-image is
@@ -118,11 +118,11 @@ system properties. Please see the
 details.
 
 
-In addition, developers can run the native image builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
+In addition, developers can run the `native-image` builder in a dedicated environment, such as a container, that does not contain any sensitive information in the first place.
 
 ### Serialization in Native Image
 
-Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native image in the first place.
+Native Image supports Serialization to help users deserialize the constructors for classes, contained in a native executable in the first place.
 These classes should be whitelisted in an additional specific configuration file, as other classes cannot be deserialized.
 Deserialization support also adds optional object checksums, and only classes with the same checksum can be deserialized at runtime.
 The checksum mechanism must not be used for security purposes and the deserialization of untrusted data is not supported.

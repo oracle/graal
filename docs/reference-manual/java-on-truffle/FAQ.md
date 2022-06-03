@@ -14,18 +14,23 @@ That means it can only run a Java program once it has been compiled to Java byte
 In the GraalVM family, this is similar to WebAssembly or the LLVM interpreter: while both can run C programs, they have to be complied by a C compiler first.
 
 ### Does Java running on Truffle run on HotSpot too?
-Like other languages implemented with the [Truffle framework](../../../truffle/docs/README.md), it can run both as a native image or on top of HotSpot.
+Like other languages implemented with the [Truffle framework](../../../truffle/docs/README.md), it can run both as a native executable or on top of HotSpot.
 Running on top of HotSpot is currently only possible on Linux.
 We plan to extend this capability to macOS and Windows platforms also.
 
 ### Does running Java on Truffle require HotSpot?
+<<<<<<< HEAD
 No, it doesn't, it works fine as a native image.
 Java on Truffle does require a standard core Java library (the `rt.jar` library for Java 8 or the `lib/modules` file for Java 11 as well as the associated native libraries: `libjava`, `libnio`, etc.)
+=======
+No, it doesn't, it works fine as a native executable.
+Java on Truffle does require a standard core Java library (the `rt.jar` library for Java 8 or the `lib/modules` file for Java 11 and Java 17 as well as the associated native libraries: `libjava`, `libnio`, etc.)
+>>>>>>> 7c86aa8c43a (Native image > native executable)
 
 ### Running Java on GraalVM already brings the highest level of optimization, what benefits will Java on Truffle give me?
 - Java on Truffle will inherit the extensive tooling provided by the Truffle framework. This means that for the things like code coverage and profiling you would no longer need to rely on external tools.
 - Another important aspect is that Java on Truffle comes with improved isolation of the host Java VM and the Java program running on Truffle.
-- Moreover, Java on Truffle can run in the context of a native image while still allowing dynamically-loaded bytecodes!
+- Moreover, Java on Truffle can run in the context of a native executable while still allowing dynamically-loaded bytecodes!
 - Finally, you can enjoy the benefits of enhanced HotSwap capabilities which will help boost your productivity.
 
 ### What is the license for Java on Truffle?
