@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.object.basic.test;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 
+import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,7 +82,7 @@ public class LeakCheckTest {
         for (WeakReference<Shape> fullShapeRef : fullShapeRefs) {
             assertNull("Shape should have been garbage-collected", fullShapeRef.get());
         }
-        assertNotNull(emptyShape); // keep alive
+        Reference.reachabilityFence(emptyShape);
     }
 
     /**
@@ -116,7 +116,7 @@ public class LeakCheckTest {
         DynamicObject obj = emptyShape.newInstance();
         LIBRARY.putConstant(obj, "const", new Leak(), 0);
 
-        assertNotNull(emptyShape); // keep alive
+        Reference.reachabilityFence(emptyShape);
     }
 
     /**
@@ -154,7 +154,7 @@ public class LeakCheckTest {
             assertNull("Shape should have been garbage-collected", fullShapeRef.get());
         }
 
-        assertNotNull(shapesToKeepAlive); // keep alive
+        Reference.reachabilityFence(shapesToKeepAlive);
     }
 
     private static final class Leak {
