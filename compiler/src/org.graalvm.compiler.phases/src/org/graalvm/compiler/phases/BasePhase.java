@@ -215,11 +215,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     /**
-     * An extension point for subclasses, called at the start of
-     * {@link BasePhase#apply(StructuredGraph, Object, boolean)}. The return value is a
-     * {@link ApplyScope} which will surround all the work performed by the {@link #apply}. This
-     * allows subclaseses to inject work which will performed before and after the application of
-     * this phase.
+     * Return an {@link ApplyScope} which will surround all the work performed by the call to
+     * {@link #run} in {@link #apply(StructuredGraph, Object, boolean)}. This allows subclaseses to
+     * inject work which will performed before and after the application of this phase.
      */
     @SuppressWarnings("unused")
     protected ApplyScope applyScope(StructuredGraph graph, C context) {

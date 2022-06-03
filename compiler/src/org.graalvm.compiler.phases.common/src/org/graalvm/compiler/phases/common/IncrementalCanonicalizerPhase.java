@@ -37,7 +37,7 @@ import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 /**
  * The phase that does the work of {@link CanonicalizerPhase#applyIncremental}. This phase contains
- * mutable state so it should only created and used transiently.
+ * mutable state so it should only be created and used transiently.
  */
 public class IncrementalCanonicalizerPhase extends CanonicalizerPhase {
 
