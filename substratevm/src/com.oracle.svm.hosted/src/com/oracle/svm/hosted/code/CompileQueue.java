@@ -1140,8 +1140,6 @@ public class CompileQueue {
 
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
-                afterParse(method, graph);
-                assert GraphOrder.assertSchedulableGraph(graph);
 
                 method.compilationInfo.numNodesAfterParsing = graph.getNodeCount();
                 if (!parseOnce) {
@@ -1167,6 +1165,8 @@ public class CompileQueue {
                     }
                 }
 
+                beforeEncode(method, graph);
+                assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
                 method.compilationInfo.setCompileOptions(compileOptions);
                 checkTrivial(method, graph);
@@ -1207,7 +1207,7 @@ public class CompileQueue {
     }
 
     @SuppressWarnings("unused")
-    protected void afterParse(HostedMethod method, StructuredGraph graph) {
+    protected void beforeEncode(HostedMethod method, StructuredGraph graph) {
     }
 
     protected OptionValues getCustomizedOptions(DebugContext debug) {
