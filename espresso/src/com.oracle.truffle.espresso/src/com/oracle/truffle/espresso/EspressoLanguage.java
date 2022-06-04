@@ -193,6 +193,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 // Retrieve caches and options and store them in the pre-initialized language
                 // instance.
                 EspressoContext inner = EspressoContext.get(null);
+                inner.preInitializeContext();
                 extractDataFrom(inner.getLanguage());
                 languageCache.logCacheStatus();
             } finally {

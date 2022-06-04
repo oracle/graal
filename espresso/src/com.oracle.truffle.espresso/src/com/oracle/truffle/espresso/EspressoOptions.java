@@ -493,6 +493,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> UseLinkedKlassCache = new OptionKey<>(true);
 
+    @Option(help = "User-specified classlist used to warmup Espresso during context pre-initialization", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Path> PreInitializationClasslist = new OptionKey<>(EMPTY, PATH_OPTION_TYPE);
+
     private static final OptionType<Long> SIZE_OPTION_TYPE = new OptionType<>("Size", new Function<String, Long>() {
         private static final int K = 1024;
 

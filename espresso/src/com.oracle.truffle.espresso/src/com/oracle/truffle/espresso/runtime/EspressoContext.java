@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.ref.ReferenceQueue;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -37,6 +38,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
@@ -505,6 +507,62 @@ public final class EspressoContext {
         }
     }
 
+    public void preInitializeContext() {
+        assert isInitialized();
+
+        if (!getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
+            return;
+        }
+
+        long initStartTimeNanos = System.nanoTime();
+
+        getLogger().fine("Loading classes from lib/classlist");
+        Path classlistPath = getVmProperties().javaHome().resolve("lib").resolve("classlist");
+        List<Symbol<Type>> classlist = readClasslist(classlistPath);
+        for (Symbol<Symbol.Type> type : classlist) {
+            getMeta().loadKlassOrFail(type, StaticObject.NULL, StaticObject.NULL);
+        }
+
+        long elapsedNanos = System.nanoTime() - initStartTimeNanos;
+        getLogger().log(Level.FINE, "Loaded lib/classlist in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+
+        Path userClasslistPath = getEnv().getOptions().get(EspressoOptions.PreInitializationClasslist);
+        if (!userClasslistPath.toString().isEmpty()) {
+            getLanguageCache().logCacheStatus();
+            getLogger().fine(() -> "Loading classes from user-specified classlist: " + userClasslistPath);
+            initStartTimeNanos = System.nanoTime();
+
+            List<Symbol<Type>> additionalClasslist = readClasslist(userClasslistPath);
+
+            StaticObject systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
+            for (Symbol<Type> type : additionalClasslist) {
+                Klass klass = getMeta().loadKlassOrNull(type, systemClassLoader, StaticObject.NULL);
+                if (Objects.isNull(klass)) {
+                    getLogger().warning(() -> "Failed to load class from user-specified classlist: " + type);
+                }
+            }
+
+            elapsedNanos = System.nanoTime() - initStartTimeNanos;
+            getLogger().log(Level.FINE, "Loaded user-specified classlist in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
+        }
+    }
+
+    private List<Symbol<Type>> readClasslist(Path classlistFilePath) {
+        try {
+            List<Symbol<Type>> classlist = Files.readAllLines(classlistFilePath) //
+                            .stream() //
+                            .filter(line -> !line.isBlank() && !line.startsWith("#") && !line.startsWith("@")) //
+                            .map(Types::internalFromClassName) //
+                            .map(t -> getTypes().getOrCreate(t)) //
+                            .filter(Objects::nonNull) //
+                            .collect(Collectors.toList());
+            return classlist;
+        } catch (IOException e) {
+            getLogger().log(Level.WARNING, "Failed to read classlist", e);
+            return List.of();
+        }
+    }
+
     private StaticObject createBindingsLoader(StaticObject systemClassLoader) {
         if (!getEspressoEnv().UseBindingsLoader) {
             return systemClassLoader;
@@ -519,8 +577,8 @@ public final class EspressoContext {
         }
         StaticObject bindingsLoader = k.allocateInstance();
         init.invokeDirect(bindingsLoader,
-                        /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
-                        /* parent */ systemClassLoader);
+                /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
+                /* parent */ systemClassLoader);
         return bindingsLoader;
     }
 
