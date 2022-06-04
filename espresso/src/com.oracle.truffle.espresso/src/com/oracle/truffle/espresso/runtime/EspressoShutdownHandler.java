@@ -112,7 +112,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
      */
     @TruffleBoundary
     void doExit(int code) {
-        if (!context.isInitialized()) {
+        if (!getContext().isInitialized()) {
             return;
         }
         getContext().getLogger().fine(() -> {

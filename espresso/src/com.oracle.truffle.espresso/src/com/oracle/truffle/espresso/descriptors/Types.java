@@ -63,7 +63,7 @@ public final class Types {
     }
 
     public Symbol<Type> getOrCreate(ByteSequence name) {
-        if (!Validation.validTypeDescriptor(name, false)) {
+        if (!Validation.validTypeDescriptor(name, true)) {
             return null;
         }
         return symbols.symbolify(name);

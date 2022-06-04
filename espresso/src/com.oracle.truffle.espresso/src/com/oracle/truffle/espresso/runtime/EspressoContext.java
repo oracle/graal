@@ -57,7 +57,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
@@ -82,7 +81,6 @@ import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
 import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistries;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -95,6 +93,8 @@ import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
+import com.oracle.truffle.espresso.preinit.JavaVersionMismatchException;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
@@ -138,7 +138,6 @@ public final class EspressoContext {
     // region Helpers
     @CompilationFinal private ThreadsAccess threads;
     @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
-    @CompilationFinal private GuestAllocator allocator;
     @CompilationFinal private EspressoShutdownHandler shutdownManager;
     // endregion Helpers
 
@@ -200,7 +199,6 @@ public final class EspressoContext {
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics();
-        this.allocator = new GuestAllocator(this, env.lookup(AllocationReporter.class));
 
         this.espressoEnv = new EspressoEnv(this, env);
     }
@@ -264,10 +262,6 @@ public final class EspressoContext {
         return startupClockNanos;
     }
 
-    public EspressoLanguageCache.Options getLanguageCacheOptions() {
-        return espressoEnv.languageCacheOptions;
-    }
-
     public EspressoLanguageCache getLanguageCache() {
         return getLanguage().getLanguageCache();
     }
@@ -299,7 +293,7 @@ public final class EspressoContext {
         return vmProperties;
     }
 
-    public void initializeContext() {
+    public void initializeContext() throws JavaVersionMismatchException {
         EspressoError.guarantee(getEnv().isNativeAccessAllowed(),
                         "Native access is not allowed by the host environment but it's required to load Espresso/Java native libraries. " +
                                         "Allow native access on context creation e.g. contextBuilder.allowNativeAccess(true)");
@@ -346,7 +340,7 @@ public final class EspressoContext {
     }
 
     public GuestAllocator getAllocator() {
-        return allocator;
+        return getLanguage().getAllocator();
     }
 
     public NativeAccess getNativeAccess() {
@@ -354,7 +348,7 @@ public final class EspressoContext {
     }
 
     @SuppressWarnings("try")
-    private void spawnVM() {
+    private void spawnVM() throws JavaVersionMismatchException {
         try (DebugCloseable spawn = SPAWN_VM.scope(espressoEnv.getTimers())) {
 
             long initStartTimeNanos = System.nanoTime();
@@ -375,7 +369,7 @@ public final class EspressoContext {
                 JavaVersion languageJavaVersion = getLanguage().getJavaVersion();
                 if (languageJavaVersion != null) {
                     if (!contextJavaVersion.equals(languageJavaVersion)) {
-                        throw EspressoError.fatal("Context detected a Java version mismatch.");
+                        throw new JavaVersionMismatchException();
                     }
                 } else {
                     getLanguage().tryInitializeJavaVersion(contextJavaVersion);
@@ -510,16 +504,12 @@ public final class EspressoContext {
     public void preInitializeContext() {
         assert isInitialized();
 
-        if (!getEnv().getOptions().get(EspressoOptions.UseParserKlassCache)) {
-            return;
-        }
-
         long initStartTimeNanos = System.nanoTime();
 
         getLogger().fine("Loading classes from lib/classlist");
         Path classlistPath = getVmProperties().javaHome().resolve("lib").resolve("classlist");
         List<Symbol<Type>> classlist = readClasslist(classlistPath);
-        for (Symbol<Symbol.Type> type : classlist) {
+        for (Symbol<Type> type : classlist) {
             getMeta().loadKlassOrFail(type, StaticObject.NULL, StaticObject.NULL);
         }
 
@@ -588,14 +578,15 @@ public final class EspressoContext {
             nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
         } else {
             // Pick a sane "default" native backend depending on the platform.
-            if (EspressoOptions.RUNNING_ON_SVM) {
-                nativeBackend = NFINativeAccess.Provider.ID;
-            } else {
+            boolean isInPreInit = (boolean) getEnv().getConfig().getOrDefault("preinit", false);
+            if (isInPreInit || !EspressoOptions.RUNNING_ON_SVM) {
                 if (OS.getCurrent() == OS.Linux) {
                     nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
                 } else {
                     nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
+            } else {
+                nativeBackend = NFINativeAccess.Provider.ID;
             }
         }
 

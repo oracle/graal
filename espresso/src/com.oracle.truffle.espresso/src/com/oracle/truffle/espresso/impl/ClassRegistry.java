@@ -440,7 +440,7 @@ public abstract class ClassRegistry {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
             ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
-            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(context.getLanguageCacheOptions(), description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 

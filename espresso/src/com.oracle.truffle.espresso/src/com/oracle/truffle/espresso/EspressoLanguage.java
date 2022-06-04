@@ -28,6 +28,8 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
@@ -55,12 +57,13 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.commands.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.commands.GetBindingsNode;
 import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode;
+import com.oracle.truffle.espresso.preinit.EspressoLanguageCache;
+import com.oracle.truffle.espresso.preinit.JavaVersionMismatchException;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
@@ -123,6 +126,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     // endregion Options
 
     // region allocation tracking
+    @CompilationFinal private GuestAllocator allocator;
     @CompilationFinal private final Assumption noAllocationTracking = Assumption.create("Espresso no allocation tracking assumption");
     // endregion allocation tracking
 
@@ -145,8 +149,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         this.names = new Names(symbols);
         this.types = new Types(symbols);
         this.signatures = new Signatures(symbols, types);
-
-        this.languageCache = new EspressoLanguageCache();
     }
 
     @Override
@@ -165,6 +167,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
         initializeOptions(env);
+
+        // We cannot use env.isPreinitialization() here because the language instance that holds the
+        // inner context
+        // is not under pre-initialization
+        boolean isPreinitLanguageInstance = (boolean) env.getConfig().getOrDefault("preinit", false);
+        languageCache = new EspressoLanguageCache(isPreinitLanguageInstance);
 
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
@@ -187,7 +195,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         if (context.getEnv().isPreInitialization()) {
             // Spawn Espresso VM in an inner context. Creating a context in this way also
             // initializes it.
-            TruffleContext ctx = context.getEnv().newContextBuilder().initializeCreatorContext(true).build();
+            TruffleContext ctx = context.getEnv() //
+                            .newContextBuilder() //
+                            .config("preinit", true) //
+                            .initializeCreatorContext(true) //
+                            .build();
             Object prev = ctx.enter(null);
             try {
                 // Retrieve caches and options and store them in the pre-initialized language
@@ -196,6 +208,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
                 inner.preInitializeContext();
                 extractDataFrom(inner.getLanguage());
                 languageCache.logCacheStatus();
+                exitContext(context, ExitMode.HARD, 0);
             } finally {
                 ctx.leave(null, prev);
                 ctx.close();
@@ -222,13 +235,19 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
             return false;
         }
         context.patchContext(newEnv);
-        context.initializeContext();
+        try {
+            context.initializeContext();
+        } catch (JavaVersionMismatchException e) {
+            return false;
+        }
         return true;
     }
 
     @Override
     protected boolean areOptionsCompatible(OptionValues oldOptions, OptionValues newOptions) {
-        return isOptionCompatible(newOptions, oldOptions, EspressoOptions.Verify) &&
+        return isOptionCompatible(newOptions, oldOptions, EspressoOptions.JavaHome) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.BootClasspath) &&
+                        isOptionCompatible(newOptions, oldOptions, EspressoOptions.Verify) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.SpecCompliance) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysis) &&
                         isOptionCompatible(newOptions, oldOptions, EspressoOptions.LivenessAnalysisMinimumLocals);
@@ -425,6 +444,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public EspressoLanguageCache getLanguageCache() {
         return languageCache;
+    }
+
+    public GuestAllocator getAllocator() {
+        return allocator;
+    }
+
+    public void initializeGuestAllocator(EspressoContext context, TruffleLanguage.Env env) {
+        this.allocator = new GuestAllocator(context, env.lookup(AllocationReporter.class));
     }
 
     public void tryInitializeJavaVersion(JavaVersion version) {

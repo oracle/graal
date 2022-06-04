@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
-import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
@@ -43,6 +42,18 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * Represents an immutable holder class for context-specific fields bound to the
+ * {@link TruffleLanguage.Env} (e.g., {@link EspressoOptions} values).
+ * <p>
+ * When using context pre-initialization, the first {@link EspressoContext} is running in both
+ * build-time and runtime environments. This means that the build-time {@link EspressoEnv} needs to
+ * be updated in order for the context to be in a valid state at runtime. This is achieved by
+ * re-creating the {@link EspressoEnv} at runtime during context patching. This allows the
+ * {@link EspressoEnv} to be immutable and effectively final
+ * ({@link com.oracle.truffle.api.CompilerDirectives.CompilationFinal}) for every
+ * {@link EspressoContext}..
+ */
 public final class EspressoEnv {
     private final TruffleLanguage.Env env;
     private final String[] vmArguments;
@@ -68,8 +79,6 @@ public final class EspressoEnv {
 
     // region Options
     // Checkstyle: stop field name check
-
-    public final EspressoLanguageCache.Options languageCacheOptions;
 
     // Performance control
     public final boolean InlineFieldAccessors;
@@ -108,14 +117,13 @@ public final class EspressoEnv {
         this.SoftExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.AllowHostExit = env.getOptions().get(EspressoOptions.ExitHost);
 
+        context.getLanguage().initializeGuestAllocator(context, env);
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
 
         // null if not specified
         this.JDWPOptions = env.getOptions().get(EspressoOptions.JDWPOptions);
         this.shouldReportVMEvents = JDWPOptions != null;
         this.eventListener = new VMEventListenerImpl();
-
-        this.languageCacheOptions = new EspressoLanguageCache.Options(env);
 
         this.InlineFieldAccessors = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineFieldAccessors);
         this.InlineMethodHandle = JDWPOptions == null && env.getOptions().get(EspressoOptions.InlineMethodHandle);
