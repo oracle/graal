@@ -1993,6 +1993,7 @@ _known_missing_jars = {
     'TRUFFLE_DEBUG',
     'NANO_HTTPD',
     'NANO_HTTPD_WEBSERVER',
+    'GSON_SHADOWED',
     'JDK_TOOLS',
 }
 
