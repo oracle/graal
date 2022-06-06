@@ -22,26 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.component.installer;
 
-package org.graalvm.component.installer.gds.rest;
-
-import org.graalvm.component.installer.Feedback;
 import static org.junit.Assert.assertEquals;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.graalvm.component.installer.MemoryFeedback.Memory;
 
 /**
  *
  * @author odouda
  */
-final class MemoryFeedback implements Feedback {
-    enum Case {
+public final class MemoryFeedback implements Feedback, Iterable<Memory> {
+
+    @Override
+    public Iterator<Memory> iterator() {
+        return new Iterator<>() {
+            int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return i < mem.size();
+            }
+
+            @Override
+            public Memory next() {
+                return mem.get(i++);
+            }
+        };
+    }
+
+    public enum Case {
         ERR("Error"),
         FLR("Failure"),
         MSG("Message"),
@@ -63,19 +81,23 @@ final class MemoryFeedback implements Feedback {
 
     final List<Memory> mem = new ArrayList<>();
     boolean verb = true;
+    boolean silent = false;
     Function<Boolean, String> lineAccept = null;
 
-    static final class Memory {
-        final Case cas;
-        final String key;
-        final Object[] params;
-        final Throwable t;
+    public final class Memory {
+
+        public final boolean silent;
+        public final Case cas;
+        public final String key;
+        public final Object[] params;
+        public final Throwable t;
 
         Memory(final Case cas, final String key, final Object[] params, Throwable t) {
             this.key = key;
             this.params = params;
             this.cas = cas;
             this.t = t;
+            this.silent = MemoryFeedback.this.silent;
         }
 
         Memory(final Case cas, final String key, final Object[] params) {
@@ -88,8 +110,16 @@ final class MemoryFeedback implements Feedback {
 
         @Override
         public String toString() {
-            return cas + ": " + key + ": " + Arrays.toString(params) + (t == null ? "" : ": " + t.getClass());
+            return cas + ": " + key + ": " + Arrays.toString(params) + (t == null ? "" : ": " + t.getClass()) + "; silent=" + this.silent;
         }
+    }
+
+    public boolean isEmpty() {
+        return mem.isEmpty();
+    }
+
+    public int size() {
+        return mem.size();
     }
 
     private static void assEq(Object exp, Object obj, Supplier<String> msg) {
@@ -235,11 +265,13 @@ final class MemoryFeedback implements Feedback {
 
     @Override
     public boolean isSilent() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return this.silent;
     }
 
     @Override
     public boolean setSilent(boolean silent) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        boolean wasSilent = this.silent;
+        this.silent = silent;
+        return wasSilent;
     }
 }

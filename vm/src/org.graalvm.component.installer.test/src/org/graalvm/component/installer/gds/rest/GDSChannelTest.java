@@ -25,6 +25,7 @@
 
 package org.graalvm.component.installer.gds.rest;
 
+import org.graalvm.component.installer.MemoryFeedback;
 import com.oracle.truffle.tools.utils.json.JSONException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -40,7 +41,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.Version;
 import static org.graalvm.component.installer.gds.rest.GDSChannelTest.TestGDSChannel.MockGDSCatalogStorage.ID;
-import org.graalvm.component.installer.gds.rest.MemoryFeedback.Case;
+import org.graalvm.component.installer.MemoryFeedback.Case;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.remote.FileDownloader;
@@ -94,7 +95,7 @@ public class GDSChannelTest extends CommandTestBase {
         } catch (JSONException ex) {
             // expected
         }
-        assertTrue(mf.mem.isEmpty());
+        assertTrue(mf.isEmpty());
     }
 
     @Test
@@ -104,7 +105,7 @@ public class GDSChannelTest extends CommandTestBase {
         storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "22.0.0");
         List<ComponentInfo> infos = channel.loadArtifacts(p, Collections.emptyList());
         assertTrue(infos.isEmpty());
-        assertTrue(mf.mem.isEmpty());
+        assertTrue(mf.isEmpty());
     }
 
 // @Test
@@ -192,7 +193,7 @@ public class GDSChannelTest extends CommandTestBase {
         mf.checkMem(7, Case.FRM, "MSG_YourEmail");
         mf.checkMem(8, Case.MSG, "PROMPT_VerifyEmailAddressEntry", "MSG_YourEmail");
         mf.checkMem(9, Case.INP, null);
-        assertEquals(mf.toString(), 10, mf.mem.size());
+        assertEquals(mf.toString(), 10, mf.size());
     }
 
     final class TestGDSChannel extends GDSChannel {

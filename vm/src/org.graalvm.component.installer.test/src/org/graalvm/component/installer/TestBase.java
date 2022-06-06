@@ -80,12 +80,12 @@ public class TestBase implements Feedback {
 
     @Override
     public boolean isSilent() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return feedbackDelegate == null ? false : feedbackDelegate.isSilent();
     }
 
     @Override
     public boolean setSilent(boolean silent) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        return feedbackDelegate == null ? false : feedbackDelegate.setSilent(silent);
     }
 
     static class ClassTempFolder extends TemporaryFolder {
@@ -536,6 +536,7 @@ public class TestBase implements Feedback {
 
     public class FeedbackAdapter implements Feedback {
         private ResourceBundle currentBundle;
+        private boolean silent;
 
         @Override
         public boolean verbatimOut(String msg, boolean beVerbose) {
@@ -643,12 +644,14 @@ public class TestBase implements Feedback {
 
         @Override
         public boolean isSilent() {
-            return TestBase.this.isSilent();
+            return silent;
         }
 
         @Override
         public boolean setSilent(boolean silent) {
-            return TestBase.this.setSilent(silent);
+            boolean wasSilent = this.silent;
+            this.silent = silent;
+            return wasSilent;
         }
     }
 
