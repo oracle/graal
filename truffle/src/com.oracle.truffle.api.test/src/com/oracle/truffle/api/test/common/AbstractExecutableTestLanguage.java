@@ -72,6 +72,13 @@ public abstract class AbstractExecutableTestLanguage extends TruffleLanguage<Abs
         }
     }
 
+    public static Value evalTestLanguage(Context ctx, Class<? extends AbstractExecutableTestLanguage> clazz, Source source, Object... contextArgs) {
+        String languageId = TestUtils.getDefaultLanguageId(clazz);
+        assertEquals(languageId, source.getLanguage());
+        validateAndSetContextArguments(ctx, languageId, contextArgs);
+        return ctx.eval(source);
+    }
+
     public static Value evalTestLanguage(Context ctx, Class<? extends AbstractExecutableTestLanguage> clazz, CharSequence source, Object... contextArgs) {
         String languageId = TestUtils.getDefaultLanguageId(clazz);
         validateAndSetContextArguments(ctx, languageId, contextArgs);
