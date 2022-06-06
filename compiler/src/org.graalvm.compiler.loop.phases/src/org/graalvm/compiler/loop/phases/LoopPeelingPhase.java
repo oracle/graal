@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
@@ -45,8 +46,8 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
 
     public static final CounterKey PEELED = DebugContext.counter("Peeled");
 
-    public LoopPeelingPhase(LoopPolicies policies) {
-        super(policies);
+    public LoopPeelingPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
+        super(policies, canonicalizer);
     }
 
     /**

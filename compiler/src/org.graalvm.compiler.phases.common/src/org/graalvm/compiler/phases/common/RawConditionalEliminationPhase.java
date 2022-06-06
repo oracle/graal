@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop.phases;
+package org.graalvm.compiler.phases.common;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.loop.LoopPolicies;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 
-public abstract class ContextlessLoopPhase<P extends LoopPolicies> extends LoopPhase<P> {
+public class RawConditionalEliminationPhase extends BasePhase<LowTierContext> {
 
-    public ContextlessLoopPhase(P policies) {
-        super(policies);
+    private final boolean replaceInputsWithConstants;
+
+    public RawConditionalEliminationPhase(boolean replaceInputsWithConstants) {
+        this.replaceInputsWithConstants = replaceInputsWithConstants;
     }
-
-    public final void apply(final StructuredGraph graph) {
-        apply(graph, true);
-    }
-
-    public final void apply(final StructuredGraph graph, final boolean dumpGraph) {
-        apply(graph, null, dumpGraph);
-    }
-
-    protected abstract void run(StructuredGraph graph);
 
     @Override
-    protected final void run(StructuredGraph graph, CoreProviders context) {
-        run(graph);
+    protected void run(StructuredGraph graph, LowTierContext context) {
+        if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
+            SchedulePhase schedulePhase = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST, true);
+            schedulePhase.apply(graph, context);
+            StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
+            schedule.getCFG().visitDominatorTree(new FixReadsPhase.RawConditionalEliminationVisitor(graph, schedule, context.getMetaAccess(), replaceInputsWithConstants), false);
+        }
     }
 }

@@ -77,9 +77,6 @@ import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
-import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
-import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.meta.Assumptions;
@@ -615,30 +612,6 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
             schedule.getCFG().visitDominatorTree(createVisitor(graph, schedule, context), false);
 
-        }
-    }
-
-    public static class RawCEPhase extends BasePhase<LowTierContext> {
-
-        private final boolean replaceInputsWithConstants;
-
-        public RawCEPhase(boolean replaceInputsWithConstants) {
-            this.replaceInputsWithConstants = replaceInputsWithConstants;
-        }
-
-        @Override
-        protected CharSequence getName() {
-            return "RawCEPhase";
-        }
-
-        @Override
-        protected void run(StructuredGraph graph, LowTierContext context) {
-            if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
-                SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST, true);
-                schedulePhase.apply(graph, context);
-                ScheduleResult schedule = graph.getLastSchedule();
-                schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule, context.getMetaAccess(), replaceInputsWithConstants), false);
-            }
         }
     }
 

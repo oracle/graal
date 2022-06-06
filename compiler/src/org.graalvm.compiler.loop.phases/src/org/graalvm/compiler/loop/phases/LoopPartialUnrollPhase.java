@@ -40,11 +40,8 @@ import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
 
-    private final CanonicalizerPhase canonicalizer;
-
     public LoopPartialUnrollPhase(LoopPolicies policies, CanonicalizerPhase canonicalizer) {
-        super(policies);
-        this.canonicalizer = canonicalizer;
+        super(policies, canonicalizer);
     }
 
     @SuppressWarnings("try")

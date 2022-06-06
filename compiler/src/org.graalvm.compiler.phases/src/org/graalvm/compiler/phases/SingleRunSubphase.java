@@ -25,6 +25,7 @@
 package org.graalvm.compiler.phases;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.nodes.StructuredGraph;
 
 /**
  * A subclass of {@link BasePhase} whose instances may only be
@@ -57,8 +58,9 @@ public abstract class SingleRunSubphase<C> extends BasePhase<C> {
     private boolean applyCalled = false;
 
     @Override
-    protected final void startApplyHook() {
+    protected final ApplyScope applyScope(StructuredGraph graph, C context) {
         GraalError.guarantee(!applyCalled, "Instances of SingleRunSubphase may only be applied once, but this instance has been applied before.");
         applyCalled = true;
+        return null;
     }
 }

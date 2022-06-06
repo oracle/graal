@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.loop.phases;
+package org.graalvm.compiler.phases.common;
 
-import org.graalvm.compiler.nodes.loop.LoopPolicies;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.PostRunCanonicalizationPhase;
+import org.graalvm.compiler.phases.BasePhase;
 
-public abstract class LoopPhase<P extends LoopPolicies> extends PostRunCanonicalizationPhase<CoreProviders> {
-    private final P policies;
+/**
+ * The base classes for phases that always want to apply {@link CanonicalizerPhase#applyIncremental}
+ * to a graph after the phase has been applied if the graph changed.
+ */
+public abstract class PostRunCanonicalizationPhase<C extends CoreProviders> extends BasePhase<C> {
 
-    public LoopPhase(P policies, CanonicalizerPhase canonicalizer) {
-        super(canonicalizer);
-        this.policies = policies;
-        assert canonicalizer != null : "incremental canonicalization must always be enabled for loop phases";
+    protected final CanonicalizerPhase canonicalizer;
+
+    /**
+     * Primary constructor for incremental canonicalzation. Subclasses must provide a non-null
+     * {@link CanonicalizerPhase}
+     */
+    public PostRunCanonicalizationPhase(CanonicalizerPhase canonicalizer) {
+        assert canonicalizer != null;
+        this.canonicalizer = canonicalizer;
     }
 
-    protected P getPolicies() {
-        return policies;
+    @Override
+    protected ApplyScope applyScope(StructuredGraph graph, C context) {
+        return new IncrementalCanonicalizerPhase.Apply(graph, context, canonicalizer);
     }
 }

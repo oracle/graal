@@ -44,21 +44,25 @@ import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbstractNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
-import org.graalvm.compiler.phases.Phase;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 
-public class ExpandLogicPhase extends Phase {
+public class ExpandLogicPhase extends PostRunCanonicalizationPhase<CoreProviders> {
     private static final double EPSILON = 1E-6;
+
+    public ExpandLogicPhase(CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
+    }
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         for (ShortCircuitOrNode logic : graph.getNodes(ShortCircuitOrNode.TYPE)) {
             processBinary(logic);
         }
         assert graph.getNodes(ShortCircuitOrNode.TYPE).isEmpty();
 
         for (AbstractNormalizeCompareNode logic : graph.getNodes(AbstractNormalizeCompareNode.TYPE)) {
-            try (DebugCloseable context = logic.withNodeSourcePosition()) {
+            try (DebugCloseable s = logic.withNodeSourcePosition()) {
                 processNormalizeCompareNode(logic);
             }
         }

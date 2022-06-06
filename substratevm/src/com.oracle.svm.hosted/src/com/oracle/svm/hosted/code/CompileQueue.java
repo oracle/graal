@@ -64,6 +64,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -225,6 +226,7 @@ public class CompileQueue {
     private SnippetReflectionProvider snippetReflection;
     private final FeatureHandler featureHandler;
     protected final OptionValues compileOptions;
+    protected final GlobalMetrics metricValues = new GlobalMetrics();
 
     private volatile boolean inliningProgress;
 
@@ -322,6 +324,11 @@ public class CompileQueue {
             this.method = method;
             this.reason = reason;
             compilationIdentifier = new SubstrateHostedCompilationIdentifier(method);
+        }
+
+        @Override
+        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
 
         @Override
@@ -451,6 +458,7 @@ public class CompileQueue {
         if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
             ImageSingletons.lookup(HostedHeapDumpFeature.class).compileQueueAfterCompilation();
         }
+        metricValues.print(compileOptions);
     }
 
     private boolean suitesNotCreated() {

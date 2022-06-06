@@ -152,7 +152,7 @@ public class EnumSwitchTest extends GraalCompilerTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -166,7 +166,7 @@ public class EnumSwitchTest extends GraalCompilerTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
