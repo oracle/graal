@@ -72,7 +72,7 @@ public abstract class DebugInfoBase {
      *
      * An alternative traversal option is
      *
-     * 1) by top level class (String id)
+     * 1) by top level class (unique ResolvedJavaType id)
      *
      * 2) by top level compiled method (primary Range) within a class ordered by ascending address
      *
@@ -82,6 +82,18 @@ public abstract class DebugInfoBase {
      * continuous address range with no intervening code from other methods or data values. this
      * means we can treat each class as a compilation unit, allowing data common to all methods of
      * the class to be shared.
+     *
+     * Just as an aside, for full disclosure, this is not strictly the full story. Sometimes a class
+     * can include speculatively optimized, compiled methods plus deopt fallback compiled variants
+     * of those same methods. In such cases the normal and/or speculatively compiled methods occupy
+     * one contiguous range and deopt methods occupy a separate higher range. The current
+     * compilation strategy ensures that the union across all classes of the normal/speculative
+     * ranges and the union across all classes of the deopt ranges lie in two distinct intervals
+     * where the highest address in the first union is strictly less than the lowest address in the
+     * second union. The implication is twofold. An address order traversal requires generating
+     * details for classes, methods and non-deopt primary ranges before generating details for the
+     * deopt primary ranges. The former details need to be generated in a distinct CU from deopt
+     * method details.
      *
      * A third option appears to be to traverse via files, then top level class within file etc.
      * Unfortunately, files cannot be treated as the compilation unit. A file F may contain multiple
@@ -96,7 +108,8 @@ public abstract class DebugInfoBase {
      */
     private List<TypeEntry> types = new ArrayList<>();
     /**
-     * index of already seen classes.
+     * Index of already seen classes keyed by the unique, associated, identifying ResolvedJavaType
+     * or, in the single special case of the TypeEntry for the Java header structure, by key null.
      */
     private Map<ResolvedJavaType, TypeEntry> typesIndex = new HashMap<>();
     /**
@@ -104,7 +117,7 @@ public abstract class DebugInfoBase {
      */
     private List<ClassEntry> primaryClasses = new ArrayList<>();
     /**
-     * index of already seen classes.
+     * Index of already seen classes.
      */
     private Map<ResolvedJavaType, ClassEntry> primaryClassesIndex = new HashMap<>();
     /**

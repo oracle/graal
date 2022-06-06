@@ -311,7 +311,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         TypeEntry valueType = fieldEntry.getValueType();
         String valueTypeName = valueType.getTypeName();
         /* use the indirect type for the field so pointers get translated */
-        int valueTypeIdx = getIndirectTypeIndex(valueTypeName);
+        int valueTypeIdx = getIndirectTypeIndex(valueType);
         log(context, "  [0x%08x] header field", pos);
         int abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_header_field;
         log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
@@ -520,7 +520,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             /* Inherit layout from object header. */
             superName = OBJECT_HEADER_STRUCT_NAME;
-            superTypeOffset = getTypeIndex(superName);
+            TypeEntry headerType = lookupType(null);
+            superTypeOffset = getTypeIndex(headerType);
         }
         /* Now write the child fields. */
         pos = writeSuperReference(context, superTypeOffset, superName, buffer, pos);
@@ -625,9 +626,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeAttrData2((short) fileIdx, buffer, pos);
             /* At present we definitely don't have line numbers. */
         }
-        String valueTypeName = fieldEntry.getValueType().getTypeName();
+        TypeEntry valueType = fieldEntry.getValueType();
+        String valueTypeName = valueType.getTypeName();
         /* use the indirect type for the field so pointers get translated if needed */
-        int typeIdx = getIndirectTypeIndex(valueTypeName);
+        int typeIdx = getIndirectTypeIndex(valueType);
         log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeIdx, valueTypeName);
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
         if (!isStatic) {
@@ -665,7 +667,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeMethodDeclaration(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
         String methodKey = method.getSymbolName();
-        setMethodDeclarationIndex(classEntry, methodKey, pos);
+        setMethodDeclarationIndex(method, pos);
         int modifiers = method.getModifiers();
         boolean isStatic = Modifier.isStatic(modifiers);
         log(context, "  [0x%08x] method declaration %s", pos, methodKey);
@@ -685,8 +687,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int fileIdx = classEntry.localFilesIdx(fileEntry);
         log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, fileEntry.getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
-        String returnTypeName = method.getValueType().getTypeName();
-        int retTypeIdx = getTypeIndex(returnTypeName);
+        TypeEntry returnType = method.getValueType();
+        String returnTypeName = returnType.getTypeName();
+        int retTypeIdx = getTypeIndex(returnType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnTypeName);
         pos = writeAttrRefAddr(retTypeIdx, buffer, pos);
         log(context, "  [0x%08x]     artificial %s", pos, method.isDeopt() ? "true" : "false");
@@ -745,7 +748,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] method parameter declaration", pos);
         int abbrevCode;
         String paramName = paramInfo.name();
-        String paramTypeName = paramInfo.typeName();
+        TypeEntry paramType = lookupType(paramInfo.valueType());
+        String paramTypeName = paramType.getTypeName();
         int line = paramInfo.line();
         if (artificial) {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_declaration1;
@@ -764,7 +768,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x]     line 0x%x", pos, line);
             pos = writeAttrData2((short) line, buffer, pos);
         }
-        int typeIdx = getTypeIndex(paramTypeName);
+        int typeIdx = getTypeIndex(paramType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramTypeName);
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_declaration1) {
@@ -794,7 +798,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] method local declaration", pos);
         int abbrevCode;
         String paramName = paramInfo.name();
-        String paramTypeName = paramInfo.typeName();
+        TypeEntry paramType = lookupType(paramInfo.valueType());
+        String paramTypeName = paramType.getTypeName();
         int line = paramInfo.line();
         if (line >= 0) {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_local_declaration1;
@@ -811,7 +816,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x]     line 0x%x", pos, line);
             pos = writeAttrData2((short) line, buffer, pos);
         }
-        int typeIdx = getTypeIndex(paramTypeName);
+        int typeIdx = getTypeIndex(paramType);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramTypeName);
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
@@ -981,7 +986,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             if (primary.isDeoptTarget() != deoptTargets) {
                 continue;
             }
-            pos = writeMethodLocation(context, classEntry, primaryEntry, buffer, pos);
+            pos = writeMethodLocation(context, primaryEntry, buffer, pos);
         }
         return pos;
     }
@@ -990,9 +995,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         for (MethodEntry method : classEntry.getMethods()) {
             if (method.isInlined()) {
-                String methodKey = method.getSymbolName();
-                setAbstractInlineMethodIndex(classEntry, methodKey, pos);
-                pos = writeAbstractInlineMethod(context, classEntry, method, buffer, pos);
+                setAbstractInlineMethodIndex(method, pos);
+                pos = writeAbstractInlineMethod(context, method, buffer, pos);
             }
         }
         return pos;
@@ -1185,7 +1189,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData1((byte) size, buffer, pos);
         String elementTypeName = elementType.getTypeName();
         /* use the indirect type for the element type so pointers get translated */
-        int elementTypeIdx = getIndirectTypeIndex(elementTypeName);
+        int elementTypeIdx = getIndirectTypeIndex(elementType);
         log(context, "  [0x%08x]     type idx 0x%x (%s)", pos, elementTypeIdx, elementTypeName);
         pos = writeAttrRefAddr(elementTypeIdx, buffer, pos);
         return pos;
@@ -1297,7 +1301,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return writeAttrNull(buffer, pos);
     }
 
-    private int writeMethodLocation(DebugContext context, ClassEntry classEntry, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writeMethodLocation(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
         int pos = p;
         Range primary = primaryEntry.getPrimary();
         log(context, "  [0x%08x] method location", pos);
@@ -1314,7 +1318,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     external  true", pos);
         pos = writeFlag(DwarfDebugInfo.DW_FLAG_true, buffer, pos);
         String methodKey = primary.getSymbolName();
-        int methodSpecOffset = getMethodDeclarationIndex(classEntry, methodKey);
+        int methodSpecOffset = getMethodDeclarationIndex(primary.getMethodEntry());
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
         HashMap<DebugLocalInfo, List<Range>> varRangeMap = primary.getVarRangeMap();
@@ -1421,7 +1425,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    private int writeAbstractInlineMethod(DebugContext context, ClassEntry classEntry, MethodEntry method, byte[] buffer, int p) {
+    private int writeAbstractInlineMethod(DebugContext context, MethodEntry method, byte[] buffer, int p) {
         int pos = p;
         String methodKey = method.getSymbolName();
         log(context, "  [0x%08x] abstract inline method %s", pos, method.getSymbolName());
@@ -1435,7 +1439,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
         log(context, "  [0x%08x]     external  true", pos);
         pos = writeFlag(DwarfDebugInfo.DW_FLAG_true, buffer, pos);
-        int methodSpecOffset = getMethodDeclarationIndex(classEntry, methodKey);
+        int methodSpecOffset = getMethodDeclarationIndex(method);
         log(context, "  [0x%08x]     specification  0x%x (%s)", pos, methodSpecOffset, methodKey);
         pos = writeAttrRefAddr(methodSpecOffset, buffer, pos);
         /*
@@ -1452,10 +1456,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         // identify the inlined method by looking at the first callee
         Range callee = caller.getFirstCallee();
         MethodEntry methodEntry = callee.getMethodEntry();
-        ClassEntry methodClassEntry = methodEntry.ownerType();
         String methodKey = methodEntry.getSymbolName();
         /* the abstract index was written in the method's class entry */
-        int specificationIndex = getAbstractInlineMethodIndex(methodClassEntry, methodKey);
+        int specificationIndex = getAbstractInlineMethodIndex(methodEntry);
 
         int pos = p;
         log(context, "  [0x%08x] concrete inline subroutine [0x%x, 0x%x] %s", pos, caller.getLo(), caller.getHi(), methodKey);

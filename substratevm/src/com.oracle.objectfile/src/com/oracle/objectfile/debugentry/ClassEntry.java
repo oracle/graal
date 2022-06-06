@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -65,9 +66,10 @@ public class ClassEntry extends StructureTypeEntry {
      */
     protected List<MethodEntry> methods;
     /**
-     * An index of all currently known methods keyed by the unique local symbol name of the method.
+     * An index of all currently known methods keyed by the unique, associated, identifying
+     * ResolvedJavaMethod.
      */
-    private Map<String, MethodEntry> methodsIndex;
+    private Map<ResolvedJavaMethod, MethodEntry> methodsIndex;
     /**
      * A list recording details of all primary ranges included in this class sorted by ascending
      * address range.
@@ -131,16 +133,16 @@ public class ClassEntry extends StructureTypeEntry {
         assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
-        ResolvedJavaType superClass = debugInstanceTypeInfo.superClass();
+        ResolvedJavaType superType = debugInstanceTypeInfo.superClass();
         String superName;
-        if (superClass != null) {
-            superName = TypeEntry.canonicalize(superClass.toJavaName());
+        if (superType != null) {
+            superName = TypeEntry.canonicalize(superType.toJavaName());
         } else {
             superName = "";
         }
         debugContext.log("typename %s adding super %s\n", typeName, superName);
-        if (superClass != null) {
-            this.superClass = debugInfoBase.lookupClassEntry(superClass);
+        if (superType != null) {
+            this.superClass = debugInfoBase.lookupClassEntry(superType);
         }
         debugInstanceTypeInfo.interfaces().forEach(interfaceType -> processInterface(interfaceType, debugInfoBase, debugContext));
         /* Add details of fields and field types */
@@ -181,11 +183,10 @@ public class ClassEntry extends StructureTypeEntry {
         }
     }
 
-    private void indexMethodEntry(MethodEntry methodEntry) {
-        String methodName = methodEntry.getSymbolName();
-        assert methodsIndex.get(methodName) == null : methodName;
+    private void indexMethodEntry(MethodEntry methodEntry, ResolvedJavaMethod idMethod) {
+        assert methodsIndex.get(idMethod) == null : methodEntry.getSymbolName();
         methods.add(methodEntry);
-        methodsIndex.put(methodName, methodEntry);
+        methodsIndex.put(idMethod, methodEntry);
     }
 
     private void indexLocalFileEntry(FileEntry localFileEntry) {
@@ -309,7 +310,7 @@ public class ClassEntry extends StructureTypeEntry {
         FileEntry methodFileEntry = debugInfoBase.ensureFileEntry(debugMethodInfo);
         MethodEntry methodEntry = new MethodEntry(debugInfoBase, debugMethodInfo, methodFileEntry, methodName,
                         this, resultTypeEntry, typeEntries, paramInfos, thisParam);
-        indexMethodEntry(methodEntry);
+        indexMethodEntry(methodEntry, debugMethodInfo.idMethod());
 
         return methodEntry;
     }
@@ -351,7 +352,7 @@ public class ClassEntry extends StructureTypeEntry {
 
     public MethodEntry ensureMethodEntryForDebugRangeInfo(DebugRangeInfo debugRangeInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
 
-        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.symbolNameForMethod());
+        MethodEntry methodEntry = methodsIndex.get(debugRangeInfo.idMethod());
         if (methodEntry == null) {
             methodEntry = processMethod(debugRangeInfo, debugInfoBase, debugContext);
         } else {

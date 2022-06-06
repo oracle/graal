@@ -54,22 +54,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugArrayTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugDataInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugEnumTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugHeaderTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInstanceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugInterfaceTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
@@ -84,7 +68,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
+// import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
@@ -181,10 +165,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         javaKindToHostedType = initJavaKindToHostedTypes(metaAccess);
     }
 
-    private HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
+    private static HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
         HashMap<JavaKind, HostedType> map = new HashMap<>();
         for (JavaKind kind : JavaKind.values()) {
-            Class<?>  clazz = kind.toJavaClass();
+            Class<?> clazz = kind.toJavaClass();
             assert clazz != null || kind == JavaKind.Illegal || kind == JavaKind.Object;
             HostedType javaType;
             if (kind == JavaKind.Object) {
@@ -329,8 +313,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         if (javaMethod instanceof SubstitutionMethod) {
             SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
             javaMethod = substitutionMethod.getAnnotated();
-        } else if (javaMethod instanceof CustomSubstitutionMethod) {
-            javaMethod = ((CustomSubstitutionMethod) javaMethod).getOriginal();
+            // } else if (javaMethod instanceof CustomSubstitutionMethod) {
+            // javaMethod = ((CustomSubstitutionMethod) javaMethod).getOriginal();
         }
         return javaMethod;
     }
@@ -339,18 +323,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return getOriginal(hostedMethod).getModifiers();
     }
 
-    private static String toJavaName(JavaType javaType) {
-        if (javaType instanceof HostedType) {
-            return getDeclaringClass((HostedType) javaType, true).toJavaName();
-        }
-        return javaType.toJavaName();
-    }
-
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
 
     private HostedType hostedTypeForKind(JavaKind kind) {
         return javaKindToHostedType.get(kind);
     }
+
     private abstract class NativeImageDebugFileInfo implements DebugFileInfo {
         private final Path fullFilePath;
 
@@ -948,8 +926,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // for identity otherwise we use whatever we unwrapped to.
             if (targetMethod instanceof SubstitutionMethod) {
                 targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-            } else if (targetMethod instanceof CustomSubstitutionMethod) {
-                targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
+                // } else if (targetMethod instanceof CustomSubstitutionMethod) {
+                // targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
             }
             return targetMethod;
         }
@@ -1002,6 +980,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 result = ((WrappedJavaType) result).getWrapped();
             }
             return result;
+        }
+
+        @Override
+        public ResolvedJavaMethod idMethod() {
+            // translating to the original ensures we equate a
+            // substituted method with the original in case we ever see both
+            return originalMethod();
         }
 
         @Override
@@ -2143,17 +2128,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this(name, Value.ILLEGAL, 0, kind, type, slot, line);
         }
 
-        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType type, int slot, int line) {
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType t, int slot, int line) {
             this.name = name;
             this.kind = kind;
-            this.type = type;
             this.slot = slot;
             this.line = line;
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
-            if (type == null) {
-                type = hostedTypeForKind(kind);
-            }
+            this.type = (t != null ? t : hostedTypeForKind(kind));
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
                 this.value = new NativeImageDebugRegisterValue((RegisterValue) value);

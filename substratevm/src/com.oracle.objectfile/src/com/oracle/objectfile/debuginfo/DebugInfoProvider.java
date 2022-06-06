@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -248,10 +249,20 @@ public interface DebugInfoProvider {
 
         /*
          * Return the unique type that owns this method. <p/>
-         * 
+         *
          * @return the unique type that owns this method
          */
         ResolvedJavaType ownerType();
+
+        /*
+         * Return the unique identifier for this method. The result can be used to unify details of
+         * methods presented via interface DebugTypeInfo with related details of compiled methods
+         * presented via interface DebugRangeInfo and of call frame methods presented via interface
+         * DebugLocationInfo. <p/>
+         *
+         * @return the unique identifier for this method
+         */
+        ResolvedJavaMethod idMethod();
     }
 
     /**
