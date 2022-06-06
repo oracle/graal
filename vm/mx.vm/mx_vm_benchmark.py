@@ -735,7 +735,7 @@ class NativeImageVM(GraalVm):
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
 
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + config.extra_agent_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
 
