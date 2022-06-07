@@ -614,7 +614,7 @@ graal_unit_test_runs = [
 ]
 
 _registers = {
-    'amd64': 'rbx,r11,r10,r14,xmm3,xmm11,xmm14',
+    'amd64': 'rbx,r11,r10,r14,xmm3,xmm2,xmm11,xmm14,k1?',
     'aarch64': 'r0,r1,r2,r3,r4,v0,v1,v2,v3'
 }
 if mx.get_arch() not in _registers:
