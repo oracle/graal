@@ -37,7 +37,6 @@ import java.util.zip.ZipException;
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Commands;
 import org.graalvm.component.installer.CommonConstants;
-import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENTS;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_ERRORS;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_FILENAME;
 import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT_REQUIRES;

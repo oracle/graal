@@ -614,13 +614,4 @@ public class Environment implements Feedback, CommandInput, Config {
         this.silent = silent;
         return wasSilent;
     }
-
-    public void suppressSilent(Runnable run) {
-        boolean wasSilent = setSilent(false);
-        try {
-            run.run();
-        } finally {
-            setSilent(wasSilent);
-        }
-    }
 }

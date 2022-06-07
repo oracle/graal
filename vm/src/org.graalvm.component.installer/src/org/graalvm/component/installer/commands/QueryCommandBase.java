@@ -91,7 +91,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
     protected boolean simpleFormat;
 
     private JSONObject jsonComponent;
-    
+
     protected JSONObject getJSONComponent() {
         return jsonComponent;
     }
@@ -236,13 +236,13 @@ public abstract class QueryCommandBase implements InstallerCommand {
         } else if (printTable) {
             String fmt = simpleFormat ? "LIST_ComponentShortList_Simple@" : "LIST_ComponentShortList";
             String line = String.format(feedback.l10n(fmt),
-                    shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
             feedback.verbatimOut(line, false);
         } else {
             String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
             feedback.output(fmt,
-                    shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                    findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
+                            shortenComponentId(info), info.getVersion().displayString(), info.getName(),
+                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
         }
     }
 

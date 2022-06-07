@@ -143,6 +143,15 @@ public interface Feedback {
 
     boolean setSilent(boolean silent);
 
+    default void suppressSilent(Runnable run) {
+        boolean wasSilent = setSilent(false);
+        try {
+            run.run();
+        } finally {
+            setSilent(wasSilent);
+        }
+    }
+
     /**
      * Waits for user input confirmed by ENTER.
      * 
