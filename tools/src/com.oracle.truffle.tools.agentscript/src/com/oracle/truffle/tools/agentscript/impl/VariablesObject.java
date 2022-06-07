@@ -26,7 +26,7 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -55,33 +55,33 @@ final class VariablesObject implements TruffleObject {
     }
 
     @ExportMessage
-    static Object getMembers(VariablesObject obj, boolean includeInternal, @CachedLibrary("obj.scope") InteropLibrary interop) throws UnsupportedMessageException {
-        return interop.getMembers(obj.scope);
+    static Object getMemberObjects(VariablesObject obj, @CachedLibrary("obj.scope") InteropLibrary interop) throws UnsupportedMessageException {
+        return interop.getMemberObjects(obj.scope);
     }
 
     @ExportMessage
-    static Object readMember(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
+    static Object readMember(VariablesObject obj, Object member, @CachedLibrary("obj.scope") InteropLibrary interop) throws UnknownMemberException, UnsupportedMessageException {
         return interop.readMember(obj.scope, member);
     }
 
     @ExportMessage
-    static boolean isMemberReadable(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) {
+    static boolean isMemberReadable(VariablesObject obj, Object member, @CachedLibrary("obj.scope") InteropLibrary interop) {
         return interop.isMemberReadable(obj.scope, member);
     }
 
     @ExportMessage
-    static void writeMember(VariablesObject obj, String member, Object value, @CachedLibrary("obj.scope") InteropLibrary interop)
-                    throws UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+    static void writeMember(VariablesObject obj, Object member, Object value, @CachedLibrary("obj.scope") InteropLibrary interop)
+                    throws UnknownMemberException, UnsupportedTypeException, UnsupportedMessageException {
         interop.writeMember(obj.scope, member, value);
     }
 
     @ExportMessage
-    static boolean isMemberModifiable(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) {
+    static boolean isMemberModifiable(VariablesObject obj, Object member, @CachedLibrary("obj.scope") InteropLibrary interop) {
         return interop.isMemberModifiable(obj.scope, member);
     }
 
     @ExportMessage
-    static boolean isMemberInsertable(VariablesObject obj, String member, @CachedLibrary("obj.scope") InteropLibrary interop) {
+    static boolean isMemberInsertable(VariablesObject obj, Object member, @CachedLibrary("obj.scope") InteropLibrary interop) {
         return interop.isMemberInsertable(obj.scope, member);
     }
 }

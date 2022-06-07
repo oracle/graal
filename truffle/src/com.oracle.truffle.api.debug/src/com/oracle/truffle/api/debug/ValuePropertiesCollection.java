@@ -94,8 +94,8 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
         if (name.equals(receiverName)) {
             return null;
         }
-        if (INTEROP.isMemberExisting(object, name)) {
-            return new DebugValue.ObjectMemberValue(session, language, scope, object, name);
+        if (INTEROP.isMemberExisting(object, (Object) name)) {
+            return new DebugValue.PropertyValue(session, language, scope, object, name);
         }
         return null;
     }
@@ -153,7 +153,7 @@ final class ValuePropertiesCollection extends AbstractCollection<DebugValue> {
             } else {
                 member = readNext();
             }
-            return new DebugValue.ObjectMemberValue(session, language, scope, object, member);
+            return new DebugValue.PropertyValue(session, language, scope, object, member);
         }
 
         @Override

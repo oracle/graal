@@ -30,7 +30,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.utilities.TriState;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
@@ -41,17 +41,17 @@ import org.graalvm.shadowed.org.json.JSONObject;
 public final class JSONTruffleObject extends AbstractInspectorObject {
 
     private final JSONObject json;
-    private final TruffleObject keys;
+    private final TruffleObject members;
     @CompilationFinal(dimensions = 1) private volatile String[] names;
 
     public JSONTruffleObject(JSONObject json) {
         this.json = json;
-        this.keys = new JSONKeys(this);
+        this.members = new JSONKeys(this);
     }
 
     @Override
-    protected TruffleObject getMembers(boolean includeInternal) {
-        return keys;
+    protected TruffleObject getMemberObjects() {
+        return members;
     }
 
     @Override
@@ -84,9 +84,9 @@ public final class JSONTruffleObject extends AbstractInspectorObject {
     }
 
     @Override
-    protected Object invokeMember(String name, Object[] arguments) throws UnknownIdentifierException {
+    protected Object invokeMethod(String name, Object member, Object[] arguments) throws UnknownMemberException {
         CompilerDirectives.transferToInterpreter();
-        throw UnknownIdentifierException.create(name);
+        throw UnknownMemberException.create(member);
     }
 
     static Object getTruffleValueFromJSONValue(Object value) {
@@ -135,7 +135,7 @@ public final class JSONTruffleObject extends AbstractInspectorObject {
                 CompilerDirectives.transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);
             }
-            return allNames[(int) index];
+            return new FieldMember(allNames[(int) index]);
         }
 
         @Override

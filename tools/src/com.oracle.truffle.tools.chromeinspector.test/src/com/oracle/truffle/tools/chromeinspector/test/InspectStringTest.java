@@ -140,7 +140,7 @@ public class InspectStringTest extends AbstractFunctionValueTest {
 
         @ExportMessage
         @SuppressWarnings({"static-method", "unused"})
-        Object getMembers(boolean includeInternal) {
+        Object getMemberObjects() {
             return new Members();
         }
 

@@ -118,7 +118,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -2657,13 +2657,54 @@ public class LanguageSPITest {
         @ExportMessage
         Object readArrayElement(long index) throws InvalidArrayIndexException {
             try {
-                return keys[(int) index];
+                return new KeyMember(keys[(int) index]);
             } catch (IndexOutOfBoundsException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class KeyMember implements TruffleObject {
+
+        private final String key;
+
+        KeyMember(String key) {
+            this.key = key;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return key;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return key;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -2701,25 +2742,35 @@ public class LanguageSPITest {
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getMemberObjects() {
             return new TestKeysArray(values.keySet().toArray(new String[0]));
         }
 
-        @ExportMessage
-        @TruffleBoundary
-        Object readMember(String key) throws UnknownIdentifierException {
-            if (values.containsKey(key)) {
-                return values.get(key);
-            } else if (parentScope != null && parentScope.isMemberReadable(key)) {
-                return parentScope.readMember(key);
+        private static String getKey(Object member) {
+            if (member instanceof KeyMember km) {
+                return km.key;
             } else {
-                throw UnknownIdentifierException.create(key);
+                return (String) member;
             }
         }
 
         @ExportMessage
         @TruffleBoundary
-        void writeMember(String key, Object value) throws UnsupportedMessageException {
+        Object readMember(Object member) throws UnknownMemberException {
+            String key = getKey(member);
+            if (values.containsKey(key)) {
+                return values.get(key);
+            } else if (parentScope != null && parentScope.isMemberReadable(key)) {
+                return parentScope.readMember(key);
+            } else {
+                throw UnknownMemberException.create(member);
+            }
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        void writeMember(Object member, Object value) throws UnsupportedMessageException {
+            String key = getKey(member);
             if (isMemberModifiable(key)) {
                 if (modifiable && values.containsKey(key)) {
                     values.put(key, value);
@@ -2743,7 +2794,8 @@ public class LanguageSPITest {
 
         @ExportMessage
         @TruffleBoundary
-        void removeMember(String key) throws UnsupportedMessageException {
+        void removeMember(Object member) throws UnsupportedMessageException {
+            String key = getKey(member);
             boolean contains = values.containsKey(key);
             if (removable && contains) {
                 values.remove(key);
@@ -2756,27 +2808,31 @@ public class LanguageSPITest {
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return values.containsKey(member) || parentScope != null && parentScope.isMemberReadable(member);
+        boolean isMemberReadable(Object member) {
+            String key = getKey(member);
+            return values.containsKey(key) || parentScope != null && parentScope.isMemberReadable(key);
         }
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberModifiable(String member) {
-            return modifiable && values.containsKey(member) || parentScope != null && parentScope.isMemberModifiable(member);
+        boolean isMemberModifiable(Object member) {
+            String key = getKey(member);
+            return modifiable && values.containsKey(key) || parentScope != null && parentScope.isMemberModifiable(key);
         }
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberInsertable(String member) {
-            return !isMemberReadable(member) && (insertable || parentScope != null && parentScope.isMemberInsertable(member));
+        boolean isMemberInsertable(Object member) {
+            String key = getKey(member);
+            return !isMemberReadable(key) && (insertable || parentScope != null && parentScope.isMemberInsertable(key));
         }
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberRemovable(String member) {
-            boolean contains = values.containsKey(member);
-            return removable && contains || !contains && parentScope != null && parentScope.isMemberRemovable(member);
+        boolean isMemberRemovable(Object member) {
+            String key = getKey(member);
+            boolean contains = values.containsKey(key);
+            return removable && contains || !contains && parentScope != null && parentScope.isMemberRemovable(key);
         }
 
         @ExportMessage

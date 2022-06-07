@@ -25,26 +25,12 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.source.Source;
 
-@SuppressWarnings("unused")
-@ExportLibrary(InteropLibrary.class)
-final class SourceEventObject implements TruffleObject {
+final class SourceEventObject extends MembersObject.AbstractReader {
+
     private final Source source;
-
-    SourceEventObject(Source source) {
-        this.source = source;
-    }
-
-    @ExportMessage
-    static boolean hasMembers(SourceEventObject obj) {
-        return true;
-    }
 
     enum Members {
         characters,
@@ -54,43 +40,28 @@ final class SourceEventObject implements TruffleObject {
         uri;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static Object getMembers(SourceEventObject obj, boolean includeInternal) {
-        return ArrayObject.wrap(Members.values());
+    SourceEventObject(Source source) {
+        super(Members.class, Members.values());
+        this.source = source;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static boolean isMemberReadable(SourceEventObject obj, String member) {
-        try {
-            return Members.valueOf(member) != null;
-        } catch (IllegalArgumentException ex) {
-            return false;
-        }
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    @ExportMessage
-    static Object readMember(SourceEventObject obj, String member) throws UnknownIdentifierException {
-        final Members existingMember;
-        try {
-            existingMember = Members.valueOf(member);
-        } catch (IllegalArgumentException ex) {
-            throw UnknownIdentifierException.create(member);
-        }
+    @Override
+    @TruffleBoundary
+    Object readInsightMember(Enum<?> member) {
+        final Members existingMember = (Members) member;
         switch (existingMember) {
             case characters:
-                return obj.source.hasCharacters() ? obj.source.getCharacters().toString() : NullObject.nullCheck(null);
+                return source.hasCharacters() ? source.getCharacters().toString() : NullObject.nullCheck(null);
             case name:
-                return obj.source.getName();
+                return source.getName();
             case language:
-                return obj.source.getLanguage();
+                return source.getLanguage();
             case mimeType:
-                return NullObject.nullCheck(obj.source.getMimeType());
+                return NullObject.nullCheck(source.getMimeType());
             case uri:
-                return obj.source.getURI().toASCIIString();
+                return source.getURI().toASCIIString();
+            default:
+                throw CompilerDirectives.shouldNotReachHere(member.name());
         }
-        throw new IllegalArgumentException(member);
     }
 }

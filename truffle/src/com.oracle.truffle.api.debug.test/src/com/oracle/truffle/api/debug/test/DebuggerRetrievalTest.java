@@ -56,7 +56,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -130,21 +130,21 @@ public class DebuggerRetrievalTest {
             }
 
             @ExportMessage
-            boolean isMemberReadable(String member) {
+            boolean isMemberReadable(Object member) {
                 return "debugger".equals(member);
             }
 
             @ExportMessage
-            Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+            Object getMemberObjects() throws UnsupportedMessageException {
                 throw UnsupportedMessageException.create();
             }
 
             @ExportMessage
-            Object readMember(@SuppressWarnings("unused") String member) throws UnknownIdentifierException {
+            Object readMember(Object member) throws UnknownMemberException {
                 if ("debugger".equals(member)) {
                     return context != null;
                 } else {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
             }
 

@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import com.oracle.truffle.api.interop.ArityException;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -55,16 +57,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
@@ -90,7 +94,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
                 boolean wasUIE = false;
                 try {
                     testForValue(name, f.get(t));
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownMemberException e) {
                     if (isPublic) {
                         throw e;
                     }
@@ -116,7 +120,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
                     boolean wasUIE = false;
                     try {
                         testForValue(name, m.invoke(t));
-                    } catch (UnknownIdentifierException e) {
+                    } catch (UnknownMemberException e) {
                         if (isPublic) {
                             throw e;
                         }
@@ -205,68 +209,209 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void testKeysAndInternalKeys() throws Exception {
+    public void testMembers() throws Exception {
         TruffleObject testClass = asTruffleHostSymbol(TestClass.class);
-        assertKeys(testClass);
+        assertMembers(testClass);
     }
 
     @Test
-    public void testKeysAndInternalKeysOnInstance() throws Exception {
+    public void testMembersOnInstance() throws Exception {
         TruffleObject instance = asTruffleObject(new TestClass());
-        assertKeys(instance);
+        assertMembers(instance);
     }
 
-    private void assertKeys(TruffleObject obj) throws UnsupportedMessageException {
-        List<?> keys = asJavaObject(List.class, INTEROP.getMembers(obj));
+    @Test
+    public void testPublicMembers() throws UnsupportedMessageException, InvalidArrayIndexException, UnknownMemberException, UnsupportedTypeException, ArityException {
+        TruffleObject instance = asTruffleObject(new TestClass());
+        assertTrue(INTEROP.hasMembers(instance));
+        assertFalse(INTEROP.hasDeclaredMembers(instance));
+
+        Set<String> expectedPublicInstanceMembers = new HashSet<>();
+        Set<String> expectedPublicStaticMembers = new HashSet<>();
+        for (Field f : TestClass.class.getFields()) {
+            String signature = f.getType().getCanonicalName() + ' ' + f.getName();
+            if (!Modifier.isStatic(f.getModifiers())) {
+                expectedPublicInstanceMembers.add(signature);
+            } else {
+                expectedPublicStaticMembers.add(signature);
+            }
+        }
+        for (Method m : TestClass.class.getMethods()) {
+            if (m.getDeclaringClass() == Object.class) {
+                continue;
+            }
+            String signature = getTruffleExpectedSignatureString(m);
+            if (!Modifier.isStatic(m.getModifiers())) {
+                expectedPublicInstanceMembers.add(signature.toString());
+            } else {
+                expectedPublicStaticMembers.add(signature.toString());
+            }
+        }
+        expectedPublicStaticMembers.add("java.lang.Class class"); // The static 'class' field.
+        Object instanceMembers = INTEROP.getMemberObjects(instance);
+        long n = INTEROP.getArraySize(instanceMembers);
+        Set<String> memberSignatures = new HashSet<>();
+        for (int i = 0; i < n; i++) {
+            Object m = INTEROP.readArrayElement(instanceMembers, i);
+            memberSignatures.add(getTruffleInteropSignatureString(m));
+        }
+        Set<String> missingMembers = new HashSet<>(expectedPublicInstanceMembers);
+        missingMembers.removeAll(memberSignatures);
+        Set<String> extraMembers = new HashSet<>(memberSignatures);
+        extraMembers.removeAll(expectedPublicInstanceMembers);
+        assertEquals(missingMembers.toString(), 0, missingMembers.size());
+        assertEquals(extraMembers.toString(), 0, extraMembers.size());
+
+        assertTrue(INTEROP.hasStaticReceiver(instance));
+        Object staticReceiver = INTEROP.getStaticReceiver(instance);
+        Object staticMembers = INTEROP.getMemberObjects(staticReceiver);
+        n = INTEROP.getArraySize(staticMembers);
+        Set<String> staticSignatures = new HashSet<>();
+        for (int i = 0; i < n; i++) {
+            Object m = INTEROP.readArrayElement(staticMembers, i);
+            staticSignatures.add(getTruffleInteropSignatureString(m));
+        }
+        missingMembers = new HashSet<>(expectedPublicStaticMembers);
+        missingMembers.removeAll(staticSignatures);
+        extraMembers = new HashSet<>(staticSignatures);
+        extraMembers.removeAll(expectedPublicStaticMembers);
+        assertEquals(missingMembers.toString(), 0, missingMembers.size());
+        assertEquals(extraMembers.toString(), 0, extraMembers.size());
+
+        assertFalse(INTEROP.hasStaticReceiver(staticReceiver));
+
+        for (int i = 0; i < n; i++) {
+            Object m = INTEROP.readArrayElement(instanceMembers, i);
+            assertTrue(INTEROP.isMember(m));
+            String simpleName = INTEROP.asString(INTEROP.getMemberSimpleName(m));
+            String qualifiedName = INTEROP.asString(INTEROP.getMemberQualifiedName(m));
+            assertTrue(qualifiedName, qualifiedName.endsWith(simpleName));
+            assertTrue(qualifiedName + " is readable", INTEROP.isMemberReadable(instance, m));
+            Object value = INTEROP.readMember(instance, m);
+            Assert.assertNotNull(value);
+            if (INTEROP.isMemberInvocable(instance, m)) {
+                String methodName = INTEROP.asString(INTEROP.getMemberSimpleName(m));
+                Object signature = INTEROP.getMemberSignature(m);
+                switch (methodName) {
+                    case "isNull":
+                        Object paramSignatureElement = INTEROP.readArrayElement(signature, 1);
+                        Object paramType = INTEROP.getSignatureElementMetaObject(paramSignatureElement);
+                        String paramTypeName = INTEROP.asString(INTEROP.getMetaSimpleName(paramType));
+                        switch (paramTypeName) {
+                            case "Boolean":
+                                value = INTEROP.invokeMember(instance, m, asTruffleObject(Boolean.TRUE));
+                                assertTrue(Objects.toString(value), INTEROP.isNull(value));
+                                break;
+                            case "Byte":
+                                value = INTEROP.invokeMember(instance, m, asTruffleObject(Byte.MAX_VALUE));
+                                assertTrue(Objects.toString(value), INTEROP.isNull(value));
+                                break;
+                            case "Character":
+                                value = INTEROP.invokeMember(instance, m, asTruffleObject(Character.MAX_VALUE));
+                                assertTrue(Objects.toString(value), INTEROP.isNull(value));
+                                break;
+                            case "Double":
+                                value = INTEROP.invokeMember(instance, m, asTruffleObject(Double.MIN_VALUE));
+                                assertTrue(Objects.toString(value), INTEROP.isNull(value));
+                                break;
+                        }
+                        if (Character.isUpperCase(paramTypeName.charAt(0))) {
+                            // Boxed types
+                            value = INTEROP.invokeMember(instance, m, asTruffleObject(null));
+                            assertEquals("java.lang." + paramTypeName, INTEROP.asString(value));
+                        }
+                        break;
+                    case "allTypesStaticMethod":
+                    case "allTypesMethod":
+                        value = INTEROP.invokeMember(instance, m, true, (byte) 1, 'a', (short) 10, 42, 1234567890123456789L, 1.12e300, 2.34f, "S");
+                        break;
+                    case "classAsArg":
+                        value = INTEROP.invokeMember(instance, m, asTruffleObject(TestClass.class));
+                        break;
+                    case "isOverloaded":
+                    case "ambiguous":
+                    case "ambiguous2":
+                    case "wait":
+                    case "equals":
+                        value = "?";
+                        break;
+                    default:
+                        value = INTEROP.invokeMember(instance, m);
+                }
+                Assert.assertNotNull(value);
+                assertTrue(qualifiedName + " is not writable", !INTEROP.isMemberWritable(instance, m));
+            } else {
+                assertTrue(qualifiedName + " is writable", INTEROP.isMemberWritable(instance, m));
+            }
+        }
+    }
+
+    private static String getTruffleExpectedSignatureString(Method m) {
+        StringBuilder signature = new StringBuilder();
+        Class<?> retType = m.getReturnType();
+        signature.append(retType.getCanonicalName());
+        signature.append(' ');
+        signature.append(m.getName());
+        Class<?>[] parameterTypes = m.getParameterTypes();
+        for (int i = 0; i < parameterTypes.length; i++) {
+            signature.append(' ');
+            signature.append(parameterTypes[i].getCanonicalName());
+        }
+        return signature.toString();
+    }
+
+    private static String getTruffleInteropSignatureString(Object member) throws UnsupportedMessageException, InvalidArrayIndexException {
+        StringBuilder signature = new StringBuilder();
+        assertTrue(INTEROP.hasMemberSignature(member));
+        Object signatureElements = INTEROP.getMemberSignature(member);
+        long n = INTEROP.getArraySize(signatureElements);
+        assertTrue(Long.toString(n), n >= 1);
+        Object retSignature = INTEROP.readArrayElement(signatureElements, 0);
+        assertTrue(INTEROP.isSignatureElement(retSignature));
+        if (INTEROP.hasSignatureElementMetaObject(retSignature)) {
+            signature.append(INTEROP.asString(INTEROP.getMetaQualifiedName(INTEROP.getSignatureElementMetaObject(retSignature))));
+        } else {
+            signature.append(Void.class.getCanonicalName());
+        }
+        signature.append(' ');
+        signature.append(INTEROP.getMemberSimpleName(member));
+        for (long i = 1; i < n; i++) {
+            signature.append(' ');
+            signature.append(INTEROP.asString(INTEROP.getMetaQualifiedName(INTEROP.getSignatureElementMetaObject(INTEROP.readArrayElement(signatureElements, i)))));
+        }
+        return signature.toString();
+    }
+
+    @Test
+    public void testDeclaredMembers() throws UnsupportedMessageException {
+        TruffleObject clazz = asTruffleObject(TestClass.class);
+        TruffleObject instance = asTruffleObject(new TestClass());
+        assertFalse(INTEROP.hasDeclaredMembers(instance));
+        assertTrue(INTEROP.hasDeclaredMembers(clazz));
+        Object declaredMembers = INTEROP.getDeclaredMembers(clazz);
+        long n = INTEROP.getArraySize(declaredMembers);
+        assertEquals(TestClass.class.getDeclaredMethods().length + TestClass.class.getDeclaredFields().length + TestClass.class.getDeclaredClasses().length, n);
+    }
+
+    private static void assertMembers(TruffleObject obj) throws UnsupportedMessageException, InvalidArrayIndexException {
+        Object members = INTEROP.getMemberObjects(obj);
+        long num = INTEROP.getArraySize(members);
+        assertEquals(num, (int) num);
+        assertTrue(Long.toString(num), num > 0);
         Set<String> foundKeys = new HashSet<>();
-        for (Object key : keys) {
-            assertTrue("Is string" + key, key instanceof String);
-            String keyName = (String) key;
+        for (int i = 0; i < num; i++) {
+            Object member = INTEROP.readArrayElement(members, i);
+            Object key = INTEROP.getMemberSimpleName(member);
+            assertTrue("Is string" + key, INTEROP.isString(key));
+            String keyName = INTEROP.asString(key);
             assertEquals("No __ in " + keyName, -1, keyName.indexOf("__"));
-            if (!INTEROP.isMemberInvocable(obj, keyName)) {
+            if (!INTEROP.isMemberInvocable(obj, member)) {
                 continue;
             }
             foundKeys.add(keyName);
         }
 
-        Set<String> foundInternalKeys = new HashSet<>();
-        List<?> internalKeys = asJavaObject(List.class, INTEROP.getMembers(obj, true));
-        for (Object key : internalKeys) {
-            assertTrue("Is string" + key, key instanceof String);
-            String keyName = (String) key;
-
-            if (!keyName.contains("__")) {
-                if (!INTEROP.isMemberInvocable(obj, keyName)) {
-                    continue;
-                }
-                assertTrue("Not internal: " + keyName, !INTEROP.isMemberInternal(obj, keyName) || isObjectMethodName(keyName));
-                boolean found = foundKeys.remove(keyName);
-                assertTrue("Non-internal key has been listed before: " + keyName, found || isObjectMethodName(keyName));
-            } else {
-                assertTrue("Internal: " + keyName, INTEROP.isMemberInternal(obj, keyName));
-                foundInternalKeys.add(keyName);
-            }
-            assertTrue("Is invocable " + keyName, INTEROP.isMemberInvocable(obj, keyName));
-        }
-
-        assertTrue("All normal keys listed in internal mode too: " + foundKeys, foundKeys.isEmpty());
-
-        assertTrue("Unexpected internal keys: " + foundInternalKeys, foundInternalKeys.isEmpty());
-    }
-
-    private static boolean isObjectMethodName(String name) {
-        switch (name) {
-            case "notify":
-            case "notifyAll":
-            case "wait":
-            case "hashCode":
-            case "equals":
-            case "toString":
-            case "getClass":
-                return true;
-            default:
-                return false;
-        }
+        assertFalse(foundKeys.toString(), foundKeys.isEmpty());
     }
 
     @Test
@@ -363,15 +508,15 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
     @Test
     public void testArray() throws InteropException {
         TruffleObject arrayClass = asTruffleHostSymbol(Array.class);
-        TruffleObject newInstanceMethod = (TruffleObject) INTEROP.readMember(arrayClass, "newInstance");
+        TruffleObject newInstanceMethod = (TruffleObject) INTEROP.readMember(arrayClass, (Object) "newInstance");
         int arrayLength = 2;
         TruffleObject stringArray = (TruffleObject) INTEROP.execute(newInstanceMethod, asTruffleHostSymbol(String.class), arrayLength);
         assertTrue(INTEROP.hasArrayElements(stringArray));
         INTEROP.writeArrayElement(stringArray, 0, "foo");
         INTEROP.writeArrayElement(stringArray, 1, "bar");
-        assertEquals(INTEROP.readMember(stringArray, "length"), arrayLength);
-        TruffleObject stringArrayCopy1 = (TruffleObject) INTEROP.invokeMember(stringArray, "clone");
-        TruffleObject stringArrayCopy2 = (TruffleObject) INTEROP.execute(INTEROP.readMember(stringArray, "clone"));
+        assertEquals(INTEROP.readMember(stringArray, (Object) "length"), arrayLength);
+        TruffleObject stringArrayCopy1 = (TruffleObject) INTEROP.invokeMember(stringArray, (Object) "clone");
+        TruffleObject stringArrayCopy2 = (TruffleObject) INTEROP.execute(INTEROP.readMember(stringArray, (Object) "clone"));
         for (int i = 0; i < arrayLength; i++) {
             assertEquals(INTEROP.readArrayElement(stringArray, i), INTEROP.readArrayElement(stringArrayCopy1, i));
             assertEquals(INTEROP.readArrayElement(stringArray, i), INTEROP.readArrayElement(stringArrayCopy2, i));
@@ -408,11 +553,11 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         TruffleObject testClass = asTruffleHostSymbol(TestConstructor.class);
         TruffleObject testObj;
         testObj = (TruffleObject) INTEROP.instantiate(testClass);
-        assertEquals(void.class.getName(), INTEROP.readMember(testObj, "ctor"));
+        assertEquals(void.class.getName(), INTEROP.readMember(testObj, (Object) "ctor"));
         testObj = (TruffleObject) INTEROP.instantiate(testClass, 42);
-        assertEquals(int.class.getName(), INTEROP.readMember(testObj, "ctor"));
+        assertEquals(int.class.getName(), INTEROP.readMember(testObj, (Object) "ctor"));
         testObj = (TruffleObject) INTEROP.instantiate(testClass, 4.2f);
-        assertEquals(float.class.getName(), INTEROP.readMember(testObj, "ctor"));
+        assertEquals(float.class.getName(), INTEROP.readMember(testObj, (Object) "ctor"));
     }
 
     @Test
@@ -420,7 +565,7 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         TruffleObject testClass = asTruffleHostSymbol(TestConstructor.class);
         TruffleObject testObj;
         testObj = (TruffleObject) INTEROP.instantiate(testClass, (short) 42);
-        assertEquals(int.class.getName(), INTEROP.readMember(testObj, "ctor"));
+        assertEquals(int.class.getName(), INTEROP.readMember(testObj, (Object) "ctor"));
         testObj = (TruffleObject) INTEROP.instantiate(testClass, 4.2f);
         // TODO GR-38632 prioritize conversion from double to float over double to int
         // assertEquals(float.class.getName(), INTEROP.readMember(testObj, "ctor"));
@@ -440,12 +585,12 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         l.add("one");
         l.add("two");
         TruffleObject listObject = asTruffleObject(l);
-        TruffleObject itFunction = (TruffleObject) INTEROP.readMember(listObject, "iterator");
+        TruffleObject itFunction = (TruffleObject) INTEROP.readMember(listObject, (Object) "iterator");
         TruffleObject it = (TruffleObject) INTEROP.execute(itFunction);
-        TruffleObject hasNextFunction = (TruffleObject) INTEROP.readMember(it, "hasNext");
+        TruffleObject hasNextFunction = (TruffleObject) INTEROP.readMember(it, (Object) "hasNext");
         List<Object> returned = new ArrayList<>();
         while ((boolean) INTEROP.execute(hasNextFunction)) {
-            TruffleObject nextFunction = (TruffleObject) INTEROP.readMember(it, "next");
+            TruffleObject nextFunction = (TruffleObject) INTEROP.readMember(it, (Object) "next");
             Object element = INTEROP.execute(nextFunction);
             returned.add(element);
         }
@@ -469,17 +614,17 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
         assertEquals(value, o);
     }
 
-    private Object getValueFromMember(String name, Object... parameters) throws InteropException {
-        return getValueFromMember(TestClass.class, name, parameters);
+    private Object getValueFromMember(Object member, Object... parameters) throws InteropException {
+        return getValueFromMember(TestClass.class, member, parameters);
     }
 
-    private Object getValueFromMember(Class<?> javaClazz, String name, Object... parameters) throws InteropException {
+    private Object getValueFromMember(Class<?> javaClazz, Object member, Object... parameters) throws InteropException {
         TruffleObject clazz = asTruffleHostSymbol(javaClazz);
         Object o = INTEROP.instantiate(clazz);
         try {
-            o = INTEROP.readMember(o, name);
-        } catch (UnknownIdentifierException e) {
-            o = INTEROP.readMember(clazz, name);
+            o = INTEROP.readMember(o, member);
+        } catch (UnknownMemberException e) {
+            o = INTEROP.readMember(clazz, member);
         }
         if (o instanceof TruffleObject && INTEROP.isExecutable(o)) {
             o = INTEROP.execute((TruffleObject) o, parameters);

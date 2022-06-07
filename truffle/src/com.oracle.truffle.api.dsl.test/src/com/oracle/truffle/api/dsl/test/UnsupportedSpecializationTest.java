@@ -213,7 +213,7 @@ public class UnsupportedSpecializationTest {
         InteropLibrary lib2 = InteropLibrary.getFactory().getUncached(obj);
 
         try {
-            lib1.writeMember(obj, "foo", 42d);
+            lib1.writeMember(obj, (Object) "foo", 42d);
             Assert.fail();
         } catch (UnsupportedSpecializationException e) {
             Assert.assertNotNull(e.getSuppliedValues());
@@ -229,7 +229,7 @@ public class UnsupportedSpecializationTest {
             Assert.fail("exception: " + e);
         }
         try {
-            lib2.writeMember(obj, "foo", 42d);
+            lib2.writeMember(obj, (Object) "foo", 42d);
             Assert.fail();
         } catch (UnsupportedSpecializationException e) {
             Assert.assertNotNull(e.getSuppliedValues());
@@ -257,20 +257,20 @@ public class UnsupportedSpecializationTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Object getMembers(boolean includeInternal) {
-            Assert.fail("unexpected: " + includeInternal);
+        Object getMemberObjects() {
+            Assert.fail("unexpected");
             return null;
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberModifiable(String member) {
+        boolean isMemberModifiable(Object member) {
             return "foo".equals(member);
         }
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        boolean isMemberInsertable(String member) {
+        boolean isMemberInsertable(Object member) {
             return "foo".equals(member);
         }
 
@@ -278,7 +278,7 @@ public class UnsupportedSpecializationTest {
         static final class WriteMember {
 
             @Specialization
-            static void write(TypeWithUnsupported receiver, String name, int value) {
+            static void write(TypeWithUnsupported receiver, Object name, int value) {
                 Assert.fail("unexpected: " + receiver + ", " + name + ", " + value);
             }
         }

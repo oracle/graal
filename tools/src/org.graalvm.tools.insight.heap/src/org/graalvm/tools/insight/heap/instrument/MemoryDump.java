@@ -47,7 +47,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -61,8 +61,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
  * This class is not thread safe.
  */
 @SuppressWarnings({"static-method"})
-@ExportLibrary(InteropLibrary.class)
-final class MemoryDump implements TruffleObject {
+final class MemoryDump extends DumpMember.AbstractReader {
 
     static final String FORMAT = "format";
     static final String DEPTH = "depth";
@@ -94,13 +93,8 @@ final class MemoryDump implements TruffleObject {
         }
     }
 
-    @ExportMessage
-    boolean hasMembers() {
-        return true;
-    }
-
-    @ExportMessage
-    boolean isMemberReadable(String member) {
+    @Override
+    boolean isDumpMemberReadable(String member) {
         switch (member) {
             case FORMAT:
             case DEPTH:
@@ -111,8 +105,8 @@ final class MemoryDump implements TruffleObject {
         }
     }
 
-    @ExportMessage
-    Object readMember(String name) throws UnknownIdentifierException {
+    @Override
+    Object readDumpMember(String name) {
         switch (name) {
             case FORMAT:
                 return FORMAT_VERSION;
@@ -121,12 +115,12 @@ final class MemoryDump implements TruffleObject {
             case EVENTS:
                 return new ListArray(events);
             default:
-                throw UnknownIdentifierException.create(name);
+                return null;
         }
     }
 
-    @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    @Override
+    Object getDumpMemberObjects() {
         return MEMBERS;
     }
 
@@ -233,7 +227,7 @@ final class MemoryDump implements TruffleObject {
                 boolean same = prevObj != null;
                 Object members;
                 try {
-                    members = iop.getMembers(obj);
+                    members = iop.getMemberObjects(obj);
                 } catch (UnsupportedMessageException ex) {
                     throw CompilerDirectives.shouldNotReachHere(obj.getClass().getName());
                 }
@@ -247,15 +241,15 @@ final class MemoryDump implements TruffleObject {
                     Object member = InteropUtils.readArrayElement(members, i, "member");
                     String name;
                     try {
-                        name = iop.asString(member);
+                        name = iop.asString(iop.getMemberSimpleName(member));
                     } catch (UnsupportedMessageException ex) {
                         throw new HeapException("Member must be a string.");
                     }
-                    if (iop.isMemberReadable(obj, name) && !iop.hasMemberReadSideEffects(obj, name)) {
+                    if (iop.isMemberReadable(obj, member) && !iop.hasMemberReadSideEffects(obj, member)) {
                         Object value;
                         try {
-                            value = iop.readMember(obj, name);
-                        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+                            value = iop.readMember(obj, member);
+                        } catch (UnsupportedMessageException | UnknownMemberException ex) {
                             throw new HeapException("Can not read member " + name);
                         }
                         Object newValue = copyObject(value, depth - 1);
@@ -393,12 +387,11 @@ final class MemoryDump implements TruffleObject {
                 exception.enter(node);
                 throw InvalidArrayIndexException.create(index);
             }
-            return members[(int) index];
+            return new DumpMember(members[(int) index]);
         }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class Event implements TruffleObject {
+    static final class Event extends DumpMember.AbstractReader {
 
         private static final MembersArray MEMBERS = new MembersArray(STACK);
 
@@ -408,32 +401,27 @@ final class MemoryDump implements TruffleObject {
             this.stack = stack;
         }
 
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @Override
+        Object getDumpMemberObjects() {
             return MEMBERS;
         }
 
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        @Override
+        boolean isDumpMemberReadable(String member) {
             return member.equals(STACK);
         }
 
-        @ExportMessage
-        Object readMember(String name) throws UnknownIdentifierException {
+        @Override
+        Object readDumpMember(String name) {
             if (name.equals(STACK)) {
                 return stack;
+            } else {
+                return null;
             }
-            throw UnknownIdentifierException.create(name);
         }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class Location implements TruffleObject {
+    static final class Location extends DumpMember.AbstractReader {
 
         private static final String PROP_NAME = "name";
         private static final String PROP_SOURCE = "source";
@@ -460,18 +448,13 @@ final class MemoryDump implements TruffleObject {
             charLength = asIntOrNull(iop, at, PROP_CHAR_LENGTH);
         }
 
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @Override
+        Object getDumpMemberObjects() {
             return MEMBERS;
         }
 
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        @Override
+        boolean isDumpMemberReadable(String member) {
             switch (member) {
                 case PROP_NAME:
                     return name != null;
@@ -490,8 +473,8 @@ final class MemoryDump implements TruffleObject {
             }
         }
 
-        @ExportMessage
-        Object readMember(String member) throws UnknownIdentifierException {
+        @Override
+        Object readDumpMember(String member) {
             switch (member) {
                 case PROP_NAME:
                     if (name != null) {
@@ -521,12 +504,11 @@ final class MemoryDump implements TruffleObject {
                     }
                     break;
             }
-            throw UnknownIdentifierException.create(member);
+            return null;
         }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class StackTraceElement implements TruffleObject {
+    static final class StackTraceElement extends DumpMember.AbstractReader {
 
         private static final String PROP_AT = "at";
         private static final String PROP_FRAME = "frame";
@@ -541,18 +523,13 @@ final class MemoryDump implements TruffleObject {
             this.frame = frame;
         }
 
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @Override
+        Object getDumpMemberObjects() {
             return MEMBERS;
         }
 
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        @Override
+        boolean isDumpMemberReadable(String member) {
             switch (member) {
                 case PROP_AT:
                 case PROP_FRAME:
@@ -562,15 +539,15 @@ final class MemoryDump implements TruffleObject {
             }
         }
 
-        @ExportMessage
-        Object readMember(String name) throws UnknownIdentifierException {
+        @Override
+        Object readDumpMember(String name) {
             switch (name) {
                 case PROP_AT:
                     return at;
                 case PROP_FRAME:
                     return frame;
                 default:
-                    throw UnknownIdentifierException.create(name);
+                    return null;
             }
         }
     }
@@ -609,7 +586,7 @@ final class MemoryDump implements TruffleObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static final class ObjectCopy implements TruffleObject {
+    static final class ObjectCopy extends DumpMember.AbstractReader {
 
         private final EconomicMap<String, Object> members = EconomicMap.create();
         private MetaObjectCopy metaObject;
@@ -632,14 +609,9 @@ final class MemoryDump implements TruffleObject {
             this.finished = true;
         }
 
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
+        @Override
         @TruffleBoundary
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        Object getDumpMemberObjects() {
             assert isFinished();
             String[] names = new String[members.size()];
             int i = 0;
@@ -649,20 +621,20 @@ final class MemoryDump implements TruffleObject {
             return new MembersArray(names);
         }
 
+        @Override
         @TruffleBoundary
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isDumpMemberReadable(String member) {
             return members.containsKey(member);
         }
 
+        @Override
         @TruffleBoundary
-        @ExportMessage
-        Object readMember(String name) throws UnknownIdentifierException {
+        Object readDumpMember(String name) {
             Object value = members.get(name);
             if (value != null) {
                 return value;
             } else {
-                throw UnknownIdentifierException.create(name);
+                return null;
             }
         }
 
@@ -712,34 +684,28 @@ final class MemoryDump implements TruffleObject {
         }
     }
 
-    @ExportLibrary(InteropLibrary.class)
-    static final class Unreachable implements TruffleObject {
+    static final class Unreachable extends DumpMember.AbstractReader {
 
         static final Unreachable INSTANCE = new Unreachable();
         private static final String UNREACHABLE = "<unreachable>";
         private static final MembersArray MEMBERS = new MembersArray(UNREACHABLE);
 
-        @ExportMessage
-        boolean hasMembers() {
-            return true;
-        }
-
-        @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @Override
+        Object getDumpMemberObjects() {
             return MEMBERS;
         }
 
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        @Override
+        boolean isDumpMemberReadable(String member) {
             return UNREACHABLE.equals(member);
         }
 
-        @ExportMessage
-        Object readMember(String name) throws UnknownIdentifierException {
+        @Override
+        Object readDumpMember(String name) {
             if (UNREACHABLE.equals(name)) {
                 return Boolean.TRUE;
             } else {
-                throw UnknownIdentifierException.create(name);
+                return null;
             }
         }
 

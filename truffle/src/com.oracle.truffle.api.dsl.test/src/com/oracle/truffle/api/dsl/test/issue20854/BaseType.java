@@ -60,15 +60,15 @@ public abstract class BaseType implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
-        public static boolean b(BaseType receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol) {
+        public static boolean b(BaseType receiver, Object symbol,
+                        @Cached("symbol") Object cachedSymbol) {
             return false;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "b")
-        public static boolean a(BaseType receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol) {
+        public static boolean a(BaseType receiver, Object symbol,
+                        @Cached("symbol") Object cachedSymbol) {
             return false;
         }
 
@@ -76,13 +76,13 @@ public abstract class BaseType implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    final Object getMemberObjects() {
         return null;
     }
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    final Object readMember(@SuppressWarnings("unused") String member) {
+    final Object readMember(@SuppressWarnings("unused") Object member) {
         return null;
     }
 

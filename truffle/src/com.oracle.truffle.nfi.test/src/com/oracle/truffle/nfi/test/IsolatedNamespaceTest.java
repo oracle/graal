@@ -79,9 +79,9 @@ public class IsolatedNamespaceTest extends NFITest {
             }
 
             try {
-                Object symbol = UNCACHED_INTEROP.readMember(library, "get_and_set");
+                Object symbol = UNCACHED_INTEROP.readMember(library, (Object) "get_and_set");
                 Object signature = ctx.evalInternal(null, signatureSource);
-                this.getAndSet = UNCACHED_INTEROP.invokeMember(signature, "bind", symbol);
+                this.getAndSet = UNCACHED_INTEROP.invokeMember(signature, (Object) "bind", symbol);
             } catch (InteropException ex) {
                 throw new AssertionError(ex);
             }

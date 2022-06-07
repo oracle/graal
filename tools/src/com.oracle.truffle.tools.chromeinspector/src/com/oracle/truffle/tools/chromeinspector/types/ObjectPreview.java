@@ -116,19 +116,20 @@ final class ObjectPreview {
                 }
             }
         } else {
-            Collection<DebugValue> valueProperties = debugValue.getProperties();
-            if (valueProperties != null) {
-                Iterator<DebugValue> propertyIterator = valueProperties.iterator();
+            Collection<DebugValue> valueMembers = debugValue.getMembers();
+            if (valueMembers != null) {
+                Iterator<DebugValue> memberIterator = valueMembers.iterator();
                 overflow = false;
-                while (propertyIterator.hasNext()) {
-                    DebugValue property = propertyIterator.next();
-                    if (!property.isInternal() && !property.hasReadSideEffects() && property.isReadable()) {
+                while (memberIterator.hasNext()) {
+                    DebugValue member = memberIterator.next();
+                    if (!member.hasReadSideEffects() && member.isReadable()) {
                         if (properties.length() == OVERFLOW_LIMIT_PROPERTIES) {
                             overflow = true;
                             break;
                         }
                         try {
-                            properties.put(createPropertyPreview(property, allowToStringSideEffects, language, err));
+                            DebugValue value = member.getMemberValue();
+                            properties.put(createPropertyPreview(value, allowToStringSideEffects, language, err));
                         } catch (DebugException ex) {
                             overflow = true;
                             break;

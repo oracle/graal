@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.host;
 import static org.junit.Assert.assertEquals;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -129,44 +130,54 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void threeProperties() throws UnsupportedMessageException {
-        Object ret = INTEROP.getMembers(obj);
-        List<?> list = context.asValue(ret).as(List.class);
-        assertEquals("Just one (overloaded) property: " + list, 1, list.size());
+    public void threeProperties() throws UnsupportedMessageException, Exception {
+        Object ret = INTEROP.getMemberObjects(obj);
+        long n = INTEROP.getArraySize(ret);
+        List<String> list = new ArrayList<>();
+        int numX = 0;
+        for (int i = 0; i < n; i++) {
+            Object member = INTEROP.readArrayElement(ret, i);
+            String name = INTEROP.asString(INTEROP.getMemberSimpleName(member));
+            if (name.equals("x")) {
+                numX++;
+            }
+            list.add(name);
+        }
+        assertEquals("3 (overloaded) properties: " + list, 3, numX);
         assertEquals("x", list.get(0));
     }
 
     @Test
     public void readAndWriteField() throws InteropException {
         data.x = 11;
-        assertEquals(11, INTEROP.readMember(obj, "x"));
+        assertEquals(11, INTEROP.readMember(obj, (Object) "x"));
 
-        INTEROP.writeMember(obj, "x", 12);
+        INTEROP.writeMember(obj, (Object) "x", 12);
         assertEquals(12, data.x);
 
-        INTEROP.writeMember(obj, "x", new UnboxableToInt(13));
+        INTEROP.writeMember(obj, (Object) "x", new UnboxableToInt(13));
         assertEquals(13, data.x);
     }
 
     @Test
     public void callGetterAndSetter() throws InteropException {
         data.x = 11;
-        assertEquals(22.0, INTEROP.invokeMember(obj, "x"));
+        assertEquals(22.0, INTEROP.invokeMember(obj, (Object) "x"));
 
-        INTEROP.invokeMember(obj, "x", 10);
+        INTEROP.invokeMember(obj, (Object) "x", 10);
         assertEquals(20, data.x);
 
-        INTEROP.invokeMember(obj, "x", new UnboxableToInt(21));
+        INTEROP.invokeMember(obj, (Object) "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
     }
 
     @Test
     public void testOverloadingTruffleObjectArg() throws InteropException {
-        INTEROP.invokeMember(obj, "x", new UnboxableToInt(21));
+        INTEROP.invokeMember(obj, (Object) "x", new UnboxableToInt(21));
         assertEquals(42, data.x);
-        INTEROP.invokeMember(obj, "x", env.asBoxedGuestValue(10));
+        INTEROP.invokeMember(obj, (Object) "x", env.asBoxedGuestValue(10));
         assertEquals(20, data.x);
-        INTEROP.invokeMember(obj, "x", 10);
+        INTEROP.invokeMember(obj, (Object) "x", 10);
         assertEquals(20, data.x);
     }
 
@@ -174,22 +185,22 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     public void testOverloadingNumber() throws InteropException {
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
-        INTEROP.invokeMember(numobj, "x", new UnboxableToInt(21));
+        INTEROP.invokeMember(numobj, (Object) "x", new UnboxableToInt(21));
         assertEquals("int", num.parameter);
-        INTEROP.invokeMember(numobj, "x", asTruffleObject(new AtomicInteger(22)));
+        INTEROP.invokeMember(numobj, (Object) "x", asTruffleObject(new AtomicInteger(22)));
         assertEquals("Number", num.parameter);
-        INTEROP.invokeMember(numobj, "x", asTruffleObject(BigInteger.TEN));
+        INTEROP.invokeMember(numobj, (Object) "x", asTruffleObject(BigInteger.TEN));
         assertEquals("int", num.parameter);
-        INTEROP.invokeMember(numobj, "x", asTruffleObject(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)));
+        INTEROP.invokeMember(numobj, (Object) "x", asTruffleObject(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE)));
         assertEquals("BigInteger", num.parameter);
     }
 
     @Test
     public void testVarArgs() throws InteropException {
         TruffleObject stringClass = asTruffleHostSymbol(String.class);
-        assertEquals("bla", INTEROP.invokeMember(stringClass, "format", "bla"));
-        assertEquals("42", INTEROP.invokeMember(stringClass, "format", "%d", 42));
-        assertEquals("1337", INTEROP.invokeMember(stringClass, "format", "%d%d", 13, 37));
+        assertEquals("bla", INTEROP.invokeMember(stringClass, (Object) "format", "bla"));
+        assertEquals("42", INTEROP.invokeMember(stringClass, (Object) "format", "%d", 42));
+        assertEquals("1337", INTEROP.invokeMember(stringClass, (Object) "format", "%d%d", 13, 37));
     }
 
     public interface Identity<T> {
@@ -213,31 +224,31 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     @Test
     public void testGenericReturnTypeBridgeMethod() throws InteropException {
         TruffleObject thing = asTruffleObject(new ActualRealThingWithIdentity());
-        assertEquals(42, INTEROP.invokeMember(thing, "getId"));
+        assertEquals(42, INTEROP.invokeMember(thing, (Object) "getId"));
     }
 
     @Test
     public void testWidening() throws InteropException {
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
-        INTEROP.invokeMember(numobj, "d", (byte) 42);
+        INTEROP.invokeMember(numobj, (Object) "d", (byte) 42);
         assertEquals("int", num.parameter);
-        INTEROP.invokeMember(numobj, "d", (short) 42);
+        INTEROP.invokeMember(numobj, (Object) "d", (short) 42);
         assertEquals("int", num.parameter);
-        INTEROP.invokeMember(numobj, "d", 42);
-        assertEquals("int", num.parameter);
-
-        INTEROP.invokeMember(numobj, "d", 42.1f);
-        assertEquals("double", num.parameter);
-        INTEROP.invokeMember(numobj, "d", 42.1d);
-        assertEquals("double", num.parameter);
-        INTEROP.invokeMember(numobj, "d", 0x8000_0000L);
-        assertEquals("double", num.parameter);
-
-        INTEROP.invokeMember(numobj, "d", 42L);
+        INTEROP.invokeMember(numobj, (Object) "d", 42);
         assertEquals("int", num.parameter);
 
-        INTEROP.invokeMember(numobj, "f", 42L);
+        INTEROP.invokeMember(numobj, (Object) "d", 42.1f);
+        assertEquals("double", num.parameter);
+        INTEROP.invokeMember(numobj, (Object) "d", 42.1d);
+        assertEquals("double", num.parameter);
+        INTEROP.invokeMember(numobj, (Object) "d", 0x8000_0000L);
+        assertEquals("double", num.parameter);
+
+        INTEROP.invokeMember(numobj, (Object) "d", 42L);
+        assertEquals("int", num.parameter);
+
+        INTEROP.invokeMember(numobj, (Object) "f", 42L);
         assertEquals("int", num.parameter);
     }
 
@@ -245,9 +256,9 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     public void testNarrowing() throws InteropException {
         Num num = new Num();
         TruffleObject numobj = asTruffleObject(num);
-        INTEROP.invokeMember(numobj, "f", 42.5f);
+        INTEROP.invokeMember(numobj, (Object) "f", 42.5f);
         assertEquals("float", num.parameter);
-        INTEROP.invokeMember(numobj, "f", 42.5d);
+        INTEROP.invokeMember(numobj, (Object) "f", 42.5d);
         assertEquals("float", num.parameter);
     }
 
@@ -255,12 +266,12 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
     public void testPrimitive() throws InteropException {
         TruffleObject sample = asTruffleObject(new Sample());
         for (int i = 0; i < 2; i++) {
-            assertEquals("int,boolean", INTEROP.invokeMember(sample, "m1", 42, true));
-            assertEquals("double,String", INTEROP.invokeMember(sample, "m1", 42, "asdf"));
+            assertEquals("int,boolean", INTEROP.invokeMember(sample, (Object) "m1", 42, true));
+            assertEquals("double,String", INTEROP.invokeMember(sample, (Object) "m1", 42, "asdf"));
         }
         for (int i = 0; i < 2; i++) {
-            assertEquals("int,boolean", INTEROP.invokeMember(sample, "m1", 42, true));
-            assertEquals("double,Object", INTEROP.invokeMember(sample, "m1", 4.2, true));
+            assertEquals("int,boolean", INTEROP.invokeMember(sample, (Object) "m1", 42, true));
+            assertEquals("double,Object", INTEROP.invokeMember(sample, (Object) "m1", 4.2, true));
         }
     }
 
@@ -288,8 +299,8 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject concrete = asTruffleObject(new Concrete());
         TruffleObject handler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
-        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, "prepare1", "select", concrete, handler));
-        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, "prepare2", "select", handler, concrete));
+        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare1", "select", concrete, handler));
+        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare2", "select", handler, concrete));
     }
 
     @Test
@@ -297,9 +308,9 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         TruffleObject pool = asTruffleObject(new Pool());
         TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
         TruffleObject chandler = asTruffleObject(new CHander());
-        assertEquals(CHander.class.getName(), INTEROP.invokeMember(pool, "prepare3", "select", chandler, thandler));
+        assertEquals(CHander.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare3", "select", chandler, thandler));
         TruffleObject proxied = new AsCollectionsTest.MapBasedTO(Collections.singletonMap("handle", new FunctionalInterfaceTest.TestExecutable()));
-        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, "prepare3", "select", proxied, thandler));
+        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare3", "select", proxied, thandler));
     }
 
     @Test
@@ -308,9 +319,9 @@ public class OverloadedTest extends ProxyLanguageEnvTest {
         TruffleObject thandler = asTruffleObject(new FunctionalInterfaceTest.TestExecutable());
         TruffleObject chandler = asTruffleObject(new CHander());
         TruffleObject concrete = asTruffleObject(new Concrete());
-        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, "prepare4", "select", chandler, 42));
-        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, "prepare4", "select", thandler, 42));
-        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, "prepare4", "select", concrete, 42));
+        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare4", "select", chandler, 42));
+        assertEquals(IHandler.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare4", "select", thandler, 42));
+        assertEquals(Concrete.class.getName(), INTEROP.invokeMember(pool, (Object) "prepare4", "select", concrete, 42));
     }
 
     @FunctionalInterface

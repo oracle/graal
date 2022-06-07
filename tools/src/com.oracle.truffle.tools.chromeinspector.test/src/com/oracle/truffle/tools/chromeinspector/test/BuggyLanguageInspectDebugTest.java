@@ -38,7 +38,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.test.TestDebugBuggyLanguage;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -332,7 +332,7 @@ public class BuggyLanguageInspectDebugTest {
         }
 
         @Override
-        protected Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        protected Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
             if ("READ".equals(errMessage) && "a".equals(member)) {
                 throwErr.run();
             }
@@ -340,7 +340,7 @@ public class BuggyLanguageInspectDebugTest {
         }
 
         @Override
-        protected void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        protected void writeMember(Object member, Object value) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
             if ("WRITE".equals(errMessage)) {
                 throwErr.run();
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import java.util.Collections;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.polyglot.PolyglotBindings.Members;
@@ -61,17 +61,17 @@ final class DefaultTopScope implements TruffleObject {
     }
 
     @ExportMessage
-    Object readMember(String member) throws UnknownIdentifierException {
-        throw UnknownIdentifierException.create(member);
+    Object readMember(Object member) throws UnknownMemberException {
+        throw UnknownMemberException.create(member);
     }
 
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+    Object getMemberObjects() {
         return EMPTY_MEMBERS;
     }
 
     @ExportMessage
-    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+    boolean isMemberReadable(@SuppressWarnings("unused") Object member) {
         return false;
     }
 

@@ -69,6 +69,7 @@ import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
@@ -411,7 +412,43 @@ public class ExposeToGuestTest {
 
     }
 
-    private static void assertMember(Object object, String member, boolean readable, boolean modifiable) throws InteropException {
+    private static void assertMember(Object object, String memberName, boolean readable, boolean modifiable) throws InteropException {
+        assertMemberLegacy(object, memberName, readable, modifiable);
+        Object member = memberName;
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        assertTrue(interop.hasMembers(object));
+        assertEquals(readable, interop.isMemberReadable(object, member));
+        assertEquals(modifiable, interop.isMemberModifiable(object, member));
+        assertFalse(interop.isMemberInsertable(object, member));
+        assertFalse(interop.isMemberRemovable(object, member));
+
+        if (readable) {
+            assertEquals("42", interop.readMember(object, member));
+        } else {
+            try {
+                interop.readMember(object, member);
+                fail();
+            } catch (UnknownMemberException e) {
+            }
+        }
+        if (modifiable) {
+            interop.writeMember(object, member, "42");
+        } else {
+            try {
+                interop.writeMember(object, member, "43");
+                fail();
+            } catch (UnknownMemberException e) {
+            }
+        }
+        try {
+            interop.removeMember(object, member);
+            fail();
+        } catch (UnsupportedMessageException e) {
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void assertMemberLegacy(Object object, String member, boolean readable, boolean modifiable) throws InteropException {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached();
         assertTrue(interop.hasMembers(object));
         assertEquals(readable, interop.isMemberReadable(object, member));

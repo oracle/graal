@@ -24,15 +24,18 @@
  */
 package org.graalvm.tools.insight.heap.instrument;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import java.io.BufferedOutputStream;
@@ -91,10 +94,24 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
         }
     }
 
+    private static String getString(Object obj, InteropLibrary interop) {
+        String name = "";
+        if (interop.isString(obj)) {
+            try {
+                name = interop.asString(obj);
+            } catch (UnsupportedMessageException ex) {
+                throw CompilerDirectives.shouldNotReachHere(ex);
+            }
+        }
+        return name;
+    }
+
     @TruffleBoundary
     @ExportMessage
     @SuppressWarnings("fallthrough")
-    Object invokeMember(String name, Object[] args) throws UnknownIdentifierException, UnsupportedTypeException, ArityException, UnsupportedMessageException {
+    Object invokeMember(Object nameObj, Object[] args, @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop)
+                    throws UnknownMemberException, UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        String name = getString(nameObj, interop);
         switch (name) {
             case DUMP:
                 dump(args);
@@ -113,7 +130,7 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
                 }
                 // fall through
             default:
-                throw UnknownIdentifierException.create(name);
+                throw UnknownMemberException.create(nameObj);
         }
     }
 
@@ -129,7 +146,8 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
     }
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
+    boolean isMemberInvocable(Object memberObj, @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        String member = getString(memberObj, interop);
         switch (member) {
             case DUMP:
             case FLUSH:
@@ -142,7 +160,8 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
     }
 
     @ExportMessage
-    boolean isMemberReadable(String member) {
+    boolean isMemberReadable(Object memberObj, @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+        String member = getString(memberObj, interop);
         switch (member) {
             case CACHE:
                 return exposeCache;
@@ -154,7 +173,8 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
     @TruffleBoundary
     @ExportMessage
     @SuppressWarnings("fallthrough")
-    Object readMember(String name) throws UnknownIdentifierException {
+    Object readMember(Object nameObj, @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) throws UnknownMemberException {
+        String name = getString(nameObj, interop);
         switch (name) {
             case CACHE:
                 if (exposeCache) {
@@ -166,12 +186,12 @@ final class HeapObject implements TruffleObject, SymbolProvider, Consumer<Output
                 }
                 // fall through
             default:
-                throw UnknownIdentifierException.create(name);
+                throw UnknownMemberException.create(nameObj);
         }
     }
 
     @ExportMessage
-    Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+    Object getMemberObjects() throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 

@@ -121,7 +121,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -1025,8 +1025,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             Node node = context.getInstrumentedNode();
             if (NodeLibrary.getUncached().hasReceiverMember(node, frame)) {
                 try {
-                    String receiverName = InteropLibrary.getUncached().asString(NodeLibrary.getUncached().getReceiverMember(node, frame));
-                    assertEquals("THIS", receiverName);
+                    Object receiverName = NodeLibrary.getUncached().getReceiverMember(node, frame);
+                    assertEquals("THIS", InteropLibrary.getUncached().asString(receiverName));
                     Object scope = NodeLibrary.getUncached().getScope(node, frame, true);
                     if (InteropLibrary.getUncached().isMemberReadable(scope, receiverName)) {
                         Object receiver = InteropLibrary.getUncached().readMember(scope, receiverName);
@@ -1035,7 +1035,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     } else {
                         receiverObjects.add(null);
                     }
-                } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                } catch (UnsupportedMessageException | UnknownMemberException e) {
                     throw CompilerDirectives.shouldNotReachHere(e);
                 }
             } else {
@@ -2188,8 +2188,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         assertFalse(interop.isExecutable(bindingsObject));
         assertFalse(interop.isInstantiable(bindingsObject));
 
-        final String m1 = "member1";
-        final String m2 = "member2";
+        final Object m1 = "member1";
+        final Object m2 = "member2";
 
         // Bindings are empty initially
         assertFalse(interop.isMemberExisting(bindingsObject, m1));

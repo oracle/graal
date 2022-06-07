@@ -322,17 +322,14 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
                 logger.println(array.get(i).toDisplayString(false));
             }
         }
-        Collection<DebugValue> properties = v.getProperties();
+        Collection<DebugValue> members = v.getMembers();
         logger.print(prefix);
-        if (properties == null || properties.isEmpty()) {
-            logger.println("Properties: none");
+        if (members == null || members.isEmpty()) {
+            logger.println("Members: none");
         } else {
-            logger.print("Properties: ");
-            logger.println(Integer.toString(properties.size()));
+            logger.print("Members: ");
+            logger.println(Integer.toString(members.size()));
         }
-        logger.print(prefix);
-        logger.print("Internal: ");
-        logger.println(v.isInternal());
         logger.print(prefix);
         logger.print("Readable: ");
         logger.println(v.isReadable());

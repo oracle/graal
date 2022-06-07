@@ -95,7 +95,7 @@ public class SignatureExecuteNFITest extends NFITest {
     public void testDirectExecute(@Inject(DirectExecuteNode.class) CallTarget callTarget) {
         Object increment;
         try {
-            increment = UNCACHED_INTEROP.readMember(testLibrary, "increment_SINT32");
+            increment = UNCACHED_INTEROP.readMember(testLibrary, (Object) "increment_SINT32");
         } catch (InteropException e) {
             throw new AssertionError(e);
         }

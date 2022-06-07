@@ -79,7 +79,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -122,8 +122,8 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                                         Object javaThread = LanguageContext.get(this).getEnv().lookupHostSymbol("java.lang.Thread");
                                         beforeSleep.countDown();
                                         try {
-                                            library.invokeMember(javaThread, "sleep", 10000);
-                                        } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                                            library.invokeMember(javaThread, (Object) "sleep", 10000);
+                                        } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                                             throw new AssertionError(e);
                                         }
                                     }
@@ -193,8 +193,8 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                                     public Object execute(VirtualFrame frame) {
                                         Object thisTestClass = ProxyLanguage.LanguageContext.get(this).getEnv().lookupHostSymbol(ContextInterruptStandaloneTest.class.getName());
                                         try {
-                                            library.invokeMember(thisTestClass, "callStaticContextCancel", nestedContextEntered);
-                                        } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                                            library.invokeMember(thisTestClass, (Object) "callStaticContextCancel", nestedContextEntered);
+                                        } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                                             throw new AssertionError(e);
                                         }
                                         return 0;

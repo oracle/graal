@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument
 import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
 import static com.oracle.truffle.api.interop.AssertUtils.validScope;
+import static com.oracle.truffle.api.interop.AssertUtils.validStringOrMember;
 import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
 import static com.oracle.truffle.api.interop.AssertUtils.violationOutArrayArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
@@ -84,7 +85,6 @@ import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
@@ -140,7 +140,15 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #isExecutable(Object) executable}
  * <li>{@link #isInstantiable(Object) instantiable}
  * <li>{@link #isPointer(Object) pointer}
+ * <li>{@link #isMember(Object member) member}
+ * <li>{@link #isSignatureElement(Object signatureElement) signature element}
  * <li>{@link #hasMembers(Object) members}
+ * <li>{@link #hasDeclaredMembers(Object metaObject) declared members}
+ * <li>{@link #hasMemberSignature(Object member) member signature}
+ * <li>{@link #hasSignatureElementName(Object signatureElement) signature element's name}
+ * <li>{@link #hasSignatureElementMetaObject(Object signatureElement) signature element's
+ * metaobject}
+ * <li>{@link #hasStaticReceiver(Object receiver) static receiver}
  * <li>{@link #hasHashEntries(Object) hash entries}
  * <li>{@link #hasArrayElements(Object) array elements}
  * <li>{@link #hasBufferElements(Object) buffer elements}
@@ -298,10 +306,8 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns {@code true} if the receiver has a declaring meta object. The declaring meta object
-     * is the meta object of the executable or meta object that declares the receiver value.
-     * Invoking this message does not cause any observable side-effects. Returns {@code false} by
-     * default.
+     * Returns {@code true} if the receiver has a declaring meta object. Invoking this message does
+     * not cause any observable side-effects. Returns {@code false} by default.
      *
      * @see #getDeclaringMetaObject(Object)
      * @since 20.3
@@ -312,11 +318,11 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns declaring meta object. The declaring meta object is the meta object of declaring
-     * executable or meta object. Throws {@code UnsupportedMessageException} when the receiver is
-     * has no {@link #hasDeclaringMetaObject(Object) declaring meta object}. The return value is an
-     * interop value that is guaranteed to return <code>true</code> for
-     * {@link #isMetaObject(Object)}.
+     * Returns declaring meta object. The declaring meta object is the meta object of an executable
+     * or meta object that declares the receiver value. Throws {@code UnsupportedMessageException}
+     * when the receiver does not {@link #hasDeclaringMetaObject(Object) have a declaring meta
+     * object}. The return value is an interop value that is guaranteed to return <code>true</code>
+     * for {@link #isMetaObject(Object)}.
      *
      * @see #hasDeclaringMetaObject(Object)
      * @since 20.3
@@ -669,22 +675,22 @@ public abstract class InteropLibrary extends Library {
     // Member Messages
     /**
      * Returns <code>true</code> if the receiver may have members. Therefore, at least one of
-     * {@link #readMember(Object, String)}, {@link #writeMember(Object, String, Object)},
-     * {@link #removeMember(Object, String)}, {@link #invokeMember(Object, String, Object...)} must
+     * {@link #readMember(Object, Object)}, {@link #writeMember(Object, Object, Object)},
+     * {@link #removeMember(Object, Object)}, {@link #invokeMember(Object, Object, Object...)} must
      * not throw {@link UnsupportedMessageException}. Members are structural elements of a class.
      * For example, a method or field is a member of a class. Invoking this message does not cause
      * any observable side-effects. Returns <code>false</code> by default.
      *
-     * @see #getMembers(Object, boolean)
-     * @see #isMemberReadable(Object, String)
-     * @see #isMemberModifiable(Object, String)
-     * @see #isMemberInvocable(Object, String)
-     * @see #isMemberInsertable(Object, String)
-     * @see #isMemberRemovable(Object, String)
-     * @see #readMember(Object, String)
-     * @see #writeMember(Object, String, Object)
-     * @see #removeMember(Object, String)
-     * @see #invokeMember(Object, String, Object...)
+     * @see #getMemberObjects(Object)
+     * @see #isMemberReadable(Object, Object)
+     * @see #isMemberModifiable(Object, Object)
+     * @see #isMemberInvocable(Object, Object)
+     * @see #isMemberInsertable(Object, Object)
+     * @see #isMemberRemovable(Object, Object)
+     * @see #readMember(Object, Object)
+     * @see #writeMember(Object, Object, Object)
+     * @see #removeMember(Object, Object)
+     * @see #invokeMember(Object, Object, Object...)
      * @since 19.0
      */
     @Abstract(ifExported = {"getMembers", "isMemberReadable", "readMember", "isMemberModifiable", "isMemberInsertable", "writeMember", "isMemberRemovable", "removeMember", "isMemberInvocable",
@@ -714,11 +720,20 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if the receiver does not have any
      *             {@link #hasMembers(Object) members}.
      * @see #hasMembers(Object)
+     * @see #getMemberObjects(Object)
+     * @see #getDeclaredMembers(Object)
      * @since 19.0
+     * @deprecated Migrate to {@link #getMemberObjects(Object)}, which returns
+     *             {@link #isMember(Object) member objects} instead of String names and allows to
+     *             handle overloads.
      */
-    @Abstract(ifExported = {"hasMembers", "isScope"})
+    @Deprecated(since = "24.2")
     public Object getMembers(Object receiver, boolean includeInternal) throws UnsupportedMessageException {
-        throw UnsupportedMessageException.create();
+        if (hasMembers(receiver)) {
+            return LegacyMembers.fromMemberObjects(getMemberObjects(receiver));
+        } else {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     /**
@@ -729,9 +744,44 @@ public abstract class InteropLibrary extends Library {
      *             {@link #hasMembers(Object) members}.
      * @see #getMembers(Object, boolean)
      * @since 19.0
+     * @deprecated Use {@link #getMemberObjects(Object)}, which returns {@link #isMember(Object)
+     *             member objects} instead of String names and allows to handle overloads.
      */
+    @Deprecated(since = "24.2")
     public final Object getMembers(Object receiver) throws UnsupportedMessageException {
         return getMembers(receiver, false);
+    }
+
+    /**
+     * Returns an array of member objects. The returned value must return <code>true</code> from
+     * {@link #hasArrayElements(Object)} and every array element must be an interop value that
+     * returns <code>true</code> from {@link #isMember(Object)}. The member object may also provide
+     * additional information like {@link #getSourceLocation(Object) source location}, etc. Names of
+     * member objects may be duplicated in case of overloads. {@link #getMemberSignature(Object)
+     * Signature} and {@link #getDeclaringMetaObject(Object) declaring meta-object} can be used to
+     * distinguish members with identical names.
+     * <p>
+     * The order of members needs to be:
+     * <ul>
+     * <li>deterministic, assuming the program execution is deterministic,</li>
+     * <li>in the declaration order, when applicable,</li>
+     * <li>multiple invocations of this method must return the same members in the same order as
+     * long as no side-effecting operations were performed.</li>
+     * </ul>
+     * <p>
+     * Static members are not returned unless called on a {@link #getStaticReceiver(Object) static
+     * receiver}.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver does not have any
+     *             {@link #hasMembers(Object) members}.
+     * @see #hasMembers(Object)
+     * @see #isMember(Object)
+     * @see #getDeclaredMembers(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExportedAsWarning = {"hasMembers", "isScope"})
+    public Object getMemberObjects(Object receiver) throws UnsupportedMessageException {
+        return LegacyMembers.fromLegacyMembers(receiver, getMembers(receiver));
     }
 
     /**
@@ -743,9 +793,38 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #readMember(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberReadable(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "readMember")
     public boolean isMemberReadable(Object receiver, String member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is {@link #readMember(Object, Object) readable}.
+     * When the member argument is a {@link #isMember(Object) member object}, it has to be one
+     * provided from {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}. When the member
+     * argument is an {@link #isString(Object) interop String}, it's up to the implementation to
+     * find the most appropriate member object of that String name.
+     * <p>
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, Object)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #readMember(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"readMember"}, replacementFor = "isMemberReadable(Object, String)")
+    public boolean isMemberReadable(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return isMemberReadable(receiver, name);
+        }
         return false;
     }
 
@@ -770,10 +849,70 @@ public abstract class InteropLibrary extends Library {
      *             the member with the given name does not exist or has been removed.
      * @see #hasMemberReadSideEffects(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #readMember(Object, Object)}, which allows to handle overloaded
+     *             members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "isMemberReadable")
     public Object readMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Reads the value of a given member. The member argument is either a {@link #isMember(Object)
+     * member object}, or String name of the member, in which case it's up to the language to read
+     * from the most appropriate member in case of overrides or overloads. When the member argument
+     * is a {@link #isMember(Object) member object}, it has to be one provided from
+     * {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     * In case of a method-like member, we recommend that languages return a bound method (or an
+     * artificial receiver-method binding) to improve cross-language portability. In this case, the
+     * member should be {@link #isMemberReadable(Object, Object) readable} and
+     * {@link #isMemberInvocable(Object, Object) invocable} and the result of reading the member
+     * should be {@link #isExecutable(Object) executable} and bound to the receiver.
+     * <p>
+     * This message must have not observable side-effects unless
+     * {@link #hasMemberReadSideEffects(Object, Object)} returns <code>true</code>.
+     *
+     * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
+     *             empty receiver with no readable members supports the read operation (even though
+     *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
+     *             for all arguments instead.
+     * @throws UnknownMemberException if the given member cannot be read, e.g. because it is not (or
+     *             no longer) {@link #isMemberReadable(Object, Object) readable} such as when the
+     *             member does not exist in this receiver, or has been removed.
+     * @see #hasMemberReadSideEffects(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMemberReadable"}, replacementFor = "readMember(Object, String)", replaceWith = "readMemberLegacy")
+    public Object readMember(Object receiver, Object member) throws UnsupportedMessageException, UnknownMemberException {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            try {
+                return readMember(receiver, name);
+            } catch (UnknownIdentifierException e) {
+                throw UnknownMemberException.from(e, member);
+            }
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Replacement of the legacy {@link #readMember(Object, String)}, which is used when
+     * {@link #readMember(Object, Object)} is implemented and automatically delegates to it.
+     *
+     * @since 24.2
+     * @deprecated Will be removed together with {@link #readMember(Object, String)}.
+     */
+    @Deprecated(since = "24.2")
+    protected final Object readMemberLegacy(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        try {
+            return readMember(receiver, (Object) member);
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     /**
@@ -785,9 +924,37 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #writeMember(Object, String, Object)
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberModifiable(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "writeMember")
     public boolean isMemberModifiable(Object receiver, String member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is existing and
+     * {@link #writeMember(Object, Object, Object) writable}. When the member argument is a
+     * {@link #isMember(Object) member object}, it has to be one provided from
+     * {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, Object)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #writeMember(Object, Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"writeMember"}, replacementFor = "isMemberModifiable(Object, String)")
+    public boolean isMemberModifiable(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return isMemberModifiable(receiver, name);
+        }
         return false;
     }
 
@@ -800,9 +967,37 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #writeMember(Object, String, Object)
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberInsertable(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "writeMember")
     public boolean isMemberInsertable(Object receiver, String member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is not existing and
+     * {@link #writeMember(Object, Object, Object) writable}. When the member argument is a
+     * {@link #isMember(Object) member object}, it has to be one provided from
+     * {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberExisting(Object, Object)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #writeMember(Object, Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"writeMember"}, replacementFor = "isMemberInsertable(Object, String)")
+    public boolean isMemberInsertable(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return isMemberInsertable(receiver, name);
+        }
         return false;
     }
 
@@ -822,10 +1017,69 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
      * @see #hasMemberWriteSideEffects(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #writeMember(Object, Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = {"isMemberModifiable", "isMemberInsertable"})
     public void writeMember(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Writes the value to the given member. The member argument is either a
+     * {@link #isMember(Object) member object}, or String name of the member, in which case it's up
+     * to the language to write the value to the most appropriate member in case of overrides or
+     * overloads. Writing a member is allowed if is existing and
+     * {@link #isMemberModifiable(Object, Object) modifiable}, or not existing and
+     * {@link #isMemberInsertable(Object, Object) insertable}.
+     * <p>
+     * When the member argument is a {@link #isMember(Object) member object}, it has to be one
+     * provided from {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     *
+     * This method must have no observable side-effects other than the changed member unless
+     * {@link #hasMemberWriteSideEffects(Object, Object) side-effects} are allowed.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support writing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownMemberException if the given member is not
+     *             {@link #isMemberModifiable(Object, Object) modifiable} nor
+     *             {@link #isMemberInsertable(Object, Object) insertable}.
+     * @throws UnsupportedTypeException if the provided value type is not allowed to be written.
+     * @see #hasMemberWriteSideEffects(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMemberInsertable", "isMemberModifiable"}, replacementFor = "writeMember(Object, String, Object)", replaceWith = "writeMemberLegacy")
+    public void writeMember(Object receiver, Object member, Object value) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            try {
+                writeMember(receiver, name, value);
+            } catch (UnknownIdentifierException e) {
+                throw UnknownMemberException.from(e, member);
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    /**
+     * Replacement of the legacy {@link #writeMember(Object, String, Object)}, which is used when
+     * {@link #writeMember(Object, Object, Object)} is implemented and automatically delegates to
+     * it.
+     *
+     * @since 24.2
+     * @deprecated Will be removed together with {@link #writeMember(Object, String, Object)}.
+     */
+    @Deprecated(since = "24.2")
+    protected final void writeMemberLegacy(Object receiver, String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        try {
+            writeMember(receiver, (Object) member, value);
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     /**
@@ -836,9 +1090,36 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #removeMember(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberInsertable(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "removeMember")
     public boolean isMemberRemovable(Object receiver, String member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is existing and removable. When the member
+     * argument is a {@link #isMember(Object) member object}, it has to be one provided from
+     * {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, Object)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #removeMember(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = "removeMember", replacementFor = "isMemberRemovable(Object, String)")
+    public boolean isMemberRemovable(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return isMemberRemovable(receiver, name);
+        }
         return false;
     }
 
@@ -855,10 +1136,64 @@ public abstract class InteropLibrary extends Library {
      *             have a member with the given name.
      * @see #isMemberRemovable(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #removeMember(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "isMemberRemovable")
     public void removeMember(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Removes a member from the receiver object. The member argument is either a
+     * {@link #isMember(Object) member object}, or String name of the member, in which case it's up
+     * to the language to remove the most appropriate member in case of overrides or overloads.
+     * Removing member is allowed if is {@link #isMemberRemovable(Object, Object) removable}.
+     * <p>
+     * When the member argument is a {@link #isMember(Object) member object}, it has to be one
+     * provided from {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     *
+     * This method does not have not observable side-effects other than the removed member.
+     *
+     * @throws UnsupportedMessageException when the receiver does not support removing at all, e.g.
+     *             when it is immutable.
+     * @throws UnknownMemberException if the given member is not
+     *             {@link #isMemberRemovable(Object, Object)} removable}, e.g. the receiver does not
+     *             have a member with the given name.
+     * @see #isMemberRemovable(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = "isMemberRemovable", replacementFor = "removeMember(Object, String)", replaceWith = "removeMemberLegacy")
+    public void removeMember(Object receiver, Object member) throws UnsupportedMessageException, UnknownMemberException {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            try {
+                removeMember(receiver, name);
+            } catch (UnknownIdentifierException e) {
+                throw UnknownMemberException.from(e, member);
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    /**
+     * Replacement of the legacy {@link #removeMember(Object, String)}, which is used when
+     * {@link #removeMember(Object, Object)} is implemented and automatically delegates to it.
+     *
+     * @since 24.2
+     * @deprecated Will be removed together with {@link #removeMember(Object, String)}.
+     */
+    @Deprecated(since = "24.2")
+    protected final void removeMemberLegacy(Object receiver, String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        try {
+            removeMember(receiver, (Object) member);
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     /**
@@ -869,9 +1204,36 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #invokeMember(Object, String, Object...)
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberInvocable(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "invokeMember")
     public boolean isMemberInvocable(Object receiver, String member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if a given member is invocable. When the member argument is a
+     * {@link #isMember(Object) member object}, it has to be one provided from
+     * {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     * This method may only return <code>true</code> if {@link #hasMembers(Object)} returns
+     * <code>true</code> as well and {@link #isMemberInsertable(Object, Object)} returns
+     * <code>false</code>. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
+     *
+     * @see #invokeMember(Object, Object, Object...)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"invokeMember"}, replacementFor = "isMemberInvocable(Object, String)")
+    public boolean isMemberInvocable(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return isMemberInvocable(receiver, name);
+        }
         return false;
     }
 
@@ -889,11 +1251,68 @@ public abstract class InteropLibrary extends Library {
      *             when storing executable members is not allowed.
      * @see #isMemberInvocable(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #invokeMember(Object, Object, Object...)}, which allows to
+     *             handle overloaded members.
      */
+    @Deprecated(since = "24.2")
     @Abstract(ifExported = "isMemberInvocable")
     public Object invokeMember(Object receiver, String member, Object... arguments)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Invokes a member for a given receiver and arguments. The member argument is either a
+     * {@link #isMember(Object) member object}, or String name of the member, in which case it's up
+     * to the language to invoke the most appropriate member in case of overrides or overloads. When
+     * the member argument is a {@link #isMember(Object) member object}, it has to be one provided
+     * from {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     *
+     * @throws UnknownMemberException if the given member does not exist or is not
+     *             {@link #isMemberInvocable(Object, Object) invocable}.
+     * @throws UnsupportedTypeException if one of the arguments is not compatible to the executable
+     *             signature. The exception is thrown on best effort basis, dynamic languages may
+     *             throw their own exceptions if the arguments are wrong.
+     * @throws ArityException if the number of expected arguments does not match the number of
+     *             actual arguments.
+     * @throws UnsupportedMessageException when the receiver does not support invoking at all, e.g.
+     *             when storing executable members is not allowed.
+     * @see #isMemberInvocable(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMemberInvocable"}, replacementFor = "invokeMember(Object, String, Object[])", replaceWith = "invokeMemberLegacy")
+    public Object invokeMember(Object receiver, Object member, Object... arguments)
+                    throws UnsupportedMessageException, UnknownMemberException, ArityException, UnsupportedTypeException {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            try {
+                return invokeMember(receiver, name, arguments);
+            } catch (UnknownIdentifierException e) {
+                throw UnknownMemberException.from(e, member);
+            }
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Replacement of the legacy {@link #invokeMember(Object, String, Object...)}, which is used
+     * when {@link #invokeMember(Object, Object, Object...)} is implemented and automatically
+     * delegates to it.
+     *
+     * @since 24.2
+     * @deprecated Will be removed together with {@link #invokeMember(Object, String, Object...)}.
+     */
+    @Deprecated(since = "24.2")
+    protected final Object invokeMemberLegacy(Object receiver, String member, Object[] arguments)
+                    throws UnsupportedMessageException, UnknownIdentifierException, ArityException, UnsupportedTypeException {
+        try {
+            return invokeMember(receiver, (Object) member, arguments);
+        } catch (UnknownMemberException ex) {
+            throw UnknownIdentifierException.create(member);
+        }
     }
 
     /**
@@ -905,7 +1324,10 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #getMembers(Object, boolean)
      * @since 19.0
+     * @deprecated The new {@link #isMember(Object) member} objects do not support an internal
+     *             attribute.
      */
+    @Deprecated(since = "24.2")
     public boolean isMemberInternal(Object receiver, String member) {
         return false;
     }
@@ -915,8 +1337,21 @@ public abstract class InteropLibrary extends Library {
      * {@link #isMemberInsertable(Object, String) insertable}.
      *
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberWritable(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     public final boolean isMemberWritable(Object receiver, String member) {
+        return isMemberModifiable(receiver, member) || isMemberInsertable(receiver, member);
+    }
+
+    /**
+     * Returns true if the member is {@link #isMemberModifiable(Object, Object) modifiable} or
+     * {@link #isMemberInsertable(Object, Object) insertable}.
+     *
+     * @since 24.2
+     */
+    public final boolean isMemberWritable(Object receiver, Object member) {
         return isMemberModifiable(receiver, member) || isMemberInsertable(receiver, member);
     }
 
@@ -927,9 +1362,24 @@ public abstract class InteropLibrary extends Library {
      * removable} or {@link #isMemberInvocable(Object, String) invocable}.
      *
      * @since 19.0
+     * @deprecated Migrate to {@link #isMemberExisting(Object, Object)}, which allows to handle
+     *             overloaded members.
      */
+    @Deprecated(since = "24.2")
     public final boolean isMemberExisting(Object receiver, String member) {
         return isMemberReadable(receiver, member) || isMemberModifiable(receiver, member) || isMemberRemovable(receiver, member) || isMemberInvocable(receiver, member);
+    }
+
+    /**
+     * Returns true if the member is existing. A member is existing if it is
+     * {@link #isMemberModifiable(Object, Object) modifiable},
+     * {@link #isMemberReadable(Object, Object) readable} or
+     * {@link #isMemberInvocable(Object, Object) invocable}.
+     *
+     * @since 24.2
+     */
+    public final boolean isMemberExisting(Object receiver, Object member) {
+        return isMemberReadable(receiver, member) || isMemberModifiable(receiver, member) || isMemberInvocable(receiver, member);
     }
 
     /**
@@ -942,8 +1392,37 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #readMember(Object, String)
      * @since 19.0
+     * @deprecated Migrate to {@link #hasMemberReadSideEffects(Object, Object)}, which allows to
+     *             handle overloaded members.
      */
+    @Deprecated(since = "24.2")
     public boolean hasMemberReadSideEffects(Object receiver, String member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if reading a member may cause a side-effect. The member argument is
+     * either a {@link #isMember(Object) member object}, or String name of the member. When the
+     * member argument is a {@link #isMember(Object) member object}, it has to be one provided from
+     * {@link #getMemberObjects(Object)} called on the same receiver, or from
+     * {@link #getDeclaredMembers(Object)} called on receiver's {@link #getMetaObject(Object) meta
+     * object} or some of it's {@link #getMetaParents(Object) meta parents}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects. A member read does not
+     * cause any side-effects by default.
+     * <p>
+     * For instance in JavaScript a property read may have side-effects if the property has a getter
+     * function.
+     *
+     * @see #readMember(Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExportedAsWarning = "hasMemberReadSideEffects", replacementFor = "hasMemberReadSideEffects(Object, String)")
+    public boolean hasMemberReadSideEffects(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return hasMemberReadSideEffects(receiver, name);
+        }
         return false;
     }
 
@@ -957,9 +1436,374 @@ public abstract class InteropLibrary extends Library {
      *
      * @see #writeMember(Object, String, Object)
      * @since 19.0
+     * @deprecated Migrate to {@link #hasMemberWriteSideEffects(Object, Object)}, which allows to
+     *             handle overloaded members.
      */
+    @Deprecated(since = "24.2")
     public boolean hasMemberWriteSideEffects(Object receiver, String member) {
         return false;
+    }
+
+    /**
+     * Returns <code>true</code> if writing a member may cause a side-effect, besides the write
+     * operation of the member. The member argument is either a {@link #isMember(Object) member
+     * object}, or String name of the member. When the member argument is a {@link #isMember(Object)
+     * member object}, it has to be one provided from {@link #getMemberObjects(Object)} called on
+     * the same receiver, or from {@link #getDeclaredMembers(Object)} called on receiver's
+     * {@link #getMetaObject(Object) meta object} or some of it's {@link #getMetaParents(Object)
+     * meta parents}.
+     * <p>
+     * Invoking this message does not cause any observable side-effects. A member write does not
+     * cause any side-effects by default.
+     * <p>
+     * For instance in JavaScript a property write may have side-effects if the property has a
+     * setter function.
+     *
+     * @see #writeMember(Object, Object, Object)
+     * @since 24.2
+     */
+    @Abstract(ifExportedAsWarning = "hasMemberWriteSideEffects", replacementFor = "hasMemberWriteSideEffects(Object, String)")
+    public boolean hasMemberWriteSideEffects(Object receiver, Object member) {
+        String name = LegacyMembers.getNameOf(member);
+        if (name != null) {
+            return hasMemberWriteSideEffects(receiver, name);
+        }
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver has a {@link #getStaticReceiver(Object) static
+     * receiver}. This method may only return <code>true</code> if {@link #hasMembers(Object)} or
+     * {@link #hasDeclaredMembers(Object)} returns <code>true</code>. Invoking this message does not
+     * cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #getStaticReceiver(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"getStaticReceiver"})
+    public boolean hasStaticReceiver(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns a static receiver. Static receiver is an object that provides static members, i.e.
+     * members whose value is independent on a specific instance. Usually an artificial object that
+     * just exposes the instance-independent members declared by the corresponding meta object(s) is
+     * returned. This object is also used as a receiver to {@link #readMember(Object, Object) read},
+     * {@link #writeMember(Object, Object, Object) write} and
+     * {@link #invokeMember(Object, Object, Object...) invoke} static members.
+     * <p>
+     * <b>Sample interpretations:</b> In Java static fields and methods would be provided by the
+     * static receiver, in Python class variables would be provided.
+     * <p>
+     * When the current receiver {@link #hasMembers(Object) has members} and/or
+     * {@link #hasDeclaredMembers(Object) has declared members}, then the static receiver also needs
+     * to have (static) members and/or (static) declared members.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver does not
+     *             {@link #hasStaticReceiver(Object) have a static receiver}.
+     * @see #hasStaticReceiver(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"hasStaticReceiver"})
+    public Object getStaticReceiver(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver may have declared members. Only
+     * {@link #isMetaObject(Object) meta objects} may have declared members. Declared members are
+     * structural elements of a meta object declared in the language code representation. For
+     * example, a method or field declared as a member of a class. Invoking this message does not
+     * cause any observable side-effects. Returns <code>false</code> by default.
+     *
+     * @see #getDeclaredMembers(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"getDeclaredMembers"})
+    public boolean hasDeclaredMembers(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns an array of member objects declared by a meta-object. This method is called on a
+     * {@link #isMetaObject(Object) meta-object}. The returned value must return <code>true</code>
+     * for {@link #hasArrayElements(Object)} and every array element must be an interop value that
+     * returns <code>true</code> from {@link #isMember(Object)}. The declared members may also
+     * provide additional information like {@link #getSourceLocation(Object) source location}, etc.
+     * <p>
+     * The order of members needs to be:
+     * <ul>
+     * <li>deterministic, assuming the program execution is deterministic,</li>
+     * <li>in the declaration order, when applicable,</li>
+     * <li>multiple invocations of this method must return the same members in the same order as
+     * long as no side-effecting operations were performed.</li>
+     * </ul>
+     * <p>
+     * Static members are not returned unless called on a {@link #getStaticReceiver(Object) static
+     * receiver}.
+     *
+     * @throws UnsupportedMessageException if and only if the receiver does not have any
+     *             {@link #hasDeclaredMembers(Object) members}.
+     * @see #hasDeclaredMembers(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"hasDeclaredMembers"})
+    public Object getDeclaredMembers(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    // Member objects
+
+    /**
+     * Returns <code>true</code> if the receiver is a member object, <code>false</code> otherwise.
+     * This method must not cause any observable side-effects.
+     * <p>
+     * A member must provide a {@link #getMemberSimpleName(Object) simple} and
+     * {@link #getMemberQualifiedName(Object) qualified} name. Specify a kind
+     * ({@link #isMemberKindField(Object) field}, {@link #isMemberKindMethod(Object) method},
+     * {@link #isMemberKindMetaObject(Object) meta object}) when appropriate. It's suggested to
+     * provide a {@link #getMemberSignature(Object) signature} and
+     * {@link #getDeclaringMetaObject(Object) declaring meta-object}, when available. It's also
+     * advised to implement the {@link #isIdenticalOrUndefined(Object, Object) identity}. Members
+     * can be {@link #readMember(Object, Object) read}, {@link #writeMember(Object, Object, Object)
+     * written to}, {@link #invokeMember(Object, Object, Object...) invoked} and
+     * {@link #removeMember(Object, Object) removed}.
+     *
+     * @see #getMemberSimpleName(Object)
+     * @see #getMemberQualifiedName(Object)
+     * @see #isMemberKindField(Object)
+     * @see #isMemberKindMethod(Object)
+     * @see #isMemberKindMetaObject(Object)
+     * @see #getMemberSignature(Object)
+     * @see #getDeclaringMetaObject(Object)
+     * @see #isIdenticalOrUndefined(Object, Object)
+     * @see #getMemberObjects(Object)
+     * @see #getDeclaredMembers(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"getMemberSimpleName", "getMemberQualifiedName", "isMemberKindField",
+                    "isMemberKindMethod", "isMemberKindMetaObject", "hasMemberSignature"})
+    public boolean isMember(Object receiver) {
+        return false;
+    }
+
+    /**
+     * Returns the simple name of a member as a {@link #isString(Object) string}.
+     * <p>
+     * <b>Sample interpretations:</b> The simple name of a Java method is the method name.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isMember(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isMember(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMember"})
+    public Object getMemberSimpleName(Object member) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the qualified name of a member as a {@link #isString(Object) string}.
+     * <p>
+     * <b>Sample interpretations:</b> The qualified name of a Java method is the method name with
+     * its declaring class name and parameter types.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isMember(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isMember(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMember"})
+    public Object getMemberQualifiedName(Object member) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns {@code true} when this object represents a field {@link #isMember(Object) member}. A
+     * field can be {@link InteropLibrary#readMember(Object, Object) read} when it's
+     * {@link InteropLibrary#isMemberReadable(Object, Object) readable} and
+     * {@link InteropLibrary#writeMember(Object, Object, Object) written to} when it's
+     * {@link InteropLibrary#isMemberWritable(Object, Object) writable}, for instance.
+     * <p>
+     * The member kind helps interop clients to distinguish the purpose of a member. For instance,
+     * tools can use the kind to display fields in the UI, etc.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well.
+     *
+     * @see #isMember(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMember"})
+    public boolean isMemberKindField(Object member) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} when this object represents a method {@link #isMember(Object) member}. A
+     * method can be {@link InteropLibrary#invokeMember(Object, Object, Object...) invoked} when
+     * it's {@link InteropLibrary#isMemberInvocable(Object, Object) invocable}, for instance.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well.
+     *
+     * @see #isMember(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMember"})
+    public boolean isMemberKindMethod(Object member) {
+        return false;
+    }
+
+    /**
+     * Returns {@code true} when this object represents a {@link InteropLibrary#isMetaObject(Object)
+     * meta object} {@link #isMember(Object) member}. A member of this kind may represent an inner
+     * class, for instance.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well.
+     *
+     * @see #isMember(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"isMember"})
+    public boolean isMemberKindMetaObject(Object member) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver is a {@link #isMember(Object) member} and has a
+     * {@link #getMemberSignature(Object) signature}.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well. Returns <code>false</code> by
+     * default.
+     *
+     * @see #isMember(Object)
+     * @see #getMemberSignature(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"getMemberSignature"})
+    public boolean hasMemberSignature(Object member) {
+        return false;
+    }
+
+    /**
+     * Returns an {@link #hasArrayElements(Object) array} of {@link #isSignatureElement(Object)
+     * signature elements} of a {@link #isMember(Object) member}. In case of invocable members, the
+     * first array element is a return signature element, next array elements are parameter
+     * signature elements.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isMember(Object)} must be implemented as well.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasMemberSignature(Object)}
+     *             returns <code>false</code> for the same receiver.
+     *
+     * @see #isMember(Object)
+     * @see #hasMemberSignature(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"hasMemberSignature"})
+    public Object getMemberSignature(Object member) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    // Signature
+
+    /**
+     * Returns <code>true</code> if the receiver is a signature element. A signature element is a
+     * part of {@link #getMemberSignature(Object) member signature} and contains an optional
+     * {@link #getSignatureElementName(Object) name} and an optional
+     * {@link #getSignatureElementMetaObject(Object) meta-object} that defines the type. A void
+     * element has no meta-object.
+     * <p>
+     * This method must not cause any observable side-effects.
+     *
+     * @see #hasSignatureElementName(Object)
+     * @see #getSignatureElementName(Object)
+     * @see #hasSignatureElementMetaObject(Object)
+     * @see #getSignatureElementMetaObject(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"hasSignatureElementName", "hasSignatureElementMetaObject"})
+    public boolean isSignatureElement(Object signatureElement) {
+        return false;
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver is a signature element with a name.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isSignatureElement(Object)} must be implemented as well. Returns
+     * <code>false</code> by default.
+     *
+     * @see #isSignatureElement(Object)
+     * @see #getSignatureElementName(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"getSignatureElementName"})
+    public boolean hasSignatureElementName(Object signatureElement) {
+        return false;
+    }
+
+    /**
+     * Returns name of a signature element as a {@link #isString(Object) string}. The declared name
+     * of a parameter, for instance.
+     * <p>
+     * This method must not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #hasSignatureElementName(Object)}
+     *             returns <code>false</code> for the same receiver.
+     *
+     * @see #isSignatureElement(Object)
+     * @see #hasSignatureElementName(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"hasSignatureElementName"})
+    public Object getSignatureElementName(Object signatureElement) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns <code>true</code> if the receiver is a signature element with a meta-object.
+     * <p>
+     * This method must not cause any observable side-effects. If this method is implemented then
+     * also {@link #isSignatureElement(Object)} must be implemented as well. Returns
+     * <code>false</code> by default.
+     *
+     * @see #isSignatureElement(Object)
+     * @see #getSignatureElementMetaObject(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"getSignatureElementMetaObject"})
+    public boolean hasSignatureElementMetaObject(Object signatureElement) {
+        return false;
+    }
+
+    /**
+     * Returns meta-object of a signature element. The declared type of a parameter, for instance.
+     * <p>
+     * This method must not cause any observable side-effects.
+     *
+     * @throws UnsupportedMessageException if and only if
+     *             {@link #hasSignatureElementMetaObject(Object)} returns <code>false</code> for the
+     *             same receiver.
+     *
+     * @see #isSignatureElement(Object)
+     * @see #hasSignatureElementMetaObject(Object)
+     * @since 24.2
+     */
+    @Abstract(ifExported = {"hasSignatureElementMetaObject"})
+    public Object getSignatureElementMetaObject(Object signatureElement) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
     // Hashes
@@ -2493,7 +3337,7 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Converts the receiver to a human readable {@link #isString(Object) string}. Each language may
-     * have special formating conventions - even primitive values may not follow the traditional
+     * have special formatting conventions - even primitive values may not follow the traditional
      * Java rules. The format of the returned string is intended to be interpreted by humans not
      * machines and should therefore not be relied upon by machines. By default the receiver class
      * name and its {@link System#identityHashCode(Object) identity hash code} is used as string
@@ -2812,9 +3656,9 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns <code>true</code> if and only if the receiver specifies identity, else
      * <code>false</code>. This method is a short-cut for
-     * <code>this.isIdentical(receiver, receiver, this) != TriState.UNDEFINED</code>. This message
-     * cannot be exported. To add identity support to the receiver export
-     * {@link #isIdenticalOrUndefined(Object, Object)} instead.
+     * <code>this.isIdentical(receiver, receiver, this)</code>. This message cannot be exported. To
+     * add identity support to the receiver export {@link #isIdenticalOrUndefined(Object, Object)}
+     * instead.
      *
      * @see #isIdenticalOrUndefined(Object, Object)
      * @since 20.2
@@ -3523,6 +4367,7 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         public Object readMember(Object receiver, String identifier) throws UnsupportedMessageException, UnknownIdentifierException {
             if (CompilerDirectives.inCompiledCode()) {
                 return delegate.readMember(receiver, identifier);
@@ -3543,6 +4388,28 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public Object readMember(Object receiver, Object member) throws UnsupportedMessageException, UnknownMemberException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.readMember(receiver, member);
+            }
+            assert preCondition(receiver);
+            assert validProtocolArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean wasReadable = delegate.isMemberReadable(receiver, member);
+            try {
+                Object result = delegate.readMember(receiver, member);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, member);
+                assert wasReadable || isMultiThreaded(receiver) || delegate.hasMemberReadSideEffects(receiver, member) : violationInvariant(receiver, member);
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownMemberException : violationPost(member, e);
+                throw e;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public void writeMember(Object receiver, String identifier, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
             if (CompilerDirectives.inCompiledCode()) {
                 delegate.writeMember(receiver, identifier, value);
@@ -3563,6 +4430,28 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public void writeMember(Object receiver, Object member, Object value) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.writeMember(receiver, member, value);
+                return;
+            }
+            assert preCondition(member);
+            assert validProtocolArgument(receiver, member);
+            assert validStringOrMember(member);
+            assert validInteropArgument(member, value);
+            boolean wasWritable = delegate.isMemberWritable(receiver, member);
+            try {
+                delegate.writeMember(receiver, member, value);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, member);
+                assert wasWritable || isMultiThreaded(receiver) || delegate.hasMemberWriteSideEffects(receiver, member) : violationInvariant(receiver, member);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownMemberException || e instanceof UnsupportedTypeException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public void removeMember(Object receiver, String identifier) throws UnsupportedMessageException, UnknownIdentifierException {
             if (CompilerDirectives.inCompiledCode()) {
                 delegate.removeMember(receiver, identifier);
@@ -3582,6 +4471,27 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public void removeMember(Object receiver, Object member) throws UnsupportedMessageException, UnknownMemberException {
+            if (CompilerDirectives.inCompiledCode()) {
+                delegate.removeMember(receiver, member);
+                return;
+            }
+            assert preCondition(receiver);
+            assert validProtocolArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean wasRemovable = delegate.isMemberRemovable(receiver, member);
+            try {
+                delegate.removeMember(receiver, member);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, member);
+                assert wasRemovable || isMultiThreaded(receiver) || delegate.hasMemberWriteSideEffects(receiver, member) : violationInvariant(receiver, member);
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownMemberException : violationPost(receiver, e);
+                throw e;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public Object invokeMember(Object receiver, String identifier, Object... arguments)
                         throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
             if (CompilerDirectives.inCompiledCode()) {
@@ -3606,6 +4516,31 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public Object invokeMember(Object receiver, Object member, Object... arguments) throws UnsupportedMessageException, UnknownMemberException, ArityException, UnsupportedTypeException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.invokeMember(receiver, member, arguments);
+            }
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            assert validProtocolArgument(receiver, arguments);
+            assert validArguments(receiver, arguments);
+            boolean wasInvocable = delegate.isMemberInvocable(receiver, member);
+            try {
+                Object result = delegate.invokeMember(receiver, member, arguments);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver, member);
+                assert wasInvocable || isMultiThreaded(receiver) || delegate.hasMemberReadSideEffects(receiver, member) : violationInvariant(receiver, member);
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof ArityException || e instanceof UnknownMemberException ||
+                                e instanceof UnsupportedTypeException : violationPost(member, e);
+                throw e;
+            }
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public Object getMembers(Object receiver, boolean internal) throws UnsupportedMessageException {
             assert preCondition(receiver);
             try {
@@ -3707,7 +4642,63 @@ public abstract class InteropLibrary extends Library {
             return true;
         }
 
+        private static boolean assertScopeMemberObjects(Object receiver, Object allMembers, Object parentMembers) {
+            assert parentMembers != null : violationPost(receiver, parentMembers);
+            InteropLibrary allUncached = InteropLibrary.getUncached(allMembers);
+            InteropLibrary parentUncached = InteropLibrary.getUncached(parentMembers);
+            assert allUncached.hasArrayElements(allMembers) : violationPost(receiver, allMembers);
+            assert parentUncached.hasArrayElements(parentMembers) : violationPost(receiver, parentMembers);
+            long allSize;
+            long parentSize;
+            try {
+                allSize = allUncached.getArraySize(allMembers);
+                parentSize = parentUncached.getArraySize(parentMembers);
+            } catch (UnsupportedMessageException e) {
+                assert false : violationPost(receiver, e);
+                return true;
+            }
+            assert AssertUtils.validScopeMemberLengths(allSize, parentSize, allMembers, parentMembers);
+            long currentSize = allSize - parentSize;
+            for (long i = 0; i < parentSize; i++) {
+                assert allUncached.isArrayElementReadable(allMembers, i + currentSize) : violationPost(receiver, allMembers);
+                assert parentUncached.isArrayElementReadable(parentMembers, i) : violationPost(receiver, parentMembers);
+                Object allElement;
+                Object parentElement;
+                try {
+                    allElement = allUncached.readArrayElement(allMembers, i + currentSize);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    assert false : violationPost(receiver, allMembers);
+                    return true;
+                }
+                try {
+                    parentElement = parentUncached.readArrayElement(parentMembers, i);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    assert false : violationPost(receiver, parentMembers);
+                    return true;
+                }
+                assert InteropLibrary.getUncached().isMember(allElement) : violationPost(receiver, allElement);
+                assert InteropLibrary.getUncached().isMember(parentElement) : violationPost(receiver, parentElement);
+                String allElementName;
+                String parentElementName;
+                try {
+                    allElementName = InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMemberQualifiedName(allElement));
+                } catch (UnsupportedMessageException e) {
+                    assert false : violationInvariant(allElement);
+                    return true;
+                }
+                try {
+                    parentElementName = InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMemberQualifiedName(parentElement));
+                } catch (UnsupportedMessageException e) {
+                    assert false : violationInvariant(parentElement);
+                    return true;
+                }
+                assert AssertUtils.validScopeMemberNames(allElementName, parentElementName, allMembers, parentMembers, i + currentSize, i);
+            }
+            return true;
+        }
+
         @Override
+        @SuppressWarnings("deprecation")
         public boolean hasMemberReadSideEffects(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3719,6 +4710,19 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasMemberReadSideEffects(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.hasMemberReadSideEffects(receiver, member);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, member);
+            assert !result || (delegate.isMemberReadable(receiver, member) || isMultiThreaded(receiver)) : violationInvariant(receiver);
+            assert validInteropReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean hasMemberWriteSideEffects(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3730,6 +4734,19 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean hasMemberWriteSideEffects(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.hasMemberWriteSideEffects(receiver, member);
+            assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, member);
+            assert !result || (delegate.isMemberWritable(receiver, member) || isMultiThreaded(receiver)) : violationInvariant(receiver);
+            assert validInteropReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean isMemberReadable(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3740,6 +4757,18 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean isMemberReadable(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validProtocolArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.isMemberReadable(receiver, member);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, member) : violationInvariant(receiver, member);
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean isMemberModifiable(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validInteropArgument(receiver, identifier);
@@ -3750,6 +4779,18 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean isMemberModifiable(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.isMemberModifiable(receiver, member);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, member) : violationInvariant(receiver, member);
+            assert validInteropReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean isMemberInsertable(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3760,6 +4801,18 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean isMemberInsertable(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.isMemberInsertable(receiver, member);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberExisting(receiver, member) : violationInvariant(receiver, member);
+            assert validInteropReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean isMemberRemovable(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3770,6 +4823,18 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean isMemberRemovable(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.isMemberRemovable(receiver, member);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, member) : violationInvariant(receiver, member);
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean isMemberInvocable(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3780,6 +4845,18 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
+        public boolean isMemberInvocable(Object receiver, Object member) {
+            assert preCondition(receiver);
+            assert validInteropArgument(receiver, member);
+            assert validStringOrMember(member);
+            boolean result = delegate.isMemberInvocable(receiver, member);
+            assert !result || delegate.hasMembers(receiver) && !delegate.isMemberInsertable(receiver, member) : violationInvariant(receiver, member);
+            assert validInteropReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        @SuppressWarnings("deprecation")
         public boolean isMemberInternal(Object receiver, String identifier) {
             assert preCondition(receiver);
             assert validProtocolArgument(receiver, identifier);
@@ -3787,6 +4864,299 @@ public abstract class InteropLibrary extends Library {
             assert !result || delegate.hasMembers(receiver) : violationInvariant(receiver, identifier);
             assert validProtocolReturn(receiver, result);
             return result;
+        }
+
+        @Override
+        public Object getMemberObjects(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getMemberObjects(receiver);
+                assert delegate.hasMembers(receiver) : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                assert isMultiThreaded(receiver) || assertMembers(receiver, result);
+                assert !delegate.hasScopeParent(receiver) || assertScopeMemberObjects(receiver, result, getUncached().getMemberObjects(delegate.getScopeParent(receiver)));
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert assertMetaNoDeclaredMembers(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean hasDeclaredMembers(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasDeclaredMembers(receiver);
+            assert !result || delegate.isMetaObject(receiver) : violationInvariant(receiver);
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public Object getDeclaredMembers(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            try {
+                Object result = delegate.getDeclaredMembers(receiver);
+                assert delegate.hasDeclaredMembers(receiver) : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                assert isMultiThreaded(receiver) || assertMembers(receiver, result);
+                assert validInteropReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(receiver, e);
+                assert !delegate.hasDeclaredMembers(receiver) : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        private static boolean assertMembers(Object receiver, Object result) {
+            assert result != null : violationPost(receiver, result);
+            InteropLibrary uncached = InteropLibrary.getFactory().getUncached(result);
+            assert uncached.hasArrayElements(result) : violationPost(receiver, result);
+            long arraySize;
+            try {
+                arraySize = uncached.getArraySize(result);
+            } catch (UnsupportedMessageException e) {
+                assert false : violationPost(receiver, e);
+                return true;
+            }
+            for (long i = 0; i < arraySize; i++) {
+                assert uncached.isArrayElementReadable(result, i) : violationPost(receiver, result);
+                Object member;
+                try {
+                    member = uncached.readArrayElement(result, i);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    assert false : violationPost(receiver, e);
+                    return true;
+                }
+                assert UNCACHED.isMember(member) : violationPost(receiver, member);
+            }
+            return true;
+        }
+
+        private static boolean assertMetaNoDeclaredMembers(Object receiver) {
+            if (UNCACHED.hasMetaObject(receiver)) {
+                try {
+                    Object meta = UNCACHED.getMetaObject(receiver);
+                    return !UNCACHED.hasDeclaredMembers(meta);
+                } catch (UnsupportedMessageException e) {
+                    assert false : violationPost(receiver, e);
+                }
+            }
+            return true;
+        }
+
+        @Override
+        public boolean hasStaticReceiver(Object receiver) {
+            assert preCondition(receiver);
+            boolean result = delegate.hasStaticReceiver(receiver);
+            assert validProtocolReturn(receiver, result);
+            return result;
+        }
+
+        @Override
+        public Object getStaticReceiver(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.getStaticReceiver(receiver);
+            }
+            assert preCondition(receiver);
+            boolean hadStaticReceiver = delegate.hasStaticReceiver(receiver);
+            try {
+                Object result = delegate.getStaticReceiver(receiver);
+                assert hadStaticReceiver || isMultiThreaded(receiver) : violationInvariant(receiver);
+                assert validInteropReturn(receiver, result);
+                assert verifyStaticReceiver(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException || e instanceof UnknownIdentifierException : violationPost(receiver, e);
+                assert !(e instanceof UnsupportedMessageException) || isMultiThreaded(receiver) || !hadStaticReceiver : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        private static boolean verifyStaticReceiver(Object instanceReceiver, Object staticReceiver) throws UnsupportedMessageException {
+            assert UNCACHED.hasMembers(instanceReceiver) && UNCACHED.hasMembers(staticReceiver) || //
+                            UNCACHED.hasDeclaredMembers(instanceReceiver) && UNCACHED.hasDeclaredMembers(staticReceiver) : violationPost(instanceReceiver, staticReceiver);
+            return true;
+        }
+
+        @Override
+        public boolean isMember(Object member) {
+            assert preCondition(member);
+            boolean result = delegate.isMember(member);
+            assert validProtocolReturn(member, result);
+            return result;
+        }
+
+        @Override
+        public Object getMemberSimpleName(Object member) throws UnsupportedMessageException {
+            assert preCondition(member);
+            try {
+                Object result = delegate.getMemberSimpleName(member);
+                assert delegate.isMember(member) : violationInvariant(member);
+                assert assertString(member, result);
+                assert validInteropReturn(member, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(member, e);
+                assert !delegate.isMember(member) : violationInvariant(member);
+                throw e;
+            }
+        }
+
+        @Override
+        public Object getMemberQualifiedName(Object member) throws UnsupportedMessageException {
+            assert preCondition(member);
+            try {
+                Object result = delegate.getMemberQualifiedName(member);
+                assert delegate.isMember(member) : violationInvariant(member);
+                assert assertString(member, result);
+                assert validInteropReturn(member, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(member, e);
+                assert !delegate.isMember(member) : violationInvariant(member);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean isMemberKindField(Object member) {
+            assert preCondition(member);
+            boolean result = delegate.isMemberKindField(member);
+            assert validProtocolReturn(member, result);
+            assert !result || delegate.isMember(member) : violationPost(member, result);
+            return result;
+        }
+
+        @Override
+        public boolean isMemberKindMethod(Object member) {
+            assert preCondition(member);
+            boolean result = delegate.isMemberKindMethod(member);
+            assert validProtocolReturn(member, result);
+            assert !result || delegate.isMember(member) : violationPost(member, result);
+            return result;
+        }
+
+        @Override
+        public boolean isMemberKindMetaObject(Object member) {
+            assert preCondition(member);
+            boolean result = delegate.isMemberKindMetaObject(member);
+            assert validProtocolReturn(member, result);
+            assert !result || delegate.isMember(member) : violationPost(member, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasMemberSignature(Object member) {
+            assert preCondition(member);
+            boolean result = delegate.hasMemberSignature(member);
+            assert validProtocolReturn(member, result);
+            assert !result || delegate.isMember(member) : violationPost(member, result);
+            return result;
+        }
+
+        @Override
+        public Object getMemberSignature(Object member) throws UnsupportedMessageException {
+            assert preCondition(member);
+            try {
+                Object result = delegate.getMemberSignature(member);
+                assert delegate.hasMemberSignature(member) : violationInvariant(member);
+                assert delegate.isMember(member) : violationInvariant(member);
+                assert validInteropReturn(member, result);
+                assert isMultiThreaded(member) || assertSignatureElements(member, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(member, e);
+                assert !delegate.hasMemberSignature(member) : violationInvariant(member);
+                throw e;
+            }
+        }
+
+        private static boolean assertSignatureElements(Object receiver, Object result) {
+            assert result != null : violationPost(receiver, result);
+            InteropLibrary uncached = InteropLibrary.getFactory().getUncached(result);
+            assert uncached.hasArrayElements(result) : violationPost(receiver, result);
+            long arraySize;
+            try {
+                arraySize = uncached.getArraySize(result);
+            } catch (UnsupportedMessageException e) {
+                assert false : violationPost(receiver, e);
+                return true;
+            }
+            for (long i = 0; i < arraySize; i++) {
+                assert uncached.isArrayElementReadable(result, i) : violationPost(receiver, result);
+                Object signatureElement;
+                try {
+                    signatureElement = uncached.readArrayElement(result, i);
+                } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                    assert false : violationPost(receiver, e);
+                    return true;
+                }
+                assert UNCACHED.isSignatureElement(signatureElement) : violationPost(receiver, signatureElement);
+            }
+            return true;
+        }
+
+        @Override
+        public boolean isSignatureElement(Object signatureElement) {
+            assert preCondition(signatureElement);
+            boolean result = delegate.isSignatureElement(signatureElement);
+            assert validProtocolReturn(signatureElement, result);
+            return result;
+        }
+
+        @Override
+        public boolean hasSignatureElementName(Object signatureElement) {
+            assert preCondition(signatureElement);
+            boolean result = delegate.hasSignatureElementName(signatureElement);
+            assert !result || delegate.isSignatureElement(signatureElement) : violationInvariant(signatureElement);
+            assert validProtocolReturn(signatureElement, result);
+            return result;
+        }
+
+        @Override
+        public Object getSignatureElementName(Object signatureElement) throws UnsupportedMessageException {
+            assert preCondition(signatureElement);
+            try {
+                Object result = delegate.getSignatureElementName(signatureElement);
+                assert delegate.isSignatureElement(signatureElement) : violationInvariant(signatureElement);
+                assert delegate.hasSignatureElementName(signatureElement) : violationInvariant(signatureElement);
+                assert validInteropReturn(signatureElement, result);
+                assert UNCACHED.isString(result) : violationPost(signatureElement, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(signatureElement, e);
+                assert !delegate.hasSignatureElementName(signatureElement) : violationInvariant(signatureElement);
+                throw e;
+            }
+        }
+
+        @Override
+        public boolean hasSignatureElementMetaObject(Object signatureElement) {
+            assert preCondition(signatureElement);
+            boolean result = delegate.hasSignatureElementMetaObject(signatureElement);
+            assert !result || delegate.isSignatureElement(signatureElement) : violationInvariant(signatureElement);
+            assert validProtocolReturn(signatureElement, result);
+            return result;
+        }
+
+        @Override
+        public Object getSignatureElementMetaObject(Object signatureElement) throws UnsupportedMessageException {
+            assert preCondition(signatureElement);
+            try {
+                Object result = delegate.getSignatureElementMetaObject(signatureElement);
+                assert delegate.isSignatureElement(signatureElement) : violationInvariant(signatureElement);
+                assert delegate.hasSignatureElementMetaObject(signatureElement) : violationInvariant(signatureElement);
+                assert validInteropReturn(signatureElement, result);
+                assert UNCACHED.isMetaObject(result) : violationPost(signatureElement, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationPost(signatureElement, e);
+                assert !delegate.hasSignatureElementMetaObject(signatureElement) : violationInvariant(signatureElement);
+                throw e;
+            }
         }
 
         @Override

@@ -822,6 +822,7 @@ public final class Value extends AbstractValue {
      *
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
+     * @see #hasMember(Object)
      * @since 19.0
      */
     public boolean hasMember(String identifier) {
@@ -830,13 +831,31 @@ public final class Value extends AbstractValue {
     }
 
     /**
-     * Returns the member with a given <code>identifier</code> or <code>null</code> if the member
-     * does not exist.
+     * Returns <code>true</code> if this value has a given <code>member</code>. If the value has no
+     * {@link #hasMembers() members} then {@link #hasMember(Object)} returns <code>false</code>.
+     * <p>
+     * This is a generalization of {@link #hasMember(String)}, accepting {@link #isMember() member}
+     * values in addition to the String type.
+     *
+     * @param member a String name or Value that is a {@link #isMember() member}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the member is null.
+     * @since 24.2
+     */
+    public boolean hasMember(Object member) {
+        Objects.requireNonNull(member, "member");
+        return dispatch.hasMember(this.context, receiver, member);
+    }
+
+    /**
+     * Returns the value of a member with a given <code>identifier</code> or <code>null</code> if
+     * the member does not exist.
      *
      * @throws UnsupportedOperationException if the value {@link #hasMembers() has no members} or
      *             the given identifier exists but is not readable.
      * @throws PolyglotException if a guest language error occurred during execution.
      * @throws NullPointerException if the identifier is null.
+     * @see #getMember(Object)
      * @since 19.0
      */
     public Value getMember(String identifier) {
@@ -845,13 +864,35 @@ public final class Value extends AbstractValue {
     }
 
     /**
+     * Returns the value of a given <code>member</code> or <code>null</code> if the member does not
+     * exist in this value. The provided member must be a Value that returns <code>true</code> from
+     * {@link #isMember()} or a String name of the member, in which case a value of the most
+     * appropriate member is returned.
+     * <p>
+     * This is a generalization of {@link #getMember(String)}, accepting {@link #isMember() member}
+     * values in addition to the String name.
+     * <p>
+     * Reading a value does not have observable side-effects unless
+     * {@link #hasMemberReadSideEffects(Object)} returns <code>true</code>.
+     *
+     * @param member a String name or Value that is a {@link #isMember() member}.
+     * @throws UnsupportedOperationException if the value {@link #hasMembers() has no members} or
+     *             the given member exists but is not readable.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the member is null.
+     * @since 24.2
+     */
+    public Value getMember(Object member) {
+        Objects.requireNonNull(member, "member");
+        return (Value) dispatch.getMember(this.context, receiver, member);
+    }
+
+    /**
      * Returns a set of all member keys. Calling {@link Set#contains(Object)} with a string key is
-     * equivalent to calling {@link #hasMember(String)}. Removing an element from the returned set
-     * is equivalent to calling {@link #removeMember(String)}. Adding an element to the set is
-     * equivalent to calling {@linkplain #putMember(String, Object) putMember(key, null)}. If the
-     * value does not support {@link #hasMembers() members} then an empty unmodifiable set is
-     * returned. If the context gets closed while the returned set is still alive, then the set will
-     * throw an {@link IllegalStateException} if any methods except Object methods are invoked.
+     * equivalent to calling {@link #hasMember(String)}. If the value does not support
+     * {@link #hasMembers() members} then an empty unmodifiable set is returned. If the context gets
+     * closed while the returned set is still alive, then the set will throw an
+     * {@link IllegalStateException} if any methods except Object methods are invoked.
      *
      * @throws IllegalStateException if the context is already {@link Context#close() closed}.
      * @throws PolyglotException if a guest language error occurred during execution.
@@ -859,6 +900,25 @@ public final class Value extends AbstractValue {
      */
     public Set<String> getMemberKeys() {
         return dispatch.getMemberKeys(this.context, receiver);
+    }
+
+    /**
+     * Returns an {@link #hasArrayElements() array} of all public {@link #isMember() member}
+     * objects. If the value does not support {@link #hasMembers() members} then an
+     * {@link UnsupportedOperationException} is thrown.
+     * <p>
+     * Static members are not returned unless called on a {@link #getStaticReceiver() static
+     * receiver}.
+     *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws UnsupportedOperationException if the value {@link #hasMembers() has no members}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #isMember()
+     * @see #getStaticReceiver()
+     * @since 24.2
+     */
+    public Value getMembers() {
+        return (Value) dispatch.getMembers(this.context, receiver);
     }
 
     /**
@@ -880,6 +940,36 @@ public final class Value extends AbstractValue {
     }
 
     /**
+     * Sets the value of a member of this object. The member value is subject to polyglot value
+     * mapping rules as described in {@link Context#asValue(Object)}. The provided member must be a
+     * Value that returns <code>true</code> from {@link #isMember()} or a String name of the member,
+     * in which case the new value is put to the most appropriate member.
+     * <p>
+     * This is a generalization of {@link #putMember(String, Object)}, accepting {@link #isMember()
+     * member} values in addition to the String name.
+     * <p>
+     * Setting a value does not have observable side-effects other than the changed member, unless
+     * {@link #hasMemberPutSideEffects(Object)} returns <code>true</code>.
+     *
+     * @param member a String name or Value that is a {@link #isMember() member}.
+     * @param value a new value to set.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasMembers()
+     *             members}, the member is not a part of this object and new members cannot be
+     *             added, or the existing member is not modifiable.
+     * @throws IllegalArgumentException if the member is neither a {@link #isMember() member} nor a
+     *             String, or the provided value type is not allowed to be written.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @throws NullPointerException if the member is null.
+     * @see #isMember()
+     * @since 24.2
+     */
+    public void putMember(Object member, Object value) {
+        Objects.requireNonNull(member, "member");
+        dispatch.putMember(this.context, receiver, member, value);
+    }
+
+    /**
      * Removes a single member from the object. Returns <code>true</code> if the member was
      * successfully removed, <code>false</code> if such a member does not exist.
      *
@@ -893,6 +983,298 @@ public final class Value extends AbstractValue {
     public boolean removeMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
         return dispatch.removeMember(this.context, receiver, identifier);
+    }
+
+    /**
+     * Removes a single member from the object. Returns <code>true</code> if the member was
+     * successfully removed, <code>false</code> if such a member does not exist. The provided member
+     * must be a Value that returns <code>true</code> from {@link #isMember()} or a String name of
+     * the member, in which case the most appropriate member is removed.
+     * <p>
+     * This is a generalization of {@link #removeMember(String)}, accepting {@link #isMember()
+     * member} values in addition to the String name.
+     *
+     * @throws UnsupportedOperationException if the value does not have any {@link #hasMembers()
+     *             members} or if the member {@link #hasMember(Object) exists} but cannot be
+     *             removed.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws IllegalArgumentException if the member is neither a {@link #isMember() member} nor a
+     *             String.
+     * @throws NullPointerException if the member is null.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #isMember()
+     * @since 24.2
+     */
+    public boolean removeMember(Object member) {
+        Objects.requireNonNull(member, "member");
+        return dispatch.removeMember(this.context, receiver, member);
+    }
+
+    /**
+     * Returns <code>true</code> if this value generally supports declared members. Only
+     * {@link #isMetaObject() meta objects} may have declared members. Declared members are
+     * structural elements of a meta object declared in the language code representation. For
+     * example, a method or field declared as a member of a class.
+     *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #getDeclaredMembers()
+     * @since 24.2
+     */
+    public boolean hasDeclaredMembers() {
+        return dispatch.hasDeclaredMembers(this.context, receiver);
+    }
+
+    /**
+     * Returns an {@link #hasArrayElements() array} of {@link #isMember() member} objects declared
+     * by a meta object. If the value does not support {@link #hasDeclaredMembers() declared
+     * members} then an {@link UnsupportedOperationException} is thrown. The declared members may
+     * also provide additional information like {@link #getSourceLocation() source location}, etc.
+     * <p>
+     * Static members are not returned unless called on a {@link #getStaticReceiver() static
+     * receiver}.
+     *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws UnsupportedOperationException if the value {@link #hasDeclaredMembers() has no
+     *             declared members}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #hasDeclaredMembers()
+     * @see #isMember()
+     * @see #getStaticReceiver()
+     * @since 24.2
+     */
+    public Value getDeclaredMembers() {
+        return (Value) dispatch.getDeclaredMembers(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this value has a {@link #getStaticReceiver() static receiver}.
+     * This method may only return <code>true</code> if {@link #hasMembers()} or
+     * {@link #hasDeclaredMembers()} returns <code>true</code>.
+     *
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #getStaticReceiver()
+     * @since 24.2
+     */
+    public boolean hasStaticReceiver() {
+        return dispatch.hasStaticReceiver(this.context, receiver);
+    }
+
+    /**
+     * Returns a static receiver. Static receiver is an object that provides static members, i.e.
+     * members whose value is independent on a specific instance.
+     * <p>
+     * When the current value {@link #hasMembers() has members} and/or {@link #hasDeclaredMembers()
+     * has declared members}, then the static receiver also has (static) members and/or (static)
+     * declared members.
+     *
+     * @throws UnsupportedOperationException if and only if the value does not
+     *             {@link #hasStaticReceiver() have a static receiver}.
+     * @throws IllegalStateException if the context is already {@link Context#close() closed}.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #hasStaticReceiver()
+     * @see #getMembers()
+     * @see #getDeclaredMembers()
+     * @since 24.2
+     */
+    public Value getStaticReceiver() {
+        return (Value) dispatch.getStaticReceiver(this.context, receiver);
+    }
+
+    // member
+
+    /**
+     * Returns <code>true</code> if this value is a member object, <code>false</code> otherwise.
+     * <p>
+     * A member provides a {@link #getMemberSimpleName() simple} and
+     * {@link #getMemberQualifiedName() qualified} name. Optionally it may provide a kind
+     * ({@link #isMemberKindField() field}, {@link #isMemberKindMethod() method},
+     * {@link #isMemberKindMetaObject() meta object}), {@link #getMemberSignature() signature} and
+     * {@link #getDeclaringMetaObject() declaring meta-object}, when available. Member value can be
+     * {@link #getMember(Object) got}, {@link #putMember(Object, Object) put},
+     * {@link #invokeMember(Object, Object...) invoked} and {@link #removeMember(Object) removed}.
+     *
+     * @see #getMembers()
+     * @see #getDeclaredMembers()
+     * @see #getMemberSimpleName()
+     * @see #getMemberQualifiedName()
+     * @see #isMemberKindField()
+     * @see #isMemberKindMethod()
+     * @see #isMemberKindMetaObject()
+     * @see #getMemberSignature()
+     * @see #getDeclaringMetaObject()
+     * @see #getMember(Object)
+     * @see #putMember(Object, Object)
+     * @see #invokeMember(Object, Object...)
+     * @see #removeMember(Object)
+     * @since 24.2
+     */
+    public boolean isMember() {
+        return dispatch.isMember(this.context, receiver);
+    }
+
+    /**
+     * Returns the simple name of a member.
+     * <p>
+     * <b>Sample interpretations:</b> The simple name of a Java method is the method name.
+     * <p>
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMember()} returns
+     *             <code>false</code>.
+     * @see #isMember()
+     * @since 24.2
+     */
+    public String getMemberSimpleName() {
+        return dispatch.getMemberSimpleName(this.context, receiver);
+    }
+
+    /**
+     * Returns the qualified name of a member.
+     * <p>
+     * <b>Sample interpretations:</b> The qualified name of a Java method is the method name with
+     * its declared class name and parameter types.
+     * <p>
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMember()} returns
+     *             <code>false</code>.
+     * @see #isMember()
+     * @since 24.2
+     */
+    public String getMemberQualifiedName() {
+        return dispatch.getMemberQualifiedName(this.context, receiver);
+    }
+
+    /**
+     * Returns {@code true} when this value represents a field {@link #isMember() member}. A field
+     * value can be {@link #getMember(Object) read} and {@link #putMember(Object, Object) set} when
+     * supported, for instance.
+     *
+     * @see #isMember()
+     * @since 24.2
+     */
+    public boolean isMemberKindField() {
+        return dispatch.isMemberKindField(this.context, receiver);
+    }
+
+    /**
+     * Returns {@code true} when this value represents a method {@link #isMember() member}. A method
+     * can be {@link #invokeMember(Object, Object...) invoked} when supported, for instance.
+     *
+     * @see #isMember()
+     * @since 24.2
+     */
+    public boolean isMemberKindMethod() {
+        return dispatch.isMemberKindMethod(this.context, receiver);
+    }
+
+    /**
+     * Returns {@code true} when this value represents a {@link #isMetaObject() meta object}
+     * {@link #isMember() member}. A member of this kind may represent an inner class, for instance.
+     *
+     * @see #isMember()
+     * @since 24.2
+     */
+    public boolean isMemberKindMetaObject() {
+        return dispatch.isMemberKindMetaObject(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this value is a {@link #isMember() member} and has a
+     * {@link #getMemberSignature() signature}.
+     *
+     * @see #isMember()
+     * @see #getMemberSignature()
+     * @since 24.2
+     */
+    public boolean hasMemberSignature() {
+        return dispatch.hasMemberSignature(this.context, receiver);
+    }
+
+    /**
+     * Returns an {@link #hasArrayElements() array} of {@link #isSignatureElement() signature
+     * elements} of a {@link #isMember() member}. In case of invocable members, the first array
+     * element is a return signature element, next array elements are parameter signature elements.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #hasMemberSignature()} returns
+     *             <code>false</code> for this value.
+     *
+     * @see #isMember()
+     * @see #hasMemberSignature()
+     * @since 24.2
+     */
+    public Value getMemberSignature() {
+        return (Value) dispatch.getMemberSignature(this.context, receiver);
+    }
+
+    // member signature
+
+    /**
+     * Returns <code>true</code> if this value is a signature element. A signature element is a part
+     * of {@link #getMemberSignature() member signature} and contains an optional
+     * {@link #getSignatureElementName() name} and an optional
+     * {@link #getSignatureElementMetaObject() meta-object} that defines the type. A void element
+     * has no meta-object.
+     *
+     * @see #hasSignatureElementName()
+     * @see #getSignatureElementName()
+     * @see #hasSignatureElementMetaObject()
+     * @see #getSignatureElementMetaObject()
+     * @since 24.2
+     */
+    public boolean isSignatureElement() {
+        return dispatch.isSignatureElement(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this value is a signature element with a name.
+     *
+     * @see #isSignatureElement()
+     * @see #getSignatureElementName()
+     * @since 24.2
+     */
+    public boolean hasSignatureElementName() {
+        return dispatch.hasSignatureElementName(this.context, receiver);
+    }
+
+    /**
+     * Returns name of a signature element. The declared name of a parameter, for instance.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #hasSignatureElementName()}
+     *             returns <code>false</code> for this value.
+     *
+     * @see #isSignatureElement()
+     * @see #hasSignatureElementName()
+     * @since 24.2
+     */
+    public String getSignatureElementName() {
+        return dispatch.getSignatureElementName(this.context, receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if this value is a signature element with a metaobject.
+     *
+     * @see #isSignatureElement()
+     * @see #getSignatureElementMetaObject()
+     * @since 24.2
+     */
+    public boolean hasSignatureElementMetaObject() {
+        return dispatch.hasSignatureElementMetaObject(this.context, receiver);
+    }
+
+    /**
+     * Returns {@link #isMetaObject() metaobject} of a {@link #isSignatureElement() signature
+     * element}. The declared type of a parameter, for instance.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #hasSignatureElementMetaObject()}
+     *             returns <code>false</code> for this value.
+     *
+     * @see #isSignatureElement()
+     * @see #hasSignatureElementMetaObject()
+     * @since 24.2
+     */
+    public Value getSignatureElementMetaObject() {
+        return (Value) dispatch.getSignatureElementMetaObject(this.context, receiver);
     }
 
     // executable
@@ -1001,6 +1383,24 @@ public final class Value extends AbstractValue {
     }
 
     /**
+     * Returns <code>true</code> if the value {@link #hasMember(Object) has the member} and the
+     * member can be invoked. Returns <code>false</code> if the member does not exist in this value
+     * ({@link #hasMember(Object)} returns <code>false</code>), or is not invocable.
+     *
+     * @param member the {@link #isMember() member}
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred.
+     * @see #getMembers() for a list of members.
+     * @see #getDeclaredMembers() for a list of declared members.
+     * @see #invokeMember(Object, Object...)
+     * @since 24.2
+     */
+    public boolean canInvokeMember(Object member) {
+        Objects.requireNonNull(member, "member");
+        return dispatch.canInvoke(this.context, member, receiver);
+    }
+
+    /**
      * Invokes the given member of this value. Unlike {@link #execute(Object...)}, this is an object
      * oriented execution of a member of an object. To test whether invocation is supported, call
      * {@link #canInvokeMember(String)}. When object oriented semantics are not supported, use
@@ -1023,6 +1423,87 @@ public final class Value extends AbstractValue {
         } else {
             return (Value) dispatch.invoke(this.context, receiver, identifier, arguments);
         }
+    }
+
+    /**
+     * Invokes the given member of this value. Unlike {@link #execute(Object...)}, this is an object
+     * oriented execution of a member of an object. To test whether invocation is supported, call
+     * {@link #canInvokeMember(Object)}. When object oriented semantics are not supported, use
+     * <code>{@link #getMember(Object)}.{@link #execute(Object...) execute(Object...)}</code>
+     * instead.
+     *
+     * @param member the {@link #isMember() member}
+     * @param arguments the invocation arguments
+     * @throws UnsupportedOperationException if this member cannot be invoked.
+     * @throws PolyglotException if a guest language error occurred during invocation.
+     * @throws NullPointerException if the arguments array is null.
+     * @see #canInvokeMember(Object)
+     * @since 24.2
+     */
+    public Value invokeMember(Object member, Object... arguments) {
+        Objects.requireNonNull(member, "member");
+        if (arguments.length == 0) {
+            // specialized entry point for zero argument invoke calls
+            return (Value) dispatch.invoke(this.context, receiver, member);
+        } else {
+            return (Value) dispatch.invoke(this.context, receiver, member, arguments);
+        }
+    }
+
+    /**
+     * Returns <code>true</code> if {@link #getMember(Object) reading} a member may cause a
+     * side-effect.
+     * <p>
+     * For instance in JavaScript a property read may have side-effects if the property has a getter
+     * function.
+     *
+     * @param member a String name or Value that is a {@link #isMember() member}.
+     * @see #getMember(Object)
+     * @since 24.2
+     */
+    public boolean hasMemberReadSideEffects(Object member) {
+        Objects.requireNonNull(member, "member");
+        return dispatch.hasMemberReadSideEffects(this.context, receiver, member);
+    }
+
+    /**
+     * Returns <code>true</code> if {@link #putMember(Object, Object) putting} a member may cause a
+     * side-effect, besides the put operation of the member.
+     * <p>
+     * For instance in JavaScript a property write may have side-effects if the property has a
+     * setter function.
+     *
+     * @param member a String name or Value that is a {@link #isMember() member}.
+     * @see #putMember(Object, Object)
+     * @since 24.2
+     */
+    public boolean hasMemberPutSideEffects(Object member) {
+        Objects.requireNonNull(member, "member");
+        return dispatch.hasMemberWriteSideEffects(this.context, receiver, member);
+    }
+
+    /**
+     * Returns {@code true} if the value has a declaring {@link #isMetaObject() meta object}.
+     *
+     * @see #getDeclaringMetaObject()
+     * @since 24.2
+     */
+    public boolean hasDeclaringMetaObject() {
+        return dispatch.hasDeclaringMetaObject(this.context, receiver);
+    }
+
+    /**
+     * Returns declaring {@link #isMetaObject() meta object}. The declaring meta object is the meta
+     * object of an executable or meta object that declares the value. Throws
+     * {@code UnsupportedOperationException} when the value does not
+     * {@link #hasDeclaringMetaObject() have a declaring meta object}. The return value is
+     * guaranteed to return <code>true</code> from {@link #isMetaObject()}.
+     *
+     * @see #hasDeclaringMetaObject()
+     * @since 24.2
+     */
+    public Object getDeclaringMetaObject() {
+        return dispatch.getDeclaringMetaObject(this.context, receiver);
     }
 
     /**

@@ -38,13 +38,10 @@ import java.util.List;
 
 public final class VariablesHandler {
 
-    private final ExecutionContext context;
-
-    public VariablesHandler(ExecutionContext context) {
-        this.context = context;
+    private VariablesHandler() {
     }
 
-    public List<Variable> getVariables(ThreadsHandler.SuspendedThreadInfo info, VariablesArguments args) {
+    public static List<Variable> getVariables(ThreadsHandler.SuspendedThreadInfo info, VariablesArguments args) {
         List<Variable> vars = new ArrayList<>();
         DebugScope dScope;
         int id = args.getVariablesReference();
@@ -62,26 +59,21 @@ public final class VariablesHandler {
         }
         if (dScope != null) {
             for (DebugValue val : dScope.getDeclaredValues()) {
-                if (context.isInspectInternal() || !val.isInternal()) {
-                    vars.add(createVariable(info, val, "Unnamed value"));
-                }
+                vars.add(createVariable(info, val, "Unnamed value"));
             }
         } else {
             DebugValue dValue = info.getById(DebugValue.class, id);
             if (dValue != null) {
                 if (dValue.isArray()) {
                     for (DebugValue val : dValue.getArray()) {
-                        if (context.isInspectInternal() || !val.isInternal()) {
-                            vars.add(createVariable(info, val, "Unnamed value"));
-                        }
+                        vars.add(createVariable(info, val, "Unnamed value"));
                     }
                 }
-                Collection<DebugValue> properties = dValue.getProperties();
-                if (properties != null) {
-                    for (DebugValue val : properties) {
-                        if (context.isInspectInternal() || !val.isInternal()) {
-                            vars.add(createVariable(info, val, "Unnamed value"));
-                        }
+                Collection<DebugValue> members = dValue.getMembers();
+                if (members != null) {
+                    for (DebugValue member : members) {
+                        DebugValue val = member.getMemberValue();
+                        vars.add(createVariable(info, val, member.getMemberSimpleName()));
                     }
                 }
             }
@@ -156,8 +148,8 @@ public final class VariablesHandler {
     }
 
     static Variable createVariable(ThreadsHandler.SuspendedThreadInfo info, DebugValue val, String defaultName) throws DebugException {
-        Collection<DebugValue> properties = val.getProperties();
-        int valId = (val.isArray() && !val.getArray().isEmpty()) || (properties != null && !properties.isEmpty()) ? info.getId(val) : 0;
+        Collection<DebugValue> members = val.getMembers();
+        int valId = (val.isArray() && !val.getArray().isEmpty()) || (members != null && !members.isEmpty()) ? info.getId(val) : 0;
         Variable var = Variable.create(val.getName() != null ? val.getName() : defaultName,
                         val.isReadable() ? val.toDisplayString() : "<not readable>",
                         valId);
@@ -168,8 +160,8 @@ public final class VariablesHandler {
         if (val.isArray()) {
             var.setIndexedVariables(val.getArray().size());
         }
-        if (properties != null) {
-            var.setNamedVariables(properties.size());
+        if (members != null) {
+            var.setNamedVariables(members.size());
         }
         return var;
     }

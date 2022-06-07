@@ -45,7 +45,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.Collections;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Value;
@@ -56,7 +55,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -95,14 +94,14 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     @Test
     public void testFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        Object result = INTEROP.invokeMember(server, "requestHandler", new TestExecutable());
+        Object result = INTEROP.invokeMember(server, (Object) "requestHandler", new TestExecutable());
         assertEquals(EXPECTED_RESULT, result);
     }
 
     @Test
     public void testLegacyFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        Object result = INTEROP.invokeMember(server, "requestHandler2", new TestExecutable());
+        Object result = INTEROP.invokeMember(server, (Object) "requestHandler2", new TestExecutable());
         assertEquals(EXPECTED_RESULT, result);
     }
 
@@ -118,7 +117,7 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
     @Test(expected = UnsupportedTypeException.class)
     public void testNonFunctionalInterface() throws InteropException {
         TruffleObject server = (TruffleObject) env.asGuestValue(new HttpServer());
-        INTEROP.invokeMember(server, "unsupported", new TestExecutable());
+        INTEROP.invokeMember(server, (Object) "unsupported", new TestExecutable());
     }
 
     @Test
@@ -236,21 +235,21 @@ public class FunctionalInterfaceTest extends ProxyLanguageEnvTest {
         }
 
         @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object member) {
             return member.equals("get");
         }
 
         @ExportMessage
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return env.asGuestValue(Collections.singletonList("get"));
+        Object getMemberObjects() throws UnsupportedMessageException {
+            throw new UnsupportedOperationException();
         }
 
         @ExportMessage
-        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
             if (member.equals("get")) {
                 return new TestExecutable("READ+EXECUTE");
             }
-            throw UnknownIdentifierException.create(member);
+            throw UnknownMemberException.create(member);
         }
     }
 }

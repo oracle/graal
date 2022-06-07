@@ -704,7 +704,7 @@ final class EngineAccessor extends Accessor {
         @CompilerDirectives.TruffleBoundary
         public Object importSymbol(Object polyglotLanguageContext, TruffleLanguage.Env env, String symbolName) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) polyglotLanguageContext;
-            Object value = context.context.polyglotBindings.get(symbolName);
+            Object value = context.context.getPolyglotGuestBindings().get(symbolName);
             if (value != null) {
                 return context.getAPIAccess().getValueReceiver(value);
             }

@@ -60,7 +60,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.host.HostExceptionTest.CatcherObject;
@@ -97,9 +97,9 @@ public class MultiClassLoaderTest {
                         public Object execute(VirtualFrame frame) {
                             Object obj = frame.getArguments()[0];
                             try {
-                                Object hash = InteropLibrary.getFactory().getUncached(obj).readMember(obj, "hash");
-                                return InteropLibrary.getFactory().getUncached(hash).readMember(hash, name);
-                            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                                Object hash = InteropLibrary.getFactory().getUncached(obj).readMember(obj, (Object) "hash");
+                                return InteropLibrary.getFactory().getUncached(hash).readMember(hash, (Object) name);
+                            } catch (UnsupportedMessageException | UnknownMemberException e) {
                                 throw new IllegalStateException(e);
                             }
                         }

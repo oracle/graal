@@ -102,7 +102,7 @@ public class PolyglotCachingTest {
         @Override
         protected void onParse(ParsingRequest request, Env env, Object[] contextArguments) throws Exception {
             Object parseCalled = contextArguments[0];
-            InteropLibrary.getUncached().invokeMember(parseCalled, "incrementAndGet");
+            InteropLibrary.getUncached().invokeMember(parseCalled, (Object) "incrementAndGet");
         }
 
         @Override

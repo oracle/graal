@@ -143,7 +143,7 @@ public class NFITest {
         @Override
         public Object execute(VirtualFrame frame) {
             Object library = frame.getArguments()[0];
-            String symbolName = (String) frame.getArguments()[1];
+            Object symbolName = frame.getArguments()[1];
             Object signature = frame.getArguments()[2];
 
             try {

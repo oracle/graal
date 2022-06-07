@@ -59,24 +59,26 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
-abstract class HostMethodDesc {
+abstract class HostMethodDesc extends HostBaseObject {
 
     abstract String getName();
 
-    abstract String getDeclaringClassName();
+    abstract boolean hasOverloads();
 
     abstract SingleMethod[] getOverloads();
-
-    boolean isInternal() {
-        return false;
-    }
 
     abstract boolean isMethod();
 
     abstract boolean isConstructor();
 
+    @ExportLibrary(InteropLibrary.class)
     abstract static class SingleMethod extends HostMethodDesc {
 
         static final int[] EMTPY_SCOPED_PARAMETERS = new int[0];
@@ -86,6 +88,7 @@ abstract class HostMethodDesc {
         @CompilationFinal(dimensions = 1) private final Class<?>[] parameterTypes;
         @CompilationFinal(dimensions = 1) private final Type[] genericParameterTypes;
         @CompilationFinal(dimensions = 1) private final int[] scopedStaticParameters;
+        private final int modifiers;
         private final int scopedStaticParameterCount;
         private final boolean onlyVisibleFromJniName;
         private static final Class<?>[] UNSCOPED_TYPES = {Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class, String.class};
@@ -94,6 +97,7 @@ abstract class HostMethodDesc {
             this.varArgs = executable.isVarArgs();
             this.parameterTypes = executable.getParameterTypes();
             this.genericParameterTypes = executable.getGenericParameterTypes();
+            this.modifiers = executable.getModifiers();
             int[] scopedParams = null;
             int count = 0;
             if (parametersScoped) {
@@ -116,10 +120,11 @@ abstract class HostMethodDesc {
             this.onlyVisibleFromJniName = onlyVisibleFromJniName;
         }
 
-        private SingleMethod(boolean varArgs, Class<?>[] parameterTypes, Type[] genericParameterTypes, int[] scopedStaticParameters, int scopedStaticParameterCount) {
+        private SingleMethod(boolean varArgs, Class<?>[] parameterTypes, Type[] genericParameterTypes, int modifiers, int[] scopedStaticParameters, int scopedStaticParameterCount) {
             this.varArgs = varArgs;
             this.parameterTypes = parameterTypes;
             this.genericParameterTypes = genericParameterTypes;
+            this.modifiers = modifiers;
             this.scopedStaticParameters = scopedStaticParameters;
             this.scopedStaticParameterCount = scopedStaticParameterCount;
             this.onlyVisibleFromJniName = false;
@@ -135,6 +140,16 @@ abstract class HostMethodDesc {
                 }
             }
             return true;
+        }
+
+        public boolean isStatic() {
+            return Modifier.isStatic(modifiers);
+        }
+
+        @Override
+        @TruffleBoundary
+        Class<?> getDeclaringClass() {
+            return getReflectionMethod().getDeclaringClass();
         }
 
         public boolean isOnlyVisibleFromJniName() {
@@ -172,13 +187,14 @@ abstract class HostMethodDesc {
         }
 
         @Override
+        @TruffleBoundary
         public String getName() {
             return getReflectionMethod().getName();
         }
 
         @Override
-        String getDeclaringClassName() {
-            return getReflectionMethod().getDeclaringClass().getName();
+        public boolean hasOverloads() {
+            return false;
         }
 
         @Override
@@ -201,7 +217,6 @@ abstract class HostMethodDesc {
         }
 
         static SingleMethod unreflect(MethodHandles.Lookup methodLookup, Method reflectionMethod, boolean scoped, boolean onlyVisibleFromJniName) {
-            assert isAccessible(reflectionMethod);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionMethod)) {
                 return new MethodReflectImpl(reflectionMethod, scoped, onlyVisibleFromJniName);
             } else {
@@ -210,16 +225,11 @@ abstract class HostMethodDesc {
         }
 
         static SingleMethod unreflect(MethodHandles.Lookup methodLookup, Constructor<?> reflectionConstructor, boolean scoped) {
-            assert isAccessible(reflectionConstructor);
             if (TruffleOptions.AOT || isCallerSensitive(reflectionConstructor)) {
                 return new ConstructorReflectImpl(reflectionConstructor, scoped);
             } else {
                 return new ConstructorMHImpl(methodLookup, reflectionConstructor, scoped);
             }
-        }
-
-        static boolean isAccessible(Executable method) {
-            return Modifier.isPublic(method.getModifiers()) && Modifier.isPublic(method.getDeclaringClass().getModifiers());
         }
 
         private static final Class<? extends Annotation> callerSensitiveClass = getCallerSensitiveClass();
@@ -241,6 +251,84 @@ abstract class HostMethodDesc {
 
         static boolean isCallerSensitive(Executable method) {
             return callerSensitiveClass != null && method.isAnnotationPresent(callerSensitiveClass);
+        }
+
+        // Interop messages
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object getMemberSimpleName() {
+            return getName();
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final Object getMemberQualifiedName() {
+            String name = getDeclaringClass().getCanonicalName();
+            if (name == null) {
+                name = getDeclaringClass().getName();
+            }
+            return name + '.' + getMemberSimpleName();
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberKindMethod() {
+            return true;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean hasDeclaringMetaObject() {
+            return true;
+        }
+
+        @ExportMessage
+        static final class GetDeclaringMetaObject {
+
+            @Specialization
+            static Object get(SingleMethod method, @Bind("$node") Node node) {
+                return HostObject.forClass(method.getDeclaringClass(), HostContext.get(node));
+            }
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        final boolean hasMemberSignature() {
+            return true;
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        final Object getMemberSignature() {
+            Executable executable = getReflectionMethod();
+            HostSignatureElement[] sigElements = new HostSignatureElement[1 + parameterTypes.length];
+            Class<?> ret = null;
+            if (executable instanceof Method) {
+                ret = ((Method) executable).getReturnType();
+            }
+            sigElements[0] = new HostSignatureElement(null, ret);
+            for (int i = 0; i < parameterTypes.length; i++) {
+                sigElements[i + 1] = new HostSignatureElement(null, parameterTypes[i]);
+            }
+            return new HostObject.MembersArray(sigElements);
         }
 
         @Override
@@ -281,7 +369,6 @@ abstract class HostMethodDesc {
 
             @Override
             public Method getReflectionMethod() {
-                CompilerAsserts.neverPartOfCompilation();
                 return reflectionMethod;
             }
 
@@ -305,11 +392,6 @@ abstract class HostMethodDesc {
                             throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
                 return reflectionMethod.invoke(receiver, arguments);
             }
-
-            @Override
-            public boolean isInternal() {
-                return getReflectionMethod().getDeclaringClass() == Object.class;
-            }
         }
 
         private static final class ConstructorReflectImpl extends ReflectBase {
@@ -322,7 +404,6 @@ abstract class HostMethodDesc {
 
             @Override
             public Constructor<?> getReflectionMethod() {
-                CompilerAsserts.neverPartOfCompilation();
                 return reflectionConstructor;
             }
 
@@ -422,13 +503,7 @@ abstract class HostMethodDesc {
 
             @Override
             public Method getReflectionMethod() {
-                CompilerAsserts.neverPartOfCompilation();
                 return reflectionMethod;
-            }
-
-            @Override
-            public boolean isInternal() {
-                return getReflectionMethod().getDeclaringClass() == Object.class;
             }
 
             @Override
@@ -456,7 +531,6 @@ abstract class HostMethodDesc {
 
             @Override
             public Constructor<?> getReflectionMethod() {
-                CompilerAsserts.neverPartOfCompilation();
                 return reflectionConstructor;
             }
 
@@ -479,7 +553,7 @@ abstract class HostMethodDesc {
             private final MethodHandle cloneMethodHandle;
 
             SyntheticArrayCloneMethod(Class<?> arrayClass) {
-                super(false, new Class<?>[0], new Type[0], EMTPY_SCOPED_PARAMETERS, 0);
+                super(false, new Class<?>[0], new Type[0], 0, EMTPY_SCOPED_PARAMETERS, 0);
                 assert arrayClass.isArray() : arrayClass;
                 this.arrayClass = arrayClass;
 
@@ -498,8 +572,8 @@ abstract class HostMethodDesc {
             }
 
             @Override
-            String getDeclaringClassName() {
-                return arrayClass.getName();
+            Class<?> getDeclaringClass() {
+                return arrayClass;
             }
 
             @Override
@@ -508,6 +582,7 @@ abstract class HostMethodDesc {
             }
 
             @Override
+            @TruffleBoundary
             public Executable getReflectionMethod() {
                 try {
                     return Object.class.getDeclaredMethod("clone");
@@ -556,6 +631,11 @@ abstract class HostMethodDesc {
         }
 
         @Override
+        public boolean hasOverloads() {
+            return true;
+        }
+
+        @Override
         public SingleMethod[] getOverloads() {
             return overloads;
         }
@@ -566,8 +646,8 @@ abstract class HostMethodDesc {
         }
 
         @Override
-        String getDeclaringClassName() {
-            return getOverloads()[0].getDeclaringClassName();
+        Class<?> getDeclaringClass() {
+            return getOverloads()[0].getDeclaringClass();
         }
 
         @Override
@@ -588,16 +668,49 @@ abstract class HostMethodDesc {
             }
             return sj.toString();
         }
-
-        @Override
-        public boolean isInternal() {
-            for (SingleMethod overload : overloads) {
-                if (!overload.isInternal()) {
-                    return false;
-                }
-            }
-            return true;
-        }
     }
 
+    static final class SuperMethod extends HostMethodDesc {
+
+        private final HostMethodDesc superMethod;
+
+        SuperMethod(HostMethodDesc superMethod) {
+            assert superMethod.getName().startsWith(HostAdapterBytecodeGenerator.SUPER_PREFIX) : superMethod.getName();
+            this.superMethod = superMethod;
+        }
+
+        HostMethodDesc getDelegateMethod() {
+            return superMethod;
+        }
+
+        @Override
+        String getName() {
+            return superMethod.getName().substring(HostAdapterBytecodeGenerator.SUPER_PREFIX.length());
+        }
+
+        @Override
+        Class<?> getDeclaringClass() {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        boolean hasOverloads() {
+            return superMethod.hasOverloads();
+        }
+
+        @Override
+        SingleMethod[] getOverloads() {
+            throw new UnsupportedOperationException("Not supported.");
+        }
+
+        @Override
+        boolean isMethod() {
+            return superMethod.isMethod();
+        }
+
+        @Override
+        boolean isConstructor() {
+            return superMethod.isConstructor();
+        }
+    }
 }

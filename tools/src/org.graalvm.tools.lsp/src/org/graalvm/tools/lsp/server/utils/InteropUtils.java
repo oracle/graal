@@ -47,9 +47,10 @@ public final class InteropUtils {
     }
 
     public static Integer getNumberOfArguments(Object nodeObject, TruffleLogger logger) {
-        if (nodeObject instanceof TruffleObject && INTEROP.isMemberReadable(nodeObject, "numberOfArguments")) {
+        Object numberOfArgumentsMember = "numberOfArguments";
+        if (nodeObject instanceof TruffleObject && INTEROP.isMemberReadable(nodeObject, numberOfArgumentsMember)) {
             try {
-                Object object = INTEROP.readMember(nodeObject, "numberOfArguments");
+                Object object = INTEROP.readMember(nodeObject, numberOfArgumentsMember);
                 return object instanceof Number ? ((Number) object).intValue() : null;
             } catch (ThreadDeath td) {
                 throw td;
@@ -79,11 +80,11 @@ public final class InteropUtils {
             return VariableInfo.EMPTY;
         }
         try {
-            if (node.hasTag(ReadVariableTag.class) && INTEROP.isMemberReadable(nodeObject, ReadVariableTag.NAME)) {
-                return getNodeObjectVariables(node, INTEROP.readMember(nodeObject, ReadVariableTag.NAME));
+            if (node.hasTag(ReadVariableTag.class) && INTEROP.isMemberReadable(nodeObject, (Object) ReadVariableTag.NAME)) {
+                return getNodeObjectVariables(node, INTEROP.readMember(nodeObject, (Object) ReadVariableTag.NAME));
             }
-            if (node.hasTag(WriteVariableTag.class) && INTEROP.isMemberReadable(nodeObject, WriteVariableTag.NAME)) {
-                return getNodeObjectVariables(node, INTEROP.readMember(nodeObject, WriteVariableTag.NAME));
+            if (node.hasTag(WriteVariableTag.class) && INTEROP.isMemberReadable(nodeObject, (Object) WriteVariableTag.NAME)) {
+                return getNodeObjectVariables(node, INTEROP.readMember(nodeObject, (Object) WriteVariableTag.NAME));
             }
         } catch (ThreadDeath td) {
             throw td;

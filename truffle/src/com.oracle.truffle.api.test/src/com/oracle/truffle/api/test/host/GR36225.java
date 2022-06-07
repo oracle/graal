@@ -61,7 +61,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -141,8 +141,8 @@ public class GR36225 {
         @ExportMessage
         Object execute(Object[] args) {
             try {
-                return InteropLibrary.getUncached().invokeMember(args[0], InteropLibrary.getUncached().asString(args[1]));
-            } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                return InteropLibrary.getUncached().invokeMember(args[0], args[1]);
+            } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                 throw CompilerDirectives.shouldNotReachHere(e);
             }
         }

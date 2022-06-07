@@ -52,7 +52,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -61,9 +61,9 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
 
-    private static final String PROP_DOCUMENTATION = "documentation";
-    private static final String PROP_PARAMETERS = "parameters";
-    private static final String PROP_LABEL = "label";
+    private static final Object PROP_DOCUMENTATION = "documentation";
+    private static final Object PROP_PARAMETERS = "parameters";
+    private static final Object PROP_LABEL = "label";
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
     private static final LSPLibrary LSP_INTEROP = LSPLibrary.getFactory().getUncached();
 
@@ -144,7 +144,7 @@ public final class SignatureHelpRequestHandler extends AbstractRequestHandler {
         return SignatureHelp.create(Collections.emptyList(), null, null);
     }
 
-    private ParameterInformation getParameterInformation(Object param, String label, LanguageInfo langInfo) throws UnsupportedMessageException, UnknownIdentifierException, InvalidArrayIndexException {
+    private ParameterInformation getParameterInformation(Object param, String label, LanguageInfo langInfo) throws UnsupportedMessageException, UnknownMemberException, InvalidArrayIndexException {
         Object paramLabelObject = INTEROP.isMemberReadable(param, PROP_LABEL) ? INTEROP.readMember(param, PROP_LABEL) : null;
         String paramLabel;
         if (paramLabelObject instanceof String) {

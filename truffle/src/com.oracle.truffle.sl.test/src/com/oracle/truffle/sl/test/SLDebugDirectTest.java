@@ -430,13 +430,13 @@ public class SLDebugDirectTest {
         private volatile boolean pauseDone;
 
         @ExportMessage
-        final Object readMember(String member) {
+        final Object readMember(Object member) {
             setCanPause();
             return !isPauseDone();
         }
 
         @ExportMessage
-        final boolean isMemberReadable(String member) {
+        final boolean isMemberReadable(Object member) {
             return true;
         }
 
@@ -446,7 +446,7 @@ public class SLDebugDirectTest {
         }
 
         @ExportMessage
-        final Object getMembers(boolean includeInternal) {
+        final Object getMemberObjects() {
             throw new AssertionError();
         }
 
