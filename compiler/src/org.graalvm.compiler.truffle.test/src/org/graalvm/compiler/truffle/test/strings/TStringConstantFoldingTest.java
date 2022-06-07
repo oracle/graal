@@ -27,7 +27,11 @@ package org.graalvm.compiler.truffle.test.strings;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
@@ -44,7 +48,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     @Test
     public void testRegionEquals() {
-        assertConstant(true, new RootNode(null) {
+        assertConstant(new RootNode(null) {
 
             @Child TruffleString.RegionEqualByteIndexNode node = TruffleString.RegionEqualByteIndexNode.create();
 
@@ -57,7 +61,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     @Test
     public void testEquals() {
-        assertConstant(true, new RootNode(null) {
+        assertConstant(new RootNode(null) {
 
             @Child TruffleString.EqualNode node = TruffleString.EqualNode.create();
 
@@ -70,7 +74,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     @Test
     public void testCompareTo() {
-        assertConstant(0, new RootNode(null) {
+        assertConstant(new RootNode(null) {
 
             @Child TruffleString.CompareBytesNode node = TruffleString.CompareBytesNode.create();
 
@@ -83,7 +87,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     @Test
     public void testIndexOf() {
-        assertConstant(1, new RootNode(null) {
+        assertConstant(new RootNode(null) {
 
             @Child TruffleString.ByteIndexOfCodePointNode node = TruffleString.ByteIndexOfCodePointNode.create();
 
@@ -96,7 +100,7 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
 
     @Test
     public void testIndexOfSubstring() {
-        assertConstant(true, new RootNode(null) {
+        assertConstant(new RootNode(null) {
 
             @Child TruffleString.ByteIndexOfStringNode node = TruffleString.ByteIndexOfStringNode.create();
 
@@ -107,9 +111,15 @@ public class TStringConstantFoldingTest extends PartialEvaluationTest {
         });
     }
 
-    private void assertConstant(Object expectedConstant, RootNode root) {
+    private void assertConstant(RootNode root) {
         Assume.assumeTrue(getArchitecture() instanceof AMD64 &&
                         Math.max(GraalOptions.ArrayRegionEqualsConstantLimit.getValue(getGraalOptions()), GraalOptions.StringIndexOfConstantLimit.getValue(getGraalOptions())) >= a.byteLength(UTF_8));
-        assertPartialEvalEquals(toRootNode((f) -> expectedConstant), root, new Object[0]);
+
+        StructuredGraph graph = partialEval(root);
+        compile((OptimizedCallTarget) root.getCallTarget(), graph);
+        removeFrameStates(graph);
+        for (ReturnNode ret : graph.getNodes(ReturnNode.TYPE)) {
+            Assert.assertTrue(ret.result().isConstant());
+        }
     }
 }
