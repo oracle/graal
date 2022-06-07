@@ -95,8 +95,8 @@ public class NativeImageClassLoaderSupport {
     private final EconomicMap<URI, EconomicSet<String>> packages;
     private final EconomicSet<String> emptySet;
 
-    final URLClassLoader classPathClassLoader;
-    private final ClassLoader modulePathClassLoader;
+    private final ClassPathClassLoader classPathClassLoader;
+    private final ClassLoader classLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
@@ -146,7 +146,7 @@ public class NativeImageClassLoaderSupport {
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
 
-        modulePathClassLoader = getSingleClassloader(moduleLayer);
+        classLoader = getSingleClassloader(moduleLayer);
 
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
     }
@@ -160,7 +160,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     public ClassLoader getClassLoader() {
-        return modulePathClassLoader;
+        return classLoader;
     }
 
     public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
@@ -507,7 +507,7 @@ public class NativeImageClassLoaderSupport {
     Class<?> loadClassFromModule(Object module, String className) {
         assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         Module m = (Module) module;
-        assert isModuleClassLoader(modulePathClassLoader, m.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
+        assert isModuleClassLoader(classLoader, m.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
         return Class.forName(m, className);
     }
 

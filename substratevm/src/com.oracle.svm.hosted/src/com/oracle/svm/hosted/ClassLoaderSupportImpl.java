@@ -58,18 +58,25 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageClassLoaderSupport.ClassPathClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
 class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
+
     private final ClassLoader imageClassLoader;
+    private final ClassPathClassLoader classPathClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
-        this.imageClassLoader = classLoaderSupport.getClassLoader();
+
+        imageClassLoader = classLoaderSupport.getClassLoader();
+        ClassLoader parent = imageClassLoader.getParent();
+        classPathClassLoader = parent instanceof ClassPathClassLoader ? (ClassPathClassLoader) parent : null;
+
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
@@ -77,16 +84,9 @@ class ClassLoaderSupportImpl extends ClassLoaderSupport {
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
         if (loader == imageClassLoader) {
-            /* Trivial case */
             return true;
         }
-        if (loader == classLoaderSupport.classPathClassLoader) {
-            /*
-             * If imageClassLoader is a module classloader (building image with non-empty
-             * NativeImageClassLoaderSupport.imagemp), the passed loader could also be our
-             * classLoaderSupport.classPathClassLoader (building image with non-empty
-             * NativeImageClassLoaderSupport.imagecp).
-             */
+        if (classPathClassLoader != null && loader == classPathClassLoader) {
             return true;
         }
         if (loader instanceof NativeImageSystemClassLoader) {
