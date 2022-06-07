@@ -109,6 +109,14 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         return getMethodNode().getContext();
     }
 
+    /*
+     * Needed to prevent svm analysis from including other versions of getMeta.
+     */
+    @Override
+    public Meta getMeta() {
+        return getContext().getMeta();
+    }
+
     @Override
     public final String getName() {
         return getMethod().getDeclaringKlass().getType() + "." + getMethod().getName() + getMethod().getRawSignature();

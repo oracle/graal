@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,6 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -33,46 +34,65 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
-public interface ContextAccess extends LanguageAccess {
-    EspressoContext getContext();
+public abstract class ContextAccessImpl implements ContextAccess {
+    private final EspressoContext context;
 
-    default EspressoLanguage getLanguage() {
+    public ContextAccessImpl(EspressoContext context) {
+        this.context = context;
+    }
+
+    @Override
+    public final EspressoContext getContext() {
+        return context;
+    }
+
+    @Override
+    public final EspressoLanguage getLanguage() {
         return getContext().getLanguage();
     }
 
-    default Meta getMeta() {
+    @Override
+    public final Meta getMeta() {
         return getContext().getMeta();
     }
 
-    default VM getVM() {
+    @Override
+    public final VM getVM() {
         return getContext().getVM();
     }
 
-    default ThreadsAccess getThreadAccess() {
+    @Override
+    public final ThreadsAccess getThreadAccess() {
         return getContext().getThreadAccess();
     }
 
-    default GuestAllocator getAllocator() {
+    @Override
+    public final GuestAllocator getAllocator() {
         return getContext().getAllocator();
     }
 
-    default InterpreterToVM getInterpreterToVM() {
+    @Override
+    public final InterpreterToVM getInterpreterToVM() {
         return getContext().getInterpreterToVM();
     }
 
-    default StringTable getStrings() {
+    @Override
+    public final StringTable getStrings() {
         return getContext().getStrings();
     }
 
-    default ClassRegistries getRegistries() {
+    @Override
+    public final ClassRegistries getRegistries() {
         return getContext().getRegistries();
     }
 
-    default Substitutions getSubstitutions() {
+    @Override
+    public final Substitutions getSubstitutions() {
         return getContext().getSubstitutions();
     }
 
-    default NativeAccess getNativeAccess() {
+    @Override
+    public final NativeAccess getNativeAccess() {
         return getContext().getNativeAccess();
     }
 }

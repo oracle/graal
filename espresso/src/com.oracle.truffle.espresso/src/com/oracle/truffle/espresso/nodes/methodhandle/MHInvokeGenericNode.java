@@ -69,7 +69,7 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
 
     public static MHInvokeGenericNode create(EspressoLanguage language, Meta meta, Klass accessingKlass, Method method, Symbol<Symbol.Name> methodName, Symbol<Symbol.Signature> signature) {
         Klass callerKlass = accessingKlass == null ? meta.java_lang_Object : accessingKlass;
-        StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
+        StaticObject appendixBox = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
         // Ask java code to spin an invoker for us.
         StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethod.invokeDirect(
                         null,

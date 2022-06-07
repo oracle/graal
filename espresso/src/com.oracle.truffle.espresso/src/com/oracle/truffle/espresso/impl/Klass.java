@@ -29,7 +29,6 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.espresso.EspressoLanguage;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.Assumption;
@@ -53,6 +52,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
@@ -80,6 +80,7 @@ import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
@@ -89,7 +90,7 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRef, TruffleObject {
+public abstract class Klass extends ContextAccessImpl implements ModifiersProvider, KlassRef, TruffleObject {
 
     // region Interop
 
@@ -327,17 +328,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
             assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
-            Meta meta = EspressoContext.get(toEspressoNode).getMeta();
-            int length = getLength(arguments, toEspressoNode, meta);
-            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, meta);
+            EspressoContext context = EspressoContext.get(toEspressoNode);
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
+            return context.getAllocator().createNewPrimitiveArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isReferenceArray(receiver)")
         static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode) throws UnsupportedTypeException, ArityException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
-            int length = getLength(arguments, toEspressoNode, EspressoContext.get(toEspressoNode).getMeta());
-            return InterpreterToVM.newReferenceArray(arrayKlass.getComponentType(), length);
+            EspressoContext context = EspressoContext.get(toEspressoNode);
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            GuestAllocator.AllocationChecks.checkCanAllocateArray(context.getMeta(), length);
+            return context.getAllocator().createNewReferenceArray(arrayKlass.getComponentType(), length);
         }
 
         @Specialization(guards = "isMultidimensionalArray(receiver)")
@@ -353,8 +357,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             for (int i = 0; i < dimensions.length; ++i) {
                 dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
             }
-
-            return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
+            GuestAllocator.AllocationChecks.checkCanAllocateMultiArray(context.getMeta(), arrayKlass.getComponentType(), dimensions);
+            return context.getAllocator().createNewMultiArray(arrayKlass.getComponentType(), dimensions);
         }
 
         static final String INIT_NAME = Name._init_.toString();
@@ -369,7 +373,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
                 Method initMethod = init.getMethod();
                 assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
                 initMethod.getDeclaringKlass().safeInitialize();
-                StaticObject newObject = StaticObject.createNew(objectKlass);
+                EspressoContext context = EspressoContext.get(invoke);
+                GuestAllocator.AllocationChecks.checkCanAllocateNewReference(context.getMeta(), objectKlass, false);
+                StaticObject newObject = context.getAllocator().createNew(objectKlass);
                 invoke.execute(initMethod, newObject, arguments);
                 return newObject;
             }
@@ -479,7 +485,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     protected Symbol<Name> name;
     protected Symbol<Type> type;
-    private final EspressoContext context;
 
     private final int id;
 
@@ -598,7 +603,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
-        this.context = context;
+        super(context);
         this.name = name;
         this.type = type;
         this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
@@ -639,7 +644,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     private synchronized void mirrorCreate() {
         if (mirrorCache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.mirrorCache = StaticObject.createClass(this);
+            this.mirrorCache = getAllocator().createClass(this);
         }
     }
 
@@ -683,11 +688,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @Override
-    public final EspressoContext getContext() {
-        return context;
-    }
-
-    @Override
     public final boolean equals(Object that) {
         return this == that;
     }
@@ -695,19 +695,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public final int hashCode() {
         return getType().hashCode();
-    }
-
-    /**
-     * Final override for performance reasons.
-     * <p>
-     * The compiler cannot see that the {@link Klass} hierarchy is sealed, there's a single
-     * {@link ContextAccess#getMeta} implementation.
-     * <p>
-     * This final override avoids the virtual call in compiled code.
-     */
-    @Override
-    public final Meta getMeta() {
-        return getContext().getMeta();
     }
 
     public final StaticObject tryInitializeAndGetStatics() {
@@ -1045,17 +1032,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @TruffleBoundary
     public StaticObject allocateReferenceArray(int length) {
-        return InterpreterToVM.newReferenceArray(this, length);
+        Meta meta = getMeta(); // TODO: pass constant meta
+        GuestAllocator.AllocationChecks.checkCanAllocateArray(meta, length);
+        return meta.getAllocator().createNewReferenceArray(this, length);
     }
 
     @TruffleBoundary
     public StaticObject allocateReferenceArray(int length, IntFunction<StaticObject> generator) {
         // TODO(peterssen): Store check is missing.
+        Meta meta = getMeta(); // TODO: pass constant meta
         StaticObject[] array = new StaticObject[length];
         for (int i = 0; i < array.length; ++i) {
             array[i] = generator.apply(i);
         }
-        return StaticObject.createArray(getArrayClass(), array);
+        return meta.getAllocator().wrapArrayAs(getArrayClass(), array);
     }
 
     // region Lookup
@@ -1157,10 +1147,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return ((ObjectKlass) this).lookupFieldTableImpl(slot);
         } else if (this instanceof ArrayKlass) {
             // Arrays extend j.l.Object, which shouldn't have any declared instance fields.
-            assert getMeta().java_lang_Object == getSuperKlass();
-            assert getMeta().java_lang_Object.getDeclaredFields().length == 0;
-            // Always null?
-            return getMeta().java_lang_Object.lookupFieldTable(slot);
+            return null;
         }
         // Unreachable?
         assert this instanceof PrimitiveKlass;
@@ -1338,8 +1325,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      */
     public abstract int getClassModifiers();
 
+    @TruffleBoundary
     public final StaticObject allocateInstance() {
-        return InterpreterToVM.newObject(this, false);
+        return allocateInstance(getContext()); // May not be constant
+    }
+
+    public final StaticObject allocateInstance(EspressoContext ctx) {
+        assert this instanceof ObjectKlass;
+        GuestAllocator.AllocationChecks.checkCanAllocateNewReference(ctx.getMeta(), this, false);
+        return ctx.getAllocator().createNew((ObjectKlass) this);
     }
 
     @CompilationFinal private Symbol<Name> runtimePackage;

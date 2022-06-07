@@ -508,7 +508,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Object newArray(KlassRef klass, int length) {
-        return StaticObject.createArray((ArrayKlass) klass, new StaticObject[length]);
+        return StaticObject.createArray((ArrayKlass) klass, new StaticObject[length], context);
     }
 
     @Override
