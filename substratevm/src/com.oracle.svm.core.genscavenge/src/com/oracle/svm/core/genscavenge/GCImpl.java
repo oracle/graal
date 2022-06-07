@@ -30,9 +30,12 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.genscavenge.parallel.TaskQueue;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -1039,6 +1042,7 @@ public final class GCImpl implements GC {
     }
 
     private void scanGreyObjects(boolean isIncremental) {
+        ParallelGCImpl.setEnabled(true);
         Timer scanGreyObjectsTimer = timers.scanGreyObjects.open();
         try {
             if (isIncremental) {
@@ -1049,6 +1053,8 @@ public final class GCImpl implements GC {
         } finally {
             scanGreyObjectsTimer.close();
         }
+        ParallelGCImpl.setEnabled(false);
+        ParallelGCImpl.waitForIdle();
     }
 
     private static void scanGreyObjectsLoop() {
@@ -1096,6 +1102,57 @@ public final class GCImpl implements GC {
         return result;
     }
 
+    @AlwaysInline("GC performance")
+    @SuppressWarnings("static-method")
+    boolean promoteParallel(Object original, UnsignedWord header, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        /// from promObj
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        boolean isAligned = ObjectHeaderImpl.isAlignedHeader(header);
+        Header<?> originalChunk = getChunk(original, isAligned);
+        Space originalSpace = HeapChunk.getSpace(originalChunk);
+        if (!originalSpace.isFromSpace() || !isAligned || innerOffset != 0 || !ParallelGCImpl.isEnabled()) {
+            return false;
+        }
+
+        Object result = null;
+        if (!completeCollection && originalSpace.getNextAgeForPromotion() < policy.getTenuringAge()) {
+            result = heap.getYoungGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            if (result == null) {
+                accounting.onSurvivorOverflowed();
+            }
+        }
+        if (result == null) { // complete collection, tenuring age reached, or survivor space full
+            result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            assert result != null : "promotion failure in old generation must have been handled";
+        }
+
+        /// from visitor code
+        if (result != original) {
+            // ... update the reference to point to the copy, making the reference black.
+//            counters.noteCopiedReferent();
+            Object offsetCopy = (innerOffset == 0) ? result : Word.objectToUntrackedPointer(result).add(innerOffset).toObject();
+            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+        } else {
+            Log.log().string("PP unmod ref").newline();///
+//            counters.noteUnmodifiedReference();
+        }
+
+        // The reference will not be updated if a whole chunk is promoted. However, we still
+        // might have to dirty the card.
+//        RememberedSet.get().dirtyCardIfNecessary(holderObject, result);
+
+        ParallelGCImpl.QUEUE.put(result, objRef, compressed, holderObject);
+//        ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+        return true;
+    }
+
+    public void doPromoteParallel(Object original, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        // The reference will not be updated if a whole chunk is promoted. However, we still
+        // might have to dirty the card.
+        /// CAREFUL: result -> original
+        RememberedSet.get().dirtyCardIfNecessary(holderObject, original);
+    }
+
     private static Header<?> getChunk(Object obj, boolean isAligned) {
         if (isAligned) {
             return AlignedHeapChunk.getEnclosingChunk(obj);
@@ -1140,7 +1197,6 @@ public final class GCImpl implements GC {
         if (completeCollection) {
             heap.getOldGeneration().releaseSpaces(chunkReleaser);
         }
-        ParallelGCImpl.waitForIdle();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

@@ -137,10 +137,10 @@ public final class YoungGeneration extends Generation {
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
 //        getEden().setInd(333);
-        getEden().releaseChunksParallel(chunkReleaser);
+        getEden().releaseChunks(chunkReleaser);
         for (int i = 0; i < maxSurvivorSpaces; i++) {
 //            getSurvivorFromSpaceAt(i).setInd(100+i);
-            getSurvivorFromSpaceAt(i).releaseChunksParallel(chunkReleaser);
+            getSurvivorFromSpaceAt(i).releaseChunks(chunkReleaser);
         }
     }
 

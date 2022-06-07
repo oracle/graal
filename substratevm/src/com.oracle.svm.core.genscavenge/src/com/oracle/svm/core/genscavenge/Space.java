@@ -210,12 +210,6 @@ public final class Space {
         }
     }
 
-    public void releaseChunksParallel(ChunkReleaser chunkReleaser) {
-//        Log.log().string("  put space ").object(this)
-//                .string(", chunkReleaser ").object(chunkReleaser).newline();
-        ParallelGCImpl.QUEUE.put(this, chunkReleaser);
-    }
-
     public void releaseChunks(ChunkReleaser chunkReleaser) {
         chunkReleaser.add(firstAlignedHeapChunk);
         chunkReleaser.add(firstUnalignedHeapChunk);

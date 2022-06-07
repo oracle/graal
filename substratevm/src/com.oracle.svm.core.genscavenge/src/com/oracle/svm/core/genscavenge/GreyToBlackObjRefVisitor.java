@@ -102,19 +102,22 @@ final class GreyToBlackObjRefVisitor implements ObjectReferenceVisitor {
             // Promote the Object if necessary, making it at least grey, and ...
             Object obj = p.toObject();
             assert innerOffset < LayoutEncoding.getSizeFromObject(obj).rawValue();
-            Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
-            if (copy != obj) {
-                // ... update the reference to point to the copy, making the reference black.
-                counters.noteCopiedReferent();
-                Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-                ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
-            } else {
-                counters.noteUnmodifiedReference();
-            }
+            boolean scheduled = GCImpl.getGCImpl().promoteParallel(obj, header, objRef, innerOffset, compressed, holderObject);
+            if (!scheduled) {
+                Object copy = GCImpl.getGCImpl().promoteObject(obj, header);
+                if (copy != obj) {
+                    // ... update the reference to point to the copy, making the reference black.
+                    counters.noteCopiedReferent();
+                    Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
+                    ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+                } else {
+                    counters.noteUnmodifiedReference();
+                }
 
-            // The reference will not be updated if a whole chunk is promoted. However, we still
-            // might have to dirty the card.
-            RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
+                // The reference will not be updated if a whole chunk is promoted. However, we still
+                // might have to dirty the card.
+                RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
+            }
         }
         return true;
     }
