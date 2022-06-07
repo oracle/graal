@@ -42,20 +42,20 @@ package com.oracle.truffle.api.staticobject;
 
 import java.util.Map;
 
-public class PodBasedShapeGenerator<T> extends ShapeGenerator<T> {
+final class PodBasedShapeGenerator<T> extends ShapeGenerator<T> {
     // Aliased by com_oracle_truffle_api_staticobject_PodBasedShapeGenerator
-    @SuppressWarnings("unused")
-    private final Class<?> storageSuperClass;
+    @SuppressWarnings("unused") //
+    final Class<?> storageSuperClass;
+
     // Aliased by com_oracle_truffle_api_staticobject_PodBasedShapeGenerator
-    @SuppressWarnings("unused")
-    private final Class<T> storageFactoryInterface;
+    @SuppressWarnings("unused") //
+    final Class<T> storageFactoryInterface;
 
     private PodBasedShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
         this.storageSuperClass = storageSuperClass;
         this.storageFactoryInterface = storageFactoryInterface;
     }
 
-    @SuppressWarnings("unchecked")
     static <T> PodBasedShapeGenerator<T> getShapeGenerator(Class<?> storageSuperClass, Class<T> storageFactoryInterface) {
         return new PodBasedShapeGenerator<>(storageSuperClass, storageFactoryInterface);
     }
