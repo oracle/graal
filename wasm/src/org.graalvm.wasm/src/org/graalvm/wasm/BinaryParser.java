@@ -174,6 +174,11 @@ public class BinaryParser extends BinaryStreamParser {
                     fail(Failure.MALFORMED_SECTION_ID, "invalid section ID: " + sectionID);
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
+            if (sectionID == Section.DATA && !wasmContext.getContextOptions().keepDataSections()) {
+                removeSection(startOffset, size);
+                module.setData(data);
+                offset = startOffset;
+            }
         }
         if (!hasCodeSection) {
             assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
