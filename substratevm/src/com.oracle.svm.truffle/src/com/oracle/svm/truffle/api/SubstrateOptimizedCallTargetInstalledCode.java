@@ -178,13 +178,13 @@ public class SubstrateOptimizedCallTargetInstalledCode extends InstalledCode imp
         RuntimeCodeInfoHistory.singleton().logMakeNonEntrant(codeInfo);
     }
 
+    @Uninterruptible(reason = "Must be safepoint free")
     static Object doInvoke(SubstrateOptimizedCallTarget callTarget, Object[] args) {
-        SubstrateOptimizedCallTarget.safepointBarrier();
         /*
-         * We have to be very careful that the calling code is uninterruptible, i.e., has no
-         * safepoint between the read of the entry point address and the indirect call to this
-         * address. Otherwise, the code can be invalidated concurrently and we invoke an address
-         * that no longer contains executable code.
+         * The calling code must be uninterruptible, i.e., must not have a safepoint between the
+         * read of the entry point address and the indirect call to this address. Otherwise, the
+         * code can be invalidated concurrently and we invoke an address that no longer contains
+         * executable code.
          */
         long start = callTarget.installedCode.entryPoint;
         if (start != 0) {

@@ -154,6 +154,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
@@ -995,6 +996,13 @@ public class CompileQueue {
             ResolvedJavaMethod method = methodPointer.getMethod();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
+
+        } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
+            ComputedIndirectCallTargetNode.FieldLoad fieldLoad = (ComputedIndirectCallTargetNode.FieldLoad) obj;
+            newReplacement = new ComputedIndirectCallTargetNode.FieldLoad(hUniverse.lookup(fieldLoad.getField()));
+        } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoadIfZero.class) {
+            ComputedIndirectCallTargetNode.FieldLoadIfZero fieldLoadIfZero = (ComputedIndirectCallTargetNode.FieldLoadIfZero) obj;
+            newReplacement = new ComputedIndirectCallTargetNode.FieldLoadIfZero(fieldLoadIfZero.getObject(), hUniverse.lookup(fieldLoadIfZero.getField()));
 
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
