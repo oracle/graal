@@ -714,7 +714,7 @@ An example of this for Maven means adding the following to the `pom.xml` file.
 </dependency>
 ```
 
-Additionally, when using Java modules, your `modue-info.java` file should require `org.graalvm.sdk`.
+Additionally, when using Java modules, your `module-info.java` file should require `org.graalvm.sdk`.
 
 ```java
 module com.mycompany.app {
