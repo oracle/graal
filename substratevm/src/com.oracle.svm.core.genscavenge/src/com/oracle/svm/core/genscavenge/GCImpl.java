@@ -30,7 +30,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
-import com.oracle.svm.core.genscavenge.parallel.TaskQueue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrTicks;
@@ -1130,27 +1129,26 @@ public final class GCImpl implements GC {
         if (result != original) {
             // ... update the reference to point to the copy, making the reference black.
 //            counters.noteCopiedReferent();
-            Object offsetCopy = (innerOffset == 0) ? result : Word.objectToUntrackedPointer(result).add(innerOffset).toObject();
-            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+            ParallelGCImpl.QUEUE.put(result, objRef, compressed, holderObject);
+//            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
         } else {
             Log.log().string("PP unmod ref").newline();///
 //            counters.noteUnmodifiedReference();
+            // The reference will not be updated if a whole chunk is promoted. However, we still
+            // might have to dirty the card.
+            RememberedSet.get().dirtyCardIfNecessary(holderObject, result);
         }
-
-        // The reference will not be updated if a whole chunk is promoted. However, we still
-        // might have to dirty the card.
-//        RememberedSet.get().dirtyCardIfNecessary(holderObject, result);
-
-        ParallelGCImpl.QUEUE.put(result, objRef, compressed, holderObject);
-//        ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
         return true;
     }
 
-    public void doPromoteParallel(Object original, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+    public void doPromoteParallel(Object copy, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        /// from visitor code
+        Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
+        ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+
         // The reference will not be updated if a whole chunk is promoted. However, we still
         // might have to dirty the card.
-        /// CAREFUL: result -> original
-        RememberedSet.get().dirtyCardIfNecessary(holderObject, original);
+        RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);
     }
 
     private static Header<?> getChunk(Object obj, boolean isAligned) {
