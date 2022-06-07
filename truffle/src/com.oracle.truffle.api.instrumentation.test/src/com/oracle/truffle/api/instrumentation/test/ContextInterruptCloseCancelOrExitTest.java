@@ -79,7 +79,7 @@ import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -292,8 +292,8 @@ public class ContextInterruptCloseCancelOrExitTest extends AbstractPolyglotTest 
                                         LanguageContext languageContext = LanguageContext.get(this);
                                         Object javaClass = languageContext.getEnv().lookupHostSymbol(ContextInterruptCloseCancelOrExitTest.class.getName());
                                         try {
-                                            InteropLibrary.getUncached().invokeMember(javaClass, "callExit");
-                                        } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                                            InteropLibrary.getUncached().invokeMember(javaClass, (Object) "callExit");
+                                        } catch (UnsupportedMessageException | ArityException | UnknownMemberException | UnsupportedTypeException e) {
                                             throw new RuntimeException(e);
                                         }
                                         return 0;

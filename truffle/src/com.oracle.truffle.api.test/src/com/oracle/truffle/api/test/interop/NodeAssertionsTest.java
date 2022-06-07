@@ -318,8 +318,8 @@ public class NodeAssertionsTest extends InteropLibraryBaseTest {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return null;
+        Object getMemberObjects() {
+            throw new UnsupportedOperationException();
         }
 
         @ExportMessage

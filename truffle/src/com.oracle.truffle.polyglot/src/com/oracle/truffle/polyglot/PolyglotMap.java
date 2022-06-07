@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,8 +64,8 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -535,7 +535,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                 }
                 if (cache.memberKey && interop.hasMembers(receiver)) {
                     if (isObjectKey(key)) {
-                        return interop.isMemberReadable(receiver, ((String) key));
+                        return interop.isMemberReadable(receiver, key);
                     }
                 } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                     if (isArrayKey(key)) {
@@ -577,14 +577,14 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                 long elemSize = 0;
 
                 if (cache.memberKey && interop.hasMembers(receiver)) {
-                    Object truffleKeys;
+                    Object truffleMembers;
                     try {
-                        truffleKeys = interop.getMembers(receiver);
+                        truffleMembers = new MembersToStrings(interop.getMemberObjects(receiver));
                     } catch (UnsupportedMessageException e) {
                         error.enter(node);
                         return Collections.emptySet();
                     }
-                    keys = PolyglotList.create(languageContext, truffleKeys, false, String.class, null);
+                    keys = PolyglotList.create(languageContext, truffleMembers, false, String.class, null);
                     keysSize = keys.size();
                 } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
                     try {
@@ -630,7 +630,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                         result = interop.readHashValue(receiver, toGuest.execute(node, languageContext, key));
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         if (isObjectKey(key)) {
-                            result = interop.readMember(receiver, ((String) key));
+                            result = interop.readMember(receiver, key);
                         } else {
                             return null;
                         }
@@ -643,7 +643,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else {
                         return null;
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException e) {
+                } catch (UnknownMemberException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException e) {
                     error.enter(node);
                     return null;
                 }
@@ -679,7 +679,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
                         if (isObjectKey(key)) {
-                            interop.writeMember(receiver, ((String) key), guestValue);
+                            interop.writeMember(receiver, key, guestValue);
                             return null;
                         }
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
@@ -695,7 +695,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else {
                         throw PolyglotInteropErrors.invalidMapIdentifier(languageContext, receiver, getKeyType(), getValueType(), key);
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+                } catch (UnknownMemberException | InvalidArrayIndexException | UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     error.enter(node);
                     throw error(languageContext, receiver, e, key, guestValue);
                 }
@@ -703,7 +703,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
 
             @TruffleBoundary
             RuntimeException error(PolyglotLanguageContext languageContext, Object receiver, InteropException e, Object key, Object guestValue) {
-                if (e instanceof UnknownIdentifierException || e instanceof InvalidArrayIndexException) {
+                if (e instanceof UnknownMemberException || e instanceof InvalidArrayIndexException) {
                     throw PolyglotInteropErrors.invalidMapIdentifier(languageContext, receiver, getKeyType(), getValueType(), key);
                 } else if (e instanceof UnsupportedMessageException) {
                     throw PolyglotInteropErrors.mapUnsupported(languageContext, receiver, getKeyType(), getValueType(), "put");
@@ -742,7 +742,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
                         if (isObjectKey(key)) {
-                            interop.removeMember(receiver, ((String) key));
+                            interop.removeMember(receiver, key);
                             return null;
                         }
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
@@ -759,7 +759,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else {
                         return null;
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException e) {
+                } catch (UnknownMemberException | InvalidArrayIndexException | UnknownKeyException e) {
                     error.enter(node);
                     return null;
                 } catch (UnsupportedMessageException e) {
@@ -804,13 +804,12 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else if (cache.memberKey && interop.hasMembers(receiver)) {
                         supported = true;
                         if (isObjectKey(key)) {
-                            String member = (String) key;
-                            Object readValue = interop.readMember(receiver, member);
+                            Object readValue = interop.readMember(receiver, key);
                             Object guestExpectedValue = toGuest.execute(node, languageContext, expectedValue);
                             if (!equalsBoundary(guestExpectedValue, readValue)) {
                                 return false;
                             }
-                            interop.removeMember(receiver, ((String) key));
+                            interop.removeMember(receiver, key);
                             return true;
                         }
                     } else if (cache.numberKey && interop.hasArrayElements(receiver)) {
@@ -832,7 +831,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
                     } else {
                         return false;
                     }
-                } catch (UnknownIdentifierException | InvalidArrayIndexException | UnknownKeyException e) {
+                } catch (UnknownMemberException | InvalidArrayIndexException | UnknownKeyException e) {
                     error.enter(node);
                     return false;
                 } catch (UnsupportedMessageException e) {

@@ -47,7 +47,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class VisibilityTest extends ProxyLanguageEnvTest {
@@ -259,7 +259,7 @@ public class VisibilityTest extends ProxyLanguageEnvTest {
     public void testPublicClassBridgeMethod() {
         // GR-42882: public bridge method B1.run() for A3.run() no longer exposed.
         // invokeRun(new B1(), A3.class);
-        Assert.assertFalse(INTEROP.isMemberExisting(asTruffleObject(new B1()), "run"));
+        Assert.assertFalse(INTEROP.isMemberExisting(asTruffleObject(new B1()), (Object) "run"));
     }
 
     @Test
@@ -280,10 +280,10 @@ public class VisibilityTest extends ProxyLanguageEnvTest {
     private Object invokeRun(Object obj, Class<?> methodClass, Object... args) throws InteropException {
         TruffleObject receiver = asTruffleObject(obj);
         try {
-            Object result = INTEROP.invokeMember(receiver, "run", args);
+            Object result = INTEROP.invokeMember(receiver, (Object) "run", args);
             Assert.assertSame(methodClass, run);
             return result;
-        } catch (UnknownIdentifierException uie) {
+        } catch (UnknownMemberException uie) {
             Assert.assertSame(methodClass, null);
             Assert.assertNull(run);
             return null;
@@ -342,8 +342,8 @@ public class VisibilityTest extends ProxyLanguageEnvTest {
     private Object read(Object obj, String name) throws InteropException {
         TruffleObject receiver = obj instanceof Class<?> ? asTruffleHostSymbol((Class<?>) obj) : asTruffleObject(obj);
         try {
-            return INTEROP.readMember(receiver, name);
-        } catch (UnknownIdentifierException uie) {
+            return INTEROP.readMember(receiver, (Object) name);
+        } catch (UnknownMemberException uie) {
             return null;
         }
     }

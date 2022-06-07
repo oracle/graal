@@ -57,7 +57,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
@@ -205,16 +205,17 @@ public final class HoverRequestHandler extends AbstractRequestHandler {
         if (nodeLibrary.hasScope(instrumentedNode, frame)) {
             try {
                 Object scope = nodeLibrary.getScope(instrumentedNode, frame, true);
-                Object keys = INTEROP.getMembers(scope);
-                long size = INTEROP.getArraySize(keys);
+                Object members = INTEROP.getMemberObjects(scope);
+                long size = INTEROP.getArraySize(members);
                 for (long i = 0; i < size; i++) {
-                    String key = INTEROP.asString(INTEROP.readArrayElement(keys, i));
-                    if (key.equals(textAtHoverPosition)) {
-                        Object var = INTEROP.readMember(scope, key);
+                    Object member = INTEROP.readArrayElement(members, i);
+                    String memberName = INTEROP.asString(INTEROP.getMemberSimpleName(member));
+                    if (memberName.equals(textAtHoverPosition)) {
+                        Object var = INTEROP.readMember(scope, member);
                         return Hover.create(createDefaultHoverInfos(textAtHoverPosition, var, langInfo)).setRange(SourceUtils.sourceSectionToRange(hoverSection));
                     }
                 }
-            } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
+            } catch (UnsupportedMessageException | UnknownMemberException | InvalidArrayIndexException e) {
             }
         }
         return null;

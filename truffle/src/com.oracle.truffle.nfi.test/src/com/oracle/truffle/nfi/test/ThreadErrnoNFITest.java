@@ -85,7 +85,7 @@ public class ThreadErrnoNFITest {
         }
 
         private static Object lookup(Object library, String name, String signature) throws InteropException {
-            Object symbol = INTEROP.readMember(library, name);
+            Object symbol = INTEROP.readMember(library, (Object) name);
             Source sigSource = NFITest.parseSource(signature);
             Object sig = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource).call();
             return SignatureLibrary.getUncached().bind(sig, symbol);

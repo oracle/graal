@@ -242,14 +242,14 @@ public class InstrumentableNodeTest extends InstrumentationEventTest {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
 
             assertTrue(interop.hasMembers(obj));
-            Object keys = interop.getMembers(obj);
+            Object members = interop.getMemberObjects(obj);
 
             for (int i = 0; i < properties.length; i = i + 2) {
                 String expectedKey = (String) properties[i];
                 Object expectedValue = properties[i + 1];
-                Object key = interop.readArrayElement(keys, i / 2);
-                assertEquals(expectedKey, key);
-                assertEquals(expectedValue, interop.readMember(obj, interop.asString(key)));
+                Object member = interop.readArrayElement(members, i / 2);
+                assertEquals(expectedKey, interop.asString(interop.getMemberSimpleName(member)));
+                assertEquals(expectedValue, interop.readMember(obj, member));
             }
         } catch (InteropException e) {
             throw new AssertionError(e);

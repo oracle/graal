@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,17 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -141,36 +142,151 @@ public final class SLObject extends DynamicObject implements TruffleObject {
     }
 
     @ExportMessage
-    void removeMember(String member,
-                    @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) throws UnknownIdentifierException {
-        TruffleString memberTS = fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING);
-        if (objectLibrary.containsKey(this, memberTS)) {
-            objectLibrary.removeKey(this, memberTS);
-        } else {
-            throw UnknownIdentifierException.create(member);
-        }
+    Object getMemberObjects(@CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
+        return new Keys(objectLibrary.getKeyArray(this));
     }
 
-    @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        return new Keys(objectLibrary.getKeyArray(this));
+    private static TruffleString getNameFromStringMember(Object member, InteropLibrary memberLibrary) {
+        assert memberLibrary.isString(member) : member;
+        TruffleString name;
+        try {
+            name = memberLibrary.asTruffleString(member);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere("incompatible member");
+        }
+        return name;
     }
 
     @ExportMessage(name = "isMemberReadable")
     @ExportMessage(name = "isMemberModifiable")
     @ExportMessage(name = "isMemberRemovable")
-    boolean existsMember(String member,
-                    @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        return objectLibrary.containsKey(this, fromJavaStringNode.execute(member, SLLanguage.STRING_ENCODING));
+    static class ExistsMember {
+
+        @Specialization
+        static boolean exists(SLObject receiver, SLMember member,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary) {
+            return objectLibrary.containsKey(receiver, member.getName());
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)")
+        static boolean exists(SLObject receiver, Object member,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+            TruffleString name = getNameFromStringMember(member, memberLibrary);
+            return objectLibrary.containsKey(receiver, name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(SLObject receiver, Object member) {
+            return false;
+        }
     }
 
     @ExportMessage
-    boolean isMemberInsertable(String member,
+    boolean isMemberInsertable(Object member,
                     @CachedLibrary("this") InteropLibrary receivers) {
         return !receivers.isMemberExisting(this, member);
+    }
+
+    /**
+     * {@link DynamicObjectLibrary} provides the polymorphic inline cache for reading properties.
+     */
+    @ExportMessage
+    static class ReadMember {
+
+        @Specialization
+        static Object read(SLObject receiver, SLMember member,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary) throws UnknownMemberException {
+            TruffleString name = member.getName();
+            return doRead(receiver, member, name, objectLibrary);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)")
+        static Object read(SLObject receiver, Object member,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+            TruffleString name = getNameFromStringMember(member, memberLibrary);
+            return doRead(receiver, member, name, objectLibrary);
+        }
+
+        @Fallback
+        static Object read(@SuppressWarnings("unused") SLObject receiver, Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+
+        private static Object doRead(SLObject receiver, Object member, TruffleString name, DynamicObjectLibrary objectLibrary) throws UnknownMemberException {
+            Object value = objectLibrary.getOrDefault(receiver, name, null);
+            if (value == null) {
+                /* Property does not exist. */
+                throw UnknownMemberException.create(member);
+            }
+            return value;
+        }
+    }
+
+    /**
+     * {@link DynamicObjectLibrary} provides the polymorphic inline cache for writing properties.
+     */
+    @ExportMessage
+    static class WriteMember {
+
+        @Specialization
+        static void write(SLObject receiver, SLMember member, Object value,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary) {
+            TruffleString name = member.getName();
+            doWrite(receiver, name, value, objectLibrary);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)")
+        static void write(SLObject receiver, Object member, Object value,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) {
+            TruffleString name = getNameFromStringMember(member, memberLibrary);
+            doWrite(receiver, name, value, objectLibrary);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static void write(SLObject receiver, Object member, Object value) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+
+        private static void doWrite(SLObject receiver, TruffleString name, Object value, DynamicObjectLibrary objectLibrary) {
+            objectLibrary.put(receiver, name, value);
+        }
+    }
+
+    @ExportMessage
+    static class RemoveMember {
+
+        @Specialization
+        static void remove(SLObject receiver, SLMember member,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary) throws UnknownMemberException {
+            TruffleString name = member.getName();
+            doRemove(receiver, member, name, objectLibrary);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)")
+        static void remove(SLObject receiver, Object member,
+                        @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
+                        @Shared("memberLibrary") @CachedLibrary(limit = "CACHE_LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+            TruffleString name = getNameFromStringMember(member, memberLibrary);
+            doRemove(receiver, member, name, objectLibrary);
+        }
+
+        @Fallback
+        static void remove(@SuppressWarnings("unused") SLObject receiver, Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+
+        private static void doRemove(SLObject receiver, Object member, TruffleString name, DynamicObjectLibrary objectLibrary) throws UnknownMemberException {
+            if (objectLibrary.containsKey(receiver, name)) {
+                objectLibrary.removeKey(receiver, name);
+            } else {
+                throw UnknownMemberException.create(member);
+            }
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -187,7 +303,7 @@ public final class SLObject extends DynamicObject implements TruffleObject {
             if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return keys[(int) index];
+            return new SLMember((TruffleString) keys[(int) index]);
         }
 
         @ExportMessage
@@ -204,30 +320,5 @@ public final class SLObject extends DynamicObject implements TruffleObject {
         boolean isArrayElementReadable(long index) {
             return index >= 0 && index < keys.length;
         }
-    }
-
-    /**
-     * {@link DynamicObjectLibrary} provides the polymorphic inline cache for reading properties.
-     */
-    @ExportMessage
-    Object readMember(String name,
-                    @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) throws UnknownIdentifierException {
-        Object result = objectLibrary.getOrDefault(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), null);
-        if (result == null) {
-            /* Property does not exist. */
-            throw UnknownIdentifierException.create(name);
-        }
-        return result;
-    }
-
-    /**
-     * {@link DynamicObjectLibrary} provides the polymorphic inline cache for writing properties.
-     */
-    @ExportMessage
-    void writeMember(String name, Object value,
-                    @Cached @Shared("fromJavaStringNode") TruffleString.FromJavaStringNode fromJavaStringNode,
-                    @CachedLibrary("this") DynamicObjectLibrary objectLibrary) {
-        objectLibrary.put(this, fromJavaStringNode.execute(name, SLLanguage.STRING_ENCODING), value);
     }
 }

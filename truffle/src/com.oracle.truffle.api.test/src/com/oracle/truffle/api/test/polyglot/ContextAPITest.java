@@ -329,7 +329,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         @Override
         protected void onParse(ParsingRequest request, Env env, Object[] contextArguments) throws Exception {
             Object parseCalls = contextArguments[0];
-            InteropLibrary.getUncached().invokeMember(parseCalls, "incrementAndGet");
+            InteropLibrary.getUncached().invokeMember(parseCalls, (Object) "incrementAndGet");
 
             if (request.getSource().getCharacters().toString().startsWith("error-")) {
                 throw new SyntaxError(request.getSource().createSection(0, 5));
@@ -340,10 +340,10 @@ public class ContextAPITest extends AbstractPolyglotTest {
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             Object executeCalls = contextArguments[1];
-            interop.invokeMember(executeCalls, "incrementAndGet");
+            interop.invokeMember(executeCalls, (Object) "incrementAndGet");
             if (contextArguments.length > 2) {
                 Object callArguments = contextArguments[2];
-                interop.invokeMember(callArguments, "append", Arrays.toString(frameArguments));
+                interop.invokeMember(callArguments, (Object) "append", Arrays.toString(frameArguments));
             }
             return node.getSourceSection().getSource().getCharacters();
         }
@@ -829,7 +829,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
         @TruffleBoundary
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) {
             try {
-                Object o = interop.readMember(env.getPolyglotBindings(), "test");
+                Object o = interop.readMember(env.getPolyglotBindings(), (Object) "test");
                 return interop.execute(o);
             } catch (Exception e) {
                 throw new RuntimeException(e);

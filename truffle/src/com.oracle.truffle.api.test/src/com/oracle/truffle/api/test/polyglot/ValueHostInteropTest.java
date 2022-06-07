@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import static org.junit.Assert.fail;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -94,7 +95,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -363,6 +364,186 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
         orig.writeX(10);
         assertEquals(10, readX.execute().asInt());
+    }
+
+    @SuppressWarnings("unused")
+    public static class DeclaredBase {
+
+        public static int staticPublicF1;
+        private static int staticPrivateF1;
+        public int publicF1;
+        int privateF1;
+
+        public static void staticPublicM1(int arg) {
+        }
+
+        private static int staticPrivateM1() {
+            return 10;
+        }
+
+        public long publicM1(char c, int i) {
+            return c * (long) i;
+        }
+
+        public long publicM1(char c, int i, int sign) {
+            return c * (long) i * (long) Math.signum(sign);
+        }
+
+        @SuppressWarnings("static-method")
+        private long privateM1() {
+            return 100;
+        }
+
+        public static class DeclaredInner {
+
+            private static DeclaredInner instance = new DeclaredInner();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    public static class DeclaredSub extends DeclaredBase {
+
+        public static int staticPublicF1;
+        private static int staticPrivateF2;
+        public int publicF1;
+        int privateF2;
+
+        @Override
+        @SuppressWarnings("static-method")
+        public long publicM1(char c, int i) {
+            return i / c;
+        }
+
+        @SuppressWarnings("static-method")
+        private long privateM2() {
+            return 200;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    static class DeclaredSubPrivate extends DeclaredSub {
+
+        public static int staticPublicF3;
+        private static int staticPrivateF3;
+        public int publicF3;
+        int privateF3;
+
+        @Override
+        @SuppressWarnings("static-method")
+        public long publicM1(char c, int i) {
+            return c / i;
+        }
+
+        @SuppressWarnings("static-method")
+        private long privateM3() {
+            return 300;
+        }
+    }
+
+    private static void assertNames(Set<String> names, String... expectedNames) {
+        if (expectedNames.length == 0) {
+            assertTrue(names.isEmpty());
+        }
+        int i = 0;
+        for (String name : names) {
+            assertEquals(expectedNames[i++], name);
+        }
+        assertEquals(expectedNames.length, i);
+    }
+
+    @Test
+    public void testAccessMembers() {
+        DeclaredSub ds = new DeclaredSub();
+        Value obj = context.asValue(ds);
+        assertTrue(obj.hasMembers());
+        Set<String> publicMemberNames = obj.getMemberKeys();
+        assertNames(publicMemberNames, "publicF1", "publicM1");
+
+        DeclaredSubPrivate dsp = new DeclaredSubPrivate();
+        obj = context.asValue(dsp);
+        assertTrue(obj.hasMembers());
+        publicMemberNames = obj.getMemberKeys();
+        assertNames(publicMemberNames, "publicF1", "publicM1");
+    }
+
+    private static void assertDeclaredMembers(Class<?> clazz, Value declaredMembers) {
+        long length = declaredMembers.getArraySize();
+        long i = 0;
+        Field[] declaredFields = clazz.getDeclaredFields();
+        for (Field f : declaredFields) {
+            Value member = declaredMembers.getArrayElement(i++);
+            assertTrue(member.isMember());
+            assertTrue("is a field", member.isMemberKindField());
+            assertFalse("is not a method", member.isMemberKindMethod());
+            assertFalse("is not a meta object", member.isMemberKindMetaObject());
+            assertEquals(f.getName(), member.getMemberSimpleName());
+            assertEquals(clazz.getCanonicalName() + "." + f.getName(), member.getMemberQualifiedName());
+            assertMemberSignature(member.getMemberSignature(), null, f.getType().getName());
+        }
+        Method[] declaredMethods = clazz.getDeclaredMethods();
+        for (Method m : declaredMethods) {
+            Value member = declaredMembers.getArrayElement(i++);
+            assertTrue(member.isMember());
+            assertTrue("is a method", member.isMemberKindMethod());
+            assertFalse("is a not field", member.isMemberKindField());
+            assertFalse("is not a meta object", member.isMemberKindMetaObject());
+            assertEquals(m.getName(), member.getMemberSimpleName());
+            assertEquals(clazz.getCanonicalName() + "." + m.getName(), member.getMemberQualifiedName());
+            List<String> methodSignature = new ArrayList<>();
+            methodSignature.add(null);
+            methodSignature.add(m.getReturnType().getName());
+            for (Class<?> p : m.getParameterTypes()) {
+                methodSignature.add(null);
+                methodSignature.add(p.getName());
+            }
+            assertMemberSignature(member.getMemberSignature(), methodSignature.toArray(new String[methodSignature.size()]));
+        }
+        Class<?>[] declaredClasses = clazz.getDeclaredClasses();
+        for (Class<?> c : declaredClasses) {
+            Value member = declaredMembers.getArrayElement(i++);
+            assertTrue(member.isMember());
+            assertTrue("is a meta object", member.isMemberKindMetaObject());
+            assertFalse("is a not field", member.isMemberKindField());
+            assertFalse("is not a method", member.isMemberKindMethod());
+            assertEquals(c.getSimpleName(), member.getMemberSimpleName());
+            assertEquals(c.getCanonicalName(), member.getMemberQualifiedName());
+        }
+        assertEquals(length, i);
+    }
+
+    private static void assertMemberSignature(Value signature, String... expectedSignature) {
+        assertEquals(expectedSignature.length / 2, signature.getArraySize());
+        for (int i = 0; i < expectedSignature.length; i += 2) {
+            Value signatureElement = signature.getArrayElement(i / 2);
+            assertTrue(signatureElement.isSignatureElement());
+            boolean supported = expectedSignature[i] != null;
+            assertEquals(supported, signatureElement.hasSignatureElementName());
+            if (supported) {
+                assertEquals(expectedSignature[i], signatureElement.getSignatureElementName());
+            }
+            supported = expectedSignature[i + 1] != null;
+            assertEquals(supported, signatureElement.hasSignatureElementMetaObject());
+            if (supported) {
+                assertEquals(expectedSignature[i + 1], signatureElement.getSignatureElementMetaObject().getMetaQualifiedName());
+            }
+        }
+    }
+
+    @Test
+    public void testAccessDeclaredMembers() {
+        DeclaredSub ds = new DeclaredSub();
+        Value obj = context.asValue(ds);
+        assertTrue(obj.hasMembers());
+        Value metaObj = obj.getMetaObject();
+        assertEquals(DeclaredSub.class.getName(), metaObj.getMetaQualifiedName());
+        assertTrue(metaObj.hasDeclaredMembers());
+        Value dms = metaObj.getDeclaredMembers();
+
+        assertDeclaredMembers(DeclaredSub.class, dms);
+        metaObj = metaObj.getMetaParents().getArrayElement(0);
+        assertDeclaredMembers(DeclaredBase.class, metaObj.getDeclaredMembers());
+        metaObj = metaObj.getMetaParents().getArrayElement(0);
+        assertDeclaredMembers(Object.class, metaObj.getDeclaredMembers());
     }
 
     @Test
@@ -881,6 +1062,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         } catch (UnsupportedOperationException e) {
             // O.K.
         }
+        assertTrue("Remove of object fields is not supported.", dmap.containsKey("x"));
     }
 
     @TruffleLanguage.Registration
@@ -1177,15 +1359,57 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    static class ListArray implements TruffleObject {
+    @SuppressWarnings("static-method")
+    static class TestMember implements TruffleObject {
+
+        private final String name;
+
+        TestMember(String name) {
+            this.name = name;
+        }
+
+        @ExportMessage
+        final boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        final Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        final Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        final boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static class TestMembersArray implements TruffleObject {
 
         private final List<String> array;
 
-        ListArray(List<String> array) {
+        TestMembersArray(List<String> array) {
             this.array = array;
         }
 
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasArrayElements() {
             return true;
         }
@@ -1193,7 +1417,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         @ExportMessage
         @TruffleBoundary
         final Object readArrayElement(long index) {
-            return array.get((int) index);
+            return new TestMember(array.get((int) index));
         }
 
         @ExportMessage
@@ -1266,35 +1490,38 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        Object getMemberObjects() throws UnsupportedMessageException {
             List<String> list = new CustomList(RemoveKeysObject.this.keys.keySet());
-            return new ListArray(list);
+            return new TestMembersArray(list);
         }
 
         @ExportMessage(name = "isMemberReadable")
         @ExportMessage(name = "isMemberRemovable")
         @TruffleBoundary
-        boolean isMemberExisting(String member) {
-            return keys.containsKey(member);
+        boolean isMemberExisting(Object member) {
+            Object name = (member instanceof TestMember tm) ? tm.name : member;
+            return keys.containsKey(name);
         }
 
         @ExportMessage
         @TruffleBoundary
-        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
-            if (!keys.containsKey(member)) {
+        Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
+            Object name = (member instanceof TestMember tm) ? tm.name : member;
+            if (!keys.containsKey(name)) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
-            return keys.get(member);
+            return keys.get(name);
         }
 
         @ExportMessage
         @TruffleBoundary
-        void removeMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
-            if (!keys.containsKey(member)) {
-                throw UnknownIdentifierException.create(member);
+        void removeMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
+            Object name = (member instanceof TestMember tm) ? tm.name : member;
+            if (!keys.containsKey(name)) {
+                throw UnknownMemberException.create(member);
             }
-            keys.remove(member);
+            keys.remove(name);
         }
 
     }

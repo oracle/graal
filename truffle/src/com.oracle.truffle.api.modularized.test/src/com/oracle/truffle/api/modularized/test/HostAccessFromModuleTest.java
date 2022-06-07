@@ -73,7 +73,7 @@ import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.modularized.test.adapter.Extensible;
@@ -232,9 +232,9 @@ public class HostAccessFromModuleTest {
                     Object adapter = env.createHostAdapter(new Object[]{hostType});
                     try {
                         Object instance = InteropLibrary.getUncached().instantiate(adapter, impl);
-                        assertEquals("override", InteropLibrary.getUncached().invokeMember(instance, "abstractMethod"));
-                        assertEquals("base", InteropLibrary.getUncached().invokeMember(instance, "baseMethod"));
-                    } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownIdentifierException e) {
+                        assertEquals("override", InteropLibrary.getUncached().invokeMember(instance, (Object) "abstractMethod"));
+                        assertEquals("base", InteropLibrary.getUncached().invokeMember(instance, (Object) "baseMethod"));
+                    } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | UnknownMemberException e) {
                         throw new AssertionError(e);
                     }
                 }
@@ -293,18 +293,18 @@ public class HostAccessFromModuleTest {
         }
     }
 
-    private static Object read(Object o, String key) {
+    private static Object read(Object o, Object key) {
         try {
             return InteropLibrary.getFactory().getUncached().readMember(o, key);
-        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+        } catch (UnknownMemberException | UnsupportedMessageException e) {
             throw new AssertionError(e);
         }
     }
 
-    private static void write(Object o, String key, Object value) {
+    private static void write(Object o, Object key, Object value) {
         try {
             InteropLibrary.getFactory().getUncached().writeMember(o, key, value);
-        } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException e) {
+        } catch (UnknownMemberException | UnsupportedMessageException | UnsupportedTypeException e) {
             throw new AssertionError(e);
         }
     }

@@ -45,7 +45,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
@@ -143,8 +143,8 @@ final class HeapGenerator {
         Object value;
         if (key != null) {
             try {
-                value = iop.readMember(from, key);
-            } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                value = iop.readMember(from, (Object) key);
+            } catch (UnknownMemberException | UnsupportedMessageException ex) {
                 return null;
             }
         } else {
@@ -166,8 +166,8 @@ final class HeapGenerator {
         Object value;
         if (key != null) {
             try {
-                value = iop.readMember(from, key);
-            } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                value = iop.readMember(from, (Object) key);
+            } catch (UnknownMemberException | UnsupportedMessageException ex) {
                 return null;
             }
         } else {
@@ -196,24 +196,24 @@ final class HeapGenerator {
     private static <T> T readMember(InteropLibrary iop, Object obj, String member, Convert<T> convert) {
         String errMsg;
         try {
-            Object value = iop.readMember(obj, member);
+            Object value = iop.readMember(obj, (Object) member);
             if (!iop.isNull(value)) {
                 return convert.convert(value);
             }
             errMsg = "'" + member + "' should be defined";
-        } catch (UnsupportedTypeException | UnsupportedMessageException | UnknownIdentifierException ex) {
+        } catch (UnsupportedTypeException | UnsupportedMessageException | UnknownMemberException ex) {
             errMsg = "Cannot find '" + member + "'";
         }
         StringBuilder sb = new StringBuilder(errMsg);
         try {
-            Object members = iop.getMembers(obj);
+            Object members = iop.getMemberObjects(obj);
             long count = iop.getArraySize(members);
             sb.append(" among [");
             String sep = "";
             for (long i = 0; i < count; i++) {
                 sb.append(sep);
                 try {
-                    sb.append(iop.readArrayElement(members, i));
+                    sb.append(iop.getMemberSimpleName(iop.readArrayElement(members, i)));
                 } catch (InvalidArrayIndexException ex) {
                     // ignore
                 }
@@ -314,7 +314,7 @@ final class HeapGenerator {
             objects.put(obj, builder.id());
             pending.add(() -> {
                 for (String n : clazz.names()) {
-                    final Object v = iop.readMember(obj, n);
+                    final Object v = iop.readMember(obj, (Object) n);
                     ObjectInstance vId = dumpObject(iop, seg, null, v, depth - 1);
                     builder.put(n, vId);
                 }
@@ -364,12 +364,13 @@ final class HeapGenerator {
         TreeSet<String> sortedNames = new TreeSet<>();
         try {
             int arrayLen = findArrayLength(iop, obj);
-            Object names = iop.getMembers(obj, true);
-            long len = iop.getArraySize(names);
+            Object members = iop.getMemberObjects(obj);
+            long len = iop.getArraySize(members);
             for (long i = 0; i < len; i++) {
-                final String ithName = iop.asString(iop.readArrayElement(names, i));
-                if (iop.isMemberReadable(obj, ithName) && !iop.hasMemberReadSideEffects(obj, ithName) && !isArrayMember(arrayLen, ithName)) {
-                    sortedNames.add(ithName);
+                Object member = iop.readArrayElement(members, i);
+                String name = iop.asString(iop.getMemberSimpleName(member));
+                if (iop.isMemberReadable(obj, member) && !iop.hasMemberReadSideEffects(obj, member) && !isArrayMember(arrayLen, name)) {
+                    sortedNames.add(name);
                 }
             }
         } catch (UnsupportedMessageException ex) {
@@ -469,7 +470,7 @@ final class HeapGenerator {
     }
 
     private interface Dump {
-        void dump() throws UnknownIdentifierException, IOException, UnsupportedMessageException, InvalidArrayIndexException;
+        void dump() throws UnknownMemberException, IOException, UnsupportedMessageException, InvalidArrayIndexException;
     }
 
     static final class DumpData {

@@ -103,7 +103,7 @@ class HostGuestValue implements TruffleObject {
 
     static boolean isGuestPrimitive(Object result) {
         return result instanceof String || result instanceof TruffleString || result instanceof Boolean || result instanceof Integer || result instanceof TriState || result instanceof ExceptionType ||
-                        result instanceof SourceSection;
+                        result instanceof SourceSection || result instanceof Class;
     }
 
     static Object[] marshalToRemote(HostEntryPoint hostToGuest, Object[] args) {

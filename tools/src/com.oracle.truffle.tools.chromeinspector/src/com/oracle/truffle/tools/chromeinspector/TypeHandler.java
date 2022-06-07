@@ -46,7 +46,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -181,12 +181,11 @@ public final class TypeHandler {
                     final SourceSection section = context.getInstrumentedSourceSection();
                     final LanguageInfo language = node.getRootNode().getLanguageInfo();
                     try {
-                        Object keys = INTEROP.getMembers(arguments);
-                        long size = INTEROP.getArraySize(keys);
+                        Object members = INTEROP.getMemberObjects(arguments);
+                        long size = INTEROP.getArraySize(members);
                         for (long i = 0; i < size; i++) {
-                            Object argument = INTEROP.readArrayElement(keys, i);
-                            String key = INTEROP.asString(argument);
-                            Object argumentValue = INTEROP.readMember(arguments, key);
+                            Object argument = INTEROP.readArrayElement(members, i);
+                            Object argumentValue = INTEROP.readMember(arguments, argument);
 
                             String retType = getMetaObjectString(env, language, argumentValue);
                             SourceSection argSection = getArgSection(section, argument);
@@ -194,7 +193,7 @@ public final class TypeHandler {
                                 profileMap.computeIfAbsent(argSection, s -> new SectionTypeProfile(s)).types.add(retType);
                             }
                         }
-                    } catch (UnsupportedMessageException | UnknownIdentifierException | InvalidArrayIndexException e) {
+                    } catch (UnsupportedMessageException | UnknownMemberException | InvalidArrayIndexException e) {
                         throw CompilerDirectives.shouldNotReachHere(e);
                     }
                 }
@@ -217,7 +216,7 @@ public final class TypeHandler {
                 if (INTEROP.hasSourceLocation(argument)) {
                     return INTEROP.getSourceLocation(argument);
                 } else {
-                    String argName = INTEROP.asString(INTEROP.toDisplayString(argument));
+                    String argName = INTEROP.asString(INTEROP.getMemberSimpleName(argument));
                     int idx = function.getCharacters().toString().indexOf(argName);
                     return idx < 0 ? null : function.getSource().createSection(function.getCharIndex() + idx, argName.length());
                 }

@@ -71,6 +71,7 @@ import com.oracle.truffle.api.debug.SuspendAnchor;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.DebuggerTester;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -203,6 +204,31 @@ public abstract class AbstractDebugTest {
         assertTrue(suspended.get());
     }
 
+    protected final void checkPureDebugValueOf(Object object, Consumer<DebugValue> checker) {
+        Source source = Source.create(ProxyLanguage.ID, "pure argument");
+        ProxyLanguage.setDelegate(new TestDebugObjectLanguage());
+
+        AtomicBoolean suspended = new AtomicBoolean(false);
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            tester.startExecute((Context c) -> {
+                Value v = c.parse(source);
+                v = v.execute(object);
+                return v;
+            });
+            expectSuspended((SuspendedEvent event) -> {
+                assertFalse(suspended.get());
+                DebugValue a = event.getTopStackFrame().getScope().getDeclaredValue("a");
+                assertNotNull(a);
+                checker.accept(a);
+                event.prepareContinue();
+                suspended.set(true);
+            });
+        }
+        expectDone();
+        assertTrue(suspended.get());
+    }
+
     @SuppressWarnings("static-method")
     protected final com.oracle.truffle.api.source.Source getSourceImpl(Source source) {
         return DebuggerTester.getSourceImpl(source);
@@ -282,4 +308,17 @@ public abstract class AbstractDebugTest {
     protected final void closeEngine() {
         tester.closeEngine();
     }
+
+    protected static void assertFails(Runnable run, Class<?> exceptionType) {
+        try {
+            run.run();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.toString(), t);
+            }
+            return;
+        }
+        Assert.fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
 }

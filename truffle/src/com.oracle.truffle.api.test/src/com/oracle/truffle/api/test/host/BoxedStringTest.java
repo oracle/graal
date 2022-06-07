@@ -111,18 +111,18 @@ public class BoxedStringTest extends ProxyLanguageEnvTest implements TruffleObje
     }
 
     @ExportMessage
-    Object readMember(String member) {
+    Object readMember(Object member) {
         assert KEYS.contains(member);
         return this;
     }
 
     @ExportMessage
-    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return asTruffleObject(KEYS);
+    final Object getMemberObjects() {
+        throw new UnsupportedOperationException();
     }
 
     @ExportMessage
-    final boolean isMemberReadable(String member) {
+    final boolean isMemberReadable(Object member) {
         return KEYS.contains(member);
     }
 

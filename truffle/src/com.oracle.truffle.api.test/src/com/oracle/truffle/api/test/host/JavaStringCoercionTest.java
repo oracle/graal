@@ -147,7 +147,7 @@ public class JavaStringCoercionTest extends AbstractPolyglotTest {
 
     private static Object call(TruffleObject obj, Object value) throws InteropException {
         try {
-            return INTEROP.invokeMember(obj, "call", value);
+            return INTEROP.invokeMember(obj, (Object) "call", value);
         } catch (UnsupportedTypeException e) {
             throw new AssertionError("String coercion failed for: " + value + " (" + (value == null ? null : value.getClass().getName()) + ")", e);
         }
@@ -155,7 +155,7 @@ public class JavaStringCoercionTest extends AbstractPolyglotTest {
 
     private static void callUnsupported(TruffleObject obj, Object value) throws InteropException {
         try {
-            INTEROP.invokeMember(obj, "call", value);
+            INTEROP.invokeMember(obj, (Object) "call", value);
             fail("Expected coercion to fail");
         } catch (UnsupportedTypeException e) {
         }

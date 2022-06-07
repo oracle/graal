@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.sl.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -58,13 +63,21 @@ import com.oracle.truffle.sl.runtime.SLStrings;
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
  */
+@ExportLibrary(InteropLibrary.class)
 public abstract class NodeObjectDescriptor implements TruffleObject {
 
+    static final int LIMIT = 3;
     private final TruffleString name;
 
     private NodeObjectDescriptor(TruffleString name) {
         assert name != null;
         this.name = name;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasMembers() {
+        return true;
     }
 
     public static NodeObjectDescriptor readVariable(TruffleString name) {
@@ -75,56 +88,113 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
         return new WriteDescriptor(name, sourceSection);
     }
 
-    Object readMember(String member, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
-        if (isMemberReadable(member)) {
-            return name;
-        } else {
-            error.enter(node);
-            throw UnknownIdentifierException.create(member);
+    @ExportMessage
+    static class IsMemberReadable {
+
+        @Specialization
+        static boolean isReadable(NodeObjectDescriptor descriptor, NodeObjectDescriptorMember member) {
+            return descriptor.isReadable(member);
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "LIMIT")
+        static boolean isReadable(NodeObjectDescriptor descriptor, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary) {
+            String name = NodeObjectDescriptor.toString(member, memberLibrary);
+            return descriptor.isReadable(name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(NodeObjectDescriptor descriptor, Object member) {
+            return false;
         }
     }
 
-    abstract boolean isMemberReadable(String member);
+    @ExportMessage
+    static class ReadMember {
 
-    @ExportLibrary(InteropLibrary.class)
+        @Specialization
+        static Object read(NodeObjectDescriptor descriptor, NodeObjectDescriptorMember member,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnknownMemberException {
+            if (descriptor.isReadable(member)) {
+                return descriptor.read();
+            } else {
+                error.enter(node);
+                throw UnknownMemberException.create(member);
+            }
+        }
+
+        @Specialization(guards = "memberLibrary.isString(member)", limit = "LIMIT")
+        static Object read(NodeObjectDescriptor descriptor, Object member,
+                        @CachedLibrary("member") InteropLibrary memberLibrary,
+                        @Bind("$node") Node node,
+                        @Shared("error") @Cached InlinedBranchProfile error) throws UnknownMemberException {
+            String name = NodeObjectDescriptor.toString(member, memberLibrary);
+            if (descriptor.isReadable(name)) {
+                return descriptor.read();
+            } else {
+                error.enter(node);
+                throw UnknownMemberException.create(member);
+            }
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static Object read(NodeObjectDescriptor descriptor, Object member) throws UnknownMemberException {
+            throw UnknownMemberException.create(member);
+        }
+    }
+
+    private static String toString(Object member, InteropLibrary memberLibrary) {
+        assert memberLibrary.isString(member) : member;
+        try {
+            return memberLibrary.asString(member);
+        } catch (UnsupportedMessageException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
+    }
+
+    @ExportMessage
+    abstract Object getMemberObjects();
+
+    abstract boolean isReadable(String member);
+
+    abstract boolean isReadable(NodeObjectDescriptorMember member);
+
+    Object read() {
+        return name;
+    }
+
     static final class ReadDescriptor extends NodeObjectDescriptor {
 
-        private static final TruffleObject KEYS_READ = new NodeObjectDescriptorKeys(SLStrings.constant(StandardTags.ReadVariableTag.NAME));
+        private static final NodeObjectDescriptorMember MEMBER_READ = new NodeObjectDescriptorMember(SLStrings.constant(StandardTags.ReadVariableTag.NAME));
+        private static final TruffleObject KEYS_READ = new NodeObjectDescriptorKeys(MEMBER_READ);
 
         ReadDescriptor(TruffleString name) {
             super(name);
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasMembers() {
-            return true;
-        }
-
         @Override
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isReadable(String member) {
             return StandardTags.ReadVariableTag.NAME.equals(member);
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return KEYS_READ;
+        @Override
+        boolean isReadable(NodeObjectDescriptorMember member) {
+            return MEMBER_READ == member;
         }
 
         @Override
-        @ExportMessage
-        Object readMember(String member, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
-            return super.readMember(member, node, error);
+        Object getMemberObjects() {
+            return KEYS_READ;
         }
-
     }
 
-    @ExportLibrary(InteropLibrary.class)
     static final class WriteDescriptor extends NodeObjectDescriptor {
 
-        private static final TruffleObject KEYS_WRITE = new NodeObjectDescriptorKeys(SLStrings.constant(StandardTags.WriteVariableTag.NAME));
+        private static final NodeObjectDescriptorMember MEMBER_WRITE = new NodeObjectDescriptorMember(SLStrings.constant(StandardTags.WriteVariableTag.NAME));
+        private static final TruffleObject KEYS_WRITE = new NodeObjectDescriptorKeys(MEMBER_WRITE);
 
         private final Object nameSymbol;
 
@@ -133,28 +203,23 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
             this.nameSymbol = new NameSymbol(name, sourceSection);
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        boolean hasMembers() {
-            return true;
-        }
-
         @Override
-        @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isReadable(String member) {
             return StandardTags.WriteVariableTag.NAME.equals(member);
         }
 
-        @ExportMessage
-        @SuppressWarnings("static-method")
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        @Override
+        boolean isReadable(NodeObjectDescriptorMember member) {
+            return MEMBER_WRITE == member;
+        }
+
+        @Override
+        Object getMemberObjects() {
             return KEYS_WRITE;
         }
 
         @Override
-        @ExportMessage
-        Object readMember(String member, @Bind("$node") Node node, @Cached InlinedBranchProfile error) throws UnknownIdentifierException {
-            super.readMember(member, node, error); // To verify readability
+        Object read() {
             return nameSymbol;
         }
     }

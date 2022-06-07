@@ -450,7 +450,7 @@ public final class DebugProtocolServerImpl extends DebugProtocolServer {
     public CompletableFuture<VariablesResponse.ResponseBody> variables(VariablesArguments args) {
         CompletableFuture<VariablesResponse.ResponseBody> future = new CompletableFuture<>();
         context.getThreadsHandler().executeInSuspendedThread(args.getVariablesReference(), (info) -> {
-            List<Variable> variables = info != null ? context.getVariablesHandler().getVariables(info, args) : null;
+            List<Variable> variables = info != null ? VariablesHandler.getVariables(info, args) : null;
             if (variables == null) {
                 variables = Collections.emptyList();
             }

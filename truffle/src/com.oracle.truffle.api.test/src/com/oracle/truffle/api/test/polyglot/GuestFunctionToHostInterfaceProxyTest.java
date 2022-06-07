@@ -56,7 +56,6 @@ import java.util.stream.IntStream;
 
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyArray;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
@@ -66,7 +65,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -173,21 +172,21 @@ public class GuestFunctionToHostInterfaceProxyTest extends AbstractPolyglotTest 
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return ProxyArray.fromList(List.copyOf(map.keySet()));
+        Object getMemberObjects() throws UnsupportedMessageException {
+            throw new UnsupportedOperationException();
         }
 
         @ExportMessage
         @TruffleBoundary
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object member) {
             return map.containsKey(member);
         }
 
         @ExportMessage
         @TruffleBoundary
-        Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
+        Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
             if (!map.containsKey(member)) {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
             return map.get(member);
         }

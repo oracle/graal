@@ -40,16 +40,22 @@
  */
 package com.oracle.truffle.api.interop;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -105,11 +111,12 @@ final class DefaultNodeExports {
 
     @TruffleBoundary
     private static Object createDefaultScope(RootNode root, MaterializedFrame frame, Class<? extends TruffleLanguage<?>> language) {
-        LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
+        LinkedHashMap<String, DefaultScopeMember> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
             if (!isInternal(entry.getKey()) && (frame == null || InteropLibrary.isValidValue(frame.getAuxiliarySlot(entry.getValue())))) {
-                slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
+                String name = Objects.toString(entry.getKey());
+                slotsMap.put(name, new DefaultScopeMember(entry.getKey(), name, entry.getValue(), descriptor));
             }
         }
         return new DefaultScope(slotsMap, root, frame, language);
@@ -118,12 +125,14 @@ final class DefaultNodeExports {
     @ExportLibrary(InteropLibrary.class)
     static final class DefaultScope implements TruffleObject {
 
-        private final Map<String, Object> slots;
+        static final int LIMIT = 5;
+
+        private final Map<String, DefaultScopeMember> slots;
         private final RootNode root;
         private final Frame frame;
         private final Class<? extends TruffleLanguage<?>> language;
 
-        private DefaultScope(Map<String, Object> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+        private DefaultScope(Map<String, DefaultScopeMember> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
             this.slots = slots;
             this.root = root;
             this.frame = frame;
@@ -157,54 +166,182 @@ final class DefaultNodeExports {
             return true;
         }
 
-        @ExportMessage
         @TruffleBoundary
-        Object readMember(String member) throws UnknownIdentifierException {
-            if (frame == null) {
-                return DefaultScopeNull.INSTANCE;
+        DefaultScopeMember getMember(String name) {
+            return slots.get(name);
+        }
+
+        @TruffleBoundary
+        boolean hasMember(String name) {
+            return slots.containsKey(name);
+        }
+
+        @ExportMessage
+        static class ReadMember {
+
+            @Specialization(guards = "memberLibrary.isString(memberString)")
+            static Object read(DefaultScope receiver,
+                            Object memberString,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+                String name;
+                try {
+                    name = memberLibrary.asString(memberString);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                DefaultScopeMember slot = receiver.getMember(name);
+                if (slot == null) {
+                    throw UnknownMemberException.create(memberString);
+                } else if (receiver.frame == null) {
+                    return DefaultScopeNull.INSTANCE;
+                } else {
+                    return receiver.frame.getAuxiliarySlot(slot.index);
+                }
             }
-            Object slot = slots.get(member);
-            if (slot == null) {
-                throw UnknownIdentifierException.create(member);
-            } else {
-                return frame.getAuxiliarySlot((int) slot);
+
+            @Specialization
+            static Object read(DefaultScope receiver,
+                            DefaultScopeMember slot) throws UnknownMemberException {
+                FrameDescriptor descriptor = receiver.frame == null ? receiver.root.getFrameDescriptor() : receiver.frame.getFrameDescriptor();
+                if (slot.descriptor != descriptor) {
+                    throw UnknownMemberException.create(slot);
+                }
+                if (receiver.frame == null) {
+                    return DefaultScopeNull.INSTANCE;
+                } else {
+                    return receiver.frame.getAuxiliarySlot(slot.index);
+                }
+            }
+
+            @Fallback
+            static Object read(@SuppressWarnings("unused") DefaultScope receiver,
+                            Object unknown) throws UnknownMemberException {
+                throw UnknownMemberException.create(unknown);
             }
         }
 
         @ExportMessage
         @TruffleBoundary
-        Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-            return new DefaultScopeMembers(slots.keySet());
+        Object getMemberObjects() {
+            return new DefaultScopeMembers(slots.values());
         }
 
         @ExportMessage
-        @TruffleBoundary
-        boolean isMemberReadable(String member) {
-            return slots.containsKey(member);
-        }
+        static class IsMemberReadable {
 
-        @ExportMessage
-        @TruffleBoundary
-        boolean isMemberModifiable(String member) {
-            return slots.containsKey(member) && frame != null;
-        }
-
-        @ExportMessage
-        @TruffleBoundary
-        void writeMember(String member, Object value) throws UnknownIdentifierException, UnsupportedMessageException {
-            if (frame == null) {
-                throw UnsupportedMessageException.create();
+            @Specialization(guards = "memberLibrary.isString(memberString)")
+            static boolean isReadable(DefaultScope receiver,
+                            Object memberString,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+                String name;
+                try {
+                    name = memberLibrary.asString(memberString);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                return receiver.hasMember(name);
             }
-            Object slot = slots.get(member);
-            if (slot == null) {
-                throw UnknownIdentifierException.create(member);
-            } else {
-                frame.setAuxiliarySlot((int) slot, value);
+
+            @Specialization
+            static boolean isReadable(DefaultScope receiver,
+                            DefaultScopeMember slot) {
+                FrameDescriptor descriptor = receiver.frame == null ? receiver.root.getFrameDescriptor() : receiver.frame.getFrameDescriptor();
+                return slot.descriptor == descriptor;
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean isReadable(DefaultScope receiver,
+                            Object unknown) {
+                return false;
             }
         }
 
         @ExportMessage
-        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        static class IsMemberModifiable {
+
+            @Specialization(guards = "memberLibrary.isString(memberString)")
+            static boolean isModifiable(DefaultScope receiver,
+                            Object memberString,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+                if (receiver.frame == null) {
+                    return false;
+                }
+                String name;
+                try {
+                    name = memberLibrary.asString(memberString);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                return receiver.hasMember(name);
+            }
+
+            @Specialization
+            static boolean isModifiable(DefaultScope receiver,
+                            DefaultScopeMember slot) {
+                FrameDescriptor descriptor = receiver.frame == null ? receiver.root.getFrameDescriptor() : receiver.frame.getFrameDescriptor();
+                return slot.descriptor == descriptor && receiver.frame != null;
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static boolean isModifiable(DefaultScope receiver,
+                            Object unknown) {
+                return false;
+            }
+        }
+
+        @ExportMessage
+        static class WriteMember {
+
+            @Specialization(guards = "memberLibrary.isString(memberString)")
+            static void write(DefaultScope receiver,
+                            Object memberString,
+                            Object value,
+                            @Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException, UnsupportedMessageException {
+                if (receiver.frame == null) {
+                    throw UnsupportedMessageException.create();
+                }
+                String name;
+                try {
+                    name = memberLibrary.asString(memberString);
+                } catch (UnsupportedMessageException e) {
+                    throw CompilerDirectives.shouldNotReachHere(e);
+                }
+                DefaultScopeMember slot = receiver.getMember(name);
+                if (slot == null) {
+                    throw UnknownMemberException.create(memberString);
+                } else {
+                    receiver.frame.setAuxiliarySlot(slot.index, value);
+                }
+            }
+
+            @Specialization
+            static void write(DefaultScope receiver,
+                            DefaultScopeMember slot,
+                            Object value) throws UnsupportedMessageException, UnknownMemberException {
+                if (receiver.frame == null) {
+                    throw UnsupportedMessageException.create();
+                }
+                FrameDescriptor descriptor = receiver.frame == null ? receiver.root.getFrameDescriptor() : receiver.frame.getFrameDescriptor();
+                if (slot.descriptor != descriptor) {
+                    throw UnknownMemberException.create(slot);
+                } else {
+                    receiver.frame.setAuxiliarySlot(slot.index, value);
+                }
+            }
+
+            @Fallback
+            @SuppressWarnings("unused")
+            static void write(DefaultScope receiver,
+                            Object unknown,
+                            Object value) throws UnknownMemberException {
+                throw UnknownMemberException.create(unknown);
+            }
+        }
+
+        @ExportMessage
+        boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
@@ -253,10 +390,10 @@ final class DefaultNodeExports {
     @ExportLibrary(InteropLibrary.class)
     static final class DefaultScopeMembers implements TruffleObject {
 
-        final String[] names;
+        @CompilationFinal(dimensions = 1) final DefaultScopeMember[] members;
 
-        DefaultScopeMembers(Set<String> names) {
-            this.names = names.toArray(new String[0]);
+        DefaultScopeMembers(Collection<DefaultScopeMember> members) {
+            this.members = members.toArray(new DefaultScopeMember[0]);
         }
 
         @ExportMessage
@@ -266,7 +403,7 @@ final class DefaultNodeExports {
 
         @ExportMessage
         long getArraySize() {
-            return names.length;
+            return members.length;
         }
 
         @ExportMessage
@@ -274,13 +411,58 @@ final class DefaultNodeExports {
             if (!isArrayElementReadable(index)) {
                 throw InvalidArrayIndexException.create(index);
             }
-            return names[(int) index];
+            return members[(int) index];
         }
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index >= 0 && index < names.length;
+            return index >= 0 && index < members.length;
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    static final class DefaultScopeMember implements TruffleObject {
+
+        final Object slot;
+        private final String name;
+        final int index;
+        final FrameDescriptor descriptor;
+
+        DefaultScopeMember(Object slot, String name, int index, FrameDescriptor descriptor) {
+            this.slot = slot;
+            this.name = name;
+            this.index = index;
+            this.descriptor = descriptor;
+        }
+
+        @ExportMessage
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return true;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+    }
 }

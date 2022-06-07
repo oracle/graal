@@ -55,7 +55,7 @@ import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -131,24 +131,24 @@ public class AcceptsTransitionTest extends AbstractLibraryTest {
 
         @SuppressWarnings({"static-method", "unused"})
         @ExportMessage
-        final Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        final Object getMemberObjects() throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
         @SuppressWarnings("static-method")
         @TruffleBoundary
         @ExportMessage
-        final boolean isMemberInvocable(String member) {
+        final boolean isMemberInvocable(Object member) {
             return "transition".equals(member);
         }
 
         @TruffleBoundary
         @ExportMessage
-        final Object invokeMember(String member, Object[] arguments,
+        final Object invokeMember(Object member, Object[] arguments,
                         @CachedLibrary("this") TransitionTestLibrary lib,
-                        @CachedLibrary(limit = "3") InteropLibrary strings) throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+                        @CachedLibrary(limit = "3") InteropLibrary strings) throws UnsupportedMessageException, ArityException, UnknownMemberException, UnsupportedTypeException {
             if (!isMemberInvocable(member)) {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             } else if (arguments.length != 1) {
                 throw ArityException.create(1, 1, arguments.length);
             } else if (!strings.isString(arguments[0])) {
@@ -185,15 +185,15 @@ public class AcceptsTransitionTest extends AbstractLibraryTest {
     }
 
     @Test
-    public void testTransitionsCachedMerged() throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+    public void testTransitionsCachedMerged() throws UnsupportedMessageException, ArityException, UnknownMemberException, UnsupportedTypeException {
         StrategyObject o = new StrategyObject(Strategy.STRATEGY1);
         InteropLibrary lib = createCached(InteropLibrary.class, o);
         assertTrue(lib.accepts(o));
-        assertEquals("transition_STRATEGY1_STRATEGY2_cached", lib.invokeMember(o, "transition", "STRATEGY2"));
+        assertEquals("transition_STRATEGY1_STRATEGY2_cached", lib.invokeMember(o, (Object) "transition", "STRATEGY2"));
         assertFalse(lib.accepts(o));
-        assertEquals("transition_STRATEGY2_STRATEGY3_cached", lib.invokeMember(o, "transition", "STRATEGY3"));
+        assertEquals("transition_STRATEGY2_STRATEGY3_cached", lib.invokeMember(o, (Object) "transition", "STRATEGY3"));
         assertFalse(lib.accepts(o));
-        assertEquals("transition_STRATEGY3_STRATEGY1_uncached", lib.invokeMember(o, "transition", "STRATEGY1"));
+        assertEquals("transition_STRATEGY3_STRATEGY1_uncached", lib.invokeMember(o, (Object) "transition", "STRATEGY1"));
         assertTrue(lib.accepts(o));
     }
 

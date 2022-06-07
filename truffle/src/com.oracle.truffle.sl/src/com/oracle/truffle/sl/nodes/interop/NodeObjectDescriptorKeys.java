@@ -49,15 +49,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptorKeys implements TruffleObject {
 
-    private final TruffleString keyName;
+    private final NodeObjectDescriptorMember member;
 
-    NodeObjectDescriptorKeys(TruffleString keyName) {
-        this.keyName = keyName;
+    NodeObjectDescriptorKeys(NodeObjectDescriptorMember member) {
+        this.member = member;
     }
 
     @ExportMessage
@@ -84,7 +83,7 @@ public final class NodeObjectDescriptorKeys implements TruffleObject {
             exception.enter(node);
             throw InvalidArrayIndexException.create(index);
         }
-        return keyName;
+        return member;
     }
 
 }

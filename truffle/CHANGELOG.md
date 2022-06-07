@@ -6,7 +6,15 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-57164 Added support for reading unaligned ints, shorts and long to `ByteArraySupport`.
 * GR-57164 `RootNode.translateStackTraceElement()` is now always consulted for polyglot and debugger stack traces. Stack traces now use the source section, the executable name, the name of the declared meta-object to build `StackTraceElement` instances.
 * GR-57322 Added `TruffleLanguage.Env.getHostLanguage()` returning the host language info. This allows languages to lookup the top scope of the host language using `Env.getScopeInternal(LanguageInfo)`.
-
+* GR-34476 Introduced object interop members and declared members. Member identifiers were changed from a String to an interop member object. For details see [Members Interop Migration](https://github.com/oracle/graal/blob/master/truffle/docs/MembersInteropMigration.md).
+        * `InteropLibrary` messages which take a `String` member name are deprecated and new messages which take `Object` member are introduced.
+        * `InteropLibrary.getMembers()` is deprecated and replaced with `InteropLibrary.getMemberObjects()`.
+        * `InteropLibrary.hasStaticReceiver()` and `InteropLibrary.getStaticReceiver()` introduces a static member.
+        * `InteropLibrary.hasDeclaredMembers()` and `InteropLibrary.getDeclaredMembers()` introduces declared members.
+        * `InteropLibrary.isMember()`, `InteropLibrary.getMemberSimpleName()`, `InteropLibrary.getMemberQualifiedName()`, `InteropLibrary.isMemberKindField()`, `InteropLibrary.isMemberKindMethod()`, `InteropLibrary.isMemberKindMetaObject()`, `InteropLibrary.hasMemberSignature()`, `InteropLibrary.getMemberSignature()` are introduced to represent a member object.
+        * `InteropLibrary.isSignatureElement()` `InteropLibrary.hasSignatureElementName()`, `InteropLibrary.getSignatureElementName()`, `InteropLibrary.hasSignatureElementMetaObject()`, `InteropLibrary.getSignatureElementMetaObject()` are introduced to represent a member signature.
+        * `UnknownMemberException` replaces the deprecated `UnknownIdentifierException`.
+        * Debugger API changes: `DebugValue.getMembers()`, `DebugValue.isMember()`, `DebugValue.isMemberValueReadable()`, `DebugValue.getMemberValue()`, `DebugValue.getMemberSimpleName()`, `DebugValue.getMemberQualifiedName()`, `DebugValue.isMemberKindField()`, `DebugValue.isMemberKindMethod()`, `DebugValue.isMemberKindMetaObject()`, `DebugValue.getMemberSignature()`, `DebugValue.getSignatureElementName()`, `DebugValue.getSignatureElementMetaObject()`, `DebugSignature`, `DebugValue.getExportedSymbolMembers()`, `DebugValue.getStaticProvider()`.
 
 ## Version 24.1.0
 * GR-43839 Added optional parameter to TruffleString.ByteIndexOfCodePointSetNode to choose whether the node may calculate the input string's precise code range.

@@ -83,11 +83,11 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
     }
 
     @Test
-    public void testBuggyKeys() {
+    public void testBuggyMembers() {
         testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
                         (SuspendedEvent event) -> {
                             DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("o");
-                            value.getProperties();
+                            value.getMembers();
                         }, "KEYS");
     }
 
@@ -110,11 +110,29 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testBuggyReadMember() {
+        testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
+                        (SuspendedEvent event) -> {
+                            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("o");
+                            value.getMembers().iterator().next().getMemberValue().toDisplayString();
+                        }, "READ");
+    }
+
+    @Test
     public void testBuggyWrite() {
         testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
                         (SuspendedEvent event) -> {
                             DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("o");
                             value.getProperty("A").set(event.getSession().createPrimitiveValue(10, null));
+                        }, "WRITE");
+    }
+
+    @Test
+    public void testBuggyWriteMember() {
+        testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
+                        (SuspendedEvent event) -> {
+                            DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("o");
+                            value.getMembers().iterator().next().getMemberValue().set(event.getSession().createPrimitiveValue(10, null));
                         }, "WRITE");
     }
 

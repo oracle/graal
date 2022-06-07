@@ -49,6 +49,7 @@ class PolyglotListAndFunction<T> extends PolyglotList<T> implements Function<Obj
         super(elementClass, elementType, array, languageContext);
     }
 
+    @Override
     public Object apply(Object t) {
         return cache.apply.call(null, languageContext, guestObject, t);
     }

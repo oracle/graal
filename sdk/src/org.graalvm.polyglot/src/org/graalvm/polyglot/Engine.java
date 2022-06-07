@@ -1420,7 +1420,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Object callProxyObjectHasMember(Object proxy, String member) {
+        public boolean callProxyObjectHasMember(Object proxy, String member) {
             return ((ProxyObject) proxy).hasMember(member);
         }
 

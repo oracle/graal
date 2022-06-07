@@ -136,7 +136,7 @@ public class HostAdapterTest extends AbstractPolyglotTest {
         }
     }
 
-    private static Object verifyHostAdapterClass(TruffleLanguage.Env env, Object hostAdapterClass) {
+    static Object verifyHostAdapterClass(TruffleLanguage.Env env, Object hostAdapterClass) {
         assertTrue(env.isHostObject(hostAdapterClass));
         assertTrue(env.isHostSymbol(hostAdapterClass));
         assertTrue(INTEROP.isMetaObject(hostAdapterClass));
@@ -162,7 +162,7 @@ public class HostAdapterTest extends AbstractPolyglotTest {
         return verifyHostAdapterClass(env, env.createHostAdapterWithClassOverrides(hostTypes, classOverrides));
     }
 
-    private static Object instantianteHostAdapter(TruffleLanguage.Env env, Object adapter, Object... arguments) throws InteropException {
+    static Object instantianteHostAdapter(TruffleLanguage.Env env, Object adapter, Object... arguments) throws InteropException {
         Object instance = INTEROP.instantiate(adapter, arguments);
         assertTrue(INTEROP.isMetaInstance(adapter, instance));
         assertTrue(env.isHostObject(instance));
@@ -175,7 +175,7 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             TruffleLanguage.Env env = c.env;
             Object adapter = createHostAdapterClass(env, new Class<?>[]{Callable.class});
             Object instance = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("call", (ProxyExecutable) (args) -> 42))));
-            assertEquals(42, INTEROP.invokeMember(instance, "call"));
+            assertEquals(42, INTEROP.invokeMember(instance, (Object) "call"));
 
             assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(Callable.class), instance));
         }
@@ -187,14 +187,14 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             TruffleLanguage.Env env = c.env;
             Object adapter = createHostAdapterClass(env, new Class<?>[]{Extensible.class});
             Object instance1 = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("abstractMethod", (ProxyExecutable) (args) -> "override"))));
-            assertEquals("override", INTEROP.invokeMember(instance1, "abstractMethod"));
-            assertEquals("base", INTEROP.invokeMember(instance1, "baseMethod"));
+            assertEquals("override", INTEROP.invokeMember(instance1, (Object) "abstractMethod"));
+            assertEquals("base", INTEROP.invokeMember(instance1, (Object) "baseMethod"));
 
             Object instance2 = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("baseMethod", (ProxyExecutable) (args) -> "override"))));
-            assertEquals("override", INTEROP.invokeMember(instance2, "baseMethod"));
+            assertEquals("override", INTEROP.invokeMember(instance2, (Object) "baseMethod"));
 
             assertFails(() -> {
-                return INTEROP.invokeMember(instance2, "abstractMethod");
+                return INTEROP.invokeMember(instance2, (Object) "abstractMethod");
             }, AbstractTruffleException.class, e -> assertTrue(e.toString(), env.isHostException(e)));
 
             assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(Extensible.class), instance1));
@@ -215,21 +215,21 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             impl.put("defaultMethod", (ProxyExecutable) (args) -> "defaultMethodImpl");
             Object instance = instantianteHostAdapter(env, adapter, env.asGuestValue(ProxyObject.fromMap(impl)));
 
-            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
-            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
-            assertEquals("callImpl", INTEROP.invokeMember(instance, "call"));
-            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, "defaultMethod"));
+            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, (Object) "baseMethod"));
+            assertEquals("callImpl", INTEROP.invokeMember(instance, (Object) "call"));
+            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, (Object) "defaultMethod"));
 
             // call super methods directly via 'super' member
-            Object superInstance = INTEROP.readMember(instance, "super");
-            assertEquals("base", INTEROP.invokeMember(superInstance, "baseMethod"));
-            assertEquals("default", INTEROP.invokeMember(superInstance, "defaultMethod"));
+            Object superInstance = INTEROP.readMember(instance, (Object) "super");
+            assertEquals("base", INTEROP.invokeMember(superInstance, (Object) "baseMethod"));
+            assertEquals("default", INTEROP.invokeMember(superInstance, (Object) "defaultMethod"));
 
             // members are dynamically resolved
             impl.remove("baseMethod");
             impl.remove("defaultMethod");
-            assertEquals("base", INTEROP.invokeMember(instance, "baseMethod"));
-            assertEquals("default", INTEROP.invokeMember(instance, "defaultMethod"));
+            assertEquals("base", INTEROP.invokeMember(instance, (Object) "baseMethod"));
+            assertEquals("default", INTEROP.invokeMember(instance, (Object) "defaultMethod"));
 
             for (Class<?> supertype : supertypes) {
                 assertTrue(INTEROP.isMetaInstance(env.asHostSymbol(supertype), instance));
@@ -246,9 +246,9 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             impl.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl");
             impl.put("finalMethod", (ProxyExecutable) (args) -> "finalMethodImpl");
             Object instance = instantianteHostAdapter(env, adapter, "concreteName", env.asGuestValue(ProxyObject.fromMap(impl)));
-            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
-            assertEquals("final", INTEROP.invokeMember(instance, "finalMethod"));
-            assertEquals("concreteName", INTEROP.readMember(instance, "name"));
+            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, (Object) "abstractMethod"));
+            assertEquals("final", INTEROP.invokeMember(instance, (Object) "finalMethod"));
+            assertEquals("concreteName", INTEROP.readMember(instance, (Object) "name"));
         }
     }
 
@@ -349,17 +349,17 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             Object guestObject = env.asGuestValue(ProxyObject.fromMap(impl));
             Object instance = instantianteHostAdapter(env, adapter, guestObject);
 
-            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
-            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
-            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, "defaultMethod"));
+            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, (Object) "defaultMethod"));
 
             // call super methods directly via 'super' member
-            Object superInstance = INTEROP.readMember(instance, "super");
-            assertEquals("base", INTEROP.invokeMember(superInstance, "baseMethod"));
-            assertEquals("default", INTEROP.invokeMember(superInstance, "defaultMethod"));
+            Object superInstance = INTEROP.readMember(instance, (Object) "super");
+            assertEquals("base", INTEROP.invokeMember(superInstance, (Object) "baseMethod"));
+            assertEquals("default", INTEROP.invokeMember(superInstance, (Object) "defaultMethod"));
 
             // get guest object via 'this' member
-            Object thisInstance = INTEROP.readMember(instance, "this");
+            Object thisInstance = INTEROP.readMember(instance, (Object) "this");
             assertEquals(guestObject, thisInstance);
         }
     }
@@ -377,12 +377,12 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             Object guestObject = env.asGuestValue(ProxyObject.fromMap(impl));
             Object instance = instantianteHostAdapter(env, adapter, guestObject);
 
-            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, "abstractMethod"));
-            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, "baseMethod"));
-            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, "defaultMethod"));
+            assertEquals("abstractMethodImpl", INTEROP.invokeMember(instance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl", INTEROP.invokeMember(instance, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl", INTEROP.invokeMember(instance, (Object) "defaultMethod"));
 
             // get guest object via 'this' member
-            Object thisInstance = INTEROP.readMember(instance, "this");
+            Object thisInstance = INTEROP.readMember(instance, (Object) "this");
             assertEquals(guestObject, thisInstance);
         }
     }
@@ -400,9 +400,9 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             Object adapterClass1 = createHostAdapterClassWithClassOverrides(env, supertypes, guestObject1);
             Object parent = instantianteHostAdapter(env, adapterClass1);
 
-            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, "abstractMethod"));
-            assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, "baseMethod"));
-            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(parent, "defaultMethod"));
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(parent, (Object) "defaultMethod"));
 
             Map<String, Object> impl2 = new HashMap<>();
             impl2.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl2");
@@ -412,15 +412,15 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             Object adapterClass2 = createHostAdapterClass(env, new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
             Object instance = instantianteHostAdapter(env, adapterClass2, guestObject2);
 
-            assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, "abstractMethod"));
-            assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, "baseMethod"));
-            assertEquals("defaultMethodImpl2", INTEROP.invokeMember(instance, "defaultMethod"));
+            assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl2", INTEROP.invokeMember(instance, (Object) "defaultMethod"));
 
             // call super methods directly via 'super' member
-            Object superInstance = INTEROP.readMember(instance, "super");
-            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(superInstance, "abstractMethod"));
-            assertEquals("baseMethodImpl1", INTEROP.invokeMember(superInstance, "baseMethod"));
-            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(superInstance, "defaultMethod"));
+            Object superInstance = INTEROP.readMember(instance, (Object) "super");
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(superInstance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(superInstance, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(superInstance, (Object) "defaultMethod"));
         }
     }
 
@@ -437,9 +437,9 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             Object adapterClass1 = createHostAdapterClass(env, supertypes);
             Object parent = instantianteHostAdapter(env, adapterClass1, guestObject1);
 
-            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, "abstractMethod"));
-            assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, "baseMethod"));
-            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(parent, "defaultMethod"));
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(parent, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(parent, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(parent, (Object) "defaultMethod"));
 
             Map<String, Object> impl2 = new HashMap<>();
             impl2.put("abstractMethod", (ProxyExecutable) (args) -> "abstractMethodImpl2");
@@ -449,19 +449,19 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             Object adapterClass2 = createHostAdapterClass(env, new Class<?>[]{Interface.class, (Class<?>) env.asHostObject(adapterClass1)});
             Object instance = instantianteHostAdapter(env, adapterClass2, guestObject1, guestObject2);
 
-            assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, "abstractMethod"));
-            assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, "baseMethod"));
-            assertEquals("defaultMethodImpl2", INTEROP.invokeMember(instance, "defaultMethod"));
+            assertEquals("abstractMethodImpl2", INTEROP.invokeMember(instance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl2", INTEROP.invokeMember(instance, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl2", INTEROP.invokeMember(instance, (Object) "defaultMethod"));
 
             // call super methods directly via 'super' member
-            Object superInstance = INTEROP.readMember(instance, "super");
-            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(superInstance, "abstractMethod"));
-            assertEquals("baseMethodImpl1", INTEROP.invokeMember(superInstance, "baseMethod"));
-            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(superInstance, "defaultMethod"));
+            Object superInstance = INTEROP.readMember(instance, (Object) "super");
+            assertEquals("abstractMethodImpl1", INTEROP.invokeMember(superInstance, (Object) "abstractMethod"));
+            assertEquals("baseMethodImpl1", INTEROP.invokeMember(superInstance, (Object) "baseMethod"));
+            assertEquals("defaultMethodImpl1", INTEROP.invokeMember(superInstance, (Object) "defaultMethod"));
         }
     }
 
-    private static HostAccess explicitHostAccessAllowImplementations(Class<?>... types) {
+    static HostAccess explicitHostAccessAllowImplementations(Class<?>... types) {
         HostAccess.Builder b = HostAccess.newBuilder(HostAccess.EXPLICIT);
         for (Class<?> type : types) {
             b.allowImplementations(type);
@@ -469,7 +469,7 @@ public class HostAdapterTest extends AbstractPolyglotTest {
         return b.build();
     }
 
-    private static HostAccess minimalHostAccessAllowImplementations(Class<?>... types) {
+    static HostAccess minimalHostAccessAllowImplementations(Class<?>... types) {
         HostAccess.Builder b = HostAccess.newBuilder();
         for (Class<?> type : types) {
             b.allowImplementations(type);

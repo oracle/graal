@@ -26,41 +26,15 @@ package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("unused")
-@ExportLibrary(InteropLibrary.class)
 final class LocationObject extends AbstractContextObject {
     private final Node node;
 
     LocationObject(Node node) {
         this.node = node;
-    }
-
-    @ExportMessage
-    static boolean hasMembers(LocationObject obj) {
-        return true;
-    }
-
-    @ExportMessage
-    static Object getMembers(LocationObject obj, boolean includeInternal) {
-        return MEMBERS;
-    }
-
-    @ExportMessage
-    @Override
-    Object readMember(String member) throws UnknownIdentifierException {
-        return super.readMember(member);
-    }
-
-    @ExportMessage
-    static boolean isMemberReadable(LocationObject obj, String member) {
-        return MEMBERS.contains(member);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -74,47 +74,47 @@ public class MergedLibraryTest extends AbstractLibraryTest {
 
         @SuppressWarnings({"static-method", "unused"})
         @ExportMessage
-        final Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        final Object getMemberObjects() throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
         @SuppressWarnings({"static-method", "unused"})
         @ExportMessage(name = "isMemberReadable")
         @ExportMessage(name = "isMemberModifiable")
-        final boolean isMemberReadable(String member,
+        final boolean isMemberReadable(Object member,
                         @CachedLibrary("this") DynamicObjectLibrary lib) {
             return lib.containsKey(this, member);
         }
 
         @ExportMessage
-        final Object readMember(String member,
+        final Object readMember(Object member,
                         @CachedLibrary("this") DynamicObjectLibrary lib) {
             return lib.getOrDefault(this, member, 42);
         }
 
         @ExportMessage
-        final boolean isMemberInsertable(String member,
+        final boolean isMemberInsertable(Object member,
                         @CachedLibrary("this") DynamicObjectLibrary lib) {
             return !isMemberReadable(member, lib);
         }
 
         @ExportMessage
-        final void writeMember(String member, Object value,
+        final void writeMember(Object member, Object value,
                         @CachedLibrary("this") DynamicObjectLibrary lib) {
             lib.put(this, member, value);
         }
     }
 
     @Test
-    public void testMembers() throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+    public void testMembers() throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
         Shape shape = Shape.newBuilder().build();
         DynamicObject obj = new MyObject(shape);
         InteropLibrary interop = adopt(InteropLibrary.getFactory().create(obj));
         assertTrue(interop.accepts(obj));
-        assertTrue(interop.isMemberInsertable(obj, "key"));
-        interop.writeMember(obj, "key", "value");
-        assertTrue(interop.isMemberReadable(obj, "key"));
-        assertEquals("value", interop.readMember(obj, "key"));
+        assertTrue(interop.isMemberInsertable(obj, (Object) "key"));
+        interop.writeMember(obj, (Object) "key", "value");
+        assertTrue(interop.isMemberReadable(obj, (Object) "key"));
+        assertEquals("value", interop.readMember(obj, (Object) "key"));
     }
 
 }

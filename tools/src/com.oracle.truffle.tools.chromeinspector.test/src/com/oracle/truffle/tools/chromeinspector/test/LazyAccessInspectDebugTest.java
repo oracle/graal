@@ -46,7 +46,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -57,7 +57,7 @@ import com.oracle.truffle.tck.DebuggerTester;
 import com.oracle.truffle.tools.chromeinspector.types.Script;
 
 /**
- * Test that properties that have {@link InteropLibrary#hasMemberReadSideEffects(Object, String)}
+ * Test that properties that have {@link InteropLibrary#hasMemberReadSideEffects(Object, Object)}
  * flag are not read eagerly, but on a request only.
  */
 public class LazyAccessInspectDebugTest {
@@ -300,29 +300,42 @@ public class LazyAccessInspectDebugTest {
             }
 
             @Override
-            protected Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-                return new Keys();
+            protected Object getMemberObjects() throws UnsupportedMessageException {
+                return new ReadMembers();
+            }
+
+            private static String getMemberName(Object member) {
+                if (member instanceof String) {
+                    return (String) member;
+                }
+                if (member instanceof ReadMember) {
+                    return ((ReadMember) member).name;
+                }
+                return null;
             }
 
             @Override
-            protected boolean isMemberReadable(String member) {
-                return READ_READY.equals(member) || READ_LAZY.equals(member);
+            protected boolean isMemberReadable(Object member) {
+                String name = getMemberName(member);
+                return READ_READY.equals(name) || READ_LAZY.equals(name);
             }
 
             @Override
-            protected boolean hasMemberReadSideEffects(String member) {
-                return READ_LAZY.equals(member);
+            protected boolean hasMemberReadSideEffects(Object member) {
+                String name = getMemberName(member);
+                return READ_LAZY.equals(name);
             }
 
             @Override
-            protected Object readMember(String member) throws UnsupportedMessageException, UnknownIdentifierException {
-                if (READ_READY.equals(member)) {
+            protected Object readMember(Object member) throws UnsupportedMessageException, UnknownMemberException {
+                String name = getMemberName(member);
+                if (READ_READY.equals(name)) {
                     return 42;
-                } else if (READ_LAZY.equals(member)) {
+                } else if (READ_LAZY.equals(name)) {
                     readLazyCount.incrementAndGet();
                     return 43;
                 } else {
-                    throw UnknownIdentifierException.create(member);
+                    throw UnknownMemberException.create(member);
                 }
             }
 
@@ -370,7 +383,7 @@ public class LazyAccessInspectDebugTest {
 
         }
 
-        private static class Keys extends ProxyInteropObject {
+        private static class ReadMembers extends ProxyInteropObject {
 
             @Override
             protected boolean hasArrayElements() {
@@ -391,14 +404,43 @@ public class LazyAccessInspectDebugTest {
             protected Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
                 switch ((int) index) {
                     case 0:
-                        return READ_READY;
+                        return new ReadMember(READ_READY);
                     case 1:
-                        return READ_LAZY;
+                        return new ReadMember(READ_LAZY);
                     default:
                         throw InvalidArrayIndexException.create(index);
                 }
             }
 
+        }
+
+        private static class ReadMember extends ProxyInteropObject {
+
+            private final String name;
+
+            ReadMember(String name) {
+                this.name = name;
+            }
+
+            @Override
+            protected boolean isMember() {
+                return true;
+            }
+
+            @Override
+            protected String getMemberSimpleName() {
+                return name;
+            }
+
+            @Override
+            protected String getMemberQualifiedName() {
+                return name;
+            }
+
+            @Override
+            protected boolean isMemberKindField() {
+                return true;
+            }
         }
     }
 }

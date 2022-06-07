@@ -271,14 +271,14 @@ final class GuestToHostCodeCache extends GuestToHostCodeCacheBase {
         @Override
         protected Object executeImpl(Object proxy, Object[] arguments) throws UnsupportedMessageException {
             try {
-                return removeBoundary(proxy, (String) arguments[ARGUMENT_OFFSET]);
+                return boundaryRemoveMember(proxy, (String) arguments[ARGUMENT_OFFSET]);
             } catch (UnsupportedOperationException e) {
                 throw UnsupportedMessageException.create();
             }
         }
 
         @TruffleBoundary
-        private boolean removeBoundary(Object proxy, String member) {
+        private boolean boundaryRemoveMember(Object proxy, String member) {
             return api.callProxyObjectRemoveMember(proxy, member);
         }
     }.getCallTarget();
@@ -452,6 +452,7 @@ final class GuestToHostCodeCache extends GuestToHostCodeCacheBase {
             return api.callProxyHashMapGetEntriesIterator(proxy);
         }
     }.getCallTarget();
+
 }
 
 class GuestToHostCodeCacheBase {

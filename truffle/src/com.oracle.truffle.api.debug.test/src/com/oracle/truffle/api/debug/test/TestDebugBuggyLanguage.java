@@ -46,6 +46,7 @@ import java.util.function.BiFunction;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.debug.test.DebugValueTest.PropertyMember;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -59,7 +60,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -166,6 +167,11 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
                 @Override
                 protected String getMetaQualifiedName() throws UnsupportedMessageException {
                     return delegate.getClass().getSimpleName();
+                }
+
+                @Override
+                protected boolean isMetaInstance(Object instance) {
+                    return delegate.getClass().isInstance(instance);
                 }
 
                 @Override
@@ -331,20 +337,29 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
 
         @ExportMessage
-        boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
         @ExportMessage
-        public Object getMembers(@SuppressWarnings("unused") boolean internal) {
+        public Object getMemberObjects() {
             if ("KEYS".equals(error)) {
                 throwBug(errNum);
             }
-            return new Keys();
+            return new MemberObjects();
+        }
+
+        private static String getMemberName(Object member) {
+            if (member instanceof PropertyMember pm) {
+                return (String) pm.getMemberSimpleName();
+            } else {
+                return (String) member;
+            }
         }
 
         @ExportMessage
-        boolean isMemberModifiable(String member) {
+        boolean isMemberModifiable(Object memberObj) {
+            String member = getMemberName(memberObj);
             if ("KEY_INFO".equals(error) && "A".equals(member)) {
                 throwBug(errNum);
             }
@@ -352,7 +367,8 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
 
         @ExportMessage
-        boolean isMemberReadable(String member) {
+        boolean isMemberReadable(Object memberObj) {
+            String member = getMemberName(memberObj);
             if ("KEY_INFO".equals(error) && "A".equals(member)) {
                 throwBug(errNum);
             }
@@ -360,7 +376,8 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
 
         @ExportMessage
-        public Object readMember(String key) throws UnknownIdentifierException {
+        public Object readMember(Object memberObj) throws UnknownMemberException {
+            String key = getMemberName(memberObj);
             if ("READ".equals(error) && "A".equals(key)) {
                 throwBug(errNum);
             }
@@ -369,19 +386,20 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             } else if ("B".equals(key)) {
                 return 42;
             } else {
-                throw UnknownIdentifierException.create(key);
+                throw UnknownMemberException.create(memberObj);
             }
         }
 
         @ExportMessage
-        public Object writeMember(String key, Object value) throws UnknownIdentifierException {
+        public Object writeMember(Object memberObj, Object value) throws UnknownMemberException {
+            String key = getMemberName(memberObj);
             if ("WRITE".equals(error) && "A".equals(key)) {
                 throwBug(errNum);
             }
             if ("A".equals(key) || "B".equals(key)) {
                 return value;
             } else {
-                throw UnknownIdentifierException.create(key);
+                throw UnknownMemberException.create(memberObj);
             }
         }
 
@@ -407,7 +425,7 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
         }
 
         @ExportLibrary(InteropLibrary.class)
-        static class Keys implements TruffleObject {
+        static class MemberObjects implements TruffleObject {
 
             @ExportMessage
             public boolean hasArrayElements() {
@@ -427,9 +445,9 @@ public class TestDebugBuggyLanguage extends ProxyLanguage {
             @ExportMessage
             public Object readArrayElement(long key) throws InvalidArrayIndexException {
                 if (key == 0) {
-                    return "A";
+                    return new PropertyMember("A", "A", 0);
                 } else if (key == 1) {
-                    return "B";
+                    return new PropertyMember("B", "B", 0);
                 } else {
                     throw InvalidArrayIndexException.create(key);
                 }

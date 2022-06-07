@@ -45,6 +45,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.ARRAY_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BUFFER_ELEMENTS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DATE;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DECLARED_MEMBERS;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.DURATION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXCEPTION;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.EXECUTABLE;
@@ -57,6 +58,7 @@ import static com.oracle.truffle.tck.tests.ValueAssert.Trait.META;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STATIC_PROVIDER;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIME;
 import static com.oracle.truffle.tck.tests.ValueAssert.Trait.TIMEZONE;
@@ -131,7 +133,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -209,14 +211,14 @@ public class ValueAPITest {
 
     @Test
     public void testDatesTimesZonesAndDuration() {
-        assertValueInContexts(context.asValue(LocalDate.now()), HOST_OBJECT, MEMBERS, DATE, EXECUTABLE);
-        assertValueInContexts(context.asValue(LocalTime.now()), HOST_OBJECT, MEMBERS, TIME, EXECUTABLE);
-        assertValueInContexts(context.asValue(LocalDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, EXECUTABLE);
-        assertValueInContexts(context.asValue(Instant.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, EXECUTABLE);
-        assertValueInContexts(context.asValue(ZonedDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
-        assertValueInContexts(context.asValue(ZoneId.of("UTC")), HOST_OBJECT, MEMBERS, TIMEZONE);
-        assertValueInContexts(context.asValue(Date.from(Instant.now())), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE);
-        assertValueInContexts(context.asValue(Duration.ofMillis(100)), HOST_OBJECT, MEMBERS, DURATION);
+        assertValueInContexts(context.asValue(LocalDate.now()), HOST_OBJECT, MEMBERS, DATE, EXECUTABLE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(LocalTime.now()), HOST_OBJECT, MEMBERS, TIME, EXECUTABLE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(LocalDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, EXECUTABLE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(Instant.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, EXECUTABLE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(ZonedDateTime.now()), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(ZoneId.of("UTC")), HOST_OBJECT, MEMBERS, TIMEZONE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(Date.from(Instant.now())), HOST_OBJECT, MEMBERS, DATE, TIME, TIMEZONE, STATIC_PROVIDER);
+        assertValueInContexts(context.asValue(Duration.ofMillis(100)), HOST_OBJECT, MEMBERS, DURATION, STATIC_PROVIDER);
 
         assertValueInContexts(context.asValue(ProxyDate.from(LocalDate.now())), DATE, PROXY_OBJECT);
         assertValueInContexts(context.asValue(ProxyTime.from(LocalTime.now())), TIME, PROXY_OBJECT);
@@ -351,6 +353,7 @@ public class ValueAPITest {
             List<Trait> expectedTraits = new ArrayList<>();
             expectedTraits.add(MEMBERS);
             expectedTraits.add(HOST_OBJECT);
+            expectedTraits.add(STATIC_PROVIDER);
 
             if (value.getClass() == BigInteger.class) {
                 expectedTraits.add(NUMBER);
@@ -374,6 +377,7 @@ public class ValueAPITest {
             }
 
             if (value instanceof Class) {
+                expectedTraits.add(DECLARED_MEMBERS);
                 expectedTraits.add(META);
             }
 
@@ -413,7 +417,7 @@ public class ValueAPITest {
     @Test
     public void testArrays() {
         for (Object array : ARRAYS) {
-            assertValueInContexts(context.asValue(array), ARRAY_ELEMENTS, ITERABLE, HOST_OBJECT, MEMBERS);
+            assertValueInContexts(context.asValue(array), ARRAY_ELEMENTS, ITERABLE, HOST_OBJECT, MEMBERS, STATIC_PROVIDER);
         }
     }
 
@@ -476,7 +480,7 @@ public class ValueAPITest {
     public void testBuffers() {
         for (final ByteBuffer buffer : testBuffers) {
             final Value value = context.asValue(buffer);
-            assertValueInContexts(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS);
+            assertValueInContexts(value, BUFFER_ELEMENTS, HOST_OBJECT, MEMBERS, STATIC_PROVIDER);
         }
     }
 
@@ -1355,28 +1359,29 @@ public class ValueAPITest {
         String invokeMember;
         Object invocableResult;
 
-        @SuppressWarnings("static-method")
         @ExportMessage
+        @SuppressWarnings("static-method")
         boolean hasMembers() {
             return true;
         }
 
         @ExportMessage
-        Object getMembers(@SuppressWarnings("unused") boolean internal) {
-            return new KeysArray(new String[]{invokeMember});
+        @SuppressWarnings("static-method")
+        Object getMemberObjects() {
+            throw new UnsupportedOperationException();
         }
 
         @ExportMessage
-        Object invokeMember(String member, @SuppressWarnings("unused") Object[] arguments) throws UnknownIdentifierException {
-            if (member.equals(invokeMember)) {
+        Object invokeMember(Object member, @SuppressWarnings("unused") Object[] arguments) throws UnknownMemberException {
+            if (invokeMember.equals(member)) {
                 return invocableResult;
             } else {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
         }
 
         @ExportMessage
-        boolean isMemberInvocable(String member) {
+        boolean isMemberInvocable(Object member) {
             return invokeMember.equals(member);
         }
 
@@ -1389,8 +1394,8 @@ public class ValueAPITest {
                 this.keys = keys;
             }
 
-            @SuppressWarnings("static-method")
             @ExportMessage
+            @SuppressWarnings("static-method")
             boolean hasArrayElements() {
                 return true;
             }
@@ -1588,9 +1593,9 @@ public class ValueAPITest {
         Value pipe = context.asValue("not a pipe");
 
         assertFails(() -> pipe.getMember(""), UnsupportedOperationException.class,
-                        "Unsupported operation Value.getMember(String) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+                        "Unsupported operation Value.getMember(Object) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
         assertFails(() -> pipe.putMember("", null), UnsupportedOperationException.class,
-                        "Unsupported operation Value.putMember(String, Object) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+                        "Unsupported operation Value.putMember(Object, Object) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
         assertFails(() -> pipe.getArrayElement(0), UnsupportedOperationException.class,
                         "Unsupported operation Value.getArrayElement(long) for 'not a pipe'(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasArrayElements().");
         assertFails(() -> pipe.setArrayElement(0, null), UnsupportedOperationException.class,
@@ -1678,11 +1683,11 @@ public class ValueAPITest {
     public void testMemberErrors() {
         Value noMembers = context.asValue("");
         assertFails(() -> noMembers.getMember(""), UnsupportedOperationException.class,
-                        "Unsupported operation Value.getMember(String) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+                        "Unsupported operation Value.getMember(Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
         assertFails(() -> noMembers.putMember("", null), UnsupportedOperationException.class,
-                        "Unsupported operation Value.putMember(String, Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
+                        "Unsupported operation Value.putMember(Object, Object) for ''(language: Java, type: java.lang.String). You can ensure that the operation is supported using Value.hasMembers().");
         assertFails(() -> noMembers.removeMember(""), UnsupportedOperationException.class,
-                        "Unsupported operation Value.removeMember(String, Object) for ''(language: Java, type: java.lang.String).");
+                        "Unsupported operation Value.removeMember(Object, Object) for ''(language: Java, type: java.lang.String).");
 
         assertEquals(0, noMembers.getMemberKeys().size());
         assertFalse(noMembers.hasMembers());
@@ -1696,13 +1701,14 @@ public class ValueAPITest {
         assertEquals(42, v.getMember("value").asInt());
 
         assertFails(() -> v.putMember("value", ""), IllegalArgumentException.class,
-                        "Invalid member value ''(language: Java, type: java.lang.String) for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and member key 'value'.");
+                        "Invalid member value ''(language: Java, type: java.lang.String) for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest) and member " +
+                                        "'value'(language: Java, type: java.lang.String).");
 
         assertFails(() -> v.putMember("finalValue", 42), UnsupportedOperationException.class,
-                        "Non writable or non-existent member key 'finalValue' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+                        "Non writable or non-existent member 'finalValue'(language: Java, type: java.lang.String) for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         assertFails(() -> v.putMember("notAMember", ""), UnsupportedOperationException.class,
-                        "Non writable or non-existent member key 'notAMember' for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
+                        "Non writable or non-existent member 'notAMember'(language: Java, type: java.lang.String) for object 'MemberErrorTest'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$MemberErrorTest).");
 
         assertNull(v.getMember("notAMember"));
 
@@ -1901,14 +1907,14 @@ public class ValueAPITest {
         assertTrue(value.canInvokeMember("f"));
 
         assertFails(() -> value.invokeMember(""), UnsupportedOperationException.class,
-                        "Non readable or non-existent member key '' for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                        "Non readable or non-existent member ''(language: Java, type: java.lang.String) for object 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType).");
         assertFails(() -> value.invokeMember("f", 2), IllegalArgumentException.class,
-                        "Invalid argument count when invoking 'f' on 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
+                        "Invalid argument count when invoking 'f'(language: Java, type: java.lang.String) on 'com.oracle.truffle.api.test.polyglot.ValueAPITest.InvocableType'" +
                                         "(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType) " +
                                         "with arguments ['2'(language: Java, type: java.lang.Integer)]. Expected 2 argument(s) but got 1.");
         assertFails(() -> value.invokeMember("f", "2", "128"), IllegalArgumentException.class,
-                        "Invalid argument when invoking 'f' on 'com.oracle.truffle.api.test.polyglot.ValueAPITest." +
+                        "Invalid argument when invoking 'f'(language: Java, type: java.lang.String) on 'com.oracle.truffle.api.test.polyglot.ValueAPITest." +
                                         "InvocableType'(language: Java, type: com.oracle.truffle.api.test.polyglot.ValueAPITest$InvocableType). " +
                                         "Cannot convert '2'(language: Java, type: java.lang.String) to Java type 'int': Invalid or lossy primitive coercion." +
                                         "Provided arguments: ['2'(language: Java, type: java.lang.String), '128'(language: Java, type: java.lang.String)].");
@@ -1916,8 +1922,8 @@ public class ValueAPITest {
 
         Value primitiveValue = context.asValue(42);
         assertFails(() -> primitiveValue.invokeMember(""), UnsupportedOperationException.class,
-                        "Unsupported operation Value.invoke(, Object...) for '42'(language: Java, type: java.lang.Integer)." +
-                                        " You can ensure that the operation is supported using Value.canInvoke(String).");
+                        "Unsupported operation Value.invoke(\"\", Object...) for '42'(language: Java, type: java.lang.Integer)." +
+                                        " You can ensure that the operation is supported using Value.canInvoke(Object).");
     }
 
     private static void assertFails(Runnable r, Class<?> hostExceptionType, String message) {
@@ -2082,7 +2088,7 @@ public class ValueAPITest {
         }
 
         @ExportMessage
-        Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
+        Object getMemberObjects() throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
 
@@ -2276,7 +2282,7 @@ public class ValueAPITest {
     @Test
     public void testHostException() {
         Value exceptionValue = context.asValue(new RuntimeException("expected"));
-        assertValueInContexts(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION);
+        assertValueInContexts(exceptionValue, HOST_OBJECT, MEMBERS, EXCEPTION, STATIC_PROVIDER);
         try {
             exceptionValue.throwException();
             fail("should have thrown");

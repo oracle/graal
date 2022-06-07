@@ -255,8 +255,8 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
             assertEquals("value", env2.importSymbol("symbol2"));
             assertEquals("value", env1.importSymbol("symbol2"));
 
-            assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env1.getPolyglotBindings(), "symbol1"));
-            assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env2.getPolyglotBindings(), "symbol2"));
+            assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env1.getPolyglotBindings(), (Object) "symbol1"));
+            assertEquals("value", InteropLibrary.getFactory().getUncached().readMember(env2.getPolyglotBindings(), (Object) "symbol2"));
         } catch (InteropException e) {
             throw new AssertionError(e);
         }

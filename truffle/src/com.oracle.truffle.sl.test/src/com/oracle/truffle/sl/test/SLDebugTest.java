@@ -187,7 +187,6 @@ public class SLDebugTest {
             expectSuspended(event -> {
                 DebugValue symbolValue = event.getTopStackFrame().getScope().getDeclaredValue("symbol");
                 assertTrue(symbolValue.isReadable());
-                assertFalse(symbolValue.isInternal());
                 assertFalse(symbolValue.hasReadSideEffects());
                 LanguageInfo hostLang = symbolValue.getOriginalLanguage();
                 assertNotNull(hostLang);
@@ -607,58 +606,62 @@ public class SLDebugTest {
                 DebugValue a = scope.getDeclaredValue("a");
                 assertFalse(a.isArray());
                 assertNull(a.getArray());
-                assertNull(a.getProperties());
+                assertNull(a.getMembers());
 
                 DebugValue b = scope.getDeclaredValue("b");
                 assertFalse(b.isArray());
                 assertNull(b.getArray());
-                assertNull(b.getProperties());
+                assertNull(b.getMembers());
 
                 DebugValue c = scope.getDeclaredValue("c");
                 assertFalse(c.isArray());
                 assertEquals("10", c.toDisplayString());
                 assertNull(c.getArray());
-                assertNull(c.getProperties());
+                assertNull(c.getMembers());
 
                 DebugValue d = scope.getDeclaredValue("d");
                 assertFalse(d.isArray());
                 assertEquals("str", d.toDisplayString());
                 assertNull(d.getArray());
-                assertNull(d.getProperties());
+                assertNull(d.getMembers());
 
                 DebugValue e = scope.getDeclaredValue("e");
                 assertFalse(e.isArray());
                 assertNull(e.getArray());
                 assertEquals(scope, e.getScope());
-                Collection<DebugValue> propertyValues = e.getProperties();
-                assertEquals(2, propertyValues.size());
-                Iterator<DebugValue> propertiesIt = propertyValues.iterator();
-                assertTrue(propertiesIt.hasNext());
-                DebugValue p1 = propertiesIt.next();
+                Collection<DebugValue> memberValues = e.getMembers();
+                assertEquals(2, memberValues.size());
+                Iterator<DebugValue> memberIt = memberValues.iterator();
+                assertTrue(memberIt.hasNext());
+                DebugValue p1 = memberIt.next();
                 assertEquals("p1", p1.getName());
-                assertEquals("1", p1.toDisplayString());
+                assertEquals("1", p1.getMemberValue().toDisplayString());
                 assertNull(p1.getScope());
-                assertTrue(propertiesIt.hasNext());
-                DebugValue p2 = propertiesIt.next();
+                assertTrue(memberIt.hasNext());
+                DebugValue p2 = memberIt.next();
                 assertEquals("p2", p2.getName());
                 assertNull(p2.getScope());
-                assertFalse(propertiesIt.hasNext());
+                assertFalse(memberIt.hasNext());
 
-                propertyValues = p2.getProperties();
-                assertEquals(1, propertyValues.size());
-                propertiesIt = propertyValues.iterator();
-                assertTrue(propertiesIt.hasNext());
-                DebugValue p21 = propertiesIt.next();
+                memberValues = p2.getMemberValue().getMembers();
+                assertEquals(1, memberValues.size());
+                memberIt = memberValues.iterator();
+                assertTrue(memberIt.hasNext());
+                DebugValue p21 = memberIt.next();
                 assertEquals("p21", p21.getName());
-                assertEquals("21", p21.toDisplayString());
+                assertEquals("21", p21.getMemberValue().toDisplayString());
                 assertNull(p21.getScope());
-                assertFalse(propertiesIt.hasNext());
+                assertFalse(memberIt.hasNext());
 
                 DebugValue ep1 = e.getProperty("p1");
                 assertEquals("1", ep1.toDisplayString());
-                ep1.set(p21);
+                ep1.set(p21.getMemberValue());
                 assertEquals("21", ep1.toDisplayString());
                 assertNull(e.getProperty("NonExisting"));
+
+                p2.getMemberValue().set(p1.getMemberValue());
+                assertNull(p2.getMemberValue().getMembers());
+                assertEquals("21", p2.getMemberValue().toDisplayString());
             });
 
             expectDone();

@@ -24,13 +24,15 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -44,11 +46,13 @@ import com.oracle.truffle.api.utilities.TriState;
 @ExportLibrary(InteropLibrary.class)
 abstract class AbstractInspectorObject implements TruffleObject {
 
+    static final int LIMIT = 3;
+
     protected AbstractInspectorObject() {
     }
 
     @ExportMessage
-    protected abstract Object getMembers(boolean includeInternal);
+    protected abstract Object getMemberObjects();
 
     protected abstract boolean isField(String name);
 
@@ -56,8 +60,7 @@ abstract class AbstractInspectorObject implements TruffleObject {
 
     protected abstract Object getFieldValueOrNull(String name);
 
-    @ExportMessage
-    protected abstract Object invokeMember(String name, Object[] arguments) throws UnsupportedTypeException, UnknownIdentifierException, ArityException, UnsupportedMessageException;
+    protected abstract Object invokeMethod(String name, Object member, Object[] arguments) throws UnsupportedTypeException, UnknownMemberException, ArityException, UnsupportedMessageException;
 
     @SuppressWarnings("static-method")
     @ExportMessage
@@ -65,31 +68,134 @@ abstract class AbstractInspectorObject implements TruffleObject {
         return true;
     }
 
-    @ExportMessage
-    final boolean isMemberReadable(String member) {
-        return isMethod(member) || isField(member);
-    }
-
-    @ExportMessage
-    final boolean isMemberInvocable(String member) {
-        return isMethod(member);
-    }
-
-    @ExportMessage
-    protected final Object readMember(String name) throws UnknownIdentifierException {
-        Object value = getFieldValueOrNull(name);
-        if (value == null) {
-            value = getMethodExecutable(name);
+    static String getString(InteropLibrary library, Object object) {
+        String name;
+        try {
+            name = library.asString(object);
+        } catch (UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
-        return value;
+        return name;
+    }
+
+    @ExportMessage
+    static class IsMemberReadable {
+
+        @Specialization
+        static boolean isReadable(AbstractInspectorObject receiver, FieldMember field) {
+            return receiver.isField(field.getName());
+        }
+
+        @Specialization
+        static boolean isReadable(AbstractInspectorObject receiver, MethodMember method) {
+            return receiver.isMethod(method.getName());
+        }
+
+        @Specialization(guards = {"memberLibrary.isString(memberString)"})
+        static boolean isReadable(AbstractInspectorObject receiver, Object memberString,
+                        @Cached.Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+            String name = getString(memberLibrary, memberString);
+            return receiver.isField(name) || receiver.isMethod(name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(AbstractInspectorObject receiver, Object unknownMember) {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    static class IsMemberInvocable {
+
+        @Specialization
+        static boolean isInvocable(AbstractInspectorObject receiver, MethodMember method) {
+            return receiver.isMethod(method.getName());
+        }
+
+        @Specialization(guards = {"memberLibrary.isString(memberString)"})
+        static boolean isInvocable(AbstractInspectorObject receiver, Object memberString,
+                        @Cached.Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) {
+            String name = getString(memberLibrary, memberString);
+            return receiver.isMethod(name);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static boolean isReadable(AbstractInspectorObject receiver, Object unknownMember) {
+            return false;
+        }
+    }
+
+    @ExportMessage
+    static class ReadMember {
+
+        @Specialization
+        static Object read(AbstractInspectorObject receiver, FieldMember field) throws UnknownMemberException {
+            String name = field.getName();
+            Object value = receiver.getFieldValueOrNull(name);
+            if (value == null) {
+                return value;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw UnknownMemberException.create(field);
+            }
+        }
+
+        @Specialization
+        static Object read(AbstractInspectorObject receiver, MethodMember method) {
+            return receiver.createMethodExecutable(method);
+        }
+
+        @Specialization(guards = {"memberLibrary.isString(memberString)"})
+        static Object read(AbstractInspectorObject receiver, Object memberString,
+                        @Cached.Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary) throws UnknownMemberException {
+            String name = getString(memberLibrary, memberString);
+            Object value = receiver.getFieldValueOrNull(name);
+            if (value == null) {
+                value = receiver.getMethodExecutable(name, memberString);
+            }
+            return value;
+        }
+
+        @Fallback
+        static Object read(@SuppressWarnings("unused") AbstractInspectorObject receiver, Object unknownMember) throws UnknownMemberException {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownMemberException.create(unknownMember);
+        }
     }
 
     @TruffleBoundary
-    final TruffleObject getMethodExecutable(String name) throws UnknownIdentifierException {
+    private TruffleObject getMethodExecutable(String name, Object member) throws UnknownMemberException {
         if (isMethod(name)) {
-            return createMethodExecutable(name);
+            return createMethodExecutable(member);
         } else {
-            throw UnknownIdentifierException.create(name);
+            throw UnknownMemberException.create(member);
+        }
+    }
+
+    @ExportMessage
+    static class InvokeMember {
+
+        @Specialization(guards = {"receiver.isMethod(method.getName())"})
+        static Object invoke(AbstractInspectorObject receiver, MethodMember method, Object[] arguments)
+                        throws UnsupportedTypeException, UnknownMemberException, ArityException, UnsupportedMessageException {
+            return receiver.invokeMethod(method.getName(), method, arguments);
+        }
+
+        @Specialization(guards = {"memberLibrary.isString(member)"})
+        static Object invoke(AbstractInspectorObject receiver, Object member, Object[] arguments,
+                        @Cached.Shared("memberLibrary") @CachedLibrary(limit = "LIMIT") InteropLibrary memberLibrary)
+                        throws UnsupportedTypeException, UnknownMemberException, ArityException, UnsupportedMessageException {
+            String name = getString(memberLibrary, member);
+            return receiver.invokeMethod(name, member, arguments);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        static Object invoke(AbstractInspectorObject receiver, Object unknownMember, Object[] arguments) throws UnknownMemberException {
+            CompilerDirectives.transferToInterpreter();
+            throw UnknownMemberException.create(unknownMember);
         }
     }
 
@@ -120,20 +226,89 @@ abstract class AbstractInspectorObject implements TruffleObject {
         return hashCode();
     }
 
-    private TruffleObject createMethodExecutable(String name) {
-        CompilerAsserts.neverPartOfCompilation();
-        return new MethodExecutable(this, name);
+    @TruffleBoundary
+    private TruffleObject createMethodExecutable(Object member) {
+        return new MethodExecutable(this, member);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    abstract static sealed class AbstractMember implements TruffleObject permits FieldMember, MethodMember {
+
+        private final String name;
+
+        AbstractMember(String name) {
+            this.name = name;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isMember() {
+            return true;
+        }
+
+        @ExportMessage
+        Object getMemberSimpleName() {
+            return name;
+        }
+
+        @ExportMessage
+        Object getMemberQualifiedName() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean isMemberKindField() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMethod() {
+            return false;
+        }
+
+        @ExportMessage
+        boolean isMemberKindMetaObject() {
+            return false;
+        }
+
+        String getName() {
+            return name;
+        }
+    }
+
+    static final class FieldMember extends AbstractMember {
+
+        FieldMember(String name) {
+            super(name);
+        }
+
+        @Override
+        boolean isMemberKindField() {
+            return true;
+        }
+    }
+
+    static final class MethodMember extends AbstractMember {
+
+        MethodMember(String name) {
+            super(name);
+        }
+
+        @Override
+        boolean isMemberKindMethod() {
+            return true;
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)
     static final class MethodExecutable implements TruffleObject {
 
         final AbstractInspectorObject inspector;
-        private final String name;
+        private final Object member;
 
-        MethodExecutable(AbstractInspectorObject inspector, String name) {
+        MethodExecutable(AbstractInspectorObject inspector, Object member) {
             this.inspector = inspector;
-            this.name = name;
+            this.member = member;
         }
 
         @SuppressWarnings("static-method")
@@ -146,8 +321,8 @@ abstract class AbstractInspectorObject implements TruffleObject {
         Object execute(Object[] arguments, @CachedLibrary("this.inspector") InteropLibrary interop)
                         throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             try {
-                return interop.invokeMember(inspector, name, arguments);
-            } catch (UnknownIdentifierException e) {
+                return interop.invokeMember(inspector, member, arguments);
+            } catch (UnknownMemberException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError();
             }

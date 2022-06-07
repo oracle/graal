@@ -27,7 +27,6 @@ package com.oracle.truffle.tools.chromeinspector.types;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.debug.DebugException;
@@ -46,7 +45,7 @@ import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
 
-public final class RemoteObject {
+public final class RemoteObject extends RemoteObjectNode {
 
     /**
      * An additional type mark specifying the value internal structure.
@@ -62,17 +61,19 @@ public final class RemoteObject {
          * Map entry. An array of the key and value.
          */
         MAP_ENTRY,
+
+        /**
+         * Node containing members of a single metaobject.
+         */
+        META_MEMBERS,
     }
 
     private static final Double NEGATIVE_DOUBLE_0 = Double.valueOf("-0");
     private static final Float NEGATIVE_FLOAT_0 = Float.valueOf("-0");
 
-    private static final AtomicLong LAST_ID = new AtomicLong(0);
-
     private final DebugValue valueValue;
     private final DebugScope valueScope;
     private final boolean generatePreview;
-    private final String objectId;
     private final InspectorExecutionContext context;
     private final IndexRange indexRange;
     private DebugValue scopeReceiver;
@@ -103,22 +104,33 @@ public final class RemoteObject {
     }
 
     private RemoteObject(DebugValue debugValue, boolean readEagerly, boolean generatePreview, InspectorExecutionContext context, IndexRange indexRange, TypeMark typeMark) {
+        this(debugValue, generatePreview, context, indexRange, typeMark, createTypeInfo(debugValue, readEagerly, typeMark, context));
+    }
+
+    private static TypeInfo createTypeInfo(DebugValue debugValue, boolean readEagerly, TypeMark typeMark, InspectorExecutionContext context) {
+        if (!debugValue.hasReadSideEffects() || readEagerly) {
+            PrintWriter err = context != null ? context.getErr() : null;
+            return TypeInfo.fromValue(debugValue, typeMark, debugValue.getOriginalLanguage(), err);
+        } else {
+            return null;
+        }
+    }
+
+    private RemoteObject(DebugValue debugValue, boolean generatePreview, InspectorExecutionContext context, IndexRange indexRange, TypeMark typeMark, TypeInfo typeInfo) {
+        super(typeInfo == null || typeInfo.isObject);
         this.valueValue = debugValue;
         this.valueScope = null;
         this.generatePreview = generatePreview;
         this.context = context;
         this.indexRange = indexRange;
         this.typeMark = typeMark;
-        if (!debugValue.hasReadSideEffects() || readEagerly) {
-            boolean isObject = initFromValue();
-            objectId = (isObject) ? Long.toString(LAST_ID.incrementAndGet()) : null;
-            jsonObject = createJSON();
-        } else {
-            objectId = Long.toString(LAST_ID.incrementAndGet());
+        if (typeInfo != null) {
+            initFromValue(typeInfo);
+            this.jsonObject = createJSON();
         }
     }
 
-    private boolean initFromValue() {
+    private boolean initFromValue(TypeInfo typeInfoPreset) {
         DebugValue debugValue = valueValue;
         LanguageInfo originalLanguage = debugValue.getOriginalLanguage();
         // Setup the object with a language-specific value
@@ -126,7 +138,7 @@ public final class RemoteObject {
             debugValue = debugValue.asInLanguage(originalLanguage);
         }
         PrintWriter err = context != null ? context.getErr() : null;
-        this.typeInfo = TypeInfo.fromValue(debugValue, typeMark, originalLanguage, err);
+        this.typeInfo = (typeInfoPreset != null) ? typeInfoPreset : TypeInfo.fromValue(debugValue, typeMark, originalLanguage, err);
         boolean readable = debugValue.isReadable();
         String toString;
         boolean addType = true;
@@ -256,6 +268,7 @@ public final class RemoteObject {
     }
 
     public RemoteObject(DebugScope scope, String objectId) {
+        super(objectId);
         this.valueValue = null;
         this.valueScope = scope;
         this.generatePreview = false;
@@ -266,12 +279,12 @@ public final class RemoteObject {
         this.value = null;
         this.replicableValue = false;
         this.unserializableValue = null;
-        this.objectId = (objectId == null) ? Long.toString(LAST_ID.incrementAndGet()) : objectId;
         this.description = scope.getName();
         this.jsonObject = createJSON();
     }
 
     private RemoteObject(TYPE type, SUBTYPE subtype, String className, String description) {
+        super(true);
         this.valueValue = null;
         this.valueScope = null;
         this.generatePreview = false;
@@ -282,7 +295,6 @@ public final class RemoteObject {
         this.value = null;
         this.replicableValue = false;
         this.unserializableValue = null;
-        this.objectId = Long.toString(LAST_ID.incrementAndGet());
         this.description = description;
         this.jsonObject = createJSON();
     }
@@ -395,18 +407,18 @@ public final class RemoteObject {
         String vtype = null;
         if (metaObject != null & isJS) {
             try {
-                Collection<DebugValue> properties = metaObject.getProperties();
-                if (properties != null) {
-                    for (DebugValue prop : properties) {
-                        String name = prop.getName();
+                Collection<DebugValue> members = metaObject.getMembers();
+                if (members != null) {
+                    for (DebugValue member : members) {
+                        String name = member.getMemberSimpleName();
                         if ("type".equals(name)) {
-                            vtype = toMetaName(prop, err);
+                            vtype = toMetaName(member.getMemberValue(), err);
                         }
                     }
                 }
             } catch (DebugException ex) {
                 if (err != null && ex.isInternalError()) {
-                    err.println("getProperties of meta object of (" + debugValue.getName() + ") has caused: " + ex);
+                    err.println("getMembers of meta object of (" + debugValue.getName() + ") has caused: " + ex);
                     ex.printStackTrace(err);
                 }
                 throw ex;
@@ -425,7 +437,7 @@ public final class RemoteObject {
             json.putOpt("value", createJSONValue(debugValue, allowToStringSideEffects, unserializablePtr, err));
         } catch (DebugException ex) {
             if (err != null && ex.isInternalError()) {
-                err.println("getProperties(" + debugValue.getName() + ") has caused: " + ex);
+                err.println("getMembers(" + debugValue.getName() + ") has caused: " + ex);
                 ex.printStackTrace(err);
             }
             throw ex;
@@ -448,11 +460,11 @@ public final class RemoteObject {
                 return array;
             }
         }
-        Collection<DebugValue> properties = debugValue.getProperties();
-        if (properties != null) {
+        Collection<DebugValue> members = debugValue.getMembers();
+        if (members != null) {
             JSONObject props = new JSONObject();
-            for (DebugValue property : properties) {
-                props.put(property.getName(), createJSONValue(property, allowToStringSideEffects, null, err));
+            for (DebugValue member : members) {
+                props.put(member.getMemberSimpleName(), createJSONValue(member.getMemberValue(), allowToStringSideEffects, null, err));
             }
             return props;
         } else {
@@ -475,13 +487,10 @@ public final class RemoteObject {
         }
     }
 
-    public String getId() {
-        return objectId;
-    }
-
+    @Override
     public JSONObject toJSON() {
         if (jsonObject == null) {
-            initFromValue();
+            initFromValue(null);
             jsonObject = createJSON();
         }
         return jsonObject;
@@ -529,13 +538,6 @@ public final class RemoteObject {
             return !f.isInfinite() && !f.isNaN() && !f.equals(NEGATIVE_FLOAT_0);
         }
         return true;
-    }
-
-    /**
-     * For test purposes only. Do not call from production code.
-     */
-    public static void resetIDs() {
-        LAST_ID.set(0);
     }
 
     public static final class IndexRange {

@@ -92,12 +92,12 @@ public class InsightObjectTest {
 
             assertTrue("Yes, it has members", iop.hasMembers(insightObject[0]));
 
-            Object members = iop.getMembers(insightObject[0]);
+            Object members = iop.getMemberObjects(insightObject[0]);
             long membersCount = iop.getArraySize(members);
             assertEquals(2, membersCount);
 
-            assertEquals("id", iop.readArrayElement(members, 0));
-            assertEquals("version", iop.readArrayElement(members, 1));
+            assertEquals("id", iop.asString(iop.getMemberSimpleName(iop.readArrayElement(members, 0))));
+            assertEquals("version", iop.asString(iop.getMemberSimpleName(iop.readArrayElement(members, 1))));
         }
     }
 

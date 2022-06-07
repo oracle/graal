@@ -24,18 +24,15 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
-import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
 
 /**
@@ -72,7 +69,7 @@ class Console extends AbstractInspectorObject {
                     METHOD_DIR, METHOD_DIRXML, METHOD_TABLE, METHOD_TRACE, METHOD_GROUP, METHOD_GROUP_COLLAPSED, METHOD_GROUP_END,
                     METHOD_CLEAR, METHOD_COUNT, METHOD_COUNT_RESET, METHOD_ASSERT, METHOD_MARK_TIMELINE, METHOD_PROFILE, METHOD_PROFILE_END,
                     METHOD_TIMELINE, METHOD_TIMELINE_END, METHOD_TIME, METHOD_TIME_END, METHOD_TIME_STAMP};
-    private static final TruffleObject KEYS = new Keys();
+    private static final TruffleObject MEMBERS = new Members(createMembers());
     private static final Object UNKNOWN = new Object() {
         @Override
         public String toString() {
@@ -83,6 +80,14 @@ class Console extends AbstractInspectorObject {
     private InspectorServerConnection connection;
     private final UndefinedProvider undefinedProvider;
     private final Map<Object, Long> time = new ConcurrentHashMap<>();
+
+    private static Object[] createMembers() {
+        Object[] members = new Object[METHOD_NAMES.length];
+        for (int i = 0; i < METHOD_NAMES.length; i++) {
+            members[i] = new MethodMember(METHOD_NAMES[i]);
+        }
+        return members;
+    }
 
     Console(InspectorServerConnection connection, UndefinedProvider undefinedProvider) {
         this.connection = connection;
@@ -98,8 +103,8 @@ class Console extends AbstractInspectorObject {
     }
 
     @Override
-    protected TruffleObject getMembers(boolean includeInternal) {
-        return KEYS;
+    protected TruffleObject getMemberObjects() {
+        return MEMBERS;
     }
 
     @Override
@@ -147,7 +152,7 @@ class Console extends AbstractInspectorObject {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    protected Object invokeMember(String name, Object[] arguments) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
+    protected Object invokeMethod(String name, Object member, Object[] arguments) throws UnsupportedTypeException, UnknownMemberException, UnsupportedMessageException {
         Object arg;
         if (arguments.length < 1) {
             arg = UNKNOWN;
@@ -236,7 +241,7 @@ class Console extends AbstractInspectorObject {
             case METHOD_TIME_STAMP:
                 break;
             default:
-                throw UnknownIdentifierException.create(name);
+                throw UnknownMemberException.create(member);
         }
         if (connection == null) {
             throw new InspectorStateException("The inspector is not connected.");
@@ -251,38 +256,6 @@ class Console extends AbstractInspectorObject {
             return interop.asBoolean(obj);
         } else {
             return !interop.isNull(obj);
-        }
-    }
-
-    static final class Keys extends AbstractInspectorArray {
-
-        @Override
-        int getArraySize() {
-            return METHOD_NAMES.length;
-        }
-
-        @Override
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
-            if (index < 0 || index >= METHOD_NAMES.length) {
-                CompilerDirectives.transferToInterpreter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return METHOD_NAMES[(int) index];
-        }
-
-        @Override
-        TriState isIdenticalOrUndefined(Object other) {
-            if (other instanceof Keys) {
-                return TriState.TRUE;
-            } else {
-                return TriState.UNDEFINED;
-            }
-        }
-
-        @Override
-        @CompilerDirectives.TruffleBoundary
-        int identityHashCode() {
-            return Arrays.hashCode(METHOD_NAMES);
         }
     }
 

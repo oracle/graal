@@ -177,7 +177,7 @@ public class HeapObjectTest {
                         new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), createDumpObject())})
         });
         long heapSize = dumpFile.length();
-        if (heapSize != 2295) {
+        if (heapSize != 1887) {
             fail("Heap dump should be generated. Size = " + heapSize);
         }
 
@@ -186,7 +186,7 @@ public class HeapObjectTest {
                         new StackEvent(new StackElement[]{new StackElement(new At("a", source, null, null, null), createDumpObject())})
         });
         heapSize = dumpFile.length() - heapSize;
-        if (heapSize != 3973 - 2295) {
+        if (heapSize != 3315 - 1887) {
             fail("Heap dump should be generated. Size = " + dumpFile.length());
         }
     }

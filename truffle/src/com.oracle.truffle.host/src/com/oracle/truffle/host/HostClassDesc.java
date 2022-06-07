@@ -511,7 +511,7 @@ final class HostClassDesc {
         }
     }
 
-    private Members getMembers() {
+    Members getMembers() {
         Members m = members;
         if (m == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -594,19 +594,9 @@ final class HostClassDesc {
         return onlyStatic ? m.staticMethods.get(jniName) : m.methods.get(jniName);
     }
 
-    public Collection<String> getMethodNames(boolean onlyStatic, boolean includeInternal) {
+    public Collection<HostMethodDesc> getMethodValues(boolean onlyStatic) {
         Map<String, HostMethodDesc> methods = onlyStatic ? getMembers().staticMethods : getMembers().methods;
-        if (includeInternal || onlyStatic) {
-            return Collections.unmodifiableCollection(methods.keySet());
-        } else {
-            Collection<String> methodNames = new ArrayList<>(methods.size());
-            for (Map.Entry<String, HostMethodDesc> entry : methods.entrySet()) {
-                if (!entry.getValue().isInternal()) {
-                    methodNames.add(entry.getKey());
-                }
-            }
-            return methodNames;
-        }
+        return Collections.unmodifiableCollection(methods.values());
     }
 
     /**
@@ -646,8 +636,41 @@ final class HostClassDesc {
         return Collections.unmodifiableCollection((onlyStatic ? getMembers().staticFields : getMembers().fields).keySet());
     }
 
+    public Collection<Object> getFieldValues(boolean onlyStatic) {
+        return Collections.unmodifiableCollection((onlyStatic ? getMembers().staticFields : getMembers().fields).values());
+    }
+
     public HostMethodDesc getFunctionalMethod() {
         return getMembers().functionalMethod;
+    }
+
+    public boolean hasDeclaredMembers() {
+        HostClassCache localCache = getCache();
+        return getLookup(type, localCache) != null;
+    }
+
+    public Object[] getDeclaredMembers() {
+        HostClassCache localCache = getCache();
+        MethodHandles.Lookup lookup;
+        if ((lookup = getLookup(type, localCache)) != null) {
+            Field[] declaredFields = type.getDeclaredFields();
+            Class<?>[] declaredClasses = type.getDeclaredClasses();
+            Method[] declaredMethods = type.getDeclaredMethods();
+            Object[] declaredMembers = new Object[declaredFields.length + declaredMethods.length + declaredClasses.length];
+            int i = 0;
+            for (Field f : declaredFields) {
+                declaredMembers[i++] = HostFieldDesc.unreflect(lookup, f);
+            }
+            for (Method m : declaredMethods) {
+                declaredMembers[i++] = HostMethodDesc.SingleMethod.unreflect(lookup, m, false, false);
+            }
+            for (Class<?> c : declaredClasses) {
+                declaredMembers[i++] = new HostMemberClass(c);
+            }
+            return declaredMembers;
+        } else {
+            return null;
+        }
     }
 
     public AdapterResult getAdapter(HostContext hostContext) {

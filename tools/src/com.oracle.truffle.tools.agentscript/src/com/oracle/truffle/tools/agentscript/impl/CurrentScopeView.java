@@ -51,13 +51,13 @@ final class CurrentScopeView implements TruffleObject {
     }
 
     @ExportMessage
-    Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
+    Object getMemberObjects(
                     @CachedLibrary("this.scope") InteropLibrary scopeLib,
                     @CachedLibrary(limit = "5") InteropLibrary parentScopeLib) throws UnsupportedMessageException {
-        Object allKeys = scopeLib.getMembers(scope);
+        Object allKeys = scopeLib.getMemberObjects(scope);
         if (scopeLib.hasScopeParent(scope)) {
             Object parentScope = scopeLib.getScopeParent(scope);
-            Object parentKeys = parentScopeLib.getMembers(parentScope);
+            Object parentKeys = parentScopeLib.getMemberObjects(parentScope);
             return new SubtractedKeys(allKeys, parentKeys);
         }
         return allKeys;

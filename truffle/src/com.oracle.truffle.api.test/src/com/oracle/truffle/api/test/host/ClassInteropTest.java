@@ -47,15 +47,13 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.Arrays;
-
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ClassInteropTest extends ProxyLanguageEnvTest {
@@ -111,15 +109,15 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
         assertEquals("Field read", 42, inst.value());
     }
 
-    @Test(expected = UnknownIdentifierException.class)
+    @Test(expected = UnknownMemberException.class)
     public void noNonStaticMethods() throws InteropException {
-        Object res = INTEROP.readMember(obj, "readCONST");
+        Object res = INTEROP.readMember(obj, (Object) "readCONST");
         assertNull("not found", res);
     }
 
     @Test
     public void canAccessStaticMemberTypes() throws InteropException {
-        Object res = INTEROP.readMember(obj, "XYPlus");
+        Object res = INTEROP.readMember(obj, (Object) "XYPlus");
         assertTrue("It is truffle object", res instanceof TruffleObject);
         Class<?> c = asJavaObject(Class.class, (TruffleObject) res);
         assertSame(XYPlus.class, c);
@@ -127,7 +125,7 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canCreateMemberTypeInstances() throws InteropException {
-        Object type = INTEROP.readMember(obj, "Zed");
+        Object type = INTEROP.readMember(obj, (Object) "Zed");
         assertTrue("Type is a truffle object", type instanceof TruffleObject);
         TruffleObject truffleType = (TruffleObject) type;
         Object objInst = INTEROP.instantiate(truffleType, 22);
@@ -139,14 +137,17 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void canListStaticTypes() throws InteropException {
-        Object type = INTEROP.getMembers(obj);
-        assertTrue("Type is a truffle object", type instanceof TruffleObject);
-        String[] names = asJavaObject(String[].class, (TruffleObject) type);
+        Object members = INTEROP.getMemberObjects(obj);
+        assertTrue("Members is a truffle object", members instanceof TruffleObject);
+        assertTrue("Members is an array", INTEROP.hasArrayElements(members));
+        int len = (int) INTEROP.getArraySize(members);
         int zed = 0;
         int xy = 0;
         int eman = 0;
         int nonstatic = 0;
-        for (String s : names) {
+        for (int i = 0; i < len; i++) {
+            Object member = INTEROP.readArrayElement(members, i);
+            String s = INTEROP.asString(INTEROP.getMemberSimpleName(member));
             switch (s) {
                 case "Zed":
                     zed++;
@@ -170,26 +171,33 @@ public class ClassInteropTest extends ProxyLanguageEnvTest {
 
     @Test
     public void nonstaticTypeDoesNotExist() {
-        assertFalse(INTEROP.isMemberExisting(obj, "Nonstatic"));
+        assertFalse(INTEROP.isMemberExisting(obj, (Object) "Nonstatic"));
     }
 
     @Test
     public void staticInnerTypeIsNotWritable() {
-        assertTrue("Key exists", INTEROP.isMemberExisting(obj, "Zed"));
-        assertTrue("Key readable", INTEROP.isMemberReadable(obj, "Zed"));
-        assertFalse("Key NOT writable", INTEROP.isMemberModifiable(obj, "Zed"));
+        assertTrue("Key exists", INTEROP.isMemberExisting(obj, (Object) "Zed"));
+        assertTrue("Key readable", INTEROP.isMemberReadable(obj, (Object) "Zed"));
+        assertFalse("Key NOT writable", INTEROP.isMemberModifiable(obj, (Object) "Zed"));
     }
 
-    @Test(expected = com.oracle.truffle.api.interop.UnknownIdentifierException.class)
+    @Test(expected = com.oracle.truffle.api.interop.UnknownMemberException.class)
     public void nonpublicTypeNotvisible() throws InteropException {
-        assertFalse("Non-public member type not visible", INTEROP.isMemberReadable(obj, "NonStaticInterface"));
+        Object memberName = NonStaticInterface.class.getSimpleName();
+        assertFalse("Non-public member type not visible", INTEROP.isMemberReadable(obj, memberName));
 
-        Object type = INTEROP.getMembers(obj);
-        assertTrue("Type is a truffle object", type instanceof TruffleObject);
-        String[] names = asJavaObject(String[].class, (TruffleObject) type);
-        assertEquals("Non-public member type not enumerated", -1, Arrays.asList(names).indexOf("NonStaticInterface"));
+        Object members = INTEROP.getMemberObjects(obj);
+        assertTrue("Members is a truffle object", members instanceof TruffleObject);
+        int len = (int) INTEROP.getArraySize(members);
+        for (int i = 0; i < len; i++) {
+            Object member = INTEROP.readArrayElement(members, i);
+            String name = INTEROP.asString(INTEROP.getMemberSimpleName(member));
+            if (name.equals(memberName)) {
+                fail("Non-public member type must not be enumerated");
+            }
+        }
 
-        INTEROP.readMember(obj, "NonStaticInterface");
+        INTEROP.readMember(obj, memberName);
         fail("Cannot read non-static member type");
     }
 

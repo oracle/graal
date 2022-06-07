@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownMemberException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -227,6 +227,7 @@ public final class DebugScope {
      * @deprecated since 20.3 Use {@link #getDeclaredValues()} on the {@link SourceElement#ROOT}.
      */
     @Deprecated(since = "20.3")
+    @SuppressWarnings("deprecation")
     public Iterable<DebugValue> getArguments() throws DebugException {
         verifyValidState();
         if (node == null) {
@@ -291,10 +292,10 @@ public final class DebugScope {
                 return null;
             }
             String name = INTEROP.asString(NODE.getReceiverMember(node, frame));
-            if (!INTEROP.isMemberReadable(scope, name) || !isDeclaredInScope(name)) {
+            if (!INTEROP.isMemberReadable(scope, (Object) name) || !isDeclaredInScope(name)) {
                 return null;
             }
-            receiverValue = new DebugValue.ObjectMemberValue(session, getLanguage(), this, scope, name);
+            receiverValue = new DebugValue.PropertyValue(session, getLanguage(), this, scope, name);
         } catch (ThreadDeath td) {
             throw td;
         } catch (Throwable ex) {
@@ -369,6 +370,7 @@ public final class DebugScope {
         return root;
     }
 
+    @SuppressWarnings("deprecation")
     private ValuePropertiesCollection getVariables() {
         verifyValidState();
         try {
@@ -488,13 +490,13 @@ public final class DebugScope {
 
         @ExportMessage
         @TruffleBoundary
-        final Object getMembers(boolean includeInternal) throws UnsupportedMessageException {
-            return new SubtractedKeys(allLibrary.getMembers(allVariables, includeInternal), removedLibrary.getMembers(removedVariables, includeInternal));
+        final Object getMemberObjects() throws UnsupportedMessageException {
+            return new SubtractedKeys(allLibrary.getMemberObjects(allVariables), removedLibrary.getMemberObjects(removedVariables));
         }
 
         @ExportMessage
         @TruffleBoundary
-        final boolean isMemberReadable(String member) {
+        final boolean isMemberReadable(Object member) {
             if (!allLibrary.isMemberReadable(allVariables, member)) {
                 return false;
             }
@@ -505,15 +507,36 @@ public final class DebugScope {
             return isAmongMembers(member);
         }
 
-        private boolean isAmongMembers(String member) {
+        private boolean isAmongMembers(Object member) {
             try {
-                Object members = getMembers(true);
+                InteropLibrary memberLibrary = InteropLibrary.getUncached(member);
+                String memberName;
+                if (memberLibrary.isString(member)) {
+                    memberName = memberLibrary.asString(member);
+                } else {
+                    if (!memberLibrary.isMember(member)) {
+                        return false;
+                    }
+                    if (!memberLibrary.hasIdentity(member)) {
+                        memberName = INTEROP.asString(memberLibrary.getMemberQualifiedName(member));
+                    } else {
+                        memberName = null; // We'll use the memer's identity
+                    }
+                }
+                Object members = getMemberObjects();
                 InteropLibrary membersLibrary = InteropLibrary.getUncached(members);
                 long n = membersLibrary.getArraySize(members);
                 for (long i = 0; i < n; i++) {
-                    String m = INTEROP.asString(membersLibrary.readArrayElement(members, i));
-                    if (member.equals(m)) {
-                        return true;
+                    Object m = membersLibrary.readArrayElement(members, i);
+                    if (memberName != null) {
+                        String mn = INTEROP.asString(INTEROP.getMemberQualifiedName(m));
+                        if (memberName.equals(mn)) {
+                            return true;
+                        }
+                    } else {
+                        if (INTEROP.isIdentical(member, m, INTEROP)) {
+                            return true;
+                        }
                     }
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -524,17 +547,17 @@ public final class DebugScope {
 
         @ExportMessage
         @TruffleBoundary
-        final Object readMember(String member) throws UnknownIdentifierException, UnsupportedMessageException {
+        final Object readMember(Object member) throws UnknownMemberException, UnsupportedMessageException {
             if (isMemberReadable(member)) {
                 return allLibrary.readMember(allVariables, member);
             } else {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
         }
 
         @ExportMessage
         @TruffleBoundary
-        final boolean isMemberModifiable(String member) {
+        final boolean isMemberModifiable(Object member) {
             if (!allLibrary.isMemberModifiable(allVariables, member)) {
                 return false;
             }
@@ -547,27 +570,27 @@ public final class DebugScope {
 
         @ExportMessage
         @SuppressWarnings("static-method")
-        final boolean isMemberInsertable(@SuppressWarnings("unused") String member) {
+        final boolean isMemberInsertable(@SuppressWarnings("unused") Object member) {
             return false;
         }
 
         @ExportMessage
         @TruffleBoundary
-        final void writeMember(String member, Object value) throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException {
+        final void writeMember(Object member, Object value) throws UnsupportedMessageException, UnknownMemberException, UnsupportedTypeException {
             if (isMemberModifiable(member)) {
                 allLibrary.writeMember(allVariables, member, value);
             } else {
-                throw UnknownIdentifierException.create(member);
+                throw UnknownMemberException.create(member);
             }
         }
 
         @ExportMessage
-        final boolean hasMemberReadSideEffects(String member) {
+        final boolean hasMemberReadSideEffects(Object member) {
             return isMemberReadable(member) && allLibrary.hasMemberReadSideEffects(allVariables, member);
         }
 
         @ExportMessage
-        final boolean hasMemberWriteSideEffects(String member) {
+        final boolean hasMemberWriteSideEffects(Object member) {
             return isMemberModifiable(member) && allLibrary.hasMemberWriteSideEffects(allVariables, member);
         }
 
