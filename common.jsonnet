@@ -43,7 +43,7 @@
 
   // Heap settings
   // *************
-  local small_heap = "2G",
+  local small_heap = "1G",
   local default_heap = "8G",
   local large_heap = "31G", // strictly smaller than 32G to keep compressed oops enabled
   local large_young_gen_heap = "27G", // tuned to reduce latency of large apps like SpecJBB2015
