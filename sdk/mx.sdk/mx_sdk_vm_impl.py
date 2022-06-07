@@ -944,6 +944,7 @@ def _components_set(components=None, stage1=False):
     if stage1:
         components_set.add('stage1')
     elif mx_sdk_vm.graalvm_component_by_name('ni', fatalIfMissing=False) is not None:
+        # forced bash launchers and skipped libraries only make a difference if Native Image is involved in the build
         for component in components:
             for launcher_config in _get_launcher_configs(component):
                 if _force_bash_launchers(launcher_config):
