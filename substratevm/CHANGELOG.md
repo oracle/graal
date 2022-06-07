@@ -4,8 +4,10 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 22.2.0
 * (GR-20653) Re-enable the usage of all CPU features for JIT compilation on AMD64.
-* (GR-38413) Add support for -XX:+ExitOnOutOfMemoryError.
+* (GR-38413) Add support for `-XX:+ExitOnOutOfMemoryError`.
 * (GR-37606) Add support for URLs and short descriptions to `Feature`. This info is shown as part of the build output.
+* (GR-38965) Heap dumps are now supported in Community Edition. 
+* (GR-38951) Add `-XX:+DumpHeapAndExit` option to dump the initial heap of a native executable.
 
 ## Version 22.1.0
 * (GR-36568) Add "Quick build" mode, enabled through option `-Ob`, for quicker native image builds.
