@@ -1183,7 +1183,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static float getBufferFloatBoundary(ByteBuffer buffer, int index) {
         return buffer.getFloat(index);
     }
@@ -1220,7 +1220,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBufferFloatBoundary(ByteBuffer buffer, int index, float value) {
         buffer.putFloat(index, value);
     }
@@ -1251,7 +1251,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static double getBufferDoubleBoundary(ByteBuffer buffer, int index) {
         return buffer.getDouble(index);
     }
@@ -1288,7 +1288,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBufferDoubleBoundary(ByteBuffer buffer, int index, double value) {
         buffer.putDouble(index, value);
     }
@@ -2215,31 +2215,16 @@ final class HostObject implements TruffleObject {
         if (!hasMetaParents()) {
             throw UnsupportedMessageException.create();
         }
-        Class<?>[] types = null;
-        if (isClass()) {
-            Class<?> superClass = asClass().getSuperclass();
-            Class<?>[] interfaces = asClass().getInterfaces();
-            if (superClass != null || interfaces.length > 0) {
-                int n = interfaces.length + ((superClass != null) ? 1 : 0);
-                types = (Class<?>[]) Array.newInstance(Class.class, n);
-                int i = 0;
-                if (superClass != null) {
-                    types[i++] = superClass;
-                }
-                for (int j = 0; j < interfaces.length; j++) {
-                    types[i++] = interfaces[j];
-                }
-            }
+        Class<?> superClass = asClass().getSuperclass();
+        Class<?>[] interfaces = asClass().getInterfaces();
+        Object[] metaObjects = new Object[interfaces.length + 1];
+
+        int i = 0;
+        metaObjects[i++] = HostObject.forClass(superClass, context);
+        for (int j = 0; j < interfaces.length; j++) {
+            metaObjects[i++] = HostObject.forClass(interfaces[j], context);
         }
-        if (types != null) {
-            Object[] metaObjects = new Object[types.length];
-            for (int i = 0; i < types.length; i++) {
-                metaObjects[i] = HostObject.forClass(types[i], context);
-            }
-            return new TypesArray(metaObjects);
-        } else {
-            throw UnsupportedMessageException.create();
-        }
+        return new TypesArray(metaObjects);
     }
 
     @ExportLibrary(InteropLibrary.class)
