@@ -271,14 +271,13 @@ public class InfoCommand extends QueryCommandBase {
     void printDetails(ComponentParam param, ComponentInfo info) {
         if (isJson()) {
             super.printDetails(param, info);
-            JSONArray comps = json.getJSONArray(JSON_KEY_COMPONENTS);
-            JSONObject component = comps.getJSONObject(comps.length() - 1);
-            component.put(JSON_KEY_COMPONENT_FILENAME, param.getFullPath());
+            JSONObject jsonComponent = getJSONComponent();
+            jsonComponent.put(JSON_KEY_COMPONENT_FILENAME, param.getFullPath());
             List<String> keys = new ArrayList<>(info.getRequiredGraalValues().keySet());
             keys.remove(CommonConstants.CAP_GRAALVM_VERSION);
             if (!keys.isEmpty()) {
                 JSONObject requires = new JSONObject();
-                component.put(JSON_KEY_COMPONENT_REQUIRES, requires);
+                jsonComponent.put(JSON_KEY_COMPONENT_REQUIRES, requires);
                 Collections.sort(keys);
                 for (String cap : keys) {
                     requires.put(cap, info.getRequiredGraalValues().get(cap));
@@ -288,7 +287,7 @@ public class InfoCommand extends QueryCommandBase {
             List<InstallerStopException> errs = ldr.getErrors();
             if (!errs.isEmpty()) {
                 JSONArray errors = new JSONArray();
-                component.put(JSON_KEY_COMPONENT_ERRORS, errors);
+                jsonComponent.put(JSON_KEY_COMPONENT_ERRORS, errors);
                 for (InstallerStopException ex : errs) {
                     errors.put(ex.getLocalizedMessage());
                 }
@@ -296,7 +295,7 @@ public class InfoCommand extends QueryCommandBase {
             Verifier vfy = new Verifier(feedback, input.getLocalRegistry(), catalog).collect(true).validateRequirements(info);
             if (vfy.hasErrors()) {
                 JSONArray problems = new JSONArray();
-                component.put(JSON_KEY_COMPONENT_PROBLEMS, problems);
+                jsonComponent.put(JSON_KEY_COMPONENT_PROBLEMS, problems);
                 for (DependencyException ex : vfy.getErrors()) {
                     problems.put(ex.getLocalizedMessage());
                 }

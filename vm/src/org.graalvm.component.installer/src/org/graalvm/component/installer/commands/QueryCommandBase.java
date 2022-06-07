@@ -62,6 +62,7 @@ import static org.graalvm.component.installer.CommonConstants.JSON_KEY_COMPONENT
  * List command.
  */
 public abstract class QueryCommandBase implements InstallerCommand {
+
     protected static final Map<String, String> BASE_OPTIONS = new HashMap<>();
 
     static {
@@ -89,7 +90,11 @@ public abstract class QueryCommandBase implements InstallerCommand {
     protected List<ComponentInfo> components = new ArrayList<>();
     protected boolean simpleFormat;
 
-    protected JSONObject json;
+    private JSONObject jsonComponent;
+    
+    protected JSONObject getJSONComponent() {
+        return jsonComponent;
+    }
 
     public ComponentRegistry getRegistry() {
         return registry;
@@ -160,22 +165,24 @@ public abstract class QueryCommandBase implements InstallerCommand {
 
     protected void printComponents() {
         printHeader();
+        JSONArray jsonComponents = null;
         if (isJson) {
-            assert json == null;
-            json = new JSONObject();
-            json.put(JSON_KEY_COMPONENTS, new JSONArray());
+            assert jsonComponent == null;
+            jsonComponents = new JSONArray();
         }
         Iterator<ComponentParam> itpar = componentParams.iterator();
         for (ComponentInfo info : components) {
+            if (jsonComponents != null) {
+                jsonComponents.put(jsonComponent = new JSONObject());
+            }
             printDetails(itpar.next(), info);
             printFileList(info);
             printSeparator(info);
         }
-        if (isJson) {
-            boolean wasSilent = feedback.setSilent(false);
-            feedback.verbatimOut(verbose ? json.toString(2) : json.toString(), false);
-            feedback.setSilent(wasSilent);
-            json = null;
+        if (jsonComponents != null) {
+            final JSONObject json = new JSONObject().put(JSON_KEY_COMPONENTS, jsonComponents);
+            feedback.suppressSilent(() -> feedback.verbatimOut(verbose ? json.toString(2) : json.toString(), false));
+            jsonComponent = null;
         }
     }
 
@@ -220,25 +227,22 @@ public abstract class QueryCommandBase implements InstallerCommand {
             org = u.getHost();
         }
         if (isJson) {
-            JSONArray comps = json.getJSONArray(JSON_KEY_COMPONENTS);
-            JSONObject component = new JSONObject();
-            component.put(JSON_KEY_COMPONENT_ID, shortenComponentId(info));
-            component.put(JSON_KEY_COMPONENT_VERSION, info.getVersion().displayString());
-            component.put(JSON_KEY_COMPONENT_NAME, info.getName());
-            component.put(JSON_KEY_COMPONENT_GRAALVM, findRequiredGraalVMVersion(info));
-            component.put(JSON_KEY_COMPONENT_STABILITY, info.getStability().displayName(feedback));
-            component.put(JSON_KEY_COMPONENT_ORIGIN, u == null ? "" : u);
-            comps.put(component);
+            jsonComponent.put(JSON_KEY_COMPONENT_ID, shortenComponentId(info));
+            jsonComponent.put(JSON_KEY_COMPONENT_VERSION, info.getVersion().displayString());
+            jsonComponent.put(JSON_KEY_COMPONENT_NAME, info.getName());
+            jsonComponent.put(JSON_KEY_COMPONENT_GRAALVM, findRequiredGraalVMVersion(info));
+            jsonComponent.put(JSON_KEY_COMPONENT_STABILITY, info.getStability().displayName(feedback));
+            jsonComponent.put(JSON_KEY_COMPONENT_ORIGIN, u == null ? "" : u);
         } else if (printTable) {
             String fmt = simpleFormat ? "LIST_ComponentShortList_Simple@" : "LIST_ComponentShortList";
             String line = String.format(feedback.l10n(fmt),
-                            shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
+                    shortenComponentId(info), info.getVersion().displayString(), info.getName(), org, info.getId(), info.getStability().displayName(feedback));
             feedback.verbatimOut(line, false);
         } else {
             String fmt = simpleFormat ? "LIST_ComponentBasicInfo_Simple@" : "LIST_ComponentBasicInfo";
             feedback.output(fmt,
-                            shortenComponentId(info), info.getVersion().displayString(), info.getName(),
-                            findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
+                    shortenComponentId(info), info.getVersion().displayString(), info.getName(),
+                    findRequiredGraalVMVersion(info), u == null ? "" : u, info.getId(), info.getStability().displayName(feedback));
         }
     }
 
@@ -258,9 +262,7 @@ public abstract class QueryCommandBase implements InstallerCommand {
         List<String> files = new ArrayList<>(info.getPaths());
         Collections.sort(files);
         if (isJson) {
-            JSONArray comps = json.getJSONArray(JSON_KEY_COMPONENTS);
-            JSONObject component = comps.getJSONObject(comps.length() - 1);
-            component.put(JSON_KEY_COMPONENT_FILES, files);
+            jsonComponent.put(JSON_KEY_COMPONENT_FILES, files);
         } else {
             feedback.output(simpleFormat ? "LIST_ComponentFilesHeader_Simple@" : "LIST_ComponentFilesHeader", files.size());
             for (String s : files) {
