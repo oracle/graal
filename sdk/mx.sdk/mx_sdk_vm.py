@@ -978,44 +978,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
 
         # Create src.zip in new JDK image
         _copy_src_zip(jdk.home, dst_jdk_dir, modules, lambda jmd: not use_upgrade_module_path and with_source(jmd.dist))
-
-        mx.logv('[Copying static libraries]')
-        lib_directory = join(jdk.home, 'lib', 'static')
-        if exists(lib_directory):
-            dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
-            try:
-                mx.copytree(lib_directory, dst_lib_directory)
-            except shutil.Error as e:
-                # On AArch64, there can be a problem in the copystat part
-                # of copytree which occurs after file and directory copying
-                # has successfully completed. Since the metadata doesn't
-                # matter in this case, just ensure that the content was copied.
-                for root, _, lib_files in os.walk(lib_directory):
-                    relative_root = os.path.relpath(root, dst_lib_directory)
-                    for lib in lib_files:
-                        src_lib_path = join(root, lib)
-                        dst_lib_path = join(dst_lib_directory, relative_root, lib)
-                        if not exists(dst_lib_path):
-                            mx.abort('Error copying static libraries: {} missing in {}{}Original copytree error: {}'.format(
-                                join(relative_root, lib), dst_lib_directory, os.linesep, e))
-                        src_lib_hash = mx.sha1OfFile(src_lib_path)
-                        dst_lib_hash = mx.sha1OfFile(dst_lib_path)
-                        if src_lib_hash != dst_lib_hash:
-                            mx.abort('Error copying static libraries: {} (hash={}) and {} (hash={}) differ{}Original copytree error: {}'.format(
-                                src_lib_path, src_lib_hash,
-                                dst_lib_path, dst_lib_hash,
-                                os.linesep, e))
-        # Allow older JDK versions to work
-        else:
-            lib_prefix = mx.add_lib_prefix('')
-            lib_suffix = mx.add_static_lib_suffix('')
-            lib_directory = join(jdk.home, 'lib')
-            dst_lib_directory = join(dst_jdk_dir, 'lib')
-            for f in os.listdir(lib_directory):
-                if f.startswith(lib_prefix) and f.endswith(lib_suffix):
-                    lib_path = join(lib_directory, f)
-                    if isfile(lib_path):
-                        shutil.copy2(lib_path, dst_lib_directory)
     finally:
         if not mx.get_opts().verbose:
             # Preserve build directory so that javac command can be re-executed

@@ -899,7 +899,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['GraalVM compiler', 'Truffle Macro', 'SVM Truffle NFI Support'],
+    dependencies=['GraalVM compiler', 'Truffle Macro', 'SVM Truffle NFI Support', 'SubstrateVM Static Libraries'],
     jar_distributions=['substratevm:LIBRARY_SUPPORT'],
     builder_jar_distributions=[
         'substratevm:SVM',
@@ -925,6 +925,18 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=[],
     builder_jar_distributions=['substratevm:SVM_LIBFFI'],
     support_distributions=['substratevm:SVM_NFI_GRAALVM_SUPPORT'],
+    installable=True,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=suite,
+    name='SubstrateVM Static Libraries',
+    short_name='svmsl',
+    dir_name=False,
+    installable_id='native-image',
+    license_files=[],
+    third_party_license_files=[],
+    support_distributions=['substratevm:SVM_STATIC_LIBRARIES_SUPPORT'],
     installable=True,
 ))
 
@@ -1550,8 +1562,22 @@ JNIEXPORT void JNICALL {0}() {{
     def __str__(self):
         return 'JvmFuncsFallbacksBuildTask {}'.format(self.subject)
 
-def mx_register_dynamic_suite_constituents(register_project, _):
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     register_project(SubstrateCompilerFlagsBuilder())
+
+    base_jdk_home = mx_sdk_vm.base_jdk().home
+    lib_static = join(base_jdk_home, 'lib', 'static')
+    if exists(lib_static):
+        layout = {
+            './': ['file:' + lib_static],
+        }
+    else:
+        lib_prefix = mx.add_lib_prefix('')
+        lib_suffix = mx.add_static_lib_suffix('')
+        layout = {
+            './': ['file:' + join(base_jdk_home, 'lib', lib_prefix + '*' + lib_suffix)]
+        }
+    register_distribution(mx.LayoutTARDistribution(suite, 'SVM_STATIC_LIBRARIES_SUPPORT', [], layout, None, True, None))
 
 class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
 
