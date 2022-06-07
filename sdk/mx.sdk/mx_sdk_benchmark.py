@@ -275,9 +275,11 @@ def measureTimeToFirstResponse(bmSuite):
     measurementStartTime = time.time()
     sentRequests = 0
     receivedNon200Responses = 0
-    while time.time() - measurementStartTime < 60:
+    last_report_time = time.time()
+    while time.time() - measurementStartTime < 120:
         time.sleep(.0001)
-        if sentRequests > 0 and sentRequests % 10000 == 0:
+        if sentRequests > 0 and time.time() - last_report_time > 10:
+            last_report_time = time.time()
             mx.log("Sent {:d} requests so far but did not receive a response with code 200 yet.".format(sentRequests))
 
         try:
