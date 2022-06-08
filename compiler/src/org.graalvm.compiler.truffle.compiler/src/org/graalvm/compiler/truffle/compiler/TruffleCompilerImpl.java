@@ -64,6 +64,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -202,6 +203,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
+
+    public static final CounterKey EncodedGraphCachePurges = DebugContext.counter("EncodedGraphCachePurges");
+    public static final CounterKey EncodedGraphCacheRemovedEntries = DebugContext.counter("EncodedGraphCacheRemovedEntries").doc("# of entries removed from the cache due to bailouts.");
+    public static final CounterKey EncodedGraphCacheBailouts = DebugContext.counter("EncodedGraphCacheBailouts").doc("# of (non-permanent) compilation bailouts caused by invalid dependencies (HotSpot assumptions).");
 
     /**
      * Creates a new {@link CompilationIdentifier} for {@code compilable}.

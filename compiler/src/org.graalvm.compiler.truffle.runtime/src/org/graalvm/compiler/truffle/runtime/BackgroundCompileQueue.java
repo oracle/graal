@@ -33,7 +33,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.RunnableFuture;
@@ -245,7 +244,7 @@ public class BackgroundCompileQueue {
     /**
      * Called when a compiler thread becomes idle for more than {@code delayMillis}.
      */
-    protected void compilerThreadIdled() {
+    protected void notifyIdleCompilerThread() {
         // nop
     }
 
@@ -290,7 +289,7 @@ public class BackgroundCompileQueue {
                         if (compilationExecutorService.allowsCoreThreadTimeOut()) {
                             // If core threads are always kept alive (no timeout), the
                             // IdlingPriorityBlockingQueue.take mechanism is used instead.
-                            compilerThreadIdled();
+                            notifyIdleCompilerThread();
                         }
                     } catch (Exception e) {
                         throw new InternalError(e);
@@ -322,7 +321,7 @@ public class BackgroundCompileQueue {
             while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
                 E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
                 if (elem == null) {
-                    compilerThreadIdled();
+                    notifyIdleCompilerThread();
                 } else {
                     return elem;
                 }
@@ -350,7 +349,7 @@ public class BackgroundCompileQueue {
             while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
                 E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
                 if (elem == null) {
-                    compilerThreadIdled();
+                    notifyIdleCompilerThread();
                 } else {
                     return elem;
                 }
@@ -368,7 +367,7 @@ public class BackgroundCompileQueue {
             while (timeoutMillis > delayMillis) {
                 E elem = super.pollFirst(delayMillis, TimeUnit.MILLISECONDS);
                 if (elem == null) {
-                    compilerThreadIdled();
+                    notifyIdleCompilerThread();
                 } else {
                     return elem;
                 }

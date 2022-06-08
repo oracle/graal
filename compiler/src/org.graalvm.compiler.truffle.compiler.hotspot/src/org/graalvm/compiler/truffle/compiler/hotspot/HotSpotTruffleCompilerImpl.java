@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import com.oracle.truffle.api.debug.DebugScope;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
@@ -403,7 +404,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public void purgeCaches() {
+    public void purgePartialEvaluationCaches() {
         getPartialEvaluator().purgeEncodedGraphCache();
     }
 
@@ -416,40 +417,41 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
          * assumed that non-permanent, non-cancellation bailouts are due to "invalid dependencies"
          * during code installation.
          */
-        if (!getPartialEvaluator().isEncodedGraphCacheEnabled()) {
+        if (!getPartialEvaluator().isEncodedGraphCacheEnabled() || bailout instanceof CancellationBailoutException || bailout.isPermanent()) {
             return;
         }
-        if (!(bailout instanceof CancellationBailoutException)) {
-            // Evict only the methods that could have caused the invalidation e.g. methods with
-            // assumptions.
-            if (!bailout.isPermanent() && graph != null && !graph.getAssumptions().isEmpty()) {
-                try (DebugCloseable dummy = EncodedGraphCacheEvictionTime.start(debug)) {
-                    assert graph.method() != null;
-                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
+        // Evict only the methods that could have caused the invalidation e.g. methods with
+        // assumptions.
+        if (graph != null && graph.getAssumptions() != null && !graph.getAssumptions().isEmpty()) {
+            try (DebugContext.Scope scope = debug.scope("EncodedGraphCache");
+                            DebugCloseable time = EncodedGraphCacheEvictionTime.start(debug)) {
+                EncodedGraphCacheBailouts.increment(debug);
+                assert graph.method() != null;
+                EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
+                /*
+                 * At this point, the cache containing invalid graphs may be already purged/dropped,
+                 * but there's no way to know in which cache the invalid method is/was present, so
+                 * all encoded graphs, including the root and all inlined methods must be evicted.
+                 * These bailouts (invalid dependencies) are very rare, the over-evicting impact is
+                 * negligible.
+                 */
+                if (!graphCache.isEmpty()) {
+                    debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
+                    EncodedGraphCacheRemovedEntries.increment(debug);
+                    graphCache.removeKey(graph.method());
 
-                    /*
-                     * At this point, the cache containing invalid graphs may be already
-                     * purged/dropped, but there's no way to know in which cache the invalid method
-                     * is/was present, so all encoded graphs, including the root and all inlined
-                     * methods must be evicted. These bailouts (invalid dependencies) are very rare,
-                     * the over-evicting impact is negligible.
-                     */
-                    if (!graphCache.isEmpty()) {
-                        debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
-                        graphCache.removeKey(graph.method());
+                    // Bailout may have been caused by an assumption on some inlined method.
+                    for (ResolvedJavaMethod method : graph.getMethods()) {
+                        EncodedGraph encodedGraph = graphCache.get(method);
+                        if (encodedGraph == null) {
+                            continue;
+                        }
 
-                        // Bailout may have been caused by an assumption on some inlined method.
-                        for (ResolvedJavaMethod method : graph.getMethods()) {
-                            EncodedGraph encodedGraph = graphCache.get(method);
-                            if (encodedGraph == null) {
-                                continue;
-                            }
-
-                            Assumptions assumptions = encodedGraph.getAssumptions();
-                            if (assumptions != null && !assumptions.isEmpty()) {
-                                debug.log(DebugContext.VERBOSE_LEVEL, "\tEvict inlined %s", method);
-                                graphCache.removeKey(method);
-                            }
+                        Assumptions assumptions = encodedGraph.getAssumptions();
+                        if (assumptions != null && !assumptions.isEmpty()) {
+                            debug.log(DebugContext.VERBOSE_LEVEL, "\tEvict inlined %s", method);
+                            EncodedGraphCacheRemovedEntries.increment(debug);
+                            graphCache.removeKey(method);
                         }
                     }
                 }

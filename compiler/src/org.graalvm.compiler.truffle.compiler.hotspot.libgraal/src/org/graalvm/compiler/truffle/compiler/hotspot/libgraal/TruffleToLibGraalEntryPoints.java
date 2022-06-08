@@ -59,6 +59,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 import static org.graalvm.jniutils.JNIUtil.GetArrayLength;
 import static org.graalvm.jniutils.JNIUtil.GetByteArrayElements;
@@ -718,6 +719,20 @@ final class TruffleToLibGraalEntryPoints {
     public static void dumpChannelClose(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle) {
         try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, IsDumpChannelOpen, env)) {
             LibGraalObjectHandles.resolve(channelHandle, WritableByteChannel.class).close();
+        } catch (Throwable t) {
+            JNIExceptionWrapper.throwInHotSpot(env, t);
+        }
+    }
+
+    @TruffleToLibGraal(PurgePartialEvaluationCaches)
+    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_purgePartialEvaluationCaches")
+    @SuppressWarnings({"unused", "try"})
+    public static void purgePartialEvaluationCaches(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle) {
+        try (JNIMethodScope s = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, PurgePartialEvaluationCaches, env)) {
+            HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
+            if (compiler != null) {
+                compiler.purgePartialEvaluationCaches();
+            }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }

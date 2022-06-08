@@ -82,6 +82,7 @@ public @interface TruffleToLibGraal {
         OpenDebugContext,
         OpenDebugContextScope,
         PendingTransferToInterpreterOffset,
+        PurgePartialEvaluationCaches,
         Shutdown;
     }
 }

@@ -60,6 +60,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContext;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PurgePartialEvaluationCaches;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
 
 import java.nio.ByteBuffer;
@@ -191,4 +192,7 @@ final class TruffleToLibGraalCalls {
 
     @TruffleToLibGraal(GetExecutionID)
     static native String getExecutionID(long isolateThreadId);
+
+    @TruffleToLibGraal(PurgePartialEvaluationCaches)
+    static native void purgePartialEvaluationCaches(long isolateThreadId, long compilerHandle);
 }

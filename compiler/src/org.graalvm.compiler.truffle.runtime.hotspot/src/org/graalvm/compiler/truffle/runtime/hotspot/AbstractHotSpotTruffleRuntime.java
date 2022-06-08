@@ -116,12 +116,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         @Override
-        protected void compilerThreadIdled() {
+        protected void notifyIdleCompilerThread() {
             TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
             // truffleCompiler should never be null outside unit-tests, this check avoids transient
             // failures.
             if (compiler != null) {
-                ((HotSpotTruffleCompiler) compiler).purgeCaches();
+                ((HotSpotTruffleCompiler) compiler).purgePartialEvaluationCaches();
             }
         }
     }

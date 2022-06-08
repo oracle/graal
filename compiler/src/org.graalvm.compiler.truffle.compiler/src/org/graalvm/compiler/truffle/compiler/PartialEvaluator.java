@@ -440,9 +440,9 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * Returns a scope
-     *
-     * @return a {@link AutoCloseable} that must  null if no scope is required, otherwise
+     * Returns an {@link AutoCloseable} supplier (a "scope").
+     * These "scopes" wrap encoded graph parsing.
+     * Returns null if scopes are not needed.
      */
     protected CreateCachedGraphScope getCreateCachedGraphScope() {
         return null;

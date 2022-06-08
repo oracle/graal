@@ -48,7 +48,5 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
     /**
      * Releases caches used for PE/compilation.
      */
-    default void purgeCaches() {
-        // nop
-    }
+    void purgePartialEvaluationCaches();
 }

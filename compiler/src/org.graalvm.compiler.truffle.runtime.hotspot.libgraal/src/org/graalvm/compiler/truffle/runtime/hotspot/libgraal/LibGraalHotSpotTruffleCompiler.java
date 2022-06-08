@@ -194,4 +194,11 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     private static Supplier<Map<String, Object>> optionsEncoder(CompilableTruffleAST compilable) {
         return () -> GraalTruffleRuntime.getOptionsForCompiler((OptimizedCallTarget) compilable);
     }
+
+    @Override
+    public void purgePartialEvaluationCaches() {
+        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+            TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), handle());
+        }
+    }
 }
