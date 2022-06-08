@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.hosted.heap.PodSupport;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -613,6 +614,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
                         generateArrayBasedStorage(superClass, factoryInterface, beforeAnalysisAccess);
+                        registerForFieldBasedStorage(superClass, factoryInterface);
                         return false;
                     }
                 });
@@ -699,6 +701,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
         private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
             String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
             GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
+        }
+
+        private static void registerForFieldBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface) {
+            PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
         }
 
         private static Class<?> loadClass(String name) {
