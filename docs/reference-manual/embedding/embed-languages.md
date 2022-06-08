@@ -271,7 +271,7 @@ Host access is fully customizable by creating a custom [`HostAccess`](https://ww
 By default, a `Value` lives as long as the corresponding `Context`.
 However, it may be desireable to change this default behavior and bind a value to a scope, such that when execution leaves the scope, the value is invalidated.
 An example for such a scope are guest-to-host callbacks, where a `Value` may be passed as a callback parameter.
-We have already seen above how this works with the default `HostAccess.EXPLICIT`:
+We have already seen above how passing callback parameters works with the default `HostAccess.EXPLICIT`:
 
 ```java
 public class Services {
@@ -297,7 +297,7 @@ public static void main(String[] args) {
 }
 ```
 
-In this example, `lastResult` maintains a reference to the value from the guest is stored on the host and remains accessible until after the scope of `callback()` has ended.
+In this example, `lastResult` maintains a reference to the value from the guest that is stored on the host and remains accessible also after the scope of `callback()` has ended.
 
 However, this is not always desireable, as keeping the value alive may block resources unnecessarily or not reflect the behavior of ephemeral values correctly.
 For these cases, `HostAccess.SCOPED` can be used, which changes the default behavior for all callbacks, such that values that are passed as callback parameters are only valid for the duration of the callback.
