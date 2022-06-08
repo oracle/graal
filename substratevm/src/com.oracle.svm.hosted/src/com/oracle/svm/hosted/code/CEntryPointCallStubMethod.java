@@ -217,8 +217,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     }
 
     private void generateEpilogueAndReturn(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
-        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
-        ValueNode returnValue = adaptReturnValue(method, providers, purpose, nativeLibraries, kit, value);
+        ValueNode returnValue = adaptReturnValue(method, providers, purpose, kit, value);
         generateEpilogue(providers, kit);
         kit.createReturn(returnValue, returnValue.getStackKind());
     }
@@ -540,12 +539,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
     }
 
-    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, NativeLibraries nativeLibraries, HostedGraphKit kit, ValueNode value) {
+    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
         ValueNode returnValue = value;
         if (returnValue.getStackKind().isPrimitive()) {
             return returnValue;
         }
         JavaType returnType = method.getSignature().getReturnType(null);
+        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
             // Always return enum values as a signed word because it should never be a problem if
@@ -554,7 +554,12 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             CInterfaceEnumTool tool = new CInterfaceEnumTool(providers.getMetaAccess(), providers.getSnippetReflection());
             JavaKind cEnumReturnType = providers.getWordTypes().getWordKind();
             assert !cEnumReturnType.isUnsigned() : "requires correct representation of signed values";
-            returnValue = tool.createEnumValueInvoke(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
+            returnValue = tool.startEnumValueInvokeWithException(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
+            kit.exceptionPart();
+            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
+            kit.append(new LoweredDeadEndNode());
+            kit.endInvokeWithException();
+
         } else if (purpose != Purpose.ANALYSIS) {
             // for analysis test cases: abort only during compilation
             throw UserError.abort("Entry point method return types are restricted to primitive types, word types and enumerations (@%s): %s",
