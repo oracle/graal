@@ -56,8 +56,6 @@ import org.graalvm.nativeimage.ImageInfo;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.CoreLocations.LongLocation;
 import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 
@@ -122,7 +120,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    protected Shape newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption) {
+    protected ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption) {
         return new ShapeBasic(this, sharedData, objectType, flags, singleContextAssumption);
     }
 
@@ -159,7 +157,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    public Allocator createAllocator() {
+    public ShapeImpl.BaseAllocator createAllocator() {
         LayoutImpl layout = this;
         return getStrategy().createAllocator(layout);
     }

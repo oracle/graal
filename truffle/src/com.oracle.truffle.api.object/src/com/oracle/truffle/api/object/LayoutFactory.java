@@ -51,10 +51,8 @@ package com.oracle.truffle.api.object;
 public interface LayoutFactory {
     /** @since 0.8 or earlier */
     @Deprecated(since = "22.2")
-    default Layout createLayout(Layout.Builder layoutBuilder) {
-        Class<? extends DynamicObject> clazz = Layout.getType(layoutBuilder);
-        int implicitCastFlags = Layout.implicitCastFlags(Layout.getAllowedImplicitCasts(layoutBuilder));
-        return createLayout(clazz, implicitCastFlags);
+    default Layout createLayout(@SuppressWarnings("unused") Layout.Builder layoutBuilder) {
+        throw new UnsupportedOperationException();
     }
 
     /** @since 0.8 or earlier */
@@ -66,8 +64,7 @@ public interface LayoutFactory {
     Property createProperty(Object id, Location location, int flags);
 
     /** @since 22.2 */
-    @SuppressWarnings("unused")
-    default Layout createLayout(Class<? extends DynamicObject> layoutClass, int implicitCastFlags) {
+    default Shape createShape(@SuppressWarnings("unused") Object arg0) {
         throw new UnsupportedOperationException();
     }
 

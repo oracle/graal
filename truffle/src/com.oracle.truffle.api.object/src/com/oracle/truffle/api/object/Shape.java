@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -171,7 +172,7 @@ public abstract class Shape {
         private boolean propertyAssumptions;
         private Object sharedData;
         private Assumption singleContextAssumption;
-        private EconomicMap<Object, Property> properties;
+        private EconomicMap<Object, Pair<Object, Integer>> properties;
 
         Builder() {
         }
@@ -331,10 +332,7 @@ public abstract class Shape {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
 
-            Layout layout = Layout.getFactory().createLayout(DynamicObject.class, 0);
-
-            Location location = layout.createAllocator().constantLocation(value);
-            properties.put(key, Property.create(key, location, flags));
+            properties.put(key, Pair.create(value, flags));
             return this;
         }
 
@@ -378,14 +376,7 @@ public abstract class Shape {
             }
 
             int implicitCastFlags = (allowImplicitCastIntToDouble ? Layout.INT_TO_DOUBLE_FLAG : 0) | (allowImplicitCastIntToLong ? Layout.INT_TO_LONG_FLAG : 0);
-            Layout layout = Layout.getFactory().createLayout(layoutClass, implicitCastFlags);
-            Shape shape = layout.buildShape(dynamicType, sharedData, flags, singleContextAssumption);
-
-            if (properties != null) {
-                for (Property property : properties.getValues()) {
-                    shape = shape.addProperty(property);
-                }
-            }
+            Shape shape = Layout.getFactory().createShape(new Object[]{layoutClass, implicitCastFlags, dynamicType, sharedData, flags, properties, singleContextAssumption});
 
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
