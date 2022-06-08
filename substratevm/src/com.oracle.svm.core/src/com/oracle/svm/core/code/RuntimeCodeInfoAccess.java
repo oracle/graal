@@ -26,16 +26,11 @@ package com.oracle.svm.core.code;
 
 import java.util.EnumSet;
 
-import com.oracle.svm.core.os.VirtualMemoryProvider;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -54,6 +49,9 @@ import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
+import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -197,7 +195,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo(NonmovableObjectArray<Object> objectData) {
-        CodeInfoImpl info = UnmanagedMemory.calloc(getSizeOfCodeInfo());
+        CodeInfoImpl info = UnmanagedMemory.calloc(CodeInfoAccess.getSizeOfCodeInfo());
 
         assert objectData.isNonNull() && NonmovableArrays.lengthOf(objectData) == CodeInfoImpl.OBJFIELDS_COUNT;
         info.setObjectFields(objectData);
@@ -205,11 +203,6 @@ public final class RuntimeCodeInfoAccess {
         // Make the object visible to the GC (before writing any heap data into the object).
         RuntimeCodeInfoMemory.singleton().add(info);
         return info;
-    }
-
-    @Fold
-    public static UnsignedWord getSizeOfCodeInfo() {
-        return SizeOf.unsigned(CodeInfoImpl.class);
     }
 
     @Uninterruptible(reason = "Prevent the GC from running - otherwise, it could accidentally visit the freed memory.")

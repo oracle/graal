@@ -28,6 +28,11 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 
 import java.util.Arrays;
 
+import com.oracle.svm.core.code.CodeInfoAccess.DummyValueInfoAllocator;
+import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
+import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
+import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.code.ReusableTypeReader;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -91,6 +96,7 @@ import com.oracle.svm.core.util.Counter;
 
 public class SubstrateDiagnostics {
     private static final FastThreadLocalBytes<CCharPointer> threadOnlyAttachedForCrashHandler = FastThreadLocalFactory.createBytes(() -> 1, "SubstrateDiagnostics.threadOnlyAttachedForCrashHandler");
+    private static final ImageCodeLocationInfoPrinter imageCodeLocationInfoPrinter = new ImageCodeLocationInfoPrinter();
     private static volatile boolean loopOnFatalError;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -127,6 +133,7 @@ public class SubstrateDiagnostics {
 
     public static void printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
         if (value.notEqual(0) &&
+                        !imageCodeLocationInfoPrinter.printLocationInfo(log, value) &&
                         !RuntimeCodeInfoMemory.singleton().printLocationInfo(log, value, allowJavaHeapAccess, allowUnsafeOperations) &&
                         !VMThreads.printLocationInfo(log, value, allowUnsafeOperations) &&
                         !Heap.getHeap().printLocationInfo(log, value, allowJavaHeapAccess, allowUnsafeOperations)) {
@@ -232,7 +239,7 @@ public class SubstrateDiagnostics {
         if (fatalErrorState.diagnosticThunkIndex > 0) {
             // An error must have happened earlier as the code for printing diagnostics was invoked
             // recursively.
-            log.resetIndentation();
+            log.resetIndentation().newline();
         }
 
         // Print the various sections of the diagnostics and skip all sections that were already
@@ -618,8 +625,8 @@ public class SubstrateDiagnostics {
             Pointer sp = context.getStackPointer();
             CodePointer ip = context.getInstructionPointer();
 
-            log.string("Top frame info:").indent(true);
             if (sp.isNonNull() && ip.isNonNull()) {
+                log.string("Top frame info:").indent(true);
                 long totalFrameSize = getTotalFrameSize(sp, ip);
                 DeoptimizedFrame deoptFrame = Deoptimizer.checkDeoptimized(sp);
                 if (deoptFrame != null) {
@@ -645,8 +652,8 @@ public class SubstrateDiagnostics {
                         log.string("LastJavaIP ").zhex(lastIp).newline();
                     }
                 }
+                log.indent(false);
             }
-            log.indent(false);
         }
     }
 
@@ -832,8 +839,28 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             Pointer sp = context.getStackPointer();
             CodePointer ip = context.getInstructionPointer();
+
             log.string("Stacktrace for the failing thread ").zhex(CurrentIsolate.getCurrentThread()).string(":").indent(true);
-            ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
+            boolean success = ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
+
+            if (!success && DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel)) {
+                /*
+                 * If the stack pointer is not sufficiently aligned, then we might be in the middle
+                 * of a call (i.e., only the return address and the arguments are on the stack). In
+                 * that case, we can read the return address from the top of the stack, aligned the
+                 * stack pointer, and start a stack walk in the caller.
+                 */
+                int expectedStackAlignment = ConfigurationValues.getTarget().wordSize * 2;
+                if (sp.unsignedRemainder(expectedStackAlignment).notEqual(0) && sp.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0)) {
+                    log.newline();
+                    log.string("WARNING: stack pointer is NOT aligned to ").signed(expectedStackAlignment).string(" bytes. Starting a stack walk in the most likely caller instead.").newline();
+                    ip = sp.readWord(0);
+                    sp = sp.add(ConfigurationValues.getTarget().wordSize);
+
+                    ThreadStackPrinter.printStacktrace(sp, ip, PRINT_VISITORS[invocationCount - 1], log);
+                }
+            }
+
             log.indent(false);
         }
     }
@@ -876,6 +903,76 @@ public class SubstrateDiagnostics {
             log.string("Stacktrace:").indent(true);
             JavaStackWalker.walkThread(vmThread, StackFramePrintVisitor.SINGLETON, log);
             log.redent(false);
+        }
+    }
+
+    private static class DumpAOTCompiledCodeInfo extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            CodeInfo info = CodeInfoTable.getImageCodeInfo();
+            Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
+            UnsignedWord codeSize = CodeInfoAccess.getCodeSize(info);
+            Pointer codeEnd = codeStart.add(codeSize).subtract(1);
+
+            log.string("AOT compiled code is mapped at ").zhex(codeStart).string(" - ").zhex(codeEnd).newline();
+            log.newline();
+        }
+    }
+
+    private static class ImageCodeLocationInfoPrinter {
+        private final ReusableTypeReader frameInfoReader = new ReusableTypeReader();
+        private final SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
+        private final DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
+        private final FrameInfoState frameInfoState = new FrameInfoState();
+
+        /**
+         * If {@code value} points into AOT compiled code, then this method prints information about
+         * the compilation unit.
+         *
+         * NOTE: this method may only be called by a single thread.
+         */
+        public boolean printLocationInfo(Log log, UnsignedWord value) {
+            CodeInfo info = CodeInfoTable.getImageCodeInfo();
+            if (info.equal(value)) {
+                log.string("is the image CodeInfo object");
+                return true;
+            }
+
+            UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(CodeInfoAccess.getSizeOfCodeInfo());
+            if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
+                log.string("points inside the image CodeInfo object ").zhex(info);
+                return true;
+            }
+
+            if (CodeInfoAccess.contains(info, (CodePointer) value)) {
+                log.string("points into AOT compiled code ");
+
+                frameInfoReader.reset();
+                frameInfoState.reset();
+                CodeInfoAccess.initFrameInfoReader(info, (CodePointer) value, frameInfoReader, frameInfoState);
+                if (frameInfoState.entryOffset >= 0) {
+                    FrameInfoQueryResult frameInfo;
+                    FrameInfoQueryResult rootInfo = null;
+                    do {
+                        singleShotFrameInfoQueryResultAllocator.reload();
+                        frameInfo = CodeInfoAccess.nextFrameInfo(info, frameInfoReader, singleShotFrameInfoQueryResultAllocator, dummyValueInfoAllocator, frameInfoState);
+                        if (frameInfo != null) {
+                            rootInfo = frameInfo;
+                        }
+                    } while (frameInfo != null);
+
+                    rootInfo.log(log);
+                }
+                return true;
+            }
+
+            return false;
         }
     }
 
@@ -970,7 +1067,7 @@ public class SubstrateDiagnostics {
             this.diagnosticThunks = new DiagnosticThunk[]{new DumpCurrentTimestamp(), new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(),
                             new DumpTopFrame(), new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
                             new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
-                            new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
+                            new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes(), new DumpAOTCompiledCodeInfo()};
 
             this.initialInvocationCount = new int[diagnosticThunks.length];
             Arrays.fill(initialInvocationCount, 1);
