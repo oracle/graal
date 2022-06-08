@@ -32,6 +32,7 @@ import static org.graalvm.polyglot.nativeapi.types.PolyglotNativeAPITypes.Polygl
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -44,6 +45,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -54,9 +56,9 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CDoublePointer;
 import org.graalvm.nativeimage.c.type.CFloatPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
@@ -151,9 +153,7 @@ public final class PolyglotNativeAPI {
         ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> handles;
 
         Throwable lastException;
-        PolyglotExtendedErrorInfo lastErrorUnmanagedInfo;
-        // will be assigned to CTypeConversionSupportImpl::NULL_HOLDER by default
-        CCharPointerHolder lastErrorUnmanagedMessageHolder = CTypeConversion.toCString(null);
+        PolyglotExtendedErrorInfo lastExceptionUnmanagedInfo;
 
         PolyglotException polyglotException;
 
@@ -1492,24 +1492,28 @@ public final class PolyglotNativeAPI {
             result.write(WordFactory.nullPointer());
             return poly_ok;
         }
-        if (state.lastErrorUnmanagedInfo.isNonNull()) {
-            result.write(state.lastErrorUnmanagedInfo);
-            return poly_ok;
-        }
+
         assert state.lastErrorCode != poly_ok;
-        PolyglotExtendedErrorInfo unmanagedErrorInfo = UnmanagedMemory.malloc(SizeOf.get(PolyglotExtendedErrorInfo.class));
-        unmanagedErrorInfo.setErrorCode(state.lastErrorCode.getCValue());
+        freeUnmanagedErrorState(state);
+
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         pw.println(state.lastException.getMessage());
         pw.println("The full stack trace is:");
         state.lastException.printStackTrace(pw);
-        CCharPointerHolder holder = CTypeConversion.toCString(sw.toString());
-        unmanagedErrorInfo.setErrorMessage(holder.get());
+        ByteBuffer message = UTF8_CHARSET.encode(sw.toString());
 
-        state.lastErrorUnmanagedMessageHolder = holder;
-        state.lastErrorUnmanagedInfo = unmanagedErrorInfo;
-        result.write(state.lastErrorUnmanagedInfo);
+        int messageSize = message.capacity() + 1;
+        CCharPointer messageChars = UnmanagedMemory.malloc(messageSize);
+        ByteBuffer messageBuffer = CTypeConversion.asByteBuffer(messageChars, messageSize);
+        messageBuffer.put(message).put((byte) 0);
+
+        PolyglotExtendedErrorInfo info = UnmanagedMemory.malloc(SizeOf.get(PolyglotExtendedErrorInfo.class));
+        info.setErrorCode(state.lastErrorCode.getCValue());
+        info.setErrorMessage(messageChars);
+
+        state.lastExceptionUnmanagedInfo = info;
+        result.write(state.lastExceptionUnmanagedInfo);
         return poly_ok;
     }
 
@@ -1852,12 +1856,24 @@ public final class PolyglotNativeAPI {
 
     private static void resetErrorState() {
         ThreadLocalState state = ensureLocalsInitialized();
+        resetErrorStateAtomically(state);
+    }
+
+    @Uninterruptible(reason = "An exception thrown by recurring callback can cause inconsistency, leaks or stale pointers.")
+    private static void resetErrorStateAtomically(ThreadLocalState state) {
         state.lastErrorCode = poly_ok;
         state.lastException = null;
-        if (state.lastErrorUnmanagedInfo.isNonNull()) {
-            state.lastErrorUnmanagedMessageHolder.close();
-            UnmanagedMemory.free(state.lastErrorUnmanagedInfo);
-            state.lastErrorUnmanagedInfo = WordFactory.nullPointer();
+        freeUnmanagedErrorState(state);
+    }
+
+    @Uninterruptible(reason = "An exception thrown by recurring callback can cause inconsistency, leaks or stale pointers.")
+    private static void freeUnmanagedErrorState(ThreadLocalState state) {
+        if (state.lastExceptionUnmanagedInfo.isNonNull()) {
+            assert state.lastExceptionUnmanagedInfo.getErrorMessage().isNonNull();
+
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(state.lastExceptionUnmanagedInfo.getErrorMessage());
+            ImageSingletons.lookup(UnmanagedMemorySupport.class).free(state.lastExceptionUnmanagedInfo);
+            state.lastExceptionUnmanagedInfo = WordFactory.nullPointer();
         }
     }
 
