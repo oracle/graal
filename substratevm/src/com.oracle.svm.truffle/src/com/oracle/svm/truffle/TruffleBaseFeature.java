@@ -580,6 +580,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
     }
 
     private static final class StaticObjectSupport {
+        private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
+
         static void beforeAnalysis(BeforeAnalysisAccess access) {
             StaticObjectArrayBasedSupport.beforeAnalysis(access);
         }
@@ -592,8 +594,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> storageSuperClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
-                        StaticObjectArrayBasedSupport.onBuildInvocation(storageSuperClass, factoryInterface);
-                        StaticObjectPodBasedSupport.onBuildInvocation(storageSuperClass, factoryInterface);
+                        if (validateClasses(storageSuperClass, factoryInterface)) {
+                            StaticObjectArrayBasedSupport.onBuildInvocation(storageSuperClass, factoryInterface);
+                            StaticObjectPodBasedSupport.onBuildInvocation(storageSuperClass, factoryInterface);
+                        }
                         return false;
                     }
                 });
@@ -609,6 +613,20 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
             return OriginalClassProvider.getJavaClass(GraalAccess.getOriginalSnippetReflection(), b.getConstantReflection().asJavaType(arg.asJavaConstant()));
         }
 
+        private static boolean validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) {
+            try {
+                VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
+                return true;
+            } catch (ReflectiveOperationException e) {
+                if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
+                    Target_com_oracle_truffle_api_staticobject_StaticShape_Builder.ExceptionCache.set(storageSuperClass, factoryInterface, (IllegalArgumentException) e.getCause());
+                    return false;
+                } else {
+                    throw VMError.shouldNotReachHere(e);
+                }
+            }
+        }
+
         private static final class StaticObjectArrayBasedSupport {
             private static final Method STORAGE_CLASS_NAME = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "storageClassName");
 
@@ -618,8 +636,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
             private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR, "getShapeGenerator", TruffleLanguage.class,
                             GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
-
-            private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class, "validateClasses", Class.class, Class.class);
 
             private static final Map<Class<?>, ClassLoader> CLASS_LOADERS = new ConcurrentHashMap<>();
             private static BeforeAnalysisAccess beforeAnalysisAccess;
@@ -669,20 +685,11 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
             @SuppressWarnings("unused")
             private static void generateArrayBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface, BeforeAnalysisAccess access) {
                 try {
-                    validateClasses(storageSuperClass, factoryInterface);
                     ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
                     getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
                 } catch (ReflectiveOperationException e) {
-                    if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
-                        Target_com_oracle_truffle_api_staticobject_StaticShape_Builder.ExceptionCache.set(storageSuperClass, factoryInterface, (IllegalArgumentException) e.getCause());
-                    } else {
-                        throw VMError.shouldNotReachHere(e);
-                    }
+                    throw VMError.shouldNotReachHere(e);
                 }
-            }
-
-            private static void validateClasses(Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
-                VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
             }
 
             private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
