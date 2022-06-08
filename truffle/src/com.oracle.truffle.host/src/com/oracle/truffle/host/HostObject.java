@@ -59,7 +59,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -74,6 +73,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -125,8 +125,8 @@ final class HostObject implements TruffleObject {
     }
 
     /**
-     * This method is guaranteed to return the same HostObject
-     * for the same host class instance and HostContext.
+     * This method is guaranteed to return the same HostObject for the same host class instance and
+     * HostContext.
      */
     @TruffleBoundary
     static HostObject forClass(Class<?> clazz, HostContext context) {
@@ -2254,7 +2254,7 @@ final class HostObject implements TruffleObject {
 
         @ExportMessage
         Object readArrayElement(long idx,
-                                @Cached BranchProfile error) throws InvalidArrayIndexException {
+                        @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(idx)) {
                 error.enter();
                 throw InvalidArrayIndexException.create(idx);
