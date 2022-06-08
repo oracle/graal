@@ -170,7 +170,7 @@ public final class StoredContinuationAccess {
 
     @Uninterruptible(reason = "Prevent garbage collection while initializing instance and copying frames.")
     private static StoredContinuation fillCloneUninterruptibly(StoredContinuation cont, StoredContinuation clone) {
-        CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, getFramesStart(clone));
+        CodePointer ip = ImageSingletons.lookup(ContinuationSupport.class).copyFrames(cont, clone);
         // copyFrames() above may do something interruptible before uninterruptibly copying frames,
         // so set IP only afterwards so that the object is considered uninitialized until then.
         arrayAddress(clone).writeWord(IP_OFFSET, ip);

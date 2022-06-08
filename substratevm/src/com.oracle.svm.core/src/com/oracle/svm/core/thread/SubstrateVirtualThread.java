@@ -108,7 +108,7 @@ final class SubstrateVirtualThread extends Thread {
             if (parent instanceof SubstrateVirtualThread) {
                 this.scheduler = ((SubstrateVirtualThread) parent).scheduler;
             } else {
-                this.scheduler = SubstrateVirtualThreads.SCHEDULER;
+                this.scheduler = ((SubstrateVirtualThreads) VirtualThreads.singleton()).scheduler;
             }
         } else {
             this.scheduler = scheduler;
