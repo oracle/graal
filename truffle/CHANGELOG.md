@@ -4,8 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.2.0
 
-* GR-38925 Added new meta-data APIs to `InteropLibrary`:
-    * Added `InteropLibrary.hasMetaParents(Object)` and `InteropLibrary.getMetaParents(Object)` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
+* GR-38925 Added `InteropLibrary.hasMetaParents(Object)` and `InteropLibrary.getMetaParents(Object)` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
 * GR-36557 Deprecated `--engine.MaximumGraalNodeCount` and introduced `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
 * GR-37493 Added `@DenyReplace` to deny replacement of final node types. 
 * GR-37493 Potentially breaking: Disabled replace of all Truffle DSL generated uncached nodes. If you call `Node.replace()` on an uncached version of a generated node or library it will now fail with an `IllegalArgumentException`. As a rule of thumb, uncached versions of nodes should not ever be stored in `@Child` fields. Instead, they should always be used as singletons.
