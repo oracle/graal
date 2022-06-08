@@ -41,10 +41,23 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.contract.NodeCostUtil;
 
 public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
     public static class Options {
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxApplication = new OptionKey<>(60);
+        //@formatter:off
+        @Option(help = "", type = OptionType.Expert)
+        public static final OptionKey<Integer> FullUnrollMaxApplication = new OptionKey<>(60);
+
+        @Option(help = "NodeSize for small graphs, i.e., graphs for which we allow large unrolling code size increases.", type = OptionType.Expert)
+        public static final OptionKey<Integer> FullUnrollSmallGraphs = new OptionKey<>(2000);
+
+        @Option(help = "Maximum code size budget in NodeSize for small graphs. Multiplied by the graph size.", type = OptionType.Expert)
+        public static final OptionKey<Double> FullUnrollCodeSizeBudgetSmallGraphs = new OptionKey<>(5D);
+
+        @Option(help = "Maximum code size budget in NodeSize for large graphs. Multiplied by the graph size.", type = OptionType.Expert)
+        public static final OptionKey<Double> FullUnrollCodeSizeBudgetLargeGraphs = new OptionKey<>(2D);
+        //@formatter:on
     }
 
     private static final CounterKey FULLY_UNROLLED_LOOPS = DebugContext.counter("FullUnrolls");
@@ -66,6 +79,8 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
             if (graph.hasLoops()) {
                 boolean peeled;
                 int applications = 0;
+                int graphSizeBefore = -1;
+                int maxGraphSize = -1;
                 do {
                     peeled = false;
                     final LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
@@ -74,12 +89,31 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                     countedLoops.sort(LOOP_COMPARATOR);
                     for (LoopEx loop : countedLoops) {
                         if (getPolicies().shouldFullUnroll(loop)) {
+                            if (graphSizeBefore == -1) {
+                                graphSizeBefore = NodeCostUtil.computeGraphSize(graph);
+                                final int smallGraphs = Options.FullUnrollSmallGraphs.getValue(graph.getOptions());
+                                if (graphSizeBefore > smallGraphs) {
+                                    maxGraphSize = (int) (graphSizeBefore * Options.FullUnrollCodeSizeBudgetLargeGraphs.getValue(graph.getOptions()));
+                                } else {
+                                    maxGraphSize = (int) (graphSizeBefore * Options.FullUnrollCodeSizeBudgetSmallGraphs.getValue(graph.getOptions()));
+                                    if (maxGraphSize > smallGraphs) {
+                                        maxGraphSize = (int) (smallGraphs * Options.FullUnrollCodeSizeBudgetLargeGraphs.getValue(graph.getOptions()));
+                                    }
+                                }
+                            }
                             debug.log("FullUnroll %s", loop);
                             LoopTransformations.fullUnroll(loop, context, canonicalizer);
                             FULLY_UNROLLED_LOOPS.increment(debug);
                             debug.dump(DebugContext.DETAILED_LEVEL, graph, "FullUnroll %s", loop);
                             peeled = true;
                             break;
+                        }
+                    }
+                    if (graphSizeBefore != -1) {
+                        int currentGraphSize = NodeCostUtil.computeGraphSize(graph);
+                        if (currentGraphSize > maxGraphSize) {
+                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "Aborting full unroll, graphsize went from %d to %d in %s", graphSizeBefore, currentGraphSize, graph);
+                            return;
                         }
                     }
                     dataCounted.deleteUnusedNodes();
