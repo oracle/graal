@@ -2217,7 +2217,7 @@ final class HostObject implements TruffleObject {
         }
         Class<?> superClass = asClass().getSuperclass();
         Class<?>[] interfaces = asClass().getInterfaces();
-        Object[] metaObjects = new Object[interfaces.length + 1];
+        HostObject[] metaObjects = new HostObject[interfaces.length + 1];
 
         int i = 0;
         metaObjects[i++] = HostObject.forClass(superClass, context);
@@ -2230,9 +2230,9 @@ final class HostObject implements TruffleObject {
     @ExportLibrary(InteropLibrary.class)
     static final class TypesArray implements TruffleObject {
 
-        @CompilationFinal(dimensions = 1) private final Object[] types;
+        @CompilationFinal(dimensions = 1) private final HostObject[] types;
 
-        TypesArray(Object[] types) {
+        TypesArray(HostObject[] types) {
             this.types = types;
         }
 
