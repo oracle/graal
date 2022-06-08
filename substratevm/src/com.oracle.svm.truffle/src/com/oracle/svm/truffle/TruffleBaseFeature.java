@@ -585,9 +585,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
         private static final Constructor<?> GENERATOR_CLASS_LOADER_CONSTRUCTOR = ReflectionUtil
                         .lookupConstructor(GENERATOR_CLASS_LOADER_CLASS, Class.class);
 
-        private static final Class<?> SHAPE_GENERATOR = loadClass(
+        private static final Class<?> ARRAY_BASED_SHAPE_GENERATOR = loadClass(
                         "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
-        private static final Method GET_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(SHAPE_GENERATOR,
+        private static final Method GET_ARRAY_BASED_SHAPE_GENERATOR = ReflectionUtil.lookupMethod(ARRAY_BASED_SHAPE_GENERATOR,
                         "getShapeGenerator", TruffleLanguage.class, GENERATOR_CLASS_LOADER_CLASS, Class.class, Class.class, String.class);
 
         private static final Method VALIDATE_CLASSES = ReflectionUtil.lookupMethod(StaticShape.Builder.class,
@@ -612,7 +612,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
                                     Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
-                        generate(superClass, factoryInterface, beforeAnalysisAccess);
+                        generateArrayBasedStorage(superClass, factoryInterface, beforeAnalysisAccess);
                         return false;
                     }
                 });
@@ -629,15 +629,15 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
              * because of context pre-initialization. Therefore, we inspect the generator cache in
              * ArrayBasedShapeGenerator, which contains references to all generated storage classes.
              */
-            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(SHAPE_GENERATOR, "generatorCache");
+            ConcurrentHashMap<?, ?> generatorCache = ReflectionUtil.readStaticField(ARRAY_BASED_SHAPE_GENERATOR, "generatorCache");
             for (Map.Entry<?, ?> entry : generatorCache.entrySet()) {
                 Object shapeGenerator = entry.getValue();
                 if (!registeredShapeGenerators.containsKey(shapeGenerator)) {
                     registeredShapeGenerators.put(shapeGenerator, shapeGenerator);
                     requiresIteration = true;
-                    Class<?> storageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass",
+                    Class<?> storageClass = ReflectionUtil.readField(ARRAY_BASED_SHAPE_GENERATOR, "generatedStorageClass",
                                     shapeGenerator);
-                    Class<?> factoryClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedFactoryClass",
+                    Class<?> factoryClass = ReflectionUtil.readField(ARRAY_BASED_SHAPE_GENERATOR, "generatedFactoryClass",
                                     shapeGenerator);
                     for (Constructor<?> c : factoryClass.getDeclaredConstructors()) {
                         RuntimeReflection.register(c);
@@ -662,7 +662,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
         }
 
         @SuppressWarnings("unused")
-        private static void generate(Class<?> storageSuperClass, Class<?> factoryInterface,
+        private static void generateArrayBasedStorage(Class<?> storageSuperClass, Class<?> factoryInterface,
                         BeforeAnalysisAccess access) {
             try {
                 validateClasses(storageSuperClass, factoryInterface);
@@ -698,7 +698,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
          */
         private static void getGetShapeGenerator(ClassLoader generatorCL, Class<?> storageSuperClass, Class<?> factoryInterface) throws ReflectiveOperationException {
             String storageClassName = (String) STORAGE_CLASS_NAME.invoke(null);
-            GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
+            GET_ARRAY_BASED_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
         }
 
         private static Class<?> loadClass(String name) {
