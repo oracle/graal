@@ -464,7 +464,7 @@ public abstract class LoopTransformations {
                 graph.removeFixed(safepoint);
             }
         }
-        graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
+        graph.getOptimizationLog().report(LoopTransformations.class, "PreMainPostCreated", loop.loopBegin());
 
         return new PreMainPostResult(preLoopBegin, mainLoopBegin, postLoopBegin, preLoop, mainLoop, postLoop);
     }
