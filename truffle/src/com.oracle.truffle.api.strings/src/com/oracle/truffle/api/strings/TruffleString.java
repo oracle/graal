@@ -75,6 +75,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -3889,8 +3890,7 @@ public final class TruffleString extends AbstractTruffleString {
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
-                        @Cached TStringOpsNodes.RawMemCmpBytesNode cmp) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
             nullCheck(expectedEncoding);
             if (a == b) {
                 return 0;
@@ -3899,7 +3899,7 @@ public final class TruffleString extends AbstractTruffleString {
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(expectedEncoding, codeRangeA);
             b.looseCheckEncoding(expectedEncoding, codeRangeB);
-            return cmp.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
+            return TStringOpsNodes.memcmpBytes(this, a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
         }
 
         /**
@@ -3948,12 +3948,11 @@ public final class TruffleString extends AbstractTruffleString {
         public abstract int execute(AbstractTruffleString a, AbstractTruffleString b);
 
         @Specialization
-        static int compare(AbstractTruffleString a, AbstractTruffleString b,
+        int compare(AbstractTruffleString a, AbstractTruffleString b,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
-                        @Cached TStringOpsNodes.RawMemCmpNode cmp) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
             if (a == b) {
                 return 0;
             }
@@ -3961,7 +3960,7 @@ public final class TruffleString extends AbstractTruffleString {
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(Encoding.UTF_16, codeRangeA);
             b.looseCheckEncoding(Encoding.UTF_16, codeRangeB);
-            return cmp.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
+            return TStringOpsNodes.memcmp(this, a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
         }
 
         /**
@@ -4010,12 +4009,11 @@ public final class TruffleString extends AbstractTruffleString {
         public abstract int execute(AbstractTruffleString a, AbstractTruffleString b);
 
         @Specialization
-        static int compare(AbstractTruffleString a, AbstractTruffleString b,
+        int compare(AbstractTruffleString a, AbstractTruffleString b,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
-                        @Cached TStringOpsNodes.RawMemCmpNode cmp) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
             if (a == b) {
                 return 0;
             }
@@ -4023,7 +4021,7 @@ public final class TruffleString extends AbstractTruffleString {
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(Encoding.UTF_32, codeRangeA);
             b.looseCheckEncoding(Encoding.UTF_32, codeRangeB);
-            return cmp.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
+            return TStringOpsNodes.memcmp(this, a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
         }
 
         /**
@@ -4169,12 +4167,11 @@ public final class TruffleString extends AbstractTruffleString {
         abstract boolean execute(AbstractTruffleString a, int fromIndexA, AbstractTruffleString b, int fromIndexB, int length, byte[] mask, Encoding expectedEncoding);
 
         @Specialization
-        static boolean regionEquals(AbstractTruffleString a, int byteFromIndexA, AbstractTruffleString b, int byteFromIndexB, int byteLength, byte[] mask, Encoding expectedEncoding,
+        boolean regionEquals(AbstractTruffleString a, int byteFromIndexA, AbstractTruffleString b, int byteFromIndexB, int byteLength, byte[] mask, Encoding expectedEncoding,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
-                        @Cached TStringOpsNodes.RawRegionEqualsNode regionEqualsNode) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
             if (byteLength == 0) {
                 return true;
             }
@@ -4189,7 +4186,7 @@ public final class TruffleString extends AbstractTruffleString {
             b.boundsCheckRegionRaw(fromIndexB, length);
             Object arrayA = toIndexableNodeA.execute(a, a.data());
             Object arrayB = toIndexableNodeB.execute(b, b.data());
-            return regionEqualsNode.execute(a, arrayA, b, arrayB, fromIndexA, fromIndexB, length, mask);
+            return TStringOps.regionEqualsWithOrMaskWithStride(this, a, arrayA, a.stride(), fromIndexA, b, arrayB, b.stride(), fromIndexB, mask, length);
         }
 
         /**
@@ -4597,17 +4594,16 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         @Specialization(guards = "!identical(a, b)")
-        static boolean check(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
+        boolean check(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
-                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
-                        @Cached TStringOpsNodes.RawEqualsNode equalsNode) {
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode) {
             final int codeRangeA = getCodeRangeANode.execute(a);
             final int codeRangeB = getCodeRangeBNode.execute(b);
             a.looseCheckEncoding(expectedEncoding, codeRangeA);
             b.looseCheckEncoding(expectedEncoding, codeRangeB);
-            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, equalsNode);
+            return checkContentEquals(a, codeRangeA, b, codeRangeB, toIndexableNodeA, toIndexableNodeB, this);
         }
 
         static boolean checkContentEquals(
@@ -4615,12 +4611,17 @@ public final class TruffleString extends AbstractTruffleString {
                         AbstractTruffleString b, int codeRangeB,
                         ToIndexableNode toIndexableNodeA,
                         ToIndexableNode toIndexableNodeB,
-                        TStringOpsNodes.RawEqualsNode equalsNode) {
+                        EqualNode equalNode) {
             assert TSCodeRange.isKnown(codeRangeA, codeRangeB);
-            if (a.length() != b.length() || codeRangeA != codeRangeB || a.isHashCodeCalculated() && b.isHashCodeCalculated() && a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
+            if (a.length() != b.length() || codeRangeA != codeRangeB ||
+                            !CompilerDirectives.isCompilationConstant(a) && !CompilerDirectives.isCompilationConstant(b) &&
+                                            a.isHashCodeCalculated() && b.isHashCodeCalculated() &&
+                                            a.getHashCodeUnsafe() != b.getHashCodeUnsafe()) {
                 return false;
             }
-            return equalsNode.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
+            return TStringOps.regionEqualsWithOrMaskWithStride(equalNode,
+                            a, toIndexableNodeA.execute(a, a.data()), a.stride(), 0,
+                            b, toIndexableNodeB.execute(b, b.data()), b.stride(), 0, null, a.length());
         }
 
         /**
@@ -5326,11 +5327,10 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         @Specialization(guards = "!a.isCompatibleTo(encoding)")
-        static TruffleString transCodeMutable(MutableTruffleString a, Encoding encoding,
+        TruffleString transCodeMutable(MutableTruffleString a, Encoding encoding,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
                         @Cached @Shared("transCodeNode") TStringInternalNodes.TransCodeNode transCodeNode,
-                        @Cached TStringOpsNodes.RawArrayCopyBytesNode copyBytesNode,
                         @Cached ConditionProfile isCompatibleProfile) {
             if (a.isEmpty()) {
                 return encoding.getEmpty();
@@ -5340,7 +5340,9 @@ public final class TruffleString extends AbstractTruffleString {
             if (isCompatibleProfile.profile(codeRangeA < encoding.maxCompatibleCodeRange)) {
                 int strideDst = Stride.fromCodeRange(codeRangeA, encoding.id);
                 byte[] arrayDst = new byte[a.length() << strideDst];
-                copyBytesNode.execute(a.data(), a.offset(), a.stride(), arrayDst, 0, strideDst, a.length());
+                TStringOps.arraycopyWithStride(this,
+                                a.data(), a.offset(), a.stride(), 0,
+                                arrayDst, 0, strideDst, 0, a.length());
                 return createFromByteArray(arrayDst, a.length(), strideDst, encoding.id, codePointLengthA, codeRangeA);
             } else {
                 return transCodeNode.execute(a, a.data(), codePointLengthA, codeRangeA, encoding.id);

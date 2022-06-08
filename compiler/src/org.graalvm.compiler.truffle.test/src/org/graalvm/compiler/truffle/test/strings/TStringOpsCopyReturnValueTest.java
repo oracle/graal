@@ -39,7 +39,7 @@ public class TStringOpsCopyReturnValueTest extends TStringOpsTest<ArrayCopyWithC
     }
 
     @Test
-    public void testMethodReturnValues() throws ClassNotFoundException, InvocationTargetException, IllegalAccessException, InstantiationException {
+    public void testMethodReturnValues() throws InvocationTargetException, IllegalAccessException, InstantiationException {
         ResolvedJavaMethod method = getArrayCopyWithStride();
         byte[] arrayA = new byte[4];
         byte[] arrayB = new byte[4];

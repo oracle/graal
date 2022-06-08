@@ -24,46 +24,36 @@
  */
 package org.graalvm.compiler.truffle.test.strings;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import static org.junit.runners.Parameterized.Parameters;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.GraalOptions;
+import java.util.List;
+
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @RunWith(Parameterized.class)
-public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTest {
+public class TStringOpsRegionEqualsConstantStrideTest extends TStringOpsRegionEqualsTest {
 
-    final Object[] constantArgs;
+    Object[] constantArgs = new Object[10];
 
-    public TStringOpsRegionEqualsConstantTest(
+    public TStringOpsRegionEqualsConstantStrideTest(
                     byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
                     byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
-        constantArgs = new Object[]{DUMMY_LOCATION,
-                        arrayA, offsetA, lengthA, strideA, fromIndexA,
-                        arrayB, offsetB, lengthB, strideB, fromIndexB, JavaConstant.NULL_POINTER, lengthCMP};
     }
 
     @Parameters(name = "{index}: offset: {1}, {6}, stride: {3}, {8}, length: {12}")
     public static List<Object[]> data() {
-        return TStringOpsRegionEqualsTest.data().stream().filter(args -> {
-            int length = (int) args[10];
-            // this test takes much longer than TStringOpsRegionEqualsTest, reduce number of test
-            // cases
-            return length == 0 || length == 1 || length == 7 || length == 16;
-        }).collect(Collectors.toList());
+        return TStringOpsRegionEqualsTest.data();
     }
 
     @Override
@@ -72,30 +62,25 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
         return super.editGraphBuilderConfiguration(conf);
     }
 
-    @Override
-    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
-        return makeAllArraysStable(super.parseForCompile(method, compilationId, options));
-    }
+    private static final ThreadLocal<InstalledCode[]> cache = ThreadLocal.withInitial(() -> new InstalledCode[9]);
 
     @Override
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean ignoreForceCompile, boolean ignoreInstallAsDefault, OptionValues options) {
-        return super.getCode(installedCodeOwner, graph, true, false, options);
+        return cacheInstalledCodeConstantStride(installedCodeOwner, graph, options, getRegionEqualsWithOrMaskWithStrideIntl(), cache.get(), strideA, strideB);
     }
 
     @Override
     @Test
     public void testRegionEquals() {
+        constantArgs[4] = strideA;
+        constantArgs[9] = strideB;
         test(getRegionEqualsWithOrMaskWithStrideIntl(), null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }
 
     @Override
-    protected void checkLowTierGraph(StructuredGraph graph) {
-        if (getTarget().arch instanceof AMD64) {
-            if ((lengthCMP << Math.max(strideA, strideB)) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(graph.getOptions())) {
-                assertConstantReturn(graph);
-            }
-        }
+    protected void checkIntrinsicNode(ArrayRegionEqualsNode node) {
+        Assert.assertTrue(node.getDirectStubCallIndex() >= 0);
     }
 }

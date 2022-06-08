@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
+import static org.graalvm.compiler.core.common.StrideUtil.S1;
+import static org.graalvm.compiler.core.common.StrideUtil.S2;
+import static org.graalvm.compiler.core.common.StrideUtil.S4;
+
 import java.util.Arrays;
 import java.util.stream.Stream;
 
@@ -34,20 +39,6 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.JavaKind;
 
 public class ArrayIndexOf {
-
-    /**
-     * Short aliases for intrinsics that take {@link JavaKind} parameters to describe a stride in
-     * bytes. The naming is "S" for "stride", followed by the stride width in bytes.
-     */
-    public static final JavaKind S1 = JavaKind.Byte;
-    public static final JavaKind S2 = JavaKind.Char;
-    public static final JavaKind S4 = JavaKind.Int;
-    /**
-     * Alias for intrinsics that take a {@link JavaKind} parameter to declare the type of an array
-     * parameter. This parameter "NONE" means that the array type is unknown or a native buffer has
-     * been used instead.
-     */
-    public static final JavaKind NONE = JavaKind.Void;
 
     private static final LocationIdentity[] NO_LOCATIONS = {};
 

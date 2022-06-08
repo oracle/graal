@@ -49,27 +49,21 @@ public abstract class JavaConstantFieldProvider implements ConstantFieldProvider
     protected JavaConstantFieldProvider(MetaAccessProvider metaAccess) {
         try {
             ResolvedJavaType stringType = metaAccess.lookupJavaType(String.class);
-            ResolvedJavaField[] stringFields = stringType.getInstanceFields(false);
-            ResolvedJavaField valueField = null;
-            ResolvedJavaField hashField = null;
-            for (ResolvedJavaField field : stringFields) {
-                if (field.getName().equals("value")) {
-                    valueField = field;
-                } else if (field.getName().equals("hash")) {
-                    hashField = field;
-                }
-            }
-            if (valueField == null) {
-                throw new GraalError("missing field value " + Arrays.toString(stringFields));
-            }
-            if (hashField == null) {
-                throw new GraalError("missing field hash " + Arrays.toString(stringFields));
-            }
-            stringValueField = valueField;
-            stringHashField = hashField;
+            stringValueField = findField(stringType, "value");
+            stringHashField = findField(stringType, "hash");
         } catch (SecurityException e) {
             throw new GraalError(e);
         }
+    }
+
+    private static ResolvedJavaField findField(ResolvedJavaType type, String fieldName) {
+        ResolvedJavaField[] stringFields = type.getInstanceFields(false);
+        for (ResolvedJavaField field : stringFields) {
+            if (field.getName().equals(fieldName)) {
+                return field;
+            }
+        }
+        throw new GraalError("missing field \"" + fieldName + "\" " + Arrays.toString(stringFields));
     }
 
     @Override

@@ -868,16 +868,27 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
      * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
      */
+    public static void pcmpeq(AMD64MacroAssembler asm, AVXSize vectorSize, AMD64Address.Scale elementStride, Register dst, Register src) {
+        pcmpeq(asm, vectorSize, elementStride.value, dst, src);
+    }
+
+    /**
+     * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
+     * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
+     */
     public static void pcmpeq(AMD64MacroAssembler asm, AVXSize vectorSize, JavaKind elementKind, Register dst, Register src) {
-        switch (elementKind) {
-            case Byte:
+        pcmpeq(asm, vectorSize, elementKind.getByteCount(), dst, src);
+    }
+
+    private static void pcmpeq(AMD64MacroAssembler asm, AVXSize vectorSize, int elementSize, Register dst, Register src) {
+        switch (elementSize) {
+            case 1:
                 pcmpeqb(asm, vectorSize, dst, src);
                 break;
-            case Short:
-            case Char:
+            case 2:
                 pcmpeqw(asm, vectorSize, dst, src);
                 break;
-            case Int:
+            case 4:
                 pcmpeqd(asm, vectorSize, dst, src);
                 break;
             default:
@@ -913,17 +924,28 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
      * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
      */
+    public static void pcmpeq(AMD64MacroAssembler asm, AVXSize size, AMD64Address.Scale elementStride, Register dst, AMD64Address src) {
+        pcmpeq(asm, size, elementStride.value, dst, src);
+    }
+
+    /**
+     * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
+     * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
+     */
     public static void pcmpeq(AMD64MacroAssembler asm, AVXSize size, JavaKind elementKind, Register dst, AMD64Address src) {
-        switch (elementKind) {
-            case Byte:
-                pcmpeqb(asm, size, dst, src);
+        pcmpeq(asm, size, elementKind.getByteCount(), dst, src);
+    }
+
+    private static void pcmpeq(AMD64MacroAssembler asm, AVXSize vectorSize, int elementSize, Register dst, AMD64Address src) {
+        switch (elementSize) {
+            case 1:
+                pcmpeqb(asm, vectorSize, dst, src);
                 break;
-            case Short:
-            case Char:
-                pcmpeqw(asm, size, dst, src);
+            case 2:
+                pcmpeqw(asm, vectorSize, dst, src);
                 break;
-            case Int:
-                pcmpeqd(asm, size, dst, src);
+            case 4:
+                pcmpeqd(asm, vectorSize, dst, src);
                 break;
             default:
                 throw new UnsupportedOperationException();
@@ -1211,10 +1233,17 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     }
 
     public static void pxor(AMD64MacroAssembler asm, AVXSize size, Register dst, Register src) {
+        pxor(asm, size, dst, dst, src);
+    }
+
+    public static void pxor(AMD64MacroAssembler asm, AVXSize size, Register dst, Register src1, Register src2) {
         if (isAVX(asm)) {
-            VexRVMOp.VPXOR.emit(asm, size, dst, dst, src);
+            VexRVMOp.VPXOR.emit(asm, size, dst, src1, src2);
         } else {
-            asm.pxor(dst, src);
+            if (!dst.equals(src1)) {
+                asm.movdqu(dst, src1);
+            }
+            asm.pxor(dst, src2);
         }
     }
 

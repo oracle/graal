@@ -37,8 +37,10 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.STACK;
 
+import java.util.Arrays;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
@@ -683,6 +685,10 @@ public class AMD64ControlFlow {
             // Jump to default target if index is not within the jump table
             masm.jcc(ConditionFlag.Above, defaultTarget.label());
 
+            emitJumpTable(crb, masm, scratchReg, idxScratchReg, lowKey, highKey, Arrays.stream(targets).map(LabelRef::label));
+        }
+
+        public static void emitJumpTable(CompilationResultBuilder crb, AMD64MacroAssembler masm, Register scratchReg, Register idxScratchReg, int lowKey, int highKey, Stream<Label> targets) {
             // Set scratch to address of jump table
             masm.leaq(scratchReg, new AMD64Address(AMD64.rip, 0));
             final int afterLea = masm.position();
@@ -702,8 +708,7 @@ public class AMD64ControlFlow {
             masm.emitInt(jumpTablePos - afterLea, leaDisplacementPosition);
 
             // Emit jump table entries
-            for (LabelRef target : targets) {
-                Label label = target.label();
+            targets.forEach(label -> {
                 int offsetToJumpTableBase = masm.position() - jumpTablePos;
                 if (label.isBound()) {
                     int imm32 = label.position() - jumpTablePos;
@@ -715,7 +720,7 @@ public class AMD64ControlFlow {
                     masm.emitShort(offsetToJumpTableBase);
                     masm.emitByte(0); // padding to make jump table entry 4 bytes wide
                 }
-            }
+            });
 
             JumpTable jt = new JumpTable(jumpTablePos, lowKey, highKey, EntryFormat.OFFSET_ONLY);
             crb.compilationResult.addAnnotation(jt);

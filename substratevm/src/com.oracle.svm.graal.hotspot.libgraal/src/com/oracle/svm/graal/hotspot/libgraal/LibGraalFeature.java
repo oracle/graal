@@ -67,6 +67,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.SnippetObjectConstant;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotInvocationPluginProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
@@ -430,6 +431,7 @@ public class LibGraalFeature implements com.oracle.svm.core.graal.InternalFeatur
         GraalServices.load(PartialEvaluatorConfiguration.class);
         GraalServices.load(HotSpotCodeCacheListener.class);
         GraalServices.load(DisassemblerProvider.class);
+        GraalServices.load(HotSpotInvocationPluginProvider.class);
 
         try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
             // Instantiate the truffle compiler ensure the backends it uses are initialized.

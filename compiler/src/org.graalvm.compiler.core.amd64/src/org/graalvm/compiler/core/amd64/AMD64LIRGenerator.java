@@ -590,9 +590,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitArrayRegionCompareTo(Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value stride) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64ArrayRegionCompareToOp.movParamsAndCreate(this, null, null, result, arrayA, offsetA, arrayB, offsetB, length, stride, ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
     public Variable emitArrayRegionCompareTo(JavaKind strideA, JavaKind strideB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(AMD64ArrayRegionCompareToOp.movParamsAndCreate(this, strideA, strideB, result, arrayA, offsetA, arrayB, offsetB, length, ZERO_EXTEND));
+        append(AMD64ArrayRegionCompareToOp.movParamsAndCreate(this, strideA, strideB, result, arrayA, offsetA, arrayB, offsetB, length, null, ZERO_EXTEND));
         return result;
     }
 
@@ -600,6 +607,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
         append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, null, array2, null, null, length, ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(int baseOffsetA, int baseOffsetB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value stride) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, baseOffsetA, baseOffsetB, 0, result, arrayA, offsetA, arrayB, offsetB, null, length, stride, ZERO_EXTEND));
         return result;
     }
 
@@ -618,6 +632,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public Variable emitArrayEquals(int baseOffsetA, int baseOffsetB, int baseOffsetMask,
+                    Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value mask, Value length, Value stride) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, baseOffsetA, baseOffsetB, baseOffsetMask, result, arrayA, offsetA, arrayB, offsetB, mask, length, stride, ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
     public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
                     Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
@@ -629,6 +651,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitArrayCopyWithConversion(JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
         append(AMD64ArrayCopyWithConversionsOp.movParamsAndCreate(this, strideSrc, strideDst, arraySrc, offsetSrc, arrayDst, offsetDst, length, ZERO_EXTEND));
+    }
+
+    @Override
+    public void emitArrayCopyWithConversion(Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride) {
+        append(AMD64ArrayCopyWithConversionsOp.movParamsAndCreate(this, arraySrc, offsetSrc, arrayDst, offsetDst, length, stride, ZERO_EXTEND));
     }
 
     @Override
