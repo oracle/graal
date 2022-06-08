@@ -106,6 +106,7 @@ import com.oracle.svm.core.c.CHeader;
 import com.oracle.svm.core.c.CUnsigned;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
@@ -1470,9 +1471,25 @@ public final class PolyglotNativeAPI {
                     " @return information about the last failure on this thread.",
                     " @since 19.0",
     })
+    @Uninterruptible(reason = "Prevent safepoint checks before pausing recurring callback.")
     public static PolyglotStatus poly_get_last_error_info(PolyglotIsolateThread thread, @CConst PolyglotExtendedErrorInfoPointer result) {
+        ThreadingSupportImpl.pauseRecurringCallback("Prevent recurring callback from throwing another exception.");
+        try {
+            return doGetLastErrorInfo(result);
+        } finally {
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
+        }
+    }
+
+    @Uninterruptible(reason = "Not really, but our caller is.", calleeMustBe = false)
+    private static PolyglotStatus doGetLastErrorInfo(PolyglotExtendedErrorInfoPointer result) {
+        return doGetLastErrorInfo0(result);
+    }
+
+    private static PolyglotStatus doGetLastErrorInfo0(PolyglotExtendedErrorInfoPointer result) {
         ThreadLocalState state = threadLocals.get();
         if (state == null || state.lastException == null) {
+            result.write(WordFactory.nullPointer());
             return poly_ok;
         }
         if (state.lastErrorUnmanagedInfo.isNonNull()) {
@@ -1769,8 +1786,26 @@ public final class PolyglotNativeAPI {
                     " @return poly_ok if all works, poly_generic_error if there is a failure.",
                     " @since 22.2",
     })
+    @Uninterruptible(reason = "Prevent safepoint checks before pausing recurring callback.")
     public static PolyglotStatus poly_register_recurring_callback(PolyglotIsolateThread thread, long intervalNanos, PolyglotCallback callback, VoidPointer data) {
+        ThreadingSupportImpl.pauseRecurringCallback("Prevent recurring callback execution before returning.");
+        try {
+            return doRegisterRecurringCallback(intervalNanos, callback, data);
+        } finally {
+            ThreadingSupportImpl.resumeRecurringCallbackAtNextSafepoint();
+        }
+    }
+
+    @Uninterruptible(reason = "Not really, but our caller is.", calleeMustBe = false)
+    private static PolyglotStatus doRegisterRecurringCallback(long intervalNanos, PolyglotCallback callback, VoidPointer data) {
+        return doRegisterRecurringCallback0(intervalNanos, callback, data);
+    }
+
+    private static PolyglotStatus doRegisterRecurringCallback0(long intervalNanos, PolyglotCallback callback, VoidPointer data) {
         resetErrorState();
+        if (!ThreadingSupportImpl.isRecurringCallbackSupported()) {
+            return poly_generic_failure;
+        }
         if (callback.isNull()) {
             Threading.registerRecurringCallback(-1, null, null);
             return poly_ok;
