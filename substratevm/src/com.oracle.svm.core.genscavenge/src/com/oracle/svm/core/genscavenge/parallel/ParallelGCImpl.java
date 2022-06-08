@@ -15,7 +15,7 @@ import java.util.stream.IntStream;
 public class ParallelGCImpl extends ParallelGC {
 
     /// static -> ImageSingletons
-    public static final int WORKERS_COUNT = 4;
+    public static final int WORKERS_COUNT = 0;
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
     public static final TaskQueue.Consumer PROMOTE_TASK =

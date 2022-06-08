@@ -1156,13 +1156,8 @@ public final class GCImpl implements GC {
                 AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(result);
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, result);
             }
-            if (result != null) {
-                ObjectHeaderImpl.installForwardingPointer(original, result);
-            }
-//            doPromoteParallel(original, result, objRef, innerOffset, compressed, holderObject);
-//            ParallelGCImpl.PROMOTE_TASK.accept(result, objRef, compressed, holderObject);
             ParallelGCImpl.QUEUE.put(Word.objectToUntrackedPointer(original), result, objRef, compressed, holderObject);
-//            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
             return true;
         }
 
@@ -1183,7 +1178,14 @@ public final class GCImpl implements GC {
     }
 
     public void doPromoteParallel(Pointer originalPtr, Object copy, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        Log trace = Log.log();
+        trace.string("PP obj=").hex(originalPtr)
+//                .string(", ref=").hex(objRef)
+                .newline();
         Object original = originalPtr.toObject();
+        if (copy != null) {
+            ObjectHeaderImpl.installForwardingPointer(original, copy);
+        }
         /// from visitor code
         if (copy != original) {
             // ... update the reference to point to the copy, making the reference black.
@@ -1191,7 +1193,7 @@ public final class GCImpl implements GC {
             ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
 //            counters.noteCopiedReferent();
         } else {
-            Log.log().string("PP unmod ref").newline();///
+            trace.string("PP unmod ref").newline();///
 //            counters.noteUnmodifiedReference();
         }
         // The reference will not be updated if a whole chunk is promoted. However, we still

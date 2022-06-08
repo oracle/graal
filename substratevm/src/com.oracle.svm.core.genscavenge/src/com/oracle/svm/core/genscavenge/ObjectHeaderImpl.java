@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.log.Log;
+import jdk.internal.misc.Unsafe;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -325,17 +327,23 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         }
     }
 
+    private static final Unsafe UNSAFE = Unsafe.getUnsafe();
+
     /** In an Object, install a forwarding pointer to a different Object. */
     @AlwaysInline("GC performance")
-    static void installForwardingPointer(Object original, Object copy) {
-        assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+    static Object installForwardingPointer(Object original, Object copy) {
+        Word originalPtr = Word.objectToUntrackedPointer(original);
+//        assert !isPointerToForwardedObject(originalPtr);
+        UnsignedWord oldHeader = readHeaderFromPointer(originalPtr);
+//        assert !isForwardedHeader(oldHeader);
         UnsignedWord forwardHeader;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
+                assert false: "getCompressEncoding().hasShift()";
                 // Compression with a shift uses all bits of a reference, so store the forwarding
                 // pointer in the location following the hub pointer.
                 forwardHeader = WordFactory.unsigned(0xf0f0f0f0f0f0f0f0L);
-                ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy);
+                ObjectAccess.writeObject(original, getHubOffset() + getReferenceSize(), copy); ///non mt safe
             } else {
                 forwardHeader = ReferenceAccess.singleton().getCompressedRepresentation(copy);
             }
@@ -343,8 +351,26 @@ public final class ObjectHeaderImpl extends ObjectHeader {
             forwardHeader = Word.objectToUntrackedPointer(copy);
         }
         assert ObjectHeaderImpl.getHeaderBitsFromHeader(forwardHeader).equal(0);
-        writeHeaderToObject(original, forwardHeader.or(FORWARDED_BIT));
-        assert isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
+//        writeHeaderToObject(original, forwardHeader.or(FORWARDED_BIT));
+        UnsignedWord newHeader = forwardHeader.or(FORWARDED_BIT);
+        boolean installed;
+        if (getReferenceSize() == Integer.BYTES) {
+//            ObjectAccess.writeInt(original, getHubOffset(), (int) newHeader.rawValue());
+            int expected = (int) oldHeader.rawValue();
+            int witness = UNSAFE.compareAndExchangeInt(original, getHubOffset(), expected, (int) newHeader.rawValue());
+            installed = witness == expected;
+        } else {
+//            ObjectAccess.writeWord(original, getHubOffset(), newHeader);
+            long expected = oldHeader.rawValue();
+            long witness = UNSAFE.compareAndExchangeLong(original, getHubOffset(), expected, newHeader.rawValue());
+            installed = witness == expected;
+        }
+        assert isPointerToForwardedObject(originalPtr);
+        if (!installed) {
+            Log.log().string("PP collision for obj").hex(originalPtr).newline();
+            return getForwardedObject(originalPtr);
+        }
+        return copy;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
