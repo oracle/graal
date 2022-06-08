@@ -102,6 +102,7 @@ public class GuardLoweringPhase extends BasePhase<CoreProviders> {
                                 (trueSuccessor == fastPath ? BranchProbabilityNode.ALWAYS_TAKEN_PROFILE : BranchProbabilityNode.NEVER_TAKEN_PROFILE)));
                 guard.replaceAndDelete(fastPath);
                 insert(ifNode, fastPath);
+                graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After lowering guard %s", guard);
             }
         }
     }

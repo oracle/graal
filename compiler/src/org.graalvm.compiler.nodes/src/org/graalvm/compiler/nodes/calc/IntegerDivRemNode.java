@@ -94,6 +94,14 @@ public abstract class IntegerDivRemNode extends FixedBinaryNode implements Lower
         return (yStamp.contains(0) && zeroGuard == null) || yStamp.contains(-1);
     }
 
+    public boolean canFloat() {
+        return false;
+    }
+
+    public void setCanDeopt(boolean canDeopt) {
+        this.canDeopt = canDeopt;
+    }
+
     @Override
     public boolean canDeoptimize() {
         /*

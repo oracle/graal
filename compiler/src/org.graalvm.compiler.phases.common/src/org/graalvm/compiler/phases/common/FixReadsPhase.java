@@ -456,9 +456,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                 boolean isTrue = (result == TriState.TRUE);
                 // Don't kill the other branch immediately, see
                 // `ConditionalEliminationPhase.processGuard`.
-                AbstractBeginNode survivingSuccessor = node.getSuccessor(isTrue);
                 node.setCondition(LogicConstantNode.forBoolean(isTrue, node.graph()));
-                survivingSuccessor.replaceAtUsages(null);
                 counterIfsKilled.increment(debug);
             }
         }
