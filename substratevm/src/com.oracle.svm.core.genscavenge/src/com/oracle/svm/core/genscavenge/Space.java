@@ -163,7 +163,7 @@ public final class Space {
      * Allocate memory from an AlignedHeapChunk in this Space.
      */
     @AlwaysInline("GC performance")
-    private Pointer allocateMemory(UnsignedWord objectSize) {
+    Pointer allocateMemory(UnsignedWord objectSize) {
         Pointer result = WordFactory.nullPointer();
         /* Fast-path: try allocating in the last chunk. */
         AlignedHeapChunk.AlignedHeader oldChunk = getLastAlignedHeapChunk();

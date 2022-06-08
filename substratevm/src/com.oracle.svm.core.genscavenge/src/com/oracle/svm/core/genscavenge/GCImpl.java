@@ -26,12 +26,16 @@ package com.oracle.svm.core.genscavenge;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
 
 import com.oracle.svm.core.genscavenge.parallel.ParallelGCImpl;
+import com.oracle.svm.core.genscavenge.parallel.TaskQueue;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jfr.JfrTicks;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
@@ -1121,31 +1125,75 @@ public final class GCImpl implements GC {
             }
         }
         if (result == null) { // complete collection, tenuring age reached, or survivor space full
-            result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+//            result = heap.getOldGeneration().promoteAlignedObject(original, (AlignedHeader) originalChunk, originalSpace);
+            assert originalSpace.isFromSpace();
+            Space toSpace = heap.getOldGeneration().getToSpace();
+//            result = toSpace.promoteAlignedObject(original, originalSpace);
+            assert ObjectHeaderImpl.isAlignedObject(original);
+            assert toSpace != originalSpace && originalSpace.isFromSpace();
+//            result = toSpace.copyAlignedObject(original);
+            assert VMOperation.isGCInProgress();
+            assert ObjectHeaderImpl.isAlignedObject(original);
+
+            UnsignedWord size = LayoutEncoding.getSizeFromObjectInline(original);
+            Pointer copyMemory = toSpace.allocateMemory(size);
+            if (probability(VERY_SLOW_PATH_PROBABILITY, copyMemory.isNull())) {
+                result = null;
+            }
+
+            /*
+             * This does a direct memory copy, without regard to whether the copied data contains object
+             * references. That's okay, because all references in the copy are visited and overwritten
+             * later on anyways (the card table is also updated at that point if necessary).
+             */
+            Pointer originalMemory = Word.objectToUntrackedPointer(original);
+            UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, size);
+            result = copyMemory.toObject();
             assert result != null : "promotion failure in old generation must have been handled";
+            if (toSpace.isOldSpace()) {
+                // If the object was promoted to the old gen, we need to take care of the remembered
+                // set bit and the first object table (even when promoting from old to old).
+                AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(result);
+                RememberedSet.get().enableRememberedSetForObject(copyChunk, result);
+            }
+            if (result != null) {
+                ObjectHeaderImpl.installForwardingPointer(original, result);
+            }
+//            doPromoteParallel(original, result, objRef, innerOffset, compressed, holderObject);
+//            ParallelGCImpl.PROMOTE_TASK.accept(result, objRef, compressed, holderObject);
+            ParallelGCImpl.QUEUE.put(Word.objectToUntrackedPointer(original), result, objRef, compressed, holderObject);
+//            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+            return true;
         }
 
         /// from visitor code
         if (result != original) {
             // ... update the reference to point to the copy, making the reference black.
+            Object offsetCopy = (innerOffset == 0) ? result : Word.objectToUntrackedPointer(result).add(innerOffset).toObject();
+            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
 //            counters.noteCopiedReferent();
-            ParallelGCImpl.QUEUE.put(result, objRef, compressed, holderObject);
-//            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
         } else {
             Log.log().string("PP unmod ref").newline();///
 //            counters.noteUnmodifiedReference();
-            // The reference will not be updated if a whole chunk is promoted. However, we still
-            // might have to dirty the card.
-            RememberedSet.get().dirtyCardIfNecessary(holderObject, result);
         }
+        // The reference will not be updated if a whole chunk is promoted. However, we still
+        // might have to dirty the card.
+        RememberedSet.get().dirtyCardIfNecessary(holderObject, result);
         return true;
     }
 
-    public void doPromoteParallel(Object copy, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+    public void doPromoteParallel(Pointer originalPtr, Object copy, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
+        Object original = originalPtr.toObject();
         /// from visitor code
-        Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
-        ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
-
+        if (copy != original) {
+            // ... update the reference to point to the copy, making the reference black.
+            Object offsetCopy = (innerOffset == 0) ? copy : Word.objectToUntrackedPointer(copy).add(innerOffset).toObject();
+            ReferenceAccess.singleton().writeObjectAt(objRef, offsetCopy, compressed);
+//            counters.noteCopiedReferent();
+        } else {
+            Log.log().string("PP unmod ref").newline();///
+//            counters.noteUnmodifiedReference();
+        }
         // The reference will not be updated if a whole chunk is promoted. However, we still
         // might have to dirty the card.
         RememberedSet.get().dirtyCardIfNecessary(holderObject, copy);

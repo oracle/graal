@@ -18,9 +18,10 @@ public class ParallelGCImpl extends ParallelGC {
     public static final int WORKERS_COUNT = 4;
     public static final TaskQueue QUEUE = new TaskQueue("pargc-queue");
 
-    public static final TaskQueue.Consumer PROMOTE_TASK = (Object original, Pointer objRef, boolean compressed, Object holderObject) -> {
-        GCImpl.getGCImpl().doPromoteParallel(original, objRef, 0, compressed, holderObject);
-    };
+    public static final TaskQueue.Consumer PROMOTE_TASK =
+            (Pointer originalPtr, Object copy, Pointer objRef, boolean compressed, Object holderObject) -> {
+                GCImpl.getGCImpl().doPromoteParallel(originalPtr, copy, objRef, 0, compressed, holderObject);
+            };
 
     private static boolean enabled;
 
@@ -31,6 +32,7 @@ public class ParallelGCImpl extends ParallelGC {
 
     public void startWorkerThread(int n) {
         final Log trace = Log.log();
+        trace.string("PP start worker-").unsigned(n).newline();
 //        final TaskQueue.Consumer promoteTask = (Object original, Pointer objRef, boolean compressed, Object holderObject) -> {
 //            trace.string(">> promote on worker-").unsigned(n).newline();///
 //            if (original == null || holderObject == null) {
