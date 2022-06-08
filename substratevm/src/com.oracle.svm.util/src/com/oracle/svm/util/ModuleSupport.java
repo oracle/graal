@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.util;
 
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -90,6 +89,13 @@ public final class ModuleSupport {
         accessModuleByClass(access, accessingClass, declaringClass.getModule(), declaringClass.getPackageName());
     }
 
+    @SuppressWarnings("serial")
+    public static final class ModuleSupportError extends Error {
+        private ModuleSupportError(String message) {
+            super(message);
+        }
+    }
+
     /**
      * Open or export packages {@code packageNames} in the module named {@code moduleName} to module
      * of given {@code accessingClass}. If {@code accessingClass} is null packages are opened or
@@ -98,28 +104,23 @@ public final class ModuleSupport {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void accessPackagesToClass(Access access, Class<?> accessingClass, boolean optional, String moduleName, String... packageNames) {
-        Module declaringModule = getModule(moduleName, optional);
-        if (declaringModule == null) {
-            return;
+        Objects.requireNonNull(moduleName);
+        Optional<Module> module = ModuleLayer.boot().findModule(moduleName);
+        if (module.isEmpty()) {
+            if (optional) {
+                return;
+            }
+            String accessor = accessingClass != null ? "class " + accessingClass.getTypeName() : "ALL-UNNAMED";
+            String message = access.name().toLowerCase() + " of packages from module " + moduleName + " to " +
+                            accessor + " failed. No module named " + moduleName + " in boot layer.";
+            throw new ModuleSupportError(message);
         }
+        Module declaringModule = module.get();
         Objects.requireNonNull(packageNames);
         Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : declaringModule.getPackages();
         for (String packageName : packages) {
             accessModuleByClass(access, accessingClass, declaringModule, packageName);
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static Module getModule(String moduleName, boolean optional) {
-        Objects.requireNonNull(moduleName);
-        Optional<Module> declaringModuleOpt = ModuleLayer.boot().findModule(moduleName);
-        if (declaringModuleOpt.isEmpty()) {
-            if (optional) {
-                return null;
-            }
-            throw new NoSuchElementException(moduleName);
-        }
-        return declaringModuleOpt.get();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
