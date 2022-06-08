@@ -691,8 +691,13 @@ public class ValueAssert {
                     value.isMetaInstance("");
                     if (value.hasMetaParents()) {
                         try {
-                            Value metaParent = value.getMetaParents();
-                            assertValue(metaParent);
+                            Value metaParents = value.getMetaParents();
+                            assertTrue(metaParents.hasArrayElements());
+                            long size = metaParents.getArraySize();
+                            for (long i = 0; i < size; i++) {
+                                Value metaParent = metaParents.getArrayElement(i);
+                                assertValueImpl(metaParent, depth + 1, hasHostAccess, detectSupportedTypes(metaParent));
+                            }
                         } catch (PolyglotException notExpected) {
                             throw new AssertionError(notExpected);
                         } catch (UnsupportedOperationException expected) {
