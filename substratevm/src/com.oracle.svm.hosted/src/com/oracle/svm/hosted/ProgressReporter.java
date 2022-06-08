@@ -554,10 +554,6 @@ public class ProgressReporter {
         p.l().a(String.format("%9s for %s more packages", Utils.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
                         .a(String.format("%9s for %s more object types", Utils.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
-
-        new CenteredTextPrinter().dim()
-                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)")
-                        .reset().flushln();
     }
 
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, OptionValues parsedHostedOptions) {
