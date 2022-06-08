@@ -354,10 +354,9 @@ public abstract class ClassRegistry {
     @SuppressWarnings("try")
     public ObjectKlass defineKlass(EspressoContext context, Symbol<Type> typeOrNull, final byte[] bytes, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        Meta meta = env.getMeta();
         ParserKlass parserKlass;
         try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
-            parserKlass = createParserKlass(env, bytes, typeOrNull, info);
+            parserKlass = parseKlass(env, bytes, typeOrNull, info);
         }
         Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
 
@@ -379,10 +378,9 @@ public abstract class ClassRegistry {
         return klass;
     }
 
-    private ParserKlass createParserKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
+    private ParserKlass parseKlass(ClassLoadingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) throws EspressoClassLoadingException.SecurityException {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         ParserKlass parserKlass = ClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
-        Meta meta = env.getMeta();
         if (!env.loaderIsBootOrPlatform(getClassLoader()) && parserKlass.getName().toString().startsWith("java/")) {
             throw EspressoClassLoadingException.securityException("Define class in prohibited package name: " + parserKlass.getName());
         }
@@ -392,7 +390,6 @@ public abstract class ClassRegistry {
     @SuppressWarnings("try")
     private ObjectKlass createKlass(EspressoContext context, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType, ClassDefinitionInfo info) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        Meta meta = env.getMeta();
         EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
         TypeStack chain = threadLocalState.getTypeStack();
 
@@ -485,7 +482,6 @@ public abstract class ClassRegistry {
 
     private ObjectKlass loadKlassRecursively(EspressoContext context, Symbol<Type> type, boolean notInterface) throws EspressoClassLoadingException {
         ClassLoadingEnv env = context.getClassLoadingEnv();
-        Meta meta = env.getMeta();
         Klass klass;
         try {
             klass = loadKlass(context, type, StaticObject.NULL);
