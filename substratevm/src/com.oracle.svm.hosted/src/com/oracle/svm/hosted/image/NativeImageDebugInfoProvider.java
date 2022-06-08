@@ -68,7 +68,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-// import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.image.sources.SourceManager;
@@ -168,17 +167,18 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     private static HashMap<JavaKind, HostedType> initJavaKindToHostedTypes(HostedMetaAccess metaAccess) {
         HashMap<JavaKind, HostedType> map = new HashMap<>();
         for (JavaKind kind : JavaKind.values()) {
-            Class<?> clazz = kind.toJavaClass();
-            assert clazz != null || kind == JavaKind.Illegal || kind == JavaKind.Object;
-            HostedType javaType;
-            if (kind == JavaKind.Object) {
-                clazz = java.lang.Object.class;
+            Class<?> clazz;
+            switch (kind) {
+                case Illegal:
+                    clazz = null;
+                    break;
+                case Object:
+                    clazz = java.lang.Object.class;
+                    break;
+                default:
+                    clazz = kind.toJavaClass();
             }
-            if (clazz == null) {
-                javaType = null;
-            } else {
-                javaType = metaAccess.lookupJavaType(clazz);
-            }
+            HostedType javaType = clazz != null ? metaAccess.lookupJavaType(clazz) : null;
             map.put(kind, javaType);
         }
         return map;
@@ -283,7 +283,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
         // we want a substituted target if there is one. if there is a substitution at the end of
         // the method chain fetch the annotated target class
-        ResolvedJavaMethod javaMethod = getOriginal(hostedMethod);
+        ResolvedJavaMethod javaMethod = getAnnotatedOrOriginal(hostedMethod);
         return javaMethod.getDeclaringClass();
     }
 
@@ -308,19 +308,32 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         return javaType;
     }
 
-    private static ResolvedJavaMethod getOriginal(HostedMethod hostedMethod) {
+    private static ResolvedJavaMethod getAnnotatedOrOriginal(HostedMethod hostedMethod) {
         ResolvedJavaMethod javaMethod = hostedMethod.getWrapped().getWrapped();
+        // This method is only used when identifying the modifiers or the declaring class
+        // of a HostedMethod. Normally the method unwraps to the underlying JVMCI method
+        // which is the one that provides bytecode to the compiler as well as, line numbers
+        // and local info. If we unwrap to a SubstitutionMethod then we use the annotated
+        // method, not the JVMCI method that the annotation refers to since that will be the
+        // one providing the bytecode etc used by the compiler. If we unwrap to any other,
+        // custom substitution method we simply use it rather than dereferencing to the
+        // original. The difference is that the annotated method's bytecode will be used to
+        // replace the original and the debugger needs to use it to identify the file and access
+        // permissions. A custom substitution may exist alongside the original, as is the case
+        // with some uses for reflection. So, we don't want to conflate the custom substituted
+        // method and the original. In this latter case the method code will be synthesized without
+        // reference to the bytecode of the original. Hence there is no associated file and the
+        // permissions need to be determined from the custom substitution method itself.
+
         if (javaMethod instanceof SubstitutionMethod) {
             SubstitutionMethod substitutionMethod = (SubstitutionMethod) javaMethod;
             javaMethod = substitutionMethod.getAnnotated();
-            // } else if (javaMethod instanceof CustomSubstitutionMethod) {
-            // javaMethod = ((CustomSubstitutionMethod) javaMethod).getOriginal();
         }
         return javaMethod;
     }
 
     private static int getOriginalModifiers(HostedMethod hostedMethod) {
-        return getOriginal(hostedMethod).getModifiers();
+        return getAnnotatedOrOriginal(hostedMethod).getModifiers();
     }
 
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
@@ -656,12 +669,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public ResolvedJavaType superClass() {
             HostedClass superClass = hostedType.getSuperclass();
             /*
-             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
-             * getSourceFilename to the wrapped class so for consistency we need to do the path
-             * lookup relative to the doubly unwrapped HostedType.
+             * Unwrap the hosted type's super class to the original to provide the correct identity
+             * type.
              */
             if (superClass != null) {
-                return getDeclaringClass(superClass, true);
+                return getOriginal(superClass);
             }
             return null;
         }
@@ -922,12 +934,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             while (targetMethod instanceof WrappedJavaMethod) {
                 targetMethod = ((WrappedJavaMethod) targetMethod).getWrapped();
             }
-            // if we hit these two substitutions then we can translate to the original
+            // if we hit a substitution then we can translate to the original
             // for identity otherwise we use whatever we unwrapped to.
             if (targetMethod instanceof SubstitutionMethod) {
                 targetMethod = ((SubstitutionMethod) targetMethod).getOriginal();
-                // } else if (targetMethod instanceof CustomSubstitutionMethod) {
-                // targetMethod = ((CustomSubstitutionMethod) targetMethod).getOriginal();
             }
             return targetMethod;
         }
@@ -2128,14 +2138,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this(name, Value.ILLEGAL, 0, kind, type, slot, line);
         }
 
-        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType t, int slot, int line) {
+        NativeImageDebugLocalValueInfo(String name, JavaValue value, int framesize, JavaKind kind, ResolvedJavaType resolvedType, int slot, int line) {
             this.name = name;
             this.kind = kind;
             this.slot = slot;
             this.line = line;
             // if we don't have a type default it for the JavaKind
             // it may still end up null when kind is Undefined.
-            this.type = (t != null ? t : hostedTypeForKind(kind));
+            this.type = (resolvedType != null ? resolvedType : hostedTypeForKind(kind));
             if (value instanceof RegisterValue) {
                 this.localKind = LocalKind.REGISTER;
                 this.value = new NativeImageDebugRegisterValue((RegisterValue) value);
@@ -2230,7 +2240,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
         @Override
         public String typeName() {
-            return valueType().toJavaName();
+            ResolvedJavaType valueType = valueType();
+            return (valueType == null ? "" : valueType().toJavaName());
         }
 
         @Override

@@ -62,7 +62,7 @@ public abstract class StructureTypeEntry extends TypeEntry {
     protected FieldEntry addField(DebugFieldInfo debugFieldInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String fieldName = debugInfoBase.uniqueDebugString(debugFieldInfo.name());
         ResolvedJavaType valueType = debugFieldInfo.valueType();
-        String valueTypeName = TypeEntry.canonicalize(valueType.toJavaName());
+        String valueTypeName = valueType.toJavaName();
         int fieldSize = debugFieldInfo.size();
         int fieldoffset = debugFieldInfo.offset();
         int fieldModifiers = debugFieldInfo.modifiers();

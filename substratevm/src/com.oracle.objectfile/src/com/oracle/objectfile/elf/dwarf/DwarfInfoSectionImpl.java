@@ -309,7 +309,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         String fieldName = fieldEntry.fieldName();
         TypeEntry valueType = fieldEntry.getValueType();
-        String valueTypeName = valueType.getTypeName();
         /* use the indirect type for the field so pointers get translated */
         int valueTypeIdx = getIndirectTypeIndex(valueType);
         log(context, "  [0x%08x] header field", pos);
@@ -318,7 +317,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
         pos = writeAttrStrp(fieldName, buffer, pos);
-        log(context, "  [0x%08x]     type 0x%x (%s)", pos, valueTypeIdx, valueTypeName);
+        log(context, "  [0x%08x]     type 0x%x (%s)", pos, valueTypeIdx, valueType.getTypeName());
         pos = writeAttrRefAddr(valueTypeIdx, buffer, pos);
         byte offset = (byte) fieldEntry.getOffset();
         int size = fieldEntry.getSize();
@@ -627,10 +626,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* At present we definitely don't have line numbers. */
         }
         TypeEntry valueType = fieldEntry.getValueType();
-        String valueTypeName = valueType.getTypeName();
         /* use the indirect type for the field so pointers get translated if needed */
         int typeIdx = getIndirectTypeIndex(valueType);
-        log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeIdx, valueTypeName);
+        log(context, "  [0x%08x]     type  0x%x (%s)", pos, typeIdx, valueType.getTypeName());
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
         if (!isStatic) {
             int memberOffset = fieldEntry.getOffset();
@@ -688,9 +686,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x]     file 0x%x (%s)", pos, fileIdx, fileEntry.getFullName());
         pos = writeAttrData2((short) fileIdx, buffer, pos);
         TypeEntry returnType = method.getValueType();
-        String returnTypeName = returnType.getTypeName();
         int retTypeIdx = getTypeIndex(returnType);
-        log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnTypeName);
+        log(context, "  [0x%08x]     type 0x%x (%s)", pos, retTypeIdx, returnType.getTypeName());
         pos = writeAttrRefAddr(retTypeIdx, buffer, pos);
         log(context, "  [0x%08x]     artificial %s", pos, method.isDeopt() ? "true" : "false");
         pos = writeFlag((method.isDeopt() ? (byte) 1 : (byte) 0), buffer, pos);
@@ -749,7 +746,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode;
         String paramName = paramInfo.name();
         TypeEntry paramType = lookupType(paramInfo.valueType());
-        String paramTypeName = paramType.getTypeName();
         int line = paramInfo.line();
         if (artificial) {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_declaration1;
@@ -769,7 +765,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeAttrData2((short) line, buffer, pos);
         }
         int typeIdx = getTypeIndex(paramType);
-        log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramTypeName);
+        log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramType.getTypeName());
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_declaration1) {
             log(context, "  [0x%08x]     artificial true", pos);
@@ -799,7 +795,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int abbrevCode;
         String paramName = paramInfo.name();
         TypeEntry paramType = lookupType(paramInfo.valueType());
-        String paramTypeName = paramType.getTypeName();
         int line = paramInfo.line();
         if (line >= 0) {
             abbrevCode = DwarfDebugInfo.DW_ABBREV_CODE_method_local_declaration1;
@@ -817,7 +812,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeAttrData2((short) line, buffer, pos);
         }
         int typeIdx = getTypeIndex(paramType);
-        log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramTypeName);
+        log(context, "  [0x%08x]     type 0x%x (%s)", pos, typeIdx, paramType.getTypeName());
         pos = writeAttrRefAddr(typeIdx, buffer, pos);
         log(context, "  [0x%08x]     declaration true", pos);
         pos = writeFlag((byte) 1, buffer, pos);

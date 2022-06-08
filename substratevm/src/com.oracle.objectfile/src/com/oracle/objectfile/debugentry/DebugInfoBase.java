@@ -231,7 +231,7 @@ public abstract class DebugInfoBase {
         /* Create all the types. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
             ResolvedJavaType idType = debugTypeInfo.idType();
-            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            String typeName = debugTypeInfo.typeName();
             typeName = stringTable.uniqueDebugString(typeName);
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
             int byteSize = debugTypeInfo.size();
@@ -246,7 +246,7 @@ public abstract class DebugInfoBase {
         /* Now we can cross reference static and instance field details. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
             ResolvedJavaType idType = debugTypeInfo.idType();
-            String typeName = TypeEntry.canonicalize(debugTypeInfo.typeName());
+            String typeName = debugTypeInfo.typeName();
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
 
             debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
@@ -348,7 +348,7 @@ public abstract class DebugInfoBase {
     public TypeEntry lookupTypeEntry(ResolvedJavaType type) {
         TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null) {
-            throw new RuntimeException("type entry not found " + TypeEntry.canonicalize(type.getName()));
+            throw new RuntimeException("type entry not found " + type.getName());
         }
         return typeEntry;
     }
@@ -356,7 +356,7 @@ public abstract class DebugInfoBase {
     ClassEntry lookupClassEntry(ResolvedJavaType type) {
         TypeEntry typeEntry = typesIndex.get(type);
         if (typeEntry == null || !(typeEntry.isClass())) {
-            throw new RuntimeException("class entry not found " + TypeEntry.canonicalize(type.getName()));
+            throw new RuntimeException("class entry not found " + type.getName());
         }
         return (ClassEntry) typeEntry;
     }
@@ -386,7 +386,7 @@ public abstract class DebugInfoBase {
         DebugLocationInfo callerLocationInfo = locationInfo.getCaller();
         boolean isTopLevel = callerLocationInfo == null;
         assert (!isTopLevel || (locationInfo.name().equals(primaryRange.getMethodName()) &&
-                        TypeEntry.canonicalize(locationInfo.ownerType().toJavaName()).equals(primaryRange.getClassName())));
+                        locationInfo.ownerType().toJavaName().equals(primaryRange.getClassName())));
         Range caller = (isTopLevel ? primaryRange : subRangeIndex.get(callerLocationInfo));
         // the frame tree is walked topdown so inline ranges should always have a caller range
         assert caller != null;
@@ -428,7 +428,7 @@ public abstract class DebugInfoBase {
             primaryClasses.add(classEntry);
             primaryClassesIndex.put(type, classEntry);
         }
-        assert (classEntry.getTypeName().equals(TypeEntry.canonicalize(type.toJavaName())));
+        assert (classEntry.getTypeName().equals(type.toJavaName()));
         return classEntry;
     }
 

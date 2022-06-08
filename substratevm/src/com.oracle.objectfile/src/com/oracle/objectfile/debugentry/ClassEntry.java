@@ -130,13 +130,13 @@ public class ClassEntry extends StructureTypeEntry {
 
     @Override
     public void addDebugInfo(DebugInfoBase debugInfoBase, DebugTypeInfo debugTypeInfo, DebugContext debugContext) {
-        assert TypeEntry.canonicalize(debugTypeInfo.typeName()).equals(typeName);
+        assert debugTypeInfo.typeName().equals(typeName);
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
         ResolvedJavaType superType = debugInstanceTypeInfo.superClass();
         String superName;
         if (superType != null) {
-            superName = TypeEntry.canonicalize(superType.toJavaName());
+            superName = superType.toJavaName();
         } else {
             superName = "";
         }
@@ -291,7 +291,7 @@ public class ClassEntry extends StructureTypeEntry {
     protected MethodEntry processMethod(DebugMethodInfo debugMethodInfo, DebugInfoBase debugInfoBase, DebugContext debugContext) {
         String methodName = debugMethodInfo.name();
         ResolvedJavaType resultType = debugMethodInfo.valueType();
-        String resultTypeName = TypeEntry.canonicalize(resultType.toJavaName());
+        String resultTypeName = resultType.toJavaName();
         int modifiers = debugMethodInfo.modifiers();
         DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
