@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -278,6 +278,8 @@ public final class CTypeConversion {
 
     /**
      * Provides access to a C pointer for the provided Java byte array.
+     *
+     * @since 22.2
      */
     public static CCharPointerHolder toCBytes(byte[] bytes) {
         return ImageSingletons.lookup(CTypeConversionSupport.class).toCBytes(bytes);
