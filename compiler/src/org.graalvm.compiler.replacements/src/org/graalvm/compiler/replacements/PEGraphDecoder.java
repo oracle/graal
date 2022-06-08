@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -1292,7 +1293,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 // Try to reuse the previous begin node instead of creating another one.
                 prevBegin = (BeginNode) returnNode.predecessor();
             }
-            var returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin));
+            Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin));
             returnValue = returnAnchorPair.getLeft();
             FixedNode next = returnAnchorPair.getRight();
             if (next == prevBegin) {
@@ -1307,7 +1308,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
             returnValue = InliningUtil.mergeReturns(merge, getMatchingNodes(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class, returnNodeCount));
             FixedNode next = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
-            var returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, merge);
+            Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, merge);
             returnValue = returnAnchorPair.getLeft();
             assert returnAnchorPair.getRight() == merge;
             merge.setNext(next);

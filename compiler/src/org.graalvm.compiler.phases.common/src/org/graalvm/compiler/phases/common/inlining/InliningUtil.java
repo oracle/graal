@@ -56,6 +56,7 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.graph.NodeWorkList;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -87,6 +88,7 @@ import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
@@ -604,14 +606,14 @@ public class InliningUtil extends ValueMergeUtil {
             invoke.setNext(null);
             if (processedReturns.size() == 1) {
                 ReturnNode returnNode = processedReturns.get(0);
-                var returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next);
                 returnValue = returnAnchorPair.getLeft();
                 returnNode.replaceAndDelete(returnAnchorPair.getRight());
             } else {
                 MergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
                 ValueNode mergedReturn = mergeReturns(merge, processedReturns);
-                var returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge);
                 returnValue = returnAnchorPair.getLeft();
                 assert returnAnchorPair.getRight() == merge;
                 if (merge.isPhiAtMerge(mergedReturn)) {
@@ -668,7 +670,14 @@ public class InliningUtil extends ValueMergeUtil {
                      * Ensure pi does not replace value within its anchor's framestate.
                      */
                     FrameState stateAfter = ((StateSplit) anchorVal).stateAfter();
-                    invokeNode.replaceAtUsages(origReturn, use -> use == stateAfter, false);
+                    stateAfter.applyToNonVirtual(new VirtualState.NodePositionClosure<>() {
+                        @Override
+                        public void apply(Node from, Position p) {
+                            if (p.get(from) == invokeNode) {
+                                p.set(from, origReturn);
+                            }
+                        }
+                    });
                 }
             }
         }
