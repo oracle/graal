@@ -118,6 +118,7 @@ import org.graalvm.polyglot.proxy.Proxy;
  * {@link #isIterator() iterator} which can be used to {@link #getIteratorNextElement() iterate}
  * value elements. For example, Guest language arrays are iterable.
  * <li>{@link #hasHashEntries()} Hash Entries}: This value represents a map.
+ * <li>{@link #hasMetaParents()} Meta Parents}: This value represents Array Elements of Meta Objects.
  * </ul>
  * <p>
  * In addition to the language agnostic types, the language specific type can be accessed using

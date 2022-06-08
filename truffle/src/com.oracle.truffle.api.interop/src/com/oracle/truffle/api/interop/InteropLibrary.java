@@ -143,6 +143,7 @@ import com.oracle.truffle.api.utilities.TriState;
  * <li>{@link #hasBufferElements(Object) buffer elements}
  * <li>{@link #hasLanguage(Object) language}
  * <li>{@link #hasMetaObject(Object) associated metaobject}
+ * <li>{@link #hasMetaParents(Object) metaobject parents as array elements}
  * <li>{@link #hasDeclaringMetaObject(Object) declaring meta object}
  * <li>{@link #hasSourceLocation(Object) source location}
  * <li>{@link #hasIdentity(Object) identity}
@@ -2527,7 +2528,8 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Returns a list of metaobjects that are direct parents (super types) of this metaobject.
+     * Returns an array like {@link #hasArrayElements(Object)} of metaobjects that are direct
+     * parents (super types) of this metaobject.
      * <p>
      * The returned object is an {@link #hasArrayElements(Object) array} of objects that return
      * <code>true</code> from {@link #isMetaObject(Object)}.
