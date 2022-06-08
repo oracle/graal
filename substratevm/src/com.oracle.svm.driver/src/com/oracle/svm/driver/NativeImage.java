@@ -31,6 +31,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
@@ -89,6 +90,7 @@ import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
 
 public class NativeImage {
 
@@ -260,6 +262,12 @@ public class NativeImage {
 
     protected static class BuildConfiguration {
 
+        /*
+         * Reuse com.oracle.svm.util.ModuleSupport.isModulePathBuild() to ensure same interpretation
+         * of com.oracle.svm.util.ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM environment variable use.
+         */
+        private static final Method isModulePathBuild = ReflectionUtil.lookupMethod(ModuleSupport.class, "isModulePathBuild");
+
         boolean modulePathBuild;
         String imageBuilderModeEnforcer;
 
@@ -281,7 +289,11 @@ public class NativeImage {
 
         @SuppressWarnings("deprecation")
         BuildConfiguration(Path rootDir, Path workDir, List<String> args) {
-            modulePathBuild = ModuleSupport.isModulePathBuild();
+            try {
+                modulePathBuild = (boolean) isModulePathBuild.invoke(null);
+            } catch (ReflectiveOperationException | ClassCastException e) {
+                VMError.shouldNotReachHere(e);
+            }
             imageBuilderModeEnforcer = null;
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();

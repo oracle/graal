@@ -43,7 +43,7 @@ public final class ModuleSupport {
     private ModuleSupport() {
     }
 
-    public static boolean isModulePathBuild() {
+    private static boolean isModulePathBuild() {
         return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
     }
 
