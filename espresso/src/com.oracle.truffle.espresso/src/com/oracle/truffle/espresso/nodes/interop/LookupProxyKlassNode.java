@@ -22,14 +22,17 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -43,12 +46,32 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
 
     public abstract ObjectKlass execute(Object metaObject, Klass targetType) throws ClassCastException;
 
+    static String getMetaName(Object metaObject, InteropLibrary interop) {
+        assert interop.isMetaObject(metaObject);
+        try {
+            return interop.asString(interop.getMetaQualifiedName(metaObject));
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
+    static boolean isSame(Object metaObject, String metaQualifiedName, InteropLibrary interop) {
+        assert interop.isMetaObject(metaObject);
+        try {
+            return interop.asString(interop.getMetaQualifiedName(metaObject)).equals(metaQualifiedName);
+        } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
+    }
+
     @SuppressWarnings("unused")
-    @Specialization(guards = {"metaObject == cachedMetaObject", "targetType == cachedTargetType"}, limit = "LIMIT")
+    @Specialization(guards = {"isSame(metaObject, metaName, interop)", "targetType == cachedTargetType"}, limit = "LIMIT")
     ObjectKlass doCached(Object metaObject, Klass targetType,
-                    @Cached("metaObject") Object cachedMetaObject,
                     @Cached("targetType") Klass cachedTargetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached("getMetaName(metaObject, interop)") String metaName,
                     @Cached("doUncached(metaObject, targetType, interop)") ObjectKlass cachedProxyKlass) throws ClassCastException {
         assert cachedProxyKlass == doUncached(metaObject, targetType, interop);
         return cachedProxyKlass;

@@ -45,6 +45,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
 /**
@@ -341,7 +342,7 @@ public class EspressoForeignProxyGenerator {
 
     private static final String proxyNamePrefix = "com.oracle.truffle.espresso.polyglot.Foreign$Proxy$";
 
-    private static final HashMap<Object, ObjectKlass> proxyCache = new HashMap<>();
+    private static final HashMap<String, ObjectKlass> proxyCache = new HashMap<>();
 
     /**
      * Construct a ProxyGenerator to generate a proxy class with the specified name and for the
@@ -359,15 +360,22 @@ public class EspressoForeignProxyGenerator {
 
     @TruffleBoundary
     public static synchronized ObjectKlass getProxyKlass(EspressoContext context, Object metaObject, InteropLibrary interop) {
-        if (proxyCache.containsKey(metaObject)) {
+        assert interop.isMetaObject(metaObject);
+        String metaName;
+        try {
+            metaName = interop.asString(interop.getMetaQualifiedName(metaObject));
+        } catch (UnsupportedMessageException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+        if (proxyCache.containsKey(metaName)) {
             // Note: this assumes stability of meta object parents, so upon
             // hitting a use-case where meta parents do change we need to
             // place guards before returning from cache.
-            return proxyCache.get(metaObject);
+            return proxyCache.get(metaName);
         }
         String[] parentNames = getParentNames(metaObject, interop);
         if (parentNames.length == 0) {
-            proxyCache.put(metaObject, null);
+            proxyCache.put(metaName, null);
             return null;
         }
         ArrayList<ObjectKlass> guestInterfaces = new ArrayList<>(parentNames.length);
@@ -379,13 +387,13 @@ public class EspressoForeignProxyGenerator {
             }
         }
         if (guestInterfaces.isEmpty()) {
-            proxyCache.put(metaObject, null);
+            proxyCache.put(metaName, null);
             return null;
         }
 
         EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context, guestInterfaces.toArray(new ObjectKlass[guestInterfaces.size()]));
         ObjectKlass proxyKlass = context.getRegistries().getClassRegistry(context.getBindings().getBindingsLoader()).defineKlass(generator.getClassType(), generator.generateClassFile());
-        proxyCache.put(metaObject, proxyKlass);
+        proxyCache.put(metaName, proxyKlass);
         return proxyKlass;
     }
 
