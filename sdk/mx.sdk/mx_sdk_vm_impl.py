@@ -1931,13 +1931,13 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             extra_jvm_args = mx.list_to_cmd_line(image_config.extra_jvm_args)
             if not _jlink_libraries() and _src_jdk_version >= 9:
                 if mx.is_windows():
-                    extra_jvm_args = ' '.join([extra_jvm_args, r"--upgrade-module-path %location%\..\..\jvmci\graal.jar",
-                                               r"--add-modules org.graalvm.truffle,org.graalvm.sdk",
-                                               r"--module-path %location%\..\..\truffle\truffle-api.jar:%location%\..\..\jvmci\graal-sdk.jar"])
+                    extra_jvm_args = ' '.join([extra_jvm_args, r'--upgrade-module-path "%location%\..\..\jvmci\graal.jar"',
+                                               r'--add-modules org.graalvm.truffle,org.graalvm.sdk',
+                                               r'--module-path "%location%\..\..\truffle\truffle-api.jar:%location%\..\..\jvmci\graal-sdk.jar"'])
                 else:
-                    extra_jvm_args = ' '.join([extra_jvm_args, "--upgrade-module-path ${location}/../../jvmci/graal.jar",
-                                               "--add-modules org.graalvm.truffle,org.graalvm.sdk",
-                                               "--module-path ${location}/../../truffle/truffle-api.jar:${location}/../../jvmci/graal-sdk.jar"])
+                    extra_jvm_args = ' '.join([extra_jvm_args, '--upgrade-module-path "${location}/../../jvmci/graal.jar"',
+                                               '--add-modules org.graalvm.truffle,org.graalvm.sdk',
+                                               '--module-path "${location}/../../truffle/truffle-api.jar:${location}/../../jvmci/graal-sdk.jar"'])
             return extra_jvm_args
 
         def _get_option_vars():
