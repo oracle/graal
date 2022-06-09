@@ -332,10 +332,14 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     /** In an Object, install a forwarding pointer to a different Object. */
     @AlwaysInline("GC performance")
     static Object installForwardingPointer(Object original, Object copy) {
+        Log trace = Log.log();
         Word originalPtr = Word.objectToUntrackedPointer(original);
 //        assert !isPointerToForwardedObject(originalPtr);
-        UnsignedWord oldHeader = readHeaderFromPointer(originalPtr);
-//        assert !isForwardedHeader(oldHeader);
+        UnsignedWord curHeader = readHeaderFromPointer(originalPtr);
+        if (isForwardedHeader(curHeader)) {
+            trace.string("PP reinstall for obj ").hex(originalPtr).newline();
+            return getForwardedObject(originalPtr, curHeader);
+        }
         UnsignedWord forwardHeader;
         if (ReferenceAccess.singleton().haveCompressedReferences()) {
             if (ReferenceAccess.singleton().getCompressEncoding().hasShift()) {
@@ -356,18 +360,18 @@ public final class ObjectHeaderImpl extends ObjectHeader {
         boolean installed;
         if (getReferenceSize() == Integer.BYTES) {
 //            ObjectAccess.writeInt(original, getHubOffset(), (int) newHeader.rawValue());
-            int expected = (int) oldHeader.rawValue();
+            int expected = (int) curHeader.rawValue();
             int witness = UNSAFE.compareAndExchangeInt(original, getHubOffset(), expected, (int) newHeader.rawValue());
             installed = witness == expected;
         } else {
 //            ObjectAccess.writeWord(original, getHubOffset(), newHeader);
-            long expected = oldHeader.rawValue();
+            long expected = curHeader.rawValue();
             long witness = UNSAFE.compareAndExchangeLong(original, getHubOffset(), expected, newHeader.rawValue());
             installed = witness == expected;
         }
         assert isPointerToForwardedObject(originalPtr);
         if (!installed) {
-            Log.log().string("PP collision for obj").hex(originalPtr).newline();
+            trace.string("PP collision for obj ").hex(originalPtr).newline();
             return getForwardedObject(originalPtr);
         }
         return copy;

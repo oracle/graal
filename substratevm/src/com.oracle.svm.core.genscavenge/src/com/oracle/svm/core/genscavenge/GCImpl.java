@@ -1157,7 +1157,7 @@ public final class GCImpl implements GC {
                 RememberedSet.get().enableRememberedSetForObject(copyChunk, result);
             }
             ParallelGCImpl.QUEUE.put(Word.objectToUntrackedPointer(original), result, objRef, compressed, holderObject);
-            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
+//            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
             return true;
         }
 
@@ -1179,12 +1179,12 @@ public final class GCImpl implements GC {
 
     public void doPromoteParallel(Pointer originalPtr, Object copy, Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         Log trace = Log.log();
-        trace.string("PP obj=").hex(originalPtr)
-//                .string(", ref=").hex(objRef)
+        trace.string("PP obj ").hex(originalPtr)
+//                .string(", ref ").hex(objRef)
                 .newline();
         Object original = originalPtr.toObject();
         if (copy != null) {
-            ObjectHeaderImpl.installForwardingPointer(original, copy);
+            copy = ObjectHeaderImpl.installForwardingPointer(original, copy); ///can lose duplicate copy
         }
         /// from visitor code
         if (copy != original) {
