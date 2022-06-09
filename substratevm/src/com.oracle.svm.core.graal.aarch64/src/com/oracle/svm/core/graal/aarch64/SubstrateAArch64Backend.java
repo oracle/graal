@@ -208,6 +208,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             maybeTransitionToNative(crb, masm, javaFrameAnchor, state, newThreadStatus);
+            // All direct calls assume that they are within +-128 MB
             AArch64Call.directCall(crb, masm, callTarget, null, state);
         }
 

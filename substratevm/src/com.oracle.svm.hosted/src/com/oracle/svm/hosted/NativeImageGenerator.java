@@ -684,7 +684,7 @@ public class NativeImageGenerator {
             ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
-            int numCompilations = codeCache.getCompilations().size();
+            int numCompilations = codeCache.getOrderedCompilations().size();
 
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 bb.getHeartbeatCallback().run();
