@@ -688,13 +688,28 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     private static final class EspressoOSRReturnException extends ControlFlowException {
         private static final long serialVersionUID = 117347248600170993L;
         private final Object result;
+        private final Throwable throwable;
 
         EspressoOSRReturnException(Object result) {
             this.result = result;
+            this.throwable = null;
         }
 
-        Object getResult() {
+        EspressoOSRReturnException(Throwable throwable) {
+            this.result = null;
+            this.throwable = throwable;
+        }
+
+        Object getResultOrRethrow() {
+            if (throwable != null) {
+                throw sneakyThrow(throwable);
+            }
             return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        private static <T extends Throwable> RuntimeException sneakyThrow(Throwable ex) throws T {
+            throw (T) ex;
         }
     }
 
@@ -1517,7 +1532,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                     LoopNode.reportLoopCount(this, loopCount.value);
                 }
-                return e.getResult();
+                return e.getResultOrRethrow();
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
@@ -1794,7 +1809,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     beforeTransfer = null;
                 }
                 livenessAnalysis.catchUpOSR(frame, targetBCI, skipLivenessActions);
-                Object osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
+                Object osrResult;
+                try {
+                    osrResult = BytecodeOSRNode.tryOSR(this, targetBCI, new EspressoOSRInterpreterState(top, nextStatementIndex), beforeTransfer, frame);
+                } catch (Throwable any) {
+                    // Has already been guest-handled in OSR. Shortcut out of the method.
+                    throw new EspressoOSRReturnException(any);
+                }
                 if (osrResult != null) {
                     throw new EspressoOSRReturnException(osrResult);
                 }
