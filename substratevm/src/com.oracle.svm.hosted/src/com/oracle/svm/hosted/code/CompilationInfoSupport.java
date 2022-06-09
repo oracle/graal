@@ -38,6 +38,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -103,8 +104,18 @@ public class CompilationInfoSupport {
                             numLocks == state.locksSize() &&
                             expectedKinds.length == otherKinds.length;
             if (!matchingSizes) {
+                if (!NativeImageCodeCache.Options.VerifyDeoptimizationEntryPoints.getValue()) {
+                    /*
+                     * If VerifyDeoptimizationEntryPoints is not enabled, then this information does
+                     * not need to be accurate.
+                     */
+                    return this;
+                }
+
                 StringBuilder errorMessage = new StringBuilder();
-                errorMessage.append("Unexpected number of values in state to merge. Please report this problem.\n");
+                errorMessage.append(
+                                "Unexpected number of values in state to merge. Please report this problem and try building again with -H:-VerifyDeoptimizationEntryPoints " +
+                                                "to check if you are calling methods on the blocklist without a @TruffleBoundary.\n");
                 errorMessage.append(String.format("****Merge FrameState****\n%s************************\n", state.toString(Verbosity.Debugger)));
                 errorMessage.append(String.format("bci: %d, duringCall: %b, rethrowException: %b\n", state.bci, state.duringCall(), state.rethrowException()));
                 errorMessage.append(String.format("DeoptSourceFrameInfo: locals-%d, stack-%d, locks-%d.\n", numLocals, numStack, numLocks));
