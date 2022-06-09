@@ -1531,12 +1531,13 @@ public final class PolyglotNativeAPI {
         resetErrorState();
         Context c = fetchHandle(context);
         ProxyExecutable executable = (Value... arguments) -> {
-            ObjectHandle[] handleArgs = new ObjectHandle[arguments.length];
-            for (int i = 0; i < arguments.length; i++) {
-                handleArgs[i] = createHandle(arguments[i]);
-            }
-            PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
+            int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
             try {
+                ObjectHandle[] handleArgs = new ObjectHandle[arguments.length];
+                for (int i = 0; i < arguments.length; i++) {
+                    handleArgs[i] = createHandle(arguments[i]);
+                }
+                PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
                 PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
                 CallbackException ce = exceptionsTL.get();
                 if (ce != null) {
@@ -1546,7 +1547,7 @@ public final class PolyglotNativeAPI {
                     return PolyglotNativeAPI.fetchHandle(result);
                 }
             } finally {
-                PolyglotCallbackInfoInternal info = fetchHandle(cbInfo);
+                getHandles().popFramesIncluding(frame);
             }
         };
         value.write(createHandle(c.asValue(executable)));
@@ -1814,14 +1815,19 @@ public final class PolyglotNativeAPI {
             Threading.registerRecurringCallback(-1, null, null);
             return poly_ok;
         }
-        ObjectHandle[] handleArgs = new ObjectHandle[0];
-        PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
+        PolyglotCallbackInfoInternal info = new PolyglotCallbackInfoInternal(new ObjectHandle[0], data);
         Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, access -> {
-            callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
-            CallbackException ce = exceptionsTL.get();
-            if (ce != null) {
-                exceptionsTL.remove();
-                access.throwException(ce);
+            int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
+            try {
+                PolyglotCallbackInfo infoHandle = (PolyglotCallbackInfo) createHandle(info);
+                callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
+                CallbackException ce = exceptionsTL.get();
+                if (ce != null) {
+                    exceptionsTL.remove();
+                    access.throwException(ce);
+                }
+            } finally {
+                getHandles().popFramesIncluding(frame);
             }
         });
         return poly_ok;
