@@ -340,7 +340,7 @@ def gate_substratevm(tasks, quickbuild=False):
                 '--enable-url-protocols=jar',
                 '--enable-url-protocols=http'
             ]
-            args = ['--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
+            args = ['--force-builder-on-cp', '--build-args'] + truffle_with_compilation + extra_build_args + blacklist_args + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)

@@ -203,8 +203,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
-        ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
-        ModuleSupport.openModuleByClass(Security.class, getClass());
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         disableExperimentalFipsMode(a);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
     }

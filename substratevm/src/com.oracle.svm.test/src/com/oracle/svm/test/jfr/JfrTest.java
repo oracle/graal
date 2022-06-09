@@ -136,6 +136,6 @@ class JFRTestFeature implements Feature {
          * Use of org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC in
          * com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser.parse
          */
-        ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider", false, JFRTestFeature.class);
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JFRTestFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.serviceprovider");
     }
 }

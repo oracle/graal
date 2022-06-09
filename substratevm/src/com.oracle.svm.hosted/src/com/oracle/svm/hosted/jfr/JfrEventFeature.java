@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.svm.core.jfr.JfrFeature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -39,6 +38,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
+import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
@@ -68,8 +68,8 @@ public class JfrEventFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.exportAndOpenPackageToClass("jdk.jfr", "jdk.jfr.events", false, JfrEventFeature.class);
-        ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.hotspot", false, JfrEventSubstitution.class);
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrFeature.class, false, "jdk.jfr", "jdk.jfr.events");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, JfrEventSubstitution.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.hotspot");
     }
 
     @Override

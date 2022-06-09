@@ -58,6 +58,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.option.HostedOptionParser;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -473,6 +474,12 @@ final class APIOptionSupport {
 
 @AutomaticFeature
 final class APIOptionFeature implements Feature {
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, APIOptionFeature.class, true,
+                        "jdk.internal.vm.compiler", "org.graalvm.compiler.options");
+    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

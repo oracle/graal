@@ -278,7 +278,7 @@ def runLLVMUnittests(unittest_runner):
 
     run_args = [libpath, libs] + java_run_props
     build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args +
+    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--force-builder-on-cp', '--run-args'] + run_args +
                     ['--build-args', '--initialize-at-build-time'] + build_args)
 
 
