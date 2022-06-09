@@ -145,7 +145,7 @@ public class DeclaredLocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.set(object2, newValue, rootShape, shapeWithDeclared);
+            property.getLocation().set(object2, newValue, rootShape, shapeWithDeclared);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             // expected

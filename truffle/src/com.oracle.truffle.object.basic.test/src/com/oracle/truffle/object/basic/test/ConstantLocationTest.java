@@ -143,7 +143,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(false, property.getLocation().canStore(newValue));
         Assert.assertEquals(false, property.getLocation().canSet(newValue));
         try {
-            property.set(object2, newValue, rootShape, shapeWithConstant);
+            property.getLocation().set(object2, newValue, rootShape, shapeWithConstant);
             Assert.fail();
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             // expected

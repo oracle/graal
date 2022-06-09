@@ -45,6 +45,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
@@ -204,15 +205,12 @@ public abstract class LayoutStrategy {
         ShapeImpl oldShape = currentShape;
         ShapeImpl newShape = defineProperty(oldShape, property.getKey(), value, property.getFlags(), null, Flags.DEFAULT);
         Property newProperty = newShape.getProperty(property.getKey());
-        newProperty.setSafe(store, value, oldShape, newShape);
-    }
-
-    /** @since 0.17 or earlier */
-    protected void propertySetWithShapeFallback(Property property, DynamicObject store, Object value, ShapeImpl currentShape, ShapeImpl nextShape) {
-        ShapeImpl oldShape = currentShape;
-        ShapeImpl newNextShape = generalizeProperty(property, value, oldShape, nextShape, Flags.DEFAULT);
-        Property newProperty = newNextShape.getProperty(property.getKey());
-        newProperty.setSafe(store, value, oldShape, newNextShape);
+        assert store.getShape() == oldShape;
+        try {
+            ((LocationImpl) newProperty.getLocation()).set(store, value, oldShape, newShape);
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
+            throw CompilerDirectives.shouldNotReachHere(ex);
+        }
     }
 
     private ShapeImpl definePropertySeparateShape(ShapeImpl oldShape, Object key, Object value, int propertyFlags, long putFlags, com.oracle.truffle.api.object.LocationFactory locationFactory) {

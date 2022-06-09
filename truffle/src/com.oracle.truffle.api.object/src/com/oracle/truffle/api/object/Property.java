@@ -154,41 +154,6 @@ public abstract class Property {
     /**
      * Assigns value to this property of the object, changing the object's shape.
      *
-     * Combines {@code setShapeAndGrow} and {@link #set(DynamicObject, Object, Shape)} to an atomic
-     * operation.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @param oldShape the shape before the transition
-     * @param newShape the shape after the transition
-     * @throws IncompatibleLocationException if the value is incompatible with the property location
-     * @since 0.8 or earlier
-     * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
-     *             and {@link DynamicObjectLibrary#putWithFlags}.
-     */
-    @Deprecated(since = "20.2")
-    public abstract void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException;
-
-    /**
-     * Assigns value to this property of the object, changing the object's shape.
-     *
-     * Combines {@code setShapeAndGrow} and {@link #setGeneric(DynamicObject, Object, Shape)} to an
-     * atomic operation.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @param oldShape the shape before the transition
-     * @param newShape the shape after the transition
-     * @since 0.8 or earlier
-     * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
-     *             and {@link DynamicObjectLibrary#putWithFlags}.
-     */
-    @Deprecated(since = "20.2")
-    public abstract void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape);
-
-    /**
-     * Assigns value to this property of the object, changing the object's shape.
-     *
      * Combines {@code setShapeAndGrow} and {@link #setSafe(DynamicObject, Object, Shape)} to an
      * atomic operation.
      *

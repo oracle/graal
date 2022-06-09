@@ -150,30 +150,12 @@ public final class PropertyImpl extends Property {
 
     /** @since 0.17 or earlier */
     @Override
-    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
-        assert verifyShapeParameters(store, oldShape, newShape);
-        ((LocationImpl) getLocation()).set(store, value, oldShape, newShape);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
         assert verifyShapeParameters(store, oldShape, newShape);
         try {
             ((LocationImpl) getLocation()).set(store, value, oldShape, newShape);
         } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
             throw new IllegalStateException();
-        }
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape) {
-        assert verifyShapeParameters(store, oldShape, newShape);
-        try {
-            getLocation().set(store, value, oldShape, newShape);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
-            setWithShapeSlowCase(store, value, oldShape, newShape);
         }
     }
 
@@ -236,11 +218,6 @@ public final class PropertyImpl extends Property {
     private void setSlowCase(DynamicObject store, Object value) {
         ShapeImpl oldShape = (ShapeImpl) store.getShape();
         oldShape.getLayoutStrategy().propertySetFallback(this, store, value, oldShape);
-    }
-
-    private void setWithShapeSlowCase(DynamicObject store, Object value, Shape currentShape, Shape nextShape) {
-        ShapeImpl oldShape = (ShapeImpl) currentShape;
-        oldShape.getLayoutStrategy().propertySetWithShapeFallback(this, store, value, oldShape, (ShapeImpl) nextShape);
     }
 
     /** @since 0.17 or earlier */
