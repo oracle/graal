@@ -835,17 +835,6 @@ public abstract class Shape {
     public abstract Object getMutex();
 
     /**
-     * Are these two shapes related, i.e. do they have the same root?
-     *
-     * @param other Shape to compare to
-     * @return true if one shape is an upcast of the other, or the Shapes are equal
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated(since = "20.2")
-    public abstract boolean isRelated(Shape other);
-
-    /**
      * Try to merge two related shapes to a more general shape that has the same properties and can
      * store at least the values of both shapes.
      *

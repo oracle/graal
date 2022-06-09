@@ -626,7 +626,6 @@ public abstract class ShapeImpl extends Shape {
      * @return true if one shape is an upcast of the other, or the Shapes are equal
      * @since 0.17 or earlier
      */
-    @Override
     public boolean isRelated(Shape other) {
         if (this == other) {
             return true;
