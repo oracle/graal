@@ -42,7 +42,7 @@ package com.oracle.truffle.api.object;
 
 /**
  * Int-typed storage location.
- * 
+ *
  * @since 0.8 or earlier
  * @see Location
  * @see DynamicObjectLibrary#getIntOrDefault
@@ -68,6 +68,7 @@ public interface IntLocation {
      * @see Location#set(DynamicObject, Object)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setInt(DynamicObject store, int value) throws FinalLocationException;
 
@@ -75,6 +76,7 @@ public interface IntLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setInt(DynamicObject store, int value, Shape shape) throws FinalLocationException;
 

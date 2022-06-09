@@ -64,6 +64,7 @@ public abstract class Location {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     protected static IncompatibleLocationException incompatibleLocation() throws IncompatibleLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -71,6 +72,7 @@ public abstract class Location {
     }
 
     /** @since 0.8 or earlier */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     protected static FinalLocationException finalLocation() throws FinalLocationException {
         CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -155,6 +157,7 @@ public abstract class Location {
      * @throws FinalLocationException for effectively final fields
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
         setInternal(store, value);
@@ -169,7 +172,7 @@ public abstract class Location {
      * @since 0.8 or earlier
      */
     @Deprecated(since = "22.2")
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "deprecation"})
     public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
         throw incompatibleLocation();
     }
@@ -181,6 +184,7 @@ public abstract class Location {
      * @throws FinalLocationException for effectively final fields
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     public final void set(DynamicObject store, Object value) throws IncompatibleLocationException, FinalLocationException {
         set(store, value, null);
@@ -198,6 +202,7 @@ public abstract class Location {
      * @throws IncompatibleLocationException if value is of non-assignable type
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
 

@@ -52,8 +52,6 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.FinalLocationException;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
@@ -95,7 +93,7 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(true, property.getLocation().canSet(value));
         try {
             property.set(object, value, shapeWithConstant);
-        } catch (IncompatibleLocationException | FinalLocationException e) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
             Assert.fail(e.getMessage());
         }
 
@@ -105,8 +103,8 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         try {
             property.set(object, newValue, shapeWithConstant);
             Assert.fail();
-        } catch (IncompatibleLocationException | FinalLocationException e) {
-            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException | com.oracle.truffle.api.object.FinalLocationException e) {
+            Assert.assertThat(e, CoreMatchers.instanceOf(com.oracle.truffle.api.object.IncompatibleLocationException.class));
         }
 
         Assert.assertSame(value, library.getOrDefault(object, "constant", null));
@@ -147,8 +145,8 @@ public class ConstantLocationTest extends AbstractParametrizedLibraryTest {
         try {
             property.set(object2, newValue, rootShape, shapeWithConstant);
             Assert.fail();
-        } catch (IncompatibleLocationException e) {
-            Assert.assertThat(e, CoreMatchers.instanceOf(IncompatibleLocationException.class));
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
+            // expected
         }
         Assert.assertSame(rootShape, object2.getShape());
         Assert.assertEquals(false, library.containsKey(object2, "constant"));

@@ -135,6 +135,7 @@ public abstract class Property {
      * @since 0.8 or earlier
      * @deprecated Use {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)}.
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     public abstract void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException;
 

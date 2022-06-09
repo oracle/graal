@@ -68,6 +68,7 @@ public interface LongLocation {
      * @see Location#set(DynamicObject, Object)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setLong(DynamicObject store, long value) throws FinalLocationException;
 
@@ -75,6 +76,7 @@ public interface LongLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setLong(DynamicObject store, long value, Shape shape) throws FinalLocationException;
 

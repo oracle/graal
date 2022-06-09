@@ -46,7 +46,6 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
@@ -86,17 +85,17 @@ public abstract class LocationImpl extends Location {
 
     /** @since 0.17 or earlier */
     @Override
-    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException {
+    public void set(DynamicObject store, Object value, Shape shape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, checkShape(store, shape), false);
     }
 
     @Override
-    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException {
+    public void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         if (canStore(value)) {
             LayoutImpl.ACCESS.grow(store, oldShape, newShape);
             try {
                 setInternal(store, value);
-            } catch (IncompatibleLocationException ex) {
+            } catch (com.oracle.truffle.api.object.IncompatibleLocationException ex) {
                 throw shouldNotHappen(ex);
             }
             LayoutImpl.ACCESS.setShapeWithStoreFence(store, newShape);
@@ -157,16 +156,17 @@ public abstract class LocationImpl extends Location {
      * @param value the value to be stored.
      * @param guard the result of the shape check guarding this property write or {@code false}.
      * @param init if true, this is the initial assignment of a property location; ignore final.
-     * @throws IncompatibleLocationException if the value cannot be stored in this storage location.
+     * @throws com.oracle.truffle.api.object.IncompatibleLocationException if the value cannot be
+     *             stored in this storage location.
      * @see #setSafe(DynamicObject, Object, boolean, boolean)
      */
-    protected abstract void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException;
+    protected abstract void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException;
 
     /**
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setIntSafe(DynamicObject, int, boolean, boolean)
      */
-    protected void setInt(DynamicObject store, int value, boolean guard, boolean init) throws IncompatibleLocationException {
+    protected void setInt(DynamicObject store, int value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, guard, init);
     }
 
@@ -174,7 +174,7 @@ public abstract class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setLongSafe(DynamicObject, long, boolean, boolean)
      */
-    protected void setLong(DynamicObject store, long value, boolean guard, boolean init) throws IncompatibleLocationException {
+    protected void setLong(DynamicObject store, long value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, guard, init);
     }
 
@@ -182,7 +182,7 @@ public abstract class LocationImpl extends Location {
      * @see #set(DynamicObject, Object, boolean, boolean)
      * @see #setDoubleSafe(DynamicObject, double, boolean, boolean)
      */
-    protected void setDouble(DynamicObject store, double value, boolean guard, boolean init) throws IncompatibleLocationException {
+    protected void setDouble(DynamicObject store, double value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, guard, init);
     }
 
@@ -195,7 +195,7 @@ public abstract class LocationImpl extends Location {
 
     /** @since 0.17 or earlier */
     @Override
-    protected final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
+    protected final void setInternal(DynamicObject store, Object value) throws com.oracle.truffle.api.object.IncompatibleLocationException {
         set(store, value, false, true);
     }
 
@@ -330,7 +330,7 @@ public abstract class LocationImpl extends Location {
     protected final void setSafe(DynamicObject store, Object value, boolean guard, boolean init) {
         try {
             set(store, value, guard, init);
-        } catch (IncompatibleLocationException e) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
@@ -341,7 +341,7 @@ public abstract class LocationImpl extends Location {
     protected final void setIntSafe(DynamicObject store, int value, boolean guard, boolean init) {
         try {
             setInt(store, value, guard, init);
-        } catch (IncompatibleLocationException e) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
@@ -352,7 +352,7 @@ public abstract class LocationImpl extends Location {
     protected final void setLongSafe(DynamicObject store, long value, boolean guard, boolean init) {
         try {
             setLong(store, value, guard, init);
-        } catch (IncompatibleLocationException e) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }
@@ -363,7 +363,7 @@ public abstract class LocationImpl extends Location {
     protected final void setDoubleSafe(DynamicObject store, double value, boolean guard, boolean init) {
         try {
             setDouble(store, value, guard, init);
-        } catch (IncompatibleLocationException e) {
+        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
             throw shouldNotHappen(e);
         }
     }

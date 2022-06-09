@@ -68,6 +68,7 @@ public interface BooleanLocation {
      * @see Location#set(DynamicObject, Object)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setBoolean(DynamicObject store, boolean value) throws FinalLocationException;
 
@@ -75,6 +76,7 @@ public interface BooleanLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setBoolean(DynamicObject store, boolean value, Shape shape) throws FinalLocationException;
 

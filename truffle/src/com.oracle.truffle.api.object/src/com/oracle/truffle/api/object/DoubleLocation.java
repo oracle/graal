@@ -68,6 +68,7 @@ public interface DoubleLocation {
      * @see Location#set(DynamicObject, Object)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setDouble(DynamicObject store, double value) throws FinalLocationException;
 
@@ -75,6 +76,7 @@ public interface DoubleLocation {
      * @see Location#set(DynamicObject, Object, Shape)
      * @since 0.8 or earlier
      */
+    @SuppressWarnings("deprecation")
     @Deprecated(since = "22.2")
     void setDouble(DynamicObject store, double value, Shape shape) throws FinalLocationException;
 
