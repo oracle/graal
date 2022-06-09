@@ -64,21 +64,35 @@ import jdk.internal.misc.Unsafe;
 
 /**
  * Implementation of synchronized-related operations.
- * <p>
+ *
  * Most objects used in synchronization operations have a dedicated memory in the object to store a
- * {@link ReentrantLock}. The static analysis finds out which classes are used for synchronization
- * (and thus need a monitor) and assigns a monitor offset to point to the {@link #getMonitorOffset
- * slot for the monitor}. The monitor is implemented with a {@link ReentrantLock}.
- * <p>
- * There are a few exceptions: {@link String} and {@link DynamicHub} objects never have monitor
- * fields because we want instances in the image heap to be immutable. Arrays never have monitor
- * fields because it would increase the size of every array and it is not possible to distinguish
- * between arrays with different header sizes. See
- * UniverseBuilder.canHaveMonitorFields(AnalysisType) for details.
- * <p>
- * Synchronization on {@link String}, arrays, and other types not detected by the static analysis
- * (like synchronization via JNI) fall back to a monitor stored in {@link #additionalMonitors}.
- * <p>
+ * {@link ReentrantLock}. The offset of this memory slot is not fixed, but stored separately for
+ * each class, see {@link #getMonitorOffset}. The monitor is implemented with a
+ * {@link ReentrantLock}. The first synchronization operation on an object lazily initializes the
+ * memory slot with a new {@link ReentrantLock}.
+ *
+ * There are a few exceptions: Some classes {@link String} and {@link DynamicHub} never have a
+ * monitor slot because we want instances in the image heap to be immutable. Arrays never have a
+ * monitor slot because it would increase the size of every array and it is not possible to
+ * distinguish between arrays with different header sizes. See
+ * {@code UniverseBuilder.getImmutableTypes()} for details.
+ * 
+ * Synchronization on {@link String}, arrays, and other types not having a monitor slot fall back to
+ * a monitor stored in {@link #additionalMonitors}. Synchronization of such objects is very slow and
+ * not scaling well with more threads because the {@link #additionalMonitorsLock additional monitor
+ * map lock} is a point of contention.
+ *
+ * Since {@link DynamicHub} is also the {@link java.lang.Class} object at run time and static
+ * synchronized methods in Java synchronize on the {@link Class} object, using the additional
+ * monitor map for {@link DynamicHub} is not an option. Therefore, {@link #replaceObject} replaces
+ * {@link DynamicHub} instances with their {@link DynamicHubCompanion} instance (which is mutable)
+ * and performs synchronization on the {@link DynamicHubCompanion}.
+ *
+ * Classes that might be synchronized by the code accessing the additional monitor map must never
+ * use the additional monitor map themselves, otherwise recursive map manipulation can corrupt the
+ * map. {@link #FORCE_MONITOR_SLOT_TYPES} contains all classes that must have a monitor slot
+ * themselves for such correctness reasons.
+ *
  * {@link Condition} objects are used to implement {@link #wait()} and {@link #notify()}. When an
  * object monitor needs a condition object, it is atomically swapped into its
  * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition} field.
