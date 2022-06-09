@@ -172,11 +172,11 @@ public abstract class LayoutStrategy {
         oldShape.onPropertyTransition(oldProperty);
         if (Flags.isSeparateShape(putFlags)) {
             Location newLocation = createLocationForValue(oldShape, value, putFlags, locationFactory);
-            Property newProperty = oldProperty.relocate(newLocation);
+            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
             return separateReplaceProperty(oldShape, oldProperty, newProperty);
         } else if (oldProperty.getLocation().isValue()) {
             Location newLocation = createLocationForValue(oldShape, value, putFlags, locationFactory);
-            Property newProperty = oldProperty.relocate(newLocation);
+            Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
             // Always use direct replace for value locations to avoid shape explosion
             return directReplaceProperty(oldShape, oldProperty, newProperty);
         } else {
@@ -187,7 +187,7 @@ public abstract class LayoutStrategy {
     protected ShapeImpl generalizeProperty(Property oldProperty, Object value, ShapeImpl currentShape, ShapeImpl nextShape, long putFlags) {
         Location oldLocation = oldProperty.getLocation();
         Location newLocation = currentShape.allocator().locationForValueUpcast(value, oldLocation, putFlags);
-        Property newProperty = oldProperty.relocate(newLocation);
+        Property newProperty = ((PropertyImpl) oldProperty).relocate(newLocation);
         nextShape.onPropertyTransition(oldProperty);
         return replaceProperty(nextShape, oldProperty, newProperty);
     }
@@ -309,7 +309,7 @@ public abstract class LayoutStrategy {
         BaseAllocator allocator = shape.allocator().addLocation(newProperty.getLocation());
         ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, replacePropertyTransition, allocator, shape.flags);
 
-        assert newProperty.isSame(newShape.getProperty(newProperty.getKey())) : newShape.getProperty(newProperty.getKey());
+        assert ((PropertyImpl) newProperty).isSame(newShape.getProperty(newProperty.getKey())) : newShape.getProperty(newProperty.getKey());
 
         shape.addDirectTransition(replacePropertyTransition, newShape);
         if (!shape.isValid()) {
@@ -394,7 +394,7 @@ public abstract class LayoutStrategy {
             Property property = ((AddPropertyTransition) transition).getProperty();
             ShapeImpl newShape;
             if (append) {
-                Property newProperty = property.relocate(shape.allocator().moveLocation(property.getLocation()));
+                Property newProperty = ((PropertyImpl) property).relocate(shape.allocator().moveLocation(property.getLocation()));
                 newShape = addProperty(shape, newProperty, true);
             } else {
                 newShape = addProperty(shape, property, false);
@@ -416,7 +416,7 @@ public abstract class LayoutStrategy {
                 } else {
                     newLocation = shape.allocator().moveLocation(newProperty.getLocation());
                 }
-                newProperty = newProperty.relocate(newLocation);
+                newProperty = ((PropertyImpl) newProperty).relocate(newLocation);
             }
             return directReplaceProperty(shape, oldProperty, newProperty, append);
         } else {

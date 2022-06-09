@@ -87,16 +87,6 @@ public abstract class Property {
     public abstract int getFlags();
 
     /**
-     * Change the property's location.
-     *
-     * @return a Property with the new location (or {@code this} if the location is unchanged).
-     * @since 0.8 or earlier
-     * @deprecated no replacement
-     */
-    @Deprecated(since = "20.2")
-    public abstract Property relocate(Location newLocation);
-
-    /**
      * Gets the value of this property of the object.
      *
      * @param store the store that this property resides in
@@ -162,17 +152,6 @@ public abstract class Property {
     public abstract void setSafe(DynamicObject store, Object value, Shape shape);
 
     /**
-     * Like {@link #setSafe}, but ignores the finalness of the property. For internal use only.
-     *
-     * @param store the store that this property resides in
-     * @param value the value to assign
-     * @since 0.8 or earlier
-     * @deprecated Properties can be set using {@link DynamicObjectLibrary#put}.
-     */
-    @Deprecated(since = "20.2")
-    public abstract void setInternal(DynamicObject store, Object value);
-
-    /**
      * Assigns value to this property of the object, changing the object's shape.
      *
      * Combines {@code setShapeAndGrow} and {@link #set(DynamicObject, Object, Shape)} to an atomic
@@ -224,15 +203,6 @@ public abstract class Property {
     public abstract void setSafe(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
     /**
-     * Returns {@code true} if this property and some other property have the same key and flags.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Equivalent to comparing the property's key and flags.
-     */
-    @Deprecated(since = "20.2")
-    public abstract boolean isSame(Property other);
-
-    /**
      * Get the property location.
      *
      * Planned to be deprecated.
@@ -248,14 +218,4 @@ public abstract class Property {
      * @since 0.8 or earlier
      */
     public abstract boolean isHidden();
-
-    /**
-     * Create a copy of the property with the given flags.
-     *
-     * @since 0.8 or earlier
-     * @deprecated Property flags can be changed using
-     *             {@link DynamicObjectLibrary#setPropertyFlags(DynamicObject, Object, int)}.
-     */
-    @Deprecated(since = "20.2")
-    public abstract Property copyWithFlags(int newFlags);
 }

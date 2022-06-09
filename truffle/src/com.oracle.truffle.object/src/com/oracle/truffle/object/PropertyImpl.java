@@ -89,7 +89,6 @@ public final class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public Property relocate(Location newLocation) {
         if (!getLocation().equals(newLocation)) {
             return new PropertyImpl(key, newLocation, flags);
@@ -107,16 +106,6 @@ public final class PropertyImpl extends Property {
     @Override
     public Object get(DynamicObject store, boolean condition) {
         return getLocation().get(store, condition);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public void setInternal(DynamicObject store, Object value) {
-        try {
-            ((LocationImpl) getLocation()).setInternal(store, value);
-        } catch (com.oracle.truffle.api.object.IncompatibleLocationException e) {
-            throw new IllegalStateException();
-        }
     }
 
     private static boolean verifyShapeParameter(DynamicObject store, Shape shape) {
@@ -206,7 +195,6 @@ public final class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public boolean isSame(Property obj) {
         if (this == obj) {
             return true;
@@ -262,7 +250,6 @@ public final class PropertyImpl extends Property {
     }
 
     /** @since 0.17 or earlier */
-    @Override
     public Property copyWithFlags(int newFlags) {
         return new PropertyImpl(key, location, newFlags);
     }
