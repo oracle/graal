@@ -847,10 +847,10 @@ public class SubstrateDiagnostics {
                 /*
                  * If the stack pointer is not sufficiently aligned, then we might be in the middle
                  * of a call (i.e., only the return address and the arguments are on the stack). In
-                 * that case, we can read the return address from the top of the stack, aligned the
+                 * that case, we can read the return address from the top of the stack, align the
                  * stack pointer, and start a stack walk in the caller.
                  */
-                int expectedStackAlignment = ConfigurationValues.getTarget().wordSize * 2;
+                int expectedStackAlignment = ConfigurationValues.getTarget().stackAlignment;
                 if (sp.unsignedRemainder(expectedStackAlignment).notEqual(0) && sp.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0)) {
                     log.newline();
                     log.string("WARNING: stack pointer is NOT aligned to ").signed(expectedStackAlignment).string(" bytes. Starting a stack walk in the most likely caller instead.").newline();
