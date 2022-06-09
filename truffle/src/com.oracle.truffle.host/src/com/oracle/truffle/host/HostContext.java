@@ -106,13 +106,6 @@ final class HostContext {
         }
     };
 
-    final ClassValue<HostObject> classValue = new ClassValue<>() {
-        @Override
-        protected HostObject computeValue(Class<?> type) {
-            return HostObject.forClassNoCache(type, HostContext.this);
-        }
-    };
-
     HostContext(HostLanguage hostLanguage, TruffleLanguage.Env env) {
         this.language = hostLanguage;
         this.access = hostLanguage.access;
