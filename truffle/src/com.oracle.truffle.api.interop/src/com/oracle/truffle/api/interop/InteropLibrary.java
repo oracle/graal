@@ -2520,7 +2520,7 @@ public abstract class InteropLibrary extends Library {
      *
      * @param receiver a metaobject
      * @see #getMetaParents(Object)
-     * @since 22.1
+     * @since 22.2
      */
     @Abstract(ifExported = {"getMetaParents"})
     public boolean hasMetaParents(Object receiver) {
@@ -2538,7 +2538,7 @@ public abstract class InteropLibrary extends Library {
      * @throws UnsupportedMessageException if and only if {@link #hasMetaParents(Object)} returns
      *             <code>false</code> for the same receiver.
      * @see #hasMetaParents(Object)
-     * @since 22.1
+     * @since 22.2
      */
     @Abstract(ifExported = {"hasMetaParents"})
     public Object getMetaParents(Object receiver) throws UnsupportedMessageException {
