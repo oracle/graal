@@ -23,6 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
 * GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
 * GR-38110 Added option to use `long` values as offsets for accessing memory through `ByteArraySupport`.
+* GR-39029 Fixed issue in `InteropLibrary` that required `asDate` to be implemented whenever `isTime` is exported; correct dependency is on `isDate`.
 
 ## Version 22.1.0
 
