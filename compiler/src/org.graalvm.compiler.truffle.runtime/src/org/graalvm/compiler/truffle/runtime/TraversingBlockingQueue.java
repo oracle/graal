@@ -31,11 +31,11 @@ import java.util.concurrent.TimeUnit;
 
 class TraversingBlockingQueue implements BlockingQueue<Runnable> {
 
+    final BlockingQueue<Runnable> entries;
+
     TraversingBlockingQueue(BlockingQueue<Runnable> entries) {
         this.entries = entries;
     }
-
-    final BlockingQueue<Runnable> entries;
 
     @SuppressWarnings("unchecked")
     private static CompilationTask task(Runnable entry) {

@@ -33,6 +33,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Trace
 
 import java.net.URI;
 import java.nio.Buffer;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -60,7 +61,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
-import org.graalvm.compiler.replacements.CachingPEGraphDecoder.CreateCachedGraphScope;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
@@ -397,7 +397,7 @@ public abstract class PartialEvaluator {
     @SuppressWarnings("unused")
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
-                    CreateCachedGraphScope createGraphScope) {
+                    Supplier<AutoCloseable> createCachedGraphScope) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
@@ -418,7 +418,7 @@ public abstract class PartialEvaluator {
         return new CachingPEGraphDecoder(config.architecture(), context.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(context.graph.getAssumptions()),
                         loopExplosionPlugin, decodingPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
-                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createGraphScope, false);
+                        sourceLanguagePositionProvider, postParsingPhase, graphCache, createCachedGraphScope, false);
     }
 
     @SuppressWarnings("try")
@@ -441,11 +441,14 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * Returns an {@link AutoCloseable} supplier (a "scope"). These "scopes" wrap encoded graph
-     * parsing. Returns null if scopes are not needed.
+     * Gets a closeable producer that will be used in a try-with-resources statement surrounding the
+     * creation of encoded graphs. This can be used to ensure that the encoded graphs and its
+     * dependencies can be persisted across compilations.
+     * 
+     * The default supplier produces null, a no-op try-with-resources/scope.
      */
-    protected CreateCachedGraphScope getCreateCachedGraphScope() {
-        return null;
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
+        return () -> null;
     }
 
     /**

@@ -76,15 +76,11 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     private final Supplier<AutoCloseable> createCachedGraphScope;
     private final BasePhase<? super CoreProviders> postParsingPhase;
 
-    @FunctionalInterface
-    public interface CreateCachedGraphScope extends Supplier<AutoCloseable> {
-    }
-
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, CreateCachedGraphScope createGraphScope,
+                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, Supplier<AutoCloseable> createCachedGraphScope,
                     boolean needsExplicitException) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
@@ -96,7 +92,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.allowAssumptions = allowAssumptions;
         this.graphCache = graphCache;
         this.postParsingPhase = postParsingPhase;
-        this.createCachedGraphScope = createGraphScope;
+        this.createCachedGraphScope = createCachedGraphScope;
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
@@ -166,8 +162,9 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                     boolean trackNodeSourcePosition) {
         EncodedGraph result = graphCache.get(method);
         if (result == null && method.hasBytecodes()) {
-            try (AutoCloseable scope = (createCachedGraphScope == null) ? null : createCachedGraphScope.get()) {
-                //
+            try (AutoCloseable scope = createCachedGraphScope.get()) {
+                // Encoded graphs that can be cached across compilations are wrapped by "scopes"
+                // provided by createCachedGraphScope.
                 result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
