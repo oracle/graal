@@ -22,6 +22,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * The annotation `@BytecodeInterpreterSwitchBoundary` was deprecated. Boundaries for the compilation are now inferred from directives like `CompilerDirective.transferToInterpreter()` and `@TruffleBoundary` automatically.
     * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
 * GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
+* GR-39058 The Static Object Model offers preliminary support for field-based storage also on Native Image. 
 
 ## Version 22.1.0
 
