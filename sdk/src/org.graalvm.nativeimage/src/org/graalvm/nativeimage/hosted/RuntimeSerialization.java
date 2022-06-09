@@ -70,7 +70,7 @@ public final class RuntimeSerialization {
      * specified class at runtime.
      *
      * @param clazz the serialization target class
-     * @since 23.0
+     * @since 21.3
      */
     public static void registerIncludingAssociatedClasses(Class<?> clazz) {
         ImageSingletons.lookup(RuntimeSerializationSupport.class).registerIncludingAssociatedClasses(ConfigurationCondition.alwaysTrue(), clazz);
