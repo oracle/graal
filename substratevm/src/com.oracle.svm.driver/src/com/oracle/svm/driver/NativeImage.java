@@ -185,7 +185,7 @@ public class NativeImage {
         }
     }
 
-    final EarlyOptionHandler earlyOptionHandler;
+    final CmdLineOptionHandler cmdLineOptionHandler;
     final DefaultOptionHandler defaultOptionHandler;
     final APIOptionHandler apiOptionHandler;
 
@@ -720,7 +720,7 @@ public class NativeImage {
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
 
-        earlyOptionHandler = new EarlyOptionHandler(this);
+        cmdLineOptionHandler = new CmdLineOptionHandler(this);
 
         /* Default handler needs to be first */
         defaultOptionHandler = new DefaultOptionHandler(this);
@@ -1481,8 +1481,8 @@ public class NativeImage {
             ArgumentQueue queue = new ArgumentQueue(args.argumentOrigin);
             while (!args.isEmpty()) {
                 int numArgs = args.size();
-                if (earlyOptionHandler.consume(args)) {
-                    assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + earlyOptionHandler.getClass().getName();
+                if (cmdLineOptionHandler.consume(args)) {
+                    assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + cmdLineOptionHandler.getClass().getName();
                 } else {
                     queue.add(args.poll());
                 }
@@ -1645,7 +1645,7 @@ public class NativeImage {
     }
 
     boolean useDebugAttach() {
-        return defaultOptionHandler.useDebugAttach;
+        return cmdLineOptionHandler.useDebugAttach;
     }
 
     protected void setDryRun(boolean val) {
