@@ -37,14 +37,23 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public class Aarch64InlineAssemblyParser extends InlineAssemblyParserBase {
 
+    private static String stripQuotes(String s) {
+        // remove quotes if present
+        if (s.length() >= 2 && s.charAt(0) == '"' && s.charAt(s.length() - 1) == '"') {
+            return s.substring(1, s.length() - 1);
+        }
+        return s;
+    }
+
     @Override
     public LLVMExpressionNode getInlineAssemblerExpression(NodeFactory nodeFactory, String asmExpression, String asmFlags, LLVMExpressionNode[] args,
                     Type.TypeArrayBuilder argTypes, Type retType) {
-        switch (asmExpression) {
+        String unquotedExpression = stripQuotes(asmExpression);
+        switch (unquotedExpression) {
             case "dmb ish":
                 return nodeFactory.createFenceExpression();
             default:
-                throw new LLVMParserException(String.format("AArch64 platform does not support inline assembly instruction: %s", asmExpression));
+                throw new LLVMParserException(String.format("AArch64 platform does not support inline assembly instruction: %s", unquotedExpression));
         }
     }
 }

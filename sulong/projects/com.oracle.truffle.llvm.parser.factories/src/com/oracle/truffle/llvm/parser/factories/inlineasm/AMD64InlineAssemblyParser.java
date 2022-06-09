@@ -58,7 +58,7 @@ import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
 
-    private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(NodeFactory factory, String asmExpression, LLVMParserException e) {
+    private static LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(NodeFactory factory, String asmExpression, LLVMParserException e) {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
