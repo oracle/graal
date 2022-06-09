@@ -46,6 +46,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.nodes.interop.EspressoForeignProxyGenerator;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -207,6 +208,7 @@ public final class EspressoContext {
     public final int TrivialMethodSize;
     public final boolean UseHostFinalReference;
     public final EspressoOptions.JImageMode jimageMode;
+    public final PolyglotInterfaceMappings polyglotInterfaceMappings;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -230,7 +232,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
 
-    @CompilationFinal private TruffleObject topBindings;
+    @CompilationFinal private EspressoBindings topBindings;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
 
     public TruffleLogger getLogger() {
@@ -313,6 +315,7 @@ public final class EspressoContext {
         this.NativeAccessAllowed = env.isNativeAccessAllowed();
         this.Polyglot = env.getOptions().get(EspressoOptions.Polyglot);
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
+        this.polyglotInterfaceMappings = new PolyglotInterfaceMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings));
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
@@ -465,6 +468,7 @@ public final class EspressoContext {
         if (JDWPOptions != null) {
             jdwpContext.jdwpInit(env, getMainThread(), eventListener);
         }
+        polyglotInterfaceMappings.resolve(this);
         referenceDrainer.startReferenceDrain();
     }
 
@@ -1028,7 +1032,7 @@ public final class EspressoContext {
         return timers;
     }
 
-    public TruffleObject getBindings() {
+    public EspressoBindings getBindings() {
         return topBindings;
     }
 
@@ -1134,5 +1138,13 @@ public final class EspressoContext {
 
     public void setFinalized() {
         isFinalized = true;
+    }
+
+    public boolean explicitTypeMappingsEnabled() {
+        return polyglotInterfaceMappings.hasMappings();
+    }
+
+    public PolyglotInterfaceMappings getPolyglotInterfaceMappings() {
+        return polyglotInterfaceMappings;
     }
 }
