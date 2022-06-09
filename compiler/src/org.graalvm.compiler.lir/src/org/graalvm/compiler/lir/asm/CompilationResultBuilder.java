@@ -30,7 +30,10 @@ import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAl
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -578,14 +581,11 @@ public class CompilationResultBuilder {
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         AbstractBlockBase<?> previousBlock = null;
+        ByteArrayOutputStream baos = null;
         LogStream loggerBBInfo = null;
         if (DebugOptions.PrintBBInfoPath.getValue(options) != null && debug.getDescription() != null) {
-            try {
-                final String path = PathUtilities.getPath(PathUtilities.createDirectories(DebugOptions.PrintBBInfoPath.getValue(options)), debug.getDescription().identifier + ".blocks");
-                loggerBBInfo = new LogStream(PathUtilities.openOutputStream(path));
-            } catch (IOException e) {
-                throw debug.handle(e);
-            }
+            baos = new ByteArrayOutputStream(lir.codeEmittingOrder().length * 25);
+            loggerBBInfo = new LogStream(baos);
         }
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
@@ -601,14 +601,20 @@ public class CompilationResultBuilder {
                 int pcBBEnd = asm.position();
                 if (loggerBBInfo != null) {
                     // b.getId(),pcBBStart,pcBBEnd,b.getRelativeFrequency()
-                    loggerBBInfo.printf("%d, %d, %d, %f \n", b.getId(), pcBBStart, pcBBEnd, b.getRelativeFrequency());
+                    loggerBBInfo.printf("%d, %d, %d, %f\n", b.getId(), pcBBStart, pcBBEnd, b.getRelativeFrequency());
                 }
                 previousBlock = b;
             }
             currentBlockIndex++;
         }
         if (loggerBBInfo != null) {
-            loggerBBInfo.out().close();
+            assert baos != null : "logger is not null but array buffer is";
+            try {
+                final String path = PathUtilities.getPath(PathUtilities.createDirectories(DebugOptions.PrintBBInfoPath.getValue(options)), debug.getDescription().identifier + ".blocks");
+                Files.write(Paths.get(path), baos.toByteArray());
+            } catch (IOException e) {
+                throw debug.handle(e);
+            }
         }
         this.lir = null;
         this.currentBlockIndex = 0;
