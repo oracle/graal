@@ -41,7 +41,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 import java.util.Collection;
 import java.util.EnumSet;
 
-import com.oracle.svm.core.cpufeature.Stubs;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler;
@@ -98,7 +97,6 @@ import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.gen.MoveFactory.BackupSlotProvider;
@@ -147,6 +145,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.amd64.AMD64CPUFeatureAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
@@ -1013,10 +1012,10 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             // Assume the SVM ForeignCallSignature are identical to the Graal ones.
-            return lookupForeignCall(getForeignCallDescriptor(valueNode, gen), valueNode);
+            return lookupForeignCall(getForeignCallDescriptor(valueNode));
         }
 
-        private ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, LIRGenerator gen) {
+        private ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode) {
             if (valueNode instanceof ArrayIndexOfNode) {
                 return ArrayIndexOfForeignCalls.getStub((ArrayIndexOfNode) valueNode);
             } else if (valueNode instanceof ArrayEqualsNode) {
@@ -1037,7 +1036,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             return null;
         }
 
-        private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor, ValueNode valueNode) {
+        private ForeignCallLinkage lookupForeignCall(ForeignCallDescriptor descriptor) {
             if (descriptor == null) {
                 return null;
             }
