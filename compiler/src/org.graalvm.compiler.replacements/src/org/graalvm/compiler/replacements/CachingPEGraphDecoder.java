@@ -161,6 +161,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    @SuppressWarnings({"unused", "try"})
     protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
                     boolean trackNodeSourcePosition) {
         EncodedGraph result = graphCache.get(method);
