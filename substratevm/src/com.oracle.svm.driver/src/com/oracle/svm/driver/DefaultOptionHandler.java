@@ -45,6 +45,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String addModulesOption = "--add-modules";
     private static final String addModulesErrorMessage = " requires modules to be specified";
 
+    /* Defunct legacy options that we have to accept to maintain backward compatibility */
+    private static final String noServerOption = "--no-server";
+
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
     }
@@ -116,6 +119,10 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--disable-@files":
                 args.poll();
                 disableAtFiles = true;
+                return true;
+            case noServerOption:
+                args.poll();
+                NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
         }
 

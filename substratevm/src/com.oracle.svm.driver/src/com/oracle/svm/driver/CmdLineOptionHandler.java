@@ -40,7 +40,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
 
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
-    private static final String noServerOption = "--no-server";
     private static final String verboseServerOption = "--verbose-server";
     private static final String serverOptionPrefix = "--server-";
 
@@ -143,7 +142,6 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 String optionNames = args.poll();
                 nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
                 return true;
-            case noServerOption:
             case verboseServerOption:
                 args.poll();
                 NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
