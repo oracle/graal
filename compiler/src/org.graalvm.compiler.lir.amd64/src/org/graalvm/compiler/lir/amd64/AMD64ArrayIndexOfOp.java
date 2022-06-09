@@ -33,6 +33,8 @@ import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pand;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeq;
@@ -447,7 +449,11 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
         }
         asm.bind(bsfAdd);
         // find offset
-        asm.bsfq(cmpResult, cmpResult);
+        if (supportsTZCNT()) {
+            TZCNT.emit(asm, QWORD, cmpResult, cmpResult);
+        } else {
+            asm.bsfq(cmpResult, cmpResult);
+        }
         if (valueKind.getByteCount() > 1) {
             // convert byte offset to chars
             asm.shrq(cmpResult, strideAsPowerOf2());

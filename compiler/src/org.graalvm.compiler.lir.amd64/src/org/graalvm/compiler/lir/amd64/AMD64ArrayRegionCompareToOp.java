@@ -32,6 +32,8 @@ import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp.TZCNT;
+import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeq;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovSZx;
@@ -333,7 +335,11 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64ComplexVectorOp {
         masm.bind(diffFound);
         // different elements found in the current region, find the byte index of the first
         // non-equal elements
-        masm.bsfq(tmp, tmp);
+        if (supportsTZCNT()) {
+            TZCNT.emit(masm, QWORD, tmp, tmp);
+        } else {
+            masm.bsfq(tmp, tmp);
+        }
         if (maxScale.value > 1) {
             // convert byte index to stride
             masm.shrq(tmp, maxScale.log2);

@@ -148,6 +148,10 @@ public abstract class AMD64ComplexVectorOp extends AMD64LIRInstruction {
         return supports(CPUFeature.BMI2);
     }
 
+    protected boolean supportsTZCNT() {
+        return supports(AMD64.CPUFeature.BMI1) && ((AMD64) targetDescription.arch).getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction);
+    }
+
     @Override
     public boolean needsClearUpperVectorRegisters() {
         return true;
