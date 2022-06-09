@@ -2206,7 +2206,7 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean hasMetaParents() {
-        return isClass() && asClass().getSuperclass() != null;
+        return isClass() && (asClass().getSuperclass() != null || asClass().getInterfaces().length > 0);
     }
 
     @ExportMessage
@@ -2217,10 +2217,12 @@ final class HostObject implements TruffleObject {
         }
         Class<?> superClass = asClass().getSuperclass();
         Class<?>[] interfaces = asClass().getInterfaces();
-        HostObject[] metaObjects = new HostObject[interfaces.length + 1];
+        HostObject[] metaObjects = new HostObject[superClass == null ? interfaces.length : interfaces.length + 1];
 
         int i = 0;
-        metaObjects[i++] = HostObject.forClass(superClass, context);
+        if (superClass != null) {
+            metaObjects[i++] = HostObject.forClass(superClass, context);
+        }
         for (int j = 0; j < interfaces.length; j++) {
             metaObjects[i++] = HostObject.forClass(interfaces[j], context);
         }
