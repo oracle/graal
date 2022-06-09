@@ -140,29 +140,30 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         DebugContext debug = new DebugContext.Builder(GraalTruffleRuntime.getRuntime().getGraalOptions(OptionValues.class)).build();
         try (DebugContext.Scope s = debug.scope("EncodedGraphCacheTest")) {
             CompilationIdentifier compilationId = getTruffleCompilerFromRuntime(target).createCompilationIdentifier(target);
-            getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, compilationId, new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
-                private TruffleInliningData inlining = new TruffleInlining();
+            getTruffleCompilerFromRuntime(target).compileAST(target.getOptionValues(), debug, target, compilationId,
+                            new TruffleCompilerImpl.CancellableTruffleCompilationTask(new TruffleCompilationTask() {
+                                private TruffleInliningData inlining = new TruffleInlining();
 
-                @Override
-                public boolean isCancelled() {
-                    return false;
-                }
+                                @Override
+                                public boolean isCancelled() {
+                                    return false;
+                                }
 
-                @Override
-                public boolean isLastTier() {
-                    return true;
-                }
+                                @Override
+                                public boolean isLastTier() {
+                                    return true;
+                                }
 
-                @Override
-                public TruffleInliningData inliningData() {
-                    return inlining;
-                }
+                                @Override
+                                public TruffleInliningData inliningData() {
+                                    return inlining;
+                                }
 
-                @Override
-                public boolean hasNextTier() {
-                    return false;
-                }
-            }), null);
+                                @Override
+                                public boolean hasNextTier() {
+                                    return false;
+                                }
+                            }), null);
             assertTrue(target.isValid());
             return target;
         }

@@ -396,7 +396,8 @@ public abstract class PartialEvaluator {
 
     @SuppressWarnings("unused")
     protected PEGraphDecoder createGraphDecoder(TruffleTierContext context, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
-                                                NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, CreateCachedGraphScope createGraphScope) {
+                    NodePlugin[] nodePluginList, SourceLanguagePositionProvider sourceLanguagePositionProvider, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache,
+                    CreateCachedGraphScope createGraphScope) {
         final GraphBuilderConfiguration newConfig = configForParsing.copy();
         InvocationPlugins parsingInvocationPlugins = newConfig.getPlugins().getInvocationPlugins();
 
@@ -440,9 +441,8 @@ public abstract class PartialEvaluator {
     }
 
     /**
-     * Returns an {@link AutoCloseable} supplier (a "scope").
-     * These "scopes" wrap encoded graph parsing.
-     * Returns null if scopes are not needed.
+     * Returns an {@link AutoCloseable} supplier (a "scope"). These "scopes" wrap encoded graph
+     * parsing. Returns null if scopes are not needed.
      */
     protected CreateCachedGraphScope getCreateCachedGraphScope() {
         return null;

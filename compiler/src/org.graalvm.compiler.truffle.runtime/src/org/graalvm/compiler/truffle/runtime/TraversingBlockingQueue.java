@@ -27,9 +27,6 @@ package org.graalvm.compiler.truffle.runtime;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 class TraversingBlockingQueue implements BlockingQueue<Runnable> {

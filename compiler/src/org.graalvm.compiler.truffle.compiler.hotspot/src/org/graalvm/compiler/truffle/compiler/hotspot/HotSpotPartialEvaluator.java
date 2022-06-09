@@ -126,8 +126,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     /**
-     * Used only in unit-tests, to avoid transient failures caused by multiple compiler threads racing to purge the cache.
-     * Called reflectively from EncodedGraphCacheTest.
+     * Used only in unit-tests, to avoid transient failures caused by multiple compiler threads
+     * racing to purge the cache. Called reflectively from EncodedGraphCacheTest.
      */
     public void disableEncodedGraphCachePurges(boolean value) {
         disableEncodedGraphCachePurges = value;
@@ -136,7 +136,8 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected CreateCachedGraphScope getCreateCachedGraphScope() {
         if (isEncodedGraphCacheEnabled()) {
-            // The interpreter graphs may be cached across compilations, keep JavaConstants references to the application heap alive in the libgraal global scope.
+            // The interpreter graphs may be cached across compilations, keep JavaConstants
+            // references to the application heap alive in the libgraal global scope.
             return HotSpotGraalServices::enterGlobalCompilationContext;
         } else {
             return super.getCreateCachedGraphScope();
