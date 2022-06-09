@@ -1150,13 +1150,7 @@ public final class GCImpl implements GC {
             UnmanagedMemoryUtil.copyLongsForward(originalMemory, copyMemory, size);
             result = copyMemory.toObject();
             assert result != null : "promotion failure in old generation must have been handled";
-            if (toSpace.isOldSpace()) {
-                // If the object was promoted to the old gen, we need to take care of the remembered
-                // set bit and the first object table (even when promoting from old to old).
-                AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(result);
-                RememberedSet.get().enableRememberedSetForObject(copyChunk, result);
-            }
-            ParallelGCImpl.QUEUE.put(Word.objectToUntrackedPointer(original), result, objRef, compressed, holderObject);
+            ParallelGCImpl.QUEUE.put(originalMemory, result, objRef, compressed, holderObject);
 //            ParallelGCImpl.QUEUE.consume(ParallelGCImpl.PROMOTE_TASK);
             return true;
         }
@@ -1182,6 +1176,16 @@ public final class GCImpl implements GC {
         trace.string("PP obj ").hex(originalPtr)
 //                .string(", ref ").hex(objRef)
                 .newline();
+
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        Space toSpace = heap.getOldGeneration().getToSpace();
+        if (toSpace.isOldSpace()) {
+            // If the object was promoted to the old gen, we need to take care of the remembered
+            // set bit and the first object table (even when promoting from old to old).
+            AlignedHeapChunk.AlignedHeader copyChunk = AlignedHeapChunk.getEnclosingChunk(copy);
+            RememberedSet.get().enableRememberedSetForObject(copyChunk, copy);
+        }
+
         Object original = originalPtr.toObject();
         if (copy != null) {
             copy = ObjectHeaderImpl.installForwardingPointer(original, copy); ///can lose duplicate copy
