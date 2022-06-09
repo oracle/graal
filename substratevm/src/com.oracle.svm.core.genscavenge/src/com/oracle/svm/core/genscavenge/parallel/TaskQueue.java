@@ -7,8 +7,8 @@ import org.graalvm.word.Pointer;
 public class TaskQueue {
     private final VMMutex mutex;
     private final VMCondition cond;
-    private Object copy, holderObject;
-    private Pointer original, objRef;
+    private Object holderObject;
+    private Pointer original, copy, objRef;
     private boolean compressed;
     private boolean empty;
     private volatile int idleCount;
@@ -33,7 +33,7 @@ public class TaskQueue {
 //        }
 //    }
 
-    public void put(Pointer original, Object copy, Pointer objRef, boolean compressed, Object holderObject) {
+    public void put(Pointer original, Pointer copy, Pointer objRef, boolean compressed, Object holderObject) {
         try {
             mutex.lock();
             while (!empty) {
@@ -52,8 +52,8 @@ public class TaskQueue {
     }
 
     public void consume(Consumer consumer) {
-        Object cp, owner;
-        Pointer orig, ref;
+        Object owner;
+        Pointer orig, cp, ref;
         boolean comp;
         try {
             mutex.lock();
@@ -88,6 +88,6 @@ public class TaskQueue {
     }
 
     public interface Consumer {
-        void accept(Pointer originalPtr, Object copy, Pointer objRef, boolean compressed, Object holderObject);
+        void accept(Pointer originalPtr, Pointer copy, Pointer objRef, boolean compressed, Object holderObject);
     }
 }
