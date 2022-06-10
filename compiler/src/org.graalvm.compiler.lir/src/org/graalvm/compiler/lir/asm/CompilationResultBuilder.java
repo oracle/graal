@@ -601,7 +601,13 @@ public class CompilationResultBuilder {
                 int pcBBEnd = asm.position();
                 if (loggerBBInfo != null) {
                     // b.getId(),pcBBStart,pcBBEnd,b.getRelativeFrequency()
-                    loggerBBInfo.printf("%d, %d, %d, %f\n", b.getId(), pcBBStart, pcBBEnd, b.getRelativeFrequency());
+                    loggerBBInfo.print(b.getId());
+                    loggerBBInfo.print(',');
+                    loggerBBInfo.print(pcBBStart);
+                    loggerBBInfo.print(',');
+                    loggerBBInfo.print(pcBBEnd);
+                    loggerBBInfo.print(',');
+                    loggerBBInfo.println(b.getRelativeFrequency());
                 }
                 previousBlock = b;
             }
@@ -610,7 +616,7 @@ public class CompilationResultBuilder {
         if (loggerBBInfo != null) {
             assert baos != null : "logger is not null but array buffer is";
             try {
-                final String path = PathUtilities.getPath(PathUtilities.createDirectories(DebugOptions.PrintBBInfoPath.getValue(options)), debug.getDescription().identifier + ".blocks");
+                final String path = PathUtilities.getPath(DebugOptions.PrintBBInfoPath.getValue(options), debug.getDescription().identifier + ".blocks");
                 Files.write(Paths.get(path), baos.toByteArray());
             } catch (IOException e) {
                 throw debug.handle(e);
