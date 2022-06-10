@@ -269,9 +269,6 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
                 return lib.get_path(True)
         return None
 
-    def availableSuiteVersions(self):
-        return super(RenaissanceNativeImageBenchmarkSuite, self).availableSuiteVersions()
-
     def renaissance_unpacked(self):
         return extract_archive(self.renaissancePath(), 'renaissance.extracted')
 
