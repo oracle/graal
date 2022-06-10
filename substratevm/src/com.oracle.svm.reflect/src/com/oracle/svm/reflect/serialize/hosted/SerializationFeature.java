@@ -39,7 +39,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -99,7 +99,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @AutomaticFeature
 public class SerializationFeature implements Feature {
     static final HashSet<Class<?>> capturingClasses = new HashSet<>();
-    private static final HashSet<Class<?>> proxyClasses = new HashSet<>();
+    private static final Set<Class<?>> proxyClasses = ConcurrentHashMap.newKeySet();
     private static SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 

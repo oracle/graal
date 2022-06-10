@@ -63,11 +63,8 @@ public final class DynamicHubCompanion {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
-        // Sometimes, DynamicHub for proxy class is created before that class is being
-        // registered as predefined. We assume that all proxy classes will be predefined.
-        // If the proxy class is not registered as predefined after the analysis
-        // (not all the proxies are created at runtime), we set class loader for that class on
-        // the loader that it class was originally loaded with when DynamicHub was created
+        // We assume that all proxy classes will be predefined classes, thus we set classLoader for proxy class on NO_CLASS_LOADER
+        // For proxy classes that are not predefined we save the original loader and set it after the analysis phase is finished
         this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) || Proxy.isProxyClass(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         this.classLoaderProxy = Proxy.isProxyClass(hostedJavaClass) ? classLoader : NO_CLASS_LOADER;
     }
