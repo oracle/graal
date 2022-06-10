@@ -1044,10 +1044,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return false;
             }
 
-            if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
-                return false;
-            }
-
             ValueNode[] arguments = callTarget.arguments().toArray(ValueNode.EMPTY_ARRAY);
             FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 
@@ -1204,6 +1200,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * Do the actual inlining by returning the initial loop scope for the inlined method scope.
          */
         return inlineLoopScope;
+    }
+
+    @Override
+    protected void afterMethodScope(MethodScope methodScope) {
+        /*
+         * The graph should be in a valid state after a method scope was completed. Revisit this
+         * assumption if there are any crashes during dumping.
+         */
+        if (debug.isDumpEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After PE %s", ((PEMethodScope) methodScope).method.format("%H.%n"));
+        }
     }
 
     @Override
