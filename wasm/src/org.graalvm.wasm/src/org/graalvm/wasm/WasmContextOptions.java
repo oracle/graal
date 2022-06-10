@@ -48,6 +48,7 @@ import org.graalvm.options.OptionValues;
 public class WasmContextOptions {
     @CompilationFinal private boolean saturatingFloatToInt;
     @CompilationFinal private boolean signExtensionOps;
+    @CompilationFinal private boolean keepDataSections;
 
     @CompilationFinal private OptionValues optionValues;
 
@@ -63,6 +64,7 @@ public class WasmContextOptions {
     private void setOptionValues() {
         this.saturatingFloatToInt = readBooleanOption(WasmOptions.SaturatingFloatToInt);
         this.signExtensionOps = readBooleanOption(WasmOptions.SignExtensionOps);
+        this.keepDataSections = readBooleanOption(WasmOptions.KeepDataSections);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
@@ -77,11 +79,16 @@ public class WasmContextOptions {
         return signExtensionOps;
     }
 
+    public boolean keepDataSections() {
+        return keepDataSections;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
         hash = 53 * hash + (this.saturatingFloatToInt ? 1 : 0);
         hash = 53 * hash + (this.signExtensionOps ? 1 : 0);
+        hash = 53 * hash + (this.keepDataSections ? 1 : 0);
         return hash;
     }
 
@@ -101,6 +108,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.signExtensionOps != other.signExtensionOps) {
+            return false;
+        }
+        if (this.keepDataSections != other.keepDataSections) {
             return false;
         }
         return true;

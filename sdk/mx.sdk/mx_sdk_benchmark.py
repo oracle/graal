@@ -275,9 +275,11 @@ def measureTimeToFirstResponse(bmSuite):
     measurementStartTime = time.time()
     sentRequests = 0
     receivedNon200Responses = 0
-    while time.time() - measurementStartTime < 60:
+    last_report_time = time.time()
+    while time.time() - measurementStartTime < 120:
         time.sleep(.0001)
-        if sentRequests > 0 and sentRequests % 10000 == 0:
+        if sentRequests > 0 and time.time() - last_report_time > 10:
+            last_report_time = time.time()
             mx.log("Sent {:d} requests so far but did not receive a response with code 200 yet.".format(sentRequests))
 
         try:
@@ -670,6 +672,12 @@ class EmptyEnv():
     def __enter__(self):
         self._prev_environ = os.environ
         os.environ = {}
+        # urllib.request caches http_proxy, https_proxy etc. globally but doesn't cache no_proxy
+        # preserve no_proxy to avoid issues with proxies
+        if 'no_proxy' in self._prev_environ:
+            os.environ['no_proxy'] = self._prev_environ['no_proxy']
+        if 'NO_PROXY' in self._prev_environ:
+            os.environ['NO_PROXY'] = self._prev_environ['NO_PROXY']
     def __exit__(self, exc_type, exc_val, exc_tb):
         os.environ = self._prev_environ
 

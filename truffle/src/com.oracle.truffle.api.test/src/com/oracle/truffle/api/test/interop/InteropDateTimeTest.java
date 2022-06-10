@@ -302,4 +302,53 @@ public final class InteropDateTimeTest extends InteropLibraryBaseTest {
         assertFails(() -> library.asInstant(o), AssertionError.class);
     }
 
+    @Test
+    public void testTimeOnly() {
+        ExportsTimeOnly o = new ExportsTimeOnly();
+        InteropLibrary library = createLibrary(InteropLibrary.class, o);
+
+        assertFalse(library.isDate(o));
+        assertTrue(library.isTime(o));
+        assertFalse(library.isTimeZone(o));
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ExportsTimeOnly implements TruffleObject {
+
+        @ExportMessage
+        protected final boolean isTime() {
+            return true;
+        }
+
+        @ExportMessage
+        protected final LocalTime asTime() {
+            return LocalTime.now();
+        }
+    }
+
+    @Test
+    public void testDateOnly() {
+        ExportsDateOnly o = new ExportsDateOnly();
+        InteropLibrary library = createLibrary(InteropLibrary.class, o);
+
+        assertTrue(library.isDate(o));
+        assertFalse(library.isTime(o));
+        assertFalse(library.isTimeZone(o));
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    public static class ExportsDateOnly implements TruffleObject {
+
+        @ExportMessage
+        protected final boolean isDate() {
+            return true;
+        }
+
+        @ExportMessage
+        protected final LocalDate asDate() {
+            return LocalDate.now();
+        }
+    }
 }

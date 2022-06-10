@@ -95,12 +95,18 @@ public class NativeImageClassLoaderSupport {
     private final EconomicMap<URI, EconomicSet<String>> packages;
     private final EconomicSet<String> emptySet;
 
-    private final URLClassLoader classPathClassLoader;
-    private final ClassLoader modulePathClassLoader;
+    private final ClassPathClassLoader classPathClassLoader;
+    private final ClassLoader classLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
     public final ModuleFinder modulepathModuleFinder;
+
+    static final class ClassPathClassLoader extends URLClassLoader {
+        ClassPathClassLoader(URL[] urls, ClassLoader parent) {
+            super(urls, parent);
+        }
+    }
 
     protected NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
 
@@ -108,7 +114,7 @@ public class NativeImageClassLoaderSupport {
         packages = EconomicMap.create();
         emptySet = EconomicSet.create();
 
-        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
+        classPathClassLoader = new ClassPathClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Arrays.stream(classPathClassLoader.getURLs())
                         .map(Util::urlToPath)
@@ -140,7 +146,7 @@ public class NativeImageClassLoaderSupport {
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
 
-        modulePathClassLoader = getSingleClassloader(moduleLayer);
+        classLoader = getSingleClassloader(moduleLayer);
 
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
     }
@@ -154,7 +160,7 @@ public class NativeImageClassLoaderSupport {
     }
 
     public ClassLoader getClassLoader() {
-        return modulePathClassLoader;
+        return classLoader;
     }
 
     public void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
@@ -321,7 +327,7 @@ public class NativeImageClassLoaderSupport {
     private static void implAddReadsAllUnnamed(Module module) {
         try {
             Method implAddReadsAllUnnamed = Module.class.getDeclaredMethod("implAddReadsAllUnnamed");
-            ModuleSupport.openModuleByClass(Module.class, NativeImageClassLoaderSupport.class);
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, NativeImageClassLoaderSupport.class, Module.class);
             implAddReadsAllUnnamed.setAccessible(true);
             implAddReadsAllUnnamed.invoke(module);
         } catch (ReflectiveOperationException | NoSuchElementException e) {
@@ -422,7 +428,7 @@ public class NativeImageClassLoaderSupport {
             try {
                 return Stream.of(asAddExportsAndOpensAndReadsFormatValue(specificOption, valWithOrig));
             } catch (UserError.UserException e) {
-                if (ModuleSupport.modulePathBuild) {
+                if (ModuleSupport.modulePathBuild && classpath().isEmpty()) {
                     throw e;
                 } else {
                     /*
@@ -501,7 +507,7 @@ public class NativeImageClassLoaderSupport {
     Class<?> loadClassFromModule(Object module, String className) {
         assert module instanceof Module : "Argument `module` is not an instance of java.lang.Module";
         Module m = (Module) module;
-        assert isModuleClassLoader(modulePathClassLoader, m.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
+        assert isModuleClassLoader(classLoader, m.getClassLoader()) : "Argument `module` is java.lang.Module from unknown ClassLoader";
         return Class.forName(m, className);
     }
 

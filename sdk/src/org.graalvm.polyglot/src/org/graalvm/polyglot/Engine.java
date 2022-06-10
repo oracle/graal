@@ -849,6 +849,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean allowsPublicAccess(HostAccess access) {
+            return access.allowPublic;
+        }
+
+        @Override
+        public boolean allowsAccessInheritance(HostAccess access) {
+            return access.allowAccessInheritance;
+        }
+
+        @Override
         public Object getHostAccessImpl(HostAccess conf) {
             return conf.impl;
         }

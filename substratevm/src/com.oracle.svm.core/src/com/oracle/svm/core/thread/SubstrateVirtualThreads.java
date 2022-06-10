@@ -32,13 +32,56 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
 /** Our own implementation of virtual threads that does not need Project Loom. */
-final class SubstrateVirtualThreads implements VirtualThreads {
+public final class SubstrateVirtualThreads implements VirtualThreads {
+    public static final class Options {
+        static final int MAX_PARALLELISM = 32767;
+
+        /**
+         * Default to the maximum number of threads so that we can likely start a platform thread
+         * for each virtual thread, which we might need when blocking I/O does not yield.
+         */
+        static final int DEFAULT_PARALLELISM = MAX_PARALLELISM;
+
+        @Option(help = "For internal usage. Instead, use the equivalent property 'jdk.virtualThreadScheduler.parallelism' as specified by JEP 425 Virtual Threads (Project Loom).", type = OptionType.Expert) //
+        public static final HostedOptionKey<Integer> SubstrateVirtualThreadsParallelism = new HostedOptionKey<>(null) {
+            @Override
+            public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+                Integer value = (Integer) values.get(this);
+                if (value != null) {
+                    UserError.guarantee(value >= 1 && value <= MAX_PARALLELISM, "%s value must be between 1 and %d.", getName(), MAX_PARALLELISM);
+                    return value;
+                }
+                String propertyKey = "jdk.virtualThreadScheduler.parallelism";
+                String propertyValue = System.getProperty(propertyKey, String.valueOf(DEFAULT_PARALLELISM));
+                try {
+                    value = Integer.valueOf(propertyValue);
+                } catch (NumberFormatException e) {
+                    throw UserError.abort("%s is not a permitted value for %s: must be an integer between 1 and %d.", propertyValue, propertyKey, getName(), MAX_PARALLELISM);
+                }
+                return value;
+            }
+
+            @Override
+            public Integer getValue(OptionValues values) {
+                assert checkDescriptorExists();
+                return getValueOrDefault(values.getMap());
+            }
+        };
+    }
+
     @Fold
     static boolean haveAssertions() {
         return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(SubstrateVirtualThreads.class);
@@ -90,11 +133,7 @@ final class SubstrateVirtualThreads implements VirtualThreads {
         }
     };
 
-    /**
-     * A pool with the maximum number of threads so we can likely start a platform thread for each
-     * virtual thread, which we might need when blocking I/O does not yield.
-     */
-    static final ForkJoinPool SCHEDULER = new ForkJoinPool(32767, CarrierThread::new, UNCAUGHT_EXCEPTION_HANDLER, true);
+    final ForkJoinPool scheduler = new ForkJoinPool(Options.SubstrateVirtualThreadsParallelism.getValue(), CarrierThread::new, UNCAUGHT_EXCEPTION_HANDLER, true);
 
     private static SubstrateVirtualThread cast(Thread thread) {
         return (SubstrateVirtualThread) thread;

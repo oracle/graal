@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,39 +24,40 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
+import java.util.Collection;
+import java.util.Collections;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 
-/**
- * The ConstantTypeFlow extends SourceTypeFlowBase which implements the mechanism for propagating
- * the type state to it's uses only after the exactType has been added to the
- * AllInstantiatedTypeFlow.
- *
- * TODO: Use this class for constant sources.
- */
-public class ConstantTypeFlow extends SourceTypeFlowBase {
+public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
 
-    /**
-     * Constant flow has an immutable type state.
-     */
-    public ConstantTypeFlow(ValueNode node, TypeState state) {
-        super(node, state);
+    public MethodTypeFlow callee;
+
+    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn) {
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn);
+    }
+
+    protected DirectInvokeTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, DirectInvokeTypeFlow original) {
+        super(bb, methodFlows, original);
     }
 
     @Override
-    public TypeFlow<BytecodePosition> copy(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        /* ConstantTypeFlow is not context sensitive, thus not cloneable. */
-        return this;
+    public final boolean isDirectInvoke() {
+        return true;
     }
 
     @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("ConstantFlow<").append(getState()).append(">");
-        return str.toString();
+    public Collection<AnalysisMethod> getCallees() {
+        if (callee != null && callee.getMethod().isImplementationInvoked()) {
+            return Collections.singletonList(callee.getMethod());
+        } else {
+            return Collections.emptyList();
+        }
     }
 }

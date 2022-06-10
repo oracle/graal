@@ -37,7 +37,7 @@ public class EconomyMidTier extends BaseTier<MidTierContext> {
 
     public EconomyMidTier() {
         CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
-        appendPhase(new RemoveValueProxyPhase());
+        appendPhase(new RemoveValueProxyPhase(canonicalizer));
         appendPhase(new LoopSafepointInsertionPhase());
         appendPhase(new GuardLoweringPhase());
         appendPhase(new MidTierLoweringPhase(canonicalizer));

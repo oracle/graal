@@ -26,12 +26,9 @@ package com.oracle.truffle.espresso.vm;
 import static com.oracle.truffle.espresso.vm.VM.StackElement.NATIVE_BCI;
 import static com.oracle.truffle.espresso.vm.VM.StackElement.UNKNOWN_BCI;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -46,12 +43,10 @@ import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
@@ -65,12 +60,10 @@ import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
 
-public final class InterpreterToVM implements ContextAccess {
-
-    private final EspressoContext context;
+public final class InterpreterToVM extends ContextAccessImpl {
 
     public InterpreterToVM(EspressoContext context) {
-        this.context = context;
+        super(context);
     }
 
     @TruffleBoundary(allowInlining = true)
@@ -106,11 +99,6 @@ public final class InterpreterToVM implements ContextAccess {
     @TruffleBoundary(allowInlining = true)
     public static boolean holdsLock(EspressoLock lock) {
         return lock.isHeldByCurrentThread();
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     // region Get (array) operations
@@ -521,104 +509,6 @@ public final class InterpreterToVM implements ContextAccess {
         field.setObject(obj, value);
     }
 
-    public static StaticObject newReferenceArray(Klass componentType, int length, BytecodeNode bytecodeNode) {
-        if (length < 0) {
-            // componentType is not always PE constant e.g. when called from the Array#newInstance
-            // substitution. The derived context and meta accessor are not PE constant
-            // either, so neither is componentType.getMeta().java_lang_NegativeArraySizeException.
-            // The exception mechanism requires exception classes to be PE constant in order to
-            // PE through exception allocation and initialization.
-            // The definitive solution would be to distinguish the cases where the exception klass
-            // is PE constant from the cases where it's dynamic. We can further reduce the dynamic
-            // cases with an inline cache in the above substitution.
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw throwNegativeArraySizeException(componentType.getMeta());
-        }
-        assert length >= 0;
-        StaticObject[] arr = new StaticObject[length];
-        Arrays.fill(arr, StaticObject.NULL);
-        return StaticObject.createArray(componentType.getArrayClass(), arr);
-    }
-
-    public static StaticObject newReferenceArray(Klass componentType, int length) {
-        assert !componentType.isPrimitive();
-        return newReferenceArray(componentType, length, null);
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    private static EspressoException throwNegativeArraySizeException(Meta meta) {
-        throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-    }
-
-    @TruffleBoundary
-    public StaticObject newMultiArray(Klass component, int... dimensions) {
-        Meta meta = getMeta();
-        if (component == meta._void) {
-            throw meta.throwException(meta.java_lang_IllegalArgumentException);
-        }
-        for (int d : dimensions) {
-            if (d < 0) {
-                throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-            }
-        }
-        return newMultiArrayWithoutChecks(component, dimensions);
-    }
-
-    private static StaticObject newMultiArrayWithoutChecks(Klass component, int... dimensions) {
-        assert dimensions != null && dimensions.length > 0;
-        if (dimensions.length == 1) {
-            if (component.isPrimitive()) {
-                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0], component.getMeta());
-            } else {
-                return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
-                    @Override
-                    public StaticObject apply(int value) {
-                        return StaticObject.NULL;
-                    }
-                });
-            }
-        }
-        int[] newDimensions = Arrays.copyOfRange(dimensions, 1, dimensions.length);
-        return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int i) {
-                return newMultiArrayWithoutChecks(((ArrayKlass) component).getComponentType(), newDimensions);
-            }
-
-        });
-    }
-
-    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
-        return allocatePrimitiveArray(jvmPrimitiveType, length, meta, null);
-    }
-
-    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta, BytecodeNode bytecodeNode) {
-        // the constants for the cpi are loosely defined and no real cpi indices.
-        if (length < 0) {
-            if (bytecodeNode != null) {
-                bytecodeNode.enterImplicitExceptionProfile();
-            }
-            throw meta.throwException(meta.java_lang_NegativeArraySizeException);
-        }
-        // @formatter:off
-        switch (jvmPrimitiveType) {
-            case 4  : return StaticObject.createArray(meta._boolean_array, new byte[length]); // boolean[] are internally represented as byte[] with _boolean_array Klass
-            case 5  : return StaticObject.wrap(new char[length], meta);
-            case 6  : return StaticObject.wrap(new float[length], meta);
-            case 7  : return StaticObject.wrap(new double[length], meta);
-            case 8  : return StaticObject.wrap(new byte[length], meta);
-            case 9  : return StaticObject.wrap(new short[length], meta);
-            case 10 : return StaticObject.wrap(new int[length], meta);
-            case 11 : return StaticObject.wrap(new long[length], meta);
-            default :
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw EspressoError.shouldNotReachHere();
-        }
-        // @formatter:on
-    }
-
     /**
      * Subtyping among Array Types
      *
@@ -647,29 +537,6 @@ public final class InterpreterToVM implements ContextAccess {
         }
         Meta meta = klass.getMeta();
         throw meta.throwException(meta.java_lang_ClassCastException);
-    }
-
-    /**
-     * Allocates a new instance of the given class; does not call any constructor. If the class is
-     * instantiable, it is initialized.
-     * 
-     * @param throwsError if the given class is not instantiable (abstract or interface); if true
-     *            throws guest {@link InstantiationError} otherwise throws guest
-     *            {@link InstantiationException}.
-     */
-    @Throws({InstantiationError.class, InstantiationException.class})
-    public static StaticObject newObject(Klass klass, boolean throwsError) {
-        // TODO(peterssen): Accept only ObjectKlass.
-        assert klass != null && !klass.isArray() && !klass.isPrimitive() : klass;
-        if (klass.isAbstract() || klass.isInterface()) {
-            Meta meta = klass.getMeta();
-            throw meta.throwException(
-                            throwsError
-                                            ? meta.java_lang_InstantiationError
-                                            : meta.java_lang_InstantiationException);
-        }
-        klass.safeInitialize();
-        return StaticObject.createNew((ObjectKlass) klass);
     }
 
     public static int arrayLength(StaticObject arr, EspressoLanguage language) {

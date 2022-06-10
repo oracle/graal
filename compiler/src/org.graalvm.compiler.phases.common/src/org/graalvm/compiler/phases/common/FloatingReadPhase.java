@@ -74,15 +74,15 @@ import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.LoopInfo;
 import org.graalvm.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure;
 import org.graalvm.word.LocationIdentity;
 
-public class FloatingReadPhase extends Phase {
+public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProviders> {
 
     private final boolean createFloatingReads;
     private final boolean createMemoryMapNodes;
@@ -129,8 +129,8 @@ public class FloatingReadPhase extends Phase {
         }
     }
 
-    public FloatingReadPhase() {
-        this(true, false);
+    public FloatingReadPhase(CanonicalizerPhase canoncalizer) {
+        this(true, false, canoncalizer);
     }
 
     /**
@@ -138,9 +138,10 @@ public class FloatingReadPhase extends Phase {
      *            {@link ReadNode} should be converted into floating nodes (e.g.,
      *            {@link FloatingReadNode}s) where possible
      * @param createMemoryMapNodes a {@link MemoryMapNode} will be created for each return if this
-     *            is true
+     * @param canonicalizer
      */
-    public FloatingReadPhase(boolean createFloatingReads, boolean createMemoryMapNodes) {
+    public FloatingReadPhase(boolean createFloatingReads, boolean createMemoryMapNodes, CanonicalizerPhase canonicalizer) {
+        super(canonicalizer);
         this.createFloatingReads = createFloatingReads;
         this.createMemoryMapNodes = createMemoryMapNodes;
     }
@@ -218,7 +219,7 @@ public class FloatingReadPhase extends Phase {
 
     @Override
     @SuppressWarnings("try")
-    protected void run(StructuredGraph graph) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         EconomicSet<ValueNode> initMemory = EconomicSet.create(Equivalence.IDENTITY);
 
         EconomicMap<LoopBeginNode, EconomicSet<LocationIdentity>> modifiedInLoops = null;

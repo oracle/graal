@@ -46,6 +46,27 @@ local repo_config = import '../../repo-configuration.libsonnet';
     notify_groups:: ['polybench'],
   },
 
+  polybench_hpc_linux_common: {
+    packages+: {
+      'papi': '==5.5.1',
+    },
+    environment+: {
+      ENABLE_POLYBENCH_HPC: 'yes',
+      POLYBENCH_HPC_EXTRA_HEADERS: '/cm/shared/apps/papi/papi-5.5.1/include',
+      POLYBENCH_HPC_PAPI_LIB_DIR: '/cm/shared/apps/papi/papi-5.5.1/lib',
+    },
+  },
+
+  vm_bench_polybench_hpc_linux_common(env, metric, benchmarks='*'): self.vm_bench_polybench_linux_common(env=env) + self.polybench_hpc_linux_common + {
+    local machine_name = "x52",     // restricting ourselves to x52 machines since we know hardware performance counters work properly there
+    machine_name_prefix:: "gate-",
+    capabilities+: [machine_name],
+    run+: [
+      self.base_cmd + ['benchmark', 'polybench:'+benchmarks, '--fork-count-file', 'ci_includes/polybench-hpc.json', '--results-file', self.result_file, '--machine-name', self.machine_name_prefix + machine_name, '--', '--polybench-vm-config', 'native-interpreter', '--metric='+metric],
+      self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!'],
+    ],
+  },
+
   vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common() + vm.vm_java_17 + {
     run+: [
       self.interpreter_bench_cmd + ['--polybench-vm-config=jvm-interpreter'],

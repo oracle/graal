@@ -228,6 +228,9 @@ public class HotSpotGraphBuilderPlugins {
                 registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
+                for (HotSpotInvocationPluginProvider p : GraalServices.load(HotSpotInvocationPluginProvider.class)) {
+                    p.registerInvocationPlugins(target.arch, plugins.getInvocationPlugins(), replacements);
+                }
             }
 
         });

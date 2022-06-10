@@ -147,8 +147,8 @@ public class JfrFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jfr");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base");
 
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();

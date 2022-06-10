@@ -586,8 +586,7 @@ public abstract class NativeImage extends AbstractImage {
 
     private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
-        final int functionPointerRelocationSize = 8;
-        assert info.getRelocationSize() == functionPointerRelocationSize : "Function relocation: " + info.getRelocationSize() + " should be " + functionPointerRelocationSize + " bytes.";
+
         // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
         ResolvedJavaMethod method = methodPointer.getMethod();
@@ -596,7 +595,9 @@ public abstract class NativeImage extends AbstractImage {
             target = metaAccess.lookupJavaMethod(InvalidMethodPointerHandler.METHOD_POINTER_NOT_COMPILED_HANDLER_METHOD);
         }
         // A reference to a method. Mark the relocation site using the symbol name.
-        sectionImpl.markRelocationSite(offset, RelocationKind.getDirect(functionPointerRelocationSize), localSymbolNameForMethod(target), 0L);
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert (arch instanceof AArch64) || RelocationKind.getDirect(arch.getWordSize()) == info.getRelocationKind();
+        sectionImpl.markRelocationSite(offset, info.getRelocationKind(), localSymbolNameForMethod(target), 0L);
     }
 
     private static boolean isAddendAligned(Architecture arch, long addend, RelocationKind kind) {
@@ -910,11 +911,11 @@ public abstract class NativeImage extends AbstractImage {
 
                 final Map<String, HostedMethod> methodsBySignature = new HashMap<>();
                 // 1. fq with return type
-                for (Map.Entry<HostedMethod, CompilationResult> ent : codeCache.getCompilations().entrySet()) {
-                    final String symName = localSymbolNameForMethod(ent.getKey());
-                    final String signatureString = ent.getKey().getUniqueShortName();
+                for (Pair<HostedMethod, CompilationResult> pair : codeCache.getOrderedCompilations()) {
+                    final String symName = localSymbolNameForMethod(pair.getLeft());
+                    final String signatureString = pair.getLeft().getUniqueShortName();
                     final HostedMethod existing = methodsBySignature.get(signatureString);
-                    HostedMethod current = ent.getKey();
+                    HostedMethod current = pair.getLeft();
                     if (existing != null) {
                         /*
                          * We've hit a signature with multiple methods. Choose the "more specific"
@@ -930,7 +931,7 @@ public abstract class NativeImage extends AbstractImage {
                     } else {
                         methodsBySignature.put(signatureString, current);
                     }
-                    defineMethodSymbol(symName, false, textSection, current, ent.getValue());
+                    defineMethodSymbol(symName, false, textSection, current, pair.getRight());
                 }
                 // 2. fq without return type -- only for entry points!
                 for (Map.Entry<String, HostedMethod> ent : methodsBySignature.entrySet()) {
@@ -951,7 +952,7 @@ public abstract class NativeImage extends AbstractImage {
                         if (cEntryData != null) {
                             assert !cEntryData.getSymbolName().isEmpty();
                             // no need for mangling: name must already be a valid external name
-                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.getCompilations().get(method));
+                            defineMethodSymbol(cEntryData.getSymbolName(), true, textSection, method, codeCache.compilationResultFor(method));
                         }
                     }
                 }

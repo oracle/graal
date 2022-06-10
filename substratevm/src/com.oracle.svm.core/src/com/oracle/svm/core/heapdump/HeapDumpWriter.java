@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.heapdump;
 
-package com.oracle.svm.util;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
-public class ModuleSupportBase {
+import org.graalvm.nativeimage.ImageSingletons;
 
-    public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
+public abstract class HeapDumpWriter {
+    /**
+     * Writes heap in hprof format to ordinary file.
+     *
+     * @param fileOutputStream Underlying file stream to write the bytes to
+     * @param gcBefore Run GC before dumping the heap.
+     * @throws IOException
+     */
+    public abstract void writeHeapTo(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException;
 
-    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "org.graalvm.nativeimage.module.addmods";
+    /**
+     * Writes heap in hprof format to output stream, which does not support seeking.
+     *
+     * @param outputStream Underlying stream to write the bytes to
+     * @param gcBefore Run GC before dumping the heap.
+     * @throws IOException
+     */
+    public abstract void writeHeapTo(AllocationFreeOutputStream outputStream, boolean gcBefore) throws IOException;
 
-    public static final boolean modulePathBuild = Boolean.parseBoolean(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+    public static HeapDumpWriter singleton() {
+        return ImageSingletons.lookup(HeapDumpWriter.class);
+    }
 
 }

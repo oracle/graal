@@ -245,6 +245,20 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "com.oracle.truffle.api.test.jdk17": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.test",
+      ],
+      "checkstyle": "com.oracle.truffle.api",
+      "javaCompliance" : "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
     "com.oracle.truffle.api.benchmark" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1317,6 +1331,7 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.api.staticobject.test.jdk17",
+        "com.oracle.truffle.api.test.jdk17",
       ],
       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
       "distDependencies" : [

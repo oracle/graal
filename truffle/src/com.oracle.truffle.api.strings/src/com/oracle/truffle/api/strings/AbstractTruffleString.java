@@ -1073,7 +1073,7 @@ public abstract class AbstractTruffleString {
         return TruffleString.EqualNode.checkContentEquals(this, codeRangeA, b, codeRangeB,
                         TruffleString.ToIndexableNode.getUncached(),
                         TruffleString.ToIndexableNode.getUncached(),
-                        TStringOpsNodes.RawEqualsNode.getUncached());
+                        TruffleString.EqualNode.getUncached());
     }
 
     /**

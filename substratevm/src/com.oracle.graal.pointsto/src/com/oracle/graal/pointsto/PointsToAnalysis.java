@@ -63,13 +63,10 @@ import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.AbstractUnsafeLoadTypeFlow;
 import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.AbstractUnsafeStoreTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.AnalysisContextPolicy;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -245,8 +242,8 @@ public abstract class PointsToAnalysis implements BigBang {
         return debug;
     }
 
-    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodFlow) {
-        return new MethodTypeFlowBuilder(bb, methodFlow);
+    public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method) {
+        return new MethodTypeFlowBuilder(bb, method);
     }
 
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
@@ -267,7 +264,7 @@ public abstract class PointsToAnalysis implements BigBang {
         // force update of the unsafe loads
         for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
             /* Force update for unsafe accessed static fields. */
-            unsafeLoad.initClone(this);
+            unsafeLoad.initFlow(this);
 
             /*
              * Force update for unsafe accessed instance fields: post the receiver object flow for
@@ -280,7 +277,7 @@ public abstract class PointsToAnalysis implements BigBang {
         // force update of the unsafe stores
         for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
             /* Force update for unsafe accessed static fields. */
-            unsafeStore.initClone(this);
+            unsafeStore.initFlow(this);
 
             /*
              * Force update for unsafe accessed instance fields: post the receiver object flow for
@@ -332,10 +329,6 @@ public abstract class PointsToAnalysis implements BigBang {
     @Override
     public AnalysisPolicy analysisPolicy() {
         return analysisPolicy;
-    }
-
-    public AnalysisContextPolicy<AnalysisContext> contextPolicy() {
-        return analysisPolicy.getContextPolicy();
     }
 
     @Override
@@ -462,8 +455,7 @@ public abstract class PointsToAnalysis implements BigBang {
                 postTask(() -> {
                     pointsToMethod.registerAsDirectRootMethod();
                     pointsToMethod.registerAsImplementationInvoked(null);
-                    MethodTypeFlow methodFlow = pointsToMethod.getTypeFlow();
-                    MethodFlowsGraph methodFlowsGraph = methodFlow.addContext(PointsToAnalysis.this, PointsToAnalysis.this.contextPolicy().emptyContext());
+                    MethodFlowsGraph methodFlowsGraph = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
                     for (int idx = 0; idx < paramCount; idx++) {
                         AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
                         FormalParamTypeFlow parameter = methodFlowsGraph.getParameter(idx);

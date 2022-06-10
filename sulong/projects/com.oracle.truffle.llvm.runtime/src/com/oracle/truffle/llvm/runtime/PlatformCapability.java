@@ -77,6 +77,11 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
         // Nothing needs to be done in Sulong for native thread initialization.
     }
 
+    public void disposeThread(@SuppressWarnings("unused") LLVMContext context,
+                    @SuppressWarnings("unused") Thread thread) {
+        context.getpThreadContext().callDestructors(thread.getId());
+    }
+
     @SuppressWarnings("unchecked")
     private S[] initTable(Class<S> cls) {
         S[] constants = cls.getEnumConstants();

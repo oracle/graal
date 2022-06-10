@@ -40,7 +40,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movlhps;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.palignr;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pand;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pandU;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pandn;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeqb;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeqd;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeqw;
@@ -247,7 +246,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             case UTF_8:
                 return assumeValid ? 5 : 10;
             case UTF_16:
-                return 6;
+                return 7;
             case UTF_32:
                 return 8;
             default:
@@ -1209,6 +1208,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
         Register vecMaskLatin = asRegister(vectorTemp[3]);
         Register vecMaskSurrogate = asRegister(vectorTemp[4]);
         Register vecTmp = asRegister(vectorTemp[5]);
+        Register vecResult = asRegister(vectorTemp[6]);
         Register tmp = asRegister(temp[0]);
         Register retBroken = assumeValid ? null : asRegister(temp[1]);
 
@@ -1239,6 +1239,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         if (!assumeValid) {
             asm.movl(retBroken, CR_VALID_MULTIBYTE);
+            pxor(asm, vectorSize, vecResult, vecResult);
         }
 
         loadMask(crb, asm, vecMaskAscii, 0xff80);
@@ -1330,7 +1331,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             movdqu(asm, vectorSize, vecArray, new AMD64Address(arr, len, scale));
             // load at current index + 1
             movdqu(asm, vectorSize, vecArrayTail, new AMD64Address(arr, len, scale, 2));
-            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, tmp, retBroken);
+            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
             asm.addqAndJcc(len, vectorLength, NotZero, labelSurrogateLoop, true);
 
             // surrogate tail
@@ -1343,14 +1344,15 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // remove elements overlapping with the last loop vector
             pandU(asm, vectorSize, vecArray, new AMD64Address(tmp, lengthTail, scale, -2), vecTmp);
             pandU(asm, vectorSize, vecArrayTail, new AMD64Address(tmp, lengthTail, scale, -2), vecTmp);
-            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, tmp, retBroken);
+            utf16ValidateSurrogates(asm, ret, vecArray, vecArrayTail, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
 
             // corner case: check if last char is a high surrogate
             asm.movzwl(tmp, new AMD64Address(arr, lengthTail, scale, -2));
             asm.shrl(tmp, 10);
-            asm.cmplAndJcc(tmp, 0x36, NotEqual, returnValidOrBroken, false);
-            // last char is a high surrogate, return BROKEN
-            asm.movl(retBroken, CR_BROKEN_MULTIBYTE);
+            // if last char is a high surrogate, return BROKEN
+            asm.cmpl(tmp, 0x36);
+            asm.movl(tmp, CR_BROKEN_MULTIBYTE);
+            asm.cmovl(Equal, retBroken, tmp);
             asm.jmp(returnValidOrBroken);
         }
 
@@ -1415,8 +1417,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             // range to BROKEN
             asm.movzwl(tmp, new AMD64Address(arr, -2));
             asm.shrl(tmp, 10);
-            asm.cmplAndJcc(tmp, 0x36, NotEqual, tailSingleVectorSurrogate, true);
-            asm.movl(retBroken, CR_BROKEN_MULTIBYTE);
+            asm.cmpl(tmp, 0x36);
+            asm.movl(tmp, CR_BROKEN_MULTIBYTE);
+            asm.cmovl(Equal, retBroken, tmp);
 
             asm.bind(tailSingleVectorSurrogate);
             // high surrogate mask: 0x1b << 1 == 0x36
@@ -1430,7 +1433,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
             pxor(asm, vectorSize, vecTmp, vecTmp);
             prev(asm, vectorSize, vecArrayTail, vecArray, vecTmp, 2);
 
-            utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, tmp, retBroken);
+            utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, vecTmp, vecResult, tmp);
             asm.jmpb(returnValidOrBroken);
         }
         emitExitMultiByte(asm, ret, returnAscii, end, CR_7BIT);
@@ -1439,43 +1442,35 @@ public final class AMD64CalcStringAttributesOp extends AMD64ComplexVectorOp {
 
         asm.bind(returnValidOrBroken);
         asm.shlq(ret, 32);
-        if (!assumeValid) {
-            asm.orq(ret, retBroken);
-        } else {
+        if (assumeValid) {
             asm.orq(ret, CR_VALID_MULTIBYTE);
+        } else {
+            ptest(asm, vectorSize, vecResult);
+            asm.movl(tmp, CR_BROKEN_MULTIBYTE);
+            asm.cmovl(NotZero, retBroken, tmp);
+            asm.orq(ret, retBroken);
         }
         asm.bind(end);
     }
 
     private void utf16ValidateSurrogates(AMD64MacroAssembler asm,
-                    Register ret, Register vecArray0, Register vecArray1, Register vecMaskHiSurrogate, Register vecMaskLoSurrogate, Register tmp, Register retBroken) {
-        Label blockIsValid = new Label();
+                    Register ret, Register vecArray0, Register vecArray1, Register vecMaskHiSurrogate, Register vecMaskLoSurrogate, Register vecTmp, Register vecResult, Register tmp) {
         utf16MatchSurrogates(asm, vecArray0, vecMaskHiSurrogate);
         utf16MatchSurrogates(asm, vecArray1, vecMaskLoSurrogate);
-        pmovmsk(asm, vectorSize, tmp, vecArray0);
+        // identify the number of correctly encoded surrogate pairs
+        pand(asm, vectorSize, vecTmp, vecArray0, vecArray1);
         // XOR the high surrogates identified at current index, with low surrogates
         // identified at current index + 1; if the result is zero, the current block is
         // encoded correctly
         pxor(asm, vectorSize, vecArray0, vecArray1);
-        // count the number of high surrogates
+        pmovmsk(asm, vectorSize, tmp, vecTmp);
+        // count the number of surrogate pairs
         asm.popcntl(tmp, tmp);
+        // merge the validation result into the final result
+        por(asm, vectorSize, vecResult, vecArray0);
         asm.shrl(tmp, 1);
-        // subtract the number of high surrogates from the total char length
+        // subtract the number of surrogate pairs from the total char length
         asm.subq(ret, tmp);
-        // continue if block is valid
-        ptest(asm, vectorSize, vecArray0, vecArray0);
-        asm.jccb(Zero, blockIsValid);
-        // block is invalid, find all lone high surrogates
-        pandn(asm, vectorSize, vecArray1, vecArray0);
-        // count them
-        pmovmsk(asm, vectorSize, tmp, vecArray1);
-        asm.popcntl(tmp, tmp);
-        asm.shrl(tmp, 1);
-        // and add them to the total char length
-        asm.addq(ret, tmp);
-        // set code range to BROKEN
-        asm.movl(retBroken, CR_BROKEN_MULTIBYTE);
-        asm.bind(blockIsValid);
     }
 
     private void utf16MatchSurrogates(AMD64MacroAssembler asm, Register vecArray, Register vecMaskSurrogate) {

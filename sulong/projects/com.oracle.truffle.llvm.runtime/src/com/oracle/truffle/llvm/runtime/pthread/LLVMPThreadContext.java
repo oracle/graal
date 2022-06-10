@@ -29,11 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.pthread;
 
-import java.lang.ref.WeakReference;
-import java.util.Collection;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -41,6 +36,11 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMThreadStart;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
+import java.lang.ref.WeakReference;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 public final class LLVMPThreadContext {
 
@@ -170,9 +170,13 @@ public final class LLVMPThreadContext {
 
     @TruffleBoundary
     public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId) {
+        return getAndRemoveSpecificUnlessNull(keyId, Thread.currentThread().getId());
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getAndRemoveSpecificUnlessNull(int keyId, long threadId) {
         final ConcurrentMap<Long, LLVMPointer> value = pThreadKeyStorage.get(keyId);
         if (value != null) {
-            final long threadId = Thread.currentThread().getId();
             final LLVMPointer keyMapping = value.get(threadId);
             if (keyMapping != null && !keyMapping.isNull()) {
                 value.remove(threadId);
@@ -231,5 +235,22 @@ public final class LLVMPThreadContext {
 
     public CallTarget getPthreadCallTarget() {
         return pthreadCallTarget;
+    }
+
+    public void callDestructors() {
+        callDestructors(Thread.currentThread().getId());
+    }
+
+    public void callDestructors(long threadId) {
+        for (int key = 1; key <= getNumberOfPthreadKeys(); key++) {
+            final LLVMPointer destructor = getDestructor(key);
+            if (destructor != null && !destructor.isNull()) {
+                final LLVMPointer keyMapping = getAndRemoveSpecificUnlessNull(key, threadId);
+                if (keyMapping != null) {
+                    assert !keyMapping.isNull();
+                    getPthreadCallTarget().call(destructor, keyMapping);
+                }
+            }
+        }
     }
 }

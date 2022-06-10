@@ -23,6 +23,10 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * The annotation `@BytecodeInterpreterSwitchBoundary` was deprecated. Boundaries for the compilation are now inferred from directives like `CompilerDirective.transferToInterpreter()` and `@TruffleBoundary` automatically.
     * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
 * GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
+* GR-38110 Added option to use `long` values as offsets for accessing memory through `ByteArraySupport`.
+* GR-39029 Fixed issue in `InteropLibrary` that required `asDate` to be implemented whenever `isTime` is exported; correct dependency is on `isDate`.
+* GR-38387 Updated the `InteropLibrary.getMembers()` message regarding ordering and determinism. 
+* GR-38945 Truffle IGV dumping with log level 5 (e.g. `-Dgraal.Dump=Truffle:5`) now dumps the graph after each method that was fully partially evaluated. This enables debugging of problems only visible during partial evaluation.
 
 ## Version 22.1.0
 

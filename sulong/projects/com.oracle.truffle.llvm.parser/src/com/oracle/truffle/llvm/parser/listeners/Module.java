@@ -29,9 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.listeners;
 
-import java.util.ArrayDeque;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.ValueSymbol;
@@ -43,7 +40,6 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
 import com.oracle.truffle.llvm.parser.model.functions.LazyFunctionParser;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalAlias;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.target.TargetDataLayout;
 import com.oracle.truffle.llvm.parser.model.target.TargetTriple;
 import com.oracle.truffle.llvm.parser.scanner.Block;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
@@ -53,6 +49,9 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class Module implements ParserListener {
 
@@ -309,8 +308,7 @@ public final class Module implements ParserListener {
                 break;
 
             case MODULE_TARGET_DATALAYOUT:
-                final TargetDataLayout layout = TargetDataLayout.fromString(buffer.readString());
-                module.setTargetDataLayout(layout);
+                module.setTargetDataLayout(buffer.readString());
                 break;
 
             case MODULE_SECTION_NAME:

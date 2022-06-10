@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -38,6 +38,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNodeGen;
 import com.oracle.truffle.espresso.perf.DebugCounter;
@@ -78,6 +80,8 @@ public final class Target_java_lang_System {
     @ReportPolymorphism
     @Substitution
     abstract static class Arraycopy extends SubstitutionNode {
+        @Child TypeCheckNode compatibleReferenceArrayTypeCheck = insert(TypeCheckNodeGen.create());
+
         abstract void execute(@JavaType(Object.class) StaticObject src, int srcPos, @JavaType(Object.class) StaticObject dest, int destPos, int length,
                         @Inject EspressoLanguage language,
                         @Inject Meta meta,
@@ -105,6 +109,10 @@ public final class Target_java_lang_System {
 
         static boolean areCompatiblePrimitiveArrays(StaticObject src, StaticObject dest, ArrayKlass arrayKlass) {
             return src.getKlass() == arrayKlass && dest.getKlass() == src.getKlass();
+        }
+
+        final boolean areCompatibleReferenceArrays(StaticObject src, StaticObject dest) {
+            return compatibleReferenceArrayTypeCheck.executeTypeCheck(getComponentType(dest), getComponentType(src));
         }
 
         static Klass getComponentType(StaticObject array) {
@@ -272,15 +280,16 @@ public final class Target_java_lang_System {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!nullOrNotArray(src, dest)", "!foreignArgument(src, dest)", "destComponentType.isAssignableFrom(srcComponentType)", "!isPrimitiveArray(src)",
-                        "!isPrimitiveArray(dest)"})
+        @Specialization(guards = {"!nullOrNotArray(src, dest)",
+                        "!foreignArgument(src, dest)",
+                        "!isPrimitiveArray(src)",
+                        "!isPrimitiveArray(dest)",
+                        "areCompatibleReferenceArrays(src, dest)"})
         void doCompatibleReferenceArrays(@JavaType(Object.class) StaticObject src, int srcPos,
                         @JavaType(Object.class) StaticObject dest, int destPos, int length,
                         @Inject EspressoLanguage language,
                         @Inject Meta meta,
-                        @Inject SubstitutionProfiler profiler,
-                        @Bind("getComponentType(src)") Klass srcComponentType,
-                        @Bind("getComponentType(dest)") Klass destComponentType) {
+                        @Inject SubstitutionProfiler profiler) {
             SYSTEM_ARRAYCOPY_COUNT.inc();
             try {
                 System.arraycopy(src.<StaticObject[]> unwrap(language), srcPos, dest.<StaticObject[]> unwrap(language), destPos, length);
@@ -289,13 +298,17 @@ public final class Target_java_lang_System {
             }
         }
 
-        @Specialization(guards = {"!nullOrNotArray(src, dest)", "!foreignArgument(src, dest)", "!isPrimitiveArray(src)", "!isPrimitiveArray(dest)",
-                        "!getComponentType(dest).isAssignableFrom(getComponentType(src))"})
+        @Specialization(guards = {"!nullOrNotArray(src, dest)",
+                        "!foreignArgument(src, dest)",
+                        "!isPrimitiveArray(src)",
+                        "!isPrimitiveArray(dest)",
+                        "!areCompatibleReferenceArrays(src, dest)"})
         void doIncompatibleReferenceArrays(@JavaType(Object.class) StaticObject src, int srcPos,
                         @JavaType(Object.class) StaticObject dest, int destPos, int length,
                         @Inject EspressoLanguage language,
                         @Inject Meta meta,
-                        @Inject SubstitutionProfiler profiler) {
+                        @Inject SubstitutionProfiler profiler,
+                        @Cached TypeCheckNode copyTypeCheck) {
             SYSTEM_ARRAYCOPY_COUNT.inc();
             boundsCheck(meta, src.length(language), srcPos, dest.length(language), destPos, length, profiler);
             Klass destType = ((ArrayKlass) dest.getKlass()).getComponentType();
@@ -303,7 +316,7 @@ public final class Target_java_lang_System {
             StaticObject[] d = dest.unwrap(language);
             for (int i = 0; i < length; i++) {
                 StaticObject cpy = s[i + srcPos];
-                if (!StaticObject.isNull(cpy) && !destType.isAssignableFrom(cpy.getKlass())) {
+                if (!StaticObject.isNull(cpy) && !copyTypeCheck.executeTypeCheck(destType, cpy.getKlass())) {
                     throw throwArrayStoreEx(meta, profiler);
                 }
                 d[destPos + i] = cpy;

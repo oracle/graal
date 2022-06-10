@@ -130,8 +130,6 @@ public final class Management extends NativeEnv {
     public static final int JMM_VERSION_2 = 0x20020000; // JDK 10
     public static final int JMM_VERSION_3 = 0x20030000; // JDK 11.7
 
-    private final EspressoContext context;
-
     @CompilationFinal //
     private @Pointer TruffleObject managementPtr;
     @CompilationFinal //
@@ -141,8 +139,8 @@ public final class Management extends NativeEnv {
     private final @Pointer TruffleObject disposeManagementContext;
 
     public Management(EspressoContext context, TruffleObject mokapotLibrary) {
+        super(context);
         assert context.EnableManagement;
-        this.context = context;
         this.initializeManagementContext = getNativeAccess().lookupAndBindSymbol(mokapotLibrary, "initializeManagementContext",
                         NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.INT));
 
@@ -206,11 +204,6 @@ public final class Management extends NativeEnv {
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
         return MANAGEMENT_IMPL_FACTORIES;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     @Override
@@ -342,13 +335,13 @@ public final class Management extends NativeEnv {
                     if (stackTrace.length(language) > maxDepth && maxDepth != -1) {
                         StaticObject[] unwrapped = stackTrace.unwrap(language);
                         unwrapped = Arrays.copyOf(unwrapped, maxDepth);
-                        stackTrace = StaticObject.wrap(meta.java_lang_StackTraceElement.getArrayClass(), unwrapped);
+                        stackTrace = StaticObject.wrap(meta.java_lang_StackTraceElement.getArrayClass(), unwrapped, meta);
                     }
                 } else {
                     stackTrace = meta.java_lang_StackTraceElement.allocateReferenceArray(0);
                 }
 
-                StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance();
+                StaticObject threadInfo = meta.java_lang_management_ThreadInfo.allocateInstance(getContext());
                 init.invokeDirect( /* this */ threadInfo,
                                 /* t */ thread,
                                 /* state */ threadStatus,
@@ -412,7 +405,7 @@ public final class Management extends NativeEnv {
         }
         Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
                         getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
+        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance(getContext());
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
     }
@@ -424,7 +417,7 @@ public final class Management extends NativeEnv {
         }
         Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
                         getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
+        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance(getContext());
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
     }
@@ -433,7 +426,7 @@ public final class Management extends NativeEnv {
     public @JavaType(Object.class) StaticObject GetMemoryUsage(@SuppressWarnings("unused") boolean heap) {
         Method init = getMeta().java_lang_management_MemoryUsage.lookupDeclaredMethod(Symbol.Name._init_,
                         getSignatures().makeRaw(Symbol.Type._void, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long, Symbol.Type._long));
-        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance();
+        StaticObject instance = getMeta().java_lang_management_MemoryUsage.allocateInstance(getContext());
         init.invokeDirect(instance, 0L, 0L, 0L, 0L);
         return instance;
     }
@@ -570,7 +563,7 @@ public final class Management extends NativeEnv {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
-            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length, getMeta());
+            threadIds = getAllocator().createNewPrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
             for (int j = 0; j < activeThreads.length; ++j) {
                 long tid = getThreadAccess().getThreadId(activeThreads[j]);
                 getInterpreterToVM().setArrayLong(language, tid, j, threadIds);

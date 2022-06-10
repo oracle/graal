@@ -52,28 +52,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Traces Truffle Compilations using Java Flight Recorder events.
  */
 public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
-    private static final EventFactory factory;
-    static {
-        if (ImageInfo.inImageCode()) {
-            // Injected by Feature
-            factory = null;
-        } else {
-            Iterator<EventFactory.Provider> it = TruffleRuntimeServices.load(EventFactory.Provider.class).iterator();
-            EventFactory.Provider provider = it.hasNext() ? it.next() : null;
-            if (provider == null) {
-                factory = null;
-            } else {
-                ModuleUtil.exportTo(provider.getClass());
-                factory = provider == null ? null : provider.getEventFactory();
-            }
-        }
-    }
+    private static final EventFactory factory = lookupFactory();
 
     // Support for JFRListener#isInstrumented
     private static final Set<InstrumentedMethodPattern> instrumentedMethodPatterns = createInstrumentedPatterns();
@@ -97,7 +83,7 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     }
 
     public static boolean isInstrumented(ResolvedJavaMethod method) {
-        // Initialization must be deferred into the image executtion time
+        // Initialization must be deferred into the image execution time
         InstrumentedFilterState currentState = instrumentedFilterState.get();
         if (currentState == InstrumentedFilterState.INACTIVE) {
             return false;
@@ -107,27 +93,22 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
 
     @Override
     public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
-        CompilationEvent event = null;
-        if (factory != null) {
-            event = factory.createCompilationEvent();
-            if (event.isEnabled()) {
-                event.setRootFunction(target);
-                event.compilationStarted();
-            } else {
-                event = null;
-            }
+        CompilationEvent event = factory.createCompilationEvent();
+        if (event.isEnabled()) {
+            event.setRootFunction(target);
+            event.compilationStarted();
+        } else {
+            event = null;
         }
         currentCompilation.set(new CompilationData(event));
     }
 
     @Override
     public void onCompilationDeoptimized(OptimizedCallTarget target, Frame frame) {
-        if (factory != null) {
-            DeoptimizationEvent event = factory.createDeoptimizationEvent();
-            if (event.isEnabled()) {
-                event.setRootFunction(target);
-                event.publish();
-            }
+        DeoptimizationEvent event = factory.createDeoptimizationEvent();
+        if (event.isEnabled()) {
+            event.setRootFunction(target);
+            event.publish();
         }
     }
 
@@ -189,13 +170,11 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
     @Override
     public void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         statistics.invalidations.incrementAndGet();
-        if (factory != null) {
-            InvalidationEvent event = factory.createInvalidationEvent();
-            if (event.isEnabled()) {
-                event.setRootFunction(target);
-                event.setReason(reason);
-                event.publish();
-            }
+        InvalidationEvent event = factory.createInvalidationEvent();
+        if (event.isEnabled()) {
+            event.setRootFunction(target);
+            event.setReason(reason);
+            event.publish();
         }
     }
 
@@ -258,6 +237,21 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         }
     }
 
+    private static EventFactory lookupFactory() {
+        if (ImageInfo.inImageCode()) {
+            return ImageSingletons.contains(EventFactory.class) ? ImageSingletons.lookup(EventFactory.class) : null;
+        } else {
+            Iterator<EventFactory.Provider> it = TruffleRuntimeServices.load(EventFactory.Provider.class).iterator();
+            EventFactory.Provider provider = it.hasNext() ? it.next() : null;
+            if (provider != null) {
+                ModuleUtil.exportTo(provider.getClass());
+                return provider.getEventFactory();
+            } else {
+                return null;
+            }
+        }
+    }
+
     /**
      * Determines if a failure is permanent.
      */
@@ -276,6 +270,10 @@ public final class JFRListener extends AbstractGraalTruffleRuntimeListener {
         // If JFR is not active or we are in the image build time return false
         if (currentState == InstrumentedFilterState.NEW || currentState == InstrumentedFilterState.INACTIVE) {
             return false;
+        }
+
+        if ("traceThrowable".equals(method.getName()) && "Ljdk/jfr/internal/instrument/ThrowableTracer;".equals(method.getDeclaringClass().getName())) {
+            return true;
         }
 
         // Fast check, the JFR instrumented methods are marked as synthetic.

@@ -594,7 +594,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              * annotation types at runtime.
              */
             ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance((Class<? extends Annotation>) type);
-            ModuleSupport.openModuleByClass(type, ReflectionDataBuilder.class);
+            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionDataBuilder.class, type);
             ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
 
             Annotation annotation = (Annotation) value;

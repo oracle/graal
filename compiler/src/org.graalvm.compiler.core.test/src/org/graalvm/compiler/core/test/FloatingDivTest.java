@@ -30,9 +30,9 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -47,7 +47,7 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     private void checkHighTierGraph(String snippet, int fixedDivsBeforeLowering, int floatingDivsBeforeLowering, int fixedDivAfterLowering, int floatingDivAfterLowering) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
+        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false));
         PhaseSuite<HighTierContext> ht = suites.getHighTier().copy();
         ListIterator<BasePhase<? super HighTierContext>> position = ht.findPhase(LoweringPhase.class);
         position.previous();
@@ -74,7 +74,7 @@ public class FloatingDivTest extends GraalCompilerTest {
             return;
         }
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
-        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false));
+        Suites suites = getBackend().getSuites().getDefaultSuites(new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false));
 
         suites.getHighTier().apply(graph, getDefaultHighTierContext());
         suites.getMidTier().apply(graph, getDefaultMidTierContext());
@@ -111,7 +111,7 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test01() {
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         String s = "snippet";
         test(opt, s, 100);
         checkHighTierGraph(s, 0, 2, 0, 2);
@@ -142,7 +142,7 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test02() {
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         String s = "snippet2";
         test(opt, s, 100, 5, 3);
         if (isArchitecture("aarch64")) {
@@ -160,7 +160,7 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test03() {
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         String s = "snippet3";
         test(opt, s, 10);
         test(opt, s, Integer.MIN_VALUE);
@@ -180,7 +180,7 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test04() {
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         String s = "snippet4";
         test(opt, s, 10, 3);
         if (isArchitecture("aarch64")) {
@@ -202,7 +202,7 @@ public class FloatingDivTest extends GraalCompilerTest {
     @Test
     public void test05() {
         String s = "snippet5";
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         test(opt, s, 10, 3);
         if (isArchitecture("aarch64")) {
             // overflow does not trap on aarch
@@ -222,7 +222,7 @@ public class FloatingDivTest extends GraalCompilerTest {
 
     @Test
     public void test06() {
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         String s = "snippet6";
         test(opt, s, 10, 3);
         checkHighTierGraph(s, 2, 0, 0, 1);
@@ -245,11 +245,11 @@ public class FloatingDivTest extends GraalCompilerTest {
     @Test
     public void test07() {
         String s = "snippet7";
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         test(opt, s, new int[]{1, 2, 3, 4, 5, 6});
         checkHighTierGraph(s, 3, 0, 0, 2);
         // one div is made fixed and is the /0 guard of the other
-        checkFinalGraph(s, 1, 1, 0);
+        checkFinalGraph(s, 2, 0, 0);
     }
 
     public static int snippet08(int b) {
@@ -265,7 +265,7 @@ public class FloatingDivTest extends GraalCompilerTest {
         } catch (ArithmeticException e) {
             // get an exception edge
         }
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.EarlyGVN, false);
         test(opt, s, 1);
         checkHighTierGraph(s, 1, 0, 0, 1);
     }

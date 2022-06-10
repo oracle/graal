@@ -28,12 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -57,23 +53,19 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
     /** Source flow has an immutable type state. */
     protected final AnalysisType type;
-    protected final BytecodeLocation allocationSite;
 
-    public NewInstanceTypeFlow(ValueNode node, AnalysisType type, BytecodeLocation allocationLabel) {
-        this(node, type, allocationLabel, TypeState.forNull());
+    public NewInstanceTypeFlow(BytecodePosition position, AnalysisType type) {
+        this(position, type, TypeState.forNull());
     }
 
-    protected NewInstanceTypeFlow(ValueNode node, AnalysisType type, BytecodeLocation allocationLabel, TypeState typeState) {
-        super(node, type, typeState);
+    protected NewInstanceTypeFlow(BytecodePosition position, AnalysisType type, TypeState typeState) {
+        super(position, type, typeState);
         this.type = type;
-        this.allocationSite = allocationLabel;
     }
 
     protected NewInstanceTypeFlow(PointsToAnalysis bb, NewInstanceTypeFlow original, MethodFlowsGraph methodFlows) {
         super(bb, original, methodFlows, original.cloneSourceState(bb, methodFlows));
-
         this.type = original.type;
-        this.allocationSite = original.allocationSite;
     }
 
     @Override
@@ -83,10 +75,7 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
     /** Create the type state for a clone. */
     protected TypeState cloneSourceState(PointsToAnalysis bb, MethodFlowsGraph methodFlows) {
-        assert !this.isClone();
-
-        AnalysisContext allocatorContext = methodFlows.context();
-        AnalysisContext allocationContext = bb.contextPolicy().allocationContext(allocatorContext, PointstoOptions.MaxHeapContextDepth.getValue(bb.getOptions()));
+        AnalysisContext allocationContext = bb.analysisPolicy().allocationContext(bb, methodFlows);
 
         if (bb.analysisPolicy().isContextSensitiveAllocation(bb, type, allocationContext)) {
             /*
@@ -108,8 +97,6 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
     }
 
     private AnalysisObject createHeapObject(PointsToAnalysis bb, AnalysisContext objContext) {
-        assert !this.isClone();
-
         if (heapObjectsCache == null) {
             /* Lazily initialize the cache. */
             HEAP_OBJECTS_CACHE_UPDATER.compareAndSet(this, null, new ConcurrentHashMap<>());
@@ -117,15 +104,11 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
         AnalysisObject result = heapObjectsCache.get(objContext);
         if (result == null) {
-            AnalysisObject newValue = bb.analysisPolicy().createHeapObject(bb, type, allocationSite, objContext);
+            AnalysisObject newValue = bb.analysisPolicy().createHeapObject(bb, type, source, objContext);
             AnalysisObject oldValue = heapObjectsCache.putIfAbsent(objContext, newValue);
             result = oldValue != null ? oldValue : newValue;
         }
         return result;
-    }
-
-    public BytecodeLocation allocationSite() {
-        return allocationSite;
     }
 
     public AnalysisType type() {
@@ -134,8 +117,6 @@ public class NewInstanceTypeFlow extends SourceTypeFlowBase {
 
     @Override
     public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("NewInstanceFlow<").append(getState()).append(">");
-        return str.toString();
+        return "NewInstanceFlow<" + getState() + ">";
     }
 }

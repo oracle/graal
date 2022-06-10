@@ -27,7 +27,6 @@ package com.oracle.svm.truffle.api;
 import java.lang.ref.Reference;
 
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
@@ -40,12 +39,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class SubstrateTruffleGraphBuilderPlugins {
     static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SubstrateKnownTruffleTypes types) {
         registerCompilationFinalReferencePlugins(plugins, canDelayIntrinsification, types);
-        registerOptimizedCallTargetPlugins(plugins);
     }
 
     private static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SubstrateKnownTruffleTypes types) {
-        InvocationPlugins.Registration r0 = new InvocationPlugins.Registration(plugins, Reference.class);
-        r0.register(new RequiredInvocationPlugin("get", InvocationPlugin.Receiver.class) {
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, Reference.class);
+        r.register(new RequiredInvocationPlugin("get", InvocationPlugin.Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (!canDelayIntrinsification && receiver.isConstant()) {
@@ -57,17 +55,6 @@ public class SubstrateTruffleGraphBuilderPlugins {
                     }
                 }
                 return false;
-            }
-        });
-    }
-
-    private static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins) {
-        InvocationPlugins.Registration r0 = new InvocationPlugins.Registration(plugins, SubstrateOptimizedCallTarget.class);
-        r0.register(new RequiredInvocationPlugin("safepointBarrier") {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new MembarNode(MembarNode.FenceKind.NONE));
-                return true;
             }
         });
     }

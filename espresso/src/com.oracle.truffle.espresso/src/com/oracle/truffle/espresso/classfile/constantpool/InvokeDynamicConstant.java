@@ -166,7 +166,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                  * call-site
                  */
 
-                StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
+                StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1], meta.getContext());
                 StaticObject memberName;
                 if (meta.getJavaVersion().varHandlesEnabled()) {
                     memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
@@ -175,7 +175,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                     thisIndex,
                                     bootstrapmethodMethodHandle,
                                     name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
+                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
                                     appendix);
                 } else {
                     memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite.invokeDirect(
@@ -183,7 +183,7 @@ public interface InvokeDynamicConstant extends BootstrapMethodConstant {
                                     accessingKlass.mirror(),
                                     bootstrapmethodMethodHandle,
                                     name, methodType,
-                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone()),
+                                    StaticObject.createArray(meta.java_lang_Object_array, args.clone(), meta.getContext()),
                                     appendix);
                 }
                 StaticObject unboxedAppendix = appendix.get(meta.getLanguage(), 0);

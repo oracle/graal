@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
+package com.oracle.svm.core.heapdump;
 
-import org.graalvm.compiler.graph.Node;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
-/**
- * Models an 'word to object' operation, i.e., reading an object from a pointer.
- */
-public class WordToObjectTypeFlow extends ProxyTypeFlow {
+import com.oracle.svm.core.util.VMError;
 
-    public WordToObjectTypeFlow(Node source, TypeFlow<?> input) {
-        super(source, input);
+public final class UnimplementedHeapDumpWriter extends HeapDumpWriter {
+    private final String message;
+
+    public UnimplementedHeapDumpWriter(String message) {
+        this.message = message;
     }
 
     @Override
-    public boolean canSaturate() {
-        return false;
+    public void writeHeapTo(FileOutputStream fileOutputStream, boolean gcBefore) throws IOException {
+        throw VMError.unimplemented(message);
     }
 
     @Override
-    public String toString() {
-        return "WordToObjectFlow<" + input + ">";
+    public void writeHeapTo(AllocationFreeOutputStream fileOutputStream, boolean gcBefore) throws IOException {
+        throw VMError.unimplemented(message);
     }
 }

@@ -60,6 +60,7 @@ public class AArch64FrameAccess extends FrameAccess {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public Pointer getReturnAddressLocation(Pointer sourceSp) {
         return sourceSp.subtract(returnAddressSize());
     }

@@ -197,19 +197,19 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             // Emit assembly for snippet stubs
             return null;
         }
-        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen().config.maxVectorSize);
+        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen());
         return descriptor == null ? null : lookupForeignCall(descriptor);
     }
 
-    private static ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, int maxVectorSize) {
+    private static ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, AMD64HotSpotLIRGenerator gen) {
         if (valueNode instanceof ArrayIndexOfNode) {
             return ArrayIndexOf.getStub((ArrayIndexOfNode) valueNode);
         } else if (valueNode instanceof ArrayEqualsNode) {
-            return AMD64ArrayEqualsStub.getArrayEqualsStub((ArrayEqualsNode) valueNode, maxVectorSize);
+            return AMD64ArrayEqualsStub.getArrayEqualsStub((ArrayEqualsNode) valueNode, gen);
         } else if (valueNode instanceof ArrayRegionEqualsNode) {
-            return AMD64ArrayEqualsStub.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, maxVectorSize);
+            return AMD64ArrayEqualsStub.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, gen);
         } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            return AMD64ArrayEqualsWithMaskStub.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, maxVectorSize);
+            return AMD64ArrayEqualsWithMaskStub.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, gen);
         } else if (valueNode instanceof ArrayCompareToNode) {
             return AMD64ArrayCompareToStub.getStub((ArrayCompareToNode) valueNode);
         } else if (valueNode instanceof ArrayRegionCompareToNode) {

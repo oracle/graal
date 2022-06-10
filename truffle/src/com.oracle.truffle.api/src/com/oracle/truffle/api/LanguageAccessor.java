@@ -249,8 +249,7 @@ final class LanguageAccessor extends Accessor {
                         OptionValues options, String[] applicationArguments) {
             TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
-            LanguageInfo info = language.languageInfo;
-            instrumentAccess().collectEnvServices(collectedServices, ACCESSOR.nodeSupport().getPolyglotLanguage(info), language);
+            instrumentAccess().collectEnvServices(collectedServices, polyglotLanguageContext, language);
             env.services = new ArrayList<>(collectedServices);
             return env;
         }

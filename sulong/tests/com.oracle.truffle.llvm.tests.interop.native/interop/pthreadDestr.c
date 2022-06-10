@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,26 +27,32 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.target;
+#include <pthread.h>
 
-public final class TargetDataLayout implements TargetInformation {
+static pthread_key_t globalkey;
+int get_specific();
 
-    private final String layout;
+static void (*callback)(int) = NULL;
 
-    private TargetDataLayout(String layout) {
-        this.layout = layout;
-    }
+void destr(void *param) {
+    callback(*((int *) param));
+    free(param);
+}
 
-    public String getDataLayout() {
-        return layout;
-    }
+void create_key(void (*cb)(int)) {
+    callback = cb;
+    int r = pthread_key_create(&globalkey, destr);
+    // test whether get_specific works on the main thread when there is no key value
+    get_specific();
+}
 
-    public static TargetDataLayout fromString(String layout) {
-        if (layout.equals("e-m:o-i64:64-i128:128-n32:64-S128")) {
-            // FIXME(GR-36935): workaround for darwin-aarch64. provided target layout string assumes
-            // a default set
-            return new TargetDataLayout("e-m:o-i8:8-i16:16-i64:64-i128:128-n32:64-S128");
-        }
-        return new TargetDataLayout(layout);
-    }
+void set_specific(int j) {
+    int *i = (int *) malloc(sizeof(int));
+    *i = j;
+    pthread_setspecific(globalkey, (void *) i);
+}
+
+int get_specific() {
+    int *r = (int *) pthread_getspecific(globalkey);
+    return r ? *r : -1;
 }

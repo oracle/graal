@@ -137,6 +137,7 @@ hfds DEBUG_STRICT_ENCODING_CHECKS,data,encoding,flags,hashCode,length,offset,str
 hcls LazyConcat,LazyLong,NativePointer
 
 CLSS public final com.oracle.truffle.api.strings.InternalByteArray
+meth public byte get(int)
 meth public byte[] getArray()
 meth public int getEnd()
 meth public int getLength()
@@ -456,6 +457,7 @@ supr com.oracle.truffle.api.nodes.Node
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CopyToByteArrayNode
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract void execute(com.oracle.truffle.api.strings.AbstractTruffleString,int,byte[],int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final byte[] execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$CopyToByteArrayNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$CopyToByteArrayNode getUncached()
 supr com.oracle.truffle.api.nodes.Node

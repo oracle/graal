@@ -32,6 +32,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
@@ -110,7 +111,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                 return null;
             }
         }
-        if (tool != null && GraalOptions.FloatingDivNodes.getValue(tool.getOptions())) {
+        if (tool != null && self.canFloat() && GraalOptions.FloatingDivNodes.getValue(tool.getOptions()) && self.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             if (!yStamp.contains(0) && SignedDivNode.divisionIsJVMSCompliant(forX, forY, divisionOverflowIsJVMSCompliant)) {
                 return SignedFloatingIntegerRemNode.create(forX, forY, view, zeroCheck, divisionOverflowIsJVMSCompliant);
@@ -125,6 +126,11 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
             }
             return new SignedRemNode(forX, forY, zeroCheck);
         }
+    }
+
+    @Override
+    public boolean canFloat() {
+        return true;
     }
 
     public static ValueNode canonical(ValueNode self, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view, CanonicalizerTool tool) {

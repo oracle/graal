@@ -231,7 +231,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
                 curMethod = meta.java_lang_reflect_Method_root.getObject(curMethod);
             }
         }
-        Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass();
+        Klass klass = meta.java_lang_reflect_Method_clazz.getObject(guestMethod).getMirrorKlass(meta);
 
         if (klass == meta.java_lang_invoke_MethodHandle && (reflectedMethod.getName() == Name.invoke || reflectedMethod.getName() == Name.invokeExact)) {
             StaticObject cause = Meta.initExceptionWithMessage(meta.java_lang_UnsupportedOperationException, "Cannot reflectively invoke MethodHandle.{invoke,invokeExact}");
@@ -333,7 +333,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         for (int i = 0; i < argsLen; ++i) {
             StaticObject arg = args.get(language, i);
             StaticObject paramTypeMirror = parameterTypes.get(language, i);
-            Klass paramKlass = paramTypeMirror.getMirrorKlass();
+            Klass paramKlass = paramTypeMirror.getMirrorKlass(meta);
             // Throws guest IllegallArgumentException if the parameter cannot be casted or widened.
             adjustedArgs[i] = checkAndWiden(meta, arg, paramKlass);
         }

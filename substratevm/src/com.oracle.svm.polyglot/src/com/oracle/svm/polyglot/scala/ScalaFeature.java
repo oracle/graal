@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.ModuleSupport;
 
 @AutomaticFeature
 public class ScalaFeature implements InternalFeature {
@@ -66,10 +67,12 @@ public class ScalaFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("scala.Symbol$");
         /* Initialized through an invokedynamic in `scala.Option` */
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
     }
 
     @Override
     public void registerGraphBuilderPlugins(Providers providers, Plugins plugins, ParsingReason reason) {
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
         if (SubstrateOptions.parseOnce() || reason == ParsingReason.PointsToAnalysis) {
             plugins.appendNodePlugin(new ScalaAnalysisPlugin());
         }

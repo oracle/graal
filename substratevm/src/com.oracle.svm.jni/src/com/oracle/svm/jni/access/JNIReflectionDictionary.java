@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -46,6 +47,7 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.core.util.Utf8.WrappedAsciiCString;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 
@@ -56,6 +58,28 @@ import jdk.vm.ci.meta.Signature;
  * Provides JNI access to predetermined classes, methods and fields at runtime.
  */
 public final class JNIReflectionDictionary {
+    /**
+     * Enables lookups with {@link WrappedAsciiCString}, which avoids many unnecessary character set
+     * conversions and allocations.
+     *
+     * However, such objects are not supposed to be stored or passed out in any way because their C
+     * memory might be freed. <em>Instead, regular {@link String} objects MUST be used for any other
+     * purpose,</em> also because {@link CharSequence} handling is error-prone since there are no
+     * guarantees that {@link Object#equals} and {@link Object#hashCode} are implemented and
+     * compatible between classes.
+     */
+    static final Equivalence WRAPPED_CSTRING_EQUIVALENCE = new Equivalence() {
+        @Override
+        public boolean equals(Object a, Object b) {
+            return CharSequence.compare((CharSequence) a, (CharSequence) b) == 0;
+        }
+
+        @Override
+        public int hashCode(Object o) {
+            assert o instanceof String || o instanceof WrappedAsciiCString;
+            return o.hashCode();
+        }
+    };
 
     static void initialize() {
         ImageSingletons.add(JNIReflectionDictionary.class, new JNIReflectionDictionary());
@@ -65,7 +89,7 @@ public final class JNIReflectionDictionary {
         return ImageSingletons.lookup(JNIReflectionDictionary.class);
     }
 
-    private final EconomicMap<String, JNIAccessibleClass> classesByName = ImageHeapMap.create();
+    private final EconomicMap<CharSequence, JNIAccessibleClass> classesByName = ImageHeapMap.create(WRAPPED_CSTRING_EQUIVALENCE);
     private final EconomicMap<Class<?>, JNIAccessibleClass> classesByClassObject = ImageHeapMap.create();
     private final EconomicMap<JNINativeLinkage, JNINativeLinkage> nativeLinkages = ImageHeapMap.create();
 
@@ -77,7 +101,7 @@ public final class JNIReflectionDictionary {
             PrintStream ps = Log.logStream();
             ps.println(label);
             ps.println(" classesByName:");
-            MapCursor<String, JNIAccessibleClass> nameCursor = classesByName.getEntries();
+            MapCursor<CharSequence, JNIAccessibleClass> nameCursor = classesByName.getEntries();
             while (nameCursor.advance()) {
                 ps.print("  ");
                 ps.println(nameCursor.getKey());
@@ -86,10 +110,11 @@ public final class JNIReflectionDictionary {
                 MapCursor<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> methodsCursor = clazz.getMethodsByDescriptor();
                 while (methodsCursor.advance()) {
                     ps.print("      ");
-                    ps.println(methodsCursor.getKey().getNameAndSignature());
+                    ps.print(methodsCursor.getKey().getName());
+                    ps.println(methodsCursor.getKey().getSignature());
                 }
                 ps.println("   fields:");
-                MapCursor<String, JNIAccessibleField> fieldsCursor = clazz.getFieldsByName();
+                MapCursor<CharSequence, JNIAccessibleField> fieldsCursor = clazz.getFieldsByName();
                 while (fieldsCursor.advance()) {
                     ps.print("      ");
                     ps.println(fieldsCursor.getKey());
@@ -110,7 +135,12 @@ public final class JNIReflectionDictionary {
         if (!classesByClassObject.containsKey(classObj)) {
             JNIAccessibleClass instance = mappingFunction.apply(classObj);
             classesByClassObject.put(classObj, instance);
-            classesByName.put(instance.getInternalName(), instance);
+            String name = instance.getInternalName();
+            if (name.charAt(0) == 'L') { // "Ljava/lang/Object;" -> "java/lang/Object"
+                assert name.charAt(name.length() - 1) == ';';
+                name = name.substring(1, name.length() - 1);
+            }
+            classesByName.put(name, instance);
         }
         return classesByClassObject.get(classObj);
     }
@@ -124,7 +154,7 @@ public final class JNIReflectionDictionary {
         return classesByClassObject.getValues();
     }
 
-    public Class<?> getClassObjectByName(String name) {
+    public Class<?> getClassObjectByName(CharSequence name) {
         JNIAccessibleClass clazz = classesByName.get(name);
         dump(clazz == null, "getClassObjectByName");
         return (clazz != null) ? clazz.getClassObject() : null;
@@ -140,7 +170,7 @@ public final class JNIReflectionDictionary {
      *            method
      * @return the linkage for the native method or {@code null} if no linkage exists
      */
-    public JNINativeLinkage getLinkage(String declaringClass, String name, String descriptor) {
+    public JNINativeLinkage getLinkage(CharSequence declaringClass, CharSequence name, CharSequence descriptor) {
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
         return nativeLinkages.get(key);
     }
@@ -198,7 +228,7 @@ public final class JNIReflectionDictionary {
         return method;
     }
 
-    public JNIMethodId getMethodID(Class<?> classObject, String name, String signature, boolean isStatic) {
+    public JNIMethodId getMethodID(Class<?> classObject, CharSequence name, CharSequence signature, boolean isStatic) {
         JNIAccessibleMethod method = findMethod(classObject, new JNIAccessibleMethodDescriptor(name, signature), "getMethodID");
         boolean match = (method != null && method.isStatic() == isStatic && method.isDiscoverableIn(classObject));
         return toMethodID(match ? method : null);
@@ -227,7 +257,7 @@ public final class JNIReflectionDictionary {
         return (JNIAccessibleMethod) obj;
     }
 
-    private JNIAccessibleField getDeclaredField(Class<?> classObject, String name, boolean isStatic, String dumpLabel) {
+    private JNIAccessibleField getDeclaredField(Class<?> classObject, CharSequence name, boolean isStatic, String dumpLabel) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
         dump(clazz == null && dumpLabel != null, dumpLabel);
         if (clazz != null) {
@@ -244,7 +274,7 @@ public final class JNIReflectionDictionary {
         return (field != null) ? field.getId() : WordFactory.nullPointer();
     }
 
-    private JNIAccessibleField findField(Class<?> clazz, String name, boolean isStatic, String dumpLabel) {
+    private JNIAccessibleField findField(Class<?> clazz, CharSequence name, boolean isStatic, String dumpLabel) {
         // Lookup according to JVM spec 5.4.3.2: local fields, superinterfaces, superclasses
         JNIAccessibleField field = getDeclaredField(clazz, name, isStatic, dumpLabel);
         if (field == null && isStatic) {
@@ -256,7 +286,7 @@ public final class JNIReflectionDictionary {
         return field;
     }
 
-    private JNIAccessibleField findSuperinterfaceField(Class<?> clazz, String name) {
+    private JNIAccessibleField findSuperinterfaceField(Class<?> clazz, CharSequence name) {
         for (Class<?> parent : clazz.getInterfaces()) {
             JNIAccessibleField field = getDeclaredField(parent, name, true, null);
             if (field == null) {
@@ -269,7 +299,7 @@ public final class JNIReflectionDictionary {
         return null;
     }
 
-    public JNIFieldId getFieldID(Class<?> clazz, String name, boolean isStatic) {
+    public JNIFieldId getFieldID(Class<?> clazz, CharSequence name, boolean isStatic) {
         JNIAccessibleField field = findField(clazz, name, isStatic, "getFieldID");
         return (field != null && field.isDiscoverableIn(clazz)) ? field.getId() : WordFactory.nullPointer();
     }
@@ -277,11 +307,11 @@ public final class JNIReflectionDictionary {
     public String getFieldNameByID(Class<?> classObject, JNIFieldId id) {
         JNIAccessibleClass clazz = classesByClassObject.get(classObject);
         if (clazz != null) {
-            MapCursor<String, JNIAccessibleField> fieldsCursor = clazz.getFieldsByName();
+            MapCursor<CharSequence, JNIAccessibleField> fieldsCursor = clazz.getFieldsByName();
             while (fieldsCursor.advance()) {
                 JNIAccessibleField field = fieldsCursor.getValue();
                 if (id.equal(field.getId())) {
-                    return fieldsCursor.getKey();
+                    return (String) fieldsCursor.getKey();
                 }
             }
         }

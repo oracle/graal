@@ -773,7 +773,7 @@ suite = {
         "com.oracle.svm.tutorial" : {
             "subDir": "src",
             "sourceDirs" : ["src"],
-            "dependencies" : ["com.oracle.svm.core"],
+            "dependencies" : ["sdk:GRAAL_SDK"],
             "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance": "11+",
             "annotationProcessors" : [
@@ -887,6 +887,9 @@ suite = {
                 "java.base" : [
                     "jdk.internal.misc",
                 ],
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
             },
             "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "11+",
@@ -1123,13 +1126,6 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
-                    "com.oracle.svm.core.configure", # even Feature impls on class-path need access, thus unqualified
-                    "com.oracle.svm.core.jdk", # Uses of com.oracle.svm.core.jdk.StackTraceUtils
-                    "com.oracle.svm.core.snippets", # Uses of com.oracle.svm.core.snippets.KnownIntrinsics
-                    "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
-                    "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
-                    "com.oracle.svm.core.jni", # Uses of com.oracle.svm.core.jni.JNIRuntimeAccess
-                    "com.oracle.svm.core.jfr", # Uses of com.oracle.svm.core.jfr.HasJfrSupport
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
@@ -1464,8 +1460,8 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.base",
                 "exports" : [
-                    "com.oracle.svm.util",
-                    "com.oracle.svm.common.option",
+                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise",
+                    "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver",
                 ],
             }
         },

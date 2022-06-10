@@ -36,6 +36,8 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
+import com.oracle.svm.util.ModuleSupport;
+
 import jdk.internal.misc.Unsafe;
 
 class PureMustBeSafeEarly {
@@ -520,6 +522,9 @@ class TestClassInitializationMustBeSafeEarlyFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         RuntimeClassInitialization.initializeAtRunTime("com.oracle.svm.test.clinit");
+
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, TestClassInitializationMustBeSafeEarly.class, false,
+                        "java.base", "jdk.internal.misc");
         RuntimeClassInitialization.initializeAtBuildTime(UnsafeAccess.class);
     }
 

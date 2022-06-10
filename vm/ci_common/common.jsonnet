@@ -102,6 +102,7 @@ local devkits = common_json.devkits;
   # TRUFFLERUBY
   truffleruby_linux: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
   truffleruby_darwin_amd64: self.sulong_darwin_amd64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
+  truffleruby_darwin_aarch64: self.sulong_darwin_aarch64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
 
   # FASTR
   # Note: On both Linux and MacOS, FastR depends on the gnur module and on gfortran
@@ -176,6 +177,8 @@ local devkits = common_json.devkits;
   },
 
   graalpython_darwin_amd64: self.sulong_darwin_amd64 + {},
+
+  graalpython_darwin_aarch64: self.sulong_darwin_aarch64 + {},
 
   vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
@@ -403,7 +406,9 @@ local devkits = common_json.devkits;
 
   ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin_amd64 + self.truffleruby_darwin_amd64 + vm.custom_vm_darwin,
   full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin_amd64,
-  full_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64,
+
+  ruby_vm_build_darwin_aarch64: self.svm_common_darwin_aarch64 + self.sulong_darwin_aarch64 + self.truffleruby_darwin_aarch64 + vm.custom_vm_darwin,
+  full_vm_build_darwin_aarch64: self.ruby_vm_build_darwin_aarch64 + self.graalpython_darwin_aarch64,
 
 
   libgraal_build(build_args):: {
@@ -664,6 +669,7 @@ local devkits = common_json.devkits;
 
   deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
   deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
+  deploy_vm_ruby_java11_darwin_aarch64: vm.vm_java_11 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
 
   local builds = [
     #

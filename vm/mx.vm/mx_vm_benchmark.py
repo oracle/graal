@@ -197,7 +197,6 @@ class NativeImageVM(GraalVm):
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
         self.pgo_inline_explored = False
-        self.hotspot_pgo = False
         self.is_gate = False
         self.is_quickbuild = False
         self.use_string_inlining = False
@@ -226,7 +225,7 @@ class NativeImageVM(GraalVm):
             return
 
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
-        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-hotspot-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
+        rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>aot-inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<ml>ml-profile-inference-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv("== Registering configuration: {}".format(config_name))
@@ -268,9 +267,6 @@ class NativeImageVM(GraalVm):
             if pgo_mode == "pgo":
                 mx.logv("'pgo' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 1
-            elif pgo_mode == "pgo-hotspot":
-                mx.logv("'pgo-hotspot' is enabled for {}".format(config_name))
-                self.hotspot_pgo = True
             elif pgo_mode == "pgo-ctx-insens":
                 mx.logv("'pgo-ctx-insens' is enabled for {}".format(config_name))
                 self.pgo_instrumented_iterations = 1
@@ -726,9 +722,7 @@ class NativeImageVM(GraalVm):
         ] + self.image_build_statistics_rules(benchmarks[0]) + self.image_build_timers_rules(benchmarks[0])
 
     def run_stage_agent(self, config, stages):
-        profile_path = config.profile_path_no_extension + '-agent' + config.profile_file_extension
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
-        hotspot_run_args = []
         hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir)]
 
         # Jargraal is very slow with the agent, and libgraal is usually not built for Native Image benchmarks. Therefore, don't use the GraalVM compiler.
@@ -741,23 +735,9 @@ class NativeImageVM(GraalVm):
         if config.vm_args is not None:
             hotspot_vm_args += config.vm_args
 
-        if self.hotspot_pgo:
-            hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
-
-        if self.hotspot_pgo and not self.is_gate and config.extra_agent_profile_run_args:
-            hotspot_run_args += config.extra_agent_profile_run_args
-        else:
-            hotspot_run_args += config.extra_agent_run_args
-
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + hotspot_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.executable + config.system_properties + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
-            if self.hotspot_pgo and s.exit_code == 0:
-                # Hotspot instrumentation does not produce profiling information for the helloworld benchmark
-                if os.path.exists(profile_path):
-                    mx.copyfile(profile_path, config.latest_profile_path)
-                else:
-                    mx.warn("No profile information emitted during agent run.")
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
@@ -792,7 +772,7 @@ class NativeImageVM(GraalVm):
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         ml_args = ['-H:+ProfileInference'] if self.ml == 'ml-profile-inference' else []
-        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 or (self.hotspot_pgo and os.path.exists(config.latest_profile_path)) else []) + ml_args
+        final_image_command = config.base_image_build_args + executable_name_args + (pgo_args if instrumented_iterations > 0 else []) + ml_args
         with stages.set_command(final_image_command) as s:
             s.execute_command()
 
@@ -840,20 +820,19 @@ class NativeImageVM(GraalVm):
                 config.last_stage = 'agent'
             self.run_stage_agent(config, stages)
 
-        if not self.hotspot_pgo:
-            # Native Image profile collection
-            for i in range(instrumented_iterations):
-                profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
-                instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
-                instrumentation_image_latest = config.executable_name + '-instrument-latest'
+        # Native Image profile collection
+        for i in range(instrumented_iterations):
+            profile_path = config.profile_path_no_extension + '-' + str(i) + config.profile_file_extension
+            instrumentation_image_name = config.executable_name + '-instrument-' + str(i)
+            instrumentation_image_latest = config.executable_name + '-instrument-latest'
 
-                image_path = os.path.join(config.output_dir, instrumentation_image_name)
-                image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
-                if stages.change_stage('instrument-image', str(i)):
-                    self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
+            image_path = os.path.join(config.output_dir, instrumentation_image_name)
+            image_path_latest = os.path.join(config.output_dir, instrumentation_image_latest)
+            if stages.change_stage('instrument-image', str(i)):
+                self.run_stage_instrument_image(config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations)
 
-                if stages.change_stage('instrument-run', str(i)):
-                    self.run_stage_instrument_run(config, stages, image_path, profile_path)
+            if stages.change_stage('instrument-run', str(i)):
+                self.run_stage_instrument_run(config, stages, image_path, profile_path)
 
         # Build the final image
         if stages.change_stage('image'):

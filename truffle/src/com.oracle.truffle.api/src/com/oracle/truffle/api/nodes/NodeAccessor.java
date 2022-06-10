@@ -90,13 +90,13 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public Object getPolyglotLanguage(LanguageInfo languageInfo) {
-            return languageInfo.getPolyglotLanguage();
+        public Object getLanguageCache(LanguageInfo languageInfo) {
+            return languageInfo.getLanguageCache();
         }
 
         @Override
-        public LanguageInfo createLanguage(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
-            return new LanguageInfo(polyglotLanguage, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
+        public LanguageInfo createLanguage(Object cache, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
+            return new LanguageInfo(cache, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
         }
 
         @Override

@@ -81,8 +81,8 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              * bits of graal. Thus the modules that contain such plugins need to be allowed such
              * access.
              */
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.meta", false, accessingClass);
-            ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.compiler", "org.graalvm.compiler.nodes", false, accessingClass);
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 

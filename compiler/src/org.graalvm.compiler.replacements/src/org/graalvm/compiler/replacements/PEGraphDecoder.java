@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -1043,10 +1044,6 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 return false;
             }
 
-            if (loopScope.methodScope.encodedGraph.isCallToOriginal(targetMethod)) {
-                return false;
-            }
-
             ValueNode[] arguments = callTarget.arguments().toArray(ValueNode.EMPTY_ARRAY);
             FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 
@@ -1206,6 +1203,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     @Override
+    protected void afterMethodScope(MethodScope methodScope) {
+        /*
+         * The graph should be in a valid state after a method scope was completed. Revisit this
+         * assumption if there are any crashes during dumping.
+         */
+        if (debug.isDumpEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
+            debug.dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After PE %s", ((PEMethodScope) methodScope).method.format("%H.%n"));
+        }
+    }
+
+    @Override
     protected void finishInlining(MethodScope is) {
         PEMethodScope inlineScope = (PEMethodScope) is;
         ResolvedJavaMethod inlineMethod = inlineScope.method;
@@ -1283,6 +1291,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         ValueNode returnValue;
         if (returnNodeCount == 0) {
             returnValue = null;
+            invokeNode.replaceAtUsages(null);
         } else if (returnNodeCount == 1) {
             ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
             returnValue = returnNode.result();
@@ -1291,22 +1300,26 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 // Try to reuse the previous begin node instead of creating another one.
                 prevBegin = (BeginNode) returnNode.predecessor();
             }
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin);
-            if (n == prevBegin) {
+            Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin));
+            returnValue = returnAnchorPair.getLeft();
+            FixedNode next = returnAnchorPair.getRight();
+            if (next == prevBegin) {
                 // Reusing the previous BeginNode; just remove the ReturnNode.
                 returnNode.replaceAtPredecessor(null);
                 returnNode.safeDelete();
             } else {
-                returnNode.replaceAndDelete(n);
+                returnNode.replaceAndDelete(next);
             }
         } else {
             AbstractMergeNode merge = graph.add(new MergeNode());
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
             returnValue = InliningUtil.mergeReturns(merge, getMatchingNodes(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class, returnNodeCount));
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
-            merge.setNext(n);
+            FixedNode next = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
+            Pair<ValueNode, FixedNode> returnAnchorPair = InliningUtil.replaceInvokeAtUsages(invokeNode, returnValue, merge);
+            returnValue = returnAnchorPair.getLeft();
+            assert returnAnchorPair.getRight() == merge;
+            merge.setNext(next);
         }
-        invokeNode.replaceAtUsages(returnValue);
 
         /*
          * Usage the handles that we have on the return value and the exception to update the

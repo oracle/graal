@@ -252,7 +252,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         protected SignedDivNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck, FrameState forStateBefore) {
             assert forZeroCheck == null;
             // note that stateBefore is irrelevant, as this "safe" variant will not deoptimize
-            return new SafeSignedDivNode(forX, forY);
+            SafeSignedDivNode div = new SafeSignedDivNode(forX, forY);
+            return div;
         }
 
         @Override
@@ -261,6 +262,11 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
              * All checks have been done. Returning false is the indicator that no FrameState is
              * necessary anymore for the node.
              */
+            return false;
+        }
+
+        @Override
+        public boolean canFloat() {
             return false;
         }
     }
@@ -276,7 +282,8 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
         @Override
         protected SignedRemNode createWithInputs(ValueNode forX, ValueNode forY, GuardingNode forZeroCheck) {
             assert forZeroCheck == null;
-            return new SafeSignedRemNode(forX, forY);
+            SafeSignedRemNode rem = new SafeSignedRemNode(forX, forY);
+            return rem;
         }
 
         @Override
@@ -285,6 +292,11 @@ public class AArch64IntegerArithmeticSnippets extends AbstractTemplates implemen
              * All checks have been done. Returning false is the indicator that no FrameState is
              * necessary anymore for the node.
              */
+            return false;
+        }
+
+        @Override
+        public boolean canFloat() {
             return false;
         }
     }

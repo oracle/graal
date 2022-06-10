@@ -32,9 +32,9 @@ import org.graalvm.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -78,7 +78,6 @@ public abstract class TypeFlow<T> {
     private int slot;
     private final boolean isClone; // true -> clone, false -> original
     protected final MethodFlowsGraph graphRef;
-    protected final AnalysisContext context;
 
     /** True if this flow is passed as a parameter to a call. */
     protected boolean usedAsAParameter;
@@ -122,7 +121,6 @@ public abstract class TypeFlow<T> {
         this.slot = slot;
         this.isClone = isClone;
         this.graphRef = graphRef;
-        this.context = graphRef != null ? graphRef.context() : null;
         this.state = typeState;
         this.usedAsAParameter = false;
         this.usedAsAReceiver = false;
@@ -178,7 +176,7 @@ public abstract class TypeFlow<T> {
      *
      * @param bb
      */
-    public void initClone(PointsToAnalysis bb) {
+    public void initFlow(PointsToAnalysis bb) {
     }
 
     public void setUsedAsAParameter(boolean usedAsAParameter) {
@@ -206,16 +204,26 @@ public abstract class TypeFlow<T> {
         return id;
     }
 
-    public AnalysisContext context() {
-        return context;
-    }
-
     public MethodFlowsGraph graphRef() {
-        return graphRef;
+        if (graphRef != null) {
+            return graphRef;
+        }
+        if (source instanceof BytecodePosition && !isClone) {
+            BytecodePosition position = (BytecodePosition) source;
+            return ((PointsToAnalysisMethod) position.getMethod()).getTypeFlow().getMethodFlowsGraph();
+        }
+        return null;
     }
 
     public AnalysisMethod method() {
-        return graphRef != null ? graphRef.getMethod() : null;
+        if (graphRef != null) {
+            return graphRef.getMethod();
+        }
+        if (source instanceof BytecodePosition) {
+            BytecodePosition position = (BytecodePosition) source;
+            return (AnalysisMethod) position.getMethod();
+        }
+        return null;
     }
 
     public T getSource() {
@@ -348,13 +356,12 @@ public abstract class TypeFlow<T> {
 
     // manage uses
 
-    /** Adds a use, if not already present, without propagating state. */
-    public boolean addOriginalUse(PointsToAnalysis bb, TypeFlow<?> use) {
-        return addUse(bb, use, false, false);
-    }
-
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use) {
         return addUse(bb, use, true, false);
+    }
+
+    public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState) {
+        return addUse(bb, use, propagateTypeState, false);
     }
 
     private boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState, boolean registerInput) {
@@ -413,14 +420,13 @@ public abstract class TypeFlow<T> {
 
     // manage observers
 
-    /** Adds an observer, if not already present, without triggering update. */
-    public boolean addOriginalObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
-        return addObserver(bb, observer, false, false);
-    }
-
     /** Register object that will be notified when the state of this flow changes. */
     public void addObserver(PointsToAnalysis bb, TypeFlow<?> observer) {
         addObserver(bb, observer, true, false);
+    }
+
+    public boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate) {
+        return addObserver(bb, observer, triggerUpdate, false);
     }
 
     private boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate, boolean registerObservees) {

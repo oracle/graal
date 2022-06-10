@@ -51,6 +51,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
 import org.junit.Assert;
@@ -142,10 +143,11 @@ public class HostInliningTest extends GraalCompilerTest {
 
         try (DebugContext.Scope ds = graph.getDebug().scope("Testing", method, graph)) {
             HighTierContext context = getEagerHighTierContext();
+            CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             if (run == TestRun.WITH_CONVERT_TO_GUARD) {
-                new ConvertDeoptimizeToGuardPhase().apply(graph, context);
+                new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, context);
             }
-            new TruffleHostInliningPhase(createCanonicalizerPhase()).apply(graph, context);
+            new TruffleHostInliningPhase(canonicalizer).apply(graph, context);
 
             ExpectNotInlined notInlined = method.getAnnotation(ExpectNotInlined.class);
             assertInvokesFound(graph, notInlined != null ? notInlined.value() : null);

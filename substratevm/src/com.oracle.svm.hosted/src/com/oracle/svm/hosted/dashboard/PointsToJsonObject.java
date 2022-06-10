@@ -609,7 +609,7 @@ class PointsToJsonObject extends JsonObject {
         }
 
         // Serialize all type flows of this method, recursively serialize their inputs and uses.
-        for (TypeFlow<?> flow : methodWrapper.flowsGraph.linearizedGraph) {
+        for (TypeFlow<?> flow : methodWrapper.flowsGraph.flows()) {
             if (flow == null) {
                 // Can have null-nodes - skip them.
                 continue;
@@ -702,7 +702,7 @@ class PointsToJsonObject extends JsonObject {
                 // field is null in that case. Can skip them.
                 continue;
             }
-            for (TypeFlow<?> flow : methodWrapper.flowsGraph.linearizedGraph) {
+            for (TypeFlow<?> flow : methodWrapper.flowsGraph.flows()) {
                 if (flow != null) {
                     connectFlowToEnclosingMethod(flow.id(), methodWrapper.id);
                 }

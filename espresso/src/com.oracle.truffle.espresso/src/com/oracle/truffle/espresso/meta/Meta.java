@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -62,9 +62,8 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * Introspection API to access the guest world from the host. Provides seamless conversions from
  * host to guest classes for a well known subset (e.g. common types and exceptions).
  */
-public final class Meta implements ContextAccess {
+public final class Meta extends ContextAccessImpl {
 
-    private final EspressoContext context;
     private final ExceptionDispatch dispatch;
     private final StringConversion stringConversion;
     private final InteropKlassesDispatch interopDispatch;
@@ -72,8 +71,8 @@ public final class Meta implements ContextAccess {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Meta(EspressoContext context) {
+        super(context);
         CompilerAsserts.neverPartOfCompilation();
-        this.context = context;
         this.stringConversion = StringConversion.select(context);
 
         // Give access to the partially-built Meta instance.
@@ -1902,7 +1901,7 @@ public final class Meta implements ContextAccess {
         if (StaticObject.isNull(str)) {
             return null;
         }
-        return stringConversion.toHost(str, context.getLanguage(), this);
+        return stringConversion.toHost(str, getLanguage(), this);
     }
 
     @TruffleBoundary
@@ -1973,7 +1972,7 @@ public final class Meta implements ContextAccess {
                 return null;
             }
             if (guestObject.isArray()) {
-                return guestObject.unwrap(context.getLanguage());
+                return guestObject.unwrap(getLanguage());
             }
             if (guestObject.getKlass() == java_lang_String) {
                 return toHostString(guestObject);
@@ -1981,11 +1980,6 @@ public final class Meta implements ContextAccess {
             return unboxGuest((StaticObject) object);
         }
         return object;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     // region Guest Unboxing

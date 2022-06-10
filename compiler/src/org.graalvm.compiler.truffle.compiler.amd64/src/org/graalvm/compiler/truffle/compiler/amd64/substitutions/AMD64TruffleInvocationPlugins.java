@@ -25,13 +25,10 @@
 package org.graalvm.compiler.truffle.compiler.amd64.substitutions;
 
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.getArrayLocation;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.strideAsPowerOf2;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
+import org.graalvm.compiler.core.common.StrideUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -44,14 +41,11 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.serviceprovider.ServiceProvider;
-import org.graalvm.compiler.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.truffle.api.nodes.Node;
@@ -61,24 +55,19 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
-@ServiceProvider(GraphBuilderInvocationPluginProvider.class)
-public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPluginProvider {
+public class AMD64TruffleInvocationPlugins {
 
-    @Override
-    public void registerInvocationPlugins(Providers providers, Architecture architecture, InvocationPlugins plugins, boolean canDelayIntrinsification) {
+    public static void register(Architecture architecture, InvocationPlugins plugins, Replacements replacements) {
         if (architecture instanceof AMD64) {
-            MetaAccessProvider metaAccess = providers.getMetaAccess();
-            registerArrayUtilsPlugins(plugins, metaAccess, providers.getReplacements());
-            registerTStringPlugins((AMD64) architecture, plugins, metaAccess, providers.getReplacements());
+            registerArrayUtilsPlugins(plugins, replacements);
+            registerTStringPlugins((AMD64) architecture, plugins, replacements);
         }
     }
 
-    private static void registerArrayUtilsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, Replacements replacements) {
-        final ResolvedJavaType arrayUtilsType = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.ArrayUtils");
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, new InvocationPlugins.ResolvedJavaSymbol(arrayUtilsType), replacements);
-
+    private static void registerArrayUtilsPlugins(InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/ArrayUtils;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.ArrayUtils", replacements);
         for (JavaKind stride : new JavaKind[]{JavaKind.Byte, JavaKind.Char}) {
             String strideStr = stride == JavaKind.Byte ? "1" : "2";
             r.register(new InvocationPlugin("stubIndexOfB1S" + strideStr, byte[].class, long.class, int.class, int.class) {
@@ -164,21 +153,21 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
-                return arrayUtilsRegionEquals(metaAccess, graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Byte, JavaKind.Byte, JavaKind.Byte);
+                return arrayUtilsRegionEquals(graph.getMetaAccess(), graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Byte, JavaKind.Byte, JavaKind.Byte);
             }
         });
         r.register(new InvocationPlugin("stubRegionEqualsS2S1", byte[].class, long.class, byte[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
-                return arrayUtilsRegionEquals(metaAccess, graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Byte, JavaKind.Char, JavaKind.Byte);
+                return arrayUtilsRegionEquals(graph.getMetaAccess(), graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Byte, JavaKind.Char, JavaKind.Byte);
             }
         });
         r.register(new InvocationPlugin("stubRegionEqualsS2", char[].class, long.class, char[].class, long.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext graph, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode arrayA, ValueNode offsetA, ValueNode arrayB, ValueNode offsetB, ValueNode length) {
-                return arrayUtilsRegionEquals(metaAccess, graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Char, JavaKind.Char, JavaKind.Char);
+                return arrayUtilsRegionEquals(graph.getMetaAccess(), graph, arrayA, offsetA, arrayB, offsetB, length, JavaKind.Char, JavaKind.Char, JavaKind.Char);
             }
         });
     }
@@ -212,16 +201,7 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
             throw GraalError.shouldNotReachHere();
         }
         // TruffleString stores strides in log2
-        switch (param.asJavaConstant().asInt()) {
-            case 0:
-                return S1;
-            case 1:
-                return S2;
-            case 2:
-                return S4;
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
+        return StrideUtil.log2ToStride(param.asJavaConstant().asInt());
     }
 
     private static boolean asBoolean(ValueNode param) {
@@ -272,9 +252,9 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         return LocationIdentity.any();
     }
 
-    private static void registerTStringPlugins(AMD64 architecture, InvocationPlugins plugins, MetaAccessProvider metaAccess, Replacements replacements) {
-        final ResolvedJavaType tStringOps = getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.strings.TStringOps");
-        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, new InvocationPlugins.ResolvedJavaSymbol(tStringOps), replacements);
+    private static void registerTStringPlugins(AMD64 architecture, InvocationPlugins plugins, Replacements replacements) {
+        plugins.registerIntrinsificationPredicate(t -> t.getName().equals("Lcom/oracle/truffle/api/strings/TStringOps;"));
+        InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.api.strings.TStringOps", replacements);
 
         r.register(new InvocationPlugin("runIndexOfAny1", Node.class, Object.class, long.class, int.class, int.class, boolean.class, int.class, int.class) {
             @Override
@@ -314,43 +294,60 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         });
 
         r.register(new InvocationPlugin("runRegionEqualsWithStride", Node.class,
-                        Object.class, long.class, int.class, boolean.class,
-                        Object.class, long.class, int.class, boolean.class, int.class) {
+                        Object.class, long.class, boolean.class,
+                        Object.class, long.class, boolean.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                            ValueNode arrayA, ValueNode offsetA, ValueNode strideA, ValueNode isNativeA,
-                            ValueNode arrayB, ValueNode offsetB, ValueNode strideB, ValueNode isNativeB, ValueNode length) {
-                b.addPush(JavaKind.Boolean, new ArrayRegionEqualsNode(arrayA, offsetA, arrayB, offsetB, length,
-                                constantStrideParam(strideA),
-                                constantStrideParam(strideB),
-                                inferLocationIdentity(isNativeA, isNativeB, false)));
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
+                LocationIdentity locationIdentity = inferLocationIdentity(isNativeA, isNativeB, false);
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
+                    b.addPush(JavaKind.Boolean, new ArrayRegionEqualsNode(arrayA, offsetA, arrayB, offsetB, length,
+                                    StrideUtil.getConstantStrideA(directStubCallIndex),
+                                    StrideUtil.getConstantStrideB(directStubCallIndex),
+                                    locationIdentity));
+                } else {
+                    b.addPush(JavaKind.Boolean, new ArrayRegionEqualsNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, locationIdentity));
+                }
                 return true;
             }
         });
         r.register(new InvocationPlugin("runMemCmp", Node.class,
-                        Object.class, long.class, int.class, boolean.class,
-                        Object.class, long.class, int.class, boolean.class, int.class) {
+                        Object.class, long.class, boolean.class,
+                        Object.class, long.class, boolean.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                            ValueNode arrayA, ValueNode offsetA, ValueNode strideA, ValueNode isNativeA,
-                            ValueNode arrayB, ValueNode offsetB, ValueNode strideB, ValueNode isNativeB, ValueNode length) {
-                b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length,
-                                constantStrideParam(strideA),
-                                constantStrideParam(strideB),
-                                inferLocationIdentity(isNativeA, isNativeB, false)));
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
+                LocationIdentity locationIdentity = inferLocationIdentity(isNativeA, isNativeB, false);
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
+                    b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length,
+                                    StrideUtil.getConstantStrideA(directStubCallIndex),
+                                    StrideUtil.getConstantStrideB(directStubCallIndex),
+                                    locationIdentity));
+                } else {
+                    b.addPush(JavaKind.Int, new ArrayRegionCompareToNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, locationIdentity));
+                }
                 return true;
             }
         });
         r.register(new InvocationPlugin("runArrayCopy", Node.class,
-                        Object.class, long.class, int.class, boolean.class,
-                        Object.class, long.class, int.class, boolean.class, int.class) {
+                        Object.class, long.class, boolean.class,
+                        Object.class, long.class, boolean.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode location,
-                            ValueNode arrayA, ValueNode offsetA, ValueNode strideA, ValueNode isNativeA,
-                            ValueNode arrayB, ValueNode offsetB, ValueNode strideB, ValueNode isNativeB, ValueNode length) {
-                b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length,
-                                constantStrideParam(strideA),
-                                constantStrideParam(strideB)));
+                            ValueNode arrayA, ValueNode offsetA, ValueNode isNativeA,
+                            ValueNode arrayB, ValueNode offsetB, ValueNode isNativeB, ValueNode length, ValueNode dynamicStrides) {
+                if (dynamicStrides.isJavaConstant()) {
+                    int directStubCallIndex = dynamicStrides.asJavaConstant().asInt();
+                    b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length,
+                                    StrideUtil.getConstantStrideA(directStubCallIndex),
+                                    StrideUtil.getConstantStrideB(directStubCallIndex)));
+                } else {
+                    b.add(new ArrayCopyWithConversionsNode(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides));
+                }
                 return true;
             }
         });

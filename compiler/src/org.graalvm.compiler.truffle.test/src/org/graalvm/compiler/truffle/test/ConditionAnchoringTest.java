@@ -124,10 +124,9 @@ public class ConditionAnchoringTest extends GraalCompilerTest {
         assertThat(reads, hasCount(2 * ids + 1)); // 2 * ids id reads, 1 'field' access
 
         // float reads and canonicalize to give a chance to conditions to GVN
-        FloatingReadPhase floatingReadPhase = new FloatingReadPhase();
-        floatingReadPhase.apply(graph);
         CanonicalizerPhase canonicalizerPhase = createCanonicalizerPhase();
-        canonicalizerPhase.apply(graph, context);
+        FloatingReadPhase floatingReadPhase = new FloatingReadPhase(canonicalizerPhase);
+        floatingReadPhase.apply(graph, context);
 
         NodeIterable<FloatingReadNode> floatingReads = graph.getNodes().filter(FloatingReadNode.class);
         assertThat(floatingReads, hasCount(ids + 1)); // 1 id read, 1 'field' access

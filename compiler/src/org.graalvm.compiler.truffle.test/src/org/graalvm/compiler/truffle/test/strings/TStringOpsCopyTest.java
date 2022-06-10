@@ -25,23 +25,20 @@
 package org.graalvm.compiler.truffle.test.strings;
 
 import java.util.ArrayList;
+import java.util.List;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
 @RunWith(Parameterized.class)
 public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsNode> {
 
     @Parameters(name = "{index}: args: {1}, {2}, {3}, {4}, {5}")
-    public static Iterable<Object[]> data() {
+    public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         int offsetBytes = 20;
         int contentLength = 129;
@@ -89,12 +86,12 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
         return ret;
     }
 
-    private final Object arrayA;
-    private final int offsetA;
-    private final int strideA;
-    private final int offsetB;
-    private final int strideB;
-    private final int lengthCPY;
+    final Object arrayA;
+    final int offsetA;
+    final int strideA;
+    final int offsetB;
+    final int strideB;
+    final int lengthCPY;
 
     public TStringOpsCopyTest(
                     Object arrayA,
@@ -110,7 +107,7 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
     }
 
     @Test
-    public void testCopy() throws ClassNotFoundException {
+    public void testCopy() {
         ArgSupplier arrayB = () -> new byte[128 + offsetB + (lengthCPY << strideB) + 128];
         test(getArrayCopyWithStride(), null, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
         if (strideA == 1) {
@@ -118,6 +115,11 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
         } else if (strideA == 2) {
             test(getArrayCopyWithStrideIB(), null, DUMMY_LOCATION, toIntArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
         }
+    }
+
+    @Override
+    protected void checkIntrinsicNode(ArrayCopyWithConversionsNode node) {
+        Assert.assertTrue(node.getDirectStubCallIndex() < 0);
     }
 
     private static char[] toCharArray(byte[] array) {
@@ -134,13 +136,5 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
             ret[i] = (char) readValue(array, 2, i);
         }
         return ret;
-    }
-
-    @Override
-    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        if (method.getName().equals("arraycopyWithStrideIntl")) {
-            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
-        }
-        return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 }
