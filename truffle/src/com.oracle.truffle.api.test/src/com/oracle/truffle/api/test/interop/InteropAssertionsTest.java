@@ -52,8 +52,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.interop.StopIterationException;
-import com.oracle.truffle.api.interop.UnknownKeyException;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -64,7 +62,9 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -272,6 +272,8 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         Supplier<Object> getMetaSimpleName;
         Function<Object, Boolean> isMetaInstance;
         boolean isMetaObject;
+        boolean hasMetaParents;
+        Supplier<Object> getMetaParents;
 
         @ExportMessage
         boolean isMetaObject() {
@@ -300,6 +302,19 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
                 throw UnsupportedMessageException.create();
             }
             return isMetaInstance.apply(instance);
+        }
+
+        @ExportMessage
+        boolean hasMetaParents() {
+            return hasMetaParents;
+        }
+
+        @ExportMessage
+        final Object getMetaParents() throws UnsupportedMessageException {
+            if (!hasMetaParents || getMetaParents == null) {
+                throw UnsupportedMessageException.create();
+            }
+            return getMetaParents.get();
         }
 
     }
@@ -427,6 +442,59 @@ public class InteropAssertionsTest extends InteropLibraryBaseTest {
         assertTrue(l.isMetaObject(v));
         assertSame(testQualifiedName, l.getMetaQualifiedName(v));
         assertSame(testSimpleName, l.getMetaSimpleName(v));
+    }
+
+    @Test
+    public void testMetaParents() throws UnsupportedMessageException {
+        GetMetaObjectTest instance = new GetMetaObjectTest();
+        MetaObjectTest v = new MetaObjectTest();
+        MetaObjectTest parent = new MetaObjectTest();
+        InteropLibrary l = createLibrary(InteropLibrary.class, v);
+
+        v.isMetaObject = false;
+        v.isMetaInstance = null;
+        v.getMetaQualifiedName = null;
+        v.getMetaSimpleName = null;
+        v.hasMetaParents = false;
+        v.getMetaParents = null;
+        assertFalse(l.hasMetaParents(v));
+        assertFails(() -> l.getMetaParents(v), UnsupportedMessageException.class);
+
+        v.isMetaObject = true;
+        v.isMetaInstance = (o) -> o == instance;
+        v.getMetaQualifiedName = () -> "testQualifiedName";
+        v.getMetaSimpleName = () -> "testSimpleName";
+        v.hasMetaParents = true;
+        v.getMetaParents = () -> parent;
+        assertTrue(l.hasMetaParents(v));
+        assertEquals(parent, l.getMetaParents(v));
+
+        v.isMetaObject = true;
+        v.isMetaInstance = (o) -> o == instance;
+        v.getMetaQualifiedName = () -> "testQualifiedName";
+        v.getMetaSimpleName = () -> "testSimpleName";
+        v.hasMetaParents = false;
+        v.getMetaParents = () -> parent;
+        assertFalse(l.hasMetaParents(v));
+        assertFails(() -> l.getMetaParents(v), UnsupportedMessageException.class);
+
+        v.isMetaObject = true;
+        v.isMetaInstance = (o) -> o == instance;
+        v.getMetaQualifiedName = () -> "testQualifiedName";
+        v.getMetaSimpleName = () -> "testSimpleName";
+        v.hasMetaParents = true;
+        v.getMetaParents = null;
+        assertTrue(l.hasMetaParents(v));
+        assertFails(() -> l.getMetaParents(v), AssertionError.class);
+
+        v.isMetaObject = false;
+        v.isMetaInstance = (o) -> o == instance;
+        v.getMetaQualifiedName = () -> "testQualifiedName";
+        v.getMetaSimpleName = () -> "testSimpleName";
+        v.hasMetaParents = true;
+        v.getMetaParents = () -> parent;
+        assertFails(() -> l.hasMetaParents(v), AssertionError.class);
+        assertFails(() -> l.getMetaParents(v), AssertionError.class);
     }
 
     @FunctionalInterface

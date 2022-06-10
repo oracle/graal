@@ -59,7 +59,6 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.proxy.Proxy;
 
@@ -74,6 +73,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -1173,7 +1173,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static float getBufferFloatBoundary(ByteBuffer buffer, int index) {
         return buffer.getFloat(index);
     }
@@ -1210,7 +1210,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBufferFloatBoundary(ByteBuffer buffer, int index, float value) {
         buffer.putFloat(index, value);
     }
@@ -1241,7 +1241,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static double getBufferDoubleBoundary(ByteBuffer buffer, int index) {
         return buffer.getDouble(index);
     }
@@ -1278,7 +1278,7 @@ final class HostObject implements TruffleObject {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static void putBufferDoubleBoundary(ByteBuffer buffer, int index, double value) {
         buffer.putDouble(index, value);
     }
@@ -2190,6 +2190,68 @@ final class HostObject implements TruffleObject {
         } else {
             error.enter();
             throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean hasMetaParents() {
+        return isClass() && (asClass().getSuperclass() != null || asClass().getInterfaces().length > 0);
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaParents() throws UnsupportedMessageException {
+        if (!hasMetaParents()) {
+            throw UnsupportedMessageException.create();
+        }
+        Class<?> superClass = asClass().getSuperclass();
+        Class<?>[] interfaces = asClass().getInterfaces();
+        HostObject[] metaObjects = new HostObject[superClass == null ? interfaces.length : interfaces.length + 1];
+
+        int i = 0;
+        if (superClass != null) {
+            metaObjects[i++] = HostObject.forClass(superClass, context);
+        }
+        for (int j = 0; j < interfaces.length; j++) {
+            metaObjects[i++] = HostObject.forClass(interfaces[j], context);
+        }
+        return new TypesArray(metaObjects);
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class TypesArray implements TruffleObject {
+
+        @CompilationFinal(dimensions = 1) private final HostObject[] types;
+
+        TypesArray(HostObject[] types) {
+            this.types = types;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return types.length;
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return 0 <= idx && idx < types.length;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                        @Cached BranchProfile error) throws InvalidArrayIndexException {
+            if (!isArrayElementReadable(idx)) {
+                error.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+            return types[(int) idx];
         }
     }
 

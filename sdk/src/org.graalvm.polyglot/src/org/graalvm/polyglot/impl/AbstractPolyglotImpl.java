@@ -1045,6 +1045,10 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract boolean isMetaInstance(Object context, Object receiver, Object instance);
 
+        public abstract boolean hasMetaParents(Object context, Object receiver);
+
+        public abstract Value getMetaParents(Object context, Object receiver);
+
         public abstract boolean equalsImpl(Object context, Object receiver, Object obj);
 
         public abstract int hashCodeImpl(Object context, Object receiver);
