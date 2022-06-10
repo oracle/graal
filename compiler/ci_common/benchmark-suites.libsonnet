@@ -4,23 +4,25 @@
   local bc = (import '../../bench-common.libsonnet'),
   local cc = (import 'compiler-common.libsonnet'),
 
-  local uniq_key(o) = o['suite'],
+  local _suite_key(a) = a['suite'],
+  local unique_suites(arr) = std.set(arr, keyF=_suite_key),
+
   // convenient sets of benchmark suites for easy reuse
   groups:: {
-    open_suites:: std.set([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance, $.renaissance_0_13], keyF=uniq_key),
-    spec_suites:: std.set([$.specjvm2008, $.specjbb2015], keyF=uniq_key),
-    legacy_and_secondary_suites:: std.set([$.renaissance_legacy], keyF=uniq_key),
-    jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
-    graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
-    special_suites:: std.set([$.renaissance_0_10, $.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine], keyF=uniq_key),
-    microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
+    open_suites:: unique_suites([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance]),
+    spec_suites:: unique_suites([$.specjvm2008, $.specjbb2015]),
+    legacy_and_secondary_suites:: unique_suites([$.renaissance_0_11, $.renaissance_legacy]),
+    jmh_micros_suites:: unique_suites([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist]),
+    graal_internals_suites:: unique_suites([$.micros_graal_whitebox]),
+    special_suites:: unique_suites([$.renaissance, $.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine]),
+    microservice_suites:: unique_suites([$.microservice_benchmarks]),
 
-    main_suites:: std.set([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
-    all_suites:: std.set(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
+    main_suites:: unique_suites([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites),
+    all_suites:: unique_suites(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites),
 
-    weekly_forks_suites:: std.set([$.renaissance_0_13] + self.main_suites, keyF=uniq_key),
-    profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=uniq_key),
-    all_but_main_suites::     std.setDiff(self.all_suites, self.main_suites, keyF=uniq_key),
+    weekly_forks_suites:: self.main_suites,
+    profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=_suite_key),
+    all_but_main_suites:: std.setDiff(self.all_suites, self.main_suites, keyF=_suite_key),
   },
 
   // suite definitions
@@ -133,13 +135,7 @@
 
   renaissance: self.renaissance_template(),
 
-  renaissance_0_10: self.renaissance_template(suite_version="0.10.0", suite_name="renaissance-0-10", max_jdk_version=11) + {
-    environment+: {
-      "SPARK_LOCAL_IP": "127.0.0.1"
-    }
-  },
-
-  renaissance_0_13: self.renaissance_template(suite_version="0.13.0", suite_name="renaissance-0-13", max_jdk_version=11) + {
+  renaissance_0_11: self.renaissance_template(suite_version="0.11.0", suite_name="renaissance-0-11", max_jdk_version=11) + {
     environment+: {
       "SPARK_LOCAL_IP": "127.0.0.1"
     }
