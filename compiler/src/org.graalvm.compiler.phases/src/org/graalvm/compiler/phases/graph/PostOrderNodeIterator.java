@@ -40,7 +40,6 @@ import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
@@ -82,7 +81,7 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
 
         do {
             if (current instanceof InvokeWithExceptionNode) {
-                invoke((Invoke) current);
+                invokeWithException((InvokeWithExceptionNode) current);
                 queueSuccessors(current, null);
                 current = nextQueuedNode();
             } else if (current instanceof LoopBeginNode) {
@@ -227,13 +226,17 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         node(loopEnd);
     }
 
+    /**
+     * @return The successors of this node. This determines what will be visited after this node. If
+     *         {@code null} is returned, then all of the node's successors will be visited.
+     */
     protected Set<Node> controlSplit(ControlSplitNode controlSplit) {
         node(controlSplit);
         return null;
     }
 
-    protected void invoke(Invoke invoke) {
-        node(invoke.asFixedNode());
+    protected void invokeWithException(InvokeWithExceptionNode invoke) {
+        node(invoke);
     }
 
     protected void finished() {
