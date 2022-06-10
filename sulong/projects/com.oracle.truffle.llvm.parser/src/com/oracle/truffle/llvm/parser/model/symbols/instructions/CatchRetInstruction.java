@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,36 +29,47 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 
-/**
- * Placeholder for operand bundles. For now, we just record their presence. Currently the only place
- * where we support operand bundles is the llvm.assume builtin, and there we ignore its contents.
- */
-public class OperandBundle {
-    private final String tag;
-    private final Type[] argTypes;
-    private final int[] argValues;
+public final class CatchRetInstruction extends VoidInstruction implements TerminatingInstruction {
 
-    public OperandBundle(String tag, Type[] argTypes, int[] argValues) {
-        this.tag = tag;
-        this.argTypes = argTypes;
-        this.argValues = argValues;
+    private SymbolImpl from;
+    private final InstructionBlock unwindSuccessor;
+
+    private CatchRetInstruction(InstructionBlock unwindSuccessor) {
+        this.unwindSuccessor = unwindSuccessor;
     }
 
-    public boolean isFunclet() {
-        return "funclet".equals(tag);
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+        if (from == oldValue) {
+            from = newValue;
+        }
     }
 
-    Type[] getArgTypes() {
-        return argTypes;
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
     }
 
-    int[] getArgValues() {
-        return argValues;
+    public static CatchRetInstruction generate(SymbolTable table, int fromIndex, InstructionBlock unwindSuccessor) {
+        CatchRetInstruction l = new CatchRetInstruction(unwindSuccessor);
+        l.from = table.getForwardReferencedOrNull(fromIndex, l);
+        return l;
     }
 
-    public String getTag() {
-        return tag;
+    @Override
+    public int getSuccessorCount() {
+        return unwindSuccessor == null ? 0 : 1;
+    }
+
+    @Override
+    public InstructionBlock getSuccessor(int index) {
+        assert unwindSuccessor != null;
+        assert index == 0;
+        return unwindSuccessor;
     }
 }

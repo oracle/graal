@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,36 +29,51 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.instructions;
 
+import com.oracle.truffle.llvm.parser.model.SymbolImpl;
+import com.oracle.truffle.llvm.parser.model.SymbolTable;
+import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-/**
- * Placeholder for operand bundles. For now, we just record their presence. Currently the only place
- * where we support operand bundles is the llvm.assume builtin, and there we ignore its contents.
- */
-public class OperandBundle {
-    private final String tag;
+public final class CleanupPadInstruction extends ValueInstruction {
+
+    private SymbolImpl value;
+    private SymbolImpl[] clauseSymbols;
     private final Type[] argTypes;
-    private final int[] argValues;
 
-    public OperandBundle(String tag, Type[] argTypes, int[] argValues) {
-        this.tag = tag;
+    private CleanupPadInstruction(Type[] argTypes) {
+        super(MetaType.TOKEN);
         this.argTypes = argTypes;
-        this.argValues = argValues;
     }
 
-    public boolean isFunclet() {
-        return "funclet".equals(tag);
+    public SymbolImpl[] getClauseSymbols() {
+        return clauseSymbols;
     }
 
-    Type[] getArgTypes() {
+    public Type[] getArgTypes() {
         return argTypes;
     }
 
-    int[] getArgValues() {
-        return argValues;
+    @Override
+    public void replace(SymbolImpl oldValue, SymbolImpl newValue) {
+        if (value == oldValue) {
+            value = newValue;
+        }
     }
 
-    public String getTag() {
-        return tag;
+    @Override
+    public void accept(SymbolVisitor visitor) {
+        visitor.visit(this);
+    }
+
+    public static CleanupPadInstruction generate(SymbolTable table, int index, Type[] argTypes, int[] argValues) {
+        CleanupPadInstruction l = new CleanupPadInstruction(argTypes);
+        SymbolImpl[] clauseSymbols = new SymbolImpl[argValues.length];
+        for (int i = 0; i < argValues.length; i++) {
+            clauseSymbols[i] = table.getForwardReferenced(argValues[i], l);
+        }
+        l.value = table.getForwardReferencedOrNull(index, l);
+        l.clauseSymbols = clauseSymbols;
+        return l;
     }
 }

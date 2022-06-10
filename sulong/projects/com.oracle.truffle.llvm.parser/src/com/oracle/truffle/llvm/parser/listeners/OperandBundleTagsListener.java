@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,38 +27,25 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.model.symbols.instructions;
+package com.oracle.truffle.llvm.parser.listeners;
 
-import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.parser.scanner.Block;
+import com.oracle.truffle.llvm.parser.scanner.RecordBuffer;
 
-/**
- * Placeholder for operand bundles. For now, we just record their presence. Currently the only place
- * where we support operand bundles is the llvm.assume builtin, and there we ignore its contents.
- */
-public class OperandBundle {
-    private final String tag;
-    private final Type[] argTypes;
-    private final int[] argValues;
+public class OperandBundleTagsListener implements ParserListener {
+    private final OperandBundleTags tags;
 
-    public OperandBundle(String tag, Type[] argTypes, int[] argValues) {
-        this.tag = tag;
-        this.argTypes = argTypes;
-        this.argValues = argValues;
+    public OperandBundleTagsListener(OperandBundleTags tags) {
+        this.tags = tags;
     }
 
-    public boolean isFunclet() {
-        return "funclet".equals(tag);
+    @Override
+    public ParserListener enter(Block block) {
+        return ParserListener.super.enter(block);
     }
 
-    Type[] getArgTypes() {
-        return argTypes;
-    }
-
-    int[] getArgValues() {
-        return argValues;
-    }
-
-    public String getTag() {
-        return tag;
+    @Override
+    public void record(RecordBuffer recordBuffer) {
+        tags.addTag(recordBuffer.readString());
     }
 }

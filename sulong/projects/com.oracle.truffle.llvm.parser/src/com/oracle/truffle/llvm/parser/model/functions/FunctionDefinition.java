@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
+import com.oracle.truffle.llvm.parser.listeners.OperandBundleTags;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
 import com.oracle.truffle.llvm.parser.metadata.MDString;
 import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
@@ -64,6 +65,7 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     public static final InstructionBlock[] EMPTY = new InstructionBlock[0];
 
     private final List<FunctionParameter> parameters = new ArrayList<>();
+    private final OperandBundleTags operandBundleTags;
     private final Visibility visibility;
 
     private List<MDAttachment> mdAttachments = null;
@@ -72,18 +74,23 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;
 
-    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index) {
+    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index, OperandBundleTags operandBundleTags) {
         super(type, name, linkage, paramAttr, index);
         this.visibility = visibility;
+        this.operandBundleTags = operandBundleTags;
     }
 
-    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr, index);
+    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index, OperandBundleTags operandBundleTags) {
+        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr, index, operandBundleTags);
     }
 
     @Override
     public boolean hasAttachedMetadata() {
         return mdAttachments != null;
+    }
+
+    public OperandBundleTags getOperandBundleTags() {
+        return operandBundleTags;
     }
 
     @Override
