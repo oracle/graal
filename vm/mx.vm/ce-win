@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/compiler,/regex,/sdk,/substratevm,/tools,/truffle
 COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,lg,lsp,nfi-libffi,poly,polynative,pro,rgx,sdk,tfl,tflm
-NATIVE_IMAGES=lib:jvmcicompiler
+NATIVE_IMAGES=gu,lib:jvmcicompiler
 DISABLE_INSTALLABLES=False
