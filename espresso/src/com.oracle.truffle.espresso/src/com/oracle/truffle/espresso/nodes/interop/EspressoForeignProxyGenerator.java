@@ -761,7 +761,7 @@ public class EspressoForeignProxyGenerator {
             this.handlerPc = handlerPc;
             this.catchType = catchType;
         }
-    };
+    }
 
     /**
      * A MethodInfo object contains information about a particular method in the class being
@@ -1713,6 +1713,7 @@ public class EspressoForeignProxyGenerator {
                 this.value = value;
             }
 
+            @Override
             public void write(DataOutputStream out) throws IOException {
                 if (value instanceof String) {
                     out.writeByte(CONSTANT_UTF8);
@@ -1773,6 +1774,7 @@ public class EspressoForeignProxyGenerator {
                 this.index1 = index1;
             }
 
+            @Override
             public void write(DataOutputStream out) throws IOException {
                 out.writeByte(tag);
                 out.writeShort(index0);
@@ -1787,10 +1789,12 @@ public class EspressoForeignProxyGenerator {
                 }
             }
 
+            @Override
             public int hashCode() {
                 return tag + index0 + index1;
             }
 
+            @Override
             public boolean equals(Object obj) {
                 if (obj instanceof ConstantPool.IndirectEntry) {
                     ConstantPool.IndirectEntry other = (ConstantPool.IndirectEntry) obj;

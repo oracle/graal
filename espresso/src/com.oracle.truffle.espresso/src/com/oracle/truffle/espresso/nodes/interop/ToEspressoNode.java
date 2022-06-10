@@ -28,6 +28,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -90,6 +91,51 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     static boolean isEspressoException(Object object) {
         return object instanceof EspressoException;
+    }
+
+    static boolean isBoxedPrimitive(Object obj) {
+        return obj instanceof Number || obj instanceof Character || obj instanceof Boolean;
+    }
+
+    static boolean isForeignException(Klass klass) {
+        Meta meta = klass.getMeta();
+        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
+    }
+
+    static boolean isIntegerCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Integer);
+    }
+
+    static boolean isBooleanCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Boolean);
+    }
+
+    static boolean isByteCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Byte);
+    }
+
+    static boolean isShortCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Short);
+    }
+
+    static boolean isCharacterCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Character);
+    }
+
+    static boolean isLongCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Long);
+    }
+
+    static boolean isFloatCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Float);
+    }
+
+    static boolean isDoubleCompatible(Klass klass) {
+        return klass.isAssignableFrom(klass.getMeta().java_lang_Double);
+    }
+
+    static boolean isTypeMappingEnabled(Klass klass) {
+        return klass == klass.getMeta().java_lang_Object && klass.getContext().explicitTypeMappingsEnabled();
     }
 
     // endregion Specialization predicates
@@ -224,51 +270,6 @@ public abstract class ToEspressoNode extends EspressoNode {
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }
 
-    static boolean isBoxedPrimitive(Object obj) {
-        return obj instanceof Number || obj instanceof Character || obj instanceof Boolean;
-    }
-
-    static boolean isForeignException(Klass klass) {
-        Meta meta = klass.getMeta();
-        return meta.polyglot != null /* polyglot enabled */ && meta.polyglot.ForeignException.equals(klass);
-    }
-
-    static boolean isIntegerCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Integer);
-    }
-
-    static boolean isBooleanCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Boolean);
-    }
-
-    static boolean isByteCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Byte);
-    }
-
-    static boolean isShortCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Short);
-    }
-
-    static boolean isCharacterCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Character);
-    }
-
-    static boolean isLongCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Long);
-    }
-
-    static boolean isFloatCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Float);
-    }
-
-    static boolean isDoubleCompatible(Klass klass) {
-        return klass.isAssignableFrom(klass.getMeta().java_lang_Double);
-    }
-
-    static boolean isTypeMappingEnabled(Klass klass) {
-        return klass == klass.getMeta().java_lang_Object && klass.getContext().explicitTypeMappingsEnabled();
-    }
-
     @Specialization(guards = {"isIntegerCompatible(klass)"})
     Object doHostInteger(Integer value, @SuppressWarnings("unused") ObjectKlass klass) {
         return getMeta().boxInteger(value);
@@ -400,7 +401,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
     }
 
-    private Object getMetaObjectOrThrow(Object value, InteropLibrary interop) throws ClassCastException {
+    private static Object getMetaObjectOrThrow(Object value, InteropLibrary interop) throws ClassCastException {
         if (interop.isMetaObject(value)) {
             return value;
         } else if (interop.hasMetaObject(value)) {
@@ -416,6 +417,11 @@ public abstract class ToEspressoNode extends EspressoNode {
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isAbstract()", "!klass.isInterface()"})
     Object doForeignAbstract(Object value, ObjectKlass klass,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
+    }
+
+    @Fallback
+    Object doUnsupportedType(Object value, Klass klass) throws UnsupportedTypeException {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
