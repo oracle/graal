@@ -185,6 +185,7 @@ public class NativeImage {
         }
     }
 
+    final CmdLineOptionHandler cmdLineOptionHandler;
     final DefaultOptionHandler defaultOptionHandler;
     final APIOptionHandler apiOptionHandler;
 
@@ -719,6 +720,8 @@ public class NativeImage {
         /* Discover supported MacroOptions */
         optionRegistry = new MacroOption.Registry();
 
+        cmdLineOptionHandler = new CmdLineOptionHandler(this);
+
         /* Default handler needs to be first */
         defaultOptionHandler = new DefaultOptionHandler(this);
         registerOptionHandler(defaultOptionHandler);
@@ -1071,7 +1074,7 @@ public class NativeImage {
                                 imageBuilderArgs.add(oH(SubstrateOptions.Name, "image-name from module-name") + mainClassModule.toLowerCase());
                             } else {
                                 /* Although very unlikely, report missing image-name if needed. */
-                                throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                                throw showError("Missing image-name. Use -o <imagename> to provide one.");
                             }
                         }
                     }
@@ -1474,23 +1477,34 @@ public class NativeImage {
         }
 
         List<String> apply(boolean strict) {
-            List<String> leftoverArgs = new ArrayList<>();
+
+            ArgumentQueue queue = new ArgumentQueue(args.argumentOrigin);
             while (!args.isEmpty()) {
+                int numArgs = args.size();
+                if (cmdLineOptionHandler.consume(args)) {
+                    assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + cmdLineOptionHandler.getClass().getName();
+                } else {
+                    queue.add(args.poll());
+                }
+            }
+
+            List<String> leftoverArgs = new ArrayList<>();
+            while (!queue.isEmpty()) {
                 boolean consumed = false;
                 for (int index = optionHandlers.size() - 1; index >= 0; --index) {
                     OptionHandler<? extends NativeImage> handler = optionHandlers.get(index);
-                    int numArgs = args.size();
-                    if (handler.consume(args)) {
-                        assert args.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
+                    int numArgs = queue.size();
+                    if (handler.consume(queue)) {
+                        assert queue.size() < numArgs : "OptionHandler pretends to consume argument(s) but isn't: " + handler.getClass().getName();
                         consumed = true;
                         break;
                     }
                 }
                 if (!consumed) {
                     if (strict) {
-                        showError("Property 'Args' contains invalid entry '" + args.peek() + "'");
+                        showError("Property 'Args' contains invalid entry '" + queue.peek() + "'");
                     } else {
-                        leftoverArgs.add(args.poll());
+                        leftoverArgs.add(queue.poll());
                     }
                 }
             }
@@ -1631,7 +1645,7 @@ public class NativeImage {
     }
 
     boolean useDebugAttach() {
-        return defaultOptionHandler.useDebugAttach;
+        return cmdLineOptionHandler.useDebugAttach;
     }
 
     protected void setDryRun(boolean val) {
