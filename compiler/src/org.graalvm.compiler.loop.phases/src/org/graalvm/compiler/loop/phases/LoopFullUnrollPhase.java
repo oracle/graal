@@ -49,14 +49,18 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
         @Option(help = "", type = OptionType.Expert)
         public static final OptionKey<Integer> FullUnrollMaxApplication = new OptionKey<>(60);
 
-        @Option(help = "NodeSize for small graphs, i.e., graphs for which we allow large unrolling code size increases.", type = OptionType.Expert)
-        public static final OptionKey<Integer> FullUnrollSmallGraphs = new OptionKey<>(2000);
+        @Option(help = "The threshold in terms of code size for a graph to be considered small for the purpose of full unrolling. "
+                        + "Applied in conjunction with the FullUnrollCodeSizeBudgetFactorForSmallGraphs and "
+                        + "FullUnrollCodeSizeBudgetFactorForLargeGraphs options.", type = OptionType.Expert)
+        public static final OptionKey<Integer> FullUnrollSmallGraphThreshold = new OptionKey<>(2000);
 
-        @Option(help = "Maximum code size budget in NodeSize for small graphs. Multiplied by the graph size.", type = OptionType.Expert)
-        public static final OptionKey<Double> FullUnrollCodeSizeBudgetSmallGraphs = new OptionKey<>(5D);
+        @Option(help = "Maximum factor by which full unrolling can increase code size for small graphs. "
+                        + "The FullUnrollSmallGraphThreshold option determines which graphs are small", type = OptionType.Expert)
+        public static final OptionKey<Double> FullUnrollCodeSizeBudgetFactorForSmallGraphs = new OptionKey<>(5D);
 
-        @Option(help = "Maximum code size budget in NodeSize for large graphs. Multiplied by the graph size.", type = OptionType.Expert)
-        public static final OptionKey<Double> FullUnrollCodeSizeBudgetLargeGraphs = new OptionKey<>(2D);
+        @Option(help = "Maximum factor by which full unrolling can increase code size for large graphs. "
+                        + "The FullUnrollSmallGraphThreshold option determines which graphs are small", type = OptionType.Expert)
+        public static final OptionKey<Double> FullUnrollCodeSizeBudgetFactorForLargeGraphs = new OptionKey<>(2D);
         //@formatter:on
     }
 
@@ -91,13 +95,13 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                         if (getPolicies().shouldFullUnroll(loop)) {
                             if (graphSizeBefore == -1) {
                                 graphSizeBefore = NodeCostUtil.computeGraphSize(graph);
-                                final int smallGraphs = Options.FullUnrollSmallGraphs.getValue(graph.getOptions());
+                                final int smallGraphs = Options.FullUnrollSmallGraphThreshold.getValue(graph.getOptions());
                                 if (graphSizeBefore > smallGraphs) {
-                                    maxGraphSize = (int) (graphSizeBefore * Options.FullUnrollCodeSizeBudgetLargeGraphs.getValue(graph.getOptions()));
+                                    maxGraphSize = (int) (graphSizeBefore * Options.FullUnrollCodeSizeBudgetFactorForLargeGraphs.getValue(graph.getOptions()));
                                 } else {
-                                    maxGraphSize = (int) (graphSizeBefore * Options.FullUnrollCodeSizeBudgetSmallGraphs.getValue(graph.getOptions()));
+                                    maxGraphSize = (int) (graphSizeBefore * Options.FullUnrollCodeSizeBudgetFactorForSmallGraphs.getValue(graph.getOptions()));
                                     if (maxGraphSize > smallGraphs) {
-                                        maxGraphSize = (int) (smallGraphs * Options.FullUnrollCodeSizeBudgetLargeGraphs.getValue(graph.getOptions()));
+                                        maxGraphSize = (int) (smallGraphs * Options.FullUnrollCodeSizeBudgetFactorForLargeGraphs.getValue(graph.getOptions()));
                                     }
                                 }
                             }
