@@ -29,44 +29,18 @@
  */
 package com.oracle.truffle.llvm.parser.factories.inlineasm;
 
-import java.util.Collections;
-
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.llvm.asm.amd64.AsmFactory;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
-import com.oracle.truffle.llvm.runtime.IDGenerater;
-import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.LLVMIRFunction;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout.StructureTypeOffsets;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.runtime.nodes.literals.LLVMSimpleLiteralNode.LLVMManagedPointerLiteralNode;
-import com.oracle.truffle.llvm.runtime.nodes.others.LLVMUnsupportedInstructionNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
-
-    private static LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(NodeFactory factory, String asmExpression, LLVMParserException e) {
-        LLVMInlineAssemblyRootNode assemblyRoot;
-        String message = asmExpression + ": " + e.getMessage();
-        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
-        factory.addStackSlots(builder);
-        assemblyRoot = new LLVMInlineAssemblyRootNode(factory.getLanguage(), builder.build(), factory.createStackAccess(),
-                        Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
-        return assemblyRoot;
-    }
 
     @Override
     public LLVMExpressionNode getInlineAssemblerExpression(NodeFactory nodeFactory, String asmExpression, String asmFlags, LLVMExpressionNode[] args,
@@ -84,15 +58,10 @@ public class AMD64InlineAssemblyParser extends InlineAssemblyParserBase {
             assemblyRoot = InlineAssemblyParser.parseInlineAssembly(asmExpression,
                             new AsmFactory(nodeFactory.getLanguage(), argTypes, asmFlags, retType, offsets.getTypes(), offsets.getOffsets(), nodeFactory));
         } catch (LLVMParserException e) {
-            assemblyRoot = getLazyUnsupportedInlineRootNode(nodeFactory, asmExpression, e);
+            String message = asmExpression + ": " + e.getMessage();
+            assemblyRoot = getLazyUnsupportedInlineRootNode(nodeFactory, message);
         }
-        LLVMIRFunction function = new LLVMIRFunction(assemblyRoot.getCallTarget(), null);
-        LLVMFunction functionDetail = LLVMFunction.create("<asm>", function, new FunctionType(MetaType.UNKNOWN, 0, FunctionType.NOT_VARARGS), IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX,
-                        false, assemblyRoot.getName(), false);
-        // The function descriptor for the inline assembly does not require a language.
-        LLVMFunctionDescriptor asm = new LLVMFunctionDescriptor(functionDetail, new LLVMFunctionCode(functionDetail));
-        LLVMManagedPointerLiteralNode asmFunction = LLVMManagedPointerLiteralNode.create(LLVMManagedPointer.create(asm));
 
-        return LLVMCallNode.create(new FunctionType(MetaType.UNKNOWN, argTypes, FunctionType.NOT_VARARGS), asmFunction, args, false);
+        return getCallNodeFromAssemblyRoot(assemblyRoot, args, argTypes);
     }
 }

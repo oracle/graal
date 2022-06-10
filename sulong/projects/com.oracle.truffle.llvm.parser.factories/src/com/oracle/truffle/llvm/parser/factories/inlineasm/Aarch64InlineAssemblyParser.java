@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories.inlineasm;
 
 import com.oracle.truffle.llvm.runtime.NodeFactory;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -53,7 +52,8 @@ public class Aarch64InlineAssemblyParser extends InlineAssemblyParserBase {
             case "dmb ish":
                 return nodeFactory.createFenceExpression();
             default:
-                throw new LLVMParserException(String.format("AArch64 platform does not support inline assembly instruction: %s", unquotedExpression));
+                String message = String.format("AArch64 platform does not support inline assembly instruction: %s", unquotedExpression);
+                return getCallNodeFromAssemblyRoot(getLazyUnsupportedInlineRootNode(nodeFactory, message), args, argTypes);
         }
     }
 }
