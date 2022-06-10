@@ -44,6 +44,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `DynamicObjectFactory`, `LocationModifier`, `LocationFactory`, `LayoutFactory`
     * `IncompatibleLocationException`, `FinalLocationException`
 * GR-34894 Introduced `Location.isPrimitive()`, `Location.getConstantValue()`, and `Shape.makePropertyGetter(Object)`.
+* GR-39058 The Static Object Model offers preliminary support for field-based storage also on Native Image. 
 
 ## Version 22.1.0
 
