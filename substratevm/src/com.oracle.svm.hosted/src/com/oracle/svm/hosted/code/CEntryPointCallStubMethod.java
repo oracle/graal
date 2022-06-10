@@ -136,7 +136,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         if (entryPointData.getBuiltin() != CEntryPointData.DEFAULT_BUILTIN) {
-            return buildBuiltinGraph(debug, method, providers);
+            return buildBuiltinGraph(debug, method, providers, purpose);
         }
 
         UniverseMetaAccess metaAccess = (UniverseMetaAccess) providers.getMetaAccess();
@@ -209,19 +209,20 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         InvokeWithExceptionNode invoke = kit.startInvokeWithException(universeTargetMethod, invokeKind, kit.getFrameState(), invokeBci, invokeArgs);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
-        generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, providers, purpose, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
-        ValueNode returnValue = adaptReturnValue(method, providers, purpose, nativeLibraries, kit, invoke);
-
-        generateEpilogue(providers, kit);
-
-        kit.createReturn(returnValue, returnValue.getStackKind());
-
+        generateEpilogueAndReturn(method, providers, purpose, kit, invoke);
         return kit.finalizeGraph();
     }
 
-    private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {
+    private void generateEpilogueAndReturn(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
+        ValueNode returnValue = adaptReturnValue(method, providers, purpose, kit, value);
+        generateEpilogue(providers, kit);
+        kit.createReturn(returnValue, returnValue.getStackKind());
+    }
+
+    private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         ResolvedJavaMethod universeTargetMethod = unwrapMethodAndLookupInUniverse((UniverseMetaAccess) providers.getMetaAccess());
 
         UserError.guarantee(entryPointData.getPrologue() == CEntryPointData.DEFAULT_PROLOGUE,
@@ -291,7 +292,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
 
-        generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
+        generateExceptionHandler(method, providers, purpose, kit, exception, invoke.getStackKind());
         kit.endInvokeWithException();
 
         kit.createReturn(invoke, universeTargetMethod.getSignature().getReturnKind());
@@ -493,7 +494,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         return prologueValues;
     }
 
-    private void generateExceptionHandler(HostedProviders providers, SubstrateGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
+    private void generateExceptionHandler(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
             kit.appendStateSplitProxy(exception.stateAfter());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
@@ -529,9 +530,8 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             }
 
             /* The exception is handled, we can continue with the normal epilogue. */
-            generateEpilogue(providers, kit);
+            generateEpilogueAndReturn(method, providers, purpose, kit, returnValue);
 
-            kit.createReturn(returnValue, returnValue.getStackKind());
             kit.exceptionPart(); // fail-safe for exceptions in exception handler
             kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
             kit.append(new LoweredDeadEndNode());
@@ -539,13 +539,13 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         }
     }
 
-    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, NativeLibraries nativeLibraries, HostedGraphKit kit, ValueNode invokeValue) {
-
-        ValueNode returnValue = invokeValue;
+    private ValueNode adaptReturnValue(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ValueNode value) {
+        ValueNode returnValue = value;
         if (returnValue.getStackKind().isPrimitive()) {
             return returnValue;
         }
         JavaType returnType = method.getSignature().getReturnType(null);
+        NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
             // Always return enum values as a signed word because it should never be a problem if
@@ -554,7 +554,12 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
             CInterfaceEnumTool tool = new CInterfaceEnumTool(providers.getMetaAccess(), providers.getSnippetReflection());
             JavaKind cEnumReturnType = providers.getWordTypes().getWordKind();
             assert !cEnumReturnType.isUnsigned() : "requires correct representation of signed values";
-            returnValue = tool.createEnumValueInvoke(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
+            returnValue = tool.startEnumValueInvokeWithException(kit, (EnumInfo) typeInfo, cEnumReturnType, returnValue);
+            kit.exceptionPart();
+            kit.append(new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, kit.exceptionObject()));
+            kit.append(new LoweredDeadEndNode());
+            kit.endInvokeWithException();
+
         } else if (purpose != Purpose.ANALYSIS) {
             // for analysis test cases: abort only during compilation
             throw UserError.abort("Entry point method return types are restricted to primitive types, word types and enumerations (@%s): %s",
@@ -563,7 +568,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         return returnValue;
     }
 
-    private InvokeWithExceptionNode generateEpilogue(HostedProviders providers, SubstrateGraphKit kit) {
+    private void generateEpilogue(HostedProviders providers, SubstrateGraphKit kit) {
         Class<?> epilogueClass = entryPointData.getEpilogue();
         if (epilogueClass == NoEpilogue.class) {
             UserError.guarantee(Uninterruptible.Utils.isUninterruptible(targetMethod),
@@ -572,7 +577,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                             NoEpilogue.class.getSimpleName(),
                             Uninterruptible.class.getSimpleName(),
                             targetMethod);
-            return null;
+            return;
         }
         ResolvedJavaType epilogue = providers.getMetaAccess().lookupJavaType(epilogueClass);
         ResolvedJavaMethod[] epilogueMethods = epilogue.getDeclaredMethods();
@@ -580,6 +585,6 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                         "Epilogue class must declare exactly one static method without parameters: %s -> %s", targetMethod, epilogue);
         UserError.guarantee(Uninterruptible.Utils.isUninterruptible(epilogueMethods[0]),
                         "Epilogue method must be annotated with @%s: %s", Uninterruptible.class.getSimpleName(), epilogueMethods[0]);
-        return generatePrologueOrEpilogueInvoke(kit, epilogueMethods[0]);
+        generatePrologueOrEpilogueInvoke(kit, epilogueMethods[0]);
     }
 }
