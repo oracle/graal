@@ -92,7 +92,7 @@ public class OptimizationLog implements CompilationListener {
      */
     @NodeInfo(cycles = NodeCycles.CYCLES_IGNORED, size = NodeSize.SIZE_IGNORED, shortName = "Optimization", nameTemplate = "{p#eventName}")
     public static class OptimizationEntryImpl extends OptimizationTreeNode implements OptimizationEntry {
-        private static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
+        public static final NodeClass<OptimizationEntryImpl> TYPE = NodeClass.create(OptimizationEntryImpl.class);
         private final EconomicMap<String, Object> map;
         protected final String eventName;
 
@@ -119,6 +119,24 @@ public class OptimizationLog implements CompilationListener {
         public OptimizationEntry setProperty(String key, Object value) {
             map.put(key, value);
             return this;
+        }
+
+        /**
+         * Gets the name of the event that occurred, which describes this optimization entry.
+         * 
+         * @return the name of the event that occurred
+         */
+        public String getEventName() {
+            return eventName;
+        }
+
+        /**
+         * Gets the map representation of this optimization entry.
+         * 
+         * @return the map representation of this optimization entry
+         */
+        public EconomicMap<String, Object> getMap() {
+            return map;
         }
     }
 
@@ -168,6 +186,7 @@ public class OptimizationLog implements CompilationListener {
     public static class OptimizationPhaseScope extends OptimizationTreeNode implements DebugContext.CompilerPhaseScope {
         public static final NodeClass<OptimizationPhaseScope> TYPE = NodeClass.create(OptimizationPhaseScope.class);
         private final OptimizationLog optimizationLog;
+
         private final CharSequence phaseName;
         @Successor private NodeSuccessorList<OptimizationTreeNode> children = null;
 
@@ -224,6 +243,16 @@ public class OptimizationLog implements CompilationListener {
             }
             map.put("optimizations", optimizations);
             return map;
+        }
+
+        /**
+         * Gets child nodes (successors) in the graph, i.e., optimizations and phases triggered
+         * inside this phase.
+         * 
+         * @return child nodes (successors) in the graph
+         */
+        public NodeSuccessorList<OptimizationTreeNode> getChildren() {
+            return children;
         }
     }
 
@@ -419,6 +448,15 @@ public class OptimizationLog implements CompilationListener {
     public PartialEscapeLog getPartialEscapeLog() {
         assert partialEscapeLog != null;
         return partialEscapeLog;
+    }
+
+    /**
+     * Gets the tree of optimizations.
+     * 
+     * @return the tree of optimizations
+     */
+    public Graph getOptimizationTree() {
+        return optimizationTree;
     }
 
     /**
