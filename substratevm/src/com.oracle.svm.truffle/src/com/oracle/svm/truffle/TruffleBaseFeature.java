@@ -555,16 +555,18 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Inter
 
     private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
 
-    @SuppressWarnings("deprecation")
     private void initializeDynamicObjectLayouts(AnalysisType type) {
         if (type.isInstantiated()) {
             Class<?> javaClass = type.getJavaClass();
             if (DynamicObject.class.isAssignableFrom(javaClass) && dynamicObjectClasses.add(javaClass)) {
-                // Force layout initialization.
-                com.oracle.truffle.api.object.Layout.newLayout().type(javaClass.asSubclass(DynamicObject.class))
-                                .build();
+                initializeDynamicObjectLayoutImpl(javaClass);
             }
         }
+    }
+
+    private static void initializeDynamicObjectLayoutImpl(Class<?> javaClass) {
+        // Initialize DynamicObject layout info for every instantiated DynamicObject subclass.
+        invokeStaticMethod("com.oracle.truffle.object.LayoutImpl", "initializeDynamicObjectLayout", Collections.singleton(Class.class), javaClass);
     }
 
     private static void registerDynamicObjectFields(BeforeAnalysisAccessImpl config) {

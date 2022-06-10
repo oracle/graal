@@ -54,7 +54,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -73,7 +72,7 @@ abstract class CoreLocations {
     static final int OBJECT_SLOT_SIZE = 1;
     static final int MAX_DYNAMIC_FIELDS = 1000;
 
-    public interface TypedLocation extends com.oracle.truffle.api.object.TypedLocation {
+    public interface TypedLocation {
         Class<?> getType();
     }
 
@@ -259,7 +258,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (!canStore(value)) {
                 if (init) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -513,7 +512,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setLong(store, longValue(value), guard, init);
             } else {
@@ -625,7 +624,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setLong(store, longValue(value), guard, init);
             } else {
@@ -679,7 +678,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setLong(store, ((Long) value).longValue(), guard, init);
             } else {
@@ -800,7 +799,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setLongInternal(store, (int) value, guard);
             } else {
@@ -848,7 +847,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setDouble(store, doubleValue(value), guard, init);
             } else {
@@ -911,7 +910,7 @@ abstract class CoreLocations {
         }
 
         @Override
-        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws IncompatibleLocationException {
+        public final void set(DynamicObject store, Object value, boolean guard, boolean init) throws com.oracle.truffle.api.object.IncompatibleLocationException {
             if (canStore(value)) {
                 setBoolean(store, (boolean) value, guard, init);
             } else {

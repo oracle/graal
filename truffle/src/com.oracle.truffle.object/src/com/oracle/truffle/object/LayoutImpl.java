@@ -41,16 +41,13 @@
 package com.oracle.truffle.object;
 
 import java.lang.invoke.VarHandle;
-import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
@@ -72,16 +69,6 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         this.allowedImplicitCasts = implicitCastFlags;
     }
 
-    protected static int implicitCastFlags(EnumSet<ImplicitCast> allowedImplicitCasts) {
-        return (allowedImplicitCasts.contains(ImplicitCast.IntToDouble) ? INT_TO_DOUBLE_FLAG : 0) | (allowedImplicitCasts.contains(ImplicitCast.IntToLong) ? INT_TO_LONG_FLAG : 0);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public abstract DynamicObject newInstance(Shape shape);
-
-    protected abstract DynamicObject construct(Shape shape);
-
     protected abstract boolean isLegacyLayout();
 
     /** @since 0.17 or earlier */
@@ -90,29 +77,12 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
         return clazz;
     }
 
-    /** @since 0.17 or earlier */
-    @Override
-    public final Shape createShape(ObjectType objectType, Object sharedData) {
-        return createShape(objectType, sharedData, 0);
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public final Shape createShape(ObjectType objectType) {
-        return createShape(objectType, null);
-    }
-
-    @Override
-    public final Shape createShape(ObjectType objectType, Object sharedData, int flags) {
-        return newShape(objectType, sharedData, ShapeImpl.checkObjectFlags(flags), null);
-    }
-
     @Override
     protected final Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
         return newShape(dynamicType, sharedData, flags, null);
     }
 
-    protected abstract Shape newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
+    protected abstract ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption);
 
     /** @since 0.17 or earlier */
     public boolean isAllowedIntToDouble() {
@@ -138,7 +108,7 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
 
     /** @since 0.17 or earlier */
     @Override
-    public abstract Allocator createAllocator();
+    public abstract Shape.Allocator createAllocator();
 
     /** @since 0.17 or earlier */
     public LayoutStrategy getStrategy() {
@@ -158,6 +128,16 @@ public abstract class LayoutImpl extends com.oracle.truffle.api.object.Layout {
     static void resetNativeImageState() {
         assert TruffleOptions.AOT : "Only supported during image generation";
         ((CoreLayoutFactory) getFactory()).resetNativeImageState();
+    }
+
+    /**
+     * Preinitializes DynamicObject layouts for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    static void initializeDynamicObjectLayout(Class<?> dynamicObjectClass) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        ((CoreLayoutFactory) getFactory()).registerLayoutClass(dynamicObjectClass.asSubclass(DynamicObject.class));
     }
 
     @SuppressWarnings("static-method")

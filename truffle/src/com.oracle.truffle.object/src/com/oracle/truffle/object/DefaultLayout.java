@@ -45,9 +45,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -56,8 +56,6 @@ import org.graalvm.nativeimage.ImageInfo;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.CoreLocations.LongLocation;
 import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 
@@ -91,14 +89,12 @@ class DefaultLayout extends LayoutImpl {
         }
     }
 
-    public static LayoutImpl createCoreLayout(com.oracle.truffle.api.object.Layout.Builder builder) {
-        Class<? extends DynamicObject> type = getType(builder);
-        EnumSet<ImplicitCast> allowedImplicitCasts = getAllowedImplicitCasts(builder);
-        int implicitCastFlags = implicitCastFlags(allowedImplicitCasts);
+    static LayoutImpl createCoreLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
         return getOrCreateLayout(type, implicitCastFlags);
     }
 
     private static DefaultLayout getOrCreateLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
+        Objects.requireNonNull(type, "DynamicObject layout class");
         Key key = new Key(type, implicitCastFlags);
         DefaultLayout layout = LAYOUT_MAP.get(key);
         if (layout != null) {
@@ -109,14 +105,8 @@ class DefaultLayout extends LayoutImpl {
         return layout == null ? newLayout : layout;
     }
 
-    @Override
-    public DynamicObject newInstance(Shape shape) {
-        throw unsupported();
-    }
-
-    @Override
-    protected DynamicObject construct(Shape shape) {
-        throw unsupported();
+    static void registerLayoutClass(Class<? extends DynamicObject> type) {
+        createCoreLayout(type, 0);
     }
 
     @Override
@@ -130,7 +120,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    protected Shape newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption) {
+    protected ShapeImpl newShape(Object objectType, Object sharedData, int flags, Assumption singleContextAssumption) {
         return new ShapeBasic(this, sharedData, objectType, flags, singleContextAssumption);
     }
 
@@ -167,7 +157,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     @Override
-    public Allocator createAllocator() {
+    public ShapeImpl.BaseAllocator createAllocator() {
         LayoutImpl layout = this;
         return getStrategy().createAllocator(layout);
     }
