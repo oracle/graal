@@ -444,7 +444,7 @@ public abstract class PartialEvaluator {
      * Gets a closeable producer that will be used in a try-with-resources statement surrounding the
      * creation of encoded graphs. This can be used to ensure that the encoded graphs and its
      * dependencies can be persisted across compilations.
-     * 
+     *
      * The default supplier produces null, a no-op try-with-resources/scope.
      */
     protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
