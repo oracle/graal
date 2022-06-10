@@ -44,8 +44,12 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
     public static final int AUTO_SELECTION_PRIORITY = 2;
 
     public CommunityCompilerConfigurationFactory() {
-        super(NAME, AUTO_SELECTION_PRIORITY);
-        assert AUTO_SELECTION_PRIORITY > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
+        this(AUTO_SELECTION_PRIORITY);
+    }
+
+    protected CommunityCompilerConfigurationFactory(int priority) {
+        super(NAME, priority);
+        assert priority > EconomyCompilerConfigurationFactory.AUTO_SELECTION_PRIORITY;
     }
 
     @Override
@@ -54,7 +58,7 @@ public class CommunityCompilerConfigurationFactory extends CompilerConfiguration
     }
 
     @Override
-    public Instrumentation createInstrumentation(OptionValues options) {
+    public final Instrumentation createInstrumentation(OptionValues options) {
         return new DefaultInstrumentation();
     }
 }

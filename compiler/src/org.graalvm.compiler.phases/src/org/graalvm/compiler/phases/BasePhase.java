@@ -99,14 +99,15 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     private final CounterKey inputNodesCount;
 
     /**
+     * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of all
+     * graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     */
+    private final CounterKey edgeModificationCount;
+
+    /**
      * Records memory usage within {@link #apply(StructuredGraph, Object, boolean)}.
      */
     private final MemUseTrackerKey memUseTracker;
-
-    /** Lazy initialization to create pattern only when assertions are enabled. */
-    static class NamePatternHolder {
-        static final Pattern NAME_PATTERN = Pattern.compile("[A-Z][A-Za-z0-9]+");
-    }
 
     public static class BasePhaseStatistics {
         /**
@@ -126,6 +127,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         private final CounterKey inputNodesCount;
 
         /**
+         * Captures the change in {@linkplain Graph#getEdgeModificationCount() edges modified} of
+         * all graphs sent to {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+         */
+        private final CounterKey edgeModificationCount;
+
+        /**
          * Records memory usage within {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
          */
         private final MemUseTrackerKey memUseTracker;
@@ -135,6 +142,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
             executionCount = DebugContext.counter("PhaseCount_%s", clazz).doc("Number of phase executions.");
             memUseTracker = DebugContext.memUseTracker("PhaseMemUse_%s", clazz).doc("Memory allocated in phase.");
             inputNodesCount = DebugContext.counter("PhaseNodes_%s", clazz).doc("Number of nodes input to phase.");
+            edgeModificationCount = DebugContext.counter("PhaseEdgeModification_%s", clazz).doc("Graphs edges modified by a phase.");
         }
     }
 
@@ -155,6 +163,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         executionCount = statistics.executionCount;
         memUseTracker = statistics.memUseTracker;
         inputNodesCount = statistics.inputNodesCount;
+        edgeModificationCount = statistics.edgeModificationCount;
     }
 
     public final void apply(final StructuredGraph graph, final C context) {
@@ -198,29 +207,38 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     /**
-     * An extension point for subclasses, called at the start of
-     * {@link BasePhase#apply(StructuredGraph, Object, boolean)}.
+     * Similar to a {@link DebugCloseable} but the {@link #close} operation gets a {@link Throwable}
+     * argument indicating whether the call to {@link #run} completed normally or with an exception.
      */
-    protected void startApplyHook() {
+    public interface ApplyScope {
+        void close(Throwable t);
+    }
 
+    /**
+     * Return an {@link ApplyScope} which will surround all the work performed by the call to
+     * {@link #run} in {@link #apply(StructuredGraph, Object, boolean)}. This allows subclaseses to
+     * inject work which will performed before and after the application of this phase.
+     */
+    @SuppressWarnings("unused")
+    protected ApplyScope applyScope(StructuredGraph graph, C context) {
+        return null;
     }
 
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
-        startApplyHook();
-
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
         }
 
         DebugContext debug = graph.getDebug();
-        try (CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
+        try (DebugContext.Scope s = debug.scope(getName(), this);
+                        CompilerPhaseScope cps = getClass() != PhaseSuite.class ? debug.enterCompilerPhase(getName()) : null;
                         DebugCloseable a = timer.start(debug);
-                        DebugContext.Scope s = debug.scope(getClass(), this);
-                        DebugCloseable c = memUseTracker.start(debug);) {
+                        DebugCloseable c = memUseTracker.start(debug)) {
 
             int sizeBefore = 0;
+            int edgesBefore = graph.getEdgeModificationCount();
             Mark before = null;
             OptionValues options = graph.getOptions();
             boolean verifySizeContract = PhaseOptions.VerifyGraalPhasesSize.getValue(options) && checkContract();
@@ -234,8 +252,24 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 dumpedBefore = dumpBefore(graph, context, isTopLevel);
             }
             inputNodesCount.add(debug, graph.getNodeCount());
-            this.run(graph, context);
+
+            // This is a manual version of a try/resource pattern since the close operation might
+            // want to know whether the run call completed with an exception or not.
+            ApplyScope applyScope = applyScope(graph, context);
+            Throwable throwable = null;
+            try {
+                this.run(graph, context);
+            } catch (Throwable t) {
+                throwable = t;
+                throw t;
+            } finally {
+                if (applyScope != null) {
+                    applyScope.close(throwable);
+                }
+            }
+
             executionCount.increment(debug);
+            edgeModificationCount.add(debug, graph.getEdgeModificationCount() - edgesBefore);
             if (verifySizeContract) {
                 if (!before.isCurrent()) {
                     int sizeAfter = NodeCostUtil.computeGraphSize(graph);
@@ -320,8 +354,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    protected CharSequence getName() {
-        return new ClassTypeSequence(BasePhase.this.getClass());
+    public CharSequence getName() {
+        return new ClassTypeSequence(this.getClass());
     }
 
     protected abstract void run(StructuredGraph graph, C context);

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.util;
 
-import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -33,14 +33,98 @@ import org.graalvm.nativeimage.Platforms;
 
 import jdk.internal.module.Modules;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public final class ModuleSupport extends ModuleSupportBase {
+public final class ModuleSupport {
+
+    public static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
+    public static final String PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES = "org.graalvm.nativeimage.module.addmods";
+    public static final boolean modulePathBuild = isModulePathBuild();
+
     private ModuleSupport() {
     }
 
-    public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
-        Module declaringModule = declaringClass.getModule();
-        String packageName = declaringClass.getPackageName();
+    private static boolean isModulePathBuild() {
+        return !"false".equalsIgnoreCase(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public enum Access {
+        OPEN {
+            @Override
+            void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+                if (accessingModule != null) {
+                    if (declaringModule.isOpen(packageName, accessingModule)) {
+                        return;
+                    }
+                    Modules.addOpens(declaringModule, packageName, accessingModule);
+                } else {
+                    if (declaringModule.isOpen(packageName)) {
+                        return;
+                    }
+                    Modules.addOpensToAllUnnamed(declaringModule, packageName);
+                }
+            }
+        },
+        EXPORT {
+            @Override
+            void giveAccess(Module accessingModule, Module declaringModule, String packageName) {
+                if (accessingModule != null) {
+                    if (declaringModule.isExported(packageName, accessingModule)) {
+                        return;
+                    }
+                    Modules.addExports(declaringModule, packageName, accessingModule);
+                } else {
+                    if (declaringModule.isExported(packageName)) {
+                        return;
+                    }
+                    Modules.addExportsToAllUnnamed(declaringModule, packageName);
+                }
+            }
+        };
+
+        abstract void giveAccess(Module accessingModule, Module declaringModule, String packageName);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void accessModuleByClass(Access access, Class<?> accessingClass, Class<?> declaringClass) {
+        accessModuleByClass(access, accessingClass, declaringClass.getModule(), declaringClass.getPackageName());
+    }
+
+    @SuppressWarnings("serial")
+    public static final class ModuleSupportError extends Error {
+        private ModuleSupportError(String message) {
+            super(message);
+        }
+    }
+
+    /**
+     * Open or export packages {@code packageNames} in the module named {@code moduleName} to module
+     * of given {@code accessingClass}. If {@code accessingClass} is null packages are opened or
+     * exported to ALL-UNNAMED. If no packages are given, all packages of the module are opened or
+     * exported.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void accessPackagesToClass(Access access, Class<?> accessingClass, boolean optional, String moduleName, String... packageNames) {
+        Objects.requireNonNull(moduleName);
+        Optional<Module> module = ModuleLayer.boot().findModule(moduleName);
+        if (module.isEmpty()) {
+            if (optional) {
+                return;
+            }
+            String accessor = accessingClass != null ? "class " + accessingClass.getTypeName() : "ALL-UNNAMED";
+            String message = access.name().toLowerCase() + " of packages from module " + moduleName + " to " +
+                            accessor + " failed. No module named " + moduleName + " in boot layer.";
+            throw new ModuleSupportError(message);
+        }
+        Module declaringModule = module.get();
+        Objects.requireNonNull(packageNames);
+        Set<String> packages = packageNames.length > 0 ? Set.of(packageNames) : declaringModule.getPackages();
+        for (String packageName : packages) {
+            accessModuleByClass(access, accessingClass, declaringModule, packageName);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void accessModuleByClass(Access access, Class<?> accessingClass, Module declaringModule, String packageName) {
         Module namedAccessingModule = null;
         if (accessingClass != null) {
             Module accessingModule = accessingClass.getModule();
@@ -48,76 +132,6 @@ public final class ModuleSupport extends ModuleSupportBase {
                 namedAccessingModule = accessingModule;
             }
         }
-        if (namedAccessingModule != null ? declaringModule.isOpen(packageName, namedAccessingModule) : declaringModule.isOpen(packageName)) {
-            return;
-        }
-        if (namedAccessingModule != null) {
-            Modules.addOpens(declaringModule, packageName, namedAccessingModule);
-        } else {
-            Modules.addOpensToAllUnnamed(declaringModule, packageName);
-        }
-    }
-
-    /**
-     * Exports and opens a single package {@code packageName} in the module named {@code moduleName}
-     * to all unnamed modules.
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenPackageToClass(String moduleName, String packageName, boolean optional, Class<?> accessingClass) {
-        Optional<Module> value = ModuleLayer.boot().findModule(moduleName);
-        if (value.isEmpty()) {
-            if (!optional) {
-                throw new NoSuchElementException(moduleName);
-            }
-            return;
-        }
-        Module declaringModule = value.get();
-        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
-        if (accessingModule != null && accessingModule.isNamed()) {
-            if (!declaringModule.isOpen(packageName, accessingModule)) {
-                Modules.addOpens(declaringModule, packageName, accessingModule);
-            }
-        } else {
-            Modules.addOpensToAllUnnamed(declaringModule, packageName);
-        }
-
-    }
-
-    /**
-     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenAllPackagesToUnnamed(String name, boolean optional) {
-        Optional<Module> value = ModuleLayer.boot().findModule(name);
-        if (value.isEmpty()) {
-            if (!optional) {
-                throw new NoSuchElementException("No module in boot layer named " + name + ". Available modules: " + ModuleLayer.boot());
-            }
-            return;
-        }
-        Module module = value.get();
-        Set<String> packages = module.getPackages();
-        for (String pkg : packages) {
-            Modules.addExportsToAllUnnamed(module, pkg);
-            Modules.addOpensToAllUnnamed(module, pkg);
-        }
-    }
-
-    /**
-     * Exports and opens a single package {@code pkg} in the module named {@code name} to all
-     * unnamed modules.
-     */
-    @SuppressWarnings("unused")
-    public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
-        Optional<Module> value = ModuleLayer.boot().findModule(name);
-        if (value.isEmpty()) {
-            if (!optional) {
-                throw new NoSuchElementException(name);
-            }
-            return;
-        }
-        Module module = value.get();
-        Modules.addExportsToAllUnnamed(module, pkg);
-        Modules.addOpensToAllUnnamed(module, pkg);
+        access.giveAccess(namedAccessingModule, declaringModule, packageName);
     }
 }

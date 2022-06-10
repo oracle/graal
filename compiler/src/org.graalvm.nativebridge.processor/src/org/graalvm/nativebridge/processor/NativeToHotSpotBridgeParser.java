@@ -26,34 +26,22 @@ package org.graalvm.nativebridge.processor;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
 
 public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
 
     static final String GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION = "org.graalvm.nativebridge.GenerateNativeToHotSpotBridge";
 
-    private final TypeCache typeCache;
-    private final NativeToHotSpotBridgeGenerator generator;
-
     private NativeToHotSpotBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
         super(processor, typeCache,
                         createConfiguration(typeCache),
                         HotSpotToNativeBridgeParser.createConfiguration(processor.env().getTypeUtils(), typeCache));
-        this.typeCache = typeCache;
-        this.generator = new NativeToHotSpotBridgeGenerator(this, typeCache);
     }
 
     @Override
-    List<TypeMirror> getExceptionHandlerTypes() {
-        return Collections.singletonList(typeCache.jNIExceptionHandlerContext);
-    }
-
-    @Override
-    AbstractBridgeGenerator getGenerator() {
-        return generator;
+    AbstractBridgeGenerator createGenerator(DefinitionData definitionData) {
+        return new NativeToHotSpotBridgeGenerator(this, (TypeCache) typeCache, definitionData);
     }
 
     static NativeToHotSpotBridgeParser create(NativeBridgeProcessor processor) {
@@ -69,6 +57,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
     static final class TypeCache extends AbstractTypeCache {
 
         final DeclaredType currentIsolate;
+        final DeclaredType jNIEntryPoint;
         final DeclaredType jNIExceptionHandler;
         final DeclaredType jNIExceptionHandlerContext;
         final DeclaredType hotSpotCalls;
@@ -81,6 +70,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
             this.currentIsolate = (DeclaredType) processor.getType("org.graalvm.nativeimage.CurrentIsolate");
+            this.jNIEntryPoint = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIEntryPoint");
             this.jNIExceptionHandler = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler");
             this.jNIExceptionHandlerContext = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext");
             this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls");

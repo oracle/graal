@@ -29,13 +29,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -68,8 +64,7 @@ public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndex
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        ConstantBindingParameterPlugin constantBinding = new ConstantBindingParameterPlugin(constantArgs, this.getMetaAccess(), this.getSnippetReflection());
-        conf.getPlugins().appendParameterPlugin(constantBinding);
+        addConstantParameterBinding(conf, constantArgs);
         return super.editGraphBuilderConfiguration(conf);
     }
 
@@ -85,22 +80,17 @@ public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndex
 
     @Override
     @Test
-    public void testIndexOfTwoConsecutive() throws ClassNotFoundException {
-        ResolvedJavaMethod method = getTStringOpsMethod("indexOf2ConsecutiveWithStrideIntl",
-                        Object.class, int.class, int.class, int.class, int.class, int.class, int.class);
+    public void testIndexOfTwoConsecutive() {
         constantArgs[6] = v0;
         constantArgs[7] = v1;
-        test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
+        test(getIndexOf2ConsecutiveWithStrideIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
     }
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
         if (getTarget().arch instanceof AMD64) {
             if (arrayA.length < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) {
-                StartNode start = graph.start();
-                FixedNode next = start.next();
-                assertTrue(next instanceof ReturnNode);
-                assertTrue(((ReturnNode) next).result().isConstant());
+                assertConstantReturn(graph);
             }
         }
     }

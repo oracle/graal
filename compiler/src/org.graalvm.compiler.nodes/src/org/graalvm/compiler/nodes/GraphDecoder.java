@@ -558,6 +558,11 @@ public class GraphDecoder {
                 } else {
                     propagateCreatedNodes(loopScope);
                     loopScope = loopScope.outer;
+
+                    if (loopScope == null) {
+                        // finished all loops of a method
+                        afterMethodScope(methodScope);
+                    }
                 }
             }
 
@@ -575,6 +580,9 @@ public class GraphDecoder {
             /* continue with the caller */
             loopScope = methodScope.callerLoopScope;
         }
+    }
+
+    protected void afterMethodScope(@SuppressWarnings("unused") MethodScope methodScope) {
     }
 
     protected void finishInlining(@SuppressWarnings("unused") MethodScope inlineScope) {

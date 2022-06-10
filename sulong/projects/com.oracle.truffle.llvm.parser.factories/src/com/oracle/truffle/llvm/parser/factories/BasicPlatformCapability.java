@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -81,8 +81,13 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
                 return new LinuxAArch64PlatformCapability(loadCxxLibraries);
             }
         }
-        if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
-            return new DarwinAMD64PlatformCapability(loadCxxLibraries);
+        if (LLVMInfo.SYSNAME.equalsIgnoreCase("mac os x")) {
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
+                return new DarwinAMD64PlatformCapability(loadCxxLibraries);
+            }
+            if (LLVMInfo.MACHINE.equalsIgnoreCase("aarch64")) {
+                return new DarwinAArch64PlatformCapability(loadCxxLibraries);
+            }
         }
         if (LLVMInfo.SYSNAME.toLowerCase(Locale.ROOT).startsWith("windows") && LLVMInfo.MACHINE.equalsIgnoreCase("x86_64")) {
             return new WindowsAMD64PlatformCapability(loadCxxLibraries);

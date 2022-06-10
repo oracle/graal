@@ -25,10 +25,10 @@
  */
 package com.oracle.svm.graal;
 
-import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
+import static org.graalvm.compiler.core.common.StrideUtil.S1;
+import static org.graalvm.compiler.core.common.StrideUtil.S2;
+import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
 import java.util.Arrays;
 
@@ -43,7 +43,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -52,7 +52,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticFeature
 @Platforms({AMD64.class, AARCH64.class})
-class ArrayIndexOfForeignCallsFeature implements GraalFeature {
+class ArrayIndexOfForeignCallsFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return !SubstrateOptions.useLLVMBackend();

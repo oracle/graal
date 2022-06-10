@@ -44,6 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 
+import java.util.Objects;
+
 /**
  * Transition guards introduced by bounded {@link Quantifier}s.
  */
@@ -219,6 +221,20 @@ public final class QuantifierGuard {
      */
     public int getIndex() {
         return index;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof QuantifierGuard)) {
+            return false;
+        }
+        QuantifierGuard other = (QuantifierGuard) obj;
+        return this.kind == other.kind && Objects.equals(this.quantifier, other.quantifier) && this.index == other.index;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(kind, quantifier, index);
     }
 
     @TruffleBoundary

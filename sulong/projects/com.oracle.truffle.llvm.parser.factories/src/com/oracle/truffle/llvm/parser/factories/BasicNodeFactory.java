@@ -377,14 +377,11 @@ public class BasicNodeFactory implements NodeFactory {
     protected final LLVMLanguage language;
     protected DataLayout dataLayout;
 
-    protected final Type vaListType;
-
     protected final CommonLanguageOptions engineOptions;
 
     public BasicNodeFactory(LLVMLanguage language, DataLayout dataLayout, CommonLanguageOptions engineOptions) {
         this.language = language;
         this.dataLayout = dataLayout;
-        this.vaListType = language.getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
         this.engineOptions = engineOptions;
     }
 
@@ -1017,19 +1014,15 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
-    protected boolean isVAListType(Type type) {
-        // If type == vaListType, it is an indication that createAlloca is called from the toNative
-        // message implementation to obtain the stack allocation node. The condition type !=
-        // vaListType prevents from obtaining another managed va_list factory node. See
-        // LLVMX86_64VaListStorage.
-        return type != null && vaListType.equals(type) && type != vaListType;
+    protected boolean isManagedVAListType(Type type) {
+        return language.getActiveConfiguration().getCapability(PlatformCapability.class).isManagedVAListType(type);
     }
 
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
-        if (isVAListType(type)) {
+        if (isManagedVAListType(type)) {
             // Create a factory node for a managed va_list instead of the stack allocation node.
-            return LLVMVAListNodeGen.create();
+            return LLVMVAListNodeGen.create(type);
         } else {
             try {
                 return LLVMAllocaConstInstructionNodeGen.create(getByteSize(type), alignment);
@@ -1853,6 +1846,9 @@ public class BasicNodeFactory implements NodeFactory {
                 return CommonNodeFactory.createSignedCast(args[1], retType);
             case "fcmp":
                 return CommonNodeFactory.createComparison(getCompareOp(args[3]), retType, args[1], args[2]);
+            case "fmuladd":
+                LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, retType, args[1], args[2]);
+                return createArithmeticOp(ArithmeticOperation.ADD, retType, mulNodeF80, args[3]);
         }
 
         return LLVMX86_MissingBuiltin.create(declaration.getName());

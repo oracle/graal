@@ -69,12 +69,12 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     }
 
     @Override
-    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr) {
+    public Object createVAListStorage(LLVMVAListNode allocaNode, LLVMPointer vaListStackPtr, Type vaListType) {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
     @Override
-    public Type getVAListType() {
+    public Type getGlobalVAListType(Type type) {
         throw CompilerDirectives.shouldNotReachHere();
     }
 

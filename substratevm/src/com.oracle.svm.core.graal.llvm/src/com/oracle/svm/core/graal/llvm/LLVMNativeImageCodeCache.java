@@ -36,13 +36,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -94,6 +96,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     private final LLVMObjectFileReader objectFileReader;
     private final List<ObjectFile.Symbol> globalSymbols = new ArrayList<>();
     private final StackMapDumper stackMapDumper;
+    private final NavigableMap<Integer, CompilationResult> compilationsByStart = new TreeMap<>();
 
     LLVMNativeImageCodeCache(Map<HostedMethod, CompilationResult> compilations, NativeImageHeap imageHeap, Platform targetPlatform, Path tempDir) {
         super(compilations, imageHeap, targetPlatform);
@@ -112,6 +115,11 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @Override
     public int getCodeCacheSize() {
         return 0;
+    }
+
+    @Override
+    public int codeSizeFor(HostedMethod method) {
+        return compilationResultFor(method).getTargetCodeSize();
     }
 
     @Override
@@ -149,14 +157,14 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     }
 
     private void writeBitcode(BatchExecutor executor) {
-        methodIndex = new HostedMethod[compilations.size()];
+        methodIndex = new HostedMethod[getOrderedCompilations().size()];
         AtomicInteger num = new AtomicInteger(-1);
-        executor.forEach(compilations.entrySet(), entry -> (debugContext) -> {
+        executor.forEach(getOrderedCompilations(), pair -> (debugContext) -> {
             int id = num.incrementAndGet();
-            methodIndex[id] = entry.getKey();
+            methodIndex[id] = pair.getLeft();
 
             try (FileOutputStream fos = new FileOutputStream(getBitcodePath(id).toString())) {
-                fos.write(entry.getValue().getTargetCode());
+                fos.write(pair.getRight().getTargetCode());
             } catch (IOException e) {
                 throw new GraalError(e);
             }
@@ -197,7 +205,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             llvmCompile(debug, getBatchCompiledFilename(batchId), getBatchOptimizedFilename(batchId));
 
             LLVMStackMapInfo stackMap = objectFileReader.parseStackMap(getBatchCompiledPath(batchId));
-            IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).forEach(id -> objectFileReader.readStackMap(stackMap, compilations.get(methodIndex[id]), methodIndex[id], id));
+            IntStream.range(getBatchStart(batchId), getBatchEnd(batchId)).forEach(id -> objectFileReader.readStackMap(stackMap, compilationResultFor(methodIndex[id]), methodIndex[id], id));
         });
     }
 
@@ -207,25 +215,24 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
         LLVMTextSectionInfo textSectionInfo = objectFileReader.parseCode(getLinkedPath());
 
-        executor.forEach(compilations.entrySet(), entry -> (debugContext) -> {
-            HostedMethod method = entry.getKey();
+        executor.forEach(getOrderedCompilations(), pair -> (debugContext) -> {
+            HostedMethod method = pair.getLeft();
             int offset = textSectionInfo.getOffset(SubstrateUtil.uniqueShortName(method));
             int nextFunctionStartOffset = textSectionInfo.getNextOffset(offset);
             int functionSize = nextFunctionStartOffset - offset;
 
-            CompilationResult compilation = entry.getValue();
+            CompilationResult compilation = pair.getRight();
             compilation.setTargetCode(null, functionSize);
             method.setCodeAddressOffset(offset);
         });
 
-        compilations.forEach((method, compilation) -> compilationsByStart.put(method.getCodeAddressOffset(), compilation));
+        getOrderedCompilations().forEach((pair) -> compilationsByStart.put(pair.getLeft().getCodeAddressOffset(), pair.getRight()));
         stackMapDumper.dumpOffsets(textSectionInfo);
         stackMapDumper.close();
 
         llvmCleanupStackMaps(debug, getLinkedFilename());
 
-        HostedMethod firstMethod = (HostedMethod) getFirstCompilation().getMethods()[0];
-        buildRuntimeMetadata(new MethodPointer(firstMethod), WordFactory.signed(textSectionInfo.getCodeSize()));
+        buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(textSectionInfo.getCodeSize()));
     }
 
     private void llvmOptimize(DebugContext debug, String outputPath, String inputPath) {
@@ -401,7 +408,8 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     public void patchMethods(DebugContext debug, RelocatableBuffer relocs, ObjectFile objectFile) {
         Element rodataSection = objectFile.elementForName(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()));
         Element dataSection = objectFile.elementForName(SectionName.DATA.getFormatDependentName(objectFile.getFormat()));
-        for (CompilationResult result : getCompilations().values()) {
+        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+            CompilationResult result = pair.getRight();
             for (DataPatch dataPatch : result.getDataPatches()) {
                 if (dataPatch.reference instanceof CGlobalDataReference) {
                     CGlobalDataInfo info = ((CGlobalDataReference) dataPatch.reference).getDataInfo();
@@ -482,10 +490,10 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
             }
         }
 
-        private <T> void forEach(Set<T> set, Function<T, DebugContextRunnable> callback) {
+        private <T> void forEach(List<T> list, Function<T, DebugContextRunnable> callback) {
             try {
                 executor.start();
-                for (T elem : set) {
+                for (T elem : list) {
                     executor.execute(callback.apply(elem));
                 }
                 executor.complete();

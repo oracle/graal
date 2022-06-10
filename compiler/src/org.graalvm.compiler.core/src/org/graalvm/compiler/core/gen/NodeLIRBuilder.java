@@ -639,13 +639,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
         Value result = invokeCc.getReturn();
-        if (callTarget instanceof DirectCallTargetNode) {
-            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
-        } else if (callTarget instanceof IndirectCallTargetNode) {
-            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
-        } else {
-            throw GraalError.shouldNotReachHere();
-        }
+        emitInvoke(callTarget, parameters, callState, result);
 
         if (isLegal(result)) {
             setResult(x.asNode(), gen.emitMove(result));
@@ -653,6 +647,16 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
         if (x instanceof InvokeWithExceptionNode) {
             gen.emitJump(getLIRBlock(((InvokeWithExceptionNode) x).next()));
+        }
+    }
+
+    protected void emitInvoke(LoweredCallTargetNode callTarget, Value[] parameters, LIRFrameState callState, Value result) {
+        if (callTarget instanceof DirectCallTargetNode) {
+            emitDirectCall((DirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
+        } else if (callTarget instanceof IndirectCallTargetNode) {
+            emitIndirectCall((IndirectCallTargetNode) callTarget, result, parameters, AllocatableValue.NONE, callState);
+        } else {
+            throw GraalError.shouldNotReachHere();
         }
     }
 

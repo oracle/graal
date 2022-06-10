@@ -31,13 +31,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ConstantBindingParameterPlugin;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -68,10 +64,7 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        if (constantArgs != null) {
-            ConstantBindingParameterPlugin constantBinding = new ConstantBindingParameterPlugin(constantArgs, this.getMetaAccess(), this.getSnippetReflection());
-            conf.getPlugins().appendParameterPlugin(constantBinding);
-        }
+        addConstantParameterBinding(conf, constantArgs);
         return super.editGraphBuilderConfiguration(conf);
     }
 
@@ -88,26 +81,22 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
 
     @Override
     @Test
-    public void testIndexOfAny() throws ClassNotFoundException {
+    public void testIndexOfAny() {
         constantArgs = new Object[7];
         constantArgs[0] = DUMMY_LOCATION;
         constantArgs[1] = arrayA;
         constantArgs[2] = offsetA;
         constantArgs[3] = lengthA;
         if (strideA == 0) {
-            ResolvedJavaMethod caller = getTStringOpsMethod("indexOfAnyByteIntl",
-                            Object.class, int.class, int.class, int.class, byte[].class);
             byte[] valuesB = new byte[values.length];
             for (int i = 0; i < values.length; i++) {
                 valuesB[i] = (byte) values[i];
             }
             constantArgs[4] = fromIndexA;
             constantArgs[5] = valuesB;
-            test(caller, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
+            test(getIndexOfAnyByteIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
         }
         if (strideA < 2) {
-            ResolvedJavaMethod callerC = getTStringOpsMethod("indexOfAnyCharIntl",
-                            Object.class, int.class, int.class, int.class, int.class, char[].class);
             char[] valuesC = new char[values.length];
             for (int i = 0; i < values.length; i++) {
                 valuesC[i] = (char) (strideA == 0 ? values[i] & 0xff : values[i]);
@@ -115,11 +104,8 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
             constantArgs[4] = strideA;
             constantArgs[5] = fromIndexA;
             constantArgs[6] = valuesC;
-            test(callerC, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
+            test(getIndexOfAnyCharIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
         }
-
-        ResolvedJavaMethod callerC = getTStringOpsMethod("indexOfAnyIntIntl",
-                        Object.class, int.class, int.class, int.class, int.class, int[].class);
         int[] valuesI = new int[values.length];
         for (int i = 0; i < values.length; i++) {
             valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];
@@ -127,17 +113,14 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
         constantArgs[4] = strideA;
         constantArgs[5] = fromIndexA;
         constantArgs[6] = valuesI;
-        test(callerC, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
+        test(getIndexOfAnyIntIntl(), null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
     }
 
     @Override
     protected void checkLowTierGraph(StructuredGraph graph) {
         if (getTarget().arch instanceof AMD64) {
             if (arrayA.length < GraalOptions.StringIndexOfConstantLimit.getValue(graph.getOptions())) {
-                StartNode start = graph.start();
-                FixedNode next = start.next();
-                assertTrue(next instanceof ReturnNode);
-                assertTrue(((ReturnNode) next).result().isConstant());
+                assertConstantReturn(graph);
             }
         }
     }

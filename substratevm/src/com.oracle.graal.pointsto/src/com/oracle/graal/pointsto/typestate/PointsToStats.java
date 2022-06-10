@@ -334,7 +334,7 @@ public class PointsToStats {
     private static final AtomicInteger nextStateId = new AtomicInteger();
     private static ConcurrentHashMap<TypeState, AtomicInteger> typeStateStats = new ConcurrentHashMap<>();
 
-    static void registerTypeState(PointsToAnalysis bb, TypeState state) {
+    public static void registerTypeState(PointsToAnalysis bb, TypeState state) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -373,7 +373,7 @@ public class PointsToStats {
 
     private static ConcurrentHashMap<UnionOperation, AtomicInteger> unionStats = new ConcurrentHashMap<>();
 
-    static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
+    public static void registerUnionOperation(PointsToAnalysis bb, TypeState s1, TypeState s2, TypeState result) {
 
         if (!bb.reportAnalysisStatistics()) {
             return;
@@ -568,7 +568,7 @@ public class PointsToStats {
             return "Clone @ " + formatSource(flow);
         } else if (flow instanceof MonitorEnterTypeFlow) {
             MonitorEnterTypeFlow monitor = (MonitorEnterTypeFlow) flow;
-            return "MonitorEnter @ " + formatMethod(monitor.getMethod());
+            return "MonitorEnter @ " + formatMethod(monitor.getSource().getMethod());
         } else {
             return ClassUtil.getUnqualifiedName(flow.getClass()) + "@" + formatSource(flow);
         }
@@ -632,8 +632,8 @@ public class PointsToStats {
             return "<Null>";
         }
 
-        String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s.isSingleTypeState() ? "Single" : s.isMultiTypeState() ? "Multi" : "";
-        String sSizeOrType = s.isMultiTypeState() ? s.typesCount() + "" : s.exactType().toJavaName(false);
+        String sKind = s.isAllocation() ? "Alloc" : s.isConstant() ? "Const" : s instanceof SingleTypeState ? "Single" : s instanceof MultiTypeState ? "Multi" : "";
+        String sSizeOrType = s instanceof MultiTypeState ? s.typesCount() + "" : s.exactType().toJavaName(false);
         int objectsNumber = s.objectsCount();
         String canBeNull = s.canBeNull() ? "null" : "!null";
 

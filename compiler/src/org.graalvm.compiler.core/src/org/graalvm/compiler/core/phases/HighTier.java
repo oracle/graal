@@ -48,9 +48,8 @@ import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.DisableOverflownCountedLoopsPhase;
-import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhase;
-import org.graalvm.compiler.phases.common.IncrementalCanonicalizerPhase;
+import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
 import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.NodeCounterPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
@@ -89,7 +88,7 @@ public class HighTier extends BaseTier<HighTierContext> {
         }
 
         if (OptConvertDeoptsToGuards.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new ConvertDeoptimizeToGuardPhase()));
+            appendPhase(new ConvertDeoptimizeToGuardPhase(canonicalizer));
         }
 
         if (ConditionalElimination.getValue(options)) {
@@ -104,11 +103,11 @@ public class HighTier extends BaseTier<HighTierContext> {
         appendPhase(new LoopFullUnrollPhase(canonicalizer, loopPolicies));
 
         if (LoopPeeling.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopPeelingPhase(loopPolicies)));
+            appendPhase(new LoopPeelingPhase(loopPolicies, canonicalizer));
         }
 
         if (LoopUnswitch.getValue(options)) {
-            appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new LoopUnswitchingPhase(loopPolicies)));
+            appendPhase(new LoopUnswitchingPhase(loopPolicies, canonicalizer));
         }
 
         // Must precede all phases that otherwise ignore the identity of boxes (e.g.
@@ -127,7 +126,7 @@ public class HighTier extends BaseTier<HighTierContext> {
             appendPhase(new NodeCounterPhase(NodeCounterPhase.Stage.LATE));
         }
 
-        appendPhase(new IncrementalCanonicalizerPhase<>(canonicalizer, new BoxNodeOptimizationPhase()));
+        appendPhase(new BoxNodeOptimizationPhase(canonicalizer));
         appendPhase(new HighTierLoweringPhase(canonicalizer, true));
     }
 

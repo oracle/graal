@@ -36,8 +36,8 @@ import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.Range;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo;
 import com.oracle.objectfile.elf.ELFMachine;
 import com.oracle.objectfile.elf.ELFObjectFile;
 import org.graalvm.compiler.debug.DebugContext;
@@ -213,17 +213,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * Mark address so it is relocated relative to the start of the text segment.
          */
         markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.TEXT_SECTION_NAME, l);
-        pos = putLong(0, buffer, pos);
-        return pos;
-    }
-
-    protected int putRelocatableInfoOffset(long l, byte[] buffer, int p) {
-        int pos = p;
-        /*
-         * Mark address so it is relocated relative to the start of the text segment.
-         */
-        markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.DW_INFO_SECTION_NAME, l);
-        pos = putLong(0, buffer, pos);
+        pos = writeLong(0, buffer, pos);
         return pos;
     }
 
@@ -233,13 +223,13 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          * Mark address so it is relocated relative to the start of the heap.
          */
         markRelocationSite(pos, ObjectFile.RelocationKind.DIRECT_8, DwarfDebugInfo.HEAP_BEGIN_NAME, l);
-        pos = putLong(0, buffer, pos);
+        pos = writeLong(0, buffer, pos);
         return pos;
     }
 
     protected int putULEB(long val, byte[] buffer, int p) {
-        long l = val;
         int pos = p;
+        long l = val;
         for (int i = 0; i < 9; i++) {
             byte b = (byte) (l & 0x7f);
             l = l >>> 7;
@@ -247,7 +237,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             if (!done) {
                 b = (byte) (b | 0x80);
             }
-            pos = putByte(b, buffer, pos);
+            pos = writeByte(b, buffer, pos);
             if (done) {
                 break;
             }
@@ -256,8 +246,8 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
     }
 
     protected int putSLEB(long val, byte[] buffer, int p) {
-        long l = val;
         int pos = p;
+        long l = val;
         for (int i = 0; i < 9; i++) {
             byte b = (byte) (l & 0x7f);
             l = l >> 7;
@@ -266,7 +256,7 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
             if (!done) {
                 b = (byte) (b | 0x80);
             }
-            pos = putByte(b, buffer, pos);
+            pos = writeByte(b, buffer, pos);
             if (done) {
                 break;
             }
@@ -283,10 +273,6 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         return bytes.length;
     }
 
-    protected int putUTF8StringBytes(String s, byte[] buffer, int pos) {
-        return putUTF8StringBytes(s, 0, buffer, pos);
-    }
-
     protected int putUTF8StringBytes(String s, int startChar, byte[] buffer, int p) {
         int pos = p;
         byte[] bytes = s.substring(startChar).getBytes(StandardCharsets.UTF_8);
@@ -300,105 +286,147 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      * Common write methods that check for a null buffer.
      */
 
-    protected void patchLength(int lengthPos, byte[] buffer, int pos) {
+    protected int writeByte(byte b, byte[] buffer, int p) {
         if (buffer != null) {
-            int length = pos - (lengthPos + 4);
-            putInt(length, buffer, lengthPos);
+            return putByte(b, buffer, p);
+        } else {
+            return p + 1;
         }
+    }
+
+    protected int writeShort(short s, byte[] buffer, int p) {
+        if (buffer != null) {
+            return putShort(s, buffer, p);
+        } else {
+            return p + 2;
+        }
+    }
+
+    protected int writeInt(int i, byte[] buffer, int p) {
+        if (buffer != null) {
+            return putInt(i, buffer, p);
+        } else {
+            return p + 4;
+        }
+    }
+
+    protected int writeLong(long l, byte[] buffer, int p) {
+        if (buffer != null) {
+            return putLong(l, buffer, p);
+        } else {
+            return p + 8;
+        }
+    }
+
+    protected int writeRelocatableCodeOffset(long l, byte[] buffer, int p) {
+        if (buffer != null) {
+            return putRelocatableCodeOffset(l, buffer, p);
+        } else {
+            return p + 8;
+        }
+    }
+
+    protected int writeRelocatableHeapOffset(long l, byte[] buffer, int p) {
+        if (buffer != null) {
+            return putRelocatableHeapOffset(l, buffer, p);
+        } else {
+            return p + 8;
+        }
+    }
+
+    protected int writeULEB(long val, byte[] buffer, int p) {
+        if (buffer != null) {
+            // write to the buffer at the supplied position
+            return putULEB(val, buffer, p);
+        } else {
+            // write to a scratch buffer at position 0 then offset from initial pos
+            return p + putULEB(val, scratch, 0);
+        }
+    }
+
+    protected int writeSLEB(long val, byte[] buffer, int p) {
+        if (buffer != null) {
+            // write to the buffer at the supplied position
+            return putSLEB(val, buffer, p);
+        } else {
+            // write to a scratch buffer at position 0 then offset from initial pos
+            return p + putSLEB(val, scratch, 0);
+        }
+    }
+
+    protected int writeUTF8StringBytes(String s, byte[] buffer, int pos) {
+        return writeUTF8StringBytes(s, 0, buffer, pos);
+    }
+
+    protected int writeUTF8StringBytes(String s, int startChar, byte[] buffer, int p) {
+        if (buffer != null) {
+            return putUTF8StringBytes(s, startChar, buffer, p);
+        } else {
+            return s.substring(startChar).getBytes(StandardCharsets.UTF_8).length;
+        }
+    }
+
+    /*
+     * Common write methods that rely on called methods to handle a null buffer
+     */
+
+    protected void patchLength(int lengthPos, byte[] buffer, int pos) {
+        int length = pos - (lengthPos + 4);
+        writeInt(length, buffer, lengthPos);
     }
 
     protected int writeAbbrevCode(long code, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(code, scratch, 0);
-        } else {
-            return putSLEB(code, buffer, pos);
-        }
+        return writeSLEB(code, buffer, pos);
     }
 
     protected int writeTag(long code, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(code, scratch, 0);
+        if (code == 0) {
+            return writeByte((byte) 0, buffer, pos);
         } else {
-            return putSLEB(code, buffer, pos);
+            return writeSLEB(code, buffer, pos);
         }
     }
 
     protected int writeFlag(byte flag, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putByte(flag, scratch, 0);
-        } else {
-            return putByte(flag, buffer, pos);
-        }
+        return writeByte(flag, buffer, pos);
     }
 
     protected int writeAttrAddress(long address, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + 8;
-        } else {
-            return putRelocatableCodeOffset(address, buffer, pos);
-        }
+        return writeRelocatableCodeOffset(address, buffer, pos);
     }
 
     protected int writeAttrLocList(int offset, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putInt(offset, scratch, 0);
-        } else {
-            return putInt(offset, buffer, pos);
-        }
+        return writeInt(offset, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     protected int writeAttrData8(long value, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putLong(value, scratch, 0);
-        } else {
-            return putLong(value, buffer, pos);
-        }
+        return writeLong(value, buffer, pos);
     }
 
     protected int writeAttrData4(int value, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putInt(value, scratch, 0);
-        } else {
-            return putInt(value, buffer, pos);
-        }
+        return writeInt(value, buffer, pos);
     }
 
     protected int writeAttrSecOffset(int value, byte[] buffer, int pos) {
-        return writeAttrData4(value, buffer, pos);
+        return writeInt(value, buffer, pos);
     }
 
     protected int writeAttrData2(short value, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putShort(value, scratch, 0);
-        } else {
-            return putShort(value, buffer, pos);
-        }
+        return writeShort(value, buffer, pos);
     }
 
     protected int writeAttrData1(byte value, byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putByte(value, scratch, 0);
-        } else {
-            return putByte(value, buffer, pos);
-        }
+        return writeByte(value, buffer, pos);
     }
 
-    public int writeAttrRefAddr(int value, byte[] buffer, int p) {
-        int pos = p;
-        if (buffer == null) {
-            return pos + putInt(0, scratch, 0);
-        } else {
-            return putInt(value, buffer, pos);
-        }
+    public int writeAttrRefAddr(int value, byte[] buffer, int pos) {
+        return writeInt(value, buffer, pos);
     }
 
     protected int writeAttrNull(byte[] buffer, int pos) {
-        if (buffer == null) {
-            return pos + putSLEB(0, scratch, 0);
-        } else {
-            return putSLEB(0, buffer, pos);
-        }
+        // A null attribute is just a zero tag.
+        return writeTag(0, buffer, pos);
     }
 
     /*
@@ -413,14 +441,9 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
          */
         int size = writeHeapLocation(offset, null, 0);
 
-        if (buffer == null) {
-            /* Add ULEB size to the expression size. */
-            return pos + putULEB(size, scratch, 0) + size;
-        } else {
-            /* Write the size and expression into the output buffer. */
-            pos = putULEB(size, buffer, pos);
-            return writeHeapLocation(offset, buffer, pos);
-        }
+        /* Write the size and expression into the output buffer. */
+        pos = writeULEB(size, buffer, pos);
+        return writeHeapLocation(offset, buffer, pos);
     }
 
     /*
@@ -429,22 +452,16 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
      */
     protected int writeHeapLocationLocList(long offset, byte[] buffer, int p) {
         int pos = p;
-        if (buffer == null) {
-            pos += putShort((short) 0, scratch, 0);
-            pos += writeHeapLocation(offset, buffer, 0);
-            return pos + putByte(DW_OP_stack_value, scratch, 0);
-        } else {
-            short len = 0;
-            int lenPos = pos;
-            // write dummy length
-            pos = putShort(len, buffer, pos);
-            pos = writeHeapLocation(offset, buffer, pos);
-            pos = putByte(DW_OP_stack_value, buffer, pos);
-            // backpatch length
-            len = (short) (pos - (lenPos + 2));
-            putShort(len, buffer, lenPos);
-            return pos;
-        }
+        short len = 0;
+        int lenPos = pos;
+        // write dummy length
+        pos = writeShort(len, buffer, pos);
+        pos = writeHeapLocation(offset, buffer, pos);
+        pos = writeByte(DW_OP_stack_value, buffer, pos);
+        // backpatch length
+        len = (short) (pos - (lenPos + 2));
+        writeShort(len, buffer, lenPos);
+        return pos;
     }
 
     /*
@@ -462,30 +479,20 @@ public abstract class DwarfSectionImpl extends BasicProgbitsSectionImpl {
         int pos = p;
         /* Write a location rebasing the offset relative to the heapbase register. */
         byte regOp = (byte) (DwarfDebugInfo.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
-        if (buffer == null) {
-            /* Add ULEB size to the expression size. */
-            pos += putByte(regOp, scratch, 0);
-            return pos + putSLEB(offset, scratch, 0);
-        } else {
-            /* Write the size and expression into the output buffer. */
-            pos = putByte(regOp, buffer, pos);
-            return putSLEB(offset, buffer, pos);
-        }
+        /* Write the size and expression into the output buffer. */
+        pos = writeByte(regOp, buffer, pos);
+        return writeSLEB(offset, buffer, pos);
     }
 
     private int writeHeapLocationRelocatable(long offset, byte[] buffer, int p) {
         int pos = p;
         /* Write a relocatable address relative to the heap section start. */
         byte regOp = DwarfDebugInfo.DW_OP_addr;
-        if (buffer == null) {
-            return pos + 9;
-        } else {
-            pos = putByte(regOp, buffer, pos);
-            return putRelocatableHeapOffset(offset, buffer, pos);
-        }
+        pos = writeByte(regOp, buffer, pos);
+        return writeRelocatableHeapOffset(offset, buffer, pos);
     }
 
-    protected static String formatValue(DebugInfoProvider.DebugLocalValueInfo value) {
+    protected static String formatValue(DebugLocalValueInfo value) {
         switch (value.localKind()) {
             case REGISTER:
                 return "REG:" + value.regIndex();

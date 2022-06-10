@@ -81,7 +81,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         }
 
         @Override
-        public void initClone(PointsToAnalysis bb) {
+        public void initFlow(PointsToAnalysis bb) {
             this.addUse(bb, fieldFlow);
         }
 
@@ -153,9 +153,6 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone or a context insensitive flow should be updated */
-            assert this.isClone() || this.isContextInsensitive();
-
             /*
              * The state of the receiver object has changed. Add an use link between the value flow
              * and the field flows of the new objects.
@@ -163,7 +160,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
             TypeState objectState = objectFlow.getState();
             objectState = filterObjectState(bb, objectState);
             /* Iterate over the receiver objects. */
-            for (AnalysisObject receiver : objectState.objects()) {
+            for (AnalysisObject receiver : objectState.objects(bb)) {
                 /* Get the field flow corresponding to the receiver object. */
                 FieldTypeFlow fieldFlow = receiver.getInstanceFieldFlow(bb, objectFlow, source, field, true);
                 /* Register the field flow as a use, if not already registered. */
@@ -173,7 +170,6 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
         @Override
         public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-            assert this.isClone() && !this.isContextInsensitive();
             /*
              * When receiver flow saturates swap in the saturated store type flow. When the store
              * itself saturates it propagates the saturation state to the uses/observers and unlinks

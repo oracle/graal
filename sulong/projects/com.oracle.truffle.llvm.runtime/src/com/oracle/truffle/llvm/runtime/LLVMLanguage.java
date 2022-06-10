@@ -64,6 +64,7 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr.DebugExprParser;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobalContainer;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
@@ -90,7 +91,8 @@ import java.util.function.Function;
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
                                 LLVMLanguage.LLVM_MS_DOS_MIME_TYPE}, //
-                fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+                fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class}, version = LLVMConfig.VERSION, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
+                website = "https://www.graalvm.org/22.1/reference-manual/llvm/")
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
@@ -214,6 +216,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         boolean isDisposed;
         LLVMStack stack;
         LLVMPointer localStorage;
+        LLVMGlobalContainer[][] globalContainers = new LLVMGlobalContainer[10][];
 
         LLVMThreadLocalValue(LLVMContext context, Thread thread) {
             this.context = context;
@@ -270,6 +273,22 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             LLVMStack tmp = stack;
             this.stack = null;
             return tmp;
+        }
+
+        public void addGlobalContainer(LLVMGlobalContainer[] globalContainer, BitcodeID bitcodeID) {
+            int id = bitcodeID.getId();
+            if (id >= globalContainers.length) {
+                int newLength = (id + 1) + ((id + 1) / 2);
+                globalContainers = Arrays.copyOf(globalContainers, newLength);
+            }
+            globalContainers[id] = globalContainer;
+        }
+
+        public LLVMGlobalContainer getGlobalContainer(int index, BitcodeID bitcodeID) {
+            int id = bitcodeID.getId();
+            assert 0 < id && id < globalContainers.length;
+            assert 0 < index && index < globalContainers[id].length;
+            return globalContainers[id][index];
         }
     }
 
@@ -533,6 +552,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
                             freeOpNode.execute(section);
                         }
                     }
+                    for (LLVMGlobalContainer[] globalContainers : threadLocalValue.globalContainers) {
+                        if (globalContainers != null) {
+                            for (LLVMGlobalContainer globalContainer : globalContainers) {
+                                if (globalContainer != null) {
+                                    globalContainer.dispose();
+                                }
+                            }
+                        }
+                    }
                     threadLocalValue.setDisposed();
                 }
             }
@@ -717,6 +745,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void disposeThread(LLVMContext context, Thread thread) {
+        getCapability(PlatformCapability.class).disposeThread(context, thread);
         super.disposeThread(context, thread);
         if (context.isInitialized()) {
             context.getThreadingStack().freeStack(getLLVMMemory(), thread);

@@ -75,7 +75,7 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataImpl;
 import com.oracle.svm.core.c.CGlobalDataNonConstantRegistry;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -88,7 +88,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
-public class CGlobalDataFeature implements GraalFeature {
+public class CGlobalDataFeature implements InternalFeature {
 
     private final Method getCGlobalDataInfoMethod = ReflectionUtil.lookupMethod(CGlobalDataNonConstantRegistry.class, "getCGlobalDataInfo", CGlobalDataImpl.class);
     private final Field offsetField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "offset");

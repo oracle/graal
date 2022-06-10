@@ -89,6 +89,8 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.RegisterOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetInlinedCallCount;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsInInterpreter;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsTransferToInterpreterMethod;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -176,6 +178,18 @@ final class TruffleFromLibGraalEntryPoints {
     static boolean isBytecodeInterpreterSwitchBoundary(Object truffleRuntime, long methodHandle) {
         ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
         return ((TruffleCompilerRuntime) truffleRuntime).isBytecodeInterpreterSwitchBoundary(method);
+    }
+
+    @TruffleFromLibGraal(IsInInterpreter)
+    static boolean isInInterpreter(Object truffleRuntime, long methodHandle) {
+        ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
+        return ((TruffleCompilerRuntime) truffleRuntime).isInInterpreter(method);
+    }
+
+    @TruffleFromLibGraal(IsTransferToInterpreterMethod)
+    static boolean isTransferToInterpreterMethod(Object truffleRuntime, long methodHandle) {
+        ResolvedJavaMethod method = LibGraal.unhand(ResolvedJavaMethod.class, methodHandle);
+        return ((TruffleCompilerRuntime) truffleRuntime).isTransferToInterpreterMethod(method);
     }
 
     @TruffleFromLibGraal(IsValueType)

@@ -26,10 +26,10 @@ package org.graalvm.compiler.replacements;
 
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
+import static org.graalvm.compiler.core.common.StrideUtil.S1;
+import static org.graalvm.compiler.core.common.StrideUtil.S2;
+import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;

@@ -29,13 +29,16 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-import java.io.IOException;
-
+import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.concurrent.CountDownLatch;
 
 public class ThreadsInteropTest extends InteropTestBase {
 
@@ -82,6 +85,44 @@ public class ThreadsInteropTest extends InteropTestBase {
 
         Value different = cpart.invokeMember("check_different");
         Assert.assertEquals("different", 1, different.asInt());
+    }
+
+    @Test
+    public void testThreadLocalGlobalContainer() {
+        Value[] ret = new Value[THREAD_COUNT];
+        Thread[] threads = new Thread[THREAD_COUNT];
+        StructObject[] structs = new StructObject[THREAD_COUNT];
+        CountDownLatch signal = new CountDownLatch(THREAD_COUNT);
+
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            StructObject object = new StructObject(new HashMap<>());
+            structs[i] = object;
+            int finalI = i;
+            threads[i] = new Thread(() -> {
+                try {
+                    cpart.invokeMember("writeGlobal", object);
+                    signal.countDown();
+                    signal.await();
+                    ret[finalI] = cpart.invokeMember("readGlobal");
+                } catch (InterruptedException ignored) {
+                }
+            });
+            threads[i].start();
+        }
+
+        for (int i = 0; i < THREAD_COUNT; i++) {
+            try {
+                threads[i].join();
+            } catch (InterruptedException ignored) {
+            }
+        }
+        assertSameGlobal(ret, structs);
+    }
+
+    private static void assertSameGlobal(Value[] threadIds, StructObject[] structs) {
+        for (int i = 0; i < threadIds.length; i++) {
+            Assert.assertEquals(runWithPolyglot.getPolyglotContext().asValue(structs[i]), threadIds[i]);
+        }
     }
 
     @Test

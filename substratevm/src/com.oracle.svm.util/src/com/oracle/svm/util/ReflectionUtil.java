@@ -51,7 +51,7 @@ public final class ReflectionUtil {
      * declaring class.
      */
     private static void openModule(Class<?> declaringClass) {
-        ModuleSupport.openModuleByClass(declaringClass, ReflectionUtil.class);
+        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionUtil.class, declaringClass);
     }
 
     public static Method lookupMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {

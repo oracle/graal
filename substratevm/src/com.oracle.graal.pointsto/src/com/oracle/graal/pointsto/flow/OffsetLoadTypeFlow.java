@@ -48,8 +48,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     /** The type flow of the receiver object of the load operation. */
     protected TypeFlow<?> objectFlow;
 
-    @SuppressWarnings("unused")
-    public OffsetLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
+    public OffsetLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow) {
         super(loadLocation, componentType);
         this.objectType = objectType;
         this.objectFlow = objectFlow;
@@ -62,13 +61,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public boolean addState(PointsToAnalysis bb, TypeState add) {
-        /* Only a clone should be updated */
-        assert this.isClone();
-        return super.addState(bb, add);
-    }
-
-    @Override
     public void setObserved(TypeFlow<?> newObjectFlow) {
         this.objectFlow = newObjectFlow;
     }
@@ -78,7 +70,6 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
-        assert this.isClone();
         if (!isSaturated()) {
             /*
              * When the receiver flow saturates start observing the flow of the object type, unless
@@ -111,8 +102,8 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
      */
     public static class LoadIndexedTypeFlow extends OffsetLoadTypeFlow {
 
-        public LoadIndexedTypeFlow(BytecodePosition loadLocation, AnalysisType arrayType, TypeFlow<?> arrayFlow, MethodTypeFlow methodFlow) {
-            super(loadLocation, arrayType, arrayType.getComponentType(), arrayFlow, methodFlow);
+        public LoadIndexedTypeFlow(BytecodePosition loadLocation, AnalysisType arrayType, TypeFlow<?> arrayFlow) {
+            super(loadLocation, arrayType, arrayType.getComponentType(), arrayFlow);
         }
 
         public LoadIndexedTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, LoadIndexedTypeFlow original) {
@@ -126,11 +117,8 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState arrayState = getObjectState();
-            for (AnalysisObject object : arrayState.objects()) {
+            for (AnalysisObject object : arrayState.objects(bb)) {
                 if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
                     /* Ignore non-array types when type flow constraints are relaxed. */
                     continue;
@@ -155,8 +143,8 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     public abstract static class AbstractUnsafeLoadTypeFlow extends OffsetLoadTypeFlow {
 
-        AbstractUnsafeLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
-            super(loadLocation, objectType, componentType, objectFlow, methodFlow);
+        AbstractUnsafeLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow) {
+            super(loadLocation, objectType, componentType, objectFlow);
         }
 
         AbstractUnsafeLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, AbstractUnsafeLoadTypeFlow original) {
@@ -175,7 +163,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         protected abstract AbstractUnsafeLoadTypeFlow makeCopy(PointsToAnalysis bb, MethodFlowsGraph methodFlows);
 
         @Override
-        public void initClone(PointsToAnalysis bb) {
+        public void initFlow(PointsToAnalysis bb) {
             /*
              * Unsafe load type flow models unsafe reads from both instance and static fields. From
              * an analysis stand point for static fields the base doesn't matter. An unsafe load can
@@ -189,8 +177,8 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     public static class UnsafeLoadTypeFlow extends AbstractUnsafeLoadTypeFlow {
 
-        public UnsafeLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> arrayFlow, MethodTypeFlow methodFlow) {
-            super(loadLocation, objectType, componentType, arrayFlow, methodFlow);
+        public UnsafeLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> arrayFlow) {
+            super(loadLocation, objectType, componentType, arrayFlow);
         }
 
         private UnsafeLoadTypeFlow(PointsToAnalysis bb, MethodFlowsGraph methodFlows, UnsafeLoadTypeFlow original) {
@@ -204,11 +192,8 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState objectState = getObjectState();
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType objectType = object.type();
                 if (objectType.isArray()) {
                     if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
@@ -245,9 +230,9 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
         protected final UnsafePartitionKind partitionKind;
         protected final AnalysisType partitionType;
 
-        public UnsafePartitionLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> arrayFlow, MethodTypeFlow methodFlow,
+        public UnsafePartitionLoadTypeFlow(BytecodePosition loadLocation, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> arrayFlow,
                         UnsafePartitionKind partitionKind, AnalysisType partitionType) {
-            super(loadLocation, objectType, componentType, arrayFlow, methodFlow);
+            super(loadLocation, objectType, componentType, arrayFlow);
             this.partitionKind = partitionKind;
             this.partitionType = partitionType;
         }
@@ -276,12 +261,9 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void onObservedUpdate(PointsToAnalysis bb) {
-            /* Only a clone should be updated */
-            assert this.isClone();
-
             TypeState objectState = getObjectState();
 
-            for (AnalysisObject object : objectState.objects()) {
+            for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType objectType = object.type();
                 assert !objectType.isArray();
 

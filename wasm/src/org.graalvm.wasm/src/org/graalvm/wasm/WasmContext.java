@@ -44,7 +44,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
@@ -53,7 +52,6 @@ import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 
 public final class WasmContext {
     private final Env env;
@@ -165,12 +163,11 @@ public final class WasmContext {
 
     public WasmModule readModule(byte[] data, ModuleLimits moduleLimits) {
         String moduleName = freshModuleName();
-        Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), moduleName).build();
-        return readModule(moduleName, data, moduleLimits, source);
+        return readModule(moduleName, data, moduleLimits);
     }
 
-    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits, Source source) {
-        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits, source);
+    public WasmModule readModule(String moduleName, byte[] data, ModuleLimits moduleLimits) {
+        final WasmModule module = WasmModule.create(moduleName, data, moduleLimits);
         final BinaryParser reader = new BinaryParser(module, this);
         reader.readModule();
         return module;

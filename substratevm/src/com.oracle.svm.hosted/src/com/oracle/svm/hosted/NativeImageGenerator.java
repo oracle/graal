@@ -130,11 +130,12 @@ import org.graalvm.word.PointerBase;
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
-import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
@@ -149,6 +150,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -555,7 +557,7 @@ public class NativeImageGenerator {
         try (DebugContext debug = new Builder(options, new GraalDebugHandlersFactory(originalSnippetReflection)).build();
                         DebugCloseable featureCleanup = () -> featureHandler.forEachFeature(Feature::cleanup)) {
             setupNativeImage(imageName, options, entryPoints, javaMainSupport, harnessSubstitutions, analysisExecutor, originalSnippetReflection, debug);
-            reporter.printFeatures(featureHandler.getUserFeatureNames());
+            reporter.printFeatures(featureHandler.getUserSpecificFeatures());
 
             boolean returnAfterAnalysis = runPointsToAnalysis(imageName, options, debug);
             if (returnAfterAnalysis) {
@@ -679,12 +681,10 @@ public class NativeImageGenerator {
                 }
             }
 
-            ProgressReporter.CenteredTextPrinter breakdownsPrinter = SubstrateOptions.BuildOutputBreakdowns.getValue()
-                            ? ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects())
-                            : null;
+            ProgressReporter.singleton().createBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
-            int numCompilations = codeCache.getCompilations().size();
+            int numCompilations = codeCache.getOrderedCompilations().size();
 
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
                 bb.getHeartbeatCallback().run();
@@ -709,9 +709,6 @@ public class NativeImageGenerator {
             }
             reporter.printCreationEnd(image.getImageSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
                             numCompilations, image.getDebugInfoSize());
-            if (breakdownsPrinter != null) {
-                breakdownsPrinter.reset().flushln();
-            }
         }
     }
 
@@ -1461,18 +1458,18 @@ public class NativeImageGenerator {
              */
             for (AnalysisMethod m : aUniverse.getMethods()) {
                 PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
-                for (int i = 0; i < method.getTypeFlow().getOriginalMethodFlows().getParameters().length; i++) {
-                    TypeState parameterState = method.getTypeFlow().getParameterTypeState(bigbang, i);
+                for (TypeFlow<?> parameter : method.getTypeFlow().getParameters()) {
+                    TypeState parameterState = method.getTypeFlow().foldTypeFlow(bigbang, parameter);
                     if (parameterState != null) {
-                        AnalysisType declaredType = method.getTypeFlow().getOriginalMethodFlows().getParameter(i).getDeclaredType();
+                        AnalysisType declaredType = parameter.getDeclaredType();
                         if (declaredType.isInterface()) {
                             TypeState declaredTypeState = declaredType.getAssignableTypes(true);
                             parameterState = TypeState.forSubtraction(bigbang, parameterState, declaredTypeState);
                             if (!parameterState.isEmpty()) {
                                 String methodKey = method.format("%H.%n(%p)");
                                 bigbang.getUnsupportedFeatures().addMessage(methodKey, method,
-                                                "Parameter " + i + " of " + methodKey + " has declared type " + declaredType.toJavaName(true) +
-                                                                ", with assignable types: " + format(bb, declaredTypeState) +
+                                                "Parameter " + ((FormalParamTypeFlow) parameter).position() + " of " + methodKey + " has declared type " +
+                                                                declaredType.toJavaName(true) + ", with assignable types: " + format(bb, declaredTypeState) +
                                                                 ", which is incompatible with analysis inferred types: " + format(bb, parameterState) + ".");
                             }
                         }

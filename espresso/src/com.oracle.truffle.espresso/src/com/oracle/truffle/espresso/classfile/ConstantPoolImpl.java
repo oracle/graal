@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.PoolConstant;
@@ -72,6 +73,7 @@ final class ConstantPoolImpl extends ConstantPool {
         try {
             return constants[index];
         } catch (IndexOutOfBoundsException exception) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw ConstantPool.classFormatError("Constant pool index (" + index + ")" + (description == null ? "" : " for " + description) + " is out of range");
         }
     }

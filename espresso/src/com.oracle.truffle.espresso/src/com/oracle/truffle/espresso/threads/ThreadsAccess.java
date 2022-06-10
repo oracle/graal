@@ -36,26 +36,19 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterrupter;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Provides bridges to guest world thread implementation.
  */
-public final class ThreadsAccess extends GuestInterrupter<StaticObject> implements ContextAccess {
+public final class ThreadsAccess extends ContextAccessImpl implements GuestInterrupter<StaticObject> {
 
     private final Meta meta;
-    private final EspressoContext context;
-
-    public ThreadsAccess(Meta meta) {
-        this.meta = meta;
-        this.context = meta.getContext();
-    }
 
     @Override
     public void guestInterrupt(Thread t, StaticObject guest) {
@@ -76,20 +69,20 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     }
 
     @Override
-    protected StaticObject getCurrentGuestThread() {
-        return context.getCurrentThread();
+    public StaticObject getCurrentGuestThread() {
+        return getContext().getCurrentThread();
+    }
+
+    public ThreadsAccess(Meta meta) {
+        super(meta.getContext());
+        this.meta = meta;
     }
 
     private StaticObject getThreadFromHost(Thread t) {
         if (t == Thread.currentThread()) {
             return getCurrentGuestThread();
         }
-        return context.getGuestThreadFromHost(t);
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
+        return getContext().getGuestThreadFromHost(t);
     }
 
     public String getThreadName(StaticObject thread) {
@@ -169,7 +162,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
      * we do not require a node.
      */
     public void fullSafePoint(StaticObject thread) {
-        assert thread == context.getCurrentThread();
+        assert thread == getContext().getCurrentThread();
         handleStop(thread);
         handleSuspend(thread);
     }
@@ -194,7 +187,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
      * Implementation of {@link Thread#isInterrupted()}.
      */
     public boolean isInterrupted(StaticObject guest, boolean clear) {
-        if (context.getJavaVersion().java13OrEarlier() && !isAlive(guest)) {
+        if (getContext().getJavaVersion().java13OrEarlier() && !isAlive(guest)) {
             return false;
         }
         boolean isInterrupted = meta.HIDDEN_INTERRUPTED.getBoolean(guest, true);
@@ -225,11 +218,11 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
      * {@link #callInterrupt(StaticObject)} instead.
      */
     public void interrupt(StaticObject guest) {
-        context.getBlockingSupport().guestInterrupt(getHost(guest), guest);
+        getContext().getBlockingSupport().guestInterrupt(getHost(guest), guest);
     }
 
     private void doInterrupt(StaticObject guest) {
-        if (context.getJavaVersion().java13OrEarlier() && isAlive(guest)) {
+        if (getContext().getJavaVersion().java13OrEarlier() && isAlive(guest)) {
             // In JDK 13+, the interrupted status is set in java code.
             meta.HIDDEN_INTERRUPTED.setBoolean(guest, true, true);
         }
@@ -239,7 +232,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
      * Implementation of {@code Thread.clearInterruptEvent} (JDK 13+).
      */
     public void clearInterruptEvent() {
-        assert !context.getJavaVersion().java13OrEarlier();
+        assert !getContext().getJavaVersion().java13OrEarlier();
         Thread.interrupted();
     }
 
@@ -274,7 +267,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
      * Creates a thread for the given guest thread. This thread will be ready to be started.
      */
     public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
-        Thread host = context.getEnv().createThread(new GuestRunnable(context, guest, exit, dispatch));
+        Thread host = getContext().getEnv().createThread(new GuestRunnable(getContext(), guest, exit, dispatch));
         initializeHiddenFields(guest, host, true);
         // Prepare host thread
         host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
@@ -282,10 +275,10 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
         if (isInterrupted(guest, false)) {
             host.interrupt();
         }
-        String guestName = context.getThreadAccess().getThreadName(guest);
+        String guestName = getContext().getThreadAccess().getThreadName(guest);
         host.setName(guestName);
         // Make the thread known to the context
-        context.registerThread(host, guest);
+        getContext().registerThread(host, guest);
         meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
         return host;
     }
@@ -293,7 +286,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     public void initializeHiddenFields(StaticObject guest, Thread host, boolean isManaged) {
         meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
         meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, isManaged);
-        meta.HIDDEN_THREAD_PARK_LOCK.setHiddenObject(guest, EspressoLock.create(context.getBlockingSupport()));
+        meta.HIDDEN_THREAD_PARK_LOCK.setHiddenObject(guest, EspressoLock.create(getContext().getBlockingSupport()));
     }
 
     // endregion thread control
@@ -364,7 +357,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     void terminate(StaticObject thread, DirectCallNode exit) {
         DeprecationSupport support = getDeprecationSupport(thread, true);
         support.exit();
-        if (!context.isTruffleClosed()) {
+        if (!getContext().isTruffleClosed()) {
             try {
                 if (exit == null) {
                     meta.java_lang_Thread_exit.invokeDirect(thread);
@@ -404,7 +397,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     }
 
     private boolean isStillborn(StaticObject guest) {
-        if (context.isClosing() || context.isTruffleClosed()) {
+        if (getContext().isClosing() || getContext().isTruffleClosed()) {
             return true;
         }
         /*

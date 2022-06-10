@@ -208,6 +208,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
+    default Variable emitArrayRegionCompareTo(Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, Value stride) {
+        throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitArrayRegionCompareTo(JavaKind strideA, JavaKind strideB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         throw GraalError.unimplemented("String.compareTo substitution is not implemented on this architecture");
     }
@@ -215,6 +220,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     @SuppressWarnings("unused")
     default Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitArrayEquals(int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length, Value stride) {
+        throw GraalError.unimplemented("Array.equals with offset substitution is not implemented on this architecture");
     }
 
     @SuppressWarnings("unused")
@@ -228,6 +238,12 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
+    default Variable emitArrayEquals(int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
+                    Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length, Value stride) {
+        throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
                     Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length) {
         throw GraalError.unimplemented("Array.equals with different types with offset substitution is not implemented on this architecture");
@@ -235,6 +251,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
 
     @SuppressWarnings("unused")
     default void emitArrayCopyWithConversion(JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
+    default void emitArrayCopyWithConversion(Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length, Value stride) {
         throw GraalError.unimplemented("Array.copy with variable stride substitution is not implemented on this architecture");
     }
 

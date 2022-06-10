@@ -31,14 +31,13 @@ import org.graalvm.word.Pointer;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoAccess.DummyValueInfoAllocator;
+import com.oracle.svm.core.code.CodeInfoAccess.FrameInfoState;
+import com.oracle.svm.core.code.CodeInfoAccess.SingleShotFrameInfoQueryResultAllocator;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.code.FrameInfoDecoder.FrameInfoQueryResultAllocator;
-import com.oracle.svm.core.code.FrameInfoDecoder.ValueInfoAllocator;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
-import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.ImageCodeInfo;
 import com.oracle.svm.core.code.ReusableTypeReader;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
@@ -48,63 +47,15 @@ import com.oracle.svm.core.log.Log;
 public class ThreadStackPrinter {
 
     public static class StackFramePrintVisitor extends Stage1StackFramePrintVisitor {
-
-        private static class SingleShotFrameInfoQueryResultAllocator implements FrameInfoQueryResultAllocator {
-            private static FrameInfoQueryResult frameInfoQueryResult = new FrameInfoQueryResult();
-
-            private boolean fired;
-
-            void reload() {
-                fired = false;
-            }
-
-            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
-            @Override
-            public FrameInfoQueryResult newFrameInfoQueryResult() {
-                if (fired) {
-                    return null;
-                }
-                fired = true;
-                frameInfoQueryResult.init();
-                return frameInfoQueryResult;
-            }
-        }
-
-        private static class DummyValueInfoAllocator implements ValueInfoAllocator {
-            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
-            @Override
-            public ValueInfo newValueInfo() {
-                return null;
-            }
-
-            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
-            @Override
-            public ValueInfo[] newValueInfoArray(int len) {
-                return null;
-            }
-
-            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
-            @Override
-            public ValueInfo[][] newValueInfoArrayArray(int len) {
-                return null;
-            }
-
-            @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
-            @Override
-            public void decodeConstant(ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants) {
-            }
-        }
-
         public static StackFramePrintVisitor SINGLETON = new StackFramePrintVisitor();
 
         StackFramePrintVisitor() {
         }
 
         private static ReusableTypeReader frameInfoReader = new ReusableTypeReader();
-
-        private static SingleShotFrameInfoQueryResultAllocator SingleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
-        private static DummyValueInfoAllocator DummyValueInfoAllocator = new DummyValueInfoAllocator();
-        private static CodeInfoAccess.FrameInfoState frameInfoState = new CodeInfoAccess.FrameInfoState();
+        private static SingleShotFrameInfoQueryResultAllocator singleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
+        private static DummyValueInfoAllocator dummyValueInfoAllocator = new DummyValueInfoAllocator();
+        private static FrameInfoState frameInfoState = new FrameInfoState();
 
         @Override
         protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
@@ -117,9 +68,9 @@ public class ThreadStackPrinter {
                 if (frameInfoState.entryOffset >= 0) {
                     boolean isFirst = true;
                     FrameInfoQueryResult validResult;
-                    SingleShotFrameInfoQueryResultAllocator.reload();
-                    while ((validResult = CodeInfoAccess.nextFrameInfo(codeInfo, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, frameInfoState)) != null) {
-                        SingleShotFrameInfoQueryResultAllocator.reload();
+                    singleShotFrameInfoQueryResultAllocator.reload();
+                    while ((validResult = CodeInfoAccess.nextFrameInfo(codeInfo, frameInfoReader, singleShotFrameInfoQueryResultAllocator, dummyValueInfoAllocator, frameInfoState)) != null) {
+                        singleShotFrameInfoQueryResultAllocator.reload();
                         if (!isFirst) {
                             log.newline();
                         }
@@ -217,7 +168,7 @@ public class ThreadStackPrinter {
     }
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
-    public static void printStacktrace(Pointer startSP, CodePointer startIP, Stage0StackFramePrintVisitor printVisitor, Log log) {
+    public static boolean printStacktrace(Pointer startSP, CodePointer startIP, Stage0StackFramePrintVisitor printVisitor, Log log) {
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         JavaStackWalker.initWalk(walk, startSP, startIP);
 
@@ -229,7 +180,7 @@ public class ThreadStackPrinter {
             walk.setIPCodeInfo(CodeInfoTable.lookupCodeInfo(anchor.getLastJavaIP()));
         }
 
-        JavaStackWalker.doWalk(walk, printVisitor, log);
+        return JavaStackWalker.doWalk(walk, printVisitor, log);
     }
 
     @Uninterruptible(reason = "CodeInfo in JavaStackWalk is currently null, so printing to log is safe right now.", calleeMustBe = false)

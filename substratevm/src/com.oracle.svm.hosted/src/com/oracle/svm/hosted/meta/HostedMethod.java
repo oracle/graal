@@ -140,6 +140,8 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
 
     public void setCodeAddressOffset(int address) {
         assert isCompiled();
+        assert !codeAddressOffsetValid;
+
         codeAddressOffset = address;
         codeAddressOffsetValid = true;
     }

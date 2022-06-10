@@ -26,8 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.io.Closeable;
 import java.lang.ref.ReferenceQueue;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -39,9 +37,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.util.ReflectionUtil;
+
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import org.graalvm.compiler.debug.GraalError;
 
 @TargetClass(java.io.FileDescriptor.class)
 final class Target_java_io_FileDescriptor {
@@ -90,15 +89,7 @@ final class ConstructCopy implements RecomputeFieldValue.CustomFieldValueTransfo
 
     @Override
     public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
-        final Class<?> clazz = originalValue.getClass();
-        final Constructor<?> ctor;
-        try {
-            ctor = clazz.getDeclaredConstructor();
-            ctor.setAccessible(true);
-            return ctor.newInstance();
-        } catch (NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e) {
-            throw new GraalError(e);
-        }
+        return ReflectionUtil.newInstance(originalValue.getClass());
     }
 }
 

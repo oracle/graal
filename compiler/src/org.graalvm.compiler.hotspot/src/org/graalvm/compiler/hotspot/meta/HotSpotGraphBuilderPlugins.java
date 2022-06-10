@@ -199,6 +199,7 @@ public class HotSpotGraphBuilderPlugins {
         if (config.instanceKlassInitThreadOffset != -1) {
             plugins.setClassInitializationPlugin(new HotSpotJITClassInitializationPlugin());
         }
+        compilerConfiguration.registerGraphBuilderPlugins(plugins, options);
 
         invocationPlugins.defer(new Runnable() {
 
@@ -227,6 +228,9 @@ public class HotSpotGraphBuilderPlugins {
                 registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
+                for (HotSpotInvocationPluginProvider p : GraalServices.load(HotSpotInvocationPluginProvider.class)) {
+                    p.registerInvocationPlugins(target.arch, plugins.getInvocationPlugins(), replacements);
+                }
             }
 
         });

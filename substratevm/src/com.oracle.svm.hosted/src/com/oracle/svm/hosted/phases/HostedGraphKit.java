@@ -82,7 +82,8 @@ public class HostedGraphKit extends SubstrateGraphKit {
         ResolvedJavaMethod method = graph.method();
         if (method instanceof HostedMethod) {
             StaticAnalysisResults profilingInfo = ((HostedMethod) method).getProfilingInfo();
-            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, profilingInfo.getTypeProfile(bci), profilingInfo.getMethodProfile(bci));
+            return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp,
+                            profilingInfo.getTypeProfile(bci), profilingInfo.getMethodProfile(bci), profilingInfo.getStaticTypeProfile(bci));
         } else {
             return super.createMethodCallTarget(invokeKind, targetMethod, args, returnStamp, bci);
         }

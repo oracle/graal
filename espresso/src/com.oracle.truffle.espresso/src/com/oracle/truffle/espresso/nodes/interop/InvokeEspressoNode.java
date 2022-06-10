@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.nodes.interop;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -80,6 +81,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments,
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,
+                    @Cached("cachedMethod.getMethod().resolveParameterKlasses()") Klass[] parameterKlasses,
                     @Cached(value = "createDirectCallNode(method.getMethod().getCallTargetForceInit())") DirectCallNode directCallNode,
                     @Cached BranchProfile badArityProfile)
                     throws ArityException, UnsupportedTypeException {
@@ -92,14 +94,12 @@ public abstract class InvokeEspressoNode extends EspressoNode {
             throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
 
-        Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();
-
         Object[] convertedArguments = new Object[expectedArity];
         for (int i = 0; i < expectedArity; i++) {
             convertedArguments[i] = toEspressoNodes[i].execute(arguments[i], parameterKlasses[i]);
         }
 
-        if (!method.getMethod().isStatic()) {
+        if (!cachedMethod.getMethod().isStatic()) {
             Object[] argumentsWithReceiver = new Object[convertedArguments.length + 1];
             argumentsWithReceiver[0] = receiver;
             System.arraycopy(convertedArguments, 0, argumentsWithReceiver, 1, convertedArguments.length);
@@ -122,7 +122,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
             throw ArityException.create(expectedArity, expectedArity, arguments.length);
         }
 
-        Klass[] parameterKlasses = method.getMethod().resolveParameterKlasses();
+        Klass[] parameterKlasses = getParameterKlasses(method.getMethod());
 
         Object[] convertedArguments = new Object[expectedArity];
         for (int i = 0; i < expectedArity; i++) {
@@ -140,6 +140,11 @@ public abstract class InvokeEspressoNode extends EspressoNode {
                                                                                    * static => no
                                                                                    * receiver
                                                                                    */ convertedArguments);
+    }
+
+    @TruffleBoundary
+    private static Klass[] getParameterKlasses(Method method) {
+        return method.resolveParameterKlasses();
     }
 
     private static void checkValidInvoke(Method method, Object receiver) {

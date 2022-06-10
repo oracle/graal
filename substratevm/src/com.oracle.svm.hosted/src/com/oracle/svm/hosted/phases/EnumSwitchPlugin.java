@@ -44,7 +44,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
@@ -130,7 +130,7 @@ final class EnumSwitchPluginRegistry extends IntrinsificationPluginRegistry {
 }
 
 @AutomaticFeature
-final class EnumSwitchFeature implements GraalFeature {
+final class EnumSwitchFeature implements InternalFeature {
 
     BigBang bb;
 

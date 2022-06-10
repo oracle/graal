@@ -91,7 +91,7 @@ public class ReadAfterCheckCastTest extends GraphScheduleTest {
             CoreProviders context = getProviders();
             CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
             new HighTierLoweringPhase(canonicalizer).apply(graph, context);
-            new FloatingReadPhase().apply(graph);
+            new FloatingReadPhase(canonicalizer).apply(graph, context);
             canonicalizer.apply(graph, context);
 
             debug.dump(DebugContext.BASIC_LEVEL, graph, "After lowering");

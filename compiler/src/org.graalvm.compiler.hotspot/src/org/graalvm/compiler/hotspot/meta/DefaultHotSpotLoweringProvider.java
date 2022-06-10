@@ -526,6 +526,9 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
      * checks to avoid explicit 0 and overflow checks.
      */
     protected void lowerIntegerDivRem(IntegerDivRemNode n, LoweringTool tool) {
+        if (!n.canFloat()) {
+            return;
+        }
         ValueNode dividend = n.getX();
         ValueNode divisor = n.getY();
         final IntegerStamp dividendStamp = (IntegerStamp) dividend.stamp(NodeView.DEFAULT);

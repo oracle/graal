@@ -59,7 +59,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.regex.AbstractConstantKeysObject;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
@@ -493,10 +493,11 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
         @Specialization
         static int doResult(RegexResult receiver, int groupNumber,
-                        @Cached ConditionProfile lazyProfile,
+                        @Cached BranchProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
-            if (lazyProfile.profile(receiver.result == null)) {
+            if (receiver.result == null) {
                 assert receiver.lazyCallTarget != null;
+                lazyProfile.enter();
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
             int i = groupNumber * 2 + 1;
@@ -515,10 +516,11 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
         @Specialization
         static int doResult(RegexResult receiver, int groupNumber,
-                        @Cached ConditionProfile lazyProfile,
+                        @Cached BranchProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
-            if (lazyProfile.profile(receiver.result == null)) {
+            if (receiver.result == null) {
                 assert receiver.lazyCallTarget != null;
+                lazyProfile.enter();
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
             int i = groupNumber * 2;

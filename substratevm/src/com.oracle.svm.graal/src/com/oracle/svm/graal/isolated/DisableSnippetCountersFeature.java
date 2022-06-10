@@ -37,7 +37,7 @@ import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -74,7 +74,7 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
  * fully supported for cross-isolate compilations.
  */
 @AutomaticFeature
-final class DisableSnippetCountersFeature implements GraalFeature {
+final class DisableSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return SubstrateOptions.supportCompileInIsolates();

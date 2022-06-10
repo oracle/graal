@@ -35,7 +35,9 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -74,9 +76,17 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
         return new ReachabilityFenceNode(new ValueNode[]{value});
     }
 
+    public static ReachabilityFenceNode create(ValueNode[] values) {
+        return new ReachabilityFenceNode(values);
+    }
+
     protected ReachabilityFenceNode(ValueNode[] values) {
         super(TYPE, StampFactory.forVoid());
         this.values = new NodeInputList<>(this, values);
+    }
+
+    public NodeInputList<ValueNode> getValues() {
+        return values;
     }
 
     @Override
@@ -137,18 +147,67 @@ public final class ReachabilityFenceNode extends FixedWithNextNode implements Vi
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        /* Constant values do not need to be tracked. */
-        for (int i = values.size() - 1; i >= 0; i--) {
-            if (values.get(i).isConstant()) {
-                values.remove(i);
+        /*
+         * See if we want to build a new version of this node. Canonicalization must not have side
+         * effects, including modifying the current node in place.
+         */
+        int droppedInputs = 0;
+        int compressionInputs = 0;
+        for (ValueNode value : values) {
+            if (value.isConstant()) {
+                /* Constant values do not need to be tracked. */
+                droppedInputs++;
+            } else if (tool.allUsagesAvailable()) {
+                if ((value instanceof CompressionNode || value instanceof VirtualObjectNode) && hasOnlyReachabilityFenceUsages(value)) {
+                    if (value instanceof CompressionNode) {
+                        /* References do not need to be uncompressed just to be kept alive. */
+                        compressionInputs++;
+                    } else {
+                        assert value instanceof VirtualObjectNode;
+                        /* Virtual objects that have no other usages do not need to be tracked. */
+                        droppedInputs++;
+                    }
+                }
             }
         }
-        if (values.size() == 0) {
+
+        if (values.size() == 0 || values.size() == droppedInputs) {
             /* No more values to track, delete ourselves. */
             return null;
+        } else if (droppedInputs > 0 || compressionInputs > 0) {
+            /* We can drop or simplify some inputs, so build a new node. */
+            int newInputSize = values.size() - droppedInputs;
+            ValueNode[] newInputs = new ValueNode[newInputSize];
+            int i = 0;
+            for (ValueNode value : values) {
+                ValueNode v = value;
+                if (v.isConstant()) {
+                    continue;
+                } else if (tool.allUsagesAvailable()) {
+                    if ((v instanceof CompressionNode || v instanceof VirtualObjectNode) && hasOnlyReachabilityFenceUsages(v)) {
+                        if (v instanceof CompressionNode) {
+                            v = ((CompressionNode) v).getValue();
+                        } else {
+                            assert v instanceof VirtualObjectNode;
+                            continue;
+                        }
+                    }
+                }
+                newInputs[i++] = v;
+            }
+            assert i == newInputSize;
+            return new ReachabilityFenceNode(newInputs);
         } else {
             return this;
         }
+    }
+
+    private static boolean hasOnlyReachabilityFenceUsages(ValueNode value) {
+        if (value.hasExactlyOneUsage()) {
+            assert value.singleUsage() instanceof ReachabilityFenceNode;
+            return true;
+        }
+        return value.usages().filter(NodePredicates.isNotA(ReachabilityFenceNode.class)).isEmpty();
     }
 
     @Override

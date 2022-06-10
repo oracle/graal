@@ -75,7 +75,7 @@ class CompilationEventImpl extends RootFunctionEventImpl implements CompilationE
     public void failed(boolean permanent, CharSequence reason) {
         end();
         this.success = false;
-        this.failure = new CompilationFailureEventImpl(source, rootFunction, permanent, reason);
+        this.failure = new CompilationFailureEventImpl(source, language, rootFunction, permanent, reason);
     }
 
     @Override

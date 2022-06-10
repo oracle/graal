@@ -35,6 +35,8 @@ import static org.graalvm.compiler.options.OptionType.User;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
@@ -47,6 +49,8 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
@@ -56,6 +60,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
@@ -66,6 +71,10 @@ public class SubstrateOptions {
 
     @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
+    @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
+    public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
+    @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     public static boolean parseOnce() {
         /*
@@ -154,6 +163,32 @@ public class SubstrateOptions {
     private static ValueUpdateHandler<OptimizationLevel> optimizeValueUpdateHandler;
     private static ValueUpdateHandler<Integer> debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
+    @Fold
+    public static boolean getSourceLevelDebug() {
+        return SourceLevelDebug.getValue();
+    }
+
+    @Fold
+    public static Predicate<String> getSourceLevelDebugFilter() {
+        return makeFilter(SourceLevelDebugFilter.getValue().values());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static Predicate<String> makeFilter(List<String> definedFilters) {
+        if (definedFilters.isEmpty()) {
+            return javaName -> true;
+        }
+        List<String> wildCardList = OptionUtils.flatten(",", definedFilters);
+        return javaName -> {
+            for (String wildCard : wildCardList) {
+                if (javaName.startsWith(wildCard)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+    }
+
     /**
      * The currently supported optimization levels. See the option description of {@link #Optimize}
      * for a description of the levels.
@@ -171,6 +206,7 @@ public class SubstrateOptions {
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
+            SubstrateOptions.SourceLevelDebug.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.AOTTrivialInline.update(values, newLevel != OptimizationLevel.O0);
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
@@ -686,6 +722,9 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Create a heap dump and exit.")//
+    public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new ImmutableRuntimeOptionKey<>(false);
+
     @Option(help = "Enable Java Flight Recorder.")//
     public static final RuntimeOptionKey<Boolean> FlightRecorder = new ImmutableRuntimeOptionKey<>(false);
 
@@ -751,4 +790,8 @@ public class SubstrateOptions {
 
     @Option(help = "Run reachability handlers concurrently during analysis.", type = Expert)//
     public static final HostedOptionKey<Boolean> RunReachabilityHandlersConcurrently = new HostedOptionKey<>(true);
+
+    @Option(help = "Force many trampolines to be needed for inter-method calls. Normally trampolines are only used when a method destination is outside the range of a pc-relative branch instruction.", type = Debug)//
+    public static final HostedOptionKey<Boolean> UseDirectCallTrampolinesALot = new HostedOptionKey<>(false);
+
 }

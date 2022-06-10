@@ -214,6 +214,7 @@ public class JNIAccessFeature implements Feature {
                         "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
                         declaringClass, name, descriptor);
 
+        assert declaringClass.startsWith("L") && declaringClass.endsWith(";") : declaringClass;
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
         if (JNIAccessFeature.Options.PrintJNIMethods.getValue()) {

@@ -42,8 +42,8 @@ class CompilationFailureEventImpl extends RootFunctionEventImpl {
 
     @Label("Failure Reason") @Description("Failure Reason") public String failureReason;
 
-    CompilationFailureEventImpl(String source, String rootFunction, boolean permanent, CharSequence reason) {
-        super(source, rootFunction);
+    CompilationFailureEventImpl(String source, String language, String rootFunction, boolean permanent, CharSequence reason) {
+        super(source, language, rootFunction);
         this.permanentFailure = permanent;
         this.failureReason = reason == null ? null : reason.toString();
     }

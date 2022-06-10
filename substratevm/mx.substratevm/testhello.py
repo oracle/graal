@@ -159,6 +159,8 @@ def test():
     if os.environ.get('debuginfotest_isolates', 'no') == 'yes':
         isolates = True
         
+    arch = os.environ.get('debuginfotest_arch', 'amd64')
+        
     if isolates:
         print("Testing with isolates enabled!")
     else:
@@ -676,10 +678,28 @@ def test():
     checker = Checker('backtrace in recursive inlineTo', rexp)
     checker.check(exec_string, skip_fails=False)
 
-    exec_string = execute("break hello.Hello::noInlineManyArgs")
+    # on aarch64 the initial break occurs at the stack push
+    # but we need to check the args before and after the stack push
+    # so we need to use the examine command to identify the start
+    # address of the method and place an instruction break at that
+    # address to ensure we have the very first instruction
+    exec_string = execute("x/i 'hello.Hello'::noInlineManyArgs")
+    rexp = r"%s0x(%s)%shello.Hello::noInlineManyArgs%s"%(spaces_pattern, hex_digits_pattern, wildcard_pattern, wildcard_pattern)
+    checker = Checker('x/i hello.Hello::noInlineManyArgs', rexp)
+    matches = checker.check(exec_string)
+    # n.b can ony get here with one match
+    match = matches[0]
+    bp_address = int(match.group(1), 16)
+    print("bp = %s %x"%(match.group(1), bp_address))
+
+    # exec_string = execute("break hello.Hello::noInlineManyArgs")
+    exec_string = execute("break *0x%x"%bp_address)
     rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 188\."%(digits_pattern, address_pattern)
-    checker = Checker('break hello.Hello::noInlineManyArgs', rexp)
+    checker = Checker(r"break *0x%x"%bp_address, rexp)
     checker.check(exec_string)
+    #rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 188\."%(digits_pattern, address_pattern)
+    #checker = Checker('break hello.Hello::noInlineManyArgs', rexp)
+    #checker.check(exec_string)
 
     execute("continue")
     exec_string = execute("info args")
@@ -709,12 +729,28 @@ def test():
     checker.check(exec_string)
     
     exec_string = execute("x/i $pc")
-    rexp = r"=> 0x542100 <hello.Hello::noInlineManyArgs(int, int, int, int, boolean int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float)>:	sub    $0x68,%rsp"
-    rexp = r".*sub %s\$0x%s,%%rsp"%(spaces_pattern, hex_digits_pattern)
+    if arch == 'aarch64':
+        rexp = r"%ssub%ssp, sp, #0x%s"%(wildcard_pattern, spaces_pattern, hex_digits_pattern)
+    else:
+        rexp = r"%ssub %s\$0x%s,%%rsp"%(wildcard_pattern, spaces_pattern, hex_digits_pattern)
     checker = Checker('x/i $pc', rexp)
     checker.check(exec_string)
 
-    execute("stepi")
+    if arch == 'aarch64':
+        exec_string = execute("stepi")
+        print(exec_string)
+        # n.b. stack param offsets will be wrong here because
+        # aarch64 creates the frame in two steps, a sub of
+        # the frame size followed by a stack push of [lr,sp]
+        # (needs fixing in the initial frame location info split
+        # in the generator not here)
+        exec_string = execute("x/i $pc")
+        print(exec_string)
+        exec_string = execute("stepi")
+        print(exec_string)
+    else:
+        exec_string = execute("stepi")
+
     exec_string = execute("info args")
     rexp =[r"i0 = 0",
            r"i1 = 1",

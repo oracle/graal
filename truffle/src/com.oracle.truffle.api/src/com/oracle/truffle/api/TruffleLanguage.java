@@ -1534,7 +1534,7 @@ public abstract class TruffleLanguage<C> {
      */
     protected final String getLanguageHome() {
         try {
-            return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
+            return ENGINE.getLanguageHome(languageInfo);
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
@@ -1554,7 +1554,8 @@ public abstract class TruffleLanguage<C> {
      * @since 20.1.0
      */
     protected final int getAsynchronousStackDepth() {
-        return LanguageAccessor.engineAccess().getAsynchronousStackDepth(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
+        assert polyglotLanguageInstance != null : "getAsynchronousStackDepth not supported for host language";
+        return LanguageAccessor.engineAccess().getAsynchronousStackDepth(polyglotLanguageInstance);
     }
 
     /**

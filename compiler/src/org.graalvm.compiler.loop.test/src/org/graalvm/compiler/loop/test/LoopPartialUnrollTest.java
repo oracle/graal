@@ -332,9 +332,9 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
 
             CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
             canonicalizer.apply(graph, context);
-            new RemoveValueProxyPhase().apply(graph);
+            new RemoveValueProxyPhase(canonicalizer).apply(graph, context);
             new HighTierLoweringPhase(canonicalizer).apply(graph, context);
-            new FloatingReadPhase().apply(graph);
+            new FloatingReadPhase(canonicalizer).apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             new ConditionalEliminationPhase(true).apply(graph, context);
             new GuardLoweringPhase().apply(graph, context);

@@ -70,11 +70,8 @@ import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
 import static com.oracle.truffle.api.strings.TStringOps.readS0;
 import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
-import static com.oracle.truffle.api.strings.TStringOpsNodes.RawArrayCopyBytesNode;
-import static com.oracle.truffle.api.strings.TStringOpsNodes.RawArrayCopyNode;
 import static com.oracle.truffle.api.strings.TStringOpsNodes.RawIndexOfStringNode;
 import static com.oracle.truffle.api.strings.TStringOpsNodes.RawLastIndexOfStringNode;
-import static com.oracle.truffle.api.strings.TStringOpsNodes.RawRegionEqualsNode;
 
 import java.util.Arrays;
 
@@ -154,27 +151,27 @@ final class TStringInternalNodes {
         abstract TruffleString execute(AbstractTruffleString a, Object array, int offset, int length, int stride, int encoding, int codeRange);
 
         @Specialization(guards = {"encoding == cachedEncoding", "stride == cachedStride"}, limit = "6")
-        static TruffleString doCached(AbstractTruffleString a, Object array, int offset, int length, @SuppressWarnings("unused") int stride, @SuppressWarnings("unused") int encoding, int codeRange,
+        TruffleString doCached(AbstractTruffleString a, Object array, int offset, int length, @SuppressWarnings("unused") int stride, @SuppressWarnings("unused") int encoding, int codeRange,
                         @Cached(value = "encoding") int cachedEncoding,
                         @Cached(value = "stride") int cachedStride,
-                        @Cached CalcStringAttributesNode calcAttributesNode,
-                        @Cached RawArrayCopyBytesNode arrayCopyNode) {
-            return createString(a, array, offset, length, cachedStride, cachedEncoding, codeRange, calcAttributesNode, arrayCopyNode);
+                        @Cached CalcStringAttributesNode calcAttributesNode) {
+            return createString(a, array, offset, length, cachedStride, cachedEncoding, codeRange, calcAttributesNode, this);
         }
 
         @Specialization(replaces = "doCached")
-        static TruffleString doUncached(AbstractTruffleString a, Object array, int offset, int length, int stride, int encoding, int codeRange,
-                        @Cached CalcStringAttributesNode calcAttributesNode,
-                        @Cached RawArrayCopyBytesNode arrayCopyNode) {
-            return createString(a, array, offset, length, stride, encoding, codeRange, calcAttributesNode, arrayCopyNode);
+        TruffleString doUncached(AbstractTruffleString a, Object array, int offset, int length, int stride, int encoding, int codeRange,
+                        @Cached CalcStringAttributesNode calcAttributesNode) {
+            return createString(a, array, offset, length, stride, encoding, codeRange, calcAttributesNode, this);
         }
 
         private static TruffleString createString(AbstractTruffleString a, Object array, int offset, int length, int stride, int encoding, int codeRange,
-                        CalcStringAttributesNode calcAttributesNode, RawArrayCopyBytesNode arrayCopyNode) {
+                        CalcStringAttributesNode calcAttributesNode, CreateSubstringNode location) {
             long attrs = calcAttributesNode.execute(a, array, offset, length, stride, encoding, codeRange);
             int newStride = Stride.fromCodeRange(StringAttributes.getCodeRange(attrs), encoding);
             byte[] newBytes = new byte[length << newStride];
-            arrayCopyNode.execute(array, offset, stride, newBytes, 0, newStride, length);
+            TStringOps.arraycopyWithStride(location,
+                            array, offset, stride, 0,
+                            newBytes, 0, newStride, 0, length);
             return TruffleString.createFromByteArray(newBytes, length, newStride, encoding, StringAttributes.getCodePointLength(attrs), StringAttributes.getCodeRange(attrs));
         }
     }
@@ -1058,12 +1055,14 @@ final class TStringInternalNodes {
         abstract byte[] execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int encoding, int concatLength, int concatStride);
 
         @Specialization(guards = "isUTF16(encoding) || isUTF32(encoding)")
-        byte[] doWithCompression(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, @SuppressWarnings("unused") int encoding, int concatLength, int concatStride,
-                        @Cached RawArrayCopyNode arrayCopyNodeA,
-                        @Cached RawArrayCopyNode arrayCopyNodeB) {
+        byte[] doWithCompression(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, @SuppressWarnings("unused") int encoding, int concatLength, int concatStride) {
             final byte[] bytes = new byte[concatLength << concatStride];
-            arrayCopyNodeA.execute(a, arrayA, 0, bytes, 0, concatStride, a.length());
-            arrayCopyNodeB.execute(b, arrayB, 0, bytes, a.length(), concatStride, b.length());
+            TStringOps.arraycopyWithStride(this,
+                            arrayA, a.offset(), a.stride(), 0,
+                            bytes, 0, concatStride, 0, a.length());
+            TStringOps.arraycopyWithStride(this,
+                            arrayB, b.offset(), b.stride(), 0,
+                            bytes, 0, concatStride, a.length(), b.length());
             return bytes;
         }
 
@@ -1073,11 +1072,11 @@ final class TStringInternalNodes {
             assert isStride0(b);
             assert concatStride == 0;
             final byte[] bytes = new byte[concatLength];
-            TStringOps.arraycopyWithStride(
-                            this, arrayA, a.offset(), 0, 0,
+            TStringOps.arraycopyWithStride(this,
+                            arrayA, a.offset(), 0, 0,
                             bytes, 0, 0, 0, a.length());
-            TStringOps.arraycopyWithStride(
-                            this, arrayB, b.offset(), 0, 0,
+            TStringOps.arraycopyWithStride(this,
+                            arrayB, b.offset(), 0, 0,
                             bytes, 0, 0, a.length(), b.length());
             return bytes;
         }
@@ -1090,11 +1089,10 @@ final class TStringInternalNodes {
         abstract boolean execute(AbstractTruffleString a, Object arrayA, int codeRangeA, AbstractTruffleString b, Object arrayB, int codeRangeB, int fromIndexA, int fromIndexB, int length);
 
         @Specialization(guards = {"isFixedWidth(codeRangeA, codeRangeB)"})
-        static boolean direct(
+        boolean direct(
                         AbstractTruffleString a, Object arrayA, @SuppressWarnings("unused") int codeRangeA,
-                        AbstractTruffleString b, Object arrayB, @SuppressWarnings("unused") int codeRangeB, int fromIndexA, int fromIndexB, int length,
-                        @Cached RawRegionEqualsNode regionEqualsNode) {
-            return regionEqualsNode.execute(a, arrayA, b, arrayB, fromIndexA, fromIndexB, length, null);
+                        AbstractTruffleString b, Object arrayB, @SuppressWarnings("unused") int codeRangeB, int fromIndexA, int fromIndexB, int length) {
+            return TStringOps.regionEqualsWithOrMaskWithStride(this, a, arrayA, a.stride(), fromIndexA, b, arrayB, b.stride(), fromIndexB, null, length);
         }
 
         @Specialization(guards = {"!isFixedWidth(codeRangeA, codeRangeB)"})
@@ -1507,8 +1505,7 @@ final class TStringInternalNodes {
         @Specialization
         String createJavaString(AbstractTruffleString a, Object arrayA,
                         @Cached ConditionProfile reuseProfile,
-                        @Cached GetCodeRangeNode getCodeRangeNode,
-                        @Cached RawArrayCopyBytesNode arrayCopyBytesNode) {
+                        @Cached GetCodeRangeNode getCodeRangeNode) {
             assert isUTF16Compatible(a);
             final int codeRange = getCodeRangeNode.execute(a);
             final int stride = Stride.fromCodeRangeUTF16(codeRange);
@@ -1518,7 +1515,9 @@ final class TStringInternalNodes {
                 bytes = (byte[]) arrayA;
             } else {
                 bytes = new byte[a.length() << stride];
-                arrayCopyBytesNode.execute(arrayA, a.offset(), a.stride(), bytes, 0, stride, a.length());
+                TStringOps.arraycopyWithStride(this,
+                                arrayA, a.offset(), a.stride(), 0,
+                                bytes, 0, stride, 0, a.length());
             }
             return TStringUnsafe.createJavaString(bytes, stride);
         }

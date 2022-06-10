@@ -230,7 +230,7 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
     }
 
     public boolean isBuiltin() {
-        return data() == null;
+        return module().isBuiltin();
     }
 
     @Override

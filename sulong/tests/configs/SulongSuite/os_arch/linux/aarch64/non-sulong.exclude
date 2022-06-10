@@ -1,5 +1,3 @@
-# The native code aborted on an attempt to perform a number cast
-c/max-unsigned-int-to-double-cast.c.dir
 #
 # The compiled LL code containing the va_arg instruction returns invalid values
 #

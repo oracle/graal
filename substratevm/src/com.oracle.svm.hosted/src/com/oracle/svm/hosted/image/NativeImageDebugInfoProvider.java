@@ -25,6 +25,30 @@
  */
 package com.oracle.svm.hosted.image;
 
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
+
+import java.lang.reflect.Modifier;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.word.WordBase;
+
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
@@ -62,6 +86,7 @@ import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
+
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
@@ -83,29 +108,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.WordBase;
-
-import java.lang.reflect.Modifier;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
@@ -197,7 +199,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     @Override
     public Stream<DebugCodeInfo> codeInfoProvider() {
-        return codeCache.compilations.entrySet().stream().map(entry -> new NativeImageDebugCodeInfo(entry.getKey(), entry.getValue()));
+        return codeCache.getOrderedCompilations().stream().map(pair -> new NativeImageDebugCodeInfo(pair.getLeft(), pair.getRight()));
     }
 
     @Override
@@ -1219,7 +1221,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             // needs
             // splitting at the extend point with the stack offsets adjusted in the new info
             if (locProducer.usesStack() && firstLocationOffset > stackDecrement) {
-                NativeImageDebugLocationInfo splitLocationInfo = locationInfo.split(stackDecrement, getFrameSize());
+                int adjustment = adjustFrameSize(getFrameSize());
+                NativeImageDebugLocationInfo splitLocationInfo = locationInfo.split(stackDecrement, adjustment);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "Split synthetic Location Info : %s (%d, %d) (%d, %d)", locationInfo.name(), 0,
                                 locationInfo.addressLo() - 1, locationInfo.addressLo(), locationInfo.addressHi() - 1);
                 locationInfos.add(0, splitLocationInfo);
@@ -1631,7 +1634,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.localInfoList = new ArrayList<>(toSplit.localInfoList.size());
             for (DebugLocalValueInfo localInfo : toSplit.localInfoList) {
                 if (localInfo.localKind() == DebugLocalValueInfo.LocalKind.STACKSLOT) {
-                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(localInfo.stackSlot() + (frameSize - 8));
+                    int newSlot = localInfo.stackSlot() + frameSize;
+                    NativeImageDebugLocalValue value = new NativeImageDebugStackValue(newSlot);
                     NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
                     NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
                                     value,
@@ -1834,10 +1838,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return this;
         }
 
-        public NativeImageDebugLocationInfo split(int stackDecrement, int frameSize) {
+        public NativeImageDebugLocationInfo split(int stackDecrement, int adjustment) {
             // this should be for an initial range extending beyond the stack decrement
             assert lo == 0 && lo < stackDecrement && stackDecrement < hi : "invalid split request";
-            return new NativeImageDebugLocationInfo(this, stackDecrement, frameSize);
+            return new NativeImageDebugLocationInfo(this, stackDecrement, adjustment);
         }
 
     }
@@ -1895,6 +1899,57 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     AMD64.xmm3
     };
 
+    /**
+     * adjustment in bytes added to offset for stack passed parameters on AMD64
+     *
+     * the value allows for a word offset from the unadjusted sp to allow for the stacked return
+     * address and a second word offset to address the first stack passed parameter with index 0.
+     */
+    static final int AMD64_STACK_OFFSET = 16;
+
+    /**
+     * adjustment in bytes added to offset for stack passed parameters on AARCH64
+     *
+     * the value allows for a word offset from the unadjusted sp to address the first stack passed
+     * parameter with index 0.
+     */
+    static final int AARCH64_STACK_OFFSET = 8;
+
+    /**
+     * Adjustment in bytes added to frame size when recomputing parameter stack offsets after stack
+     * adjustment on AMD64.
+     *
+     * The value allows for the fact that the reported framesize includes the stacked return address
+     * which has already been rolled into the offsets derived for the unadjusted sp.
+     */
+    static final int AMD64_FRAMESIZE_ADJUSTMENT = -8;
+
+    /**
+     * Adjustment in bytes added to frame size when recomputing parameter stack offsets after stack
+     * adjustment on AARCH64.
+     *
+     * The value in this case is zero. Although the reported framesize for AArch64 includes the
+     * pushed lr and fp registers these have not been rolled into the offsets derived for the
+     * unadjusted sp.
+     */
+    static final int AARCH64_FRAMESIZE_ADJUSTMENT = 0;
+
+    static int adjustFrameSize(int frameSize) {
+        // make sure this is the right arch and os
+        Architecture arch = ConfigurationValues.getTarget().arch;
+        assert arch instanceof AMD64 || arch instanceof AArch64 : "unexpected architecture";
+        OS os = OS.getCurrent();
+        assert os == OS.LINUX || os == OS.WINDOWS : "unexpected os";
+        int adjustment = frameSize;
+        if (arch instanceof AMD64) {
+            // reported amd64 frame size includes an extra 8 bytes for the stacked return address
+            adjustment += AMD64_FRAMESIZE_ADJUSTMENT;
+        } else {
+            adjustment += AARCH64_FRAMESIZE_ADJUSTMENT;
+        }
+        return adjustment;
+    }
+
     class ParamLocationProducer {
         Register[] gpregs;
         Register[] fregs;
@@ -1902,6 +1957,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         int nextFPregIdx;
         int nextStackIdx;
         int stackParamCount;
+        int stackOffset;
 
         ParamLocationProducer(ResolvedJavaMethod method) {
             Architecture arch = ConfigurationValues.getTarget().arch;
@@ -1912,6 +1968,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 assert os == OS.LINUX : "unexpected os/architecture";
                 gpregs = AARCH64_GPREG;
                 fregs = AARCH64_FREG;
+                stackOffset = AARCH64_STACK_OFFSET;
             } else {
                 if (os == OS.LINUX) {
                     gpregs = AMD64_GPREG_LINUX;
@@ -1920,6 +1977,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                     gpregs = AMD64_GPREG_WINDOWS;
                     fregs = AMD64_FREG_WINDOWS;
                 }
+                stackOffset = AMD64_STACK_OFFSET;
             }
             nextGPRegIdx = 0;
             nextFPregIdx = 0;
@@ -1958,11 +2016,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         public NativeImageDebugLocalValue nextStackLocation() {
-            // offset is computed relative to the undecremented stack pointer and includes
-            // an extra 16 bytes to allow for the stacked return address and alignment
+            // offset is computed relative to the undecremented stack pointer and includes an extra
+            // offset to adjust for any intervening return address and frame pointer
             assert nextStackIdx < stackParamCount : "encountered too many stack params";
             int stackIdx = nextStackIdx++;
-            return new NativeImageDebugStackValue((2 + stackIdx) * 8);
+            return new NativeImageDebugStackValue((stackIdx * 8) + stackOffset);
         }
 
         public boolean usesStack() {
@@ -1972,9 +2030,6 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private int computeStackCount(ResolvedJavaMethod method) {
             int numIntegerParams = 0;
             int numFloatingParams = 0;
-            if (!method.isStatic()) {
-                numIntegerParams++;
-            }
             Signature signature = method.getSignature();
             int parameterCount = signature.getParameterCount(false);
             if (!method.isStatic()) {

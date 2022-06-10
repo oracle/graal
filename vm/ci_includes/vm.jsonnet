@@ -64,9 +64,9 @@ local jdks = common_json.jdks;
       JAVA_HOME: jdks['labsjdk-ce-11'],
       EXTRA_JAVA_HOMES: jdks['labsjdk-ce-17'],
     },
-    mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso', '--disable-installables=true'],
+    mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build'],
-    deploy:: self.mx_cmd_base + ['--suite', 'compiler', '--suite', 'truffle', '--suite', 'sdk', '--suite', 'tools', '--suite', 'regex', '--suite', 'graal-js', '--suite', 'espresso', 'maven-deploy', '--tags=default', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
+    deploy:: self.mx_cmd_base + ['--suite', 'compiler', '--suite', 'truffle', '--suite', 'sdk', '--suite', 'tools', '--suite', 'regex', '--suite', 'graal-js', '--suite', 'espresso', '--suite', 'substratevm', 'maven-deploy', '--skip', $.maven_11_17_only_native.native_distributions, '--tags=default', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
   },
 
   maven_11_17_only_native:: self.maven_11_17 + {
@@ -110,6 +110,7 @@ local jdks = common_json.jdks;
       {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
       {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
       {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
+      {name: 'daily-deploy-vm-ruby-java11-darwin-aarch64'},
     ],
     targets+: ['daily'],
   },
@@ -255,10 +256,10 @@ local jdks = common_json.jdks;
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_amd64),
 
     # Darwin/AARCH64
-    vm_common.deploy_vm_base_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java11-darwin-aarch64', patterns: ['daily-deploy-vm-base-java11-darwin-aarch64']}]},
-    vm_common.deploy_vm_installable_java11_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java11-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java11-darwin-aarch64']}]},
-    vm_common.deploy_vm_base_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-base-java17-darwin-aarch64', patterns: ['daily-deploy-vm-base-java17-darwin-aarch64']}]},
-    vm_common.deploy_vm_installable_java17_darwin_aarch64 + {publishArtifacts: [{name: 'daily-deploy-vm-installable-java17-darwin-aarch64', patterns: ['daily-deploy-vm-installable-java17-darwin-aarch64']}]},
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java11_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_aarch64),
 
     # Windows/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java11_windows_amd64),
@@ -271,6 +272,7 @@ local jdks = common_json.jdks;
     #
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java11_linux_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java11_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java11_darwin_aarch64),
 
     # Trigger the releaser service
     self.notify_releaser_build,

@@ -69,7 +69,7 @@ public class CountedLoopOverflowTest extends GraalCompilerTest {
     public static void snippetDownUnsigned() {
         int i = 56;
         while (true) {
-            if (Integer.compareUnsigned(i, 8) >= 0) {
+            if (GraalDirectives.injectIterationCount(100, Integer.compareUnsigned(i, 8) >= 0)) {
                 GraalDirectives.sideEffect(i);
                 i = Math.subtractExact(i, 8);
                 continue;

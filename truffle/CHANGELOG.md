@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.2.0
 
+* GR-38925 Added `InteropLibrary.hasMetaParents(Object)` and `InteropLibrary.getMetaParents(Object)` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
 * GR-36557 Deprecated `--engine.MaximumGraalNodeCount` and introduced `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
 * GR-37493 Added `@DenyReplace` to deny replacement of final node types. 
 * GR-37493 Potentially breaking: Disabled replace of all Truffle DSL generated uncached nodes. If you call `Node.replace()` on an uncached version of a generated node or library it will now fail with an `IllegalArgumentException`. As a rule of thumb, uncached versions of nodes should not ever be stored in `@Child` fields. Instead, they should always be used as singletons.
@@ -16,6 +17,16 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Static frame slots are intended for situations where the type of a variable in a frame slots is known ahead of time and does not need any type checks (e.g. in statically typed languages).
 * GR-36557 Introduced `--engine.InliningUseSize` which changes the code size approximation during inlining to an approximation of the size of the graph rather than just the node count. This option is false by default.
 * GR-37310 Add `BytecodeOSRNode.storeParentFrameInArguments` and `BytecodeOSRNode.restoreParentFrameFromArguments` to give languages more control over how frame arguments in bytecode OSR compilations are created.
+* GR-35280 Implemented new domain specific inlining phase for Truffle interpreter host compilation. 
+    * In native image hosts the new optimizations is applied to all methods annotated with `@BytecodeInterpreterSwitch` and methods which were detected to be used for runtime compilation. 
+    * On HotSpot hosts the new optimizations will be applied to methods annotated with `@BytecodeInterpreterSwitch` only.
+    * The annotation `@BytecodeInterpreterSwitchBoundary` was deprecated. Boundaries for the compilation are now inferred from directives like `CompilerDirective.transferToInterpreter()` and `@TruffleBoundary` automatically.
+    * See the [HostOptimization.md](https://github.com/oracle/graal/blob/master/truffle/docs/HostCompilation.md) for further details.
+* GR-38387 Deterministic and declaration order of `InteropLibrary.getMembers()` is now required.
+* GR-38110 Added option to use `long` values as offsets for accessing memory through `ByteArraySupport`.
+* GR-39029 Fixed issue in `InteropLibrary` that required `asDate` to be implemented whenever `isTime` is exported; correct dependency is on `isDate`.
+* GR-38387 Updated the `InteropLibrary.getMembers()` message regarding ordering and determinism. 
+* GR-38945 Truffle IGV dumping with log level 5 (e.g. `-Dgraal.Dump=Truffle:5`) now dumps the graph after each method that was fully partially evaluated. This enables debugging of problems only visible during partial evaluation.
 
 ## Version 22.1.0
 

@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.FloatingReadPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.HighTierLoweringPhase;
@@ -226,12 +227,13 @@ public class IfCanonicalizerTest extends GraalCompilerTest {
     private void testCombinedIf(String snippet, int count) {
         StructuredGraph graph = parseEager(snippet, AllowAssumptions.YES);
         CoreProviders context = getProviders();
-        new HighTierLoweringPhase(createCanonicalizerPhase()).apply(graph, context);
-        new FloatingReadPhase().apply(graph);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
+        new HighTierLoweringPhase(canonicalizer).apply(graph, context);
+        new FloatingReadPhase(canonicalizer).apply(graph, context);
         MidTierContext midContext = new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, graph.getProfilingInfo());
         new GuardLoweringPhase().apply(graph, midContext);
-        new MidTierLoweringPhase(createCanonicalizerPhase()).apply(graph, midContext);
-        createCanonicalizerPhase().apply(graph, context);
+        new MidTierLoweringPhase(canonicalizer).apply(graph, midContext);
+        canonicalizer.apply(graph, context);
         assertDeepEquals(count, graph.getNodes().filter(IfNode.class).count());
     }
 

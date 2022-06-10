@@ -49,8 +49,8 @@ import com.oracle.truffle.api.TruffleSafepoint;
  * blocking methods of this package, but be aware that no early escape from the blocking operations
  * will be possible.
  */
-public abstract class GuestInterrupter<T> implements TruffleSafepoint.Interrupter {
-    public static final GuestInterrupter<Object> EMPTY = new GuestInterrupter<>() {
+public interface GuestInterrupter<T> extends TruffleSafepoint.Interrupter {
+    GuestInterrupter<Object> EMPTY = new GuestInterrupter<>() {
         @Override
         public void guestInterrupt(Thread t, Object guestThread) {
         }
@@ -67,7 +67,7 @@ public abstract class GuestInterrupter<T> implements TruffleSafepoint.Interrupte
      * @param t the thread to interrupt
      * @param guestThread the guest representation of the given thread. May be null.
      */
-    public abstract void guestInterrupt(Thread t, T guestThread);
+    void guestInterrupt(Thread t, T guestThread);
 
     /**
      * Provides a check whether the given thread was {@linkplain #guestInterrupt(Thread, Object)
@@ -77,18 +77,18 @@ public abstract class GuestInterrupter<T> implements TruffleSafepoint.Interrupte
      * @param guestThread the guest representation of the given thread. May be null.
      * @return true if the thread was guest interrupted, false otherwise.
      */
-    public abstract boolean isGuestInterrupted(Thread t, T guestThread);
+    boolean isGuestInterrupted(Thread t, T guestThread);
 
     /**
      * Provides a way of getting the guest representation of the current host thread.
      * 
      * @return the guest representation of the current thread
      */
-    protected T getCurrentGuestThread() {
+    default T getCurrentGuestThread() {
         return null;
     }
 
-    final void afterInterrupt(Throwable ex) {
+    default void afterInterrupt(Throwable ex) {
         if (ex != null) {
             // Do not suppress safepoint throws.
             throw sneakyThrow(ex);
@@ -99,12 +99,12 @@ public abstract class GuestInterrupter<T> implements TruffleSafepoint.Interrupte
     }
 
     @Override
-    public final void interrupt(Thread thread) {
+    default void interrupt(Thread thread) {
         TruffleSafepoint.Interrupter.THREAD_INTERRUPT.interrupt(thread);
     }
 
     @Override
-    public final void resetInterrupted() {
+    default void resetInterrupted() {
         TruffleSafepoint.Interrupter.THREAD_INTERRUPT.resetInterrupted();
     }
 

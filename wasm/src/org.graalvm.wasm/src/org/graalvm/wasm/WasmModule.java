@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import java.util.ArrayList;
@@ -59,29 +60,28 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
     private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
-    private final Source source;
+    private Source source;
 
     @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
 
-    @CompilationFinal(dimensions = 1) private final byte[] data;
+    @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
-    private WasmModule(String name, byte[] data, ModuleLimits limits, Source source) {
+    private WasmModule(String name, byte[] data, ModuleLimits limits) {
         super();
         this.name = name;
         this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
         this.linkActions = new ArrayList<>();
         this.data = data;
         this.isParsed = false;
-        this.source = source;
     }
 
-    public static WasmModule create(String name, byte[] data, ModuleLimits limits, Source source) {
-        return new WasmModule(name, data, limits, source);
+    public static WasmModule create(String name, byte[] data, ModuleLimits limits) {
+        return new WasmModule(name, data, limits);
     }
 
     public static WasmModule createBuiltin(String name) {
-        return new WasmModule(name, null, null, Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build());
+        return new WasmModule(name, null, null);
     }
 
     public ModuleLimits limits() {
@@ -113,7 +113,22 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return data;
     }
 
+    public void setData(byte[] data) {
+        this.data = data;
+    }
+
+    public boolean isBuiltin() {
+        return data == null;
+    }
+
     public Source source() {
+        if (source == null) {
+            if (isBuiltin()) {
+                source = Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build();
+            } else {
+                source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(data), name).build();
+            }
+        }
         return source;
     }
 

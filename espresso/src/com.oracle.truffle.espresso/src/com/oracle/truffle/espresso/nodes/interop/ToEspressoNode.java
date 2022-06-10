@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -237,14 +239,11 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck,
                     @SuppressWarnings("unused") @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-        // Skip expensive checks for java.lang.Object.
-        if (!klass.isJavaLangObject()) {
-            try {
-                checkHasAllFieldsOrThrow(value, klass, interop, getMeta());
-            } catch (ClassCastException e) {
-                errorProfile.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
-            }
+        try {
+            checkHasAllFieldsOrThrow(value, klass, interop, meta);
+        } catch (ClassCastException e) {
+            errorProfile.enter();
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
         }
         initCheck.execute(klass);
         return StaticObject.createForeign(getLanguage(), klass, value, interop);
@@ -255,7 +254,9 @@ public abstract class ToEspressoNode extends EspressoNode {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
+    @TruffleBoundary
     public static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) {
+        CompilerAsserts.partialEvaluationConstant(klass);
         /*
          * For boxed types a .value member is not required if there's a direct conversion via
          * interop as* methods.

@@ -297,7 +297,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -314,7 +314,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -331,7 +331,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             @Override
-            protected CharSequence getName() {
+            public CharSequence getName() {
                 return "CheckGraphPhase";
             }
         });
@@ -730,6 +730,15 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected final HighTierContext getDefaultHighTierContext() {
         return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations());
+    }
+
+    /**
+     * Returns a custom high tier context with custom {@link GraphBuilderPhase}.
+     */
+    protected final HighTierContext getEagerHighTierContext() {
+        return new HighTierContext(getProviders(),
+                        getEagerGraphBuilderSuite(),
+                        getOptimisticOptimizations());
     }
 
     protected final MidTierContext getDefaultMidTierContext() {

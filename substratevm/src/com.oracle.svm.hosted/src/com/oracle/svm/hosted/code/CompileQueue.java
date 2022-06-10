@@ -64,6 +64,7 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.Node;
@@ -142,7 +143,6 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.annotate.DeoptTest;
-import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.core.annotate.StubCallingConvention;
@@ -154,6 +154,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.ComputedIndirectCallTargetNode;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
@@ -226,6 +227,7 @@ public class CompileQueue {
     private SnippetReflectionProvider snippetReflection;
     private final FeatureHandler featureHandler;
     protected final OptionValues compileOptions;
+    protected final GlobalMetrics metricValues = new GlobalMetrics();
 
     private volatile boolean inliningProgress;
 
@@ -323,6 +325,11 @@ public class CompileQueue {
             this.method = method;
             this.reason = reason;
             compilationIdentifier = new SubstrateHostedCompilationIdentifier(method);
+        }
+
+        @Override
+        public DebugContext getDebug(OptionValues options, List<DebugHandlersFactory> factories) {
+            return new DebugContext.Builder(options, factories).description(getDescription()).globalMetrics(metricValues).build();
         }
 
         @Override
@@ -452,6 +459,7 @@ public class CompileQueue {
         if (ImageSingletons.contains(HostedHeapDumpFeature.class)) {
             ImageSingletons.lookup(HostedHeapDumpFeature.class).compileQueueAfterCompilation();
         }
+        metricValues.print(compileOptions);
     }
 
     private boolean suitesNotCreated() {
@@ -674,7 +682,7 @@ public class CompileQueue {
 
         @Override
         public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-            if (makeInlineDecision((HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
+            if (makeInlineDecision((HostedMethod) b.getMethod(), (HostedMethod) method) && b.recursiveInliningDepth(method) == 0) {
                 inlinedDuringDecoding = true;
                 return InlineInfo.createStandardInlineInfo(method);
             } else {
@@ -710,7 +718,7 @@ public class CompileQueue {
          */
         boolean inliningPotential = false;
         for (var invokeInfo : method.compilationInfo.getCompilationGraph().getInvokeInfos()) {
-            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(invokeInfo.getTargetMethod())) {
+            if (invokeInfo.getInvokeKind().isDirect() && makeInlineDecision(method, invokeInfo.getTargetMethod())) {
                 inliningPotential = true;
                 break;
             }
@@ -718,7 +726,6 @@ public class CompileQueue {
         if (!inliningPotential) {
             return;
         }
-
         var providers = runtimeConfig.lookupBackend(method).getProviders();
         var graph = method.compilationInfo.createGraph(debug, CompilationIdentifier.INVALID_COMPILATION_ID, false);
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
@@ -743,8 +750,8 @@ public class CompileQueue {
         }
     }
 
-    private boolean makeInlineDecision(HostedMethod callee) {
-        if (!callee.canBeInlined() || callee.getAnnotation(NeverInlineTrivial.class) != null) {
+    private boolean makeInlineDecision(HostedMethod method, HostedMethod callee) {
+        if (universe.hostVM().neverInlineTrivial(method.getWrapped(), callee.getWrapped())) {
             return false;
         }
         if (callee.shouldBeInlined()) {
@@ -989,6 +996,13 @@ public class CompileQueue {
             ResolvedJavaMethod method = methodPointer.getMethod();
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
             newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
+
+        } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoad.class) {
+            ComputedIndirectCallTargetNode.FieldLoad fieldLoad = (ComputedIndirectCallTargetNode.FieldLoad) obj;
+            newReplacement = new ComputedIndirectCallTargetNode.FieldLoad(hUniverse.lookup(fieldLoad.getField()));
+        } else if (obj.getClass() == ComputedIndirectCallTargetNode.FieldLoadIfZero.class) {
+            ComputedIndirectCallTargetNode.FieldLoadIfZero fieldLoadIfZero = (ComputedIndirectCallTargetNode.FieldLoadIfZero) obj;
+            newReplacement = new ComputedIndirectCallTargetNode.FieldLoadIfZero(fieldLoadIfZero.getObject(), hUniverse.lookup(fieldLoadIfZero.getField()));
 
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */

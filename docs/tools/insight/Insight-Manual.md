@@ -776,6 +776,16 @@ The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
 The rest of the linked list is hidden (only references up to depth `10` were requested) behind `unreachable` object.
 Last variable `x` shows the number of searched natural numbers to compute all the prime numbers.
 
+### Heap Dumping Cache
+
+To speed up the heap dumping process and optimize the resulting dump, it's possible to enable a memory cache.
+Objects whose properties are not changed between dumps to the cache are stored only once, reducing the resulting heap dump size.
+Add e.g. `--heap.cacheSize=1000` option to use a memory cache for 1000 events. By default, the cache is dumped to the file and cleared when full.
+That policy can be changed by `--heap.cacheReplacement=lru` option, which keeps the most recent dump events in the cache and drops the oldest ones when
+the cache size limit is reached.
+
+To flush the cache to the heap dump file, `heap.flush()` needs to be called explicitly.
+
 ## Note on GraalVM Insight API
 
 The compatibility of the GraalVM Insight API exposed via the `insight` object is implemented in a compatible way.

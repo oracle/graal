@@ -48,7 +48,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
@@ -165,7 +165,7 @@ public final class StaticFieldsSupport {
 }
 
 @AutomaticFeature
-final class StaticFieldsFeature implements GraalFeature {
+final class StaticFieldsFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(StaticFieldsSupport.class, new StaticFieldsSupport());

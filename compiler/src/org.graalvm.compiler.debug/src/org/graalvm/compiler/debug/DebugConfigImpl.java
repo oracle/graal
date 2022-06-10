@@ -169,8 +169,7 @@ final class DebugConfigImpl implements DebugConfig {
         if (filter == null) {
             level = 0;
         } else {
-            String currentScope = scope.getQualifiedName();
-            level = filter.matchLevel(currentScope);
+            level = filter.matchLevel(scope);
         }
         if (level >= 0 && !checkMethodFilter(scope)) {
             level = -1;

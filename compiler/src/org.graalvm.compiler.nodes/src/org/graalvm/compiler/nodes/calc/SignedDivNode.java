@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -116,7 +117,7 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
             }
         }
 
-        if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
+        if (self != null && self.canFloat() && GraalOptions.FloatingDivNodes.getValue(self.getOptions()) && self.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             if (!yStamp.contains(0) && divisionIsJVMSCompliant(forX, forY, divisionOverflowIsJVMSCompliant)) {
                 return SignedFloatingIntegerDivNode.create(forX, forY, view, zeroCheck, divisionOverflowIsJVMSCompliant);
@@ -131,6 +132,11 @@ public class SignedDivNode extends IntegerDivRemNode implements LIRLowerable {
         }
 
         return self != null ? self : new SignedDivNode(forX, forY, zeroCheck);
+    }
+
+    @Override
+    public boolean canFloat() {
+        return true;
     }
 
     /**

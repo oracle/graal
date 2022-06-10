@@ -33,7 +33,6 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -44,7 +43,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
 import org.graalvm.compiler.hotspot.nodes.VMErrorNode;
 import org.graalvm.compiler.hotspot.replacements.Log;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
@@ -271,34 +269,5 @@ public class StubUtil {
             i++;
         }
         return buffer.add(i);
-    }
-
-    /**
-     * Returns {@code true} if {@code length} is constant and fits into two SIMD vector registers
-     * when scaled to {@code stride}.
-     *
-     * @param length length of an array region.
-     * @param stride element stride B.
-     * @param vectorSize SIMD vector register size in bytes.
-     */
-    public static boolean isConstantLengthLessThanTwoVectors(ValueNode length, JavaKind stride, int vectorSize) {
-        return isConstantLengthLessThanTwoVectors(length, stride, stride, vectorSize);
-    }
-
-    /**
-     * Returns {@code true} if {@code length} is constant and fits into two SIMD vector registers
-     * when scaled to the maximum of {@code strideA} and {@code strideB}.
-     *
-     * @param length length of an array region.
-     * @param strideA element stride A.
-     * @param strideB element stride B.
-     * @param vectorSize SIMD vector register size in bytes.
-     */
-    public static boolean isConstantLengthLessThanTwoVectors(ValueNode length, JavaKind strideA, JavaKind strideB, int vectorSize) {
-        if (length.isJavaConstant()) {
-            long constantLength = length.asJavaConstant().asLong();
-            return constantLength >= 0 && constantLength * (Math.max(strideA.getByteCount(), strideB.getByteCount())) < 2L * vectorSize;
-        }
-        return false;
     }
 }

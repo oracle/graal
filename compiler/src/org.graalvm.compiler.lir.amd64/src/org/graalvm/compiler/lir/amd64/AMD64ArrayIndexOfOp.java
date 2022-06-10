@@ -310,17 +310,17 @@ public final class AMD64ArrayIndexOfOp extends AMD64ComplexVectorOp {
             asm.shlq(asRegister(searchValue[1]), valueKind.getBitCount());
             asm.orq(asRegister(searchValue[0]), asRegister(searchValue[1]));
             if (withMask) {
-                if (isStackSlot(searchValue[2])) {
-                    movSZx(asm, valueSize, ZERO_EXTEND, asRegister(searchValue[1]), (AMD64Address) crb.asAddress(searchValue[2]));
+                if (isStackSlot(searchValue[3])) {
+                    movSZx(asm, valueSize, ZERO_EXTEND, asRegister(searchValue[1]), (AMD64Address) crb.asAddress(searchValue[3]));
                 } else {
-                    asm.movq(asRegister(searchValue[1]), asRegister(searchValue[2]));
+                    asm.movq(asRegister(searchValue[1]), asRegister(searchValue[3]));
                 }
                 asm.shlq(asRegister(searchValue[1]), valueKind.getBitCount());
-                if (isStackSlot(searchValue[3])) {
-                    movSZx(asm, valueSize, ZERO_EXTEND, cmpResult, (AMD64Address) crb.asAddress(searchValue[3]));
+                if (isStackSlot(searchValue[2])) {
+                    movSZx(asm, valueSize, ZERO_EXTEND, cmpResult, (AMD64Address) crb.asAddress(searchValue[2]));
                     asm.orq(asRegister(searchValue[1]), cmpResult);
                 } else {
-                    asm.orq(asRegister(searchValue[1]), asRegister(searchValue[3]));
+                    asm.orq(asRegister(searchValue[1]), asRegister(searchValue[2]));
                 }
             }
         }

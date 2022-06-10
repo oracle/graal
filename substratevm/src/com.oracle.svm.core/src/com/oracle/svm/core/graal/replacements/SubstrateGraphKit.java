@@ -108,7 +108,7 @@ public class SubstrateGraphKit extends GraphKit {
 
     @Override
     protected MethodCallTargetNode createMethodCallTarget(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, StampPair returnStamp, int bci) {
-        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null);
+        return new SubstrateMethodCallTargetNode(invokeKind, targetMethod, args, returnStamp, null, null, null);
     }
 
     public SubstrateLoweringProvider getLoweringProvider() {
@@ -229,7 +229,7 @@ public class SubstrateGraphKit extends GraphKit {
     public InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, SubstrateCallingConventionKind callKind) {
         assert arguments.size() == signature.getParameterCount(false);
         assert callKind != SubstrateCallingConventionKind.Native : "return kind and stamp would be incorrect";
-        JavaKind returnKind = signature.getReturnKind();
+        JavaKind returnKind = signature.getReturnKind().getStackKind();
         Stamp returnStamp = returnStamp(signature.getReturnType(null), returnKind);
         return createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, returnKind, callKind);
     }

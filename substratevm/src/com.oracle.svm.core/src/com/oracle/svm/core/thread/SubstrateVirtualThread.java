@@ -108,7 +108,7 @@ final class SubstrateVirtualThread extends Thread {
             if (parent instanceof SubstrateVirtualThread) {
                 this.scheduler = ((SubstrateVirtualThread) parent).scheduler;
             } else {
-                this.scheduler = SubstrateVirtualThreads.SCHEDULER;
+                this.scheduler = ((SubstrateVirtualThreads) VirtualThreads.singleton()).scheduler;
             }
         } else {
             this.scheduler = scheduler;
@@ -197,7 +197,7 @@ final class SubstrateVirtualThread extends Thread {
             return false;
         }
         JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
-        if (anchor.isNonNull() && cont.getBottomSP().aboveThan(anchor.getLastJavaSP())) {
+        if (anchor.isNonNull() && cont.getBaseSP().aboveThan(anchor.getLastJavaSP())) {
             return false;
         }
 

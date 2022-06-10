@@ -1273,6 +1273,8 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DwarfDebugInfo.DW_LANG_Java");
         pos = writeAttrData1(DwarfDebugInfo.DW_LANG_Java, buffer, pos);
+        log(context, "  [0x%08x]     use_UTF8", pos);
+        pos = writeFlag((byte) 1, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
         String compilationDirectory = classEntry.getCachePath();
@@ -1412,6 +1414,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_local_location2 ||
                         abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_method_parameter_location2) {
             int locRefAddr = getRangeLocalIndex(range, localInfo);
+            log(context, "  [0x%08x]     loc list  0x%x", pos, locRefAddr);
             pos = writeAttrLocList(locRefAddr, buffer, pos);
         }
         return pos;
@@ -1493,25 +1496,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeCUHeader(byte[] buffer, int p) {
         int pos = p;
-        if (buffer == null) {
-            /* CU length. */
-            pos += putInt(0, scratch, 0);
-            /* DWARF version. */
-            pos += putShort(DwarfDebugInfo.DW_VERSION_4, scratch, 0);
-            /* Abbrev offset. */
-            pos += putInt(0, scratch, 0);
-            /* Address size. */
-            return pos + putByte((byte) 8, scratch, 0);
-        } else {
-            /* CU length. */
-            pos = putInt(0, buffer, pos);
-            /* DWARF version. */
-            pos = putShort(DwarfDebugInfo.DW_VERSION_4, buffer, pos);
-            /* Abbrev offset. */
-            pos = putInt(0, buffer, pos);
-            /* Address size. */
-            return putByte((byte) 8, buffer, pos);
-        }
+        /* CU length. */
+        pos = writeInt(0, buffer, pos);
+        /* DWARF version. */
+        pos = writeShort(DwarfDebugInfo.DW_VERSION_4, buffer, pos);
+        /* Abbrev offset. */
+        pos = writeInt(0, buffer, pos);
+        /* Address size. */
+        return writeByte((byte) 8, buffer, pos);
     }
 
     private static int findLo(List<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
@@ -1556,22 +1548,14 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     private int writeAttrStrp(String value, byte[] buffer, int p) {
         int pos = p;
-        if (buffer == null) {
-            return pos + putInt(0, scratch, 0);
-        } else {
-            int idx = debugStringIndex(value);
-            return putInt(idx, buffer, pos);
-        }
+        int idx = debugStringIndex(value);
+        return writeInt(idx, buffer, pos);
     }
 
     @SuppressWarnings("unused")
     public int writeAttrString(String value, byte[] buffer, int p) {
         int pos = p;
-        if (buffer == null) {
-            return pos + value.length() + 1;
-        } else {
-            return putUTF8StringBytes(value, buffer, pos);
-        }
+        return writeUTF8StringBytes(value, buffer, pos);
     }
 
     public int writeAttrAccessibility(int modifiers, byte[] buffer, int p) {
@@ -1684,51 +1668,46 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
                 }
             }
         }
-        if (buffer == null) {
-            /* We need to write size as a ULEB then leave space for size instructions. */
-            return pos + putULEB(exprSize, scratch, 0) + exprSize;
-
+        /* Write size followed by the expression and check the size comes out correct. */
+        pos = writeULEB(exprSize, buffer, pos);
+        int exprStart = pos;
+        if (!useHeapBase) {
+            pos = writeByte(DwarfDebugInfo.DW_OP_push_object_address, buffer, pos);
+            pos = writeByte((byte) (DwarfDebugInfo.DW_OP_lit0 + mask), buffer, pos);
+            pos = writeByte(DwarfDebugInfo.DW_OP_not, buffer, pos);
+            pos = writeByte(DwarfDebugInfo.DW_OP_and, buffer, pos);
         } else {
-            /* Write size followed by the expression and check the size comes out correct. */
-            pos = putULEB(exprSize, buffer, pos);
-            int exprStart = pos;
-            if (!useHeapBase) {
-                pos = putByte(DwarfDebugInfo.DW_OP_push_object_address, buffer, pos);
-                pos = putByte((byte) (DwarfDebugInfo.DW_OP_lit0 + mask), buffer, pos);
-                pos = putByte(DwarfDebugInfo.DW_OP_not, buffer, pos);
-                pos = putByte(DwarfDebugInfo.DW_OP_and, buffer, pos);
+            pos = writeByte(DwarfDebugInfo.DW_OP_push_object_address, buffer, pos);
+            /* skip to end if oop is null */
+            pos = writeByte(DwarfDebugInfo.DW_OP_dup, buffer, pos);
+            pos = writeByte(DwarfDebugInfo.DW_OP_lit0, buffer, pos);
+            pos = writeByte(DwarfDebugInfo.DW_OP_eq, buffer, pos);
+            int skipStart = pos + 3; /* offset excludes BR op + 2 operand bytes */
+            short offsetToEnd = (short) (exprSize - (skipStart - exprStart));
+            pos = writeByte(DwarfDebugInfo.DW_OP_bra, buffer, pos);
+            pos = writeShort(offsetToEnd, buffer, pos);
+            /* insert mask or shifts as necessary */
+            if (mask != 0) {
+                pos = writeByte((byte) (DwarfDebugInfo.DW_OP_lit0 + mask), buffer, pos);
+                pos = writeByte(DwarfDebugInfo.DW_OP_not, buffer, pos);
+                pos = writeByte(DwarfDebugInfo.DW_OP_and, buffer, pos);
             } else {
-                pos = putByte(DwarfDebugInfo.DW_OP_push_object_address, buffer, pos);
-                /* skip to end if oop is null */
-                pos = putByte(DwarfDebugInfo.DW_OP_dup, buffer, pos);
-                pos = putByte(DwarfDebugInfo.DW_OP_lit0, buffer, pos);
-                pos = putByte(DwarfDebugInfo.DW_OP_eq, buffer, pos);
-                int skipStart = pos + 3; /* offset excludes BR op + 2 operand bytes */
-                short offsetToEnd = (short) (exprSize - (skipStart - exprStart));
-                pos = putByte(DwarfDebugInfo.DW_OP_bra, buffer, pos);
-                pos = putShort(offsetToEnd, buffer, pos);
-                /* insert mask or shifts as necessary */
-                if (mask != 0) {
-                    pos = putByte((byte) (DwarfDebugInfo.DW_OP_lit0 + mask), buffer, pos);
-                    pos = putByte(DwarfDebugInfo.DW_OP_not, buffer, pos);
-                    pos = putByte(DwarfDebugInfo.DW_OP_and, buffer, pos);
-                } else {
-                    if (rightShift != 0) {
-                        pos = putByte((byte) (DwarfDebugInfo.DW_OP_lit0 + rightShift), buffer, pos);
-                        pos = putByte(DwarfDebugInfo.DW_OP_shr, buffer, pos);
-                    }
-                    if (leftShift != 0) {
-                        pos = putByte((byte) (DwarfDebugInfo.DW_OP_lit0 + leftShift), buffer, pos);
-                        pos = putByte(DwarfDebugInfo.DW_OP_shl, buffer, pos);
-                    }
+                if (rightShift != 0) {
+                    pos = writeByte((byte) (DwarfDebugInfo.DW_OP_lit0 + rightShift), buffer, pos);
+                    pos = writeByte(DwarfDebugInfo.DW_OP_shr, buffer, pos);
                 }
-                /* add the resulting offset to the heapbase register */
-                byte regOp = (byte) (DwarfDebugInfo.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
-                pos = putByte(regOp, buffer, pos);
-                pos = putSLEB(0, buffer, pos); /* 1 byte. */
-                pos = putByte(DwarfDebugInfo.DW_OP_plus, buffer, pos);
-                assert pos == skipStart + offsetToEnd;
+                if (leftShift != 0) {
+                    pos = writeByte((byte) (DwarfDebugInfo.DW_OP_lit0 + leftShift), buffer, pos);
+                    pos = writeByte(DwarfDebugInfo.DW_OP_shl, buffer, pos);
+                }
             }
+            /* add the resulting offset to the heapbase register */
+            byte regOp = (byte) (DwarfDebugInfo.DW_OP_breg0 + dwarfSections.getHeapbaseRegister());
+            pos = writeByte(regOp, buffer, pos);
+            pos = writeSLEB(0, buffer, pos); /* 1 byte. */
+            pos = writeByte(DwarfDebugInfo.DW_OP_plus, buffer, pos);
+            assert pos == skipStart + offsetToEnd;
+
             /* make sure we added up correctly */
             assert pos == exprStart + exprSize;
         }

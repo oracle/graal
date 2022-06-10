@@ -330,7 +330,7 @@ public class RuntimeCodeInfoMemory {
                             return true;
                         }
 
-                        UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
+                        UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(CodeInfoAccess.getSizeOfCodeInfo());
                         if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
                             String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
                             printInsideCodeInfo(log, info, name);

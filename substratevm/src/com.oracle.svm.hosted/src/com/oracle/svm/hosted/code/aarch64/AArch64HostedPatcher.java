@@ -41,13 +41,17 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedPatcher;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Reference;
+import jdk.vm.ci.meta.VMConstant;
 
 @AutomaticFeature
 @Platforms({Platform.AARCH64.class})
@@ -168,11 +172,22 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
 
     @Override
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
-        int siteOffset = compStart + macroInstruction.instructionPosition;
+        Object relocVal = ref;
+        if (ref instanceof ConstantReference) {
+            VMConstant constant = ((ConstantReference) ref).getConstant();
+            if (constant instanceof SubstrateMethodPointerConstant) {
+                MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
+                HostedMethod hMethod = (HostedMethod) pointer.getMethod();
+                VMError.guarantee(hMethod.isCompiled(), String.format("Method %s is not compiled although there is a method pointer constant created for it.", hMethod.format("%H.%n")));
+                relocVal = pointer;
+            }
+        }
 
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, ref);
+        int siteOffset = compStart + macroInstruction.instructionPosition;
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, relocVal);
+
         siteOffset += 4;
-        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, ref);
+        relocs.addRelocationWithoutAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, relocVal);
     }
 
     @Uninterruptible(reason = ".")
@@ -206,6 +221,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
          */
         int siteOffset = compStart + annotation.instructionPosition;
         if (ref instanceof DataSectionReference || ref instanceof CGlobalDataReference || ref instanceof ConstantReference) {
+            if (ref instanceof ConstantReference) {
+                assert !(((ConstantReference) ref).getConstant() instanceof SubstrateMethodPointerConstant);
+            }
             /*
              * calculating the last mov index. This is necessary ensure the proper overflow checks
              * occur.

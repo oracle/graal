@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
@@ -159,7 +160,7 @@ public class AllocExternalSymbolNode extends LLVMNode {
         if (resultSymbol == null) {
             return null;
         }
-        LLVMPointer pointer = context.getSymbolUncached(LLVMAlias.resolveAlias(resultSymbol));
+        LLVMPointer pointer = context.getSymbolResolved(LLVMAlias.resolveAlias(resultSymbol), BranchProfile.getUncached());
         context.registerSymbol(symbol, pointer);
         return pointer;
     }

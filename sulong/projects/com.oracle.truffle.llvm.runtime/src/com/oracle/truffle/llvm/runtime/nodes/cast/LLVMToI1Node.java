@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,14 +37,17 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
+import com.oracle.truffle.llvm.runtime.except.LLVMException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 
 @NodeChild(value = "fromNode", type = LLVMExpressionNode.class)
@@ -59,10 +62,16 @@ public abstract class LLVMToI1Node extends LLVMExpressionNode {
         return (boolean) toLLVM.executeWithTarget(foreigns.asForeign(from.getObject()));
     }
 
-    @Specialization
+    @Specialization(rewriteOn = LLVMException.class)
     protected boolean doPointer(LLVMNativePointer from,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         return (toNative.executeWithTarget(from).asNative() & 1L) != 0;
+    }
+
+    @Specialization
+    protected boolean doFallbackPointerAsComparable(LLVMPointer from,
+                    @Cached ToComparableValue toComparableValue) {
+        return (toComparableValue.executeWithTarget(from) & 1L) != 0L;
     }
 
     protected ForeignToLLVM createForeignToLLVM() {

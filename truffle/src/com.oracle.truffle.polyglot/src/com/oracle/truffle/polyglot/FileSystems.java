@@ -165,7 +165,7 @@ final class FileSystems {
              */
             if (accessibleLanguages != null) {
                 for (LanguageInfo language : accessibleLanguages.values()) {
-                    PolyglotLanguage lang = (PolyglotLanguage) EngineAccessor.NODES.getPolyglotLanguage(language);
+                    PolyglotLanguage lang = context.context.engine.idToLanguage.get(language.getId());
                     result = relativizeToLanguageHome(fs, path, lang);
                     if (result != null) {
                         return result;
@@ -971,7 +971,13 @@ final class FileSystems {
 
     private static class DeniedIOFileSystem implements PolyglotFileSystem {
 
+        /**
+         * The default file system provider used only to parse a {@link Path} from a {@link URI}.
+         */
+        private final FileSystemProvider defaultFileSystemProvider;
+
         DeniedIOFileSystem() {
+            defaultFileSystemProvider = findDefaultFileSystemProvider();
         }
 
         @Override
@@ -991,8 +997,16 @@ final class FileSystems {
 
         @Override
         public Path parsePath(final URI uri) {
+            if (!defaultFileSystemProvider.getScheme().equals(uri.getScheme())) {
+                // Throw a UnsupportedOperationException with a better message than the default
+                // FileSystemProvider.getPath does.
+                throw new UnsupportedOperationException("Unsupported URI scheme " + uri.getScheme());
+            }
             try {
-                return Paths.get(uri);
+                // We need to use the default file system provider to parse a path from a URI. The
+                // Paths.get(URI) cannot be used as it looks up the file system provider
+                // by scheme and can use a non default file system provider.
+                return defaultFileSystemProvider.getPath(uri);
             } catch (IllegalArgumentException | FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -1000,6 +1014,7 @@ final class FileSystems {
 
         @Override
         public Path parsePath(final String path) {
+            // It's safe to use the Paths.get(String) as it always uses the default file system.
             return Paths.get(path);
         }
 

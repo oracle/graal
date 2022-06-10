@@ -24,26 +24,27 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.meta.AllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.amd64.AMD64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.HINT;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
+
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.meta.AllocatableValue;
 
 public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction implements StandardOp.LoadConstantOp {
     public static final LIRInstructionClass<AMD64LoadMethodPointerConstantOp> TYPE = LIRInstructionClass.create(AMD64LoadMethodPointerConstantOp.class);
     private final SubstrateMethodPointerConstant constant;
-    @Def({REG, HINT}) protected AllocatableValue result;
+    @Def({REG, HINT}) private AllocatableValue result;
 
-    protected AMD64LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
+    AMD64LoadMethodPointerConstantOp(AllocatableValue result, SubstrateMethodPointerConstant constant) {
         super(TYPE);
         this.constant = constant;
         this.result = result;
@@ -51,14 +52,9 @@ public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction 
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        int pointerSize = ConfigurationValues.getTarget().wordSize;
         Register resultReg = asRegister(result);
         crb.recordInlineDataInCode(constant);
-        if (pointerSize == 4) {
-            masm.movl(resultReg, 0, true);
-        } else {
-            masm.movq(resultReg, 0L, true);
-        }
+        masm.movq(resultReg, 0L, true);
     }
 
     @Override

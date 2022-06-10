@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.amd64;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractDeoptimizeNode;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -41,14 +42,12 @@ import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
-import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.SignedFloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.common.UseTrappingOperationPhase;
@@ -65,7 +64,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * @see UseTrappingNullChecksPhase for details
  *
  *      This phase tries to find {@code =0} checks that can be folded together with a
- *      {@link FloatingIntegerDivRemNode} to save the explicit check.
+ *      {@link IntegerDivRemNode} to save the explicit check.
  */
 public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
@@ -85,16 +84,19 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         if (!GraalServices.supportsArbitraryImplicitException()) {
             return;
         }
-        EconomicMap<IntegerEqualsNode, FloatingIntegerDivRemNode<?>> trappingReplaceTargets = null;
+        EconomicMap<IntegerEqualsNode, IntegerDivRemNode> trappingReplaceTargets = null;
         ScheduleResult sched = null;
-        for (FloatingIntegerDivRemNode<?> divRem : graph.getNodes(FloatingIntegerDivRemNode.TYPE)) {
+        for (IntegerDivRemNode divRem : graph.getNodes(IntegerDivRemNode.TYPE)) {
+            if (!(divRem instanceof SignedDivNode || divRem instanceof SignedRemNode)) {
+                continue;
+            }
             ValueNode divisor = divRem.getY();
             ValueNode dividend = divRem.getX();
-            if (divRem.getGuard() instanceof MultiGuardNode) {
+            if (divRem.getZeroGuard() instanceof MultiGuardNode) {
                 // both the dividend and the divisor had a speculation attached, ignore
-            } else if (divRem.getGuard() instanceof BeginNode) {
+            } else if (divRem.getZeroGuard() instanceof BeginNode) {
                 // regular begin case
-                BeginNode divGuard = (BeginNode) divRem.getGuard();
+                BeginNode divGuard = (BeginNode) divRem.getZeroGuard();
                 if (divGuard.predecessor() instanceof IfNode) {
                     IfNode ifNode = (IfNode) divGuard.predecessor();
                     if (ifNode.falseSuccessor() == divGuard) {
@@ -129,9 +131,9 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
     static class Instance extends UseTrappingOperationPhase {
 
-        final EconomicMap<IntegerEqualsNode, FloatingIntegerDivRemNode<?>> trappingReplaceTargets;
+        final EconomicMap<IntegerEqualsNode, IntegerDivRemNode> trappingReplaceTargets;
 
-        Instance(EconomicMap<IntegerEqualsNode, FloatingIntegerDivRemNode<?>> trappingReplaceTargets) {
+        Instance(EconomicMap<IntegerEqualsNode, IntegerDivRemNode> trappingReplaceTargets) {
             this.trappingReplaceTargets = trappingReplaceTargets;
         }
 
@@ -163,16 +165,17 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         public DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
             assert condition instanceof IntegerEqualsNode;
             IntegerEqualsNode ieq = (IntegerEqualsNode) condition;
-            FloatingIntegerDivRemNode<?> divRem = trappingReplaceTargets.get(ieq);
+            IntegerDivRemNode divRem = trappingReplaceTargets.get(ieq);
             ValueNode dividend = divRem.getX();
             ValueNode divisor = divRem.getY();
             IntegerDivRemNode divRemFixed = null;
-            if (divRem instanceof SignedFloatingIntegerDivNode) {
+            if (divRem instanceof SignedDivNode) {
                 divRemFixed = graph.add(new SignedDivNode(dividend, divisor, null));
-            } else if (divRem instanceof SignedFloatingIntegerRemNode) {
+            } else if (divRem instanceof SignedRemNode) {
                 divRemFixed = graph.add(new SignedRemNode(dividend, divisor, null));
             }
             divRemFixed.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
+            GraalError.guarantee(divRemFixed.canDeoptimize(), "Fixed representation must deopt since we replaced a 0 check");
             return divRemFixed;
         }
 
@@ -184,7 +187,10 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
         @Override
         public void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition) {
             assert trappingVersionNode instanceof IntegerDivRemNode;
-            trappingReplaceTargets.get((IntegerEqualsNode) condition).replaceAtUsages(trappingVersionNode);
+            IntegerDivRemNode fixedNonTrappingVersion = trappingReplaceTargets.get((IntegerEqualsNode) condition);
+            fixedNonTrappingVersion.replaceAtUsages(trappingVersionNode);
+            GraphUtil.unlinkFixedNode(fixedNonTrappingVersion);
+            fixedNonTrappingVersion.safeDelete();
         }
 
         @Override

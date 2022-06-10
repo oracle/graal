@@ -74,7 +74,7 @@ public class DwarfStrSectionImpl extends DwarfSectionImpl {
             if (stringEntry.isAddToStrSection()) {
                 assert stringEntry.getOffset() == pos;
                 String string = stringEntry.getString();
-                pos = putUTF8StringBytes(string, buffer, pos);
+                pos = writeUTF8StringBytes(string, buffer, pos);
                 verboseLog(context, " [0x%08x] string = %s", pos, string);
             }
         }

@@ -96,8 +96,8 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             }
 
             @Override
-            protected CharSequence getName() {
-                return "VerifyEncodingDecoding";
+            public CharSequence getName() {
+                return "VerifyEncodingDecodingPhase";
             }
         });
         return true;

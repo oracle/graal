@@ -41,7 +41,7 @@ import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.DeoptTestSnippets;
@@ -57,7 +57,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 /**
  * Feature to allow deoptimization in a generated native image.
  */
-public final class DeoptimizationFeature implements GraalFeature {
+public final class DeoptimizationFeature implements InternalFeature {
 
     private static final Method deoptStubMethod;
 

@@ -390,7 +390,7 @@ public class BoxingEliminationTest extends GraalCompilerTest {
         canonicalizer.apply(graph, context);
         createInliningPhase().apply(graph, context);
         if (loopPeeling) {
-            new LoopPeelingPhase(new DefaultLoopPolicies()).apply(graph, context);
+            new LoopPeelingPhase(new DefaultLoopPolicies(), canonicalizer).apply(graph, context);
         }
         new DeadCodeEliminationPhase().apply(graph);
         canonicalizer.apply(graph, context);

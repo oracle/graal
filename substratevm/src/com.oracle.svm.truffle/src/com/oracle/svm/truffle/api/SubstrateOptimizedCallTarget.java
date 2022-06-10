@@ -28,6 +28,7 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.truffle.TruffleSupport;
@@ -91,14 +92,6 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return installedCode.getAddress();
     }
 
-    /**
-     * Prevents reads from floating across a safepoint when the caller is inlined in another method.
-     * Intrinsified in {@link SubstrateTruffleGraphBuilderPlugins}.
-     */
-    public static void safepointBarrier() {
-        // Intrinsified, but empty so it can be called during hosted Truffle calls
-    }
-
     @Override
     public Object doInvoke(Object[] args) {
         return SubstrateOptimizedCallTargetInstalledCode.doInvoke(this, args);
@@ -117,7 +110,8 @@ public class SubstrateOptimizedCallTarget extends OptimizedCallTarget implements
         return createInstalledCode();
     }
 
-    public Object invokeCallBoundary(Object[] args) {
+    @Uninterruptible(reason = "Transitioning back to interruptible code", calleeMustBe = false)
+    protected Object invokeCallBoundary(Object[] args) {
         return callBoundary(args);
     }
 

@@ -1345,7 +1345,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexMoveOp VMOVAPD   = new VexMoveOp("VMOVAPD",   P_66, M_0F, WIG, 0x28, 0x29, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
         public static final VexMoveOp VMOVUPS   = new VexMoveOp("VMOVUPS",   P_,   M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W0);
         public static final VexMoveOp VMOVUPD   = new VexMoveOp("VMOVUPD",   P_66, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_VL,         EVEXTuple.FVM,       W1);
-        // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers. 
+        // VMOVSS and VMOVSD are RVM instructions when both src and dest are registers.
         public static final VexMoveOp VMOVSS    = new VexMoveOp("VMOVSS",    P_F3, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_32BIT, W0);
         public static final VexMoveOp VMOVSD    = new VexMoveOp("VMOVSD",    P_F2, M_0F, WIG, 0x10, 0x11, VEXOpAssertion.AVX1_AVX512F_ALL,        EVEXTuple.T1S_64BIT, W1);
         public static final VexMoveOp VMOVD     = new VexMoveOp("VMOVD",     P_66, M_0F, W0,  0x6E, 0x7E, VEXOpAssertion.XMM_CPU_AVX512F_128ONLY, EVEXTuple.T1S_32BIT, W0);
@@ -4936,6 +4936,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public final void vmovdqu(AMD64Address dst, Register src) {
         assert inRC(XMM, src);
         VexMoveOp.VMOVDQU32.emit(this, AVXSize.YMM, dst, src);
+    }
+
+    public final void vmovdqu64(Register dst, AMD64Address src) {
+        VexMoveOp.VMOVDQU64.emit(this, AVXSize.ZMM, dst, src);
+    }
+
+    public final void vmovdqu64(AMD64Address dst, Register src) {
+        assert inRC(XMM, src);
+        VexMoveOp.VMOVDQU64.emit(this, AVXSize.ZMM, dst, src);
     }
 
     public final void vpmovzxbw(Register dst, AMD64Address src) {

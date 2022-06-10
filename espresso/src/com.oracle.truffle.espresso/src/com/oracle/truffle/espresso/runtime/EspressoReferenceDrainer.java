@@ -32,7 +32,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
-import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.ContextAccessImpl;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.ref.EspressoReference;
@@ -40,8 +40,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
-final class EspressoReferenceDrainer implements ContextAccess {
-    private final EspressoContext context;
+final class EspressoReferenceDrainer extends ContextAccessImpl {
     private volatile Thread hostToGuestReferenceDrainThread;
     private volatile ReferenceDrain drain;
 
@@ -50,19 +49,14 @@ final class EspressoReferenceDrainer implements ContextAccess {
     @CompilationFinal private volatile EspressoLock pendingLock;
 
     EspressoReferenceDrainer(EspressoContext context) {
-        this.context = context;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
+        super(context);
     }
 
     private EspressoLock getLock() {
         if (pendingLock == null) {
             synchronized (this) {
                 if (pendingLock == null) {
-                    pendingLock = EspressoLock.create(context.getBlockingSupport());
+                    pendingLock = EspressoLock.create(getContext().getBlockingSupport());
                 }
             }
         }
@@ -124,7 +118,7 @@ final class EspressoReferenceDrainer implements ContextAccess {
     void shutdownAndWaitReferenceDrain() throws InterruptedException {
         if (hostToGuestReferenceDrainThread != null) {
             while (hostToGuestReferenceDrainThread.isAlive()) {
-                context.getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
+                getContext().getEnv().submitThreadLocal(new Thread[]{hostToGuestReferenceDrainThread}, new ExitTLA());
                 hostToGuestReferenceDrainThread.interrupt();
                 hostToGuestReferenceDrainThread.join(10);
             }
@@ -232,8 +226,8 @@ final class EspressoReferenceDrainer implements ContextAccess {
                     drain(meta, lock, true);
                 }
             } finally {
-                context.getThreadAccess().terminate(context.getCurrentThread());
-                if (context.isClosing()) {
+                getContext().getThreadAccess().terminate(getContext().getCurrentThread());
+                if (getContext().isClosing()) {
                     // Ignore exceptions that arise during closing.
                     return;
                 }

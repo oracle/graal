@@ -93,6 +93,9 @@ public class SignedFloatingIntegerDivNode extends FloatingIntegerDivRemNode<Bina
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
+        if (floatingGuard == null && canDivideByZero()) {
+            GraalError.shouldNotReachHere("Can overflow though we have no guard");
+        }
         assert x.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
         assert y.stamp(NodeView.DEFAULT) instanceof IntegerStamp;
         builder.setResult(this, builder.getLIRGeneratorTool().getArithmetic().emitDiv(

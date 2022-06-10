@@ -51,7 +51,7 @@ import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
-import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.InternalFeature;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
-public class ReflectionFeature implements GraalFeature {
+public class ReflectionFeature implements InternalFeature {
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
 
@@ -200,7 +200,7 @@ public class ReflectionFeature implements GraalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.reflect");
 
         reflectionData = new ReflectionDataBuilder();
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);

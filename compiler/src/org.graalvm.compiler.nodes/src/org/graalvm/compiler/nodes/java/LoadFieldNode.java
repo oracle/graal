@@ -186,7 +186,8 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     private static PhiNode asPhi(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection,
                     MetaAccessProvider metaAcccess, OptionValues options, ValueNode forObject, ResolvedJavaField field, Stamp stamp) {
-        if (!field.isStatic() && field.isFinal() && forObject instanceof ValuePhiNode && ((ValuePhiNode) forObject).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
+        if (!field.isStatic() && (field.isFinal() || constantFields.maybeFinal(field)) && forObject instanceof ValuePhiNode &&
+                        ((ValuePhiNode) forObject).values().filter(isNotA(ConstantNode.class)).isEmpty()) {
             PhiNode phi = (PhiNode) forObject;
             ConstantNode[] constantNodes = new ConstantNode[phi.valueCount()];
             for (int i = 0; i < phi.valueCount(); i++) {

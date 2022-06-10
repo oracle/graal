@@ -45,8 +45,6 @@ import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 @GenerateNativeEnv(target = JvmtiImpl.class, prependEnv = true)
 public final class JVMTIEnv extends NativeEnv {
 
-    private final EspressoContext context;
-
     @CompilationFinal //
     private @Pointer TruffleObject jvmtiEnvPtr;
     @CompilationFinal //
@@ -55,7 +53,7 @@ public final class JVMTIEnv extends NativeEnv {
     private TruffleObject envLocalStorage = RawPointer.nullInstance();
 
     JVMTIEnv(EspressoContext context, TruffleObject initializeJvmtiContext, int version) {
-        this.context = context;
+        super(context);
         jvmtiEnvPtr = initializeAndGetEnv(initializeJvmtiContext, version);
         jvmtiVersion = version;
         assert getUncached().isPointer(jvmtiEnvPtr);
@@ -83,11 +81,6 @@ public final class JVMTIEnv extends NativeEnv {
     @Override
     protected List<CallableFromNative.Factory> getCollector() {
         return JVMTI_IMPL_FACTORIES;
-    }
-
-    @Override
-    public EspressoContext getContext() {
-        return context;
     }
 
     @Override

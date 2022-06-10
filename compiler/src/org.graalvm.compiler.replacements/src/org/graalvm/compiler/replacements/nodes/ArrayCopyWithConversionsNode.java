@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.replacements.NodeStrideUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -58,13 +59,19 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
 
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.OFF_HEAP_LOCATION};
 
-    protected final JavaKind strideSrc;
-    protected final JavaKind strideDst;
+    private final JavaKind strideSrc;
+    private final JavaKind strideDst;
     @Input protected ValueNode arraySrc;
     @Input protected ValueNode offsetSrc;
     @Input protected ValueNode arrayDst;
     @Input protected ValueNode offsetDst;
     @Input protected ValueNode length;
+
+    /**
+     * Optional argument for dispatching to any combination of strides at runtime, as described in
+     * {@link org.graalvm.compiler.core.common.StrideUtil}.
+     */
+    @OptionalInput protected ValueNode dynamicStrides;
 
     @OptionalInput(Memory) protected MemoryKill lastLocationAccess;
 
@@ -86,10 +93,19 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
     public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
                     @ConstantNodeParameter JavaKind strideSrc,
                     @ConstantNodeParameter JavaKind strideDst) {
-        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, strideSrc, strideDst);
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, null, strideSrc, strideDst);
     }
 
-    protected ArrayCopyWithConversionsNode(NodeClass<? extends ArrayCopyWithConversionsNode> c, ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length,
+    /**
+     * Variant with dynamicStride parameter, as described in
+     * {@link org.graalvm.compiler.core.common.StrideUtil}.
+     */
+    public ArrayCopyWithConversionsNode(ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides) {
+        this(TYPE, arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, null, null);
+    }
+
+    protected ArrayCopyWithConversionsNode(NodeClass<? extends ArrayCopyWithConversionsNode> c,
+                    ValueNode arraySrc, ValueNode offsetSrc, ValueNode arrayDst, ValueNode offsetDst, ValueNode length, ValueNode dynamicStrides,
                     @ConstantNodeParameter JavaKind strideSrc,
                     @ConstantNodeParameter JavaKind strideDst) {
         super(c, StampFactory.forKind(JavaKind.Void));
@@ -100,6 +116,7 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
         this.arrayDst = arrayDst;
         this.offsetDst = offsetDst;
         this.length = length;
+        this.dynamicStrides = dynamicStrides;
     }
 
     @NodeIntrinsic
@@ -107,32 +124,11 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
                     @ConstantNodeParameter JavaKind strideSrc,
                     @ConstantNodeParameter JavaKind strideDst);
 
-    public ValueNode getArraySrc() {
-        return arraySrc;
-    }
+    @NodeIntrinsic
+    public static native void arrayCopy(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int stride);
 
-    public ValueNode getOffsetSrc() {
-        return offsetSrc;
-    }
-
-    public ValueNode getArrayDst() {
-        return arrayDst;
-    }
-
-    public ValueNode getOffsetDst() {
-        return offsetDst;
-    }
-
-    public JavaKind getStrideSrc() {
-        return strideSrc;
-    }
-
-    public JavaKind getStrideDst() {
-        return strideDst;
-    }
-
-    public ValueNode getLength() {
-        return length;
+    public int getDirectStubCallIndex() {
+        return NodeStrideUtil.getDirectStubCallIndex(dynamicStrides, strideSrc, strideDst);
     }
 
     @Override
@@ -140,7 +136,12 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
         if (UseGraalStubs.getValue(graph().getOptions())) {
             ForeignCallLinkage linkage = gen.lookupGraalStub(this);
             if (linkage != null) {
-                gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
+                if (getDirectStubCallIndex() < 0) {
+                    gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length),
+                                    gen.operand(dynamicStrides));
+                } else {
+                    gen.getLIRGeneratorTool().emitForeignCall(linkage, null, gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
+                }
                 return;
             }
         }
@@ -148,7 +149,13 @@ public class ArrayCopyWithConversionsNode extends AbstractMemoryCheckpoint imple
     }
 
     protected void generateArrayCopy(NodeLIRBuilderTool gen) {
-        gen.getLIRGeneratorTool().emitArrayCopyWithConversion(strideSrc, strideDst, gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
+        if (getDirectStubCallIndex() < 0) {
+            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(
+                            gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length), gen.operand(dynamicStrides));
+        } else {
+            gen.getLIRGeneratorTool().emitArrayCopyWithConversion(NodeStrideUtil.getConstantStrideA(dynamicStrides, strideSrc), NodeStrideUtil.getConstantStrideB(dynamicStrides, strideDst),
+                            gen.operand(arraySrc), gen.operand(offsetSrc), gen.operand(arrayDst), gen.operand(offsetDst), gen.operand(length));
+        }
     }
 
     /**

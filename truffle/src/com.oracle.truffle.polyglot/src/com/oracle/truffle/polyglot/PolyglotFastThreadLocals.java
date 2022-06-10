@@ -55,14 +55,16 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 
 // 0: PolyglotThreadInfo
 // 1: PolyglotContextImpl
-// 2 + (languageIndex * 2 + 0): language context impl for fast access
-// 2 + (languageIndex * 2 + 1): language spi for fast access
+// 2: EncapsulatingNodeReference
+// 3 + (languageIndex * 2 + 0): language context impl for fast access
+// 3 + (languageIndex * 2 + 1): language spi for fast access
 final class PolyglotFastThreadLocals {
 
     private static final AbstractFastThreadLocal IMPL = EngineAccessor.RUNTIME.getContextThreadLocal();
@@ -73,7 +75,8 @@ final class PolyglotFastThreadLocals {
     private static final int RESERVED_NULL = -1; // never set
     private static final int THREAD_INDEX = 0;
     static final int CONTEXT_INDEX = 1;
-    private static final int LANGUAGE_START = 2;
+    private static final int ENCAPSULATING_NODE_REFERENCE_INDEX = 2;
+    private static final int LANGUAGE_START = 3;
 
     static final int LANGUAGE_CONTEXT_OFFSET = 0;
     static final int LANGUAGE_SPI_OFFSET = 1;
@@ -90,6 +93,7 @@ final class PolyglotFastThreadLocals {
         Object[] data = new Object[LANGUAGE_START + (thread.context.engine.languages.length * LANGUAGE_ELEMENTS)];
         data[THREAD_INDEX] = thread;
         data[CONTEXT_INDEX] = thread.context;
+        data[ENCAPSULATING_NODE_REFERENCE_INDEX] = EngineAccessor.NODES.createEncapsulatingNodeReference(thread.getThread());
         for (PolyglotLanguageContext languageContext : thread.context.contexts) {
             if (languageContext.isCreated()) {
                 updateLanguageObjects(data, languageContext);
@@ -168,6 +172,16 @@ final class PolyglotFastThreadLocals {
 
     public static void cleanup(Object[] threadLocals) {
         Arrays.fill(threadLocals, null);
+    }
+
+    static EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull) {
+        /*
+         * It is tempting to constant fold here for single thread contexts using a Node. However, I
+         * was unable to measure a speedup from doing this compared to reading the fast thread local
+         * instead. So we do not bother here and trade a bit smaller code for fewer deoptimizations
+         * and less footprint (no assumptions in use).
+         */
+        return IMPL.fastGet(ENCAPSULATING_NODE_REFERENCE_INDEX, EncapsulatingNodeReference.class, invalidateOnNull);
     }
 
     public static PolyglotThreadInfo getCurrentThread(PolyglotSharingLayer layer) {

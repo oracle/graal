@@ -137,14 +137,14 @@ public abstract class StringConversion {
     }
 
     private static StaticObject produceGuestString8(Meta meta, char[] value, int hash) {
-        StaticObject guestString = meta.java_lang_String.allocateInstance();
+        StaticObject guestString = meta.java_lang_String.allocateInstance(meta.getContext());
         meta.java_lang_String_hash.set(guestString, hash);
         meta.java_lang_String_value.setObject(guestString, StaticObject.wrap(value, meta), true);
         return guestString;
     }
 
     private static StaticObject produceGuestString11(Meta meta, byte[] value, int hash, byte coder) {
-        StaticObject guestString = meta.java_lang_String.allocateInstance();
+        StaticObject guestString = meta.java_lang_String.allocateInstance(meta.getContext());
         meta.java_lang_String_coder.set(guestString, coder);
         meta.java_lang_String_hash.set(guestString, hash);
         meta.java_lang_String_value.setObject(guestString, StaticObject.wrap(value, meta), true);

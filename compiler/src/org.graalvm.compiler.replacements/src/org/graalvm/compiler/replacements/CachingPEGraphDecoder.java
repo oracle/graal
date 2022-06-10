@@ -97,11 +97,12 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
 
     @SuppressWarnings("try")
     private EncodedGraph createGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution) {
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         StructuredGraph graphToEncode;
         if (isSubstitution && IS_IN_NATIVE_IMAGE) {
             throw GraalError.shouldNotReachHere("dead path");
         } else {
-            graphToEncode = buildGraph(method, intrinsicBytecodeProvider, isSubstitution);
+            graphToEncode = buildGraph(method, intrinsicBytecodeProvider, isSubstitution, canonicalizer);
         }
 
         /*
@@ -110,7 +111,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
          * initial graph.
          */
         try (DebugContext.Scope scope = debug.scope("createGraph", graphToEncode)) {
-            new ConvertDeoptimizeToGuardPhase().apply(graphToEncode, providers);
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graphToEncode, providers);
             if (GraalOptions.EarlyGVN.getValue(graphToEncode.getOptions())) {
                 new DominatorBasedGlobalValueNumberingPhase().apply(graphToEncode, providers);
             }
@@ -124,7 +125,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution) {
+    private StructuredGraph buildGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution, CanonicalizerPhase canonicalizer) {
         StructuredGraph graphToEncode;// @formatter:off
         graphToEncode = new StructuredGraph.Builder(options, debug, allowAssumptions).
                 profileProvider(null).
@@ -141,7 +142,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             IntrinsicContext initialIntrinsicContext = null;
             GraphBuilderPhase.Instance graphBuilderPhaseInstance = createGraphBuilderPhaseInstance(initialIntrinsicContext);
             graphBuilderPhaseInstance.apply(graphToEncode);
-            CanonicalizerPhase.create().apply(graphToEncode, providers);
+            canonicalizer.apply(graphToEncode, providers);
             if (postParsingPhase != null) {
                 postParsingPhase.apply(graphToEncode, providers);
             }

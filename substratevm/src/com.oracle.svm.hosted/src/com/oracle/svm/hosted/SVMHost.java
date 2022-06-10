@@ -40,6 +40,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.BiPredicate;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -84,6 +86,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateOptions.OptimizationLevel;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
@@ -295,7 +298,7 @@ public class SVMHost extends HostVM {
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
         return config.withRetainLocalVariables(retainLocalVariables())
                         .withUnresolvedIsError(linkAtBuildTimeSupport.linkAtBuildTime(method.getDeclaringClass()))
-                        .withFullInfopoints(SubstrateOptions.GenerateDebugInfo.getValue() > 0);
+                        .withFullInfopoints(SubstrateOptions.getSourceLevelDebug() && SubstrateOptions.getSourceLevelDebugFilter().test(method.getDeclaringClass().toJavaName()));
     }
 
     private boolean retainLocalVariables() {
@@ -669,7 +672,7 @@ public class SVMHost extends HostVM {
         return SubstrateOptions.NeverInline.getValue().values().stream().anyMatch(re -> MethodFilter.parse(re).matches(method));
     }
 
-    private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl();
+    private final InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy = new InlineBeforeAnalysisPolicyImpl(this);
 
     @Override
     public InlineBeforeAnalysisPolicy<?> inlineBeforeAnalysisPolicy() {
@@ -721,6 +724,24 @@ public class SVMHost extends HostVM {
         }
         for (Class<? extends Platform> platformGroup : platformsAnnotation.value()) {
             if (platformGroup.isInstance(platform)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private final List<BiPredicate<AnalysisMethod, AnalysisMethod>> neverInlineTrivialHandlers = new CopyOnWriteArrayList<>();
+
+    public void registerNeverInlineTrivialHandler(BiPredicate<AnalysisMethod, AnalysisMethod> handler) {
+        neverInlineTrivialHandlers.add(handler);
+    }
+
+    public boolean neverInlineTrivial(AnalysisMethod caller, AnalysisMethod callee) {
+        if (!callee.canBeInlined() || GuardedAnnotationAccess.isAnnotationPresent(callee, NeverInlineTrivial.class)) {
+            return true;
+        }
+        for (var handler : neverInlineTrivialHandlers) {
+            if (handler.test(caller, callee)) {
                 return true;
             }
         }

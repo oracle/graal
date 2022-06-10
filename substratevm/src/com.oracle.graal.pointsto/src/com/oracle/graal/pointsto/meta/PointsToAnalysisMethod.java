@@ -38,7 +38,6 @@ import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
@@ -61,7 +60,7 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
 
     PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped);
-        typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
+        typeFlow = universe.analysisPolicy().createMethodTypeFlow(this);
     }
 
     @Override
@@ -107,7 +106,7 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public Iterable<? extends InvokeInfo> getInvokes() {
-        return getTypeFlow().getInvokes();
+        return getTypeFlow().getInvokes().getValues();
     }
 
     @Override
@@ -155,10 +154,10 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
         InvokeTypeFlow invoke;
         if (isSpecial) {
             invoke = bb.analysisPolicy().createSpecialInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
-                            actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
+                            actualReturn);
         } else {
             invoke = bb.analysisPolicy().createVirtualInvokeTypeFlow(originalLocation, receiverType, method, actualParameters,
-                            actualReturn, BytecodeLocation.UNKNOWN_BYTECODE_LOCATION);
+                            actualReturn);
         }
         invoke.markAsContextInsensitive();
 

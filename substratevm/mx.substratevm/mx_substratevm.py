@@ -202,6 +202,7 @@ class Tags(set):
 GraalTags = Tags([
     'helloworld',
     'helloworld_debug',
+    'helloworld_native',
     'helloworld_quickbuild',
     'debuginfotest',
     'debuginfotest_quickbuild',
@@ -325,7 +326,7 @@ def image_demo_task(extra_image_args=None, flightrecorder=True):
 
 
 def truffle_unittest_task(quickbuild=False):
-    truffle_build_args = ['--build-args', '--macro:truffle',
+    truffle_build_args = ['--force-builder-on-cp', '--build-args', '--macro:truffle',
                                 '-H:MaxRuntimeCompileMethods=5000',
                                 '-H:+TruffleCheckBlackListedMethods']
     if quickbuild:
@@ -360,6 +361,11 @@ def svm_gate_body(args, tasks):
         if t:
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 image_demo_task(['-H:GenerateDebugInfo=1'], flightrecorder=False)
+
+    with Task('image demos native', tasks, tags=[GraalTags.helloworld_native]) as t:
+        if t:
+            with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+                image_demo_task(['-H:+NativeArchitecture'], flightrecorder=False)
 
     with Task('image demos quickbuild', tasks, tags=[GraalTags.helloworld_quickbuild]) as t:
         if t:
@@ -401,7 +407,7 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
@@ -412,7 +418,7 @@ def svm_gate_body(args, tasks):
             with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 isolation_testlib = mx_subst.path_substitutions.substitute('-Dnative.isolation.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:isolationtest>')
-                native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
+                native_unittest_args = ['com.oracle.truffle.nfi.test', '--force-builder-on-cp', '--build-args', '--language:nfi',
                                         '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+TruffleCheckBlackListedMethods'] + DEVMODE_FLAGS + [
                                             '--run-args', testlib, isolation_testlib, '--very-verbose', '--enable-timing']
@@ -478,7 +484,7 @@ def native_unittests_task(extra_build_args=None):
         if mx.is_windows():
             mx_unittest.add_global_ignore_glob('com.oracle.svm.test.SecurityServiceTest')
 
-    native_unittest(['--builder-on-modulepath', '--build-args', _native_unittest_features] + additional_build_args)
+    native_unittest(['--build-args', _native_unittest_features] + additional_build_args)
 
 
 def conditional_config_task(native_image):
@@ -558,7 +564,7 @@ def javac_image_command(javac_path):
     )
 
 
-def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, builder_on_modulepath=False):
+def _native_junit(native_image, unittest_args, build_args=None, run_args=None, blacklist=None, whitelist=None, preserve_image=False, force_builder_on_cp=False):
     build_args = build_args or []
     javaProperties = {}
     for dist in suite.dists:
@@ -585,8 +591,16 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         with open(unittest_file, 'r') as f:
             mx.log('Building junit image for matching: ' + ' '.join(l.rstrip() for l in f))
         extra_image_args = mx.get_runtime_jvm_args(unittest_deps, jdk=mx_compiler.jdk, exclude_names=['substratevm:LIBRARY_SUPPORT'])
-        macro_junit = '--macro:junit' + ('' if builder_on_modulepath else 'cp')
-        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir])
+        macro_junit = '--macro:junit'
+        if force_builder_on_cp:
+            macro_junit += 'cp'
+            custom_env = os.environ.copy()
+            custom_env['USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM'] = 'false'
+        else:
+            custom_env = None
+        unittest_image = native_image(['-ea', '-esa'] + build_args + extra_image_args + [macro_junit + '=' + unittest_file, '-H:Path=' + junit_test_dir], env=custom_env)
+        image_pattern_replacement = unittest_image + ".exe" if mx.is_windows() else unittest_image
+        run_args = [arg.replace('${unittest.image}', image_pattern_replacement) for arg in run_args]
         mx.log('Running: ' + ' '.join(map(pipes.quote, [unittest_image] + run_args)))
         mx.run([unittest_image] + run_args)
     finally:
@@ -609,14 +623,14 @@ def unmask(args):
 
 def _native_unittest(native_image, cmdline_args):
     parser = ArgumentParser(prog='mx native-unittest', description='Run unittests as native image.')
-    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--builder-on-modulepath']
+    all_args = ['--build-args', '--run-args', '--blacklist', '--whitelist', '-p', '--preserve-image', '--force-builder-on-cp']
     cmdline_args = [_mask(arg, all_args) for arg in cmdline_args]
     parser.add_argument(all_args[0], metavar='ARG', nargs='*', default=[])
     parser.add_argument(all_args[1], metavar='ARG', nargs='*', default=[])
     parser.add_argument('--blacklist', help='run all testcases not specified in <file>', metavar='<file>')
     parser.add_argument('--whitelist', help='run testcases specified in <file> only', metavar='<file>')
     parser.add_argument('-p', '--preserve-image', help='do not delete the generated native image', action='store_true')
-    parser.add_argument('--builder-on-modulepath', help='perform image build with builder on module-path', action='store_true')
+    parser.add_argument('--force-builder-on-cp', help='force image builder to run on classpath', action='store_true')
     parser.add_argument('unittest_args', metavar='TEST_ARG', nargs='*')
     pargs = parser.parse_args(cmdline_args)
 
@@ -637,8 +651,7 @@ def _native_unittest(native_image, cmdline_args):
             mx.log('warning: could not read blacklist: ' + blacklist)
 
     unittest_args = unmask(pargs.unittest_args) if unmask(pargs.unittest_args) else ['com.oracle.svm.test', 'com.oracle.svm.configure.test']
-    builder_on_modulepath = pargs.builder_on_modulepath
-    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, builder_on_modulepath)
+    _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, pargs.force_builder_on_cp)
 
 
 def jvm_unittest(args):
@@ -720,7 +733,7 @@ def _cinterfacetutorial(native_image, args=None):
     mkpath(build_dir)
 
     # Build the shared library from Java code
-    native_image(['--shared', '-H:Path=' + build_dir, '-H:Name=libcinterfacetutorial',
+    native_image(['--shared', '-H:Path=' + build_dir, '-H:Name=libcinterfacetutorial', '-Dcom.oracle.svm.tutorial.headerfile=' + join(c_source_dir, 'mydata.h'),
                   '-H:CLibraryPath=' + tutorial_proj.dir, '-cp', tutorial_proj.output_dir()] + args)
 
     # Build the C executable
@@ -825,6 +838,7 @@ def _debuginfotest(native_image, path, build_only, args):
                          '-Dgraal.LogFile=graal.log',
                          '-g',
                          '-H:-OmitInlinedMethodDebugLineInfo',
+                         '-H:+SourceLevelDebug',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
                          'hello.Hello'] + args
@@ -837,6 +851,8 @@ def _debuginfotest(native_image, path, build_only, args):
     # build with and without Isolates and check both work
 
     build_debug_test(['-H:+SpawnIsolates'])
+    if mx.get_os() == 'linux' and not build_only:
+        os.environ.update({'debuginfotest_arch' : mx.get_arch()})
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest_isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
@@ -1079,7 +1095,23 @@ libgraal_jar_distributions = [
     'compiler:GRAAL_MANAGEMENT_LIBGRAAL']
 
 libgraal_build_args = [
-    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,org.graalvm.jniutils,org.graalvm.graphio,com.oracle.truffle',
+    ## Pass via JVM args opening up of packages needed for image builder early on
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.common=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.jniutils=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni.annotation=ALL-UNNAMED',
+    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.libgraal.jni=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.annotate=ALL-UNNAMED',
+    '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.option=ALL-UNNAMED',
+    ## Packages used after option-processing can be opened by the builder (`-J`-prefix not needed)
+    # LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature (needed to be able to instantiate LibGraalFeature)
+    '--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.graal=ALL-UNNAMED',
+    # Make ModuleSupport accessible to do the remaining opening-up in LibGraalFeature constructor
+    '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
+
+    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-H:+ReportExceptionStackTraces',
@@ -1095,7 +1127,7 @@ libgraal_build_args = [
     '-R:-AutomaticReferenceHandling',
 ]
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+libgraal = mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='LibGraal',
     short_name='lg',
@@ -1117,7 +1149,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     ],
     stability="supported",
     jlink=False,
-))
+)
+mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
     packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
@@ -1161,7 +1194,7 @@ def run_helloworld_command(args, config, command_name):
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
     parser.add_argument(all_args[1], metavar='<javac-command>', help='A javac command to be used', default=mx.get_jdk().javac)
-    parser.add_argument(all_args[2], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument(all_args[2], action='store_true', help='Only build the native image')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     javac_command = unmask(parsed.javac_command.split())
@@ -1184,7 +1217,7 @@ def debuginfotest(args, config=None):
     all_args = ['--output-path', '--build-only']
     masked_args = [_mask(arg, all_args) for arg in args]
     parser.add_argument(all_args[0], metavar='<output-path>', nargs=1, help='Path of the generated image', default=[svmbuild_dir(suite)])
-    parser.add_argument(all_args[1], action='store_true', help='Only build the native image', default=False)
+    parser.add_argument(all_args[1], action='store_true', help='Only build the native image')
     parser.add_argument('image_args', nargs='*', default=[])
     parsed = parser.parse_args(masked_args)
     output_path = unmask(parsed.output_path)[0]

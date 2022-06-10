@@ -133,7 +133,7 @@ public class TStringOpsCalcStringAttributesUTF8Test extends TStringOpsTest<AMD64
     }
 
     @Test
-    public void testUtf8() throws ClassNotFoundException {
+    public void testUtf8() {
         ResolvedJavaMethod method = getTStringOpsMethod("calcStringAttributesUTF8", Object.class, int.class, int.class, boolean.class, boolean.class);
         test(method, null, DUMMY_LOCATION, array, offset, length, true, false);
         test(method, null, DUMMY_LOCATION, array, offset, length, false, false);
