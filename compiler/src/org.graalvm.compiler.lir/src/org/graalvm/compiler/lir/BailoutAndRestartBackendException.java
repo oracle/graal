@@ -40,4 +40,11 @@ public abstract class BailoutAndRestartBackendException extends PermanentBailout
     public BailoutAndRestartBackendException(Throwable cause, String msg) {
         super(cause, msg);
     }
+
+    @Override
+    public boolean isPerformanceIssue() {
+        // we are going to retry compilation and throw an error if it doesn't work
+        // see org.graalvm.compiler.core.gen.LIRCompilerBackend#emitLIR
+        return false;
+    }
 }

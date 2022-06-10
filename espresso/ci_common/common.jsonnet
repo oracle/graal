@@ -199,7 +199,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       env,
       self.scala_dacapo_jvm_warmup,
       guest_jvm_config=guest_jvm_config,
-      fork_file='ci_common/scala-dacapo-warmup-forks.json',
       extra_args=extra_args,
       timelimit='5:00:00'
     ),

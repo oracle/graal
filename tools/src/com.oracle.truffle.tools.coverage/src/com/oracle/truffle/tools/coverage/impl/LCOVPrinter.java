@@ -25,7 +25,9 @@
 package com.oracle.truffle.tools.coverage.impl;
 
 import java.io.PrintStream;
-import java.util.HashMap;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.coverage.RootCoverage;
@@ -55,13 +57,13 @@ class LCOVPrinter {
         this.strictLines = strictLines;
     }
 
-    private static void addCoverageCounts(HashMap<Integer, Long> linesToCount, SectionCoverage[] sectionCoverage) {
+    private static void addCoverageCounts(Map<Integer, Long> linesToCount, SectionCoverage[] sectionCoverage) {
         for (SectionCoverage section : sectionCoverage) {
             addSectionCoverageCount(linesToCount, section);
         }
     }
 
-    private static void addSectionCoverageCount(HashMap<Integer, Long> linesToCount, SectionCoverage section) {
+    private static void addSectionCoverageCount(Map<Integer, Long> linesToCount, SectionCoverage section) {
         final SourceSection sourceSection = section.getSourceSection();
         for (int i = sourceSection.getStartLine(); i <= sourceSection.getEndLine(); i++) {
             linesToCount.compute(i, (key, old) -> {
@@ -79,7 +81,7 @@ class LCOVPrinter {
         }
     }
 
-    private static void removeIncidentalCoverage(HashMap<Integer, Long> linesToCount, SectionCoverage[] sectionCoverage) {
+    private static void removeIncidentalCoverage(Map<Integer, Long> linesToCount, SectionCoverage[] sectionCoverage) {
         for (SectionCoverage section : sectionCoverage) {
             if (!section.isCovered()) {
                 final SourceSection sourceSection = section.getSourceSection();
@@ -90,10 +92,10 @@ class LCOVPrinter {
         }
     }
 
-    private HashMap<Integer, Long> linesToCount(SourceCoverage sourceCoverage) {
-        final HashMap<Integer, Long> linesToCount = new HashMap<>();
+    private SortedMap<Integer, Long> linesToCount(SourceCoverage sourceCoverage) {
+        SortedMap<Integer, Long> linesToCount = new TreeMap<>();
         for (RootCoverage root : sourceCoverage.getRoots()) {
-            final SectionCoverage[] sectionCoverage = root.getSectionCoverage();
+            SectionCoverage[] sectionCoverage = root.getSectionCoverage();
             addCoverageCounts(linesToCount, sectionCoverage);
         }
         if (strictLines) {
@@ -123,16 +125,15 @@ class LCOVPrinter {
     private void printLineData(SourceCoverage sourceCoverage) {
         int consideredLines = 0;
         int coveredLines = 0;
-        final HashMap<Integer, Long> linesToCount = linesToCount(sourceCoverage);
-        for (int i = 1; i <= sourceCoverage.getSource().getLineCount(); i++) {
-            if (linesToCount.containsKey(i)) {
-                consideredLines++;
-                final long executionCount = linesToCount.get(i);
-                if (executionCount > 0) {
-                    coveredLines++;
-                }
-                out.println(LINE_DATA + i + "," + executionCount);
+        SortedMap<Integer, Long> linesToCount = linesToCount(sourceCoverage);
+        for (Map.Entry<Integer, Long> entry : linesToCount.entrySet()) {
+            consideredLines++;
+            long executionCount = entry.getValue();
+            if (executionCount > 0) {
+                coveredLines++;
             }
+            int line = entry.getKey();
+            out.println(LINE_DATA + line + "," + executionCount);
         }
         out.println(LINES_FOUND + consideredLines);
         out.println(LINES_COVERED + coveredLines);
