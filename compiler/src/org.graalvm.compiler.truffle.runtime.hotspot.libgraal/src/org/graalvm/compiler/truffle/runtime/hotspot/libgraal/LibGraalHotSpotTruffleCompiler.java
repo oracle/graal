@@ -196,6 +196,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void purgePartialEvaluationCaches() {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), handle());
