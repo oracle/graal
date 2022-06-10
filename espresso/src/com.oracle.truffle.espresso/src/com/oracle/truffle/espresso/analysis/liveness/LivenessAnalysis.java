@@ -44,6 +44,7 @@ import com.oracle.truffle.espresso.analysis.graph.LinkedBlock;
 import com.oracle.truffle.espresso.analysis.liveness.actions.MultiAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.NullOutAction;
 import com.oracle.truffle.espresso.analysis.liveness.actions.SelectEdgeAction;
+import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
@@ -188,6 +189,9 @@ public final class LivenessAnalysis {
     }
 
     private static boolean enableLivenessAnalysis(EspressoLanguage language, Method.MethodVersion methodVersion) {
+        if (isExempt(methodVersion.getMethod())) {
+            return false;
+        }
         switch (language.getLivenessAnalysisMode()) {
             case NONE:
                 return false;
@@ -204,6 +208,16 @@ public final class LivenessAnalysis {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
+    }
+
+    private static boolean isExempt(Method m) {
+        if (m.getDeclaringKlass() == m.getMeta().java_security_AccessController &&
+                        m.getName() == Symbol.Name.executePrivileged) {
+            // Special case:
+            // Frame locals inspection is necessary for access control.
+            return true;
+        }
+        return false;
     }
 
     private LivenessAnalysis(LocalVariableAction[] postBci, EdgeAction[] edge, LocalVariableAction onStart, CatchUpMap catchUpMap) {
