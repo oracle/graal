@@ -28,6 +28,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1096,7 +1097,7 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
     }
 
     private void writeSymbol(String clsName) throws IOException {
-        byte[] buf = clsName.getBytes("UTF-8");
+        byte[] buf = clsName.getBytes(StandardCharsets.UTF_8);
         writeHeader(HPROF_UTF8, buf.length + getObjIDSize());
         writeSymbolID(clsName);
         out.write(buf);
@@ -1296,10 +1297,10 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
         return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
     }
 
-    private static String readString(byte[] data, int start) throws IOException {
+    private static String readString(byte[] data, int start) {
         int len = readStringLength(data, start);
 
-        return new String(data, start, len, "UTF-8");
+        return new String(data, start, len, StandardCharsets.UTF_8);
     }
 
     /**

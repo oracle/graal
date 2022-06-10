@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -244,28 +245,6 @@ public final class CodeInfoAccess {
         return (CodePointer) ((UnsignedWord) cast(info).getCodeStart()).add(WordFactory.unsigned(relativeIP));
     }
 
-    public static class FrameInfoState {
-        public static final int NO_SUCCESSOR_INDEX_MARKER = -1;
-
-        public long entryOffset;
-        public boolean isFirstFrame;
-        public boolean isDone;
-        public int firstValue;
-        public int successorIndex;
-
-        public FrameInfoState() {
-            reset();
-        }
-
-        public void reset() {
-            entryOffset = -1;
-            isFirstFrame = true;
-            isDone = false;
-            firstValue = -1;
-            successorIndex = NO_SUCCESSOR_INDEX_MARKER;
-        }
-    }
-
     public static void initFrameInfoReader(CodeInfo info, CodePointer ip, ReusableTypeReader frameInfoReader, FrameInfoState state) {
         long entryOffset = CodeInfoDecoder.lookupCodeInfoEntryOffset(info, relativeIP(info, ip));
         state.entryOffset = entryOffset;
@@ -434,7 +413,7 @@ public final class CodeInfoAccess {
 
     public static void printCodeInfo(Log log, UntetheredCodeInfo codeInfo, int state, String name, CodePointer codeStart, CodePointer codeEnd, HasInstalledCode hasInstalledCode,
                     long installedCodeAddress, long installedCodeEntryPoint) {
-        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
+        log.string("CodeInfo (").zhex(codeInfo).string(" - ").zhex(((UnsignedWord) codeInfo).add(CodeInfoAccess.getSizeOfCodeInfo()).subtract(1)).string("), ")
                         .string(CodeInfoAccess.stateToString(state));
         if (name != null) {
             log.string(" - ").string(name);
@@ -453,6 +432,79 @@ public final class CodeInfoAccess {
                 break;
             default:
                 throw VMError.shouldNotReachHere("Unexpected value for HasInstalledCode");
+        }
+    }
+
+    @Fold
+    public static UnsignedWord getSizeOfCodeInfo() {
+        return SizeOf.unsigned(CodeInfoImpl.class);
+    }
+
+    public static class FrameInfoState {
+        public static final int NO_SUCCESSOR_INDEX_MARKER = -1;
+
+        public long entryOffset;
+        public boolean isFirstFrame;
+        public boolean isDone;
+        public int firstValue;
+        public int successorIndex;
+
+        public FrameInfoState() {
+            reset();
+        }
+
+        public void reset() {
+            entryOffset = -1;
+            isFirstFrame = true;
+            isDone = false;
+            firstValue = -1;
+            successorIndex = NO_SUCCESSOR_INDEX_MARKER;
+        }
+    }
+
+    public static class SingleShotFrameInfoQueryResultAllocator implements FrameInfoDecoder.FrameInfoQueryResultAllocator {
+        private static FrameInfoQueryResult frameInfoQueryResult = new FrameInfoQueryResult();
+
+        private boolean fired;
+
+        public void reload() {
+            fired = false;
+        }
+
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        @Override
+        public FrameInfoQueryResult newFrameInfoQueryResult() {
+            if (fired) {
+                return null;
+            }
+            fired = true;
+            frameInfoQueryResult.init();
+            return frameInfoQueryResult;
+        }
+    }
+
+    public static class DummyValueInfoAllocator implements ValueInfoAllocator {
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        @Override
+        public FrameInfoQueryResult.ValueInfo newValueInfo() {
+            return null;
+        }
+
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        @Override
+        public FrameInfoQueryResult.ValueInfo[] newValueInfoArray(int len) {
+            return null;
+        }
+
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        @Override
+        public FrameInfoQueryResult.ValueInfo[][] newValueInfoArrayArray(int len) {
+            return null;
+        }
+
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Provide allocation-free StackFrameVisitor")
+        @Override
+        public void decodeConstant(FrameInfoQueryResult.ValueInfo valueInfo, NonmovableObjectArray<?> frameInfoObjectConstants) {
         }
     }
 
