@@ -36,7 +36,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * `Property`: `copyWithRelocatable`, `copyWithFlags`, `isSame`, `relocate`, `set`, `setInternal`, `setGeneric`.
     * `IncompatibleLocationException`, `FinalLocationException` constructors
 * GR-34894 Deprecated legacy and low-level `DynamicObject` APIs:
-    * `Shape`: `Allocator`, `allocator`, `createFactory`, `newInstance`, `defineProperty`, `addProperty`, `changeType`, `makeSharedShape`, `getMutex`
+    * `Shape`: `Allocator`, `allocator`, `createFactory`, `newInstance`, `defineProperty`, `addProperty`, `changeType`, `getMutex`
     * `ObjectLocation`, `BooleanLocation`, `DoubleLocation`, `IntLocation`, `LongLocation`
     * `Location`: `canSet`, `set`, `setInternal`, `get`, `getInternal`, `incompatibleLocation`, `finalLocation`
     * `Property`: `create`, `get`, `set`, `setSafe`, `setGeneric`.

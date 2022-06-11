@@ -859,14 +859,15 @@ public abstract class Shape {
      * Make a shared variant of this shape, to allow safe usage of this object between threads.
      * Shared shapes will not reuse storage locations for other fields. In combination with careful
      * synchronization on writes, this can prevent reading out-of-thin-air values.
+     * <p>
+     * Note: Where possible, avoid using this method and use
+     * {@link DynamicObjectLibrary#markShared(DynamicObject)} instead.
      *
      * @return a cached and shared variant of this shape
      * @see #isShared()
      * @see DynamicObjectLibrary#markShared(DynamicObject)
      * @since 0.18
-     * @deprecated use {@link DynamicObjectLibrary#markShared(DynamicObject)} instead.
      */
-    @Deprecated(since = "22.2")
     public Shape makeSharedShape() {
         CompilerAsserts.neverPartOfCompilation();
         throw CompilerDirectives.shouldNotReachHere();
