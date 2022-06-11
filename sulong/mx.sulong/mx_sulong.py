@@ -481,7 +481,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
     ],
-    installable=False,
+    installable=True,
+    priority=0,  # this is the main component of the llvm installable
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -498,7 +499,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_NATIVE_HOME',
     ],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
-    installable=False,
+    installable=True,
+    priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -520,5 +522,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             language='llvm',
         ),
     ],
-    installable=False,
+    installable=True,
+    priority=1,  # this component is part of the llvm installable but it's not the main one
 ))

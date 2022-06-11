@@ -484,6 +484,8 @@ local devkits = common_json.devkits;
     run: [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -507,6 +509,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', '${VM_ENV}-aarch64'],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -546,6 +550,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
@@ -578,6 +584,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-darwin-aarch64"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
@@ -609,6 +617,8 @@ local devkits = common_json.devkits;
       ['set-export', 'VM_ENV', "${VM_ENV}-win"],
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + vm.check_graalvm_complete_build + [
       $.mx_vm_installables + $.maven_deploy_sdk_components,
       self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,

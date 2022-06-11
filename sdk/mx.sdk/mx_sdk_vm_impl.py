@@ -234,16 +234,20 @@ def registered_graalvm_components(stage1=False):
             if libpoly_build_dependencies:
                 mx.warn("Ignoring build dependency '{}' of '{}'. It should be already part of stage 1.".format(libpoly_build_dependencies, libpolyglot_component.name))
 
-        # If we are going to build native launchers or libraries, i.e., if SubstrateVM is included,
-        # we need native-image in stage1 to build them, even if the Native Image component is excluded.
+        ni_component = mx_sdk_vm.graalvm_component_by_name('ni', fatalIfMissing=False)
+        niee_component = mx_sdk_vm.graalvm_component_by_name('niee', fatalIfMissing=False)
         if stage1:
-            if any(component.short_name == 'svmee' for component in components_to_build):
-                add_dependencies([mx_sdk.graalvm_component_by_name('niee')], excludes=False)
-            elif any(component.short_name == 'svm' for component in components_to_build):
-                add_dependencies([mx_sdk.graalvm_component_by_name('ni')], excludes=False)
+            # To build native launchers or libraries we need Native Image and its dependencies in stage1, even when
+            # these components are not included in the final distribution
+            if niee_component is not None:
+                add_dependencies([niee_component], excludes=False)
+            elif ni_component is not None:
+                add_dependencies([ni_component], excludes=False)
 
-        if not any(component.short_name == 'svm' for component in components_to_build):
-            # SVM is not included, remove GraalVMSvmMacros
+        if ni_component is None:
+            # Remove GraalVMSvmMacro if the 'svm' component is not found, most likely because the `/substratevm` suite
+            # is not loaded
+            mx.logv("Cannot find 'ni' component; removing macros: {}".format([component.name for component in components_to_build if isinstance(component, mx_sdk.GraalVMSvmMacro)]))
             components_to_build = [component for component in components_to_build if not isinstance(component, mx_sdk.GraalVMSvmMacro)]
 
         mx.logv('Components: {}'.format([c.name for c in components_to_build]))
@@ -261,7 +265,8 @@ def _get_component_type_base(c, apply_substitutions=False):
     elif isinstance(c, mx_sdk.GraalVmJreComponent):
         result = '<jre_base>/lib/'
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
-        svm_component = get_component('svm', stage1=True)
+        # Get the 'svm' component, even if it's not part of the GraalVM image
+        svm_component = mx_sdk_vm.graalvm_component_by_name('svm', fatalIfMissing=True)
         result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/macros/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
@@ -938,8 +943,8 @@ def _components_set(components=None, stage1=False):
     components_set = set([c.short_name for c in components])
     if stage1:
         components_set.add('stage1')
-    elif 'svm' in components_set:
-        # forced bash launchers and skipped libraries only make a difference if we have svm
+    elif mx_sdk_vm.graalvm_component_by_name('ni', fatalIfMissing=False) is not None:
+        # forced bash launchers and skipped libraries only make a difference if Native Image is involved in the build
         for component in components:
             for launcher_config in _get_launcher_configs(component):
                 if _force_bash_launchers(launcher_config):
@@ -1440,8 +1445,9 @@ class GraalVmLibPolyglotNativeProperties(mx.LayoutJARDistribution):
         if not self._layout_initialized:
             native_image_args = self.component.polyglot_lib_build_args
             if self.component.polyglot_lib_jar_dependencies:
-                final_dist = get_final_graalvm_distribution()
-                native_image_args += ['-cp', os.pathsep.join(("${java.home}" + os.sep + e for e in graalvm_home_relative_classpath(self.component.polyglot_lib_jar_dependencies, _get_graalvm_archive_path('', final_dist), graal_vm=final_dist).split(os.pathsep)))]
+                # Stage1 includes jar dependencies even when the final distribution does not include SubstrateVM.
+                graalvm_dist = get_stage1_graalvm_distribution()
+                native_image_args += ['-cp', os.pathsep.join(("${java.home}" + os.sep + e for e in graalvm_home_relative_classpath(self.component.polyglot_lib_jar_dependencies, _get_graalvm_archive_path('', graalvm_dist), graal_vm=graalvm_dist).split(os.pathsep)))]
             assert native_image_args
             # self.layout['META-INF/native-image/{}/native-image.properties'.format(self.component.short_name)] = 'string:' + _format_properties({'Args': ' '.join(native_image_args)})
             self.layout['META-INF/native-image/{}/native-image.properties'.format(self.component.short_name)] = 'string:Args=' + java_properties_escape(' '.join(native_image_args), ' ', len('Args'))
@@ -2429,13 +2435,13 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             return any(_get_launcher_configs(comp) or _get_library_configs(comp) for comp in components)
 
         other_comp_names = []
-        involved_components = [component] + [get_component(dep) for dep in component.standalone_dependencies]
-        if _get_svm_support().is_supported() and require_svm(involved_components):
+        self.involved_components = [component] + [get_component(dep) for dep in component.standalone_dependencies]
+        if _get_svm_support().is_supported() and require_svm(self.involved_components):
             if 'svm' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svmee')
-        for _component in involved_components:
+        for _component in self.involved_components:
             other_comp_names += _component.extra_installable_qualifiers
 
         other_comp_names = sorted(other_comp_names)
@@ -2797,8 +2803,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     register_distribution(get_final_graalvm_distribution())
     with_debuginfo.append(get_final_graalvm_distribution())
 
-    # Add the macros if SubstrateVM is included, as images could be created later with an installable Native Image
-    with_svm = has_component('svm')
+    # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
+    with_svm = has_component('svm', stage1=True)
     libpolyglot_component = mx_sdk_vm.graalvm_component_by_name('libpoly', fatalIfMissing=False) if with_svm else None
 
     names = set()
@@ -3023,11 +3029,11 @@ def graalvm_version():
     return _suite.release_version()
 
 
-def graalvm_home(fatalIfMissing=False):
-    _graalvm_dist = get_final_graalvm_distribution()
+def graalvm_home(stage1=False, fatalIfMissing=False):
+    _graalvm_dist = get_stage1_graalvm_distribution() if stage1 else get_final_graalvm_distribution()
     _graalvm_home = join(_graalvm_dist.output, _graalvm_dist.jdk_base)
     if fatalIfMissing and not exists(_graalvm_home):
-        mx.abort("GraalVM home '{}' does not exist. Did you forget to build with this set of dynamic imports and mx options?".format(_graalvm_home))
+        mx.abort("{}GraalVM home '{}' does not exist. Did you forget to build with this set of dynamic imports and mx options?".format('Stage1 ' if stage1 else '', _graalvm_home))
     return _graalvm_home
 
 
@@ -3062,8 +3068,9 @@ def print_graalvm_version(args):
 def print_graalvm_home(args):
     """print the GraalVM home dir"""
     parser = ArgumentParser(prog='mx graalvm-home', description='Print the GraalVM home directory')
-    _ = parser.parse_args(args)
-    print(graalvm_home())
+    parser.add_argument('--stage1', action='store_true', help='show the home directory of the stage1 distribution')
+    args = parser.parse_args(args)
+    print(graalvm_home(stage1=args.stage1, fatalIfMissing=False))
 
 
 def print_standalone_home(args):
@@ -3206,6 +3213,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     parser = ArgumentParser(prog='mx graalvm-show', description='Print the GraalVM config')
     parser.add_argument('--stage1', action='store_true', help='show the components for stage1')
     parser.add_argument('--print-env', action='store_true', help='print the contents of an env file that reproduces the current GraalVM config')
+    parser.add_argument('-v', '--verbose', action='store_true', help='print additional information about installables and standalones')
     args = parser.parse_args(args)
 
     graalvm_dist = forced_graalvm_dist or (get_stage1_graalvm_distribution() if args.stage1 else get_final_graalvm_distribution())
@@ -3250,6 +3258,9 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("Installables:")
             for i in installables:
                 print(" - {}".format(i))
+                if args.verbose:
+                    for c in i.components:
+                        print("    - {}".format(c.name))
         else:
             print("No installable")
 
@@ -3258,6 +3269,9 @@ def graalvm_show(args, forced_graalvm_dist=None):
             print("Standalones:")
             for s in standalones:
                 print(" - {}".format(s))
+                if args.verbose:
+                    for c in s.involved_components:
+                        print("    - {}".format(c.name))
         else:
             print("No standalone")
 
