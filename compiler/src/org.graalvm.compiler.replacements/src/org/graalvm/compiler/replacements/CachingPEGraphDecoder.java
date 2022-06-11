@@ -29,6 +29,8 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import jdk.vm.ci.meta.Assumptions;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -72,15 +74,16 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     protected final GraphBuilderConfiguration graphBuilderConfig;
     protected final OptimisticOptimizations optimisticOpts;
     private final AllowAssumptions allowAssumptions;
-    private final EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache;
-    private final Supplier<AutoCloseable> createCachedGraphScope;
+    private final EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache;
+    private final EconomicMap<ResolvedJavaMethod, EncodedGraph> localGraphCache;
+    private final Supplier<AutoCloseable> createPersistentCachedGraphScope;
     private final BasePhase<? super CoreProviders> postParsingPhase;
 
     public CachingPEGraphDecoder(Architecture architecture, StructuredGraph graph, Providers providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     AllowAssumptions allowAssumptions, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins, InlineInvokePlugin[] inlineInvokePlugins,
                     ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, Supplier<AutoCloseable> createCachedGraphScope,
+                    BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> persistentGraphCache, Supplier<AutoCloseable> createPersistentCachedGraphScope,
                     boolean needsExplicitException) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
@@ -90,9 +93,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         this.graphBuilderConfig = graphBuilderConfig;
         this.optimisticOpts = optimisticOpts;
         this.allowAssumptions = allowAssumptions;
-        this.graphCache = graphCache;
         this.postParsingPhase = postParsingPhase;
-        this.createCachedGraphScope = createCachedGraphScope;
+        this.persistentGraphCache = persistentGraphCache;
+        this.createPersistentCachedGraphScope = createPersistentCachedGraphScope;
+        this.localGraphCache = EconomicMap.create();
     }
 
     protected GraphBuilderPhase.Instance createGraphBuilderPhaseInstance(IntrinsicContext initialIntrinsicContext) {
@@ -124,7 +128,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         }
 
         EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graphToEncode, architecture);
-        graphCache.put(method, encodedGraph);
+        persistentGraphCache.put(method, encodedGraph);
         return encodedGraph;
     }
 
@@ -156,18 +160,73 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         return graphToEncode;
     }
 
-    @Override
+    private boolean verifyAssumptions(EncodedGraph graph) {
+        Assumptions assumptions = graph.getAssumptions();
+        if (assumptions == null || assumptions.isEmpty()) {
+            return true; // verified
+        }
+        for (Assumptions.Assumption assumption : assumptions) {
+            if (assumption instanceof Assumptions.LeafType) {
+                Assumptions.LeafType leafType = (Assumptions.LeafType) assumption;
+                Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = leafType.context.findLeafConcreteSubtype();
+                if (assumptionResult != null) {
+                    ResolvedJavaType candidate = assumptionResult.getResult();
+                    if (!leafType.context.equals(candidate)) {
+                        return false;
+                    }
+                }
+            } else if (assumption instanceof Assumptions.ConcreteMethod) {
+                Assumptions.ConcreteMethod concreteMethod = (Assumptions.ConcreteMethod) assumption;
+                Assumptions.AssumptionResult<ResolvedJavaMethod> assumptionResult = concreteMethod.context.findUniqueConcreteMethod(concreteMethod.method);
+                if (assumptionResult == null || !concreteMethod.impl.equals(assumptionResult.getResult())) {
+                    return false;
+                }
+            } else if (assumption instanceof Assumptions.ConcreteSubtype) {
+                Assumptions.ConcreteSubtype concreteSubtype = (Assumptions.ConcreteSubtype) assumption;
+                Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = concreteSubtype.context.findLeafConcreteSubtype();
+                if (assumptionResult == null || !concreteSubtype.subtype.equals(assumptionResult.getResult())) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
     @SuppressWarnings({"unused", "try"})
-    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                    boolean trackNodeSourcePosition) {
-        EncodedGraph result = graphCache.get(method);
+    private EncodedGraph lookupPersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
+                                              boolean trackNodeSourcePosition) {
+        EncodedGraph result = persistentGraphCache.get(method);
         if (result == null && method.hasBytecodes()) {
-            try (AutoCloseable scope = createCachedGraphScope.get()) {
+            try (AutoCloseable scope = createPersistentCachedGraphScope.get()) {
                 // Encoded graphs that can be cached across compilations are wrapped by "scopes"
                 // provided by createCachedGraphScope.
                 result = createGraph(method, intrinsicBytecodeProvider, isSubstitution);
             } catch (Throwable ex) {
                 throw debug.handle(ex);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
+                    boolean trackNodeSourcePosition) {
+        EncodedGraph result = localGraphCache.get(method);
+        if (result != null) {
+            return result;
+        }
+        while (true) {
+            result = lookupPersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
+            if (result == null) {
+                break ;
+            }
+            if (!verifyAssumptions(result)) {
+                // Invalid assumptions detected, remove from persistent cache and re-parse.
+                persistentGraphCache.removeKey(method);
+            } else {
+                // Assumptions validated, avoid further checks.
+                localGraphCache.put(method, result);
+                break;
             }
         }
         return result;
