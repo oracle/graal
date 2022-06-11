@@ -99,8 +99,9 @@ local devkits = common_json.devkits;
   sulong_darwin_amd64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_amd64,
   sulong_darwin_aarch64: common_json.sulong.deps.common + common_json.sulong.deps.darwin_aarch64,
 
-  # TRUFFLERUBY
-  truffleruby_linux: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux,
+  # TRUFFLERUBY, needs OpenSSL 1.0.2+, so OracleLinux 7+
+  truffleruby_linux_amd64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux + graal_common.ol7,
+  truffleruby_linux_aarch64: self.sulong_linux + common_json.truffleruby.deps.common + common_json.truffleruby.deps.linux, # OL7 is default on linux-aarch64
   truffleruby_darwin_amd64: self.sulong_darwin_amd64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
   truffleruby_darwin_aarch64: self.sulong_darwin_aarch64 + common_json.truffleruby.deps.common + common_json.truffleruby.deps.darwin,
 
@@ -400,9 +401,9 @@ local devkits = common_json.devkits;
   maven_deploy_sdk_components:         self.maven_deploy_sdk + ['--tags', 'installable,standalone',              vm.binaries_repository],
   maven_deploy_sdk_components_dry_run: self.maven_deploy_sdk + ['--tags', 'installable,standalone', '--dry-run', vm.binaries_repository],
 
-  ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux + vm.custom_vm_linux,
+  ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
   full_vm_build_linux: self.ruby_vm_build_linux + self.fastr_linux + self.graalpython_linux,
-  full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + vm.custom_vm_linux,
+  full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + self.truffleruby_linux_aarch64 + vm.custom_vm_linux,
 
   ruby_vm_build_darwin_amd64: self.svm_common_darwin_amd64 + self.sulong_darwin_amd64 + self.truffleruby_darwin_amd64 + vm.custom_vm_darwin,
   full_vm_build_darwin_amd64: self.ruby_vm_build_darwin_amd64 + self.fastr_darwin + self.graalpython_darwin_amd64,
