@@ -54,7 +54,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  *
  * Large parts of this class is copied from java.lang.reflect.ProxyGenerator.
  */
-public class EspressoForeignProxyGenerator {
+public final class EspressoForeignProxyGenerator {
     /*
      * In the comments below, "JVMS" refers to The Java Virtual Machine Specification Second Edition
      * and "JLS" refers to the original version of The Java Language Specification, unless otherwise
@@ -303,39 +303,36 @@ public class EspressoForeignProxyGenerator {
 
     // end of constants copied from sun.tools.java.RuntimeConstants
 
-    /** name of the superclass of proxy classes */
+    /* name of the superclass of proxy classes */
     private static final String superclassName = "java/lang/Object";
 
     private static final String foreignObjectFieldName = "foreign";
 
     private final EspressoContext context;
 
-    /** name of proxy class */
+    /* name of proxy class */
     private String className;
 
-    /** proxy interfaces */
+    /* proxy interfaces */
     private ObjectKlass[] interfaces;
 
-    /** proxy class access flags */
+    /* proxy class access flags */
     private int accessFlags;
 
-    /** constant pool of class being generated */
+    /* constant pool of class being generated */
     private ConstantPool cp = new ConstantPool();
 
-    /** FieldInfo struct for each field of generated class */
+    /* FieldInfo struct for each field of generated class */
     private List<FieldInfo> fields = new ArrayList<>();
 
-    /** MethodInfo struct for each method of generated class */
+    /* MethodInfo struct for each method of generated class */
     private List<MethodInfo> methods = new ArrayList<>();
 
-    /**
-     * maps method signature string to list of ProxyMethod objects for proxy methods with that
-     * signature
+    /*
+     * Maps method signature string to list of ProxyMethod objects for proxy methods with that
+     * signature.
      */
     private Map<String, List<ProxyMethod>> proxyMethods = new HashMap<>();
-
-    /** count of ProxyMethod objects added to proxyMethods */
-    private int proxyMethodCount = 0;
 
     // next number to use for generation of unique proxy class names
     private static final AtomicLong nextUniqueNumber = new AtomicLong();
@@ -716,7 +713,7 @@ public class EspressoForeignProxyGenerator {
         public String name;
         public String descriptor;
 
-        public FieldInfo(String name, String descriptor, int accessFlags) {
+        FieldInfo(String name, String descriptor, int accessFlags) {
             this.name = name;
             this.descriptor = descriptor;
             this.accessFlags = accessFlags;
@@ -754,7 +751,7 @@ public class EspressoForeignProxyGenerator {
         public short handlerPc;
         public short catchType;
 
-        public ExceptionTableEntry(short startPc, short endPc,
+        ExceptionTableEntry(short startPc, short endPc,
                         short handlerPc, short catchType) {
             this.startPc = startPc;
             this.endPc = endPc;
@@ -778,7 +775,7 @@ public class EspressoForeignProxyGenerator {
         public List<ExceptionTableEntry> exceptionTable = new ArrayList<>();
         public short[] declaredExceptions;
 
-        public MethodInfo(String name, String descriptor, int accessFlags) {
+        MethodInfo(String name, String descriptor, int accessFlags) {
             this.name = name;
             this.descriptor = descriptor;
             this.accessFlags = accessFlags;
@@ -856,13 +853,12 @@ public class EspressoForeignProxyGenerator {
      * whose implementation will encode and dispatch invocations to the proxy instance's invocation
      * handler.
      */
-    private class ProxyMethod {
+    private final class ProxyMethod {
 
         public String methodName;
         public Klass[] parameterTypes;
         public Klass returnType;
         public Klass[] exceptionTypes;
-        public String methodFieldName;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
                             Klass returnType, Klass[] exceptionTypes) {
@@ -870,7 +866,6 @@ public class EspressoForeignProxyGenerator {
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.exceptionTypes = exceptionTypes;
-            this.methodFieldName = "m" + proxyMethodCount++;
         }
 
         /**
@@ -889,7 +884,9 @@ public class EspressoForeignProxyGenerator {
                 nextSlot += getWordsPerType(parameterTypes[i]);
             }
             int localSlot0 = nextSlot;
-            short pc, tryBegin = 0, tryEnd;
+            short pc;
+            short tryBegin = 0;
+            short tryEnd;
 
             DataOutputStream out = new DataOutputStream(minfo.code);
 
@@ -899,18 +896,18 @@ public class EspressoForeignProxyGenerator {
             // MyInterface return type
             // return (MyInterface) Interop.invokeMember(Object foreign, String methodName, Object[] args))
 
-            code_aload(0, out);
+            codeAload(0, out);
 
             out.writeByte(opc_getfield);
             out.writeShort(cp.getFieldRef(
                     dotToSlash(className),
                     foreignObjectFieldName, "Ljava/lang/Object;"));
 
-            code_ldc(cp.getString(methodName), out);
+            codeLdc(cp.getString(methodName), out);
 
             if (parameterTypes.length > 0) {
 
-                code_ipush(parameterTypes.length, out);
+                codeIpush(parameterTypes.length, out);
 
                 out.writeByte(opc_anewarray);
                 out.writeShort(cp.getClass("java/lang/Object"));
@@ -919,7 +916,7 @@ public class EspressoForeignProxyGenerator {
 
                     out.writeByte(opc_dup);
 
-                    code_ipush(i, out);
+                    codeIpush(i, out);
 
                     codeWrapArgument(parameterTypes[i], parameterSlot[i], out);
 
@@ -964,7 +961,7 @@ public class EspressoForeignProxyGenerator {
                 minfo.exceptionTable.add(new ExceptionTableEntry(
                         tryBegin, tryEnd, pc, cp.getClass("java/lang/Throwable")));
 
-                code_astore(localSlot0, out);
+                codeAstore(localSlot0, out);
 
                 out.writeByte(opc_new);
                 out.writeShort(cp.getClass(
@@ -972,7 +969,7 @@ public class EspressoForeignProxyGenerator {
 
                 out.writeByte(opc_dup);
 
-                code_aload(localSlot0, out);
+                codeAload(localSlot0, out);
 
                 out.writeByte(opc_invokespecial);
 
@@ -1013,13 +1010,13 @@ public class EspressoForeignProxyGenerator {
                         type == context.getMeta()._byte ||
                         type == context.getMeta()._char ||
                         type == context.getMeta()._short) {
-                    code_iload(slot, out);
+                    codeIload(slot, out);
                 } else if (type == context.getMeta()._long) {
-                    code_lload(slot, out);
+                    codeLload(slot, out);
                 } else if (type == context.getMeta()._float) {
-                    code_fload(slot, out);
+                    codeFload(slot, out);
                 } else if (type == context.getMeta()._double) {
-                    code_dload(slot, out);
+                    codeDload(slot, out);
                 } else {
                     throw new AssertionError();
                 }
@@ -1029,7 +1026,7 @@ public class EspressoForeignProxyGenerator {
                         prim.wrapperClassName,
                         "valueOf", prim.wrapperValueOfDesc));
             } else {
-                code_aload(slot, out);
+                codeAload(slot, out);
             }
         }
 
@@ -1107,27 +1104,27 @@ public class EspressoForeignProxyGenerator {
      * for the given local variable. The code is written to the supplied stream.
      */
 
-    private void code_iload(int lvar, DataOutputStream out)
+    private static void codeIload(int lvar, DataOutputStream out)
                     throws IOException {
         codeLocalLoadStore(lvar, opc_iload, opc_iload_0, out);
     }
 
-    private void code_lload(int lvar, DataOutputStream out)
+    private static void codeLload(int lvar, DataOutputStream out)
                     throws IOException {
         codeLocalLoadStore(lvar, opc_lload, opc_lload_0, out);
     }
 
-    private void code_fload(int lvar, DataOutputStream out)
+    private static void codeFload(int lvar, DataOutputStream out)
                     throws IOException {
         codeLocalLoadStore(lvar, opc_fload, opc_fload_0, out);
     }
 
-    private void code_dload(int lvar, DataOutputStream out)
+    private static void codeDload(int lvar, DataOutputStream out)
                     throws IOException {
         codeLocalLoadStore(lvar, opc_dload, opc_dload_0, out);
     }
 
-    private void code_aload(int lvar, DataOutputStream out)
+    private static void codeAload(int lvar, DataOutputStream out)
                     throws IOException {
         codeLocalLoadStore(lvar, opc_aload, opc_aload_0, out);
     }
@@ -1156,7 +1153,7 @@ public class EspressoForeignProxyGenerator {
 // codeLocalLoadStore(lvar, opc_dstore, opc_dstore_0, out);
 // }
 
-    private void code_astore(int lvar, DataOutputStream out)
+    private static void codeAstore(int lvar, DataOutputStream out)
                     throws IOException {
         codeLocalLoadStore(lvar, opc_astore, opc_astore_0, out);
     }
@@ -1169,12 +1166,12 @@ public class EspressoForeignProxyGenerator {
      * explicit local variable index, and "opcode_0" indicates the corresponding form of the
      * instruction with the implicit index 0.
      */
-    private static void codeLocalLoadStore(int lvar, int opcode, int opcode_0,
+    private static void codeLocalLoadStore(int lvar, int opcode, int opcode0,
                     DataOutputStream out)
                     throws IOException {
         assert lvar >= 0 && lvar <= 0xFFFF;
         if (lvar <= 3) {
-            out.writeByte(opcode_0 + lvar);
+            out.writeByte(opcode0 + lvar);
         } else if (lvar <= 0xFF) {
             out.writeByte(opcode);
             out.writeByte(lvar & 0xFF);
@@ -1194,7 +1191,7 @@ public class EspressoForeignProxyGenerator {
      * instruction is used if the index does not fit into an unsigned byte). The code is written to
      * the supplied stream.
      */
-    private static void code_ldc(int index, DataOutputStream out)
+    private static void codeLdc(int index, DataOutputStream out)
                     throws IOException {
         assert index >= 0 && index <= 0xFFFF;
         if (index <= 0xFF) {
@@ -1211,7 +1208,7 @@ public class EspressoForeignProxyGenerator {
      * "iconst_<i>", "bipush", or "sipush" instructions depending on the size of the value. The code
      * is written to the supplied stream.
      */
-    private void code_ipush(int value, DataOutputStream out)
+    private static void codeIpush(int value, DataOutputStream out)
                     throws IOException {
         if (value >= -1 && value <= 5) {
             out.writeByte(opc_iconst_0 + value);
@@ -1419,21 +1416,21 @@ public class EspressoForeignProxyGenerator {
      * fields. The struct for a particular primitive type can be obtained using the static "get"
      * method.
      */
-    private static class PrimitiveTypeInfo {
+    private static final class PrimitiveTypeInfo {
 
-        /** "base type" used in various descriptors (see JVMS section 4.3.2) */
+        /* "base type" used in various descriptors (see JVMS section 4.3.2) */
         public String baseTypeString;
 
-        /** name of corresponding wrapper class */
+        /* name of corresponding wrapper class */
         public String wrapperClassName;
 
-        /** method descriptor for wrapper class "valueOf" factory method */
+        /* method descriptor for wrapper class "valueOf" factory method */
         public String wrapperValueOfDesc;
 
-        /** name of wrapper class method for retrieving primitive value */
+        /* name of wrapper class method for retrieving primitive value */
         public String unwrapMethodName;
 
-        /** descriptor of same method */
+        /* descriptor of same method */
         public String unwrapMethodDesc;
 
         private static Map<EspressoContext, Map<Klass, PrimitiveTypeInfo>> map = new HashMap<>();
@@ -1500,7 +1497,7 @@ public class EspressoForeignProxyGenerator {
          */
         private Map<Object, Integer> map = new HashMap<>(16);
 
-        /** true if no new constant pool entries may be added */
+        /* true if no new constant pool entries may be added */
         private boolean readOnly = false;
 
         /**
@@ -1666,7 +1663,7 @@ public class EspressoForeignProxyGenerator {
         private static class ValueEntry extends ConstantPool.Entry {
             private Object value;
 
-            public ValueEntry(Object value) {
+            ValueEntry(Object value) {
                 this.value = value;
             }
 
@@ -1715,7 +1712,7 @@ public class EspressoForeignProxyGenerator {
              * Construct an IndirectEntry for a constant pool entry type that contains one index of
              * another entry.
              */
-            public IndirectEntry(int tag, short index) {
+            IndirectEntry(int tag, short index) {
                 this.tag = tag;
                 this.index0 = index;
                 this.index1 = 0;
@@ -1725,7 +1722,7 @@ public class EspressoForeignProxyGenerator {
              * Construct an IndirectEntry for a constant pool entry type that contains two indexes
              * for other entries.
              */
-            public IndirectEntry(int tag, short index0, short index1) {
+            IndirectEntry(int tag, short index0, short index1) {
                 this.tag = tag;
                 this.index0 = index0;
                 this.index1 = index1;
