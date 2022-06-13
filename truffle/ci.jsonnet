@@ -74,8 +74,8 @@
     name: 'gate-external-mvn-simplelanguage-' + self.jdk_version,
     packages+: {
       maven: "==3.3.9",
-      devtoolset: "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      binutils: ">=2.34",
+      "00:devtoolset": "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      "01:binutils": ">=2.34",
       ruby: ">=2.1.0",
     },
     mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/substratevm", "--native-images=none"],

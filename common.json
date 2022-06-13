@@ -134,8 +134,7 @@
       "common": {},
       "linux": {
         "packages": {
-          "binutils": "==2.23.2",
-          "gcc": "==8.3.0",
+          "00:devtoolset": "==7",
           "cmake": "==3.15.2"
         }
       },
@@ -163,14 +162,14 @@
       },
       "linux_amd64": {
         "packages": {
-          "devtoolset": "==7",
-          "binutils": ">=2.34",
+          "00:devtoolset": "==7",
+          "01:binutils": ">=2.34",
           "ruby": ">=2.1.0"
         }
       },
       "linux_aarch64": {
         "packages": {
-          "devtoolset": "==7",
+          "00:devtoolset": "==7",
           "ruby": ">=2.1.0"
         }
       },

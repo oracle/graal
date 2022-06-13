@@ -23,7 +23,7 @@ local devkits = common_json.devkits;
 
   common_vm_linux: self.common_vm + {
     packages+: {
-      devtoolset: '==7',# GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
+      "00:devtoolset": "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
     },
   },
 
