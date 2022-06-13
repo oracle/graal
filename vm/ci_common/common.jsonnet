@@ -401,6 +401,8 @@ local devkits = common_json.devkits;
   maven_deploy_sdk_components:         self.maven_deploy_sdk + ['--tags', 'installable,standalone',              vm.binaries_repository],
   maven_deploy_sdk_components_dry_run: self.maven_deploy_sdk + ['--tags', 'installable,standalone', '--dry-run', vm.binaries_repository],
 
+  svm_vm_build_ol6_amd64: self.svm_common_linux_amd64 + vm.custom_vm_linux,
+
   ruby_vm_build_linux: self.svm_common_linux_amd64 + self.sulong_linux + self.truffleruby_linux_amd64 + vm.custom_vm_linux,
   full_vm_build_linux: self.ruby_vm_build_linux + self.fastr_linux + self.graalpython_linux,
   full_vm_build_linux_aarch64: self.svm_common_linux_aarch64 + self.sulong_linux + self.truffleruby_linux_aarch64 + vm.custom_vm_linux,
