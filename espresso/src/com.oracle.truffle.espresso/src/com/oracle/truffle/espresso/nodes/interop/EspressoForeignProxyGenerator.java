@@ -71,7 +71,7 @@ public final class EspressoForeignProxyGenerator {
 
     /* constant pool tags */
     private static final int CONSTANT_UTF8 = 1;
-    //private static final int CONSTANT_UNICODE = 2;
+    // private static final int CONSTANT_UNICODE = 2;
     private static final int CONSTANT_INTEGER = 3;
     private static final int CONSTANT_FLOAT = 4;
     private static final int CONSTANT_LONG = 5;
@@ -87,7 +87,7 @@ public final class EspressoForeignProxyGenerator {
     private static final int ACC_PUBLIC = 0x00000001;
     private static final int ACC_PRIVATE = 0x00000002;
     // private static final int ACC_PROTECTED = 0x00000004;
-    //private static final int ACC_STATIC = 0x00000008;
+    // private static final int ACC_STATIC = 0x00000008;
     private static final int ACC_FINAL = 0x00000010;
     // private static final int ACC_SYNCHRONIZED = 0x00000020;
 // private static final int ACC_VOLATILE = 0x00000040;
@@ -100,8 +100,8 @@ public final class EspressoForeignProxyGenerator {
 
     /* opcodes */
 // private static final int opc_nop = 0;
-    //private static final int opc_aconst_null = 1;
-    // private static final int opc_iconst_m1 = 2;
+// private static final int opc_aconst_null = 1;
+// private static final int opc_iconst_m1 = 2;
     private static final int opc_iconst_0 = 3;
     // private static final int opc_iconst_1 = 4;
 // private static final int opc_iconst_2 = 5;
@@ -277,14 +277,14 @@ public final class EspressoForeignProxyGenerator {
     private static final int opc_dreturn = 175;
     private static final int opc_areturn = 176;
     private static final int opc_return = 177;
-    //private static final int opc_getstatic = 178;
-    //private static final int opc_putstatic = 179;
+    // private static final int opc_getstatic = 178;
+    // private static final int opc_putstatic = 179;
     private static final int opc_getfield = 180;
     // private static final int opc_putfield = 181;
     private static final int opc_invokevirtual = 182;
     private static final int opc_invokespecial = 183;
     private static final int opc_invokestatic = 184;
-    //private static final int opc_invokeinterface = 185;
+    // private static final int opc_invokeinterface = 185;
     private static final int opc_new = 187;
     // private static final int opc_newarray = 188;
     private static final int opc_anewarray = 189;
@@ -425,8 +425,8 @@ public final class EspressoForeignProxyGenerator {
 
         // add field for the foreign object
         fields.add(new FieldInfo(foreignObjectFieldName,
-                "Ljava/lang/Object;",
-                ACC_PRIVATE));
+                        "Ljava/lang/Object;",
+                        ACC_PRIVATE));
 
         /*
          * ============================================================ Step 1: Assemble ProxyMethod
@@ -477,7 +477,7 @@ public final class EspressoForeignProxyGenerator {
                 }
             }
 
-            //methods.add(generateStaticInitializer());
+            // methods.add(generateStaticInitializer());
 
         } catch (IOException e) {
             throw new InternalError("unexpected I/O Exception", e);
@@ -861,7 +861,7 @@ public final class EspressoForeignProxyGenerator {
         public Klass[] exceptionTypes;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
-                            Klass returnType, Klass[] exceptionTypes) {
+                        Klass returnType, Klass[] exceptionTypes) {
             this.methodName = methodName;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
@@ -875,7 +875,7 @@ public final class EspressoForeignProxyGenerator {
         private MethodInfo generateMethod() throws IOException {
             String desc = getMethodDescriptor(parameterTypes, returnType);
             MethodInfo minfo = new MethodInfo(methodName, desc,
-                    ACC_PUBLIC | ACC_FINAL);
+                            ACC_PUBLIC | ACC_FINAL);
 
             int[] parameterSlot = new int[parameterTypes.length];
             int nextSlot = 1;
@@ -891,17 +891,19 @@ public final class EspressoForeignProxyGenerator {
             DataOutputStream out = new DataOutputStream(minfo.code);
 
             // return type int
-            // return Interop.asInt(Interop.invokeMember(Object foreign, String methodName, Object[] args))
+            // return Interop.asInt(Interop.invokeMember(Object foreign, String methodName, Object[]
+            // args))
 
             // MyInterface return type
-            // return (MyInterface) Interop.invokeMember(Object foreign, String methodName, Object[] args))
+            // return (MyInterface) Interop.invokeMember(Object foreign, String methodName, Object[]
+            // args))
 
             codeAload(0, out);
 
             out.writeByte(opc_getfield);
             out.writeShort(cp.getFieldRef(
-                    dotToSlash(className),
-                    foreignObjectFieldName, "Ljava/lang/Object;"));
+                            dotToSlash(className),
+                            foreignObjectFieldName, "Ljava/lang/Object;"));
 
             codeLdc(cp.getString(methodName), out);
 
@@ -930,10 +932,10 @@ public final class EspressoForeignProxyGenerator {
 
             out.writeByte(opc_invokestatic);
             out.writeShort(cp.getMethodRef(
-                    "com/oracle/truffle/espresso/polyglot/Interop",
-                    "invokeMember",
-                    "(Ljava/lang/Object;Ljava/lang/String;" +
-                            "[Ljava/lang/Object;)Ljava/lang/Object;"));
+                            "com/oracle/truffle/espresso/polyglot/Interop",
+                            "invokeMember",
+                            "(Ljava/lang/Object;Ljava/lang/String;" +
+                                            "[Ljava/lang/Object;)Ljava/lang/Object;"));
 
             if (returnType == context.getMeta()._void) {
                 out.writeByte(opc_pop);
@@ -950,8 +952,8 @@ public final class EspressoForeignProxyGenerator {
 
                 for (Klass ex : catchList) {
                     minfo.exceptionTable.add(new ExceptionTableEntry(
-                            tryBegin, tryEnd, pc,
-                            cp.getClass(dotToSlash(ex.getNameAsString()))));
+                                    tryBegin, tryEnd, pc,
+                                    cp.getClass(dotToSlash(ex.getNameAsString()))));
                 }
 
                 out.writeByte(opc_athrow);
@@ -959,13 +961,13 @@ public final class EspressoForeignProxyGenerator {
                 pc = (short) minfo.code.size();
 
                 minfo.exceptionTable.add(new ExceptionTableEntry(
-                        tryBegin, tryEnd, pc, cp.getClass("java/lang/Throwable")));
+                                tryBegin, tryEnd, pc, cp.getClass("java/lang/Throwable")));
 
                 codeAstore(localSlot0, out);
 
                 out.writeByte(opc_new);
                 out.writeShort(cp.getClass(
-                        "java/lang/reflect/UndeclaredThrowableException"));
+                                "java/lang/reflect/UndeclaredThrowableException"));
 
                 out.writeByte(opc_dup);
 
@@ -974,8 +976,8 @@ public final class EspressoForeignProxyGenerator {
                 out.writeByte(opc_invokespecial);
 
                 out.writeShort(cp.getMethodRef(
-                        "java/lang/reflect/UndeclaredThrowableException",
-                        "<init>", "(Ljava/lang/Throwable;)V"));
+                                "java/lang/reflect/UndeclaredThrowableException",
+                                "<init>", "(Ljava/lang/Throwable;)V"));
 
                 out.writeByte(opc_athrow);
             }
@@ -989,7 +991,7 @@ public final class EspressoForeignProxyGenerator {
             minfo.declaredExceptions = new short[exceptionTypes.length];
             for (int i = 0; i < exceptionTypes.length; i++) {
                 minfo.declaredExceptions[i] = cp.getClass(
-                        dotToSlash(exceptionTypes[i].getNameAsString()));
+                                dotToSlash(exceptionTypes[i].getNameAsString()));
             }
             return minfo;
         }
@@ -1000,16 +1002,16 @@ public final class EspressoForeignProxyGenerator {
          * invocation handler's "invoke" method. The code is written to the supplied stream.
          */
         private void codeWrapArgument(Klass type, int slot,
-                                      DataOutputStream out)
-                throws IOException {
+                        DataOutputStream out)
+                        throws IOException {
             if (type.isPrimitive()) {
                 PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(context, type);
 
                 if (type == context.getMeta()._int ||
-                        type == context.getMeta()._boolean ||
-                        type == context.getMeta()._byte ||
-                        type == context.getMeta()._char ||
-                        type == context.getMeta()._short) {
+                                type == context.getMeta()._boolean ||
+                                type == context.getMeta()._byte ||
+                                type == context.getMeta()._char ||
+                                type == context.getMeta()._short) {
                     codeIload(slot, out);
                 } else if (type == context.getMeta()._long) {
                     codeLload(slot, out);
@@ -1023,8 +1025,8 @@ public final class EspressoForeignProxyGenerator {
 
                 out.writeByte(opc_invokestatic);
                 out.writeShort(cp.getMethodRef(
-                        prim.wrapperClassName,
-                        "valueOf", prim.wrapperValueOfDesc));
+                                prim.wrapperClassName,
+                                "valueOf", prim.wrapperValueOfDesc));
             } else {
                 codeAload(slot, out);
             }
@@ -1036,7 +1038,7 @@ public final class EspressoForeignProxyGenerator {
          * the supplied stream.
          */
         private void codeUnwrapReturnValue(Klass type, DataOutputStream out)
-                throws IOException {
+                        throws IOException {
             if (type.isPrimitive()) {
                 PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(context, type);
 
@@ -1045,14 +1047,14 @@ public final class EspressoForeignProxyGenerator {
 
                 out.writeByte(opc_invokevirtual);
                 out.writeShort(cp.getMethodRef(
-                        prim.wrapperClassName,
-                        prim.unwrapMethodName, prim.unwrapMethodDesc));
+                                prim.wrapperClassName,
+                                prim.unwrapMethodName, prim.unwrapMethodDesc));
 
                 if (type == context.getMeta()._int ||
-                        type == context.getMeta()._boolean ||
-                        type == context.getMeta()._byte ||
-                        type == context.getMeta()._char ||
-                        type == context.getMeta()._short) {
+                                type == context.getMeta()._boolean ||
+                                type == context.getMeta()._byte ||
+                                type == context.getMeta()._char ||
+                                type == context.getMeta()._short) {
                     out.writeByte(opc_ireturn);
                 } else if (type == context.getMeta()._long) {
                     out.writeByte(opc_lreturn);
@@ -1083,8 +1085,8 @@ public final class EspressoForeignProxyGenerator {
         out.writeByte(opc_aload_0);
         out.writeByte(opc_invokespecial);
         out.writeShort(cp.getMethodRef(
-                superclassName,
-                "<init>", "()V"));
+                        superclassName,
+                        "<init>", "()V"));
 
         out.writeByte(opc_return);
 

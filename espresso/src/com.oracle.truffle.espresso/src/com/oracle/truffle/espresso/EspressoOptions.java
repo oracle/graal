@@ -201,9 +201,9 @@ public final class EspressoOptions {
     public static final OptionKey<List<Path>> ExtDirs = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
     @Option(help = "A '" + SEMI_COLON + "' separated list of fully qualified interface names that enables interface type mapping in polyglot usage.", //
-            category = OptionCategory.USER, //
-            stability = OptionStability.EXPERIMENTAL, //
-            usageSyntax = "my.first.MyInterface;my.second.MySecondInterface;...") //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "my.first.MyInterface;my.second.MySecondInterface;...") //
     public static final OptionKey<List<String>> PolyglotInterfaceMappings = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE_SEPARATED_BY_SEMI_COLON);
 
     @Option(help = "Enable assertions.", //
