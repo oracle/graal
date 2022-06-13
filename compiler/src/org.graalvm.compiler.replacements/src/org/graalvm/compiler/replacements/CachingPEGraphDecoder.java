@@ -168,6 +168,10 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         for (Assumptions.Assumption assumption : assumptions) {
             if (assumption instanceof Assumptions.LeafType) {
                 Assumptions.LeafType leafType = (Assumptions.LeafType) assumption;
+                /*
+                 * LeafType cannot be fully verified because the assumption doesn't imply that the
+                 * type is (also) concrete. We check a common case (leaf + concrete type).
+                 */
                 Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = leafType.context.findLeafConcreteSubtype();
                 if (assumptionResult != null) {
                     ResolvedJavaType candidate = assumptionResult.getResult();
@@ -175,26 +179,46 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                         return false;
                     }
                 }
+            } else if (assumption instanceof Assumptions.ConcreteSubtype) {
+                Assumptions.ConcreteSubtype concreteSubtype = (Assumptions.ConcreteSubtype) assumption;
+                /*
+                 * ConcreteSubtype cannot be fully verified because the assumption doesn't imply
+                 * that the concrete subtype is (also) a leaf. We check a common case (leaf +
+                 * concrete type).
+                 */
+                Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = concreteSubtype.context.findLeafConcreteSubtype();
+                if (assumptionResult != null) {
+                    ResolvedJavaType candidate = assumptionResult.getResult();
+                    if (!concreteSubtype.subtype.equals(candidate)) {
+                        return false;
+                    }
+                }
             } else if (assumption instanceof Assumptions.ConcreteMethod) {
                 Assumptions.ConcreteMethod concreteMethod = (Assumptions.ConcreteMethod) assumption;
+                /*
+                 * ConcreteMethod is the only assumption that can be verified since it matches
+                 * findUniqueConcreteMethod semantics. If the assumption cannot be retrieved
+                 * (findUniqueConcreteMethod returns null) then it was invalidated.
+                 */
                 Assumptions.AssumptionResult<ResolvedJavaMethod> assumptionResult = concreteMethod.context.findUniqueConcreteMethod(concreteMethod.method);
                 if (assumptionResult == null || !concreteMethod.impl.equals(assumptionResult.getResult())) {
                     return false;
                 }
-            } else if (assumption instanceof Assumptions.ConcreteSubtype) {
-                Assumptions.ConcreteSubtype concreteSubtype = (Assumptions.ConcreteSubtype) assumption;
-                Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = concreteSubtype.context.findLeafConcreteSubtype();
-                if (assumptionResult == null || !concreteSubtype.subtype.equals(assumptionResult.getResult())) {
-                    return false;
-                }
             }
+            /*
+             * else:
+             * 
+             * NoFinalizableSubclass and CallSiteTargetValue assumptions are not common and cannot
+             * be (even partially) verified. The cached graph will be invalidated on code
+             * installation.
+             */
         }
         return true;
     }
 
     @SuppressWarnings({"unused", "try"})
     private EncodedGraph lookupPersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
-                                              boolean trackNodeSourcePosition) {
+                    boolean trackNodeSourcePosition) {
         EncodedGraph result = persistentGraphCache.get(method);
         if (result == null && method.hasBytecodes()) {
             try (AutoCloseable scope = createPersistentCachedGraphScope.get()) {
@@ -218,7 +242,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         while (true) {
             result = lookupPersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
             if (result == null) {
-                break ;
+                break;
             }
             if (!verifyAssumptions(result)) {
                 // Invalid assumptions detected, remove from persistent cache and re-parse.
