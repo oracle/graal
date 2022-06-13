@@ -29,8 +29,6 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
@@ -60,7 +58,9 @@ import org.graalvm.compiler.phases.common.DominatorBasedGlobalValueNumberingPhas
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * A graph decoder that provides all necessary encoded graphs on-the-fly (by parsing the methods and
@@ -189,7 +189,11 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                 Assumptions.AssumptionResult<ResolvedJavaType> assumptionResult = concreteSubtype.context.findLeafConcreteSubtype();
                 if (assumptionResult != null) {
                     ResolvedJavaType candidate = assumptionResult.getResult();
-                    if (!concreteSubtype.subtype.equals(candidate)) {
+                    /*
+                     * No equality check here because the ConcreteSubtype assumption allows
+                     * non-concrete subtypes for interfaces.
+                     */
+                    if (!concreteSubtype.subtype.isAssignableFrom(candidate)) {
                         return false;
                     }
                 }
@@ -204,20 +208,21 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                 if (assumptionResult == null || !concreteMethod.impl.equals(assumptionResult.getResult())) {
                     return false;
                 }
+            } else if (assumption instanceof Assumptions.NoFinalizableSubclass || assumption instanceof Assumptions.CallSiteTargetValue ||
+                            "org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption".equals(assumption.getClass().getName())) {
+                /*
+                 * These assumptions are not common and cannot be (even partially) verified. The
+                 * cached graph will be invalidated on code installation.
+                 */
+            } else {
+                throw GraalError.shouldNotReachHere("unexpected assumption " + assumption);
             }
-            /*
-             * else:
-             * 
-             * NoFinalizableSubclass and CallSiteTargetValue assumptions are not common and cannot
-             * be (even partially) verified. The cached graph will be invalidated on code
-             * installation.
-             */
         }
         return true;
     }
 
     @SuppressWarnings({"unused", "try"})
-    private EncodedGraph lookupPersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
+    private EncodedGraph lookupOrCreatePersistentEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
                     boolean trackNodeSourcePosition) {
         EncodedGraph result = persistentGraphCache.get(method);
         if (result == null && method.hasBytecodes()) {
@@ -235,24 +240,34 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
     @Override
     protected EncodedGraph lookupEncodedGraph(ResolvedJavaMethod method, BytecodeProvider intrinsicBytecodeProvider, boolean isSubstitution,
                     boolean trackNodeSourcePosition) {
+        // Graph's assumptions are fresh or validated recently.
         EncodedGraph result = localGraphCache.get(method);
         if (result != null) {
             return result;
         }
-        while (true) {
-            result = lookupPersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
-            if (result == null) {
-                break;
-            }
-            if (!verifyAssumptions(result)) {
-                // Invalid assumptions detected, remove from persistent cache and re-parse.
-                persistentGraphCache.removeKey(method);
-            } else {
-                // Assumptions validated, avoid further checks.
+
+        result = persistentGraphCache.get(method);
+        if (result == null) {
+            // Embedded assumptions in a fresh encoded graph should be up-to-date, so no need to
+            // validate them.
+            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
+            if (result != null) {
                 localGraphCache.put(method, result);
-                break;
             }
+        } else if (!verifyAssumptions(result)) {
+            // Cached graph has invalid assumptions, drop from persistent cache and re-parse.
+            persistentGraphCache.removeKey(method);
+            // Embedded assumptions in a fresh encoded graph should be up-to-date, so no need to
+            // validate them.
+            result = lookupOrCreatePersistentEncodedGraph(method, intrinsicBytecodeProvider, isSubstitution, trackNodeSourcePosition);
+            if (result != null) {
+                localGraphCache.put(method, result);
+            }
+        } else {
+            // Assumptions validated, avoid further checks.
+            localGraphCache.put(method, result);
         }
+
         return result;
     }
 }
