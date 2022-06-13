@@ -211,8 +211,8 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
             } else if (assumption instanceof Assumptions.NoFinalizableSubclass || assumption instanceof Assumptions.CallSiteTargetValue ||
                             "org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption".equals(assumption.getClass().getName())) {
                 /*
-                 * These assumptions are not common and cannot be (even partially) verified. The
-                 * cached graph will be invalidated on code installation.
+                 * These assumptions cannot be (even partially) verified. The cached graph will be
+                 * invalidated on code installation.
                  */
             } else {
                 throw GraalError.shouldNotReachHere("unexpected assumption " + assumption);
