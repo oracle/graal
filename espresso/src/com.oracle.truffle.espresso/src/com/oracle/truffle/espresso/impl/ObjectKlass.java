@@ -193,7 +193,12 @@ public final class ObjectKlass extends Klass {
             fieldTable[localFieldTableIndex + i] = instanceField;
         }
         for (int i = 0; i < lkStaticFields.length; i++) {
-            Field staticField = new Field(klassVersion, lkStaticFields[i], pool);
+            Field staticField;
+            if (superKlass == getMeta().java_lang_Enum && !isEnumValuesField(lkStaticFields[i])) {
+                staticField = new EnumConstantField(klassVersion, lkStaticFields[i], pool);
+            } else {
+                staticField = new Field(klassVersion, lkStaticFields[i], pool);
+            }
             staticFieldTable[i] = staticField;
         }
 
@@ -214,6 +219,11 @@ public final class ObjectKlass extends Klass {
         getContext().getClassHierarchyOracle().registerNewKlassVersion(klassVersion);
         this.initState = LOADED;
         assert verifyTables();
+    }
+
+    private static boolean isEnumValuesField(LinkedField lkStaticFields) {
+        return lkStaticFields.getName() == Name.$VALUES ||
+                        lkStaticFields.getName() == Name.ENUM$VALUES;
     }
 
     private void addSubType(ObjectKlass objectKlass) {

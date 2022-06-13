@@ -84,6 +84,7 @@ public final class Meta extends ContextAccessImpl {
         java_io_Serializable = knownKlass(Type.java_io_Serializable);
         ARRAY_SUPERINTERFACES = new ObjectKlass[]{java_lang_Cloneable, java_io_Serializable};
         java_lang_Object_array = java_lang_Object.array();
+        java_lang_Enum = knownKlass(Type.java_lang_Enum);
 
         EspressoError.guarantee(
                         new HashSet<>(Arrays.asList(ARRAY_SUPERINTERFACES)).equals(new HashSet<>(Arrays.asList(java_lang_Object_array.getSuperInterfaces()))),
@@ -1410,6 +1411,7 @@ public final class Meta extends ContextAccessImpl {
     @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
 
     // used by class redefinition
+    public final Klass java_lang_Enum;
     @CompilationFinal public ObjectKlass java_lang_reflect_Proxy;
     @CompilationFinal public ObjectKlass sun_misc_ProxyGenerator;
     @CompilationFinal public Method sun_misc_ProxyGenerator_generateProxyClass;
