@@ -107,6 +107,8 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @Before
     @Override
     public void before() {
+        // Ensure tests run with a clean compiler state.
+        TruffleCompilerUtils.resetCompiler();
         context = setupContext("engine.MultiTier", "false");
         OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(0).getCallTarget();
         osrThreshold = target.getOptionValue(OSRCompilationThreshold);

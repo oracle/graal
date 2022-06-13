@@ -160,7 +160,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
         return graphToEncode;
     }
 
-    private boolean verifyAssumptions(EncodedGraph graph) {
+    private static boolean verifyAssumptions(EncodedGraph graph) {
         Assumptions assumptions = graph.getAssumptions();
         if (assumptions == null || assumptions.isEmpty()) {
             return true; // verified
