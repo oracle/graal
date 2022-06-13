@@ -54,7 +54,7 @@
         ]
     },
     {
-        "name": "js-standalone-svm-java11",
+        "name": "javascript-standalone-svm-java11",
         "core": true,
         "jdk": "jdk_11",
         "override_name":"graaljs",
@@ -561,7 +561,7 @@
         ]
     },
     {
-        "name": "js-installable-svm-java11",
+        "name": "javascript-installable-svm-java11",
         "core": false,
         "jdk": "jdk_11",
         "artifacts": [
@@ -588,7 +588,7 @@
         ]
     },
     {
-        "name": "js-installable-svm-java17",
+        "name": "javascript-installable-svm-java17",
         "core": false,
         "jdk": "jdk_17",
         "artifacts": [
