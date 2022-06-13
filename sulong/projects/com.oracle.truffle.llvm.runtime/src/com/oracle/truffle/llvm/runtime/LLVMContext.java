@@ -831,7 +831,7 @@ public final class LLVMContext {
         if (symbol.isThreadLocalSymbol()) {
             LLVMThreadLocalPointer pointer = (LLVMThreadLocalPointer) LLVMManagedPointer.cast(target).getObject();
             int offset = pointer.getOffset();
-            BitcodeID bitcodeID = symbol.getBitcodeID(exception);
+            BitcodeID bitcodeID = pointer.getSymbol().getBitcodeID(exception);
             if (offset < 0) {
                 LLVMGlobalContainer container = language.contextThreadLocal.get().getGlobalContainer(Math.abs(offset), bitcodeID);
                 return LLVMManagedPointer.create(container);
