@@ -22,10 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.util;
+package com.oracle.svm.util;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Wrapper class for annotation access that defends against
@@ -44,12 +47,38 @@ import java.lang.reflect.AnnotatedElement;
 public final class GuardedAnnotationAccess {
 
     public static boolean isAnnotationPresent(AnnotatedElement element, Class<? extends Annotation> annotationClass) {
-        return getAnnotation(element, annotationClass) != null;
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return isAnnotationPresent(ImageSingletons.lookup(AnnotationExtracter.class), element, annotationClass);
+        } else {
+            return DirectAnnotationAccess.isAnnotationPresent(element, annotationClass);
+        }
+    }
+
+    public static boolean isAnnotationPresent(AnnotationExtracter extracter, AnnotatedElement element, Class<? extends Annotation> annotationClass) {
+        try {
+            return extracter.hasAnnotation(element, annotationClass);
+        } catch (ArrayStoreException | LinkageError e) {
+            /*
+             * Returning null essentially means that the element doesn't declare the annotationType,
+             * but we cannot know that since the annotation parsing failed. However, this allows us
+             * to defend against crashing the image builder if the above JDK bug is encountered in
+             * user code or if the user code references types missing from the classpath.
+             */
+            return false;
+        }
     }
 
     public static <T extends Annotation> T getAnnotation(AnnotatedElement element, Class<T> annotationType) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return getAnnotation(ImageSingletons.lookup(AnnotationExtracter.class), element, annotationType);
+        } else {
+            return DirectAnnotationAccess.getAnnotation(element, annotationType);
+        }
+    }
+
+    public static <T extends Annotation> T getAnnotation(AnnotationExtracter extracter, AnnotatedElement element, Class<T> annotationType) {
         try {
-            return element.getAnnotation(annotationType);
+            return extracter.extractAnnotation(element, annotationType, false);
         } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning null essentially means that the element doesn't declare the annotationType,
@@ -63,7 +92,7 @@ public final class GuardedAnnotationAccess {
 
     public static Annotation[] getAnnotations(AnnotatedElement element) {
         try {
-            return element.getAnnotations();
+            return DirectAnnotationAccess.getAnnotations(element);
         } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning an empty array essentially means that the element doesn't declare any
@@ -77,8 +106,16 @@ public final class GuardedAnnotationAccess {
     }
 
     public static <T extends Annotation> T getDeclaredAnnotation(AnnotatedElement element, Class<T> annotationType) {
+        if (ImageInfo.inImageBuildtimeCode()) {
+            return getDeclaredAnnotation(ImageSingletons.lookup(AnnotationExtracter.class), element, annotationType);
+        } else {
+            return DirectAnnotationAccess.getDeclaredAnnotation(element, annotationType);
+        }
+    }
+
+    public static <T extends Annotation> T getDeclaredAnnotation(AnnotationExtracter extracter, AnnotatedElement element, Class<T> annotationType) {
         try {
-            return element.getDeclaredAnnotation(annotationType);
+            return extracter.extractAnnotation(element, annotationType, true);
         } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning null essentially means that the element doesn't declare the annotationType,
@@ -92,7 +129,7 @@ public final class GuardedAnnotationAccess {
 
     public static Annotation[] getDeclaredAnnotations(AnnotatedElement element) {
         try {
-            return element.getDeclaredAnnotations();
+            return DirectAnnotationAccess.getDeclaredAnnotations(element);
         } catch (ArrayStoreException | LinkageError e) {
             /*
              * Returning an empty array essentially means that the element doesn't declare any

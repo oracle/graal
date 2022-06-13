@@ -24,11 +24,12 @@
  */
 package com.oracle.svm.hosted.annotation;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.AnnotationWrapper;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
@@ -44,7 +45,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * simply forwards calls to the original ResolvedJavaType. See
  * AnnotationSupport#constantAnnotationMarkerSubstitutionType for more details.
  */
-public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaType, OriginalClassProvider {
+public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaType, OriginalClassProvider, AnnotationWrapper {
     private final ResolvedJavaType original;
     private final SubstitutionProcessor substitutionProcessor;
 
@@ -270,17 +271,7 @@ public class ConstantAnnotationMarkerSubstitutionType implements ResolvedJavaTyp
     }
 
     @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return original.getAnnotation(annotationClass);
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return original.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return original.getDeclaredAnnotations();
+    public AnnotatedElement getAnnotationRoot() {
+        return original;
     }
 }

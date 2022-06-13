@@ -65,6 +65,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.util.AnnotationExtracter;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
@@ -101,6 +103,8 @@ public class NativeImageClassLoaderSupport {
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
     public final ModuleFinder modulepathModuleFinder;
+
+    public final AnnotationExtracter annotationExtracter;
 
     static final class ClassPathClassLoader extends URLClassLoader {
         ClassPathClassLoader(URL[] urls, ClassLoader parent) {
@@ -149,6 +153,8 @@ public class NativeImageClassLoaderSupport {
         classLoader = getSingleClassloader(moduleLayer);
 
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
+
+        annotationExtracter = new SubstrateAnnotationExtracter();
     }
 
     List<Path> classpath() {

@@ -32,7 +32,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;

@@ -30,7 +30,7 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.TranslateFie
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -63,6 +63,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.util.AnnotationWrapper;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
@@ -81,7 +82,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * @see RecomputeFieldValue
  * @see NativeImageReinitialize
  */
-public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
+public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue, AnnotationWrapper {
 
     private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
@@ -560,18 +561,8 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     @Override
-    public Annotation[] getAnnotations() {
-        return original.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return original.getDeclaredAnnotations();
-    }
-
-    @Override
-    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return original.getAnnotation(annotationClass);
+    public AnnotatedElement getAnnotationRoot() {
+        return original;
     }
 
     public boolean isCompatible(ResolvedJavaField o) {

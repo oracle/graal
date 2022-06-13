@@ -40,6 +40,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl;
 
 import sun.reflect.annotation.AnnotationParser;
@@ -49,8 +50,9 @@ import sun.reflect.annotation.ExceptionProxy;
 
 /**
  * Substitutions in this class are required to adapt the JDK encoding for annotations to our
- * modified version of it. See {@link ReflectionMetadataEncoderImpl#encodeAnnotations(Annotation[])}
- * for a description of the changes and the rationale behind them.
+ * modified version of it. See
+ * {@link ReflectionMetadataEncoderImpl#encodeAnnotations(AnnotationValue[])} for a description of
+ * the changes and the rationale behind them.
  */
 @TargetClass(AnnotationParser.class)
 public final class Target_sun_reflect_annotation_AnnotationParser {

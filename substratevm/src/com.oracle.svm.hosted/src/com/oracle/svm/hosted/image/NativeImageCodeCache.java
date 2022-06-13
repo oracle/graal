@@ -57,6 +57,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
@@ -273,13 +274,13 @@ public abstract class NativeImageCodeCache {
             if (object instanceof Field) {
                 HostedField hostedField = hMetaAccess.lookupJavaField((Field) object);
                 if (!includedFields.contains(hostedField)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object, configurationFields.contains(object));
+                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedField, object, configurationFields.contains(object));
                     includedFields.add(hostedField);
                 }
             } else if (object instanceof Executable) {
                 HostedMethod hostedMethod = hMetaAccess.lookupJavaMethod((Executable) object);
                 if (!includedMethods.contains(hostedMethod)) {
-                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, object, configurationExecutables.contains(object));
+                    reflectionMetadataEncoder.addHeapAccessibleObjectMetadata(hMetaAccess, hostedMethod, object, configurationExecutables.contains(object));
                     includedMethods.add(hostedMethod);
                 }
             }
@@ -654,7 +655,7 @@ public abstract class NativeImageCodeCache {
 
         void addReflectionExecutableMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod, Object accessor);
 
-        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, AccessibleObject object, boolean registered);
+        void addHeapAccessibleObjectMetadata(MetaAccessProvider metaAccess, WrappedElement hostedElement, AccessibleObject object, boolean registered);
 
         void addHidingFieldMetadata(AnalysisField analysisField, HostedType declType, String name, HostedType type, int modifiers);
 

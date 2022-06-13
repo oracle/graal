@@ -26,8 +26,6 @@ package com.oracle.svm.hosted.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.lang.annotation.Annotation;
-
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -347,21 +345,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
     @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
         return null;
-    }
-
-    @Override
-    public Annotation[] getAnnotations() {
-        return wrapped.getAnnotations();
-    }
-
-    @Override
-    public Annotation[] getDeclaredAnnotations() {
-        return wrapped.getDeclaredAnnotations();
-    }
-
-    @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return wrapped.getAnnotation(annotationClass);
     }
 
     @Override

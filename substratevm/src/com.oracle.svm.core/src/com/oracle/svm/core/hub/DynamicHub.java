@@ -61,7 +61,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateUtil;
@@ -1516,6 +1516,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @KeepOriginal
     @TargetElement(onlyWith = JDK17OrLater.class)
     private native boolean isDirectSubType(Class<?> c);
+
+    @KeepOriginal
+    native boolean casAnnotationType(AnnotationType oldType, AnnotationType newType);
 
     /*
      * We need to filter out hiding elements at the last moment. This ensures that the JDK internals

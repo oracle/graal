@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.classinitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceClassInitialization;
 import static com.oracle.svm.core.SubstrateOptions.TraceObjectInstantiation;
 
-import java.lang.reflect.Proxy;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -567,9 +566,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             throw UserError.abort("Primitive types and array classes are initialized at build time because initialization is side-effect free. " +
                             "It is not possible (and also not useful) to register them for run time initialization. Culprit: %s", clazz.getTypeName());
         }
-        if (clazz.isAnnotation()) {
-            throw UserError.abort("Class initialization of annotation classes cannot be delayed to runtime. Culprit: %s", clazz.getTypeName());
-        }
     }
 
     /**
@@ -585,20 +581,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return existing;
         }
 
-        /* Initialize all annotations because we don't support parsing at run-time. */
-        if (clazz.isAnnotation()) {
-            forceInitializeHosted(clazz, "all annotations are initialized", false);
-            return InitKind.BUILD_TIME;
-        }
-
-        /* Well, and enums that got initialized while annotations are parsed. */
-        if (clazz.isEnum() && !Unsafe.getUnsafe().shouldBeInitialized(clazz)) {
-            if (memoize) {
-                forceInitializeHosted(clazz, "enums referred in annotations must be initialized", false);
-            }
-            return InitKind.BUILD_TIME;
-        }
-
         if (clazz.isPrimitive()) {
             forceInitializeHosted(clazz, "primitive types are initialized at build time", false);
             return InitKind.BUILD_TIME;
@@ -606,11 +588,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
         if (clazz.isArray()) {
             forceInitializeHosted(clazz, "arrays are initialized at build time", false);
-            return InitKind.BUILD_TIME;
-        }
-
-        if (Proxy.isProxyClass(clazz) && isProxyFromAnnotation(clazz)) {
-            forceInitializeHosted(clazz, "proxy classes are initialized at build time", false);
             return InitKind.BUILD_TIME;
         }
 
@@ -698,15 +675,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             }
         }
         return result;
-    }
-
-    private static boolean isProxyFromAnnotation(Class<?> clazz) {
-        for (Class<?> interfaces : clazz.getInterfaces()) {
-            if (interfaces.isAnnotation()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     void addProvenEarly(Class<?> clazz) {

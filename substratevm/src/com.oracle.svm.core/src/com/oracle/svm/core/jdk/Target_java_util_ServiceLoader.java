@@ -26,13 +26,18 @@
 package com.oracle.svm.core.jdk;
 
 import java.lang.reflect.Constructor;
+import java.net.URL;
 import java.security.AccessControlContext;
+import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.Set;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -52,6 +57,9 @@ final class Target_java_util_ServiceLoader {
 
     @Alias
     native Constructor<?> getConstructor(Class<?> clazz);
+
+    @Alias @RecomputeFieldValue(declClass = ArrayList.class, kind = RecomputeFieldValue.Kind.NewInstance)//
+    private List<?> instantiatedProviders;
 }
 
 @TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator")
@@ -84,6 +92,9 @@ final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     @Alias//
     @TargetElement(name = "this$0")//
     Target_java_util_ServiceLoader outer;
+
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
+    Enumeration<URL> configs;
 
     @Substitute
     Target_java_util_ServiceLoader_LazyClassPathLookupIterator(Target_java_util_ServiceLoader outer) {

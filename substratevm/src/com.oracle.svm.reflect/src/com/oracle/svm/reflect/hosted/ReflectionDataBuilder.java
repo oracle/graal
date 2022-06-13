@@ -24,18 +24,12 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import static com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl.getAnnotationEncodingType;
-import static com.oracle.svm.reflect.hosted.ReflectionMetadataEncoderImpl.getTypeAnnotations;
-
-import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
-import java.lang.reflect.InaccessibleObjectException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
@@ -44,6 +38,7 @@ import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,7 +53,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -66,7 +60,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.InjectAccessors;
-import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
@@ -76,19 +69,20 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.annotation.AnnotationMemberValue;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
+import com.oracle.svm.hosted.annotation.AnnotationValue;
+import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtracter;
+import com.oracle.svm.hosted.annotation.TypeAnnotationValue;
 import com.oracle.svm.hosted.meta.InternalRuntimeReflectionSupport;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
-import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import sun.reflect.annotation.AnnotationType;
-import sun.reflect.annotation.EnumConstantNotPresentExceptionProxy;
-import sun.reflect.annotation.TypeAnnotation;
-import sun.reflect.annotation.TypeNotPresentExceptionProxy;
+import sun.reflect.annotation.ExceptionProxy;
 
 public class ReflectionDataBuilder extends ConditionalConfigurationRegistry implements InternalRuntimeReflectionSupport {
 
@@ -119,7 +113,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     /* Keep track of annotation interface members to include in proxy classes */
     private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
 
-    public ReflectionDataBuilder() {
+    private final Map<AnnotatedElement, AnnotationValue[]> filteredAnnotations = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, AnnotationValue[][]> filteredParameterAnnotations = new ConcurrentHashMap<>();
+    private final Map<AnnotatedElement, TypeAnnotationValue[]> filteredTypeAnnotations = new ConcurrentHashMap<>();
+
+    private final SubstrateAnnotationExtracter annotationExtracter;
+
+    ReflectionDataBuilder(SubstrateAnnotationExtracter annotationExtracter) {
+        this.annotationExtracter = annotationExtracter;
     }
 
     @Override
@@ -434,14 +435,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             }
             registeredRecordComponents.put(clazz, recordComponents);
         }
-        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(analysisType)) {
-            registerTypesForAnnotation(access, annotation);
-        }
-        for (TypeAnnotation typeAnnotation : getTypeAnnotations(clazz)) {
-            // Checkstyle: allow direct annotation access
-            registerTypesForAnnotation(access, typeAnnotation.getAnnotation());
-            // Checkstyle: disallow direct annotation access
-        }
+        registerTypesForAnnotations(access, analysisType);
+        registerTypesForTypeAnnotations(access, analysisType);
     }
 
     private void registerTypesForField(DuringAnalysisAccessImpl access, AnalysisField analysisField, Field reflectField) {
@@ -462,14 +457,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         /*
          * Enable runtime instantiation of annotations
          */
-        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(analysisField)) {
-            registerTypesForAnnotation(access, annotation);
-        }
-        for (TypeAnnotation typeAnnotation : getTypeAnnotations(reflectField)) {
-            // Checkstyle: allow direct annotation access
-            registerTypesForAnnotation(access, typeAnnotation.getAnnotation());
-            // Checkstyle: disallow direct annotation access
-        }
+        registerTypesForAnnotations(access, analysisField);
+        registerTypesForTypeAnnotations(access, analysisField);
     }
 
     private void registerTypesForMethod(DuringAnalysisAccessImpl access, AnalysisMethod analysisMethod, Executable reflectMethod) {
@@ -491,24 +480,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         /*
          * Enable runtime instantiation of annotations
          */
-        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(analysisMethod)) {
-            registerTypesForAnnotation(access, annotation);
-        }
-        for (Annotation[] parameterAnnotations : reflectMethod.getParameterAnnotations()) {
-            for (Annotation parameterAnnotation : parameterAnnotations) {
-                registerTypesForAnnotation(access, parameterAnnotation);
-            }
-        }
-        for (TypeAnnotation typeAnnotation : getTypeAnnotations(reflectMethod)) {
-            // Checkstyle: allow direct annotation access
-            registerTypesForAnnotation(access, typeAnnotation.getAnnotation());
-            // Checkstyle: disallow direct annotation access
-        }
-        if (reflectMethod instanceof Method) {
-            Object defaultValue = ((Method) reflectMethod).getDefaultValue();
-            if (defaultValue != null) {
-                registerTypesForAnnotationValue(access, getAnnotationEncodingType(defaultValue), defaultValue);
-            }
+        registerTypesForAnnotations(access, analysisMethod);
+        registerTypesForParameterAnnotations(access, analysisMethod);
+        registerTypesForTypeAnnotations(access, analysisMethod);
+        if (!analysisMethod.isConstructor()) {
+            registerTypesForAnnotationDefault(access, analysisMethod);
         }
     }
 
@@ -568,73 +544,92 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
-    private static void registerTypesForRecordComponent(DuringAnalysisAccessImpl access, Object recordComponent) {
-        for (Annotation annotation : GuardedAnnotationAccess.getAnnotations((AnnotatedElement) recordComponent)) {
-            registerTypesForAnnotation(access, annotation);
-        }
-        for (TypeAnnotation typeAnnotation : getTypeAnnotations((AnnotatedElement) recordComponent)) {
-            // Checkstyle: allow direct annotation access
-            registerTypesForAnnotation(access, typeAnnotation.getAnnotation());
-            // Checkstyle: disallow direct annotation access
-        }
+    private void registerTypesForRecordComponent(DuringAnalysisAccessImpl access, Object recordComponent) {
+        registerTypesForAnnotations(access, (AnnotatedElement) recordComponent);
+        registerTypesForTypeAnnotations(access, (AnnotatedElement) recordComponent);
     }
 
-    private static void registerTypesForAnnotation(DuringAnalysisAccessImpl access, Annotation annotation) {
-        if (annotation != null) {
-            registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void registerTypesForAnnotationValue(DuringAnalysisAccessImpl access, Class<?> type, Object value) {
-        if (type.isAnnotation() && !SubstitutionReflectivityFilter.shouldExclude(type, access.getMetaAccess(), access.getUniverse())) {
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(type));
-            /*
-             * Parsing annotation data in reflection classes requires being able to instantiate all
-             * annotation types at runtime.
-             */
-            ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance((Class<? extends Annotation>) type);
-            ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionDataBuilder.class, type);
-            ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
-
-            Annotation annotation = (Annotation) value;
-            AnnotationType annotationType = AnnotationType.getInstance((Class<? extends Annotation>) type);
-            for (Map.Entry<String, Class<?>> entry : annotationType.memberTypes().entrySet()) {
-                String valueName = entry.getKey();
-                Class<?> valueType = entry.getValue();
-                try {
-                    Method getAnnotationValue = annotationType.members().get(valueName);
-                    getAnnotationValue.setAccessible(true);
-                    Object annotationValue = getAnnotationValue.invoke(annotation);
-                    registerTypesForAnnotationValue(access, valueType, annotationValue);
-                } catch (IllegalAccessException | InvocationTargetException | InaccessibleObjectException e) {
-                    // Ignore the value
-                    Throwable exception = e instanceof InvocationTargetException ? ((InvocationTargetException) e).getTargetException() : e;
-                    System.out.println("Warning: unable to register annotation value \"" + valueName + "\" for annotation type " + type + ". Reason: " + exception);
-                    if (e instanceof InvocationTargetException) {
-                        if (exception instanceof TypeNotPresentException) {
-                            AnalysisType proxyType = access.getMetaAccess().lookupJavaType(TypeNotPresentExceptionProxy.class);
-                            makeAnalysisTypeReachable(access, proxyType);
-                            proxyType.registerAsInHeap();
-                        } else if (exception instanceof EnumConstantNotPresentException) {
-                            AnalysisType proxyType = access.getMetaAccess().lookupJavaType(EnumConstantNotPresentExceptionProxy.class);
-                            makeAnalysisTypeReachable(access, proxyType);
-                            proxyType.registerAsInHeap();
-                        }
+    private void registerTypesForAnnotations(DuringAnalysisAccessImpl access, AnnotatedElement annotatedElement) {
+        if (annotatedElement != null) {
+            filteredAnnotations.computeIfAbsent(annotatedElement, element -> {
+                List<AnnotationValue> includedAnnotations = new ArrayList<>();
+                for (AnnotationValue annotation : annotationExtracter.getDeclaredAnnotationData(element)) {
+                    if (includeAnnotation(access, annotation)) {
+                        includedAnnotations.add(annotation);
+                        registerTypes(access, annotation.getTypes());
                     }
                 }
-            }
-        } else if (type.isArray()) {
-            Class<?> componentType = type.getComponentType();
-            if (!componentType.isPrimitive()) {
-                for (Object val : (Object[]) value) {
-                    registerTypesForAnnotationValue(access, componentType, val);
+                return includedAnnotations.toArray(new AnnotationValue[0]);
+            });
+        }
+    }
+
+    private void registerTypesForParameterAnnotations(DuringAnalysisAccessImpl access, AnalysisMethod executable) {
+        if (executable != null) {
+            filteredParameterAnnotations.computeIfAbsent(executable, element -> {
+                AnnotationValue[][] parameterAnnotations = annotationExtracter.getParameterAnnotationData(element);
+                AnnotationValue[][] includedParameterAnnotations = new AnnotationValue[parameterAnnotations.length][];
+                for (int i = 0; i < includedParameterAnnotations.length; ++i) {
+                    AnnotationValue[] annotations = parameterAnnotations[i];
+                    List<AnnotationValue> includedAnnotations = new ArrayList<>();
+                    for (AnnotationValue annotation : annotations) {
+                        if (includeAnnotation(access, annotation)) {
+                            includedAnnotations.add(annotation);
+                            registerTypes(access, annotation.getTypes());
+                        }
+                    }
+                    includedParameterAnnotations[i] = includedAnnotations.toArray(new AnnotationValue[0]);
                 }
+                return includedParameterAnnotations;
+            });
+        }
+    }
+
+    private void registerTypesForTypeAnnotations(DuringAnalysisAccessImpl access, AnnotatedElement annotatedElement) {
+        if (annotatedElement != null) {
+            filteredTypeAnnotations.computeIfAbsent(annotatedElement, element -> {
+                List<TypeAnnotationValue> includedTypeAnnotations = new ArrayList<>();
+                for (TypeAnnotationValue typeAnnotation : annotationExtracter.getTypeAnnotationData(element)) {
+                    if (includeAnnotation(access, typeAnnotation.getAnnotationData())) {
+                        includedTypeAnnotations.add(typeAnnotation);
+                        registerTypes(access, typeAnnotation.getAnnotationData().getTypes());
+                    }
+                }
+                return includedTypeAnnotations.toArray(new TypeAnnotationValue[0]);
+            });
+        }
+    }
+
+    private void registerTypesForAnnotationDefault(DuringAnalysisAccessImpl access, AnalysisMethod method) {
+        AnnotationMemberValue annotationDefault = annotationExtracter.getAnnotationDefaultData(method);
+        if (annotationDefault != null) {
+            registerTypes(access, annotationDefault.getTypes());
+        }
+    }
+
+    private static boolean includeAnnotation(DuringAnalysisAccessImpl access, AnnotationValue annotationValue) {
+        for (Class<?> type : annotationValue.getTypes()) {
+            if (type == null || SubstitutionReflectivityFilter.shouldExclude(type, access.getMetaAccess(), access.getUniverse())) {
+                return false;
             }
-        } else if (type == Class.class) {
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType((Class<?>) value));
-        } else if (type.isEnum()) {
-            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(type));
+        }
+        return true;
+    }
+
+    @SuppressWarnings("cast")
+    private static void registerTypes(DuringAnalysisAccessImpl access, Collection<Class<?>> types) {
+        for (Class<?> type : types) {
+            AnalysisType analysisType = access.getMetaAccess().lookupJavaType(type);
+            makeAnalysisTypeReachable(access, analysisType);
+            if (type.isAnnotation()) {
+                ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
+            }
+            /*
+             * Exception proxies are stored as-is in the image heap
+             */
+            if (ExceptionProxy.class.isAssignableFrom(type)) {
+                analysisType.registerAsInHeap();
+            }
         }
     }
 
@@ -863,6 +858,31 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public Set<AccessibleObject> getHeapReflectionObjects() {
         assert sealed;
         return Collections.unmodifiableSet(heapReflectionObjects);
+    }
+
+    private static final AnnotationValue[] NO_ANNOTATIONS = new AnnotationValue[0];
+
+    public AnnotationValue[] getAnnotationData(AnnotatedElement element) {
+        assert sealed;
+        return filteredAnnotations.getOrDefault(element, NO_ANNOTATIONS);
+    }
+
+    private static final AnnotationValue[][] NO_PARAMETER_ANNOTATIONS = new AnnotationValue[0][0];
+
+    public AnnotationValue[][] getParameterAnnotationData(AnalysisMethod element) {
+        assert sealed;
+        return filteredParameterAnnotations.getOrDefault(element, NO_PARAMETER_ANNOTATIONS);
+    }
+
+    private static final TypeAnnotationValue[] NO_TYPE_ANNOTATIONS = new TypeAnnotationValue[0];
+
+    public TypeAnnotationValue[] getTypeAnnotationData(AnnotatedElement element) {
+        assert sealed;
+        return filteredTypeAnnotations.getOrDefault(element, NO_TYPE_ANNOTATIONS);
+    }
+
+    public AnnotationMemberValue getAnnotationDefaultData(AnnotatedElement element) {
+        return annotationExtracter.getAnnotationDefaultData(element);
     }
 
     @Override
