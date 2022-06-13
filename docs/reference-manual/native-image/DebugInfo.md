@@ -28,7 +28,7 @@ line flag to the `native-image` command
 native-image -g -H:+SourceLevelDebug Hello
 ```
 
-Enabling debuginfo with flag `-H:GenerateDebugInfo=1` does not make any difference to how a generated
+Enabling debuginfo with flag `-g` does not make any difference to how a generated
 native image is compiled and does not affect how fast it executes nor how much memory it uses at runtime.
 However, it can significantly increase the size of the generated image on disk. Enabling full parameter
 and local variable information by passing flag `-H:+SourceLevelDebug` can cause a program to be compiled
@@ -38,7 +38,7 @@ slightly differently and for some applications this can slow down execution.
 
 ## Source File Caching
 
-The `GenerateDebugInfo` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located during native image generation.
+The `-g` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located during native image generation.
 By default, the cache is created alongside the generated native image in a subdirectory named `sources`.
 If a target directory for the image is specified using option `-H:Path=...` then the cache is also relocated under that same target.
 A command line option can be used to provide an alternative path to `sources`.
@@ -157,7 +157,7 @@ type = class java.lang.String : public java.lang.Object {
 }
 ```
 
-The ptype command can also be used to identify the type of Java
+The ptype command can also be used to identify the static type of a Java
 data value. The current example session is for a simple hello world
 program. Main method `Hello.main` is passed a single parameter
 `args` whose Java type is `String[]`. If the debugger is stopped at
@@ -176,7 +176,7 @@ There are a few details worth highlighting here. Firstly, the debugger
 sees a Java array reference as a pointer type, as it does every Java object
 reference.
 
-Secondly, the pointer points to a structure, actually  a C++ class,
+Secondly, the pointer points to a structure, actually a C++ class,
 that models the layout of the Java array using an integer length field
 and a data field whose type is a C++ array embedded into the block of
 memory that models the array object.
@@ -290,6 +290,13 @@ makes it possible to perform a simple test to decide if an address
 is an object reference and, if so,  what the object's class is.
 Given a valid object reference it is always possible to print the
 contents of the `String` referenced from the hub's name field.
+
+Note that as a consequence, this allows every object observed by the debugger
+to be downcast to its dynamic type. i.e. even if the debugger only sees the static
+type of e.g. java.nio.file.Path we can easily downcast to the dynamic type, which
+might be a subtype such as `jdk.nio.zipfs.ZipPath`, thus making it possible to inspect
+fields that we would not be able to observe from the static type alone.
+
 First the value is cast to an object reference.
 Then a path expression is used to dereference through the the `hub` field and the `hub`'s name field to the `byte[]` value array located in the name `String`.
 
@@ -611,7 +618,7 @@ The *rawline* segment provides details of how the line table is generated using 
 The *loc* section provides details of address ranges within
 which parameter and local variables declared in the info section
 are known to have a determinate value. The details identify where
-the value islocated, either in a machine register, on the stack or
+the value is located, either in a machine register, on the stack or
 at a specific address in memory.
 
 The *str* section provides a lookup table for strings referenced from records in the info section.
