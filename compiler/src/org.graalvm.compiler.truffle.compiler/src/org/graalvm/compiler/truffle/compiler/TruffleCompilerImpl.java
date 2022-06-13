@@ -204,7 +204,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
 
-    public static final CounterKey EncodedGraphCachePurges = DebugContext.counter("EncodedGraphCachePurges");
     public static final CounterKey EncodedGraphCacheRemovedEntries = DebugContext.counter("EncodedGraphCacheRemovedEntries").doc("# of entries removed from the cache due to bailouts.");
     public static final CounterKey EncodedGraphCacheBailouts = DebugContext.counter("EncodedGraphCacheBailouts").doc(
                     "# of (non-permanent) compilation bailouts caused by invalid dependencies (HotSpot assumptions).");
