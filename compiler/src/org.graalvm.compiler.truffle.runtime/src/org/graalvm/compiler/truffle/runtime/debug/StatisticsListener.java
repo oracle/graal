@@ -224,7 +224,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     private CompilationStatistics getStatisticsForTier(int tier) {
-        if (tier == 0 || tier > 2) {
+        if (tier <= 0 || tier > 2) {
             throw new AssertionError("Unexpected tier");
         }
         return tieredStatistics[tier - 1];
