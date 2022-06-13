@@ -310,7 +310,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     }
 
     static String formatLabel(String s) {
-        return s.replaceAll("\\n", "\\n");
+        return s;
     }
 
     private void printStatistics(EngineData runtimeData) {
@@ -378,9 +378,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
                 CompilationStatistics s = tieredStatistics[tierIndex];
 
                 printStatisticRate(out, "  Compilation Rate", s.compilationResultCodeSize.getSum() / (s.compilationTime.getSum() / 1_000_000_000d), "bytes/second");
-                printStatisticRate(out, "  Truffle Tier Rate", s.compilationResultCodeSize.getSum() / (s.compilationTimeTruffleTier.getSum() / 1_000_000_000d), "bytes/second");
-                printStatisticRate(out, "  Graal Tier Rate", s.compilationResultCodeSize.getSum() / (s.compilationTimeGraalTier.getSum() / 1_000_000_000d), "bytes/second");
-                printStatisticRate(out, "  Installation Rate", s.compilationResultCodeSize.getSum() / (s.compilationTimeCodeInstallation.getSum() / 1_000_000_000d), "bytes/second");
+                printStatisticRate(out, "    Truffle Tier Rate", s.compilationResultCodeSize.getSum() / (s.compilationTimeTruffleTier.getSum() / 1_000_000_000d), "bytes/second");
+                printStatisticRate(out, "    Graal Tier Rate", s.compilationResultCodeSize.getSum() / (s.compilationTimeGraalTier.getSum() / 1_000_000_000d), "bytes/second");
+                printStatisticRate(out, "    Installation Rate", s.compilationResultCodeSize.getSum() / (s.compilationTimeCodeInstallation.getSum() / 1_000_000_000d), "bytes/second");
 
                 printStatisticTime(out, "  Time for compilation (us)", s.compilationTime);
                 printStatisticTime(out, "    Truffle Tier (us)", s.compilationTimeTruffleTier);
