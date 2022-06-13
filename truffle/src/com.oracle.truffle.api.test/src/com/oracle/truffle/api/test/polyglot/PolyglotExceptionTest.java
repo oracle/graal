@@ -68,6 +68,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
+import com.oracle.truffle.api.test.OSUtils;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotException;
@@ -75,6 +76,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -435,6 +437,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testGuestStackOverflowResourceLimit() {
+        Assume.assumeFalse("GR-39072", OSUtils.getCurrent() == OSUtils.OS.Darwin && System.getProperty("os.arch").equals("aarch64"));
         try (Context c = Context.create()) {
             assertFails(() -> evalTestLanguage(c, GuestStackOverflowLanguage.class, "test"), PolyglotException.class, (e) -> {
                 assertTrue(e.isResourceExhausted());
