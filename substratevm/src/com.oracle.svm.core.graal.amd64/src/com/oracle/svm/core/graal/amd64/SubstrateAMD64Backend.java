@@ -1040,8 +1040,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             if (descriptor == null) {
                 return null;
             }
-            ForeignCallDescriptor descriptor1 = chooseCPUFeatureVariant(descriptor, gen.target());
-            return gen.getForeignCalls().lookupForeignCall(descriptor1);
+            return gen.getForeignCalls().lookupForeignCall(chooseCPUFeatureVariant(descriptor, gen.target()));
         }
     }
 

@@ -70,7 +70,7 @@
     linux_amd64_jdk17 + gate("js", "build,js") + clone_js_benchmarks + t("35:00"),
     darwin_jdk17      + gate("js", "build,js") + clone_js_benchmarks,
     darwin_jdk17      + gate("js-quickbuild", "build,js_quickbuild") + clone_js_benchmarks,
-    linux_amd64_jdk11 + gate("build-ce", "build,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + svm_unittest + t("35:00") + musl_toolchain + gdb("10.2"),
+    linux_amd64_jdk11 + gate("build-ce", "build,checkstubs,helloworld,test,nativeimagehelp,muslcbuild,debuginfotest") + maven + svm_unittest + t("35:00") + musl_toolchain + gdb("10.2"),
     linux_amd64_jdk11 + gate("modules-basic", "build,hellomodule,test") + maven + svm_unittest + t("30:00"),
     linux_amd64_jdk17 + gate("style-fullbuild", "style,fullbuild,helloworld,test,svmjunit,debuginfotest") + common.eclipse + common.jdt + maven + svm_unittest + t("50:00") + mx_build_exploded + gdb("10.2"),
     windows_jdk17     + gate("basics", "build,helloworld,test,svmjunit") + svm_unittest + t("1:30:00"),

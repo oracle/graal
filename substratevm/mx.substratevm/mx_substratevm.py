@@ -53,6 +53,7 @@ import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
+from mx_ide_eclipse import FileInfo
 
 import sys
 
@@ -217,6 +218,7 @@ GraalTags = Tags([
     'muslcbuild',
     'hellomodule',
     'condconfig',
+    'checkstubs',
 ])
 
 def vm_native_image_path(config=None):
@@ -445,6 +447,11 @@ def svm_gate_body(args, tasks):
                 mx.abort('mx native-image --help does not seem to output the proper message. This can happen if you add extra arguments the mx native-image call without checking if an argument was --help or --help-extra.')
 
             mx.log('mx native-image --help output check detected no errors.')
+
+    with Task('Check if generated stub code is in sync', tasks, tags=[GraalTags.checkstubs]) as t:
+        if t:
+            if check_graal_stubs_synced([]) != 0:
+                mx.abort('mx svm-sync-graal-stubs-check found differences when re-generating stub code, you may need to run "mx svm-sync-graal-stubs"')
 
     with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
         if t:
@@ -1769,6 +1776,35 @@ if is_musl_supported():
 SNIPPET_ANNOTATION = '@Snippet'
 RUNTIME_CHECKED_SUFFIX = 'RTC'
 RUNTIME_CHECKED_FEATURES = 'Stubs.getRuntimeCheckedCPUFeatures()'
+SNIPPET_FILES = [
+    (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64CalcStringAttributesStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64CalcStringAttributesForeignCalls.java'
+    ),
+    (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsWithMaskStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64ArrayEqualsWithMaskForeignCalls.java'
+    ),
+    (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCompareToStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCompareToForeignCalls.java'
+    ),
+    (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCopyWithConversionsStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCopyWithConversionsForeignCalls.java'
+    ),
+    (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayEqualsForeignCalls.java'
+    ),
+    (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayRegionCompareToStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayRegionCompareToForeignCalls.java'),
+    (
+        'compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/ArrayIndexOfStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayIndexOfForeignCalls.java'
+    ),
+]
 
 
 def _check_file_exists(path: Path):
@@ -1802,41 +1838,28 @@ def _transform_hotspot_snippet_stub(snippet: str, name_suffix: str = None):
     return '\n' + snippet + '\n'
 
 
+@mx.command(suite.name, 'svm-sync-graal-stubs-check')
+def check_graal_stubs_synced(args):
+    base_path = Path(suite.vc_dir)
+    target_files = [(src, dst, FileInfo(base_path / Path(dst))) for src, dst in SNIPPET_FILES]
+    sync_graal_stubs([])
+    ret = 0
+    for src, dst, fi in target_files:
+        if fi.update(False, True):
+            diffs = ''.join(fi.diff)
+            mx.log(f' - source file {src}:')
+            mx.log(f' - changes in dest file {dst}:')
+            mx.log(diffs)
+            ret = 1
+    return ret
+
+
 @mx.command(suite.name, 'svm-sync-graal-stubs')
 def sync_graal_stubs(args):
     base_path = Path(suite.vc_dir)
-    files = [
-        (
-            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64CalcStringAttributesStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64CalcStringAttributesForeignCalls.java'
-        ),
-        (
-            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsWithMaskStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64ArrayEqualsWithMaskForeignCalls.java'
-        ),
-        (
-            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCompareToStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCompareToForeignCalls.java'
-        ),
-        (
-            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCopyWithConversionsStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCopyWithConversionsForeignCalls.java'
-        ),
-        (
-            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayEqualsForeignCalls.java'
-        ),
-        (
-            'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayRegionCompareToStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayRegionCompareToForeignCalls.java'),
-        (
-            'compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/ArrayIndexOfStub.java',
-            'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayIndexOfForeignCalls.java'
-        ),
-    ]
     marker_begin = 'GENERATED CODE BEGIN'
     marker_end = 'GENERATED CODE END'
-    for src_rel, dst_rel in files:
+    for src_rel, dst_rel in SNIPPET_FILES:
         src = base_path / Path(src_rel)
         dst = base_path / Path(dst_rel)
         _check_file_exists(src)
