@@ -168,7 +168,7 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
             for (LeftShiftNode l : graph.getNodes().filter(LeftShiftNode.class)) {
                 if (l.tryReplaceWithMulNode()) {
                     graph.getOptimizationLog().report(ReassociationPhase.class, eventName, l)
-                            .setProperty("replacedNodeClass", () -> l.getNodeClass().shortName());
+                                    .setLazyProperty("replacedNodeClass", () -> l.getNodeClass().shortName());
                 }
             }
         }
@@ -197,7 +197,7 @@ public class ReassociationPhase extends BasePhase<CoreProviders> {
                     }
                     if (replaced) {
                         graph.getOptimizationLog().report(ReassociationPhase.class, eventName, usage)
-                                .setProperty("replacedNodeClass", () -> usage.getNodeClass().shortName());
+                                        .setLazyProperty("replacedNodeClass", () -> usage.getNodeClass().shortName());
                     }
                 }
             }

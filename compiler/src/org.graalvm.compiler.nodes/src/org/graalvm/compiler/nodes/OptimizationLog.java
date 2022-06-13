@@ -70,15 +70,20 @@ public class OptimizationLog implements CompilationListener {
      */
     public interface OptimizationEntry {
         /**
-         * Sets an additional property of the performed optimization to be used in the optimization log.
+         * Sets an additional property of the performed optimization to be used in the optimization
+         * log.
+         *
          * @param key the name of the property
          * @param valueSupplier the supplier of the value
          * @return this
+         * @param <V> the value type of the property
          */
-        OptimizationEntry setProperty(String key, Supplier<Object> valueSupplier);
+        <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier);
 
         /**
-         * Sets an additional property of the performed optimization to be used in the optimization log.
+         * Sets an additional property of the performed optimization to be used in the optimization
+         * log.
+         *
          * @param key the name of the property
          * @param value the value of the property
          * @return this
@@ -111,8 +116,9 @@ public class OptimizationLog implements CompilationListener {
         }
 
         @Override
-        public OptimizationEntry setProperty(String key, Supplier<Object> valueSupplier) {
-            return setProperty(key, valueSupplier.get());
+        public <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier) {
+            map.put(key, valueSupplier.get());
+            return this;
         }
 
         @Override
@@ -148,7 +154,7 @@ public class OptimizationLog implements CompilationListener {
         private OptimizationEntryEmpty() { }
 
         @Override
-        public OptimizationEntry setProperty(String key, Supplier<Object> valueSupplier) {
+        public <V> OptimizationEntry setLazyProperty(String key, Supplier<V> valueSupplier) {
             return this;
         }
 
@@ -194,6 +200,15 @@ public class OptimizationLog implements CompilationListener {
             super(TYPE);
             this.optimizationLog = optimizationLog;
             this.phaseName = phaseName;
+        }
+
+        /**
+         * Gets the name of the phase described by this scope.
+         * 
+         * @return the name of the phase described by this scope
+         */
+        public CharSequence getPhaseName() {
+            return phaseName;
         }
 
         /**
@@ -457,6 +472,16 @@ public class OptimizationLog implements CompilationListener {
      */
     public Graph getOptimizationTree() {
         return optimizationTree;
+    }
+
+    /**
+     * Gets the scope of the most recently opened phase (from unclosed phases) or null if the
+     * optimization log is not enabled.
+     * 
+     * @return the scope of the most recently opened phase (from unclosed phases) or null
+     */
+    public OptimizationPhaseScope getCurrentPhase() {
+        return currentPhase;
     }
 
     /**
