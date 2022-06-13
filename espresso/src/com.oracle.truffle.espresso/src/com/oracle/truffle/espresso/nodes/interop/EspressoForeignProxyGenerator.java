@@ -71,7 +71,7 @@ public class EspressoForeignProxyGenerator {
 
     /* constant pool tags */
     private static final int CONSTANT_UTF8 = 1;
-    private static final int CONSTANT_UNICODE = 2;
+    //private static final int CONSTANT_UNICODE = 2;
     private static final int CONSTANT_INTEGER = 3;
     private static final int CONSTANT_FLOAT = 4;
     private static final int CONSTANT_LONG = 5;
@@ -87,7 +87,7 @@ public class EspressoForeignProxyGenerator {
     private static final int ACC_PUBLIC = 0x00000001;
     private static final int ACC_PRIVATE = 0x00000002;
     // private static final int ACC_PROTECTED = 0x00000004;
-    private static final int ACC_STATIC = 0x00000008;
+    //private static final int ACC_STATIC = 0x00000008;
     private static final int ACC_FINAL = 0x00000010;
     // private static final int ACC_SYNCHRONIZED = 0x00000020;
 // private static final int ACC_VOLATILE = 0x00000040;
@@ -100,7 +100,7 @@ public class EspressoForeignProxyGenerator {
 
     /* opcodes */
 // private static final int opc_nop = 0;
-    private static final int opc_aconst_null = 1;
+    //private static final int opc_aconst_null = 1;
     // private static final int opc_iconst_m1 = 2;
     private static final int opc_iconst_0 = 3;
     // private static final int opc_iconst_1 = 4;
@@ -277,14 +277,14 @@ public class EspressoForeignProxyGenerator {
     private static final int opc_dreturn = 175;
     private static final int opc_areturn = 176;
     private static final int opc_return = 177;
-    private static final int opc_getstatic = 178;
-    private static final int opc_putstatic = 179;
+    //private static final int opc_getstatic = 178;
+    //private static final int opc_putstatic = 179;
     private static final int opc_getfield = 180;
     // private static final int opc_putfield = 181;
     private static final int opc_invokevirtual = 182;
     private static final int opc_invokespecial = 183;
     private static final int opc_invokestatic = 184;
-    private static final int opc_invokeinterface = 185;
+    //private static final int opc_invokeinterface = 185;
     private static final int opc_new = 187;
     // private static final int opc_newarray = 188;
     private static final int opc_anewarray = 189;
@@ -416,7 +416,7 @@ public class EspressoForeignProxyGenerator {
         }
     }
 
-    private String nextClassName() {
+    private static String nextClassName() {
         return proxyNamePrefix + nextUniqueNumber.getAndIncrement();
     }
 
@@ -442,9 +442,9 @@ public class EspressoForeignProxyGenerator {
          * methods from java.lang.Object take precedence over duplicate methods in the proxy
          * interfaces.
          */
-        addProxyMethod(context.getMeta().java_lang_Object_toString, context.getMeta().java_lang_Object);
-        addProxyMethod(context.getMeta().java_lang_Object_equals, context.getMeta().java_lang_Object);
-        addProxyMethod(context.getMeta().java_lang_Object_hashCode, context.getMeta().java_lang_Object);
+        addProxyMethod(context.getMeta().java_lang_Object_toString);
+        addProxyMethod(context.getMeta().java_lang_Object_equals);
+        addProxyMethod(context.getMeta().java_lang_Object_hashCode);
 
         /*
          * Now record all of the methods from the proxy interfaces, giving earlier interfaces
@@ -453,7 +453,7 @@ public class EspressoForeignProxyGenerator {
         for (ObjectKlass intf : interfaces) {
             for (Method m : intf.getDeclaredMethods()) {
                 if (!Modifier.isStatic(m.getModifiers())) {
-                    addProxyMethod(m, intf);
+                    addProxyMethod(m);
                 }
             }
         }
@@ -579,7 +579,7 @@ public class EspressoForeignProxyGenerator {
      * declaring class) that will be passed to the invocation handler's "invoke" method for a given
      * set of duplicate methods.
      */
-    private void addProxyMethod(Method m, Klass fromClass) {
+    private void addProxyMethod(Method m) {
         String name = m.getNameAsString();
         Klass[] parameterTypes = m.resolveParameterKlasses();
         Klass returnType = m.resolveReturnKlass();
@@ -609,7 +609,7 @@ public class EspressoForeignProxyGenerator {
             proxyMethods.put(sig, sigmethods);
         }
         sigmethods.add(new ProxyMethod(name, parameterTypes, returnType,
-                        exceptionTypes, fromClass));
+                        exceptionTypes));
     }
 
     /**
@@ -862,17 +862,14 @@ public class EspressoForeignProxyGenerator {
         public Klass[] parameterTypes;
         public Klass returnType;
         public Klass[] exceptionTypes;
-        public Klass fromClass;
         public String methodFieldName;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
-                            Klass returnType, Klass[] exceptionTypes,
-                            Klass fromClass) {
+                            Klass returnType, Klass[] exceptionTypes) {
             this.methodName = methodName;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.exceptionTypes = exceptionTypes;
-            this.fromClass = fromClass;
             this.methodFieldName = "m" + proxyMethodCount++;
         }
 
@@ -1172,7 +1169,7 @@ public class EspressoForeignProxyGenerator {
      * explicit local variable index, and "opcode_0" indicates the corresponding form of the
      * instruction with the implicit index 0.
      */
-    private void codeLocalLoadStore(int lvar, int opcode, int opcode_0,
+    private static void codeLocalLoadStore(int lvar, int opcode, int opcode_0,
                     DataOutputStream out)
                     throws IOException {
         assert lvar >= 0 && lvar <= 0xFFFF;
@@ -1197,7 +1194,7 @@ public class EspressoForeignProxyGenerator {
      * instruction is used if the index does not fit into an unsigned byte). The code is written to
      * the supplied stream.
      */
-    private void code_ldc(int index, DataOutputStream out)
+    private static void code_ldc(int index, DataOutputStream out)
                     throws IOException {
         assert index >= 0 && index <= 0xFFFF;
         if (index <= 0xFF) {
@@ -1227,21 +1224,6 @@ public class EspressoForeignProxyGenerator {
         } else {
             throw new AssertionError();
         }
-    }
-
-    /**
-     * Generate code to invoke the Class.forName with the name of the given class to get its Class
-     * object at runtime. The code is written to the supplied stream. Note that the code generated
-     * by this method may cause the checked ClassNotFoundException to be thrown.
-     */
-    private void codeClassForName(Klass cl, DataOutputStream out)
-                    throws IOException {
-        code_ldc(cp.getString(cl.getNameAsString()), out);
-
-        out.writeByte(opc_invokestatic);
-        out.writeShort(cp.getMethodRef(
-                        "java/lang/Class",
-                        "forName", "(Ljava/lang/String;)Ljava/lang/Class;"));
     }
 
     /*
@@ -1532,20 +1514,6 @@ public class EspressoForeignProxyGenerator {
         }
 
         /**
-         * Get or assign the index for a CONSTANT_Integer entry.
-         */
-        public short getInteger(int i) {
-            return getValue(i);
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_Float entry.
-         */
-        public short getFloat(float f) {
-            return getValue(f);
-        }
-
-        /**
          * Get or assign the index for a CONSTANT_Class entry.
          */
         public short getClass(String name) {
@@ -1583,17 +1551,6 @@ public class EspressoForeignProxyGenerator {
             short nameAndTypeIndex = getNameAndType(name, descriptor);
             return getIndirect(new ConstantPool.IndirectEntry(
                             CONSTANT_METHOD, classIndex, nameAndTypeIndex));
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_InterfaceMethodRef entry.
-         */
-        public short getInterfaceMethodRef(String className, String name,
-                        String descriptor) {
-            short classIndex = getClass(className);
-            short nameAndTypeIndex = getNameAndType(name, descriptor);
-            return getIndirect(new ConstantPool.IndirectEntry(
-                            CONSTANT_INTERFACEMETHOD, classIndex, nameAndTypeIndex));
         }
 
         /**
