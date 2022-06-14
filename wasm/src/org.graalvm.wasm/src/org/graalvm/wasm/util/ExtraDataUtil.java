@@ -48,7 +48,6 @@ public class ExtraDataUtil {
     private static final int EXTENDED_FORMAT_INDICATOR = 0x8000_0000;
     private static final int MIN_SIGNED_31BIT_VALUE = 0xc000_0000;
     private static final int MAX_SIGNED_31BIT_VALUE = 0x3fff_ffff;
-    private static final int MAX_UNSIGNED_16BIT_VALUE = 0x0000_ffff;
     private static final int MAX_UNSIGNED_15BIT_VALUE = 0x0000_7fff;
     private static final int MIN_SIGNED_15BIT_VALUE = 0xffff_c000;
     private static final int MAX_SIGNED_15BIT_VALUE = 0x0000_3fff;
