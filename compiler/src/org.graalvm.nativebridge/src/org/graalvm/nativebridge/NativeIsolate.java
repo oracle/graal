@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,12 +46,13 @@ public final class NativeIsolate {
     private static final long NULL = 0L;
     private static final Map<Long, NativeIsolate> isolates = new ConcurrentHashMap<>();
     private static final AtomicInteger UUIDS = new AtomicInteger(0);
+    private static final ReferenceQueue<Object> cleanersQueue = new ReferenceQueue<>();
+    private static final Object INVALID_ISOLATE_THREAD = new Object();
 
     private final long uuid;
     private final long isolateId;
     private final JNIConfig config;
     private final Set<Cleaner> cleaners;
-    private final ReferenceQueue<Object> cleanersQueue;
     private final ThreadLocal<NativeIsolateThread> attachedIsolateThread;
     private final Collection<NativeIsolateThread> threads;      // Guarded by this
     private volatile State state;  // Guarded by this
@@ -63,7 +65,6 @@ public final class NativeIsolate {
         this.isolateId = isolateId;
         this.config = config;
         this.cleaners = Collections.newSetFromMap(new ConcurrentHashMap<>());
-        this.cleanersQueue = new ReferenceQueue<>();
         this.threads = new ArrayList<>();
         this.attachedIsolateThread = new ThreadLocal<>();
         this.state = State.ACTIVE;
@@ -221,7 +222,7 @@ public final class NativeIsolate {
     public void registerForCleanup(Object cleanableObject, LongPredicate cleanupAction) {
         if (state != State.DISPOSED) {
             cleanHandles();
-            cleaners.add(new Cleaner(cleanersQueue, cleanableObject, cleanupAction));
+            cleaners.add(new Cleaner(cleanersQueue, cleanableObject, this, cleanupAction));
         }
     }
 
@@ -247,21 +248,39 @@ public final class NativeIsolate {
         throw new IllegalStateException("Isolate 0x" + Long.toHexString(getIsolateId()) + " is already closed.");
     }
 
-    private void cleanHandles() {
-        NativeIsolateThread nativeIsolateThread = null;
+    private static void cleanHandles() {
+        Map<NativeIsolate, Object> enteredThreads = null;
         Cleaner cleaner;
         try {
             while ((cleaner = (Cleaner) cleanersQueue.poll()) != null) {
-                if (cleaners.remove(cleaner)) {
-                    if (nativeIsolateThread == null) {
-                        nativeIsolateThread = enter();
+                NativeIsolate isolate = cleaner.isolate;
+                if (isolate.cleaners.remove(cleaner)) {
+                    Object enteredThread;
+                    if (enteredThreads == null) {
+                        enteredThreads = new HashMap<>();
+                        enteredThread = null;
+                    } else {
+                        enteredThread = enteredThreads.get(isolate);
                     }
-                    cleanImpl(this.isolateId, nativeIsolateThread.getIsolateThreadId(), cleaner.action);
+                    if (enteredThread == null) {
+                        enteredThread = isolate.tryEnter();
+                        if (enteredThread == null) {
+                            enteredThread = INVALID_ISOLATE_THREAD;
+                        }
+                        enteredThreads.put(isolate, enteredThread);
+                    }
+                    if (enteredThread != INVALID_ISOLATE_THREAD) {
+                        cleanImpl(isolate.isolateId, ((NativeIsolateThread) enteredThread).getIsolateThreadId(), cleaner.action);
+                    }
                 }
             }
         } finally {
-            if (nativeIsolateThread != null) {
-                nativeIsolateThread.leave();
+            if (enteredThreads != null) {
+                for (Object enteredThread : enteredThreads.values()) {
+                    if (enteredThread != INVALID_ISOLATE_THREAD) {
+                        ((NativeIsolateThread) enteredThread).leave();
+                    }
+                }
             }
         }
     }
@@ -326,12 +345,14 @@ public final class NativeIsolate {
         return nativeIsolateThread;
     }
 
-    private static final class Cleaner extends WeakReference<Object> {
+    static final class Cleaner extends WeakReference<Object> {
 
+        final NativeIsolate isolate;
         private final LongPredicate action;
 
-        private Cleaner(ReferenceQueue<Object> cleanersQueue, Object referent, LongPredicate action) {
+        private Cleaner(ReferenceQueue<Object> cleanersQueue, Object referent, NativeIsolate isolate, LongPredicate action) {
             super(referent, cleanersQueue);
+            this.isolate = isolate;
             this.action = action;
         }
     }
