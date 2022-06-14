@@ -87,6 +87,13 @@ public class Token implements JsonConvertible {
         return new Anchor(ancCps);
     }
 
+    public static Token addInlineFlag(Token.Kind kind, boolean remove, String flags, boolean open) {
+        return new InlineFlagToken(kind, remove, flags, open);
+    }
+    public static Token addInlineFlag(boolean remove, String flags, boolean open) {
+        return addInlineFlag(Kind.inlineFlag, remove, flags, open);
+    }
+
     public static Token createCaret() {
         return CARET;
     }
@@ -360,15 +367,21 @@ public class Token implements JsonConvertible {
 
         private final boolean remove;
         private final String flags;
+        private final boolean open;
 
-        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags) {
+        protected InlineFlagToken(Token.Kind kind, boolean remove, String flags, boolean open) {
             super(kind);
             this.remove = remove;
             this.flags = flags;
+            this.open = open;
         }
 
         public boolean isRemove() {
             return remove;
+        }
+
+        public boolean isOpen() {
+            return open;
         }
 
         public String getFlags() {
