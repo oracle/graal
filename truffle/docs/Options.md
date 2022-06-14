@@ -56,8 +56,8 @@ They are useful to users and language and tool implementers.
 - `--engine.Compilation=true|false` : Enable or disable Truffle compilation.
 - `--engine.CompilerIdleDelay=<ms>` : Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. New compiler threads will be started once new compilation tasks are submitted. Select '0' to never terminate the Truffle compiler thread. The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect. default: 10000
 - `--engine.CompilerThreads=[1, inf)` : Manually set the number of compiler threads. By default, the number of compiler threads is scaled with the number of available cores on the CPU.
-- `--engine.EncodedGraphCacheCapacity=[-1, inf)` : Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled) (default: 0).
-- `--engine.EncodedGraphCachePurgeDelay=<ms>` : Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle.The option is only supported on the HotSpot (non-libgraal) Truffle runtime.On runtimes which doesn't support it the option has no effect (default: 10000).
+- `--engine.EncodedGraphCache=true|false` : Cache encoded graphs across Truffle compilations to speedup partial evaluation (default: true).
+- `--engine.EncodedGraphCachePurgeDelay=<ms>` : Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle. On runtimes which doesn't support it the option has no effect (default: 10000).
 - `--engine.FirstTierBackedgeCounts=true|false` : Whether to emit look-back-edge counters in the first-tier compilations. (default: true)
 - `--engine.FirstTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root in first tier under normal compilation load (default: 400).
 - `--engine.FirstTierMinInvokeThreshold=[1, inf)` : Minimum number of calls before a call target is compiled in the first tier (default: 1)
