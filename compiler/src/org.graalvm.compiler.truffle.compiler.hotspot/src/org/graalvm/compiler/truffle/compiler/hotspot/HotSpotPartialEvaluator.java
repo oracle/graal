@@ -91,6 +91,9 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
         return cache;
     }
 
+    /**
+     * Called in unit-tests via reflection.
+     */
     public void purgeEncodedGraphCache() {
         // Disabling purges only for tests.
         if (!disableEncodedGraphCachePurges) {

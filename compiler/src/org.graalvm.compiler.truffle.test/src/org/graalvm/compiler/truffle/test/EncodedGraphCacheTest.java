@@ -45,15 +45,10 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -63,12 +58,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
-    @AfterClass
-    public static void resetCompiler() {
-        Assume.assumeFalse("This test does not apply to SVM runtime where the compiler is initialized eagerly.", TruffleOptions.AOT);
+    public static void purgeEncodedGraphCache(TruffleCompilerImpl truffleCompiler) {
         try {
-            Method m = Truffle.getRuntime().getClass().getMethod("resetCompiler");
-            m.invoke(Truffle.getRuntime());
+            PartialEvaluator pe = truffleCompiler.getPartialEvaluator();
+            Method m = pe.getClass().getMethod("purgeEncodedGraphCache");
+            m.invoke(pe);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -82,12 +76,6 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
-    }
-
-    @SuppressWarnings("static-method")
-    @Before
-    public void resetCompilerBefore() {
-        resetCompiler();
     }
 
     private static TruffleCompilerImpl getTruffleCompilerFromRuntime(OptimizedCallTarget callTarget) {
@@ -129,8 +117,8 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         return new RootTestNode(new FrameDescriptor(), "test", new InvalidationTestNode());
     }
 
-    private static boolean encodedGraphCacheContains(TruffleCompilerImpl compiler, ResolvedJavaMethod method) {
-        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+    private static boolean encodedGraphCacheContains(TruffleCompilerImpl compiler, ResolvedJavaMethod method, boolean encodedGraphCache) {
+        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache(encodedGraphCache);
         return cache.containsKey(method);
     }
 
@@ -169,10 +157,10 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         }
     }
 
-    private void testHelper(int graphCapacity, int purgeDelay, Consumer<TruffleCompilerImpl> verification) {
+    private void testHelper(boolean enableEncodedGraphCache, int purgeDelay, Consumer<TruffleCompilerImpl> verification) {
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCacheCapacity", String.valueOf(graphCapacity)) //
+                        .option("engine.EncodedGraphCache", String.valueOf(enableEncodedGraphCache)) //
                         .option("engine.EncodedGraphCachePurgeDelay", String.valueOf(purgeDelay)) //
                         .option("engine.CompilerIdleDelay", "0"));
 
@@ -197,9 +185,10 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
     @Test
     public void testCacheInvalidation() {
+        boolean encodedGraphCache = true;
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCacheCapacity", "1024") //
+                        .option("engine.EncodedGraphCache", String.valueOf(encodedGraphCache)) //
                         .option("engine.EncodedGraphCachePurgeDelay", "10000" /* 10s */) //
                         .option("engine.CompilerIdleDelay", "0"));
 
@@ -212,7 +201,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
             truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
             // Disable graph cache purges to reduce transient failures with many compiler threads.
             disableEncodedGraphCachePurges(truffleCompiler, true);
-            graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod);
+            graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod, encodedGraphCache);
         }
         assertTrue("InvalidationTestNode.execute is cached", graphWasCached);
         Assert.assertNotNull(truffleCompiler);
@@ -231,12 +220,12 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         }
 
         assertFalse("InvalidationTestNode.execute was invalidated/evicted",
-                        encodedGraphCacheContains(truffleCompiler, testMethod));
+                        encodedGraphCacheContains(truffleCompiler, testMethod, encodedGraphCache));
 
         // Retry again, the encoded graph is re-parsed without the (invalidated) assumption.
         callTarget = compileAST(rootTestNode);
         // Cache purges are disabled.
-        graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod);
+        graphWasCached = encodedGraphCacheContains(truffleCompiler, testMethod, encodedGraphCache);
 
         Assert.assertTrue("Re-parsed graph was cached", graphWasCached);
         Assert.assertEquals(42, (int) callTarget.call());
@@ -244,51 +233,47 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
     @Test
     public void testCacheIsDisabled() {
+        boolean encodedGraphCache = false;
         setupContext(Context.newBuilder() //
                         .allowExperimentalOptions(true) //
-                        .option("engine.EncodedGraphCacheCapacity", "0" /* disabled */));
+                        .option("engine.EncodedGraphCache", String.valueOf(encodedGraphCache)));
 
         OptimizedCallTarget callTarget = compileAST(rootTestNode());
         TruffleCompilerImpl truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
+
+        // Reset state.
+        disableEncodedGraphCachePurges(truffleCompiler, false);
+        purgeEncodedGraphCache(truffleCompiler);
         disableEncodedGraphCachePurges(truffleCompiler, true);
+
+        callTarget = compileAST(rootTestNode());
+        truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
+
         assertFalse("InvalidationTestNode.execute is not cached",
-                        encodedGraphCacheContains(truffleCompiler, testMethod));
+                        encodedGraphCacheContains(truffleCompiler, testMethod, true));
     }
 
     @Test
     public void testCacheIsEnabled() {
         boolean[] cacheContainsTargetGraph = {false};
         for (int attempts = 0; attempts < 10 && !cacheContainsTargetGraph[0]; attempts++) {
-            testHelper(100, 100_000, compiler -> {
+            boolean encodedGraphCache = true;
+            testHelper(encodedGraphCache, 100_000, compiler -> {
                 disableEncodedGraphCachePurges(compiler, true);
-                cacheContainsTargetGraph[0] = encodedGraphCacheContains(compiler, testMethod);
+                cacheContainsTargetGraph[0] = encodedGraphCacheContains(compiler, testMethod, encodedGraphCache);
             });
         }
         Assert.assertTrue("InvalidationTestNode.execute is cached", cacheContainsTargetGraph[0]);
     }
 
     @Test
-    public void testCacheCapacity() {
-        boolean[] cacheHolds1Element = {false};
-        for (int attempts = 0; attempts < 10 && !cacheHolds1Element[0]; attempts++) {
-            testHelper(1, 100_000, compiler -> {
-                disableEncodedGraphCachePurges(compiler, true);
-                EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
-                // The cache can have at most 1 element, but it could have been purged right before.
-                Assert.assertTrue("Cache holds at most 1 element", cache.size() <= 1);
-                cacheHolds1Element[0] = (cache.size() == 1); // can be empty
-            });
-        }
-        Assert.assertTrue("Cache holds exactly 1 element", cacheHolds1Element[0]);
-    }
-
-    @Test
     public void testUnboundedCacheCapacity() {
         boolean[] nonEmptyGraphCache = {false};
         for (int attempts = 0; attempts < 10 && !nonEmptyGraphCache[0]; attempts++) {
-            testHelper(-1, 100_000, compiler -> {
+            boolean encodedGraphCache = true;
+            testHelper(encodedGraphCache, 100_000, compiler -> {
                 disableEncodedGraphCachePurges(compiler, true);
-                EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache();
+                EconomicMap<?, ?> cache = compiler.getPartialEvaluator().getOrCreateEncodedGraphCache(encodedGraphCache);
                 nonEmptyGraphCache[0] = !cache.isEmpty();
             });
         }
@@ -309,9 +294,10 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
         boolean[] graphWasCached = {false};
         for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
-            testHelper(1024, purgeDelay, compiler -> {
+            boolean encodedGraphCache = true;
+            testHelper(encodedGraphCache, purgeDelay, compiler -> {
                 disableEncodedGraphCachePurges(compiler, false);
-                graphWasCached[0] = encodedGraphCacheContains(compiler, testMethod);
+                graphWasCached[0] = encodedGraphCacheContains(compiler, testMethod, encodedGraphCache);
                 /*
                  * The compile queue can purge the encoded cache at any time, there's no guarantee
                  * that the graph will be cached at this point. If the graph is not cached we just
@@ -321,7 +307,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
                     assertEventuallyTrue("Encoded graph cache must be dropped after delay elapsed",
                                     1000,
                                     purgeDelay + 2000,
-                                    () -> !encodedGraphCacheContains(compiler, testMethod));
+                                    () -> !encodedGraphCacheContains(compiler, testMethod, encodedGraphCache));
                 }
             });
         }
