@@ -40,7 +40,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     },
   },
 
-  vm_bench_polybenchmarks_linux_common(env='polybench-${VM_ENV}', vm_config='jvm', is_gate=false): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_17 + self.polybench_hpc_linux_common + {
+  vm_bench_polybenchmarks_linux_common(env='polybench-${VM_ENV}', vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_17 + self.polybench_hpc_linux_common + {
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
@@ -52,9 +52,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
       self.bench_cmd + ['polybenchmarks-awfy:*', '--', '--polybenchmark-vm-config=' + vm_config, '--gate'],
       self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=' + vm_config, '--gate'],
     ] else [
-      self.bench_cmd + ['polybenchmarks-awfy:*', '--', '--polybenchmark-vm-config=' + vm_config],
-      $.vm_bench_common.upload
-      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=' + vm_config],
+      self.bench_cmd + ['polybenchmarks-' + suite, '--', '--polybenchmark-vm-config=' + vm_config],
       $.vm_bench_common.upload
     ],
   },
@@ -231,8 +229,14 @@ local repo_config = import '../../repo-configuration.libsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_memory          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-memory-linux-amd64'},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-native-linux-amd64'},
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-jvm-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native')                        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-native-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm')                           + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-default-jvm-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-native-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*py]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-py-jvm-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-native-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*rb]')  + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-rb-jvm-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-native-linux-amd64'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm',    suite='awfy:r[.*jar]') + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybenchmarks-awfy-jar-jvm-linux-amd64'},
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java11-linux-amd64'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-java17-linux-amd64'},
