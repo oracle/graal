@@ -741,8 +741,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
         executable_name_args = ['-H:Name=' + instrumentation_image_name]
-        pgo_verification_output_path = os.path.join(config.output_dir, instrumentation_image_name + '-probabilities.log')
-        pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+        pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
@@ -766,8 +765,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_image(self, config, stages):
         executable_name_args = ['-H:Name=' + config.final_image_name]
-        pgo_verification_output_path = os.path.join(config.output_dir, config.final_image_name + '-probabilities.log')
-        pgo_args = ['--pgo=' + config.latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+        pgo_args = ['--pgo=' + config.latest_profile_path]
         pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
         pgo_args += ['-H:+AOTInliner'] if self.pgo_aot_inline else ['-H:-AOTInliner']
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
