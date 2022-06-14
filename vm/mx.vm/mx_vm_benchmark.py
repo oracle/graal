@@ -1232,6 +1232,86 @@ class PolyBenchVm(GraalVm):
     def run(self, cwd, args):
         return self.run_launcher('polybench', args, cwd)
 
+def polybenchmark_rules(benchmark, metric_name, mode):
+    rules = [
+        mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+            "benchmark": benchmark, #("<name>", str),
+            "metric.better": "lower",
+            "metric.name": metric_name,
+            "metric.unit": ("<unit>", str),
+            "metric.value": ("<value>", float),
+            "metric.type": "numeric",
+            "metric.score-function": "id",
+            "metric.iteration": 0,
+            "engine.config": mode,
+        }),
+        mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+            "benchmark": benchmark,
+            "metric.name": "context-eval-time",
+            "metric.value": ("<delta>", float),
+            "metric.unit": ("<unit>", str),
+            "metric.type": "numeric",
+            "metric.score-function": "id",
+            "metric.better": "lower",
+            "metric.iteration": 0,
+            "engine.config": mode
+        }),
+        mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+            "benchmark": benchmark,
+            "metric.name": "context-init-time",
+            "metric.value": ("<delta>", float),
+            "metric.unit": ("<unit>", str),
+            "metric.type": "numeric",
+            "metric.score-function": "id",
+            "metric.better": "lower",
+            "metric.iteration": 0,
+            "engine.config": mode,
+        }),
+    ]
+    if metric_name == "time":
+        # Special case for metric "time": Instead of reporting the aggregate numbers,
+        # report individual iterations. Two metrics will be reported:
+        # - "warmup" includes all iterations (warmup and run)
+        # - "time" includes only the "run" iterations
+        rules += [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] iteration ([0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": "warmup",
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("$iteration", int),
+                "engine.config": mode,
+            }),
+            ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": "time",
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "engine.config": mode,
+            }, startPattern=r"::: Running :::")
+        ]
+    elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
+        rules += [
+            ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": metric_name,
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int),
+                "engine.config": mode,
+            }, startPattern=r"::: Running :::")
+        ]
+    return rules
 
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', benchmarks={'js': ['--language:js']}, registry=_native_image_vm_registry))
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
@@ -1255,6 +1335,7 @@ def register_graalvm_vms():
             import mx_polybenchmarks_benchmark
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "jvm", [], ["--jvm"]))
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
+            mx_polybenchmarks_benchmark.rules = polybenchmark_rules
 
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
