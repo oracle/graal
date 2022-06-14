@@ -103,8 +103,10 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
      * Used only in unit-tests, to avoid transient failures caused by multiple compiler threads
      * racing to purge the cache. Called reflectively from EncodedGraphCacheTest.
      */
-    public void disableEncodedGraphCachePurges(boolean value) {
+    public boolean disableEncodedGraphCachePurges(boolean value) {
+        boolean oldValue = disableEncodedGraphCachePurges;
         disableEncodedGraphCachePurges = value;
+        return oldValue;
     }
 
     @Override

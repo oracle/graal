@@ -68,11 +68,11 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         }
     }
 
-    public static void disableEncodedGraphCachePurges(TruffleCompilerImpl truffleCompiler, boolean value) {
+    public static boolean disableEncodedGraphCachePurges(TruffleCompilerImpl truffleCompiler, boolean value) {
         try {
             PartialEvaluator pe = truffleCompiler.getPartialEvaluator();
             Method m = pe.getClass().getMethod("disableEncodedGraphCachePurges", boolean.class);
-            m.invoke(pe, value);
+            return (boolean) m.invoke(pe, value);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -162,25 +162,31 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
                         .allowExperimentalOptions(true) //
                         .option("engine.EncodedGraphCache", String.valueOf(enableEncodedGraphCache)) //
                         .option("engine.EncodedGraphCachePurgeDelay", String.valueOf(purgeDelay)) //
-                        .option("engine.CompilerIdleDelay", "0"));
-
+                        .option("engine.CompilerIdleDelay", "0") //
+                        .option("engine.BackgroundCompilation", "false") //
+                        .option("engine.CompileImmediately", "true"));
         OptimizedCallTarget callTarget = compileAST(rootTestNode());
         TruffleCompilerImpl truffleCompiler = getTruffleCompilerFromRuntime(callTarget);
         verification.accept(truffleCompiler);
+
+        // Purge cache after checks.
+        boolean previousValue = disableEncodedGraphCachePurges(truffleCompiler, false);
+        purgeEncodedGraphCache(truffleCompiler);
+        disableEncodedGraphCachePurges(truffleCompiler, previousValue);
     }
 
-    private static void assertEventuallyTrue(String message, int stepMillis, int maxWaitMillis, Supplier<Boolean> condition) {
+    private static boolean checkEventuallyTrue(int stepMillis, int maxWaitMillis, Supplier<Boolean> condition) {
         for (int totalWait = 0; totalWait <= maxWaitMillis; totalWait += stepMillis) {
             if (condition.get()) {
-                return;
+                return true;
             }
             try {
                 Thread.sleep(stepMillis);
             } catch (InterruptedException e) {
-                throw new AssertionError(message, e);
+                throw new AssertionError(e);
             }
         }
-        fail(message);
+        return false;
     }
 
     @Test
@@ -292,26 +298,35 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
          */
         int purgeDelay = PolyglotCompilerOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
 
-        boolean[] graphWasCached = {false};
-        for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
+        boolean[] cacheWasPurged = {false};
+        for (int attempts = 0; attempts < 10 && !cacheWasPurged[0]; attempts++) {
             boolean encodedGraphCache = true;
             testHelper(encodedGraphCache, purgeDelay, compiler -> {
-                disableEncodedGraphCachePurges(compiler, false);
-                graphWasCached[0] = encodedGraphCacheContains(compiler, testMethod, encodedGraphCache);
+                // Ensure that the graph cache is empty.
+                boolean previousValue = disableEncodedGraphCachePurges(compiler, false);
+                purgeEncodedGraphCache(compiler);
+                disableEncodedGraphCachePurges(compiler, previousValue);
+                assertFalse(encodedGraphCacheContains(compiler, testMethod, encodedGraphCache));
+
+                // Submit a regular compilation, so a compiler thread will then timeout and trigger
+                // a cache purge e.g. do not compile in the main thread with compileAST.
+                OptimizedCallTarget callTarget = (OptimizedCallTarget) rootTestNode().getCallTarget();
+                callTarget.compile(true);
+
+                boolean graphWasCached = encodedGraphCacheContains(compiler, testMethod, encodedGraphCache);
                 /*
-                 * The compile queue can purge the encoded cache at any time, there's no guarantee
-                 * that the graph will be cached at this point. If the graph is not cached we just
-                 * retry compilation.
+                 * The cache can be purged at any time, there's no guarantee that the graph will be
+                 * cached at this point. If the graph is not cached we just retry compilation.
                  */
-                if (graphWasCached[0]) {
-                    assertEventuallyTrue("Encoded graph cache must be dropped after delay elapsed",
-                                    1000,
-                                    purgeDelay + 2000,
+                if (graphWasCached) {
+                    cacheWasPurged[0] = checkEventuallyTrue(
+                                    100,
+                                    purgeDelay + 5000,
                                     () -> !encodedGraphCacheContains(compiler, testMethod, encodedGraphCache));
                 }
             });
         }
 
-        assertTrue("Encoded graph was cached", graphWasCached[0]);
+        assertTrue("Encoded graph cache was dropped after delay elapsed", cacheWasPurged[0]);
     }
 }
