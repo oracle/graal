@@ -22,13 +22,14 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.ObjectKlass;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import java.util.List;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 
 public class PolyglotInterfaceMappings {
 
@@ -55,9 +56,11 @@ public class PolyglotInterfaceMappings {
                 Klass parent = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
                 if (parent.isInterface()) {
                     temp.put(mapping, (ObjectKlass) parent);
+                } else {
+                    throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
                 }
             } catch (EspressoException ex) {
-                // failed to load the class, so proxy won't map this type
+                throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
             }
         }
         resolvedKlasses = EconomicMap.create(temp);
