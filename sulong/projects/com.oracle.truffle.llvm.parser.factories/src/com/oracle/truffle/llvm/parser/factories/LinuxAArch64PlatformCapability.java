@@ -41,7 +41,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
+final class LinuxAArch64PlatformCapability extends BasicAarch64PlatformCapability<LinuxAArch64Syscall> {
 
     LinuxAArch64PlatformCapability(boolean loadCxxLibraries) {
         super(LinuxAArch64Syscall.class, loadCxxLibraries);

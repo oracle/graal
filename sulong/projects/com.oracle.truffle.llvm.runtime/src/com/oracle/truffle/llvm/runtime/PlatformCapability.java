@@ -29,9 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.reflect.Array;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
+import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStart;
@@ -39,13 +45,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListStorag
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-import java.lang.reflect.Array;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.util.List;
-
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
-
     public abstract ByteOrder getPlatformByteOrder();
 
     public abstract Path getSulongLibrariesPath();
@@ -168,7 +168,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     /**
      * Used to get the constant global instance of the va_list type for the <code>type</code>, which
      * must be another va_list type instance used for an <code>alloca</code> instruction.
-     * 
+     *
      * @see LLVMVAListNode
      * @return the global constant va_list as long as the type is a va_list type instance, otherwise
      *         null
@@ -189,6 +189,8 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      *         <code>va_list</code> objects and thus to remain platform independent.
      */
     public abstract VAListPointerWrapperFactory createNativeVAListWrapper(boolean cached);
+
+    public abstract InlineAssemblyParserBase getInlineAssemblyParser();
 
     public enum OS {
         Linux,

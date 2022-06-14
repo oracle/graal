@@ -132,6 +132,20 @@ suite = {
         },
       },
     },
+    # This is a dummy library for amd64 support.
+    "AARCH64_SUPPORT" : {
+      "os_arch" : {
+        "<others>" : {
+          "aarch64" : {
+            "path": "tests/support.txt",
+            "sha1": "81177e981eeb52730854e3d763e96015881c3bab",
+          },
+          "<others>": {
+            "optional": True,
+          }
+        },
+      },
+    },
     # This is a dummy library for marking sulong native mode support.
     "NATIVE_MODE_SUPPORT" : {
       "os_arch" : {
@@ -1121,6 +1135,16 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.inlineasm.aarch64.native" : {
+      "subDir" : "tests",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-O0"],
+      "buildDependencies" : [
+        "AARCH64_SUPPORT",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.standalone.other.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
@@ -1788,6 +1812,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.linker.native/*",
           "dependency:com.oracle.truffle.llvm.tests.va.native/*",
           "dependency:com.oracle.truffle.llvm.tests.inlineasm.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.inlineasm.aarch64.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.uncommon.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.amd64.native/*",
