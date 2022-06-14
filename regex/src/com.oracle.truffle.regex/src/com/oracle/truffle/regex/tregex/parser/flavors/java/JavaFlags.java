@@ -128,6 +128,10 @@ public final class JavaFlags extends AbstractConstantKeysObject {
         return hasFlag('m');
     }
 
+    public boolean isDotAll() {
+        return hasFlag('s');
+    }
+
     public boolean isExtended() {
         return hasFlag('x');
     }

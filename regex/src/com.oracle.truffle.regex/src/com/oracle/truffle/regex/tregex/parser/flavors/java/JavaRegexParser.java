@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors.java;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
-import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -57,11 +57,9 @@ import com.oracle.truffle.regex.errors.RbErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
-import com.oracle.truffle.regex.tregex.parser.JSRegexParser;
 import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
 import com.oracle.truffle.regex.tregex.parser.Token;
-import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -96,7 +94,7 @@ public final class JavaRegexParser implements RegexParser {
     /**
      * Characters that are considered special in ECMAScript regex character classes.
      */
-    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
+//    private static final TBitSet CHAR_CLASS_SYNTAX_CHARACTERS = TBitSet.valueOf('-', '\\', ']', '^');
 
     private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'H', 'S', 'V', 'W', 'd', 'h', 's', 'v', 'w');
 
@@ -160,10 +158,10 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-//    /**
-//     * Characters considered as whitespace in Java's regex verbose mode.
-//     */
-//    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\u000b', '\r', ' '); // '\x0B' = '\u000b'
+    /**
+     * Characters considered as whitespace in Java's regex verbose mode.
+     */
+    private static final TBitSet WHITESPACE = TBitSet.valueOf('\t', '\n', '\f', '\r', ' '); // '\x0B' = '\u000b'
 
     /**
      * The source object of the input pattern.
@@ -235,7 +233,7 @@ public final class JavaRegexParser implements RegexParser {
     /**
      * What can be the result of trying to parse a POSIX character class, e.g. [[:alpha:]].
      */
-    private enum PosixClassParseResult {
+    private enum PosixClassParseResult {    // TODO remove and instead implement nested character classes
         /**
          * We successfully parsed a (nested) POSIX character class.
          */
@@ -278,7 +276,7 @@ public final class JavaRegexParser implements RegexParser {
      * A map from names of capture groups to their indices. Is null if the pattern contained no
      * named capture groups so far.
      */
-    private final Map<String, Integer> namedCaptureGroups;
+    private Map<String, Integer> namedCaptureGroups;
     /**
      * A set of capture groups names which occur repeatedly in the expression. Backreferences to
      * such capture groups can refer to either of the homonymous capture groups, depending on which
@@ -349,6 +347,8 @@ public final class JavaRegexParser implements RegexParser {
 
         // ast.setFlags(...);
 
+        System.out.println(ast.getRoot());
+
         return ast;
     }
 
@@ -415,46 +415,74 @@ public final class JavaRegexParser implements RegexParser {
      * An alternative is a sequence of Terms.
      */
     private void alternative() {
+        boolean openInlineFlag = true;
         while (!atEnd() && curChar() != '|'/* && curChar() != ')'*/) {
             Token token = term();
-            switch (token.kind) {
-                case caret: // java version of it
-                    // (?:^|(?<=[\n])(?=.)) only, when multiline flag is set, otherwise just caret
-                    if (globalFlags.isMultiline()) {
-                        pushGroup(); // (?:
-                        addCaret(); // ^
-                        nextSequence(); // |
-                        pushLookBehindAssertion(false); // (?<=
-                        addCharClass(CodePointSet.create('\n')); // [\n]
-                        popGroup(); // )
-                        pushLookAheadAssertion(false); // (?=
-                        addCharClass(inSource.getEncoding().getFullSet()); // .
-                        popGroup(); // )
-                        popGroup(); // )
-                    } else {
-                        addCaret();
-                    }
-                    break;
-                case dollar: // java version of it
-                    // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
-                    if (globalFlags.isMultiline()) {
-                        pushGroup(); // (?:
-                        addDollar(); // $
-                        nextSequence(); // |
-                        pushLookAheadAssertion(false); // (?=
-                        addCharClass(CodePointSet.create('\n')); // [\n]
-                        popGroup(); // )
-                        popGroup(); // )
-                    } else {
-                        addDollar();
-                    }
-                    break;
-                case wordBoundary:
-                    if (getLocalFlags().isUnicode()) {
-                        buildWordBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
-                    } else {
-                        buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
-                    }
+            if(token != null) {
+                switch (token.kind) {
+                    case caret: // java version of it
+                        // (?:^|(?<=[\n])(?=.)) only, when multiline flag is set, otherwise just caret
+                        if (getLocalFlags().isMultiline()) {
+                            pushGroup(); // (?:
+                            addCaret(); // ^
+                            nextSequence(); // |
+                            pushLookBehindAssertion(false); // (?<=
+                            addCharClass(CodePointSet.create('\n')); // [\n]
+                            popGroup(); // )
+                            pushLookAheadAssertion(false); // (?=
+                            addCharClass(inSource.getEncoding().getFullSet()); // .
+                            popGroup(); // )
+                            popGroup(); // )
+                        } else {
+                            addCaret();
+                        }
+                        break;
+                    case dollar: // java version of it
+                        // (?:$|(?=[\n])) only, when multiline flag is set, otherwise just dollar
+                        if (getLocalFlags().isMultiline()) {
+                            pushGroup(); // (?:
+                            addDollar(); // $
+                            nextSequence(); // |
+                            pushLookAheadAssertion(false); // (?=
+                            addCharClass(CodePointSet.create('\n')); // [\n]
+                            popGroup(); // )
+                            popGroup(); // )
+                        } else {
+                            /* From doc of Dollar extends Node in java.util.Pattern
+                             * Node to anchor at the end of a line or the end of input based on the
+                             * multiline mode.
+                             *
+                             * When not in multiline mode, the $ can only match at the very end
+                             * of the input, unless the input ends in a line terminator in which
+                             * it matches right before the last line terminator.
+                             *
+                             * Note that \r\n is considered an atomic line terminator.
+                             *
+                             * Like ^ the $ operator matches at a position, it does not match the
+                             * line terminators themselves.
+                             */
+//                        (?:$|(?=(?:\r\n|\n)$))
+                            pushGroup();    // (?:
+                            addDollar();    // $
+                            nextSequence(); // |
+                            pushLookAheadAssertion(false);  // (?=
+                            pushGroup();    // (?:
+                            addCharClass(CodePointSet.create('\r'));
+                            addCharClass(CodePointSet.create('\n'));
+                            nextSequence();
+                            addCharClass(CodePointSet.create('\n'));
+                            popGroup();
+                            addDollar();
+                            popGroup();
+                            popGroup();
+                        }
+                        break;
+                    case wordBoundary:
+                        if (getLocalFlags().isUnicode()) {
+                            buildWordBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
+                        } else {
+                            buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
+                        }
 ////                    final String wordBoundarySrc = "(?:^|(?<=\\W))(?=\\w)|(?<=\\w)(?:(?=\\W)|$)";
 ////                    final String nonWordBoundarySrc = "(?:^|(?<=\\W))(?:(?=\\W)|$)|(?<=\\w)(?=\\w)";
 ////                    final Function<String, String> includeExtraCases = s -> s.replace("\\w", "[\\w\\u017F\\u212A]").replace("\\W", "[^\\w\\u017F\\u212A]");
@@ -466,18 +494,18 @@ public final class JavaRegexParser implements RegexParser {
 //                        astBuilder.replaceCurTermWithDeadNode();
 //                        break;
 //                    }
-//                    if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+//                    if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
 //                        astBuilder.addCopy(token, JSRegexParser.parseRootLess(language, includeExtraCases.apply(wordBoundarySrc)));
 //                    } else {
 //                        astBuilder.addCopy(token, JSRegexParser.parseRootLess(language, wordBoundarySrc));
 //                    }
-//                    break;
-                case nonWordBoundary:
-                    if (getLocalFlags().isUnicode()) {
-                        buildWordNonBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
-                    } else {
-                        buildWordNonBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
-                    }
+                        break;
+                    case nonWordBoundary:
+                        if (getLocalFlags().isUnicode()) {
+                            buildWordNonBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
+                        } else {
+                            buildWordNonBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
+                        }
 //                    if (lastToken != null && lastToken.kind == Token.Kind.nonWordBoundary) {
 //                        // ignore
 //                        break;
@@ -485,76 +513,94 @@ public final class JavaRegexParser implements RegexParser {
 //                        astBuilder.replaceCurTermWithDeadNode();
 //                        break;
 //                    }
-//                    if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+//                    if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
 //                        astBuilder.addCopy(token, JSRegexParser.parseRootLess(language, includeExtraCases.apply(nonWordBoundarySrc)));
 //                    } else {
 //                        astBuilder.addCopy(token, JSRegexParser.parseRootLess(language, nonWordBoundarySrc));
 //                    }
-//                    break;
-                case backReference:
-                    break;
-                case quantifier:
-                    if (astBuilder.getCurTerm() == null) {
-                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
-                    }
-                    if (globalFlags.isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
-                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
-                    }
-                    if (astBuilder.getCurTerm().isLookBehindAssertion()) {
-                        throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
-                    }
+                        break;
+                    case backReference:
+                        astBuilder.addBackReference((Token.BackReference) token);
+                        break;
+                    case quantifier:
+                        if (astBuilder.getCurTerm() == null) {
+                            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_WITHOUT_TARGET);
+                        }
+                        if (getLocalFlags().isUnicode() && astBuilder.getCurTerm().isLookAheadAssertion()) {
+                            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKAHEAD_ASSERTION);
+                        }
+                        if (astBuilder.getCurTerm().isLookBehindAssertion()) {
+                            throw syntaxErrorHere(ErrorMessages.QUANTIFIER_ON_LOOKBEHIND_ASSERTION);
+                        }
 //                    astBuilder.addQuantifier((Token.Quantifier) token);
-                    addQuantifier((Token.Quantifier) token);
-                    break;
-                case anchor:
-                    Token.Anchor anc = (Token.Anchor) token;
-                    switch (anc.getAncCps().getHi(0)) {
-                        case 'A':
-                            addCaret();
-                            break;
-                        case 'Z':
-                            // (?:$|(?=[\r\n]$))
-                            pushGroup(); // (?:
-                            addDollar(); // $
-                            nextSequence(); // |
-                            pushLookAheadAssertion(false); // (?=
-                            addCharClass(CodePointSet.create('\n', '\n', '\r', '\r')); // [\r\n]
-                            addDollar(); // $
-                            popGroup(); // )
-                            popGroup(); // )
-                            break;
-                        case 'z':
-                            addDollar();
-                            break;
-                        case 'G':
-                            bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
-                    }
-                case alternation:   // TODO already handled in function disjunction()
-                    break;
-                case captureGroupBegin:
-                    astBuilder.pushCaptureGroup(token);
-                    break;
-                case nonCaptureGroupBegin:
-                    astBuilder.pushGroup(token);
-                    break;
-                case lookAheadAssertionBegin:
-                    astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
-                    break;
-                case lookBehindAssertionBegin:
-                    astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
-                    break;
-                case groupEnd:
-                    if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
-                        throw syntaxErrorHere(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
-                    }
-                    astBuilder.popGroup(token);
-                    break;
-                case charClass:
-                    astBuilder.addCharClass((Token.CharacterClass) token);
-                    break;
+                        addQuantifier((Token.Quantifier) token);
+                        break;
+                    case anchor:
+                        Token.Anchor anc = (Token.Anchor) token;
+                        switch (anc.getAncCps().getHi(0)) {
+                            case 'A':
+                                addCaret();
+                                break;
+                            case 'Z':
+                                // (?:$|(?=[\r\n]$))
+                                pushGroup(); // (?:
+                                addDollar(); // $
+                                nextSequence(); // |
+                                pushLookAheadAssertion(false); // (?=
+                                addCharClass(CodePointSet.create('\n', '\n', '\r', '\r')); // [\r\n]
+                                addDollar(); // $
+                                popGroup(); // )
+                                popGroup(); // )
+                                break;
+                            case 'z':
+                                addDollar();
+                                break;
+                            case 'G':
+                                bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
+                        }
+                    case alternation:   // TODO already handled in function disjunction()
+                        break;
+                    case inlineFlag:
+//                    Token.InlineFlagToken flagToken = (Token.InlineFlagToken) token;
+//                    flags = new JavaFlags(((Token.InlineFlagToken) token).getFlags());
+                        openInlineFlag = ((Token.InlineFlagToken) token).isOpen();
+                        if (!openInlineFlag)
+                            astBuilder.pushGroup();
+                        System.out.println("term() : " + ((Token.InlineFlagToken) token).getFlags());
+                        flagsStack.push(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
 
+//                    setLocalFlags(new JavaFlags(((Token.InlineFlagToken) token).getFlags()));
+                        break;  // TODO check if necessary
+                    case captureGroupBegin:
+                        astBuilder.pushCaptureGroup(token);
+                        break;
+                    case nonCaptureGroupBegin:
+                        astBuilder.pushGroup(token);
+                        break;
+                    case lookAheadAssertionBegin:
+                        astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
+                        break;
+                    case lookBehindAssertionBegin:
+                        astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
+                        break;
+                    case groupEnd:
+                        // TODO if bounded inline flag then remove the highest stack of flags
+                        if (!openInlineFlag) {
+                            flagsStack.pop();
+                            openInlineFlag = true;
+                        }
+                        else if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
+                            throw syntaxErrorHere(ErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
+                        }
+                        astBuilder.popGroup(token);
+                        break;
+                    case charClass:
+                        astBuilder.addCharClass((Token.CharacterClass) token);
+                        break;
+
+                }
+                lastToken = token;
             }
-            lastToken = token;
         }
     }
 
@@ -563,14 +609,6 @@ public final class JavaRegexParser implements RegexParser {
     // assertions to ECMAScript word-boundary assertions. Furthermore, the notion of a word
     // character is dependent on whether the Ruby regular expression is set to use the ASCII range
     // only.
-    // TODO  fix this to ECMA-Script
-    // (?<!\w)(?=\w)|(?<=\w)(?!\w)
-    //In regex, \b is shorthand for (?<!\w)(?=\w)|(?<=\w)(?!\w), and \w is shorthand for
-    // [a-zA-Z_0-9]. For that matter, there is a \B which is the negation of \b, but from
-    // what I can see that's not what you're looking for - you probably are looking for
-    // something like (?<!\W)(?=\W)|(?<=\W)(?!\W) which is the equivalent of \b but with
-    // non-alphanumeric characters. unfortunately your intention with this 'onlyquote'
-    // function isn't very clear so I we can't give you a proper answer
     private void buildWordBoundaryAssertion(CodePointSet wordChars, CodePointSet nonWordChars) {
         // (?:(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$))
         pushGroup(); // (?:
@@ -629,10 +667,10 @@ public final class JavaRegexParser implements RegexParser {
         return flagsStack.peek();
     }
 
-    private void setLocalFlags(JavaFlags newLocalFlags) {
-        flagsStack.pop();
-        flagsStack.push(newLocalFlags);
-    }
+//    private void setLocalFlags(JavaFlags newLocalFlags) {
+//        flagsStack.pop();
+//        flagsStack.push(newLocalFlags);
+//    }
 
     /// Input scanning
 
@@ -688,10 +726,10 @@ public final class JavaRegexParser implements RegexParser {
         }
     }
 
-    private void mustMatch(String next) {
+    private void mustMatch(String next) {       // TODO can be inlined but rename for understanding
         assert "}".equals(next) || ")".equals(next);
         if (!match(next)) {
-            throw syntaxErrorHere("}".equals(next) ? RbErrorMessages.EXPECTED_BRACE : RbErrorMessages.EXPECTED_PAREN);
+            throw syntaxErrorHere("}".equals(next) ? RbErrorMessages.EXPECTED_BRACE : RbErrorMessages.EXPECTED_PAREN);      // TODO create JavaErrorMessages, maybe copy them of Java original error messages
         }
     }
 
@@ -712,76 +750,6 @@ public final class JavaRegexParser implements RegexParser {
     private RegexSyntaxException syntaxErrorAt(String message, int pos) {
         return RegexSyntaxException.createPattern(inSource, message, pos);
     }
-
-//    /**
-//     * Parses a string of literal characters starting with the {@code firstCodepoint}.
-//     */
-//    private void string(int firstCodepoint) {   // TODO maybe get rid of the function as we do not use it anymore with tokens and astBuilder
-//        codepointsBuffer.clear();
-//        codepointsBuffer.add(firstCodepoint);
-//
-//        stringLoop:
-//        while (!atEnd() && curChar() != '|' && curChar() != ')') {
-//            int ch = consumeChar();
-//
-////            if (getLocalFlags().isExtended()) {
-////                if (WHITESPACE.get(ch)) {
-////                    continue;
-////                }
-////                if (ch == '#') {
-////                    comment();
-////                    continue;
-////                }
-////            }
-//
-//            switch (ch) {
-//                case '\\':
-////                    if (isProperEscapeNext()) {
-////                        retreat();
-////                        break stringLoop;
-////                    }
-////                    codepointsBuffer.add(fetchEscapedChar());
-//                    // add the right escape-method
-//                    break;
-//                case '[':
-//                case '*':
-//                case '+':
-//                case '?':
-//                case '{':
-//                case '.':
-//                case '(':
-//                case '^':
-//                case '$':
-//                    retreat();
-//                    break stringLoop;
-//                default:
-//                    System.out.println("B: " + (char) ch);
-//                    codepointsBuffer.add(ch);
-//            }
-//        }
-//
-//        boolean isQuantifierNext = isQuantifierNext();
-//        int last = codepointsBuffer.get(codepointsBuffer.length() - 1);
-//
-//        if (!silent) {
-//            if (isQuantifierNext) {
-//                codepointsBuffer.setLength(codepointsBuffer.length() - 1);
-//            }
-////
-////            if (getLocalFlags().isIgnoreCase()) {
-////                RubyCaseFolding.caseFoldUnfoldString(codepointsBuffer.toArray(), inSource.getEncoding().getFullSet(), astBuilder);
-////            } else {
-//            for (int i = 0; i < codepointsBuffer.length(); i++) {
-//                addChar(codepointsBuffer.get(i));
-//            }
-////            }
-////
-//            if (isQuantifierNext) {
-//                buildChar(last);
-//            }
-//        }
-//
-//    }
 
     /**
      * Adds a matcher for a given character. Since case-folding (IGNORECASE flag) can be enabled, a
@@ -818,8 +786,8 @@ public final class JavaRegexParser implements RegexParser {
     /**
      * Parses a term. A term is either:
      * <ul>
-     * <li>whitespace (if in vebose mode)</li>
-     * <li>a comment (if in verbose mode)</li>
+     * <li>whitespace (if in extended mode)</li>
+     * <li>a comment (if in extended mode)</li>
      * <li>an escape sequence</li>
      * <li>a character class</li>
      * <li>a quantifier</li>
@@ -832,16 +800,21 @@ public final class JavaRegexParser implements RegexParser {
         int ch = consumeChar();
 
         System.out.println(ch + " : " + (char) ch);
-//
-//        if (getLocalFlags().isVerbose()) {
-//            if (WHITESPACE.get(ch)) {
-//                return;
-//            }
-//            if (ch == '#') {
-//                comment();
-//                return;
-//            }
-//        }
+
+        if (getLocalFlags().isExtended()) {
+            if (WHITESPACE.get(ch)) {
+                System.out.println("His");
+//                ch = consumeChar();
+                return null;
+            }
+            if (ch == '#') {
+                System.out.println("Hi");
+                comment();
+                return null;
+            }
+        }
+
+        System.out.println("asdfasdf: " + (char) ch + " - " + ch);
 
         switch (ch) {
             case '\\':
@@ -861,6 +834,8 @@ public final class JavaRegexParser implements RegexParser {
 //                } else {
 //                    addCharClass(CodePointSet.create('\n').createInverse(inSource.getEncoding()));
 //                }
+                if(getLocalFlags().isDotAll())
+                    return Token.createCharClass(inSource.getEncoding().getFullSet());
                 return Token.createCharClass(Constants.DOT);    // TODO check for DotAll - flag ?
             case '(':
                 return parens();    // TODO group() does the closing bracket part already, no need for Token.createGroupEnd()
@@ -871,13 +846,12 @@ public final class JavaRegexParser implements RegexParser {
             case '$':
                 return Token.createDollar();
             default:
-//                string(ch);
-                if (globalFlags.isIgnoreCase()) {
+                if (getLocalFlags().isIgnoreCase()) {
                     curCharClass.clear();
                     curCharClass.appendRange(ch, ch);
 
                     boolean wasSingleChar = curCharClass.matchesSingleChar();
-                    CaseFoldTable.CaseFoldingAlgorithm caseFolding = globalFlags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+                    CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
                     CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
 
                     CodePointSet cps = curCharClass.toCodePointSet();
@@ -953,10 +927,9 @@ public final class JavaRegexParser implements RegexParser {
                         }
                         CodePointSet property;
                         propertySpec = parseUnicodeCharacterClass(propertySpec);
-                        if(UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec)) {
+                        if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec)) {
                             property = getUnicodePosixCharClass(propertySpec.toLowerCase());
-                        }
-                        else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+                        } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
                             property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
                         } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
                             property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
@@ -1139,14 +1112,15 @@ public final class JavaRegexParser implements RegexParser {
     private boolean nestedCharClass() {
         CodePointSetAccumulator curCharClassBackup = curCharClass;
         curCharClass = acquireCodePointSetAccumulator();
-        PosixClassParseResult parseResult = collectPosixCharClass();
-        if (parseResult == PosixClassParseResult.TryNestedClass) {
-            collectCharClass();
-        }
+//        PosixClassParseResult parseResult = collectPosixCharClass();
+//        if (parseResult == PosixClassParseResult.TryNestedClass) {
+        collectCharClass();
+//        }
         curCharClassBackup.addSet(curCharClass.get());
         releaseCodePointSetAccumulator(curCharClass);
         curCharClass = curCharClassBackup;
-        return parseResult != PosixClassParseResult.NotNestedClass;
+//        return parseResult != PosixClassParseResult.NotNestedClass;
+        return true;
     }
 
     private PosixClassParseResult collectPosixCharClass() {     // TODO Posix Character Classes do not exist like in Ruby [:alpha:]
@@ -1185,6 +1159,92 @@ public final class JavaRegexParser implements RegexParser {
 //        }
     }
 
+
+    private boolean identifiedAllGroups = false;
+    private int nGroups = 1;
+
+    public int numberOfCaptureGroups() throws RegexSyntaxException {
+        if (!identifiedAllGroups) {
+            identifyCaptureGroups();
+            identifiedAllGroups = true;
+        }
+        return nGroups;
+    }
+
+    private boolean findChars(char... chars) {
+        if (atEnd()) {
+            return false;
+        }
+        int i = ArrayUtils.indexOf(inPattern, position, inPattern.length(), chars);
+        if (i < 0) {
+            position = inPattern.length();
+            return false;
+        }
+        position = i;
+        return true;
+    }
+
+    private void registerCaptureGroup() {
+        if (!identifiedAllGroups) {
+            nGroups++;
+        }
+    }
+
+    /**
+     * Checks whether this regular expression contains any named capture groups.
+     * <p>
+     * This method is a way to check whether we are parsing the goal symbol Pattern[~U, +N] or
+     * Pattern[~U, ~N] (see the ECMAScript RegExp grammar).
+     */
+    private boolean hasNamedCaptureGroups() throws RegexSyntaxException {
+        return getNamedCaptureGroups() != null;
+    }
+
+    private void registerNamedCaptureGroup(String name) {
+        if (!identifiedAllGroups) {
+            if (namedCaptureGroups == null) {
+                namedCaptureGroups = new HashMap<>();
+            }
+            if (namedCaptureGroups.containsKey(name)) {
+                throw syntaxErrorHere(ErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+            }
+            namedCaptureGroups.put(name, nGroups);
+        }
+        registerCaptureGroup();
+    }
+
+
+    private void identifyCaptureGroups() throws RegexSyntaxException {
+        // We are counting capture groups, so we only care about '(' characters and special
+        // characters which can cancel the meaning of '(' - those include '\' for escapes, '[' for
+        // character classes (where '(' stands for a literal '(') and any characters after the '('
+        // which might turn into a non-capturing group or a look-around assertion.
+        boolean insideCharClass = false;
+        final int restoreIndex = position;
+        while (findChars('\\', '[', ']', '(')) {
+            switch (consumeChar()) {
+                case '\\':
+                    // skip escaped char
+                    advance();
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    break;
+                case '(':
+                    if (!insideCharClass) {
+                        parens();
+                    }
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+        position = restoreIndex;
+    }
+
     /**
      * Escape sequence are special sequences starting with a backslash character. When calling this
      * method, the backslash is assumed to have already been parsed.
@@ -1209,16 +1269,16 @@ public final class JavaRegexParser implements RegexParser {
         }
         int ch = consumeChar();
         int restorePosition = position;
-//        if ('1' <= c && c <= '9') {
-//            final int restoreIndex = index;
-//            final int backRefNumber = (c - '0');
-//            if (backRefNumber < numberOfCaptureGroups()) {
-//                return Token.createBackReference(backRefNumber);
-//            } else if (flags.isUnicode()) {
-//                throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
-//            }
-//            index = restoreIndex;
-//        }
+        if ('1' <= ch && ch <= '9') {
+            final int restoreIndex = position;
+            final int backRefNumber = (ch - '0');
+            if (backRefNumber < numberOfCaptureGroups()) {
+                return Token.createBackReference(backRefNumber);
+            } else if (getLocalFlags().isUnicode()) {
+                throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+            }
+            position = restoreIndex;
+        }
         switch (ch) {
             case 'A':
             case 'Z':
@@ -1243,28 +1303,28 @@ public final class JavaRegexParser implements RegexParser {
 //            case 'G':
 ////                bailOut("\\G anchor is only supported at the beginning of top-level alternatives");
 //                return Token.createAnchor("G", CodePointSet.create('G'));
-//            case 'k':
-//                if (flags.isUnicode() || hasNamedCaptureGroups()) {
-//                    if (atEnd()) {
-//                        throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
-//                    }
-//                    if (consumeChar() != '<') {
-//                        throw syntaxError(ErrorMessages.MISSING_GROUP_NAME);
-//                    }
-//                    String groupName = parseGroupName();
-//                    // backward reference
-//                    if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
-//                        return Token.createBackReference(namedCaptureGroups.get(groupName));
-//                    }
-//                    // possible forward reference
-//                    Map<String, Integer> allNamedCaptureGroups = getNamedCaptureGroups();
-//                    if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
-//                        return Token.createBackReference(allNamedCaptureGroups.get(groupName));
-//                    }
-//                    throw syntaxError(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
-//                } else {
-//                    return charClass(c);
-//                }
+            case 'k':
+                if (getLocalFlags().isUnicode() || hasNamedCaptureGroups()) {
+                    if (atEnd()) {
+                        throw syntaxErrorHere(ErrorMessages.ENDS_WITH_UNFINISHED_ESCAPE_SEQUENCE);
+                    }
+                    if (consumeChar() != '<') {
+                        throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_NAME);
+                    }
+                    String groupName = parseGroupName('>');
+                    // backward reference
+                    if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
+                        return Token.createBackReference(namedCaptureGroups.get(groupName));
+                    }
+                    // possible forward reference
+                    Map<String, Integer> allNamedCaptureGroups = getNamedCaptureGroups();
+                    if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
+                        return Token.createBackReference(allNamedCaptureGroups.get(groupName));
+                    }
+                    throw syntaxErrorHere(ErrorMessages.MISSING_GROUP_FOR_BACKREFERENCE);
+                } else {
+                    return charClass(ch);
+                }
             case 'b':
                 return Token.createWordBoundary();
             case 'B':
@@ -1289,10 +1349,9 @@ public final class JavaRegexParser implements RegexParser {
                     }
                     CodePointSet property;
                     propertySpec = parseUnicodeCharacterClass(propertySpec);
-                    if(UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec)) {
+                    if (UNICODE_POSIX_CHAR_CLASSES.containsKey(propertySpec)) {
                         property = getUnicodePosixCharClass(propertySpec.toLowerCase());
-                    }
-                    else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
+                    } else if (UnicodeProperties.isSupportedGeneralCategory(propertySpec, true)) {
                         property = trimToEncoding(UnicodeProperties.getProperty("General_Category=" + propertySpec, true));
                     } else if (UnicodeProperties.isSupportedScript(propertySpec, true)) {
                         property = trimToEncoding(UnicodeProperties.getProperty("Script=" + propertySpec, true));
@@ -1328,10 +1387,10 @@ public final class JavaRegexParser implements RegexParser {
                 // directly.
                 if (isPredefCharClass(ch)) {
                     return Token.createCharClass(parsePredefCharClass(ch));
-//                } else if (globalFlags.isUnicode() && (ch == 'p' || ch == 'P')) {
+//                } else if (getLocalFlags().isUnicode() && (ch == 'p' || ch == 'P')) {
 //                    return charClass(parseUnicodeCharacterProperty(ch == 'P'));
                 } else {
-                    return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)));
+                    return Token.createCharClass(CodePointSet.create(parseEscapeChar(ch, false)), true);
                 }
         }
     }
@@ -1342,10 +1401,9 @@ public final class JavaRegexParser implements RegexParser {
 
     private static String parseUnicodeCharacterClass(String property) {
         String propertyBegin = property.toLowerCase().substring(0, 2);
-        if(propertyBegin.equals("is") || propertyBegin.equals("in")) {
+        if (propertyBegin.equals("is") || propertyBegin.equals("in")) {
             return property.substring(2);
-        }
-        else if(property.contains("=")) {
+        } else if (property.contains("=")) {
             return property.substring(property.indexOf('=') + 1);
         }
         return property;
@@ -1370,7 +1428,7 @@ public final class JavaRegexParser implements RegexParser {
                     return Constants.NON_WHITE_SPACE;
                 }
             case 'd':
-                if (globalFlags.isUnicodeCharacterClass()) {
+                if (getLocalFlags().isUnicodeCharacterClass()) {
                     return UnicodeProperties.getProperty("Nd");
                 } else {
                     return Constants.DIGITS;
@@ -1378,7 +1436,7 @@ public final class JavaRegexParser implements RegexParser {
             case 'D':
                 return Constants.NON_DIGITS;
             case 'w':
-                if (globalFlags.isUnicodeCharacterClass()) {    // TODO done right? https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html#UNICODE_CHARACTER_CLASS
+                if (getLocalFlags().isUnicodeCharacterClass()) {    // TODO done right? https://docs.oracle.com/javase/7/docs/api/java/util/regex/Pattern.html#UNICODE_CHARACTER_CLASS
                     // In JavaScript CaseFoldTable.applyCaseFold oder caseClosure(), nimmt alle equivalenten Groß- und Kleinbuchstaben dazu für flag 'u'
                     /*
                     private Token charClass(boolean invert) {
@@ -1394,17 +1452,15 @@ public final class JavaRegexParser implements RegexParser {
                     TODO wie in JavaScript, also ECMAScript eins zu eins übernehmen
                      */
                     return UNICODE_POSIX_CHAR_CLASSES.get("word");
-                }
-                else if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+                } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
                     return Constants.WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.WORD_CHARS;
                 }
             case 'W':
-                if (globalFlags.isUnicodeCharacterClass()) {
+                if (getLocalFlags().isUnicodeCharacterClass()) {
                     return UNICODE_POSIX_CHAR_CLASSES.get("word").createInverse(Encodings.UTF_32);
-                }
-                else if (globalFlags.isUnicode() && globalFlags.isIgnoreCase()) {
+                } else if (getLocalFlags().isUnicode() && getLocalFlags().isIgnoreCase()) {
                     return Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE;
                 } else {
                     return Constants.NON_WORD_CHARS;
@@ -1471,10 +1527,10 @@ public final class JavaRegexParser implements RegexParser {
         }
         switch (c) {
             case '0':
-                if (globalFlags.isUnicode() && !atEnd() && isDecDigit(curChar())) {
+                if (getLocalFlags().isUnicode() && !atEnd() && isDecDigit(curChar())) {
                     throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
                 }
-                if (!globalFlags.isUnicode() && !atEnd() && isOctDigit(curChar())) {
+                if (!getLocalFlags().isUnicode() && !atEnd() && isOctDigit(curChar())) {
                     return parseOctal(0);
                 }
                 return '\0';
@@ -1501,7 +1557,7 @@ public final class JavaRegexParser implements RegexParser {
 //                    return escapeCharSyntaxError('\\', ErrorMessages.INVALID_CONTROL_CHAR_ESCAPE);
 //                }
 //                final char controlLetter = curChar();
-//                if (!globalFlags.isUnicode() && (isDecDigit(controlLetter) || controlLetter == '_') && inCharClass) {
+//                if (!getLocalFlags().isUnicode() && (isDecDigit(controlLetter) || controlLetter == '_') && inCharClass) {
 //                    advance();
 //                    return controlLetter % 32;
 //                }
@@ -1523,11 +1579,11 @@ public final class JavaRegexParser implements RegexParser {
 //                }
 //                return c;
             default:
-                if (!globalFlags.isUnicode() && isOctDigit(c)) {
+                if (!getLocalFlags().isUnicode() && isOctDigit(c)) {
                     return parseOctal(c - '0');
                 }
                 if (!SYNTAX_CHARACTERS.get(c)) {
-                    if (globalFlags.isUnicode()) {
+                    if (getLocalFlags().isUnicode()) {
                         throw syntaxErrorHere(ErrorMessages.INVALID_ESCAPE);
                     }
 //                    return escapeCharSyntaxError(c, ErrorMessages.INVALID_ESCAPE);
@@ -1776,6 +1832,7 @@ public final class JavaRegexParser implements RegexParser {
                 return countedRepetitionSyntaxError(resetIndex);
             }
             min = literalMin.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) <= 0 ? literalMin.intValue() : -1;
+            System.out.println("min: " + min);
             if (consumingLookahead(",}")) {
                 greedy = !consumingLookahead("?");
             } else if (consumingLookahead("}")) {
@@ -1828,7 +1885,7 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     private Token countedRepetitionSyntaxError(int resetIndex) throws RegexSyntaxException {
-        if (globalFlags.isUnicode()) {
+        if (getLocalFlags().isUnicode()) {
             throw syntaxErrorHere(ErrorMessages.INCOMPLETE_QUANTIFIER);
         }
         position = resetIndex;
@@ -1836,7 +1893,7 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     private Token charClass(int codePoint) {
-        if (globalFlags.isIgnoreCase()) {
+        if (getLocalFlags().isIgnoreCase()) {
             curCharClass.clear();
             curCharClass.appendRange(codePoint, codePoint);
             return charClass(false);
@@ -1846,7 +1903,7 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     private Token charClass(CodePointSet codePointSet) {
-        if (globalFlags.isIgnoreCase()) {
+        if (getLocalFlags().isIgnoreCase()) {
             curCharClass.clear();
             curCharClass.addSet(codePointSet);
             return charClass(false);
@@ -1857,8 +1914,8 @@ public final class JavaRegexParser implements RegexParser {
 
     private Token charClass(boolean invert) {
         boolean wasSingleChar = !invert && curCharClass.matchesSingleChar();
-        if (globalFlags.isIgnoreCase()) {
-            CaseFoldTable.CaseFoldingAlgorithm caseFolding = globalFlags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
+        if (getLocalFlags().isIgnoreCase()) {
+            CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
             CaseFoldTable.applyCaseFold(curCharClass, charClassTmp, caseFolding);
         }
         CodePointSet cps = curCharClass.toCodePointSet();
@@ -1881,190 +1938,40 @@ public final class JavaRegexParser implements RegexParser {
         return inPattern.regionMatches(position, match, 0, match.length());
     }
 
-//    private static final class Quantifier {
-/*
-        public static final int INFINITY = -1;
-
-        public int lower;
-        public int upper;
-        public boolean greedy;
-
-        Quantifier(int lower, int upper, boolean greedy) {
-            this.lower = lower;
-            this.upper = upper;
-            this.greedy = greedy;
-        }
-
-        @Override
-        public String toString() {
-            StringBuilder output = new StringBuilder();
-            if (lower == 0 && upper == INFINITY) {
-                output.append("*");
-            } else if (lower == 1 && upper == INFINITY) {
-                output.append("+");
-            } else if (lower == 0 && upper == 1) {
-                output.append("?");
-            } else {
-                output.append("{");
-                output.append(lower);
-                output.append(",");
-                if (upper != INFINITY) {
-                    output.append(upper);
-                }
-                output.append("}");
-            }
-            if (!greedy) {
-                output.append("?");
-            }
-            return output.toString();
-        }
-    }
-*/
-
-//    private void quantifier(int ch) {
-/*        int start = position - 1;
-        Quantifier quantifier = parseQuantifier(ch);
-        if (quantifier != null) {
-            buildQuantifier(quantifier, start);
-        } else {
-            string(consumeChar());
-        }
-    }*/
-
 //    /**
-//     * Parses a quantifier whose first character is the argument {@code ch}.
+//     * Indicates whether a quantifier is coming up next.
 //     */
-//    private Quantifier parseQuantifier(int ch) {
-/*       int start = position - 1;
-        if (ch == '{') {
-            if (match("}") || match(",}")) {
-                position = start;
-                return null;
-            } else {
-                Optional<BigInteger> lowerBound = Optional.empty();
-                Optional<BigInteger> upperBound = Optional.empty();
-                boolean canBeNonGreedy = true;
-                String lower = getMany(JavaRegexParser::isDecDigit);
-                if (!lower.isEmpty()) {
-                    lowerBound = Optional.of(new BigInteger(lower));
-                }
-                if (match(",")) {
-                    String upper = getMany(JavaRegexParser::isDecDigit);
-                    if (!upper.isEmpty()) {
-                        upperBound = Optional.of(new BigInteger(upper));
-                    }
-                } else {
-                    upperBound = lowerBound;
-                    canBeNonGreedy = false;
-                }
-                if (!match("}")) {
-                    position = start;
-                    return null;
-                }
-                if (lowerBound.isPresent() && upperBound.isPresent() && lowerBound.get().compareTo(upperBound.get()) > 0) {
-                    throw syntaxErrorAt(RbErrorMessages.MIN_REPEAT_GREATER_THAN_MAX_REPEAT, start);
-                }
-                boolean greedy = true;
-                if (canBeNonGreedy && match("?")) {
-                    greedy = false;
-                }
-                return new Quantifier(lowerBound.orElse(BigInteger.ZERO).intValue(),
-                        upperBound.orElse(BigInteger.valueOf(Quantifier.INFINITY)).intValue(),
-                        greedy);
-            }
-        } else {
-            int lower;
-            int upper;
-            switch (ch) {
-                case '*':
-                    lower = 0;
-                    upper = Quantifier.INFINITY;
-                    break;
-                case '+':
-                    lower = 1;
-                    upper = Quantifier.INFINITY;
-                    break;
-                case '?':
-                    lower = 0;
-                    upper = 1;
-                    break;
-                default:
-                    throw new IllegalStateException("should not reach here");
-            }
-            boolean greedy = true;
-            if (match("?")) {
-                greedy = false;
-            } else if (match("+")) {
-                bailOut("possessive quantifiers not supported");
-            }
-            return new Quantifier(lower, upper, greedy);
-        }
-    }*/
-
-//    private void buildQuantifier(Quantifier quantifier, int start) {
-/*        switch (lastTerm) {
-            case None:
-                throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
-            case LookAroundAssertion:
-                // A lookaround assertion might contain capture groups and thus have side effects.
-                // ECMAScript regular expressions do not accept extraneous empty matches. Therefore,
-                // an expression like /(?:(?=(a)))?/ would capture the 'a' in a capture group in
-                // Ruby but it would not do so in ECMAScript. To avoid this, we bail out on
-                // quantifiers on complex assertions (i.e. lookaround assertions), which might
-                // contain capture groups.
-                // NB: This could be made more specific. We could target only lookaround assertions
-                // which contain capture groups and only when the quantifier is actually optional
-                // (min = 0, such as ?, *, or {,x}).
-                bailOut("quantifiers on lookaround assertions not supported");
-                lastTerm = TermCategory.Quantifier;
-                break;
-            case Quantifier:
-            case OtherAssertion:
-                wrapCurTermInGroup();
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                lastTerm = TermCategory.Quantifier;
-                break;
-            case Atom:
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                lastTerm = TermCategory.Quantifier;
-                break;
-        }
-    }*/
-
-    /**
-     * Indicates whether a quantifier is coming up next.
-     */
-    public boolean isQuantifierNext() {
-        if (atEnd()) {
-            return false;
-        }
-        switch (curChar()) {
-            case '*':
-            case '+':
-            case '?':
-                return true;
-            case '{':
-                int oldPosition = position;
-                try {
-                    advance();
-                    if (match("}") || match(",}")) {
-                        return false;
-                    } else {
-                        // lower bound
-                        getMany(JavaRegexParser::isDecDigit);
-                        // upper bound
-                        if (match(",")) {
-                            getMany(JavaRegexParser::isDecDigit);
-                        }
-                        return match("}");
-                    }
-                } finally {
-                    position = oldPosition;
-                }
-            default:
-                return false;
-        }
-    }
+//    public boolean isQuantifierNext() {
+//        if (atEnd()) {
+//            return false;
+//        }
+//        switch (curChar()) {
+//            case '*':
+//            case '+':
+//            case '?':
+//                return true;
+//            case '{':
+//                int oldPosition = position;
+//                try {
+//                    advance();
+//                    if (match("}") || match(",}")) {
+//                        return false;
+//                    } else {
+//                        // lower bound
+//                        getMany(JavaRegexParser::isDecDigit);
+//                        // upper bound
+//                        if (match(",")) {
+//                            getMany(JavaRegexParser::isDecDigit);
+//                        }
+//                        return match("}");
+//                    }
+//                } finally {
+//                    position = oldPosition;
+//                }
+//            default:
+//                return false;
+//        }
+//    }
 
     /**
      * Parses one of the many syntactic forms that start with a parenthesis, assuming that the
@@ -2107,7 +2014,8 @@ public final class JavaRegexParser implements RegexParser {
 //                            lookbehind(true);
                         default:
                             retreat();
-                            parseGroupName('>');
+                            String groupName = parseGroupName('>');
+                            registerNamedCaptureGroup(groupName);
 //                            group(true);
                             return Token.createCaptureGroupBegin();
                     }
@@ -2115,11 +2023,11 @@ public final class JavaRegexParser implements RegexParser {
 
                 case '=':
 //                    lookahead(false);
-                    return Token.createLookBehindAssertionBegin(false);
+                    return Token.createLookAheadAssertionBegin(false);
 
                 case '!':
 //                    lookahead(true);
-                    return Token.createLookBehindAssertionBegin(true);
+                    return Token.createLookAheadAssertionBegin(true);
 
                 case '>':
                     if (!inSource.getOptions().isIgnoreAtomicGroups()) {
@@ -2142,18 +2050,20 @@ public final class JavaRegexParser implements RegexParser {
                     // use the InlineFlagToken, check if ":" or ")" and deal with it properly
                     // or just use flags() and deal with it internally
                     // --> still needed to be decided
-                    flags(ch1);
+//                    flags(ch1);
 //                    registerCaptureGroup();
-                    return Token.createGroupEnd();
-
+//                    return Token.createGroupEnd();
+                    return inlineFlag(ch1);
                 default:
                     throw syntaxErrorAt(RbErrorMessages.unknownExtension(ch1), position - 1);
             }
         } else {
-            group(!containsNamedCaptureGroups());
+//            group(!containsNamedCaptureGroups());
+            registerCaptureGroup();
+            return Token.createCaptureGroupBegin();
         }
 
-        return Token.createCaptureGroupBegin();
+//        return Token.createCaptureGroupBegin();
     }
 
     private boolean containsNamedCaptureGroups() {
@@ -2191,13 +2101,63 @@ public final class JavaRegexParser implements RegexParser {
         return groupName;
     }
 
+
+    private Token inlineFlag(int ch) {
+        boolean negative = false;
+        System.out.println("1: " + (char) ch);
+        if (ch == '-') {
+            negative = true;
+
+            ch = curChar();
+            System.out.println("2: " + (char) ch);
+        }
+
+//        JavaFlags newFlags = getLocalFlags();
+        JavaFlags newFlags = getLocalFlags();
+
+//        ch = curChar();
+        System.out.println("3: " + (char) ch);
+
+        while (ch != ')' && ch != ':') {
+            System.out.println("Char in Flag: " + (char) ch);
+            if (JavaFlags.isValidFlagChar(ch)) {
+                if (negative) {
+                    if (JavaFlags.isTypeFlag(ch)) {
+                        throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
+                    }
+                    newFlags = newFlags.delFlag(ch);
+                } else {
+                    newFlags = newFlags.addFlag(ch);
+                }
+            } else if (Character.isAlphabetic(ch)) {
+                throw syntaxErrorHere(RbErrorMessages.UNDEFINED_GROUP_OPTION);
+            } else {
+                throw syntaxErrorHere(RbErrorMessages.MISSING_DASH_COLON_PAREN);
+            }
+
+            if (atEnd()) {
+                throw syntaxErrorAtEnd(RbErrorMessages.MISSING_FLAG_DASH_COLON_PAREN);
+            }
+            ch = consumeChar();
+        }
+
+        System.out.println("Stuff: " + (char) ch);
+
+
+        boolean open = ch == ')';
+
+        System.out.println("Flags: " + newFlags.toString());
+        ;
+        return Token.addInlineFlag(negative, newFlags.toString(), open);
+    }
+
     /**
      * Parses a local flag block or an inline declaration of a global flags. Assumes that the prefix
      * '(?' was already parsed, as well as the first flag which is passed as the argument.
      */
 
     // TODO adjust to the use of tokens instead of the Ruby version of it
-    private void flags(int ch0) {
+    private void flagsF(int ch0) {
         int ch = ch0;
         JavaFlags newFlags = getLocalFlags();
         boolean negative = false;
@@ -2236,7 +2196,7 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     private void openEndedLocalFlags(JavaFlags newFlags) {
-        setLocalFlags(newFlags);
+//        setLocalFlags(newFlags);
 //        lastTerm = TermCategory.None;
         // Using "open-ended" flag modifiers, e.g. /a(?i)b|c/, makes Java wrap the continuation
         // of the flag modifier in parentheses, so that the above regex is equivalent to
