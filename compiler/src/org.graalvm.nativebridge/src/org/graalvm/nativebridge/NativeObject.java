@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package org.graalvm.nativebridge;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.LongPredicate;
-
 /**
  * Encapsulates a handle to an object in a native image heap where the object's lifetime is bound to
  * the lifetime of the {@link NativeObject} instance. At some point, after a {@link NativeObject} is
@@ -37,7 +34,7 @@ public class NativeObject {
 
     private final NativeIsolate isolate;
     private final long objectHandle;
-    private final CleanupAction cleanupAction;
+    private final NativeObjectCleaner<NativeObject> cleanup;
 
     /**
      * Creates a new {@link NativeObject}.
@@ -48,8 +45,7 @@ public class NativeObject {
     public NativeObject(NativeIsolate isolate, long objectHandle) {
         this.isolate = isolate;
         this.objectHandle = objectHandle;
-        this.cleanupAction = new CleanupAction(objectHandle, isolate.getConfig());
-        isolate.registerForCleanup(this, cleanupAction);
+        this.cleanup = new NativeObjectCleanerImpl(this).register();
     }
 
     /**
@@ -72,35 +68,28 @@ public class NativeObject {
      * heap is bound to the lifetime of the {@link NativeObject} instance.
      */
     public final void release() {
-        if (!cleanupAction.released.get()) {
+        if (isolate.cleaners.remove(cleanup)) {
             NativeIsolateThread nativeIsolateThread = isolate.enter();
             try {
-                cleanupAction.test(nativeIsolateThread.getIsolateThreadId());
+                cleanup.cleanUp(nativeIsolateThread.getIsolateThreadId());
             } finally {
                 nativeIsolateThread.leave();
             }
         }
     }
 
-    static final class CleanupAction implements LongPredicate {
+    private static final class NativeObjectCleanerImpl extends NativeObjectCleaner<NativeObject> {
 
         private final long handle;
-        private final JNIConfig config;
-        private final AtomicBoolean released;
 
-        CleanupAction(long handle, JNIConfig config) {
-            this.handle = handle;
-            this.config = config;
-            this.released = new AtomicBoolean();
+        NativeObjectCleanerImpl(NativeObject nativeObject) {
+            super(nativeObject, nativeObject.getIsolate());
+            this.handle = nativeObject.getHandle();
         }
 
         @Override
-        public boolean test(long isolateThread) {
-            if (released.compareAndSet(false, true)) {
-                return config.releaseNativeObject(isolateThread, handle);
-            } else {
-                return true;
-            }
+        public boolean cleanUp(long isolateThread) {
+            return isolate.getConfig().releaseNativeObject(isolateThread, handle);
         }
 
         @Override

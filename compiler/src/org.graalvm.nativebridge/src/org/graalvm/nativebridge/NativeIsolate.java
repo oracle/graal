@@ -24,17 +24,13 @@
  */
 package org.graalvm.nativebridge;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.LongPredicate;
 
 /**
  * Represents a single native image isolate. All {@link NativeObject}s have a {@link NativeIsolate}
@@ -46,15 +42,13 @@ public final class NativeIsolate {
     private static final long NULL = 0L;
     private static final Map<Long, NativeIsolate> isolates = new ConcurrentHashMap<>();
     private static final AtomicInteger UUIDS = new AtomicInteger(0);
-    private static final ReferenceQueue<Object> cleanersQueue = new ReferenceQueue<>();
-    private static final Object INVALID_ISOLATE_THREAD = new Object();
 
     private final long uuid;
     private final long isolateId;
     private final JNIConfig config;
-    private final Set<Cleaner> cleaners;
     private final ThreadLocal<NativeIsolateThread> attachedIsolateThread;
     private final Collection<NativeIsolateThread> threads;      // Guarded by this
+    final Set<NativeObjectCleaner<?>> cleaners;
     private volatile State state;  // Guarded by this
 
     private NativeIsolate(long isolateId, JNIConfig config) {
@@ -212,20 +206,6 @@ public final class NativeIsolate {
         return res;
     }
 
-    /**
-     * Registers an object for cleanup. At some point after a {@code cleanableObject} is garbage
-     * collected the {@link NativeIsolate} is entered and the {@code cleanupAction} is executed with
-     * the isolate thread address parameter. The {@code cleanupAction} should perform cleanup in the
-     * isolate heap. The {@code cleanupAction} returns {@code true} on success and {@code false} on
-     * failure.
-     */
-    public void registerForCleanup(Object cleanableObject, LongPredicate cleanupAction) {
-        if (state != State.DISPOSED) {
-            cleanHandles();
-            cleaners.add(new Cleaner(cleanersQueue, cleanableObject, this, cleanupAction));
-        }
-    }
-
     /*
      * Returns true if the isolate shutdown process has already begun or is finished.
      */
@@ -246,57 +226,6 @@ public final class NativeIsolate {
 
     RuntimeException throwClosedException() {
         throw new IllegalStateException("Isolate 0x" + Long.toHexString(getIsolateId()) + " is already closed.");
-    }
-
-    private static void cleanHandles() {
-        Map<NativeIsolate, Object> enteredThreads = null;
-        Cleaner cleaner;
-        try {
-            while ((cleaner = (Cleaner) cleanersQueue.poll()) != null) {
-                NativeIsolate isolate = cleaner.isolate;
-                if (isolate.cleaners.remove(cleaner)) {
-                    Object enteredThread;
-                    if (enteredThreads == null) {
-                        enteredThreads = new HashMap<>();
-                        enteredThread = null;
-                    } else {
-                        enteredThread = enteredThreads.get(isolate);
-                    }
-                    if (enteredThread == null) {
-                        enteredThread = isolate.tryEnter();
-                        if (enteredThread == null) {
-                            enteredThread = INVALID_ISOLATE_THREAD;
-                        }
-                        enteredThreads.put(isolate, enteredThread);
-                    }
-                    if (enteredThread != INVALID_ISOLATE_THREAD) {
-                        cleanImpl(isolate.isolateId, ((NativeIsolateThread) enteredThread).getIsolateThreadId(), cleaner.action);
-                    }
-                }
-            }
-        } finally {
-            if (enteredThreads != null) {
-                for (Object enteredThread : enteredThreads.values()) {
-                    if (enteredThread != INVALID_ISOLATE_THREAD) {
-                        ((NativeIsolateThread) enteredThread).leave();
-                    }
-                }
-            }
-        }
-    }
-
-    private static void cleanImpl(long isolate, long isolateThread, LongPredicate action) {
-        try {
-            if (!action.test(isolateThread)) {
-                throw new Exception(String.format("Error releasing %s in isolate 0x%x.", action, isolate));
-            }
-        } catch (Throwable t) {
-            boolean ae = false;
-            assert (ae = true) == true;
-            if (ae) {
-                t.printStackTrace();
-            }
-        }
     }
 
     private boolean doIsolateShutdown() {
@@ -343,18 +272,6 @@ public final class NativeIsolate {
             }
         }
         return nativeIsolateThread;
-    }
-
-    static final class Cleaner extends WeakReference<Object> {
-
-        final NativeIsolate isolate;
-        private final LongPredicate action;
-
-        private Cleaner(ReferenceQueue<Object> cleanersQueue, Object referent, NativeIsolate isolate, LongPredicate action) {
-            super(referent, cleanersQueue);
-            this.isolate = isolate;
-            this.action = action;
-        }
     }
 
     private enum State {
