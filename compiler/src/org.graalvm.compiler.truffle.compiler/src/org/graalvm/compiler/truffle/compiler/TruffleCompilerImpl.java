@@ -535,7 +535,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             printer.finish(compilationResult);
         } catch (Throwable t) {
             if (t instanceof BailoutException) {
-                handleBailout(debug, graph, (BailoutException) t);
+                handleBailout(debug, graph, (BailoutException) t, wrapper.options);
             }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
@@ -588,9 +588,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      *
      * @param graph graph producing the bailout, can be null
      * @param bailout {@link BailoutException to process}
+     * @param options
      */
     @SuppressWarnings("unused")
-    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout, org.graalvm.options.OptionValues options) {
         // nop
     }
 

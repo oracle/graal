@@ -103,6 +103,7 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implements HotSpotTruffleCompiler {
 
@@ -409,14 +410,15 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @SuppressWarnings("try")
     @Override
-    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout, org.graalvm.options.OptionValues options) {
         /*
          * Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions"
          * during code installation. Since there's no specific exception for such cases, it's
          * assumed that non-permanent, non-cancellation bailouts are due to "invalid dependencies"
          * during code installation.
          */
-        if (!getPartialEvaluator().isEncodedGraphCacheEnabled() || bailout instanceof CancellationBailoutException || bailout.isPermanent()) {
+        boolean persistentEncodedGraphCache = options.get(PolyglotCompilerOptions.EncodedGraphCache);
+        if (!persistentEncodedGraphCache || bailout instanceof CancellationBailoutException || bailout.isPermanent()) {
             return;
         }
         // Evict only the methods that could have caused the invalidation e.g. methods with
@@ -428,7 +430,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                         DebugCloseable time = EncodedGraphCacheEvictionTime.start(debug)) {
             EncodedGraphCacheBailouts.increment(debug);
             assert graph.method() != null;
-            EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
+            EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache(persistentEncodedGraphCache);
             /*
              * At this point, the cache containing invalid graphs may be already purged/dropped, but
              * there's no way to know in which cache the invalid method is/was present, so all

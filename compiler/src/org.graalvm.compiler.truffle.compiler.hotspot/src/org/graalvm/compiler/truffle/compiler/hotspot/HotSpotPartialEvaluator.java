@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
@@ -47,11 +45,6 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
 
-    public boolean isEncodedGraphCacheEnabled() {
-        return encodedGraphCacheCapacity != 0;
-    }
-
-    private int encodedGraphCacheCapacity;
     private int jvmciReservedReference0Offset = -1;
 
     private boolean disableEncodedGraphCachePurges;
@@ -73,7 +66,6 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     @Override
     protected void initialize(OptionValues options) {
         super.initialize(options);
-        encodedGraphCacheCapacity = options.get(PolyglotCompilerOptions.EncodedGraphCacheCapacity);
     }
 
     @Override
@@ -83,37 +75,18 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
                         (HotSpotKnownTruffleTypes) getKnownTruffleTypes());
     }
 
-    @SuppressWarnings("serial")
-    private Map<ResolvedJavaMethod, EncodedGraph> createEncodedGraphMap() {
-        if (encodedGraphCacheCapacity < 0) {
-            // Unbounded cache.
-            return new ConcurrentHashMap<>();
-        }
-
-        // Access-based LRU bounded cache. The overhead of the synchronized map is negligible
-        // compared to the cost of re-parsing the graphs.
-        return Collections.synchronizedMap(
-                        new LinkedHashMap<ResolvedJavaMethod, EncodedGraph>(16, 0.75f, true) {
-                            @Override
-                            protected boolean removeEldestEntry(Map.Entry<ResolvedJavaMethod, EncodedGraph> eldest) {
-                                // encodedGraphCacheCapacity < 0 => unbounded capacity
-                                return (encodedGraphCacheCapacity >= 0) && size() > encodedGraphCacheCapacity;
-                            }
-                        });
-    }
-
     @Override
-    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
-        if (encodedGraphCacheCapacity == 0) {
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache(boolean persistentEncodedGraphCache) {
+        if (!persistentEncodedGraphCache) {
             // The encoded graph cache is disabled across different compilations. The returned map
             // can still be used and propagated within the same compilation unit.
-            return super.getOrCreateEncodedGraphCache();
+            return super.getOrCreateEncodedGraphCache(persistentEncodedGraphCache);
         }
         EconomicMap<ResolvedJavaMethod, EncodedGraph> cache;
         do {
             cache = graphCacheRef.get();
         } while (cache == null &&
-                        !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(createEncodedGraphMap())));
+                        !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(new ConcurrentHashMap<>())));
         assert cache != null;
         return cache;
     }
@@ -134,13 +107,13 @@ public final class HotSpotPartialEvaluator extends PartialEvaluator {
     }
 
     @Override
-    protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
-        if (isEncodedGraphCacheEnabled()) {
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope(boolean persistentEncodedGraphCache) {
+        if (persistentEncodedGraphCache) {
             // The interpreter graphs may be cached across compilations, keep JavaConstants
             // references to the application heap alive in the libgraal global scope.
             return HotSpotGraalServices::enterGlobalCompilationContext;
         } else {
-            return super.getCreateCachedGraphScope();
+            return super.getCreateCachedGraphScope(persistentEncodedGraphCache);
         }
     }
 }

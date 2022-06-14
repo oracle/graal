@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler;
 
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EncodedGraphCache;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalGraphSize;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
@@ -163,7 +164,7 @@ public abstract class PartialEvaluator {
                         options.get(ExcludeAssertions));
     }
 
-    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache(@SuppressWarnings("unused") boolean persistentEncodedGraphCache) {
         return EconomicMap.create();
     }
 
@@ -426,13 +427,14 @@ public abstract class PartialEvaluator {
         InlineInvokePlugin[] inlineInvokePlugins = new InlineInvokePlugin[]{
                         inlineInvokePlugin
         };
+        boolean persistentEncodedGraphCache = context.options.get(EncodedGraphCache);
         PEGraphDecoder decoder = createGraphDecoder(context,
                         context.isFirstTier() ? firstTierDecodingPlugins : lastTierDecodingPlugins,
                         inlineInvokePlugins,
                         new InterceptReceiverPlugin(context.compilable),
                         nodePlugins,
                         new TruffleSourceLanguagePositionProvider(context.task.inliningData()),
-                        graphCache, getCreateCachedGraphScope());
+                        graphCache, getCreateCachedGraphScope(persistentEncodedGraphCache));
         GraphSizeListener listener = new GraphSizeListener(context.options, context.graph);
         try (Graph.NodeEventScope ignored = context.graph.trackNodeEvents(listener)) {
             decoder.decode(context.graph.method(), context.graph.isSubstitution(), context.graph.trackNodeSourcePosition());
@@ -447,7 +449,7 @@ public abstract class PartialEvaluator {
      *
      * The default supplier produces null, a no-op try-with-resources/scope.
      */
-    protected Supplier<AutoCloseable> getCreateCachedGraphScope() {
+    protected Supplier<AutoCloseable> getCreateCachedGraphScope(@SuppressWarnings("unused") boolean persistentEncodedGraphCache) {
         return () -> null;
     }
 
