@@ -1459,6 +1459,10 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.fmuladd.f64":
                     LLVMExpressionNode mulNodeDouble = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.DOUBLE, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.DOUBLE, mulNodeDouble, args[3]);
+                case "llvm.fmuladd.v2f64":
+                    Type v2_f64 = new VectorType(PrimitiveType.DOUBLE, 2);
+                    LLVMExpressionNode mulNodeDoubleV2 = createArithmeticOp(ArithmeticOperation.MUL, v2_f64, args[1], args[2]);
+                    return createArithmeticOp(ArithmeticOperation.ADD, v2_f64, mulNodeDoubleV2, args[3]);
                 case "llvm.fmuladd.f80":
                     LLVMExpressionNode mulNodeF80 = createArithmeticOp(ArithmeticOperation.MUL, PrimitiveType.X86_FP80, args[1], args[2]);
                     return createArithmeticOp(ArithmeticOperation.ADD, PrimitiveType.X86_FP80, mulNodeF80, args[3]);
