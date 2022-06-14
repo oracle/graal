@@ -209,7 +209,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.scala_dacapo_fast,
       guest_jvm_config=guest_jvm_config,
       extra_args=extra_args,
-      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:00:00' else '5:00:00'
+      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:30:00' else '3:00:00'
     ),
 
   dacapo_benchmark(env, guest_jvm_config, extra_args=[]):
@@ -218,7 +218,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       self.dacapo_stable(env),
       guest_jvm_config=guest_jvm_config,
       extra_args=extra_args,
-      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:00:00' else '5:00:00'
+      timelimit=if std.endsWith(_base_env(env), 'ce') then '7:30:00' else '3:00:00'
     ),
 
 
