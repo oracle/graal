@@ -222,7 +222,7 @@ public abstract class Instrumenter {
      * subsequent executions will be notified unless {@code includeExecutedSources} is true, in
      * which case a notification for each previously executed source will be delivered before this
      * method returns. A source is reported as executed if any of it's {@link RootNode}s start to be
-     * executed.
+     * executed. Every source is reported at most once.
      *
      * @param filter a filter on which source events are triggered.
      * @param listener a listener that gets notified if a source was executed
@@ -241,7 +241,7 @@ public abstract class Instrumenter {
      * returns a {@linkplain EventBinding binding} that can be used to terminate notifications. Only
      * subsequent loads will be notified unless {@code includeExistingSourceSections} is true, in
      * which case a notification for each previous load will be delivered before this method
-     * returns.
+     * returns. Every source is reported at most once.
      *
      * @param filter a filter on which sources sections trigger events
      * @param listener a listener that gets notified if a source section was loaded
@@ -283,7 +283,8 @@ public abstract class Instrumenter {
      * {@link Source}. The binding needs to be {@link EventBinding#attach() attached} to receive
      * notifications. Only subsequent executions will be notified after {@link EventBinding#attach()
      * attach}, unless {@code includeExecutedSources} is true, in which case a notification for each
-     * previously executed source will be delivered before attach method returns.
+     * previously executed source will be delivered before attach method returns. Every source is
+     * reported at most once.
      * <p>
      * The difference from
      * {@link #attachExecuteSourceListener(SourceFilter, ExecuteSourceListener, boolean)} is in
@@ -308,7 +309,8 @@ public abstract class Instrumenter {
      * {@link EventBinding#attach() attached} to receive notifications. Only subsequent loads will
      * be notified after {@link EventBinding#attach() attach}, unless
      * {@code includeExistingSourceSections} is true, in which case a notification for each
-     * previously loaded source section will be delivered before attach method returns.
+     * previously loaded source section will be delivered before attach method returns. Every source
+     * is reported at most once.
      * <p>
      * The difference from
      * {@link #attachLoadSourceSectionListener(SourceSectionFilter, LoadSourceSectionListener, boolean)}

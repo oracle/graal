@@ -1,47 +1,29 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * The Universal Permissive License (UPL), Version 1.0
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
  *
- * Subject to the condition set forth below, permission is hereby granted to any
- * person obtaining a copy of this software, associated documentation and/or
- * data (collectively the "Software"), free of charge and under any and all
- * copyright rights in the Software, and any and all patent rights owned or
- * freely licensable by each licensor hereunder covering either (i) the
- * unmodified Software as contributed to or provided by such licensor, or (ii)
- * the Larger Works (as defined below), to deal in both
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
  *
- * (a) the Software, and
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
  *
- * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
- * one is included with the Software each a "Larger Work" to which the Software
- * is contributed by such licensors),
- *
- * without restriction, including without limitation the rights to copy, create
- * derivative works of, display, perform, and distribute the Software and make,
- * use, sell, offer for sale, import, export, have made, and have sold the
- * Software and the Larger Work(s), and to sublicense the foregoing rights on
- * either these or other terms.
- *
- * This license is subject to the following condition:
- *
- * The above copyright notice and either this complete permission notice or at a
- * minimum a reference to the UPL must be included in all copies or substantial
- * portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
  */
-package com.oracle.truffle.api.debug;
+package com.oracle.truffle.tools.agentscript.impl;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -56,11 +38,11 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * This class searches for a suspendable location (SourceSection tagged with one of the element
+ * This class searches for an instrumetable location (SourceSection tagged with one of the element
  * tags) in a Source file.
  *
- * We can verify whether the initial suspended location is accurate and if yes, no language
- * adjustment is necessary.
+ * We can verify whether the initial location is accurate and if yes, no language adjustment is
+ * necessary.
  *
  * We find one of following three nodes:
  * <ul>
@@ -70,15 +52,15 @@ import com.oracle.truffle.api.source.SourceSection;
  * </ul>
  * Using this context node, the language determines the nearest tagged node.
  * <p>
- * This class has a copy at com.oracle.truffle.tools.agentscript.impl.InstrumentableLocationFinder.
+ * This class is a copy of com.oracle.truffle.api.debug.SuspendableLocationFinder.
  */
 // GR-39189 to merge multiple implementations to an API.
-final class SuspendableLocationFinder {
+final class InstrumentableLocationFinder {
 
-    private SuspendableLocationFinder() {
+    private InstrumentableLocationFinder() {
     }
 
-    static SourceSection findNearest(Source source, SourceElement[] sourceElements, int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
+    static SourceSection findNearest(Source source, Set<Class<? extends Tag>> elementTags, int line, int column, boolean isOnEnter, TruffleInstrument.Env env) {
         if (!source.hasCharacters()) {
             return null;
         }
@@ -92,27 +74,16 @@ final class SuspendableLocationFinder {
         if (boundColumn > maxColumn) {
             boundColumn = maxColumn;
         }
-        return findNearestBound(source, getElementTags(sourceElements), boundLine, boundColumn, anchor, env);
-    }
-
-    private static Set<Class<? extends Tag>> getElementTags(SourceElement[] sourceElements) {
-        if (sourceElements.length == 1) {
-            return Collections.singleton(sourceElements[0].getTag());
-        }
-        Set<Class<? extends Tag>> elementTags = new HashSet<>();
-        for (int i = 0; i < sourceElements.length; i++) {
-            elementTags.add(sourceElements[i].getTag());
-        }
-        return elementTags;
+        return findNearestBound(source, elementTags, boundLine, boundColumn, isOnEnter, env);
     }
 
     private static SourceSection findNearestBound(Source source, Set<Class<? extends Tag>> elementTags,
-                    int line, int column, SuspendAnchor anchor, TruffleInstrument.Env env) {
+                    int line, int column, boolean isOnEnter, TruffleInstrument.Env env) {
         int offset = source.getLineStartOffset(line);
         if (column > 0) {
             offset += column - 1;
         }
-        NearestSections sectionsCollector = new NearestSections(elementTags, (column <= 0) ? line : 0, offset, anchor);
+        NearestSections sectionsCollector = new NearestSections(elementTags, (column <= 0) ? line : 0, offset, isOnEnter);
         // All SourceSections of the Source are loaded already when the source was executed
         env.getInstrumenter().visitLoadedSourceSections(
                         SourceSectionFilter.newBuilder().sourceIs(source).build(),
@@ -136,7 +107,7 @@ final class SuspendableLocationFinder {
             SourceSection sourceSection = ((Node) contextNode).getSourceSection();
             // Handle a special case when the location is not in any RootNode,
             // but it's on a line with an existing code at a greater column:
-            boolean onLineBeforeLocation = sourceSection != null && anchor == SuspendAnchor.BEFORE && line == sourceSection.getStartLine() && column <= sourceSection.getStartColumn();
+            boolean onLineBeforeLocation = sourceSection != null && isOnEnter && line == sourceSection.getStartLine() && column <= sourceSection.getStartColumn();
             if (!onLineBeforeLocation) {
                 return null;
             }
@@ -153,7 +124,7 @@ final class SuspendableLocationFinder {
         private final Set<Class<? extends Tag>> elementTags;
         private final int line;
         private final int offset;
-        private final SuspendAnchor anchor;
+        private final boolean isOnEnter;
         private SourceSection exactLineMatch;
         private SourceSection exactIndexMatch;
         private SourceSection containsMatch;
@@ -164,11 +135,11 @@ final class SuspendableLocationFinder {
         private LinkedNodes nextNode;
         private boolean isOffsetInRoot = false;
 
-        NearestSections(Set<Class<? extends Tag>> elementTags, int line, int offset, SuspendAnchor anchor) {
+        NearestSections(Set<Class<? extends Tag>> elementTags, int line, int offset, boolean isOnEnter) {
             this.elementTags = elementTags;
             this.line = line;
             this.offset = offset;
-            this.anchor = anchor;
+            this.isOnEnter = isOnEnter;
         }
 
         @Override
@@ -207,20 +178,15 @@ final class SuspendableLocationFinder {
         private boolean matchSectionLine(InstrumentableNode node, SourceSection sourceSection) {
             if (line > 0) {
                 int l;
-                switch (anchor) {
-                    case BEFORE:
-                        l = sourceSection.getStartLine();
-                        break;
-                    case AFTER:
-                        l = sourceSection.getEndLine();
-                        break;
-                    default:
-                        throw new IllegalArgumentException(anchor.name());
+                if (isOnEnter) {
+                    l = sourceSection.getStartLine();
+                } else {
+                    l = sourceSection.getEndLine();
                 }
                 if (line == l && isTaggedWith(node, elementTags)) {
                     if (exactLineMatch == null ||
-                                    (anchor == SuspendAnchor.BEFORE) && sourceSection.getCharIndex() < exactLineMatch.getCharIndex() ||
-                                    (anchor == SuspendAnchor.AFTER) && sourceSection.getCharEndIndex() > exactLineMatch.getCharEndIndex()) {
+                                    isOnEnter && sourceSection.getCharIndex() < exactLineMatch.getCharIndex() ||
+                                    !isOnEnter && sourceSection.getCharEndIndex() > exactLineMatch.getCharEndIndex()) {
                         exactLineMatch = sourceSection;
                     }
                 }
@@ -233,15 +199,10 @@ final class SuspendableLocationFinder {
 
         private boolean matchSectionOffset(InstrumentableNode node, SourceSection sourceSection, int o1, int o2) {
             int o;
-            switch (anchor) {
-                case BEFORE:
-                    o = o1;
-                    break;
-                case AFTER:
-                    o = o2;
-                    break;
-                default:
-                    throw new IllegalArgumentException(anchor.name());
+            if (isOnEnter) {
+                o = o1;
+            } else {
+                o = o2;
             }
             if (offset == o && isTaggedWith(node, elementTags)) {
                 if (exactIndexMatch == null || sourceSection.getCharLength() > exactIndexMatch.getCharLength()) {
@@ -311,11 +272,11 @@ final class SuspendableLocationFinder {
                 return null;
             }
             if (line > 0) {
-                if (anchor == SuspendAnchor.BEFORE && line == containsMatch.getStartLine() || anchor == SuspendAnchor.AFTER && line == containsMatch.getEndLine()) {
+                if (isOnEnter && line == containsMatch.getStartLine() || !isOnEnter && line == containsMatch.getEndLine()) {
                     return (InstrumentableNode) containsNode.getOuter(containsMatch.getCharLength());
                 }
             } else {
-                if (anchor == SuspendAnchor.BEFORE && offset == containsMatch.getCharIndex() || anchor == SuspendAnchor.AFTER && offset == containsMatch.getCharEndIndex() - 1) {
+                if (isOnEnter && offset == containsMatch.getCharIndex() || !isOnEnter && offset == containsMatch.getCharEndIndex() - 1) {
                     return (InstrumentableNode) containsNode.getOuter(containsMatch.getCharLength());
                 }
             }

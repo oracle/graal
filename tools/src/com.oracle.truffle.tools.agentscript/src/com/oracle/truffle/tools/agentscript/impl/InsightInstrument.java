@@ -55,6 +55,7 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
+import java.util.ArrayList;
 
 // @formatter:off
 @TruffleInstrument.Registration(
@@ -258,7 +259,7 @@ public class InsightInstrument extends TruffleInstrument {
         private int functionsMaxLen;
         private final AgentType type;
         /* @GuardedBy(keys) */
-        private EventBinding<?> binding;
+        private final List<EventBinding<?>> bindings = new ArrayList<>(2);
 
         private Key(AgentType type, int index) {
             if (index < 0) {
@@ -269,8 +270,9 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         Key assign(EventBinding<?> b) {
+            CompilerAsserts.neverPartOfCompilation();
             synchronized (keys) {
-                this.binding = b;
+                this.bindings.add(b);
                 return this;
             }
         }
@@ -289,14 +291,14 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         private void close() {
-            EventBinding<?> b;
+            List<EventBinding<?>> bs;
+            CompilerAsserts.neverPartOfCompilation();
             synchronized (keys) {
-                b = binding;
-                binding = null;
-                CompilerAsserts.neverPartOfCompilation();
+                bs = new ArrayList<>(bindings);
+                bindings.clear();
                 index = -1;
             }
-            if (b != null) {
+            for (EventBinding<?> b : bs) {
                 b.dispose();
             }
         }
