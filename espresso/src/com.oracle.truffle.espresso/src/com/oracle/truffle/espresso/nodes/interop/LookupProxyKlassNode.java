@@ -58,12 +58,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
 
     static boolean isSame(Object metaObject, String metaQualifiedName, InteropLibrary interop) {
         assert interop.isMetaObject(metaObject);
-        try {
-            return interop.asString(interop.getMetaQualifiedName(metaObject)).equals(metaQualifiedName);
-        } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere();
-        }
+        return getMetaName(metaObject, interop).equals(metaQualifiedName);
     }
 
     @SuppressWarnings("unused")
