@@ -24,12 +24,27 @@
  */
 package com.oracle.svm.jni.hosted;
 
+import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
@@ -37,6 +52,7 @@ import com.oracle.svm.jni.JNIGeneratedMethodSupport;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * {@link HostedGraphKit} implementation with extensions that are specific to generated JNI code.
@@ -45,6 +61,46 @@ public class JNIGraphKit extends HostedGraphKit {
 
     JNIGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method) {
         super(debug, providers, method);
+    }
+
+    public ValueNode checkObjectType(ValueNode uncheckedValue, ResolvedJavaType type, boolean checkNonNull) {
+        ValueNode value = uncheckedValue;
+        if (checkNonNull) {
+            value = maybeCreateExplicitNullCheck(value);
+        }
+        if (type.isJavaLangObject()) {
+            return value;
+        }
+        TypeReference typeRef = TypeReference.createTrusted(getAssumptions(), type);
+        LogicNode isInstance = InstanceOfNode.createAllowNull(typeRef, value, null, null);
+        if (!isInstance.isTautology()) {
+            append(isInstance);
+            ConstantNode expectedType = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
+            GuardingNode guard = createCheckThrowingBytecodeException(isInstance, false, BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST, value, expectedType);
+            Stamp checkedStamp = value.stamp(NodeView.DEFAULT).improveWith(StampFactory.object(typeRef));
+            value = unique(new PiNode(value, checkedStamp, guard.asNode()));
+        }
+        return value;
+    }
+
+    /** Masks a sub-long value to ensure that unused high bits are indeed cleared. */
+    public ValueNode maskIntegerBits(ValueNode value, JavaKind kind) {
+        assert kind.isNumericInteger();
+        if (kind == JavaKind.Long) {
+            return value;
+        }
+        int bits = kind.getByteCount() * Byte.SIZE;
+        ValueNode narrowed = append(NarrowNode.create(value, bits, NodeView.DEFAULT));
+        if (kind == JavaKind.Boolean) {
+            LogicNode isZero = IntegerEqualsNode.create(narrowed, ConstantNode.forIntegerBits(bits, 0), NodeView.DEFAULT);
+            return append(ConditionalNode.create(isZero, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
+        }
+        int stackBits = kind.getStackKind().getBitCount();
+        if (kind.isUnsigned()) {
+            return append(ZeroExtendNode.create(narrowed, stackBits, NodeView.DEFAULT));
+        } else {
+            return append(SignExtendNode.create(narrowed, stackBits, NodeView.DEFAULT));
+        }
     }
 
     private InvokeWithExceptionNode createStaticInvoke(String name, ValueNode... args) {
@@ -63,9 +119,7 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public InvokeWithExceptionNode nativeCallAddress(ValueNode linkage) {
-        ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "nativeCallAddress", true);
-        int invokeBci = bci();
-        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci, linkage);
+        return createStaticInvoke("nativeCallAddress", linkage);
     }
 
     public InvokeWithExceptionNode nativeCallPrologue() {
@@ -109,9 +163,7 @@ public class JNIGraphKit extends HostedGraphKit {
     }
 
     public InvokeWithExceptionNode rethrowPendingException() {
-        ResolvedJavaMethod method = findMethod(JNIGeneratedMethodSupport.class, "rethrowPendingException", true);
-        int invokeBci = bci();
-        return createInvokeWithExceptionAndUnwind(method, InvokeKind.Static, getFrameState(), invokeBci);
+        return createStaticInvoke("rethrowPendingException");
     }
 
     public InvokeWithExceptionNode pinArrayAndGetAddress(ValueNode array, ValueNode isCopy) {

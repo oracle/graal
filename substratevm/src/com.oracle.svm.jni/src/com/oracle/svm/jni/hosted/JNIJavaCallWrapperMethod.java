@@ -52,14 +52,9 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
-import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
@@ -487,9 +482,9 @@ public class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
                 } else if (kind.isObject()) {
                     value = kit.unboxHandle(value);
                 } else if (kind == JavaKind.Boolean) {
-                    value = convertToBoolean(kit, value);
+                    value = kit.maskIntegerBits(value, JavaKind.Boolean);
                 } else if (kind != kind.getStackKind() && callVariant == CallVariant.ARRAY) {
-                    value = maskSubWordValue(kit, value, kind);
+                    value = kit.maskIntegerBits(value, kind);
                 }
                 args.add(Pair.create(value, type));
             }
@@ -507,7 +502,7 @@ public class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
                 } else if (kind.isObject()) {
                     value = kit.unboxHandle(value);
                 } else if (kind == JavaKind.Boolean) {
-                    value = convertToBoolean(kit, value);
+                    value = kit.maskIntegerBits(value, JavaKind.Boolean);
                 }
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
@@ -525,7 +520,7 @@ public class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
                 if (kind.isObject()) {
                     value = kit.unboxHandle(value);
                 } else if (kind == JavaKind.Boolean) {
-                    value = convertToBoolean(kit, value);
+                    value = kit.maskIntegerBits(value, JavaKind.Boolean);
                 }
                 args.add(Pair.create(value, type));
             }
@@ -543,24 +538,6 @@ public class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
                         metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount() +
                         (nonVirtual ? metaAccess.lookupJavaType(JNIObjectHandle.class).getJavaKind().getSlotCount() : 0) +
                         metaAccess.lookupJavaType(JNIMethodId.class).getJavaKind().getSlotCount();
-    }
-
-    /** Converts 0 to {@code false}, and 1-255 to {@code true}. */
-    private static ValueNode convertToBoolean(JNIGraphKit kit, ValueNode value) {
-        ValueNode maskedValue = maskSubWordValue(kit, value, JavaKind.Boolean);
-        LogicNode isZero = IntegerEqualsNode.create(maskedValue, ConstantNode.forInt(0), NodeView.DEFAULT);
-        return kit.append(ConditionalNode.create(isZero, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
-    }
-
-    /** Masks a sub-word value to ensure that unused high bits are indeed cleared. */
-    private static ValueNode maskSubWordValue(JNIGraphKit kit, ValueNode value, JavaKind kind) {
-        assert kind != kind.getStackKind();
-        ValueNode narrow = kit.append(NarrowNode.create(value, kind.getByteCount() * Byte.SIZE, NodeView.DEFAULT));
-        if (kind.isUnsigned()) {
-            return kit.append(ZeroExtendNode.create(narrow, Integer.SIZE, NodeView.DEFAULT));
-        } else {
-            return kit.append(SignExtendNode.create(narrow, Integer.SIZE, NodeView.DEFAULT));
-        }
     }
 
     private static Stamp getNarrowStamp(HostedProviders providers, JavaKind kind) {

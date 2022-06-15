@@ -27,23 +27,25 @@ package com.oracle.svm.jni.hosted;
 import java.util.Arrays;
 import java.util.List;
 
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNIAccessibleMethod;
+import com.oracle.svm.jni.nativeapi.JNINativeMethod;
 
 /**
  * Responsible for generating JNI call wrappers for Java-to-native and native-to-Java invocations.
  *
  * <p>
- * Java-to-native call wrappers are created by {@link JNINativeCallWrapperSubstitutionProcessor}. It
- * creates a {@link JNINativeCallWrapperMethod} for each Java method that is declared with the
- * {@code native} keyword and that was registered via {@link JNIRuntimeAccess} to be accessible via
- * JNI at runtime. The method provides a graph that performs the native code invocation. This graph
- * is visible to the analysis.
+ * Java-to-native call wrappers are created by {@link JNINativeCallSubstitutionProcessor}. It
+ * creates a {@link JNINativeMethod} for each reachable Java method with the {@code native} keyword
+ * (except those handled by other mechanisms such as {@link CFunction}). This method then invokes a
+ * {@link JNINativeCallWrapperMethod} that matches the native method's signature, which is shared
+ * between all native methods with that signature and that produces a graph that performs the native
+ * code invocation and is visible to the analysis.
  * </p>
  *
  * <p>
@@ -74,6 +76,6 @@ class JNICallWrapperFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess arg) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) arg;
-        access.registerNativeSubstitutionProcessor(new JNINativeCallWrapperSubstitutionProcessor(access));
+        access.registerNativeSubstitutionProcessor(new JNINativeCallSubstitutionProcessor(access));
     }
 }
