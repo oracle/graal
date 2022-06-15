@@ -51,7 +51,7 @@ import org.graalvm.wasm.util.ExtraDataUtil;
  * returns a value.
  */
 public abstract class BranchTargetWithStackChange extends BranchTarget {
-    private int returnLength;
+    private int resultCount;
     private int stackSize;
 
     protected BranchTargetWithStackChange(ExtraDataFormatHelper formatHelper, int byteCodeOffset, int extraDataOffset, int extraDataIndex) {
@@ -61,22 +61,22 @@ public abstract class BranchTargetWithStackChange extends BranchTarget {
     /**
      * Sets the information about the stack change.
      * 
-     * @param returnLength The number of return values
+     * @param resultCount The number of result values
      * @param stackSize The stack size after the jump
      */
-    public void setStackInfo(int returnLength, int stackSize) {
-        this.returnLength = returnLength;
+    public void setStackInfo(int resultCount, int stackSize) {
+        this.resultCount = resultCount;
         this.stackSize = stackSize;
-        if (ExtraDataUtil.exceedsUnsignedByteValue(returnLength) || ExtraDataUtil.exceedsUnsignedByteValue(stackSize)) {
-            if (ExtraDataUtil.exceedsPositiveIntValue(returnLength) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
+        if (ExtraDataUtil.exceedsUnsignedByteValue(resultCount) || ExtraDataUtil.exceedsUnsignedByteValue(stackSize)) {
+            if (ExtraDataUtil.exceedsPositiveIntValue(resultCount) || ExtraDataUtil.exceedsPositiveIntValue(stackSize)) {
                 throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
             }
             extendFormat();
         }
     }
 
-    protected int returnLength() {
-        return returnLength;
+    protected int resultCount() {
+        return resultCount;
     }
 
     protected int stackSize() {

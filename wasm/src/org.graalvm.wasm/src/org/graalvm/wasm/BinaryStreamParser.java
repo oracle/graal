@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,9 @@ import org.graalvm.wasm.exception.WasmException;
 import static com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN;
 
 public abstract class BinaryStreamParser {
+    protected static final int SINGLE_RESULT_VALUE = 0;
+    protected static final int MULTI_RESULT_VALUE = 1;
+
     @CompilationFinal(dimensions = 1) protected byte[] data;
     protected int offset;
 
@@ -289,21 +292,25 @@ public abstract class BinaryStreamParser {
         return offset;
     }
 
-    protected static byte peekBlockType(byte[] data, int offset) {
+    protected void readBlockType(int[] result) {
         byte type = peek1(data, offset);
         switch (type) {
-            case 0x00:
             case WasmType.VOID_TYPE:
-                return WasmType.VOID_TYPE;
+            case WasmType.I32_TYPE:
+            case WasmType.I64_TYPE:
+            case WasmType.F32_TYPE:
+            case WasmType.F64_TYPE:
+                offset++;
+                result[0] = type;
+                result[1] = SINGLE_RESULT_VALUE;
+                break;
             default:
-                return peekValueType(data, offset);
+                long valueAndLength = peekSignedInt32AndLength(data, offset);
+                result[0] = value(valueAndLength);
+                Assert.assertIntGreaterOrEqual(result[0], 0, Failure.UNSPECIFIED_MALFORMED);
+                result[1] = MULTI_RESULT_VALUE;
+                offset += length(valueAndLength);
         }
-    }
-
-    protected byte readBlockType() {
-        byte type = peekBlockType(data, offset);
-        offset++;
-        return type;
     }
 
     protected static byte peekValueType(byte[] data, int offset) {

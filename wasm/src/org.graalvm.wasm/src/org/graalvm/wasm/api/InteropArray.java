@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,43 +41,49 @@
 
 package org.graalvm.wasm.api;
 
-import org.graalvm.wasm.ModuleLimits;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public final class JsConstants {
-    private JsConstants() {
+@ExportLibrary(InteropLibrary.class)
+public final class InteropArray implements TruffleObject {
+    private final Object[] array;
+
+    private InteropArray(Object[] array) {
+        this.array = array;
     }
 
-    // Limits specified by https://www.w3.org/TR/wasm-js-api/#limits
-    private static final int MODULE_SIZE_LIMIT = 1 << 30;
-    private static final int TYPE_COUNT_LIMIT = 1000000;
-    private static final int FUNCTION_COUNT_LIMIT = 1000000;
-    private static final int IMPORT_COUNT_LIMIT = 100000;
-    private static final int EXPORT_COUNT_LIMIT = 100000;
-    private static final int GLOBAL_COUNT_LIMIT = 1000000;
-    private static final int DATA_SEGMENT_LIMIT = 100000;
-    private static final int ELEMENT_SEGMENT_LIMIT = 10000000;
-    private static final int FUNCTION_SIZE_LIMIT = 7654321;
-    private static final int PARAM_COUNT_LIMIT = 1000;
-    private static final int RESULT_COUNT_LIMIT = 1;
-    private static final int MULTI_VALUE_RESULT_COUNT_LIMIT = 1000;
-    private static final int LOCAL_COUNT_LIMIT = 50000;
-    private static final int TABLE_SIZE_LIMIT = 10000000;
-    private static final int MEMORY_SIZE_LIMIT = 32767;
+    public static InteropArray create(Object[] array) {
+        return new InteropArray(array);
+    }
 
-    static final ModuleLimits JS_LIMITS = new ModuleLimits(
-                    MODULE_SIZE_LIMIT,
-                    TYPE_COUNT_LIMIT,
-                    FUNCTION_COUNT_LIMIT,
-                    IMPORT_COUNT_LIMIT,
-                    EXPORT_COUNT_LIMIT,
-                    GLOBAL_COUNT_LIMIT,
-                    DATA_SEGMENT_LIMIT,
-                    ELEMENT_SEGMENT_LIMIT,
-                    FUNCTION_SIZE_LIMIT,
-                    PARAM_COUNT_LIMIT,
-                    RESULT_COUNT_LIMIT,
-                    MULTI_VALUE_RESULT_COUNT_LIMIT,
-                    LOCAL_COUNT_LIMIT,
-                    TABLE_SIZE_LIMIT,
-                    MEMORY_SIZE_LIMIT);
+    @ExportMessage
+    public boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public long getArraySize() {
+        return array.length;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < getArraySize();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return array[(int) index];
+    }
 }

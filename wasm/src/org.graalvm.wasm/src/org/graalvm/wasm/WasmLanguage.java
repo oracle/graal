@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.wasm;
 
 import java.io.IOException;
 
+import com.oracle.truffle.api.ContextThreadLocal;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -66,6 +67,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private boolean isFirst = true;
     @CompilationFinal private volatile boolean isMultiContext;
+
+    private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = createContextThreadLocal(((context, thread) -> new MultiValueStack()));
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -130,4 +133,18 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         return REFERENCE.get(node);
     }
 
+    public MultiValueStack multiValueStack() {
+        return multiValueStackThreadLocal.get();
+    }
+
+    static final class MultiValueStack {
+        @CompilationFinal(dimensions = 0) private long[] stack;
+
+        public long[] stack(int size) {
+            if (stack == null && size > 1) {
+                stack = new long[size];
+            }
+            return stack;
+        }
+    }
 }

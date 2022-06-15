@@ -85,7 +85,7 @@ public abstract class BuiltinModule {
     protected abstract WasmInstance createInstance(WasmLanguage language, WasmContext context, String name);
 
     protected void defineExportedFunction(WasmInstance instance, String name, byte[] paramType, byte[] retTypes, WasmFunctionInstance functionInstance) {
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes);
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramType, retTypes, instance.context().getContextOptions().isMultiValue());
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         instance.setFunctionInstance(function.index(), functionInstance);
         instance.setTarget(function.index(), functionInstance.target());
@@ -95,7 +95,7 @@ public abstract class BuiltinModule {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes, instance.context().getContextOptions().isMultiValue());
         final WasmFunction function = instance.symbolTable().declareExportedFunction(typeIdx, name);
         instance.setTarget(function.index(), rootNode.getCallTarget());
     }
@@ -135,7 +135,7 @@ public abstract class BuiltinModule {
     }
 
     protected void importFunction(WasmInstance instance, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
-        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes);
+        final int typeIdx = instance.symbolTable().allocateFunctionType(paramTypes, retTypes, instance.context().getContextOptions().isMultiValue());
         final WasmFunction function = instance.symbolTable().importFunction(importModuleName, importFunctionName, typeIdx);
         instance.symbolTable().exportFunction(function.index(), exportName);
     }

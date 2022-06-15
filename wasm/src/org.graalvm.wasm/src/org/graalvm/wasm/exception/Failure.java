@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,8 +76,8 @@ public enum Failure {
     UNKNOWN_LABEL(Type.INVALID, "unknown label"),
     UNKNOWN_FUNCTION(Type.INVALID, "unknown function"),
     UNKNOWN_TYPE(Type.INVALID, "unknown type"),
-    START_FUNCTION_RETURN_VALUE(Type.INVALID, "start function"),
-    START_FUNCTION_ARGUMENTS(Type.INVALID, "start function"),
+    START_FUNCTION_RESULT_VALUE(Type.INVALID, "start function"),
+    START_FUNCTION_PARAMS(Type.INVALID, "start function"),
     LIMIT_MINIMUM_GREATER_THAN_MAXIMUM(Type.INVALID, "size minimum must not be greater than maximum"),
     DUPLICATE_EXPORT(Type.INVALID, "duplicate export name"),
     IMMUTABLE_GLOBAL_WRITE(Type.INVALID, "global is immutable"),
@@ -98,7 +98,7 @@ public enum Failure {
     ELEMENT_SEGMENT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "element segment count exceeds limit"),
     FUNCTION_SIZE_LIMIT_EXCEEDED(Type.INVALID, "function size exceeds limit"),
     PARAMETERS_COUNT_LIMIT_EXCEEDED(Type.INVALID, "parameters count exceeds limit"),
-    RETURN_COUNT_LIMIT_EXCEEDED(Type.INVALID, "return values count exceeds limit"),
+    RESULT_COUNT_LIMIT_EXCEEDED(Type.INVALID, "result values count exceeds limit"),
 
     // TODO(mbovel): replace UNSPECIFIED_UNLINKABLE usages with appropriate errors.
     UNSPECIFIED_UNLINKABLE(Type.UNLINKABLE, "unspecified"),

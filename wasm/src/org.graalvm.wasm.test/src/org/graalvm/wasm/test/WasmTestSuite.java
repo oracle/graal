@@ -50,6 +50,7 @@ import org.graalvm.wasm.test.suites.control.BlockWithLocalsSuite;
 import org.graalvm.wasm.test.suites.control.BranchBlockSuite;
 import org.graalvm.wasm.test.suites.control.IfThenElseSuite;
 import org.graalvm.wasm.test.suites.control.LoopBlockSuite;
+import org.graalvm.wasm.test.suites.control.MultiValueSuite;
 import org.graalvm.wasm.test.suites.control.MultipleFunctionsSuite;
 import org.graalvm.wasm.test.suites.control.SimpleBlockSuite;
 import org.graalvm.wasm.test.suites.linker.LinkerSuite;
@@ -76,6 +77,7 @@ import org.junit.runners.Suite;
                 MemorySuite.class,
                 IssueSuite.class,
                 MultipleFunctionsSuite.class,
+                MultiValueSuite.class,
                 EmscriptenSuite.class,
                 WasiSuite.class,
                 LinkerSuite.class,

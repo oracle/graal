@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -66,6 +67,7 @@ public final class WasmContext {
     private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
+    @CompilationFinal private int multiValueStackSize;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
@@ -80,6 +82,7 @@ public final class WasmContext {
         this.moduleNameCount = 0;
         this.filesManager = new FdManager(env);
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
+        this.multiValueStackSize = 0;
         instantiateBuiltinInstances();
     }
 
@@ -216,4 +219,15 @@ public final class WasmContext {
         return REFERENCE.get(node);
     }
 
+    public void updateMultiValueStackSize(int newSize) {
+        multiValueStackSize = Math.max(multiValueStackSize, newSize);
+    }
+
+    public int getMultiValueStackSize() {
+        return multiValueStackSize;
+    }
+
+    public long[] getMultiValueStack() {
+        return language.multiValueStack().stack(multiValueStackSize);
+    }
 }

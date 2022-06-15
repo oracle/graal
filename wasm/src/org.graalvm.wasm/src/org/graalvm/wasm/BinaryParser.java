@@ -51,6 +51,7 @@ import static org.graalvm.wasm.WasmType.F32_TYPE;
 import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
+import static org.graalvm.wasm.WasmType.VOID_TYPE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 
@@ -92,14 +93,17 @@ public class BinaryParser extends BinaryStreamParser {
 
     private final WasmModule module;
     private final WasmContext wasmContext;
-    private final int[] limitsResult;
+    private final int[] multiResult;
+
+    private final boolean multiValue;
 
     @CompilerDirectives.TruffleBoundary
     public BinaryParser(WasmModule module, WasmContext context) {
         super(module.data());
         this.module = module;
         this.wasmContext = context;
-        this.limitsResult = new int[2];
+        this.multiResult = new int[2];
+        this.multiValue = context.getContextOptions().isMultiValue();
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -301,13 +305,13 @@ public class BinaryParser extends BinaryStreamParser {
                 case ImportIdentifier.TABLE: {
                     byte elemType = readElemType();
                     assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import", Failure.UNSPECIFIED_MALFORMED);
-                    readTableLimits(limitsResult);
-                    module.symbolTable().importTable(moduleName, memberName, limitsResult[0], limitsResult[1]);
+                    readTableLimits(multiResult);
+                    module.symbolTable().importTable(moduleName, memberName, multiResult[0], multiResult[1]);
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
-                    readMemoryLimits(limitsResult);
-                    module.symbolTable().importMemory(moduleName, memberName, limitsResult[0], limitsResult[1]);
+                    readMemoryLimits(multiResult);
+                    module.symbolTable().importMemory(moduleName, memberName, multiResult[0], multiResult[1]);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
@@ -341,8 +345,8 @@ public class BinaryParser extends BinaryStreamParser {
         for (byte tableIndex = 0; tableIndex != numTables; ++tableIndex) {
             final byte elemType = readElemType();
             assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table", Failure.UNSPECIFIED_MALFORMED);
-            readTableLimits(limitsResult);
-            module.symbolTable().allocateTable(limitsResult[0], limitsResult[1]);
+            readTableLimits(multiResult);
+            module.symbolTable().allocateTable(multiResult[0], multiResult[1]);
         }
     }
 
@@ -352,8 +356,8 @@ public class BinaryParser extends BinaryStreamParser {
         // module, this loop should be executed at most once. `SymbolTable#allocateMemory` fails if
         // it is not the case.
         for (int i = 0; i != numMemories; ++i) {
-            readMemoryLimits(limitsResult);
-            module.symbolTable().allocateMemory(limitsResult[0], limitsResult[1]);
+            readMemoryLimits(multiResult);
+            module.symbolTable().allocateMemory(multiResult[0], multiResult[1]);
         }
     }
 
@@ -368,7 +372,7 @@ public class BinaryParser extends BinaryStreamParser {
             final int startOffset = offset;
             module.limits().checkFunctionSize(codeEntrySize);
             final ByteArrayList locals = readCodeEntryLocals();
-            final int localCount = locals.size() + module.function(numImportedFunctions + entryIndex).numArguments();
+            final int localCount = locals.size() + module.function(numImportedFunctions + entryIndex).paramCount();
             module.limits().checkLocalCount(localCount);
             codeEntries[entryIndex] = readCodeEntry(numImportedFunctions + entryIndex, locals, startOffset + codeEntrySize);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
@@ -378,18 +382,20 @@ public class BinaryParser extends BinaryStreamParser {
 
     private CodeEntry readCodeEntry(int functionIndex, ByteArrayList locals, int endOffset) {
         final WasmFunction function = module.symbolTable().function(functionIndex);
-        int numberOfArguments = function.numArguments();
-        byte[] localTypes = new byte[function.numArguments() + locals.size()];
-        for (int i = 0; i < numberOfArguments; i++) {
-            localTypes[i] = function.argumentTypeAt(i);
+        int paramCount = function.paramCount();
+        byte[] localTypes = new byte[function.paramCount() + locals.size()];
+        for (int i = 0; i < paramCount; i++) {
+            localTypes[i] = function.paramTypeAt(i);
         }
         for (int i = 0; i < locals.size(); i++) {
-            localTypes[i + numberOfArguments] = locals.get(i);
+            localTypes[i + paramCount] = locals.get(i);
         }
-        final byte returnType = function.returnType();
-        final int returnTypeLength = function.returnTypeLength();
+        byte[] resultTypes = new byte[function.resultCount()];
+        for (int i = 0; i < resultTypes.length; i++) {
+            resultTypes[i] = function.resultTypeAt(i);
+        }
 
-        return readFunction(functionIndex, localTypes, returnType, returnTypeLength, endOffset);
+        return readFunction(functionIndex, localTypes, resultTypes, endOffset);
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -408,11 +414,46 @@ public class BinaryParser extends BinaryStreamParser {
         return localTypes;
     }
 
-    private CodeEntry readFunction(int functionIndex, byte[] locals, byte returnType, int returnTypeLength, int endOffset) {
+    private byte[] extractBlockParamTypes(int typeIndex) {
+        int paramCount = module.functionTypeParamCount(typeIndex);
+        byte[] params = new byte[paramCount];
+        for (int i = 0; i < paramCount; i++) {
+            params[i] = module.functionTypeParamTypeAt(typeIndex, i);
+        }
+        return params;
+    }
+
+    private byte[] extractBlockResultTypes(int typeIndex) {
+        int resultCount = module.functionTypeResultCount(typeIndex);
+        byte[] results = new byte[resultCount];
+        for (int i = 0; i < resultCount; i++) {
+            results[i] = module.functionTypeResultTypeAt(typeIndex, i);
+        }
+        return results;
+    }
+
+    private byte[] encapsulateResultType(int type) {
+        switch (type) {
+            case VOID_TYPE:
+                return WasmType.VOID_TYPE_ARRAY;
+            case I32_TYPE:
+                return WasmType.I32_TYPE_ARRAY;
+            case I64_TYPE:
+                return WasmType.I64_TYPE_ARRAY;
+            case F32_TYPE:
+                return WasmType.F32_TYPE_ARRAY;
+            case F64_TYPE:
+                return WasmType.F64_TYPE_ARRAY;
+            default:
+                throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+        }
+    }
+
+    private CodeEntry readFunction(int functionIndex, byte[] locals, byte[] resultTypes, int endOffset) {
         final ParserState state = new ParserState();
         final ArrayList<CallNode> callNodes = new ArrayList<>();
         int startOffset = offset;
-        state.enterBlock(returnType);
+        state.enterFunction(resultTypes);
         int opcode;
         while (offset < endOffset) {
             opcode = read1() & 0xFF;
@@ -423,27 +464,62 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.NOP:
                     break;
                 case Instructions.BLOCK: {
-                    final byte blockReturnType = readBlockType();
-                    state.enterBlock(blockReturnType);
+                    final byte[] blockParamTypes;
+                    final byte[] blockResultTypes;
+                    readBlockType(multiResult);
+                    if (multiResult[1] == SINGLE_RESULT_VALUE) {
+                        blockParamTypes = WasmType.VOID_TYPE_ARRAY;
+                        blockResultTypes = encapsulateResultType(multiResult[0]);
+                    } else if (multiValue) {
+                        blockParamTypes = extractBlockParamTypes(multiResult[0]);
+                        blockResultTypes = extractBlockResultTypes(multiResult[0]);
+                    } else {
+                        throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Multi-value is not enabled.");
+                    }
+                    state.popAll(blockParamTypes);
+                    state.enterBlock(blockParamTypes, blockResultTypes);
                     break;
                 }
                 case Instructions.LOOP: {
                     // Jumps are targeting the loop instruction for OSR.
                     final int loopOffset = offset - 1;
-                    final byte loopReturnType = readBlockType();
-                    state.enterLoop(loopReturnType, loopOffset);
+                    final byte[] loopParamTypes;
+                    final byte[] loopResultTypes;
+                    readBlockType(multiResult);
+                    if (multiResult[1] == SINGLE_RESULT_VALUE) {
+                        loopParamTypes = WasmType.VOID_TYPE_ARRAY;
+                        loopResultTypes = encapsulateResultType(multiResult[0]);
+                    } else if (multiValue) {
+                        loopParamTypes = extractBlockParamTypes(multiResult[0]);
+                        loopResultTypes = extractBlockResultTypes(multiResult[0]);
+                    } else {
+                        throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Multi-value is not enabled.");
+                    }
+                    state.popAll(loopParamTypes);
+                    state.enterLoop(loopParamTypes, loopResultTypes, loopOffset);
                     break;
                 }
                 case Instructions.IF: {
                     final int branchOffset = offset;
                     state.popChecked(I32_TYPE); // condition
-                    final byte ifReturnType = readBlockType();
-
-                    state.enterIf(ifReturnType, branchOffset);
+                    final byte[] ifParamTypes;
+                    final byte[] ifResultTypes;
+                    readBlockType(multiResult);
+                    if (multiResult[1] == SINGLE_RESULT_VALUE) {
+                        ifParamTypes = WasmType.VOID_TYPE_ARRAY;
+                        ifResultTypes = encapsulateResultType(multiResult[0]);
+                    } else if (multiValue) {
+                        ifParamTypes = extractBlockParamTypes(multiResult[0]);
+                        ifResultTypes = extractBlockResultTypes(multiResult[0]);
+                    } else {
+                        throw WasmException.create(Failure.UNSPECIFIED_MALFORMED, "Multi-value is not enabled.");
+                    }
+                    state.popAll(ifParamTypes);
+                    state.enterIf(ifParamTypes, ifResultTypes, branchOffset);
                     break;
                 }
                 case Instructions.END: {
-                    state.exit(offset);
+                    state.exit(offset, multiValue);
                     break;
                 }
                 case Instructions.ELSE: {
@@ -484,7 +560,7 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.RETURN: {
-                    state.addReturn();
+                    state.addReturn(multiValue);
 
                     // This instruction is stack-polymorphic
                     state.setUnreachable();
@@ -493,19 +569,19 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.CALL: {
                     final int callFunctionIndex = readDeclaredFunctionIndex();
 
-                    // Pop arguments
+                    // Pop parameters
                     final WasmFunction function = module.function(callFunctionIndex);
-                    byte[] params = new byte[function.numArguments()];
-                    for (int i = function.numArguments() - 1; i >= 0; --i) {
-                        params[i] = function.argumentTypeAt(i);
+                    byte[] params = new byte[function.paramCount()];
+                    for (int i = function.paramCount() - 1; i >= 0; --i) {
+                        params[i] = function.paramTypeAt(i);
                     }
-                    state.checkParameterTypes(params);
+                    state.checkParamTypes(params);
 
-                    // Push return value
-                    assertIntLessOrEqual(function.returnTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
-                    if (function.returnTypeLength() == 1) {
-                        state.push(function.returnType());
+                    // Push result values
+                    if (!multiValue) {
+                        assertIntLessOrEqual(function.resultCount(), 1, Failure.INVALID_RESULT_ARITY);
                     }
+                    state.pushAll(function.type().resultTypes());
                     state.addCall(callNodes.size());
                     callNodes.add(new CallNode(callFunctionIndex));
                     break;
@@ -521,16 +597,20 @@ public class BinaryParser extends BinaryStreamParser {
                     state.popChecked(I32_TYPE);
                     state.checkFunctionTypeExists(expectedFunctionTypeIndex, module.typeCount());
 
-                    // Pop arguments
-                    for (int i = module.functionTypeArgumentCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
-                        state.popChecked(module.functionTypeArgumentTypeAt(expectedFunctionTypeIndex, i));
+                    // Pop parameters
+                    for (int i = module.functionTypeParamCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
+                        state.popChecked(module.functionTypeParamTypeAt(expectedFunctionTypeIndex, i));
                     }
-                    // Push return value
-                    final int returnLength = module.functionTypeReturnTypeLength(expectedFunctionTypeIndex);
-                    assertIntLessOrEqual(returnLength, 1, Failure.INVALID_RESULT_ARITY);
-                    if (returnLength == 1) {
-                        state.push(module.functionTypeReturnType(expectedFunctionTypeIndex));
+                    // Push result values
+                    final int resultCount = module.functionTypeResultCount(expectedFunctionTypeIndex);
+                    if (!multiValue) {
+                        assertIntLessOrEqual(resultCount, 1, Failure.INVALID_RESULT_ARITY);
                     }
+                    byte[] callResultTypes = new byte[resultCount];
+                    for (int i = 0; i < resultCount; i++) {
+                        callResultTypes[i] = module.functionTypeResultTypeAt(expectedFunctionTypeIndex, i);
+                    }
+                    state.pushAll(callResultTypes);
                     state.addIndirectCall(callNodes.size());
                     callNodes.add(new CallNode());
                     final int tableIndex = read1();
@@ -658,9 +738,11 @@ public class BinaryParser extends BinaryStreamParser {
 
             }
         }
-        assertIntEqual(state.valueStackSize(), returnTypeLength,
-                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
-        return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), callNodes, startOffset, endOffset, returnType);
+        assertIntEqual(state.valueStackSize(), resultTypes.length,
+                        "Stack size must match the result type length at the function end", Failure.TYPE_MISMATCH);
+        assertIntEqual(state.controlStackSize(), 0,
+                        "All control structures must be closed", Failure.UNEXPECTED_END);
+        return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), callNodes, startOffset, endOffset, resultTypes);
     }
 
     private void readNumericInstructions(ParserState state, int opcode) {
@@ -1226,43 +1308,31 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void readFunctionType() {
-        int paramsLength = readLength();
-        int resultLength = value(peekUnsignedInt32AndLength(data, offset + paramsLength));
-        resultLength = (resultLength == 0x40) ? 0 : resultLength;
+        int paramCount = readLength();
+        long resultCountAndValue = peekUnsignedInt32AndLength(data, offset + paramCount);
+        int resultCount = value(resultCountAndValue);
+        resultCount = (resultCount == 0x40) ? 0 : resultCount;
 
-        module.limits().checkParamCount(paramsLength);
-        module.limits().checkReturnCount(resultLength);
-        int idx = module.symbolTable().allocateFunctionType(paramsLength, resultLength);
-        readParameterList(idx, paramsLength);
-        readResultList(idx);
+        module.limits().checkParamCount(paramCount);
+        module.limits().checkResultCount(resultCount, multiValue);
+        int idx = module.symbolTable().allocateFunctionType(paramCount, resultCount, multiValue);
+        readParameterList(idx, paramCount);
+        offset += length(resultCountAndValue);
+        readResultList(idx, resultCount);
+        wasmContext.updateMultiValueStackSize(resultCount);
     }
 
-    private void readParameterList(int funcTypeIdx, int numParams) {
-        for (int paramIdx = 0; paramIdx != numParams; ++paramIdx) {
+    private void readParameterList(int funcTypeIdx, int paramCount) {
+        for (int paramIdx = 0; paramIdx != paramCount; ++paramIdx) {
             byte type = readValueType();
             module.symbolTable().registerFunctionTypeParameterType(funcTypeIdx, paramIdx, type);
         }
     }
 
-    // Specification seems ambiguous:
-    // https://webassembly.github.io/spec/core/binary/types.html#result-types
-    // According to the spec, the result type can only be 0x40 (void) or 0xtt, where tt is a value
-    // type.
-    // However, the Wasm binary compiler produces binaries with either 0x00 or 0x01 0xtt. Therefore,
-    // we support both.
-    private void readResultList(int funcTypeIdx) {
-        byte b = read1();
-        switch (b) {
-            case WasmType.VOID_TYPE:  // special byte indicating empty return type (same as above)
-                break;
-            case 0x00:  // empty vector
-                break;
-            case 0x01:  // vector with one element (produced by the Wasm binary compiler)
-                byte type = readValueType();
-                module.symbolTable().registerFunctionTypeReturnType(funcTypeIdx, 0, type);
-                break;
-            default:
-                fail(Failure.MALFORMED_VALUE_TYPE, String.format("Invalid return value specifier: 0x%02X", b));
+    private void readResultList(int funcTypeIdx, int resultCount) {
+        for (int resultIdx = 0; resultIdx != resultCount; resultIdx++) {
+            byte type = readValueType();
+            module.symbolTable().registerFunctionTypeResultType(funcTypeIdx, resultIdx, type);
         }
     }
 
@@ -1447,11 +1517,11 @@ public class BinaryParser extends BinaryStreamParser {
                     }
                     case ImportIdentifier.TABLE: {
                         readElemType();
-                        readTableLimits(limitsResult);
+                        readTableLimits(multiResult);
                         break;
                     }
                     case ImportIdentifier.MEMORY: {
-                        readMemoryLimits(limitsResult);
+                        readMemoryLimits(multiResult);
                         break;
                     }
                     case ImportIdentifier.GLOBAL: {

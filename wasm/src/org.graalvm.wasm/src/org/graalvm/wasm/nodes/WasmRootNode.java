@@ -51,6 +51,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmMultiValueResult;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.Failure;
@@ -111,7 +112,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int numLocals = function.getLocalCount();
+        final int localCount = function.getLocalCount();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -125,32 +126,65 @@ public class WasmRootNode extends RootNode {
             function.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
+        final int resultCount = function.getResultCount();
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        if (resultCount == 0) {
+            return WasmVoidResult.getInstance();
+        } else if (resultCount == 1) {
+            final byte resultType = function.getResultType(0);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.VOID_TYPE:
+                    return WasmVoidResult.getInstance();
+                case WasmType.I32_TYPE:
+                    return popInt(frame, localCount);
+                case WasmType.I64_TYPE:
+                    return popLong(frame, localCount);
+                case WasmType.F32_TYPE:
+                    return popFloat(frame, localCount);
+                case WasmType.F64_TYPE:
+                    return popDouble(frame, localCount);
+                default:
+                    throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
+            }
+        } else {
+            moveReturnValuesToMultiValueStack(frame, context, resultCount, localCount);
+            return WasmMultiValueResult.INSTANCE;
+        }
+    }
 
-        final byte returnTypeId = function.returnTypeId();
-        CompilerAsserts.partialEvaluationConstant(returnTypeId);
-        switch (returnTypeId) {
-            case 0x00:
-            case WasmType.VOID_TYPE:
-                return WasmVoidResult.getInstance();
-            case WasmType.I32_TYPE:
-                return popInt(frame, numLocals);
-            case WasmType.I64_TYPE:
-                return popLong(frame, numLocals);
-            case WasmType.F32_TYPE:
-                return popFloat(frame, numLocals);
-            case WasmType.F64_TYPE:
-                return popDouble(frame, numLocals);
-            default:
-                throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", returnTypeId);
+    @ExplodeLoop
+    private void moveReturnValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        final long[] multiValueStack = context.getMultiValueStack();
+        for (int i = 0; i < resultCount; i++) {
+            final int resultType = function.getResultType(i);
+            CompilerAsserts.partialEvaluationConstant(resultType);
+            switch (resultType) {
+                case WasmType.I32_TYPE:
+                    multiValueStack[i] = popInt(frame, localCount + i);
+                    break;
+                case WasmType.I64_TYPE:
+                    multiValueStack[i] = popLong(frame, localCount + i);
+                    break;
+                case WasmType.F32_TYPE:
+                    multiValueStack[i] = Float.floatToRawIntBits(popFloat(frame, localCount + i));
+                    break;
+                case WasmType.F64_TYPE:
+                    multiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
+                    break;
+                default:
+                    throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
+            }
         }
     }
 
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int numArgs = function.getArgumentCount();
-        assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
-        for (int i = 0; i != numArgs; ++i) {
+        int paramCount = function.getParamCount();
+        assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        for (int i = 0; i != paramCount; ++i) {
             final Object arg = args[i];
             byte type = function.getLocalType(i);
             switch (type) {
@@ -172,8 +206,8 @@ public class WasmRootNode extends RootNode {
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int numArgs = function.getArgumentCount();
-        for (int i = numArgs; i != function.getLocalCount(); ++i) {
+        int paramCount = function.getParamCount();
+        for (int i = paramCount; i != function.getLocalCount(); ++i) {
             byte type = function.getLocalType(i);
             switch (type) {
                 case WasmType.I32_TYPE:

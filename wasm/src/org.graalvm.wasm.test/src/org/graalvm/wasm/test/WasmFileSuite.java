@@ -313,6 +313,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 contextBuilder.option(signExtensionOpsProperty, signExtensionOpsValue);
             }
 
+            final String multiValueProperty = "wasm.MultiValue";
+            final String multiValueValue = testCase.options().getProperty(multiValueProperty);
+            if (multiValueValue != null) {
+                contextBuilder.option(multiValueProperty, multiValueValue);
+            }
+
             final String envString = testCase.options().getProperty("env");
             if (envString != null) {
                 for (String var : envString.split(" ")) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,9 @@
  */
 package org.graalvm.wasm;
 
+import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
@@ -113,7 +115,36 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         TruffleContext c = getTruffleContext();
         Object prev = c.enter(self);
         try {
-            return callNode.execute(target, arguments);
+            Object result = callNode.execute(target, arguments);
+
+            // For external calls we have to materialize the multi value stack.
+            if (result == WasmMultiValueResult.INSTANCE) {
+                final long[] multiValueStack = context.getMultiValueStack();
+                final int size = function.resultCount();
+                assert multiValueStack.length >= size;
+                final Object[] values = new Object[size];
+                for (int i = 0; i < size; i++) {
+                    byte resultType = function.resultTypeAt(i);
+                    switch (resultType) {
+                        case WasmType.I32_TYPE:
+                            values[i] = (int) multiValueStack[i];
+                            break;
+                        case WasmType.I64_TYPE:
+                            values[i] = multiValueStack[i];
+                            break;
+                        case WasmType.F32_TYPE:
+                            values[i] = Float.intBitsToFloat((int) multiValueStack[i]);
+                            break;
+                        case WasmType.F64_TYPE:
+                            values[i] = Double.longBitsToDouble(multiValueStack[i]);
+                            break;
+                        default:
+                            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+                    }
+                }
+                return InteropArray.create(values);
+            }
+            return result;
         } finally {
             c.leave(self, prev);
         }

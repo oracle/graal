@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -57,14 +58,19 @@ import com.oracle.truffle.api.library.ExportMessage;
 @SuppressWarnings({"unused", "static-method"})
 public class WasmType implements TruffleObject {
     public static final byte VOID_TYPE = 0x40;
+    @CompilationFinal(dimensions = 1) public static final byte[] VOID_TYPE_ARRAY = {};
 
     public static final byte I32_TYPE = 0x7F;
+    @CompilationFinal(dimensions = 1) public static final byte[] I32_TYPE_ARRAY = {I32_TYPE};
 
     public static final byte I64_TYPE = 0x7E;
+    @CompilationFinal(dimensions = 1) public static final byte[] I64_TYPE_ARRAY = {I64_TYPE};
 
     public static final byte F32_TYPE = 0x7D;
+    @CompilationFinal(dimensions = 1) public static final byte[] F32_TYPE_ARRAY = {F32_TYPE};
 
     public static final byte F64_TYPE = 0x7C;
+    @CompilationFinal(dimensions = 1) public static final byte[] F64_TYPE_ARRAY = {F64_TYPE};
 
     public static final WasmType VOID = new WasmType("void");
 

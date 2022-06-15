@@ -83,4 +83,7 @@ public class WasmOptions {
 
     @Option(help = "Prevents the removal of data sections from wasm binaries. This option should only be used for testing.", category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
     public static final OptionKey<Boolean> KeepDataSections = new OptionKey<>(false);
+
+    @Option(help = "Enable multi-value support", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, usageSyntax = "false|true") //
+    public static final OptionKey<Boolean> MultiValue = new OptionKey<>(false);
 }

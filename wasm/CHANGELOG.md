@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 22.3.0
+
+* Implemented the [Multi-Value](https://github.com/WebAssembly/multi-value) proposal. It is available behind the
+  experimental option `--wasm.MultiValue`.
+
 ## Version 22.1.0
 
 * Changed the representation of WebAssembly control flow structures to a flat model. Loops and branches are now
