@@ -93,8 +93,14 @@ final class IsolatedTruffleSourceLanguagePosition extends IsolatedObjectProxy<Tr
 
     @Override
     public String getNodeClassName() {
-        CompilerHandle<String> nodeClassName = getLanguage0(IsolatedCompileContext.get().getClient(), handle);
+        CompilerHandle<String> nodeClassName = getNodeClassName0(IsolatedCompileContext.get().getClient(), handle);
         return IsolatedCompileContext.get().unhand(nodeClassName);
+    }
+
+    @Override
+    public String getQualifiedRootName() {
+        CompilerHandle<String> qualifiedRootName = getQualifiedRootName0(IsolatedCompileContext.get().getClient(), handle);
+        return IsolatedCompileContext.get().unhand(qualifiedRootName);
     }
 
     @Override
@@ -123,6 +129,12 @@ final class IsolatedTruffleSourceLanguagePosition extends IsolatedObjectProxy<Tr
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static CompilerHandle<String> getNodeClassName0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleSourceLanguagePosition> positionHandle) {
         String language = IsolatedCompileClient.get().unhand(positionHandle).getNodeClassName();
+        return IsolatedCompileClient.get().createStringInCompiler(language);
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
+    private static CompilerHandle<String> getQualifiedRootName0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleSourceLanguagePosition> positionHandle) {
+        String language = IsolatedCompileClient.get().unhand(positionHandle).getQualifiedRootName();
         return IsolatedCompileClient.get().createStringInCompiler(language);
     }
 }

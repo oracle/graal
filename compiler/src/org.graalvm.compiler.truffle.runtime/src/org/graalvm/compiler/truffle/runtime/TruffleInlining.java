@@ -109,12 +109,14 @@ public class TruffleInlining implements TruffleInliningData {
     static class TruffleSourceLanguagePosition implements org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition {
 
         private final SourceSection sourceSection;
+        private final String qualifiedRootName;
         private final Class<?> nodeClass;
         private final int nodeId;
 
-        TruffleSourceLanguagePosition(SourceSection section, Class<?> nodeClass, int nodeId) {
+        TruffleSourceLanguagePosition(SourceSection section, String qualifiedRootName, Class<?> nodeClass, int nodeId) {
             this.sourceSection = section;
             this.nodeClass = nodeClass;
+            this.qualifiedRootName = qualifiedRootName;
             this.nodeId = nodeId;
         }
 
@@ -174,6 +176,11 @@ public class TruffleInlining implements TruffleInliningData {
         @Override
         public String getNodeClassName() {
             return nodeClass.getName();
+        }
+
+        @Override
+        public String getQualifiedRootName() {
+            return qualifiedRootName;
         }
 
     }

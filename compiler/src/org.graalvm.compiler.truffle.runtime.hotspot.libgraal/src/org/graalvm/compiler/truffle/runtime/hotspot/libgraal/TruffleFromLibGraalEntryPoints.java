@@ -64,6 +64,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetSuppliedString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetValidRootAssumptionConstant;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetQualifiedRootName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.HasNextTier;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.InliningData;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.IsBytecodeInterpreterSwitch;
@@ -377,6 +378,11 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(GetNodeClassName)
     static String getNodeClassName(Object pos) {
         return ((TruffleSourceLanguagePosition) pos).getNodeClassName();
+    }
+
+    @TruffleFromLibGraal(GetQualifiedRootName)
+    static String getQualifiedRootName(Object pos) {
+        return ((TruffleSourceLanguagePosition) pos).getQualifiedRootName();
     }
 
     @TruffleFromLibGraal(GetNodeId)

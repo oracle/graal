@@ -30,6 +30,7 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining.TruffleSourceLanguag
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -46,9 +47,20 @@ final class TruffleNodeSources {
             return position;
         }
         SourceSection section = null;
+        RootNode rootNode;
         if (truffleNode instanceof DirectCallNode) {
-            section = ((DirectCallNode) truffleNode).getCurrentRootNode().getSourceSection();
+            rootNode = ((DirectCallNode) truffleNode).getCurrentRootNode();
+            section = rootNode.getSourceSection();
+        } else {
+            rootNode = truffleNode.getRootNode();
         }
+        String qualifiedRootName;
+        if (rootNode != null) {
+            qualifiedRootName = rootNode.getQualifiedName();
+        } else {
+            qualifiedRootName = "";
+        }
+
         if (section == null) {
             section = truffleNode.getSourceSection();
         }
@@ -62,7 +74,7 @@ final class TruffleNodeSources {
                 cur = cur.getParent();
             }
         }
-        position = new TruffleSourceLanguagePosition(section, truffleNode.getClass(), nodeIdCounter++);
+        position = new TruffleSourceLanguagePosition(section, qualifiedRootName, truffleNode.getClass(), nodeIdCounter++);
         sourcePositionCache.put(truffleNode, position);
         return position;
     }

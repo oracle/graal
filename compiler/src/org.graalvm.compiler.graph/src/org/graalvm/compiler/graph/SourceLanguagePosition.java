@@ -55,4 +55,8 @@ public interface SourceLanguagePosition {
     int getNodeId();
 
     String getNodeClassName();
+
+    default String getQualifiedRootName() {
+        return null;
+    }
 }

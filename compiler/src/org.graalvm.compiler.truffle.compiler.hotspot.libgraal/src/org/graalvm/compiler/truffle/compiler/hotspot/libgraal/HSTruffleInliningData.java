@@ -36,6 +36,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetEnd;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetOffsetStart;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetPosition;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetQualifiedRootName;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetURI;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.SetCallCounts;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callAddInlinedTarget;
@@ -50,6 +51,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleIn
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetOffsetEnd;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetOffsetStart;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetPosition;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetQualifiedRootName;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetURI;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetCallCounts;
 import static org.graalvm.jniutils.JNIUtil.createString;
@@ -193,6 +195,13 @@ class HSTruffleInliningData extends HSObject implements TruffleInliningData {
         @Override
         public int getNodeId() {
             return callGetNodeId(JNIMethodScope.env(), getHandle());
+        }
+
+        @TruffleFromLibGraal(GetQualifiedRootName)
+        @Override
+        public String getQualifiedRootName() {
+            JString res = callGetQualifiedRootName(JNIMethodScope.env(), getHandle());
+            return createString(JNIMethodScope.env(), res);
         }
     }
 }

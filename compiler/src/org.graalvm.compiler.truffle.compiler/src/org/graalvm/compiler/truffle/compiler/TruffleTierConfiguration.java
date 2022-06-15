@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.lir.phases.LIRSuites;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleCompilerPhases;
@@ -38,10 +37,6 @@ public final class TruffleTierConfiguration {
     private final Providers providers;
     private final Suites suites;
     private final LIRSuites lirSuites;
-
-    public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, OptionValues options, KnownTruffleTypes knownTruffleTypes) {
-        this(configuration, backend, backend.getProviders(), backend.getSuites().getDefaultSuites(options), backend.getSuites().getDefaultLIRSuites(options), knownTruffleTypes);
-    }
 
     public TruffleTierConfiguration(PartialEvaluatorConfiguration configuration, Backend backend, Providers providers, Suites suites, LIRSuites lirSuites, KnownTruffleTypes knownTruffleTypes) {
         this.configuration = configuration;

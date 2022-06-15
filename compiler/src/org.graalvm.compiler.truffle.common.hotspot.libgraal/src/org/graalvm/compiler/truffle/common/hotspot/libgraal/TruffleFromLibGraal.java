@@ -90,6 +90,7 @@ public @interface TruffleFromLibGraal {
         GetValidRootAssumptionConstant(long.class, Object.class),
         GetNodeId(int.class, Object.class),
         GetNodeClassName(String.class, Object.class),
+        GetQualifiedRootName(String.class, Object.class),
         GetNonTrivialNodeCount(int.class, Object.class),
         GetOffsetEnd(int.class, Object.class),
         GetOffsetStart(int.class, Object.class),

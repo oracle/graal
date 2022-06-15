@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.core.phases.LowTier;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleHostInliningPhase;
@@ -37,6 +38,13 @@ public final class TruffleCommunityCompilerConfiguration extends CommunityCompil
         HighTier highTier = super.createHighTier(options);
         TruffleHostInliningPhase.install(highTier, options);
         return highTier;
+    }
+
+    @Override
+    public LowTier createLowTier(OptionValues options) {
+        LowTier tier = super.createLowTier(options);
+        HotSpotTruffleProfilingInstrumentation.installHost(options, tier);
+        return tier;
     }
 
     @Override
