@@ -200,19 +200,19 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     public void purgePartialEvaluationCaches() {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            // Truffle compiler threads may remain alive after the compiler isolate was disposed and
-            // still try to purge PE caches.
-            if (!scope.getIsolate().isValid()) {
-                return;
-            }
-            long compilerHandle = 0;
             try {
-                compilerHandle = handle();
+                long compilerHandle = handle();
+                TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), compilerHandle);
             } catch (DestroyedIsolateException e) {
-                // The isolate was destroyed in the meanwhile, ignore.
-                return;
+                // Truffle compiler threads (trying to purge PE caches) may race during VM exit with
+                // the compiler isolate teardown. DestroyedIsolateException is only expected to be
+                // observed here during VM exit; where it can be safely ignored.
+                if (e.isVmExit()) {
+                    // ignore
+                } else {
+                    throw e;
+                }
             }
-            TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), compilerHandle);
         }
     }
 }
