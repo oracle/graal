@@ -22,10 +22,6 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -38,6 +34,9 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.impl.asm.ClassWriter;
+import com.oracle.truffle.api.impl.asm.Label;
+import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -48,265 +47,23 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 
+import static com.oracle.truffle.api.impl.asm.Opcodes.*;
+
 /**
  * EspressoForeignProxyGenerator contains the code to generate a dynamic Espresso proxy class for
  * foreign objects.
  *
  * Large parts of this class is copied from java.lang.reflect.ProxyGenerator.
  */
-public final class EspressoForeignProxyGenerator {
-    /*
-     * In the comments below, "JVMS" refers to The Java Virtual Machine Specification Second Edition
-     * and "JLS" refers to the original version of The Java Language Specification, unless otherwise
-     * specified.
-     */
+public final class EspressoForeignProxyGenerator extends ClassWriter {
 
-    /* generate 1.5-era class file version */
-    private static final int CLASSFILE_MAJOR_VERSION = 49;
-    private static final int CLASSFILE_MINOR_VERSION = 0;
-
-    /*
-     * beginning of constants copied from sun.tools.java.RuntimeConstants (which no longer exists):
-     */
-
-    /* constant pool tags */
-    private static final int CONSTANT_UTF8 = 1;
-    // private static final int CONSTANT_UNICODE = 2;
-    private static final int CONSTANT_INTEGER = 3;
-    private static final int CONSTANT_FLOAT = 4;
-    private static final int CONSTANT_LONG = 5;
-    private static final int CONSTANT_DOUBLE = 6;
-    private static final int CONSTANT_CLASS = 7;
-    private static final int CONSTANT_STRING = 8;
-    private static final int CONSTANT_FIELD = 9;
-    private static final int CONSTANT_METHOD = 10;
-    private static final int CONSTANT_INTERFACEMETHOD = 11;
-    private static final int CONSTANT_NAMEANDTYPE = 12;
-
-    /* access and modifier flags */
-    private static final int ACC_PUBLIC = 0x00000001;
-    private static final int ACC_PRIVATE = 0x00000002;
-    // private static final int ACC_PROTECTED = 0x00000004;
-    // private static final int ACC_STATIC = 0x00000008;
-    private static final int ACC_FINAL = 0x00000010;
-    // private static final int ACC_SYNCHRONIZED = 0x00000020;
-// private static final int ACC_VOLATILE = 0x00000040;
-// private static final int ACC_TRANSIENT = 0x00000080;
-// private static final int ACC_NATIVE = 0x00000100;
-// private static final int ACC_INTERFACE = 0x00000200;
-// private static final int ACC_ABSTRACT = 0x00000400;
-    private static final int ACC_SUPER = 0x00000020;
-// private static final int ACC_STRICT = 0x00000800;
-
-    /* opcodes */
-// private static final int opc_nop = 0;
-// private static final int opc_aconst_null = 1;
-// private static final int opc_iconst_m1 = 2;
-    private static final int opc_iconst_0 = 3;
-    // private static final int opc_iconst_1 = 4;
-// private static final int opc_iconst_2 = 5;
-// private static final int opc_iconst_3 = 6;
-// private static final int opc_iconst_4 = 7;
-// private static final int opc_iconst_5 = 8;
-// private static final int opc_lconst_0 = 9;
-// private static final int opc_lconst_1 = 10;
-// private static final int opc_fconst_0 = 11;
-// private static final int opc_fconst_1 = 12;
-// private static final int opc_fconst_2 = 13;
-// private static final int opc_dconst_0 = 14;
-// private static final int opc_dconst_1 = 15;
-    private static final int opc_bipush = 16;
-    private static final int opc_sipush = 17;
-    private static final int opc_ldc = 18;
-    private static final int opc_ldc_w = 19;
-    // private static final int opc_ldc2_w = 20;
-    private static final int opc_iload = 21;
-    private static final int opc_lload = 22;
-    private static final int opc_fload = 23;
-    private static final int opc_dload = 24;
-    private static final int opc_aload = 25;
-    private static final int opc_iload_0 = 26;
-    // private static final int opc_iload_1 = 27;
-// private static final int opc_iload_2 = 28;
-// private static final int opc_iload_3 = 29;
-    private static final int opc_lload_0 = 30;
-    // private static final int opc_lload_1 = 31;
-// private static final int opc_lload_2 = 32;
-// private static final int opc_lload_3 = 33;
-    private static final int opc_fload_0 = 34;
-    // private static final int opc_fload_1 = 35;
-// private static final int opc_fload_2 = 36;
-// private static final int opc_fload_3 = 37;
-    private static final int opc_dload_0 = 38;
-    // private static final int opc_dload_1 = 39;
-// private static final int opc_dload_2 = 40;
-// private static final int opc_dload_3 = 41;
-    private static final int opc_aload_0 = 42;
-    // private static final int opc_aload_1 = 43;
-// private static final int opc_aload_2 = 44;
-// private static final int opc_aload_3 = 45;
-// private static final int opc_iaload = 46;
-// private static final int opc_laload = 47;
-// private static final int opc_faload = 48;
-// private static final int opc_daload = 49;
-// private static final int opc_aaload = 50;
-// private static final int opc_baload = 51;
-// private static final int opc_caload = 52;
-// private static final int opc_saload = 53;
-// private static final int opc_istore = 54;
-// private static final int opc_lstore = 55;
-// private static final int opc_fstore = 56;
-// private static final int opc_dstore = 57;
-    private static final int opc_astore = 58;
-    // private static final int opc_istore_0 = 59;
-// private static final int opc_istore_1 = 60;
-// private static final int opc_istore_2 = 61;
-// private static final int opc_istore_3 = 62;
-// private static final int opc_lstore_0 = 63;
-// private static final int opc_lstore_1 = 64;
-// private static final int opc_lstore_2 = 65;
-// private static final int opc_lstore_3 = 66;
-// private static final int opc_fstore_0 = 67;
-// private static final int opc_fstore_1 = 68;
-// private static final int opc_fstore_2 = 69;
-// private static final int opc_fstore_3 = 70;
-// private static final int opc_dstore_0 = 71;
-// private static final int opc_dstore_1 = 72;
-// private static final int opc_dstore_2 = 73;
-// private static final int opc_dstore_3 = 74;
-    private static final int opc_astore_0 = 75;
-    // private static final int opc_astore_1 = 76;
-// private static final int opc_astore_2 = 77;
-// private static final int opc_astore_3 = 78;
-// private static final int opc_iastore = 79;
-// private static final int opc_lastore = 80;
-// private static final int opc_fastore = 81;
-// private static final int opc_dastore = 82;
-    private static final int opc_aastore = 83;
-    // private static final int opc_bastore = 84;
-// private static final int opc_castore = 85;
-// private static final int opc_sastore = 86;
-    private static final int opc_pop = 87;
-    // private static final int opc_pop2 = 88;
-    private static final int opc_dup = 89;
-    // private static final int opc_dup_x1 = 90;
-// private static final int opc_dup_x2 = 91;
-// private static final int opc_dup2 = 92;
-// private static final int opc_dup2_x1 = 93;
-// private static final int opc_dup2_x2 = 94;
-// private static final int opc_swap = 95;
-// private static final int opc_iadd = 96;
-// private static final int opc_ladd = 97;
-// private static final int opc_fadd = 98;
-// private static final int opc_dadd = 99;
-// private static final int opc_isub = 100;
-// private static final int opc_lsub = 101;
-// private static final int opc_fsub = 102;
-// private static final int opc_dsub = 103;
-// private static final int opc_imul = 104;
-// private static final int opc_lmul = 105;
-// private static final int opc_fmul = 106;
-// private static final int opc_dmul = 107;
-// private static final int opc_idiv = 108;
-// private static final int opc_ldiv = 109;
-// private static final int opc_fdiv = 110;
-// private static final int opc_ddiv = 111;
-// private static final int opc_irem = 112;
-// private static final int opc_lrem = 113;
-// private static final int opc_frem = 114;
-// private static final int opc_drem = 115;
-// private static final int opc_ineg = 116;
-// private static final int opc_lneg = 117;
-// private static final int opc_fneg = 118;
-// private static final int opc_dneg = 119;
-// private static final int opc_ishl = 120;
-// private static final int opc_lshl = 121;
-// private static final int opc_ishr = 122;
-// private static final int opc_lshr = 123;
-// private static final int opc_iushr = 124;
-// private static final int opc_lushr = 125;
-// private static final int opc_iand = 126;
-// private static final int opc_land = 127;
-// private static final int opc_ior = 128;
-// private static final int opc_lor = 129;
-// private static final int opc_ixor = 130;
-// private static final int opc_lxor = 131;
-// private static final int opc_iinc = 132;
-// private static final int opc_i2l = 133;
-// private static final int opc_i2f = 134;
-// private static final int opc_i2d = 135;
-// private static final int opc_l2i = 136;
-// private static final int opc_l2f = 137;
-// private static final int opc_l2d = 138;
-// private static final int opc_f2i = 139;
-// private static final int opc_f2l = 140;
-// private static final int opc_f2d = 141;
-// private static final int opc_d2i = 142;
-// private static final int opc_d2l = 143;
-// private static final int opc_d2f = 144;
-// private static final int opc_i2b = 145;
-// private static final int opc_i2c = 146;
-// private static final int opc_i2s = 147;
-// private static final int opc_lcmp = 148;
-// private static final int opc_fcmpl = 149;
-// private static final int opc_fcmpg = 150;
-// private static final int opc_dcmpl = 151;
-// private static final int opc_dcmpg = 152;
-// private static final int opc_ifeq = 153;
-// private static final int opc_ifne = 154;
-// private static final int opc_iflt = 155;
-// private static final int opc_ifge = 156;
-// private static final int opc_ifgt = 157;
-// private static final int opc_ifle = 158;
-// private static final int opc_if_icmpeq = 159;
-// private static final int opc_if_icmpne = 160;
-// private static final int opc_if_icmplt = 161;
-// private static final int opc_if_icmpge = 162;
-// private static final int opc_if_icmpgt = 163;
-// private static final int opc_if_icmple = 164;
-// private static final int opc_if_acmpeq = 165;
-// private static final int opc_if_acmpne = 166;
-// private static final int opc_goto = 167;
-// private static final int opc_jsr = 168;
-// private static final int opc_ret = 169;
-// private static final int opc_tableswitch = 170;
-// private static final int opc_lookupswitch = 171;
-    private static final int opc_ireturn = 172;
-    private static final int opc_lreturn = 173;
-    private static final int opc_freturn = 174;
-    private static final int opc_dreturn = 175;
-    private static final int opc_areturn = 176;
-    private static final int opc_return = 177;
-    // private static final int opc_getstatic = 178;
-    // private static final int opc_putstatic = 179;
-    private static final int opc_getfield = 180;
-    // private static final int opc_putfield = 181;
-    private static final int opc_invokevirtual = 182;
-    private static final int opc_invokespecial = 183;
-    private static final int opc_invokestatic = 184;
-    // private static final int opc_invokeinterface = 185;
-    private static final int opc_new = 187;
-    // private static final int opc_newarray = 188;
-    private static final int opc_anewarray = 189;
-    // private static final int opc_arraylength = 190;
-    private static final int opc_athrow = 191;
-    private static final int opc_checkcast = 192;
-    // private static final int opc_instanceof = 193;
-// private static final int opc_monitorenter = 194;
-// private static final int opc_monitorexit = 195;
-    private static final int opc_wide = 196;
-// private static final int opc_multianewarray = 197;
-// private static final int opc_ifnull = 198;
-// private static final int opc_ifnonnull = 199;
-// private static final int opc_goto_w = 200;
-// private static final int opc_jsr_w = 201;
-
-    // end of constants copied from sun.tools.java.RuntimeConstants
+    private static final String JL_OBJECT = "java/lang/Object";
+    private static final String JL_THROWABLE = "java/lang/Throwable";
+    private static final String JLR_UNDECLARED_THROWABLE_EX = "java/lang/reflect/UndeclaredThrowableException";
+    private static final int VARARGS = 0x00000080;
 
     /* name of the superclass of proxy classes */
     private static final String superclassName = "java/lang/Object";
-
-    private static final String foreignObjectFieldName = "foreign";
 
     private final EspressoContext context;
 
@@ -318,15 +75,6 @@ public final class EspressoForeignProxyGenerator {
 
     /* proxy class access flags */
     private int accessFlags;
-
-    /* constant pool of class being generated */
-    private ConstantPool cp = new ConstantPool();
-
-    /* FieldInfo struct for each field of generated class */
-    private List<FieldInfo> fields = new ArrayList<>();
-
-    /* MethodInfo struct for each method of generated class */
-    private List<MethodInfo> methods = new ArrayList<>();
 
     /*
      * Maps method signature string to list of ProxyMethod objects for proxy methods with that
@@ -349,6 +97,7 @@ public final class EspressoForeignProxyGenerator {
      * class.
      */
     private EspressoForeignProxyGenerator(EspressoContext context, ObjectKlass[] interfaces) {
+        super(ClassWriter.COMPUTE_FRAMES);
         this.context = context;
         this.className = nextClassName();
         this.interfaces = interfaces;
@@ -422,30 +171,20 @@ public final class EspressoForeignProxyGenerator {
      * process.
      */
     private byte[] generateClassFile() {
-
-        // add field for the foreign object
-        fields.add(new FieldInfo(foreignObjectFieldName,
-                        "Ljava/lang/Object;",
-                        ACC_PRIVATE));
+        visit(V1_8, accessFlags, dotToSlash(className), null,
+                        superclassName, typeNames(interfaces));
 
         /*
-         * ============================================================ Step 1: Assemble ProxyMethod
-         * objects for all methods to generate proxy dispatching code for.
+         * Add proxy methods for the hashCode, equals, and toString methods of java.lang.Object.
+         * This is done before the methods from the proxy interfaces so that the methods from
+         * java.lang.Object take precedence over duplicate methods in the proxy interfaces.
          */
-
-        /*
-         * Record that proxy methods are needed for the hashCode, equals, and toString methods of
-         * java.lang.Object. This is done before the methods from the proxy interfaces so that the
-         * methods from java.lang.Object take precedence over duplicate methods in the proxy
-         * interfaces.
-         */
-        addProxyMethod(context.getMeta().java_lang_Object_toString);
-        addProxyMethod(context.getMeta().java_lang_Object_equals);
         addProxyMethod(context.getMeta().java_lang_Object_hashCode);
+        addProxyMethod(context.getMeta().java_lang_Object_equals);
+        addProxyMethod(context.getMeta().java_lang_Object_toString);
 
         /*
-         * Now record all of the methods from the proxy interfaces, giving earlier interfaces
-         * precedence over later ones with duplicate methods.
+         * Accumulate all of the methods from the proxy interfaces.
          */
         for (ObjectKlass intf : interfaces) {
             for (Method m : intf.getDeclaredMethods()) {
@@ -463,107 +202,50 @@ public final class EspressoForeignProxyGenerator {
             checkReturnTypes(sigmethods);
         }
 
-        /*
-         * ============================================================ Step 2: Assemble FieldInfo
-         * and MethodInfo structs for all of fields and methods in the class we are generating.
-         */
-        try {
-            methods.add(generateConstructor());
+        generateConstructor();
 
-            for (List<ProxyMethod> sigmethods : proxyMethods.values()) {
-                for (ProxyMethod pm : sigmethods) {
-                    // generate code for proxy method and add it
-                    methods.add(pm.generateMethod());
-                }
+        for (List<ProxyMethod> sigmethods : proxyMethods.values()) {
+            for (ProxyMethod pm : sigmethods) {
+                // Generate code for proxy method
+                pm.generateMethod(this);
             }
-
-            // methods.add(generateStaticInitializer());
-
-        } catch (IOException e) {
-            throw new InternalError("unexpected I/O Exception", e);
         }
 
-        if (methods.size() > 65535) {
-            throw new IllegalArgumentException("method limit exceeded");
-        }
-        if (fields.size() > 65535) {
-            throw new IllegalArgumentException("field limit exceeded");
-        }
+        return toByteArray();
+    }
 
-        /*
-         * ============================================================ Step 3: Write the final
-         * class file.
-         */
+    /**
+     * Return an array of the class and interface names from an array of Classes.
+     *
+     * @param classes an array of classes or interfaces
+     * @return the array of class and interface names; or null if classes is null or empty
+     */
+    private static String[] typeNames(Klass[] classes) {
+        if (classes == null || classes.length == 0)
+            return null;
+        int size = classes.length;
+        String[] ifaces = new String[size];
+        for (int i = 0; i < size; i++)
+            ifaces[i] = dotToSlash(classes[i].getNameAsString());
+        return ifaces;
+    }
 
-        /*
-         * Make sure that constant pool indexes are reserved for the following items before starting
-         * to write the final class file.
-         */
-        cp.getClass(dotToSlash(className));
-        cp.getClass(superclassName);
-        for (Klass intf : interfaces) {
-            cp.getClass(dotToSlash(intf.getNameAsString()));
-        }
+    /**
+     * Generate the constructor method for the proxy class.
+     */
+    private void generateConstructor() {
+        MethodVisitor ctor = visitMethod(Modifier.PUBLIC, "<init>",
+                        "()V", null, null);
+        ctor.visitParameter(null, 0);
+        ctor.visitCode();
+        ctor.visitVarInsn(ALOAD, 0);
+        ctor.visitMethodInsn(INVOKESPECIAL, superclassName, "<init>",
+                        "()V", false);
+        ctor.visitInsn(RETURN);
 
-        /*
-         * Disallow new constant pool additions beyond this point, since we are about to write the
-         * final constant pool table.
-         */
-        cp.setReadOnly();
-
-        ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        DataOutputStream dout = new DataOutputStream(bout);
-
-        try {
-            /*
-             * Write all the items of the "ClassFile" structure. See JVMS section 4.1.
-             */
-            // u4 magic;
-            dout.writeInt(0xCAFEBABE);
-            // u2 minor_version;
-            dout.writeShort(CLASSFILE_MINOR_VERSION);
-            // u2 major_version;
-            dout.writeShort(CLASSFILE_MAJOR_VERSION);
-
-            cp.write(dout);             // (write constant pool)
-
-            // u2 access_flags;
-            dout.writeShort(accessFlags);
-            // u2 this_class;
-            dout.writeShort(cp.getClass(dotToSlash(className)));
-            // u2 super_class;
-            dout.writeShort(cp.getClass(superclassName));
-
-            // u2 interfaces_count;
-            dout.writeShort(interfaces.length);
-            // u2 interfaces[interfaces_count];
-            for (Klass intf : interfaces) {
-                dout.writeShort(cp.getClass(
-                                dotToSlash(intf.getNameAsString())));
-            }
-
-            // u2 fields_count;
-            dout.writeShort(fields.size());
-            // field_info fields[fields_count];
-            for (FieldInfo f : fields) {
-                f.write(dout);
-            }
-
-            // u2 methods_count;
-            dout.writeShort(methods.size());
-            // method_info methods[methods_count];
-            for (MethodInfo m : methods) {
-                m.write(dout);
-            }
-
-            // u2 attributes_count;
-            dout.writeShort(0); // (no ClassFile attributes for proxy classes)
-
-        } catch (IOException e) {
-            throw new InternalError("unexpected I/O Exception", e);
-        }
-
-        return bout.toByteArray();
+        // Maxs computed by ClassWriter.COMPUTE_FRAMES, these arguments ignored
+        ctor.visitMaxs(-1, -1);
+        ctor.visitEnd();
     }
 
     /**
@@ -606,7 +288,11 @@ public final class EspressoForeignProxyGenerator {
             proxyMethods.put(sig, sigmethods);
         }
         sigmethods.add(new ProxyMethod(name, parameterTypes, returnType,
-                        exceptionTypes));
+                        exceptionTypes, isVarArgs(m.getModifiers())));
+    }
+
+    private boolean isVarArgs(int modifiers) {
+        return (modifiers & VARARGS) != 0;
     }
 
     /**
@@ -704,151 +390,6 @@ public final class EspressoForeignProxyGenerator {
     }
 
     /**
-     * A FieldInfo object contains information about a particular field in the class being
-     * generated. The class mirrors the data items of the "field_info" structure of the class file
-     * format (see JVMS 4.5).
-     */
-    private class FieldInfo {
-        public int accessFlags;
-        public String name;
-        public String descriptor;
-
-        FieldInfo(String name, String descriptor, int accessFlags) {
-            this.name = name;
-            this.descriptor = descriptor;
-            this.accessFlags = accessFlags;
-
-            /*
-             * Make sure that constant pool indexes are reserved for the following items before
-             * starting to write the final class file.
-             */
-            cp.getUtf8(name);
-            cp.getUtf8(descriptor);
-        }
-
-        public void write(DataOutputStream out) throws IOException {
-            /*
-             * Write all the items of the "field_info" structure. See JVMS section 4.5.
-             */
-            // u2 access_flags;
-            out.writeShort(accessFlags);
-            // u2 name_index;
-            out.writeShort(cp.getUtf8(name));
-            // u2 descriptor_index;
-            out.writeShort(cp.getUtf8(descriptor));
-            // u2 attributes_count;
-            out.writeShort(0);  // (no field_info attributes for proxy classes)
-        }
-    }
-
-    /**
-     * An ExceptionTableEntry object holds values for the data items of an entry in the
-     * "exception_table" item of the "Code" attribute of "method_info" structures (see JVMS 4.7.3).
-     */
-    private static class ExceptionTableEntry {
-        public short startPc;
-        public short endPc;
-        public short handlerPc;
-        public short catchType;
-
-        ExceptionTableEntry(short startPc, short endPc,
-                        short handlerPc, short catchType) {
-            this.startPc = startPc;
-            this.endPc = endPc;
-            this.handlerPc = handlerPc;
-            this.catchType = catchType;
-        }
-    }
-
-    /**
-     * A MethodInfo object contains information about a particular method in the class being
-     * generated. This class mirrors the data items of the "method_info" structure of the class file
-     * format (see JVMS 4.6).
-     */
-    private class MethodInfo {
-        public int accessFlags;
-        public String name;
-        public String descriptor;
-        public short maxStack;
-        public short maxLocals;
-        public ByteArrayOutputStream code = new ByteArrayOutputStream();
-        public List<ExceptionTableEntry> exceptionTable = new ArrayList<>();
-        public short[] declaredExceptions;
-
-        MethodInfo(String name, String descriptor, int accessFlags) {
-            this.name = name;
-            this.descriptor = descriptor;
-            this.accessFlags = accessFlags;
-
-            /*
-             * Make sure that constant pool indexes are reserved for the following items before
-             * starting to write the final class file.
-             */
-            cp.getUtf8(name);
-            cp.getUtf8(descriptor);
-            cp.getUtf8("Code");
-            cp.getUtf8("Exceptions");
-        }
-
-        public void write(DataOutputStream out) throws IOException {
-            /*
-             * Write all the items of the "method_info" structure. See JVMS section 4.6.
-             */
-            // u2 access_flags;
-            out.writeShort(accessFlags);
-            // u2 name_index;
-            out.writeShort(cp.getUtf8(name));
-            // u2 descriptor_index;
-            out.writeShort(cp.getUtf8(descriptor));
-            // u2 attributes_count;
-            out.writeShort(2);  // (two method_info attributes:)
-
-            // Write "Code" attribute. See JVMS section 4.7.3.
-
-            // u2 attribute_name_index;
-            out.writeShort(cp.getUtf8("Code"));
-            // u4 attribute_length;
-            out.writeInt(12 + code.size() + 8 * exceptionTable.size());
-            // u2 max_stack;
-            out.writeShort(maxStack);
-            // u2 max_locals;
-            out.writeShort(maxLocals);
-            // u2 code_length;
-            out.writeInt(code.size());
-            // u1 code[code_length];
-            code.writeTo(out);
-            // u2 exception_table_length;
-            out.writeShort(exceptionTable.size());
-            for (ExceptionTableEntry e : exceptionTable) {
-                // u2 start_pc;
-                out.writeShort(e.startPc);
-                // u2 end_pc;
-                out.writeShort(e.endPc);
-                // u2 handler_pc;
-                out.writeShort(e.handlerPc);
-                // u2 catch_type;
-                out.writeShort(e.catchType);
-            }
-            // u2 attributes_count;
-            out.writeShort(0);
-
-            // write "Exceptions" attribute. See JVMS section 4.7.4.
-
-            // u2 attribute_name_index;
-            out.writeShort(cp.getUtf8("Exceptions"));
-            // u4 attributes_length;
-            out.writeInt(2 + 2 * declaredExceptions.length);
-            // u2 number_of_exceptions;
-            out.writeShort(declaredExceptions.length);
-            // u2 exception_index_table[number_of_exceptions];
-            for (short value : declaredExceptions) {
-                out.writeShort(value);
-            }
-        }
-
-    }
-
-    /**
      * A ProxyMethod object represents a proxy method in the proxy class being generated: a method
      * whose implementation will encode and dispatch invocations to the proxy instance's invocation
      * handler.
@@ -859,23 +400,27 @@ public final class EspressoForeignProxyGenerator {
         public Klass[] parameterTypes;
         public Klass returnType;
         public Klass[] exceptionTypes;
+        boolean isVarArgs;
 
         private ProxyMethod(String methodName, Klass[] parameterTypes,
-                        Klass returnType, Klass[] exceptionTypes) {
+                        Klass returnType, Klass[] exceptionTypes, boolean isVarArgs) {
             this.methodName = methodName;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.exceptionTypes = exceptionTypes;
         }
 
-        /**
-         * Return a MethodInfo object for this method, including generating the code and exception
-         * table entry.
-         */
-        private MethodInfo generateMethod() throws IOException {
+        private void generateMethod(ClassWriter cw) {
             String desc = getMethodDescriptor(parameterTypes, returnType);
-            MethodInfo minfo = new MethodInfo(methodName, desc,
-                            ACC_PUBLIC | ACC_FINAL);
+            int accessFlags = ACC_PUBLIC | ACC_FINAL;
+
+            if (isVarArgs) {
+                accessFlags |= ACC_VARARGS;
+            }
+
+            MethodVisitor mv = cw.visitMethod(accessFlags,
+                            methodName, desc, null,
+                            typeNames(exceptionTypes));
 
             int[] parameterSlot = new int[parameterTypes.length];
             int nextSlot = 1;
@@ -883,127 +428,81 @@ public final class EspressoForeignProxyGenerator {
                 parameterSlot[i] = nextSlot;
                 nextSlot += getWordsPerType(parameterTypes[i]);
             }
-            int localSlot0 = nextSlot;
-            short pc;
-            short tryBegin = 0;
-            short tryEnd;
 
-            DataOutputStream out = new DataOutputStream(minfo.code);
-
-            // return type int
-            // return Interop.asInt(Interop.invokeMember(Object foreign, String methodName, Object[]
-            // args))
-
-            // MyInterface return type
-            // return (MyInterface) Interop.invokeMember(Object foreign, String methodName, Object[]
-            // args))
-
-            codeAload(0, out);
-
-            out.writeByte(opc_getfield);
-            out.writeShort(cp.getFieldRef(
-                            dotToSlash(className),
-                            foreignObjectFieldName, "Ljava/lang/Object;"));
-
-            codeLdc(cp.getString(methodName), out);
-
-            if (parameterTypes.length > 0) {
-
-                codeIpush(parameterTypes.length, out);
-
-                out.writeByte(opc_anewarray);
-                out.writeShort(cp.getClass("java/lang/Object"));
-
-                for (int i = 0; i < parameterTypes.length; i++) {
-
-                    out.writeByte(opc_dup);
-
-                    codeIpush(i, out);
-
-                    codeWrapArgument(parameterTypes[i], parameterSlot[i], out);
-
-                    out.writeByte(opc_aastore);
-                }
-            } else {
-                out.writeByte(opc_iconst_0);
-                out.writeByte(opc_anewarray);
-                out.writeShort(cp.getClass("java/lang/Object"));
-            }
-
-            out.writeByte(opc_invokestatic);
-            out.writeShort(cp.getMethodRef(
-                            "com/oracle/truffle/espresso/polyglot/Interop",
-                            "invokeMember",
-                            "(Ljava/lang/Object;Ljava/lang/String;" +
-                                            "[Ljava/lang/Object;)Ljava/lang/Object;"));
-
-            if (returnType == context.getMeta()._void) {
-                out.writeByte(opc_pop);
-                out.writeByte(opc_return);
-
-            } else {
-                codeUnwrapReturnValue(returnType, out);
-            }
-
-            tryEnd = pc = (short) minfo.code.size();
+            mv.visitCode();
+            Label L_startBlock = new Label();
+            Label L_endBlock = new Label();
+            Label L_RuntimeHandler = new Label();
+            Label L_ThrowableHandler = new Label();
 
             List<Klass> catchList = computeUniqueCatchList(exceptionTypes);
             if (catchList.size() > 0) {
-
                 for (Klass ex : catchList) {
-                    minfo.exceptionTable.add(new ExceptionTableEntry(
-                                    tryBegin, tryEnd, pc,
-                                    cp.getClass(dotToSlash(ex.getNameAsString()))));
+                    mv.visitTryCatchBlock(L_startBlock, L_endBlock, L_RuntimeHandler,
+                                    dotToSlash(ex.getNameAsString()));
                 }
 
-                out.writeByte(opc_athrow);
+                mv.visitTryCatchBlock(L_startBlock, L_endBlock, L_ThrowableHandler,
+                                JL_THROWABLE);
+            }
+            mv.visitLabel(L_startBlock);
 
-                pc = (short) minfo.code.size();
+            mv.visitVarInsn(ALOAD, 0);
+            mv.visitLdcInsn(methodName);
 
-                minfo.exceptionTable.add(new ExceptionTableEntry(
-                                tryBegin, tryEnd, pc, cp.getClass("java/lang/Throwable")));
-
-                codeAstore(localSlot0, out);
-
-                out.writeByte(opc_new);
-                out.writeShort(cp.getClass(
-                                "java/lang/reflect/UndeclaredThrowableException"));
-
-                out.writeByte(opc_dup);
-
-                codeAload(localSlot0, out);
-
-                out.writeByte(opc_invokespecial);
-
-                out.writeShort(cp.getMethodRef(
-                                "java/lang/reflect/UndeclaredThrowableException",
-                                "<init>", "(Ljava/lang/Throwable;)V"));
-
-                out.writeByte(opc_athrow);
+            if (parameterTypes.length > 0) {
+                // Create an array and fill with the parameters converting primitives to wrappers
+                emitIconstInsn(mv, parameterTypes.length);
+                mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    mv.visitInsn(DUP);
+                    emitIconstInsn(mv, i);
+                    codeWrapArgument(mv, parameterTypes[i], parameterSlot[i]);
+                    mv.visitInsn(AASTORE);
+                }
+            } else {
+                mv.visitInsn(ICONST_0);
+                mv.visitTypeInsn(ANEWARRAY, JL_OBJECT);
             }
 
-            if (minfo.code.size() > 65535) {
-                throw new IllegalArgumentException("code size limit exceeded");
+            mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
+                            "invokeMember",
+                            "(Ljava/lang/Object;Ljava/lang/String;" +
+                                            "[Ljava/lang/Object;)Ljava/lang/Object;",
+                            false);
+
+            if (returnType == context.getMeta()._void) {
+                mv.visitInsn(POP);
+                mv.visitInsn(RETURN);
+            } else {
+                codeUnwrapReturnValue(mv, returnType);
             }
 
-            minfo.maxStack = 10;
-            minfo.maxLocals = (short) (localSlot0 + 1);
-            minfo.declaredExceptions = new short[exceptionTypes.length];
-            for (int i = 0; i < exceptionTypes.length; i++) {
-                minfo.declaredExceptions[i] = cp.getClass(
-                                dotToSlash(exceptionTypes[i].getNameAsString()));
-            }
-            return minfo;
+            mv.visitLabel(L_endBlock);
+
+            // Generate exception handler
+            mv.visitLabel(L_RuntimeHandler);
+            mv.visitInsn(ATHROW);   // just rethrow the exception
+
+            mv.visitLabel(L_ThrowableHandler);
+            mv.visitVarInsn(ASTORE, 1);
+            mv.visitTypeInsn(NEW, JLR_UNDECLARED_THROWABLE_EX);
+            mv.visitInsn(DUP);
+            mv.visitVarInsn(ALOAD, 1);
+            mv.visitMethodInsn(INVOKESPECIAL, JLR_UNDECLARED_THROWABLE_EX,
+                            "<init>", "(Ljava/lang/Throwable;)V", false);
+            mv.visitInsn(ATHROW);
+            // Maxs computed by ClassWriter.COMPUTE_FRAMES, these arguments ignored
+            mv.visitMaxs(-1, -1);
+            mv.visitEnd();
         }
 
         /**
          * Generate code for wrapping an argument of the given type whose value can be found at the
          * specified local variable index, in order for it to be passed (as an Object) to the
-         * invocation handler's "invoke" method. The code is written to the supplied stream.
+         * invocation handler's "invoke" method.
          */
-        private void codeWrapArgument(Klass type, int slot,
-                        DataOutputStream out)
-                        throws IOException {
+        private void codeWrapArgument(MethodVisitor mv, Klass type, int slot) {
             if (type.isPrimitive()) {
                 PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(context, type);
 
@@ -1012,216 +511,77 @@ public final class EspressoForeignProxyGenerator {
                                 type == context.getMeta()._byte ||
                                 type == context.getMeta()._char ||
                                 type == context.getMeta()._short) {
-                    codeIload(slot, out);
+                    mv.visitVarInsn(ILOAD, slot);
                 } else if (type == context.getMeta()._long) {
-                    codeLload(slot, out);
+                    mv.visitVarInsn(LLOAD, slot);
                 } else if (type == context.getMeta()._float) {
-                    codeFload(slot, out);
+                    mv.visitVarInsn(FLOAD, slot);
                 } else if (type == context.getMeta()._double) {
-                    codeDload(slot, out);
+                    mv.visitVarInsn(DLOAD, slot);
                 } else {
                     throw new AssertionError();
                 }
-
-                out.writeByte(opc_invokestatic);
-                out.writeShort(cp.getMethodRef(
-                                prim.wrapperClassName,
-                                "valueOf", prim.wrapperValueOfDesc));
+                mv.visitMethodInsn(INVOKESTATIC, prim.wrapperClassName, "valueOf",
+                                prim.wrapperValueOfDesc, false);
             } else {
-                codeAload(slot, out);
+                mv.visitVarInsn(ALOAD, slot);
             }
         }
 
         /**
          * Generate code for unwrapping a return value of the given type from the invocation
-         * handler's "invoke" method (as type Object) to its correct type. The code is written to
-         * the supplied stream.
+         * handler's "invoke" method (as type Object) to its correct type.
          */
-        private void codeUnwrapReturnValue(Klass type, DataOutputStream out)
-                        throws IOException {
+        private void codeUnwrapReturnValue(MethodVisitor mv, Klass type) {
             if (type.isPrimitive()) {
                 PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(context, type);
 
-                out.writeByte(opc_checkcast);
-                out.writeShort(cp.getClass(prim.wrapperClassName));
-
-                out.writeByte(opc_invokevirtual);
-                out.writeShort(cp.getMethodRef(
+                mv.visitTypeInsn(CHECKCAST, prim.wrapperClassName);
+                mv.visitMethodInsn(INVOKEVIRTUAL,
                                 prim.wrapperClassName,
-                                prim.unwrapMethodName, prim.unwrapMethodDesc));
+                                prim.unwrapMethodName, prim.unwrapMethodDesc, false);
 
                 if (type == context.getMeta()._int ||
                                 type == context.getMeta()._boolean ||
                                 type == context.getMeta()._byte ||
                                 type == context.getMeta()._char ||
                                 type == context.getMeta()._short) {
-                    out.writeByte(opc_ireturn);
+                    mv.visitInsn(IRETURN);
                 } else if (type == context.getMeta()._long) {
-                    out.writeByte(opc_lreturn);
+                    mv.visitInsn(LRETURN);
                 } else if (type == context.getMeta()._float) {
-                    out.writeByte(opc_freturn);
+                    mv.visitInsn(FRETURN);
                 } else if (type == context.getMeta()._double) {
-                    out.writeByte(opc_dreturn);
+                    mv.visitInsn(DRETURN);
                 } else {
                     throw new AssertionError();
                 }
             } else {
-                out.writeByte(opc_checkcast);
-                out.writeShort(cp.getClass(dotToSlash(type.getNameAsString())));
-                out.writeByte(opc_areturn);
+                mv.visitTypeInsn(CHECKCAST, dotToSlash(type.getNameAsString()));
+                mv.visitInsn(ARETURN);
             }
         }
-    }
 
-    /**
-     * Generate the constructor method for the proxy class.
-     */
-    private MethodInfo generateConstructor() throws IOException {
-        MethodInfo minfo = new MethodInfo(
-                        "<init>", "()V",
-                        ACC_PUBLIC);
+        /*
+         * =============== Code Generation Utility Methods ===============
+         */
 
-        DataOutputStream out = new DataOutputStream(minfo.code);
-        out.writeByte(opc_aload_0);
-        out.writeByte(opc_invokespecial);
-        out.writeShort(cp.getMethodRef(
-                        superclassName,
-                        "<init>", "()V"));
-
-        out.writeByte(opc_return);
-
-        minfo.maxStack = 1;
-        minfo.maxLocals = 1;
-        minfo.declaredExceptions = new short[0];
-
-        return minfo;
-    }
-
-    /*
-     * =============== Code Generation Utility Methods ===============
-     */
-
-    /*
-     * The following methods generate code for the load or store operation indicated by their name
-     * for the given local variable. The code is written to the supplied stream.
-     */
-
-    private static void codeIload(int lvar, DataOutputStream out)
-                    throws IOException {
-        codeLocalLoadStore(lvar, opc_iload, opc_iload_0, out);
-    }
-
-    private static void codeLload(int lvar, DataOutputStream out)
-                    throws IOException {
-        codeLocalLoadStore(lvar, opc_lload, opc_lload_0, out);
-    }
-
-    private static void codeFload(int lvar, DataOutputStream out)
-                    throws IOException {
-        codeLocalLoadStore(lvar, opc_fload, opc_fload_0, out);
-    }
-
-    private static void codeDload(int lvar, DataOutputStream out)
-                    throws IOException {
-        codeLocalLoadStore(lvar, opc_dload, opc_dload_0, out);
-    }
-
-    private static void codeAload(int lvar, DataOutputStream out)
-                    throws IOException {
-        codeLocalLoadStore(lvar, opc_aload, opc_aload_0, out);
-    }
-
-// private void code_istore(int lvar, DataOutputStream out)
-// throws IOException
-// {
-// codeLocalLoadStore(lvar, opc_istore, opc_istore_0, out);
-// }
-
-// private void code_lstore(int lvar, DataOutputStream out)
-// throws IOException
-// {
-// codeLocalLoadStore(lvar, opc_lstore, opc_lstore_0, out);
-// }
-
-// private void code_fstore(int lvar, DataOutputStream out)
-// throws IOException
-// {
-// codeLocalLoadStore(lvar, opc_fstore, opc_fstore_0, out);
-// }
-
-// private void code_dstore(int lvar, DataOutputStream out)
-// throws IOException
-// {
-// codeLocalLoadStore(lvar, opc_dstore, opc_dstore_0, out);
-// }
-
-    private static void codeAstore(int lvar, DataOutputStream out)
-                    throws IOException {
-        codeLocalLoadStore(lvar, opc_astore, opc_astore_0, out);
-    }
-
-    /**
-     * Generate code for a load or store instruction for the given local variable. The code is
-     * written to the supplied stream.
-     *
-     * "opcode" indicates the opcode form of the desired load or store instruction that takes an
-     * explicit local variable index, and "opcode_0" indicates the corresponding form of the
-     * instruction with the implicit index 0.
-     */
-    private static void codeLocalLoadStore(int lvar, int opcode, int opcode0,
-                    DataOutputStream out)
-                    throws IOException {
-        assert lvar >= 0 && lvar <= 0xFFFF;
-        if (lvar <= 3) {
-            out.writeByte(opcode0 + lvar);
-        } else if (lvar <= 0xFF) {
-            out.writeByte(opcode);
-            out.writeByte(lvar & 0xFF);
-        } else {
-            /*
-             * Use the "wide" instruction modifier for local variable indexes that do not fit into
-             * an unsigned byte.
-             */
-            out.writeByte(opc_wide);
-            out.writeByte(opcode);
-            out.writeShort(lvar & 0xFFFF);
-        }
-    }
-
-    /**
-     * Generate code for an "ldc" instruction for the given constant pool index (the "ldc_w"
-     * instruction is used if the index does not fit into an unsigned byte). The code is written to
-     * the supplied stream.
-     */
-    private static void codeLdc(int index, DataOutputStream out)
-                    throws IOException {
-        assert index >= 0 && index <= 0xFFFF;
-        if (index <= 0xFF) {
-            out.writeByte(opc_ldc);
-            out.writeByte(index & 0xFF);
-        } else {
-            out.writeByte(opc_ldc_w);
-            out.writeShort(index & 0xFFFF);
-        }
-    }
-
-    /**
-     * Generate code to push a constant integer value on to the operand stack, using the
-     * "iconst_<i>", "bipush", or "sipush" instructions depending on the size of the value. The code
-     * is written to the supplied stream.
-     */
-    private static void codeIpush(int value, DataOutputStream out)
-                    throws IOException {
-        if (value >= -1 && value <= 5) {
-            out.writeByte(opc_iconst_0 + value);
-        } else if (value >= Byte.MIN_VALUE && value <= Byte.MAX_VALUE) {
-            out.writeByte(opc_bipush);
-            out.writeByte(value & 0xFF);
-        } else if (value >= Short.MIN_VALUE && value <= Short.MAX_VALUE) {
-            out.writeByte(opc_sipush);
-            out.writeShort(value & 0xFFFF);
-        } else {
-            throw new AssertionError();
+        /**
+         * Visit a bytecode for a constant.
+         *
+         * @param mv The MethodVisitor
+         * @param cst The constant value
+         */
+        private void emitIconstInsn(MethodVisitor mv, final int cst) {
+            if (cst >= -1 && cst <= 5) {
+                mv.visitInsn(ICONST_0 + cst);
+            } else if (cst >= Byte.MIN_VALUE && cst <= Byte.MAX_VALUE) {
+                mv.visitIntInsn(BIPUSH, cst);
+            } else if (cst >= Short.MIN_VALUE && cst <= Short.MAX_VALUE) {
+                mv.visitIntInsn(SIPUSH, cst);
+            } else {
+                mv.visitLdcInsn(cst);
+            }
         }
     }
 
@@ -1466,301 +826,6 @@ public final class EspressoForeignProxyGenerator {
                 return map.get(context).get(cl);
             }
             return buildTable(context).get(cl);
-        }
-    }
-
-    /**
-     * A ConstantPool object represents the constant pool of a class file being generated. This
-     * representation of a constant pool is designed specifically for use by ProxyGenerator; in
-     * particular, it assumes that constant pool entries will not need to be resorted (for example,
-     * by their type, as the Java compiler does), so that the final index value can be assigned and
-     * used when an entry is first created.
-     *
-     * Note that new entries cannot be created after the constant pool has been written to a class
-     * file. To prevent such logic errors, a ConstantPool instance can be marked "read only", so
-     * that further attempts to add new entries will fail with a runtime exception.
-     *
-     * See JVMS section 4.4 for more information about the constant pool of a class file.
-     */
-    private static class ConstantPool {
-
-        /**
-         * list of constant pool entries, in constant pool index order.
-         *
-         * This list is used when writing the constant pool to a stream and for assigning the next
-         * index value. Note that element 0 of this list corresponds to constant pool index 1.
-         */
-        private List<ConstantPool.Entry> pool = new ArrayList<>(32);
-
-        /**
-         * maps constant pool data of all types to constant pool indexes.
-         *
-         * This map is used to look up the index of an existing entry for values of all types.
-         */
-        private Map<Object, Integer> map = new HashMap<>(16);
-
-        /* true if no new constant pool entries may be added */
-        private boolean readOnly = false;
-
-        /**
-         * Get or assign the index for a CONSTANT_Utf8 entry.
-         */
-        public short getUtf8(String s) {
-            if (s == null) {
-                throw new NullPointerException();
-            }
-            return getValue(s);
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_Class entry.
-         */
-        public short getClass(String name) {
-            short utf8Index = getUtf8(name);
-            return getIndirect(new ConstantPool.IndirectEntry(
-                            CONSTANT_CLASS, utf8Index));
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_String entry.
-         */
-        public short getString(String s) {
-            short utf8Index = getUtf8(s);
-            return getIndirect(new ConstantPool.IndirectEntry(
-                            CONSTANT_STRING, utf8Index));
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_FieldRef entry.
-         */
-        public short getFieldRef(String className,
-                        String name, String descriptor) {
-            short classIndex = getClass(className);
-            short nameAndTypeIndex = getNameAndType(name, descriptor);
-            return getIndirect(new ConstantPool.IndirectEntry(
-                            CONSTANT_FIELD, classIndex, nameAndTypeIndex));
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_MethodRef entry.
-         */
-        public short getMethodRef(String className,
-                        String name, String descriptor) {
-            short classIndex = getClass(className);
-            short nameAndTypeIndex = getNameAndType(name, descriptor);
-            return getIndirect(new ConstantPool.IndirectEntry(
-                            CONSTANT_METHOD, classIndex, nameAndTypeIndex));
-        }
-
-        /**
-         * Get or assign the index for a CONSTANT_NameAndType entry.
-         */
-        public short getNameAndType(String name, String descriptor) {
-            short nameIndex = getUtf8(name);
-            short descriptorIndex = getUtf8(descriptor);
-            return getIndirect(new ConstantPool.IndirectEntry(
-                            CONSTANT_NAMEANDTYPE, nameIndex, descriptorIndex));
-        }
-
-        /**
-         * Set this ConstantPool instance to be "read only".
-         *
-         * After this method has been called, further requests to get an index for a non-existent
-         * entry will cause an InternalError to be thrown instead of creating of the entry.
-         */
-        public void setReadOnly() {
-            readOnly = true;
-        }
-
-        /**
-         * Write this constant pool to a stream as part of the class file format.
-         *
-         * This consists of writing the "constant_pool_count" and "constant_pool[]" items of the
-         * "ClassFile" structure, as described in JVMS section 4.1.
-         */
-        public void write(OutputStream out) throws IOException {
-            DataOutputStream dataOut = new DataOutputStream(out);
-
-            // constant_pool_count: number of entries plus one
-            dataOut.writeShort(pool.size() + 1);
-
-            for (ConstantPool.Entry e : pool) {
-                e.write(dataOut);
-            }
-        }
-
-        /**
-         * Add a new constant pool entry and return its index.
-         */
-        private short addEntry(ConstantPool.Entry entry) {
-            pool.add(entry);
-            /*
-             * Note that this way of determining the index of the added entry is wrong if this pool
-             * supports CONSTANT_Long or CONSTANT_Double entries.
-             */
-            if (pool.size() >= 65535) {
-                throw new IllegalArgumentException(
-                                "constant pool size limit exceeded");
-            }
-            return (short) pool.size();
-        }
-
-        /**
-         * Get or assign the index for an entry of a type that contains a direct value. The type of
-         * the given object determines the type of the desired entry as follows:
-         *
-         * java.lang.String CONSTANT_Utf8 java.lang.Integer CONSTANT_Integer java.lang.Float
-         * CONSTANT_Float java.lang.Long CONSTANT_Long java.lang.Double CONSTANT_DOUBLE
-         */
-        private short getValue(Object key) {
-            Integer index = map.get(key);
-            if (index != null) {
-                return index.shortValue();
-            } else {
-                if (readOnly) {
-                    throw new InternalError(
-                                    "late constant pool addition: " + key);
-                }
-                short i = addEntry(new ConstantPool.ValueEntry(key));
-                map.put(key, (int) i);
-                return i;
-            }
-        }
-
-        /**
-         * Get or assign the index for an entry of a type that contains references to other constant
-         * pool entries.
-         */
-        private short getIndirect(ConstantPool.IndirectEntry e) {
-            Integer index = map.get(e);
-            if (index != null) {
-                return index.shortValue();
-            } else {
-                if (readOnly) {
-                    throw new InternalError("late constant pool addition");
-                }
-                short i = addEntry(e);
-                map.put(e, (int) i);
-                return i;
-            }
-        }
-
-        /**
-         * Entry is the abstact superclass of all constant pool entry types that can be stored in
-         * the "pool" list; its purpose is to define a common method for writing constant pool
-         * entries to a class file.
-         */
-        private abstract static class Entry {
-            public abstract void write(DataOutputStream out)
-                            throws IOException;
-        }
-
-        /**
-         * ValueEntry represents a constant pool entry of a type that contains a direct value (see
-         * the comments for the "getValue" method for a list of such types).
-         *
-         * ValueEntry objects are not used as keys for their entries in the Map "map", so no useful
-         * hashCode or equals methods are defined.
-         */
-        private static class ValueEntry extends ConstantPool.Entry {
-            private Object value;
-
-            ValueEntry(Object value) {
-                this.value = value;
-            }
-
-            @Override
-            public void write(DataOutputStream out) throws IOException {
-                if (value instanceof String) {
-                    out.writeByte(CONSTANT_UTF8);
-                    out.writeUTF((String) value);
-                } else if (value instanceof Integer) {
-                    out.writeByte(CONSTANT_INTEGER);
-                    out.writeInt(((Integer) value).intValue());
-                } else if (value instanceof Float) {
-                    out.writeByte(CONSTANT_FLOAT);
-                    out.writeFloat(((Float) value).floatValue());
-                } else if (value instanceof Long) {
-                    out.writeByte(CONSTANT_LONG);
-                    out.writeLong(((Long) value).longValue());
-                } else if (value instanceof Double) {
-                    out.writeDouble(CONSTANT_DOUBLE);
-                    out.writeDouble(((Double) value).doubleValue());
-                } else {
-                    throw new InternalError("bogus value entry: " + value);
-                }
-            }
-        }
-
-        /**
-         * IndirectEntry represents a constant pool entry of a type that references other constant
-         * pool entries, i.e., the following types:
-         *
-         * CONSTANT_Class, CONSTANT_String, CONSTANT_Fieldref, CONSTANT_Methodref,
-         * CONSTANT_InterfaceMethodref, and CONSTANT_NameAndType.
-         *
-         * Each of these entry types contains either one or two indexes of other constant pool
-         * entries.
-         *
-         * IndirectEntry objects are used as the keys for their entries in the Map "map", so the
-         * hashCode and equals methods are overridden to allow matching.
-         */
-        private static class IndirectEntry extends ConstantPool.Entry {
-            private int tag;
-            private short index0;
-            private short index1;
-
-            /**
-             * Construct an IndirectEntry for a constant pool entry type that contains one index of
-             * another entry.
-             */
-            IndirectEntry(int tag, short index) {
-                this.tag = tag;
-                this.index0 = index;
-                this.index1 = 0;
-            }
-
-            /**
-             * Construct an IndirectEntry for a constant pool entry type that contains two indexes
-             * for other entries.
-             */
-            IndirectEntry(int tag, short index0, short index1) {
-                this.tag = tag;
-                this.index0 = index0;
-                this.index1 = index1;
-            }
-
-            @Override
-            public void write(DataOutputStream out) throws IOException {
-                out.writeByte(tag);
-                out.writeShort(index0);
-                /*
-                 * If this entry type contains two indexes, write out the second, too.
-                 */
-                if (tag == CONSTANT_FIELD ||
-                                tag == CONSTANT_METHOD ||
-                                tag == CONSTANT_INTERFACEMETHOD ||
-                                tag == CONSTANT_NAMEANDTYPE) {
-                    out.writeShort(index1);
-                }
-            }
-
-            @Override
-            public int hashCode() {
-                return tag + index0 + index1;
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (obj instanceof ConstantPool.IndirectEntry) {
-                    ConstantPool.IndirectEntry other = (ConstantPool.IndirectEntry) obj;
-                    if (tag == other.tag &&
-                                    index0 == other.index0 && index1 == other.index1) {
-                        return true;
-                    }
-                }
-                return false;
-            }
         }
     }
 }
