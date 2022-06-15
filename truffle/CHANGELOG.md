@@ -4,6 +4,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 
 ## Version 22.2.0
 
+* GR-33829 Added support on libgraal for caching encoded graphs across Truffle compilations to speedup partial evaluation. The cache is enabled by default and can be enabled/disabled with the `--engine.EncodedGraphCache` option.
 * GR-38925 Added `InteropLibrary.hasMetaParents(Object)` and `InteropLibrary.getMetaParents(Object)` that allow lookup of the hierarchy of parents for meta objects (e.g. super class or implemented interface of Java classes).
 * GR-36557 Deprecated `--engine.MaximumGraalNodeCount` and introduced `--engine.MaximumGraalGraphSize` to control the maximum graal graph size during partial evaluation.
 * GR-37493 Added `@DenyReplace` to deny replacement of final node types. 

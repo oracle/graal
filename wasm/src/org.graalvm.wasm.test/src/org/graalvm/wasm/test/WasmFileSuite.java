@@ -280,7 +280,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             contextBuilder.allowEnvironmentAccess(EnvironmentAccess.NONE);
             contextBuilder.out(TEST_OUT);
             contextBuilder.allowExperimentalOptions(true);
-            contextBuilder.option("engine.EncodedGraphCacheCapacity", "-1");
 
             if (WasmTestOptions.LOG_LEVEL != null && !WasmTestOptions.LOG_LEVEL.equals("")) {
                 contextBuilder.option("log.wasm.level", WasmTestOptions.LOG_LEVEL);

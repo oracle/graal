@@ -64,6 +64,7 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -202,6 +203,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
     public static final MemUseTrackerKey CodeInstallationMemUse = DebugContext.memUseTracker("TruffleCodeInstallationMemUse");
+
+    public static final CounterKey EncodedGraphCacheRemovedEntries = DebugContext.counter("EncodedGraphCacheRemovedEntries").doc("# of entries removed from the cache due to bailouts.");
+    public static final CounterKey EncodedGraphCacheBailouts = DebugContext.counter("EncodedGraphCacheBailouts").doc(
+                    "# of (non-permanent) compilation bailouts caused by invalid dependencies (HotSpot assumptions).");
 
     /**
      * Creates a new {@link CompilationIdentifier} for {@code compilable}.
@@ -530,7 +535,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             printer.finish(compilationResult);
         } catch (Throwable t) {
             if (t instanceof BailoutException) {
-                handleBailout(debug, graph, (BailoutException) t);
+                handleBailout(debug, graph, (BailoutException) t, wrapper.options);
             }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
@@ -583,9 +588,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      *
      * @param graph graph producing the bailout, can be null
      * @param bailout {@link BailoutException to process}
+     * @param options
      */
     @SuppressWarnings("unused")
-    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout, org.graalvm.options.OptionValues options) {
         // nop
     }
 
