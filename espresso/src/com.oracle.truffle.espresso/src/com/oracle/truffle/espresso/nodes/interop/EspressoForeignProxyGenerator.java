@@ -221,8 +221,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private void generateToStringMethod() {
         MethodVisitor mv = visitMethod(ACC_PUBLIC | ACC_FINAL,
-                "toString", "()Ljava/lang/String;", null,
-                null);
+                        "toString", "()Ljava/lang/String;", null,
+                        null);
 
         mv.visitCode();
         Label L_startBlock = new Label();
@@ -235,14 +235,14 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         mv.visitVarInsn(ALOAD, 0);
 
         mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                "toDisplayString",
-                "(Ljava/lang/Object;)Ljava/lang/Object;",
-                false);
+                        "toDisplayString",
+                        "(Ljava/lang/Object;)Ljava/lang/Object;",
+                        false);
 
         mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
-                "asString",
-                "(Ljava/lang/Object;)Ljava/lang/String;",
-                false);
+                        "asString",
+                        "(Ljava/lang/Object;)Ljava/lang/String;",
+                        false);
 
         mv.visitInsn(ARETURN);
 
@@ -258,7 +258,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         mv.visitInsn(DUP);
         mv.visitVarInsn(ALOAD, 1);
         mv.visitMethodInsn(INVOKESPECIAL, JLR_UNDECLARED_THROWABLE_EX,
-                "<init>", "(Ljava/lang/Throwable;)V", false);
+                        "<init>", "(Ljava/lang/Throwable;)V", false);
         mv.visitInsn(ATHROW);
         // Maxs computed by ClassWriter.COMPUTE_FRAMES, these arguments ignored
         mv.visitMaxs(-1, -1);
