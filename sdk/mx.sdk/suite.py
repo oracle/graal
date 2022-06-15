@@ -376,7 +376,6 @@ suite = {
           "org.graalvm.nativeimage.c.constant",
           "org.graalvm.nativeimage.c",
           "org.graalvm.nativeimage",
-          "org.graalvm.nativeimage.impl", # Uses of org.graalvm.nativeimage.impl.RuntimeSerializationSupport
           "org.graalvm.nativeimage.impl.clinit", # class initialization instrumentation
           "org.graalvm.polyglot.proxy",
           "org.graalvm.polyglot.io",
