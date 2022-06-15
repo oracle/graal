@@ -489,17 +489,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         protected final InvokeKind invokeKind;
         protected final JavaType invokeReturnType;
         protected final boolean parsingInvocationPlugin;
+        protected final boolean unwindExceptions;
 
-        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
-            this(inlineScope, lastInstr, null, null, false);
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, boolean unwindExceptions) {
+            this(inlineScope, lastInstr, null, null, false, unwindExceptions);
         }
 
-        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType, boolean parsingInvocationPlugin) {
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr) {
+            this(inlineScope, lastInstr, null, null, false, false);
+        }
+
+        public PEAppendGraphBuilderContext(PEMethodScope inlineScope, FixedWithNextNode lastInstr, InvokeKind invokeKind, JavaType invokeReturnType, boolean parsingInvocationPlugin,
+                        boolean unwindExceptions) {
             super(inlineScope, inlineScope.invokeData != null ? inlineScope.invokeData.invoke : null);
             this.lastInstr = lastInstr;
             this.invokeKind = invokeKind;
             this.invokeReturnType = invokeReturnType;
             this.parsingInvocationPlugin = parsingInvocationPlugin;
+            this.unwindExceptions = unwindExceptions;
         }
 
         @Override
@@ -622,20 +629,33 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public AbstractBeginNode genExplicitExceptionEdge(BytecodeExceptionNode.BytecodeExceptionKind exceptionKind, ValueNode... exceptionArguments) {
-            if (exceptionEdgeConsumed) {
-                throw GraalError.unimplemented("Only one node can consume the exception edge");
-            }
-            exceptionEdgeConsumed = true;
 
             BytecodeExceptionNode exceptionNode = graph.add(new BytecodeExceptionNode(getMetaAccess(), exceptionKind, exceptionArguments));
 
             ensureExceptionStateDecoded(methodScope);
-            methodScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionNode);
-            registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, exceptionNode, true, false);
-            exceptionNode.setStateAfter(methodScope.exceptionState);
             exceptionNode.setNodeSourcePosition(methodScope.callerBytecodePosition);
+            if (unwindExceptions) {
+                FrameState exceptionState = methodScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionNode, null);
+                exceptionNode.setStateAfter(exceptionState);
 
-            exceptionNode.setNext(makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionNextOrderId));
+                UnwindNode unwind = graph.add(new UnwindNode(exceptionNode));
+                exceptionNode.setNext(unwind);
+                methodScope.returnAndUnwindNodes.add(unwind);
+
+            } else {
+                exceptionNode.setStateAfter(methodScope.exceptionState);
+
+                if (exceptionEdgeConsumed) {
+                    throw GraalError.unimplemented("Only one node can consume the exception edge");
+                }
+                exceptionEdgeConsumed = true;
+
+                methodScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionNode);
+
+                registerNode(methodScope.callerLoopScope, methodScope.invokeData.exceptionOrderId, exceptionNode, true, false);
+                exceptionNode.setNext(makeStubNode(methodScope.caller, methodScope.callerLoopScope, methodScope.invokeData.exceptionNextOrderId));
+            }
+
             return BeginNode.begin(exceptionNode);
         }
 
@@ -1056,7 +1076,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             PEMethodScope inlineScope = createMethodScope(graph, methodScope, loopScope, null, targetMethod, invokeData, methodScope.inliningDepth + 1, arguments);
 
             JavaType returnType = targetMethod.getSignature().getReturnType(methodScope.method.getDeclaringClass());
-            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType, true);
+            PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, invokePredecessor, callTarget.invokeKind(), returnType, true, false);
             InvocationPluginReceiver invocationPluginReceiver = new InvocationPluginReceiver(graphBuilderContext);
 
             if (invocationPlugin.execute(graphBuilderContext, targetMethod, invocationPluginReceiver.init(targetMethod, arguments), arguments)) {
@@ -1175,7 +1195,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
             } else if (!StampTool.isPointerNonNull(arguments[0])) {
                 /* The receiver might be null, so we need to insert a null check. */
-                PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, predecessor);
+                PEAppendGraphBuilderContext graphBuilderContext = new PEAppendGraphBuilderContext(inlineScope, predecessor, true);
                 arguments[0] = graphBuilderContext.nullCheckedValue(arguments[0]);
                 predecessor = graphBuilderContext.lastInstr;
             }
