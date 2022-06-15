@@ -370,7 +370,7 @@ public abstract class ToEspressoNode extends EspressoNode {
             }
             ObjectKlass proxyKlass = lookupProxyKlassNode.execute(getMetaObjectOrThrow(value, interop), klass);
             if (proxyKlass != null) {
-                return lookupProxyKlassNode.spinProxyInstance(proxyKlass, value, interop);
+                return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
             } else {
                 return StaticObject.createForeign(getLanguage(), klass, value, interop);
             }
@@ -391,7 +391,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                 initCheck.execute(klass);
                 ObjectKlass proxyKlass = lookupProxyKlassNode.execute(getMetaObjectOrThrow(value, interop), klass);
                 if (proxyKlass != null) {
-                    return lookupProxyKlassNode.spinProxyInstance(proxyKlass, value, interop);
+                    return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
                 }
             }
             throw new ClassCastException();

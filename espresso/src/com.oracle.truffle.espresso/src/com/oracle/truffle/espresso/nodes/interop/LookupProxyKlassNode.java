@@ -34,8 +34,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateUncached
 public abstract class LookupProxyKlassNode extends EspressoNode {
@@ -82,12 +80,5 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
             throw new ClassCastException("proxy object is not instance of expected type: " + targetType.getName());
         }
         return proxyKlass;
-    }
-
-    StaticObject spinProxyInstance(ObjectKlass proxyKlass, Object foreign, InteropLibrary interop) {
-        StaticObject foreignWrapper = StaticObject.createForeign(getLanguage(), getMeta().java_lang_Object, foreign, interop);
-        StaticObject proxy = getAllocator().createNew(proxyKlass);
-        InterpreterToVM.setFieldObject(foreignWrapper, proxy, proxyKlass.getInitialFieldTable()[0]);
-        return proxy;
     }
 }
