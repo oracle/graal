@@ -37,6 +37,7 @@ import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.libgraal.DestroyedIsolateException;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
@@ -199,7 +200,19 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     public void purgePartialEvaluationCaches() {
         try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
-            TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), handle());
+            // Truffle compiler threads may remain alive after the compiler isolate was disposed and
+            // still try to purge PE caches.
+            if (!scope.getIsolate().isValid()) {
+                return;
+            }
+            long compilerHandle = 0;
+            try {
+                compilerHandle = handle();
+            } catch (DestroyedIsolateException e) {
+                // The isolate was destroyed in the meanwhile, ignore.
+                return;
+            }
+            TruffleToLibGraalCalls.purgePartialEvaluationCaches(getIsolateThread(), compilerHandle);
         }
     }
 }
