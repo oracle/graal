@@ -118,6 +118,14 @@
     ]
   },
 
+  ol7:: self.build_base + {
+    local ol7_image = self.ci_resources.infra.docker_image_ol7,
+    docker+: {
+      image: ol7_image,
+      mount_modules: true,
+    },
+  },
+
   linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},
   darwin::  deps.darwin  + self.common + {os::"darwin",  capabilities+: [self.os]},
   windows:: deps.windows + self.common + {os::"windows", capabilities+: [self.os]},
