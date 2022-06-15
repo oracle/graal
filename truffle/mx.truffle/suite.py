@@ -147,6 +147,18 @@ suite = {
       "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20220320-src.jar"],
       "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
     },
+
+    "NETBEANS-LIB-PROFILER" : {
+      "moduleName" : "org.netbeans.modules.org-netbeans-lib-profiler",
+      "sha1" : "2bcd32411df5d9c5348c98cf7024ac8b76137868",
+      "sourceSha1" : "9943534904689dcf93d3bcaca8293583e9d56266",
+      "maven" : {
+        "groupId" : "org.netbeans.modules",
+        "artifactId" : "org-netbeans-lib-profiler",
+        "version" : "RELEASE120-1",
+      },
+    },
+
   },
   "snippetsPattern" : ".*(Snippets|doc-files).*",
   "projects" : {
@@ -225,6 +237,7 @@ suite = {
         "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
+        "truffle:NETBEANS-LIB-PROFILER",
         "mx:JUNIT",
       ],
       "requires" : [

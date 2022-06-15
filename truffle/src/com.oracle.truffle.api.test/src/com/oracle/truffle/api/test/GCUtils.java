@@ -40,21 +40,41 @@
  */
 package com.oracle.truffle.api.test;
 
+import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.function.BooleanSupplier;
+import java.util.Map;
 import java.util.function.Function;
 
+import com.sun.management.HotSpotDiagnosticMXBean;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.VMRuntime;
 import org.junit.Assert;
+
+import javax.management.MBeanServer;
+
+import org.netbeans.lib.profiler.heap.Heap;
+import org.netbeans.lib.profiler.heap.HeapFactory;
+import org.netbeans.lib.profiler.heap.Instance;
+import org.netbeans.lib.profiler.heap.JavaClass;
+import org.netbeans.lib.profiler.heap.ObjectArrayInstance;
 
 /**
  * Test collectible objects.
  */
 public final class GCUtils {
+
+    private static final ReachabilityAnalyser<?> analyser = selectAnalyser();
 
     private GCUtils() {
         throw new IllegalStateException("No instance allowed.");
@@ -72,12 +92,12 @@ public final class GCUtils {
      * @param objectFactory producer of collectible object per an iteration
      */
     public static void assertObjectsCollectible(Function<Integer, Object> objectFactory) {
-        List<WeakReference<Object>> collectibleObjects = new ArrayList<>();
+        List<Reference<Object>> collectibleObjects = new ArrayList<>();
         for (int i = 0; i < GC_TEST_ITERATIONS; i++) {
             collectibleObjects.add(new WeakReference<>(objectFactory.apply(i)));
             System.gc();
         }
-        if (!gc(IsFreed.anyOf(collectibleObjects), true)) {
+        if (!analyser.anyCollected(collectibleObjects, true).isCollected()) {
             Assert.fail("Objects are not collected.");
         }
     }
@@ -89,7 +109,7 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertGc(final String message, final Reference<?> ref) {
-        if (!gc(IsFreed.allOf(Collections.singleton(ref)), true)) {
+        if (!analyser.allCollected(Collections.singleton(ref), true).isCollected()) {
             Assert.fail(message);
         }
     }
@@ -101,83 +121,212 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertNotGc(final String message, final Reference<?> ref) {
-        if (gc(IsFreed.allOf(Collections.singleton(ref)), false)) {
+        if (analyser.allCollected(Collections.singleton(ref), false).isCollected()) {
             Assert.fail(message);
         }
     }
 
-    private static boolean gc(BooleanSupplier isFreed, boolean performAllocations) {
-        int blockSize = 100_000;
-        final List<byte[]> blocks = new ArrayList<>();
-        for (int i = 0; i < 50; i++) {
-            if (isFreed.getAsBoolean()) {
-                return true;
-            }
-            try {
-                System.gc();
-            } catch (OutOfMemoryError oom) {
-            }
-            try {
-                System.runFinalization();
-            } catch (OutOfMemoryError oom) {
-            }
-            if (performAllocations) {
-                try {
-                    blocks.add(new byte[blockSize]);
-                    blockSize = (int) (blockSize * 1.3);
-                } catch (OutOfMemoryError oom) {
-                    blockSize >>>= 1;
-                }
-            }
-            if (i % 10 == 0) {
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException ie) {
-                    break;
-                }
-            }
+    private static ReachabilityAnalyser<?> selectAnalyser() {
+        if (ImageInfo.inImageCode()) {
+            // In the native-image, the heap dump to slow to be used.
+            return new GCAnalyser();
+        } else {
+            return new HeapDumpAnalyser();
         }
-        return false;
     }
 
-    private static final class IsFreed implements BooleanSupplier {
+    private static final class Result {
 
-        private enum Operator {
-            AND,
-            OR
+        private final boolean collected;
+
+        Result(boolean collected) {
+            this.collected = collected;
         }
 
-        private final Collection<? extends Reference<?>> refs;
-        private final Operator operator;
+        boolean isCollected() {
+            return collected;
+        }
+    }
 
-        private IsFreed(Collection<? extends Reference<?>> refs, Operator operator) {
-            this.refs = refs;
-            this.operator = operator;
+    private abstract static class ReachabilityAnalyser<T> {
+
+        final Result allCollected(Collection<? extends Reference<?>> references, boolean force) {
+            if (references.isEmpty()) {
+                throw new IllegalArgumentException("References must be non empty.");
+            }
+            Function<T, Result> test = (ctx) -> {
+                for (Reference<?> ref : references) {
+                    Result result = isCollected(ref, ctx);
+                    if (!result.isCollected()) {
+                        return result;
+                    }
+                }
+                return new Result(true);
+            };
+            return analyse(references, force, test);
+        }
+
+        final Result anyCollected(Collection<? extends Reference<?>> references, boolean force) {
+            if (references.isEmpty()) {
+                throw new IllegalArgumentException("References must be non empty.");
+            }
+            Function<T, Result> test = (ctx) -> {
+                Result firstResult = null;
+                for (Reference<?> ref : references) {
+                    Result result = isCollected(ref, ctx);
+                    firstResult = firstResult == null ? result : firstResult;
+                    if (result.isCollected()) {
+                        return result;
+                    }
+                }
+                return firstResult;
+            };
+            return analyse(references, force, test);
+        }
+
+        abstract Result analyse(Collection<? extends Reference<?>> references, boolean force, Function<T, Result> testCollected);
+
+        abstract Result isCollected(Reference<?> reference, T context);
+    }
+
+    private static final class HeapDumpAnalyser extends ReachabilityAnalyser<HeapDumpAnalyser.Context> {
+
+        private static volatile HotSpotDiagnosticMXBean hotSpotDiagnosticMBean;
+        private static volatile Reference<?>[] todo;
+
+        private static class Context {
+
+            final List<Instance> todoInstances;
+            final Map<Reference<?>, Integer> todoIndexes;
+
+            Context(List<Instance> todoInstances, Map<Reference<?>, Integer> todoIndexes) {
+                this.todoInstances = todoInstances;
+                this.todoIndexes = todoIndexes;
+            }
         }
 
         @Override
-        public boolean getAsBoolean() {
-            for (Reference<?> ref : refs) {
-                boolean freed = ref.get() == null;
-                if (freed) {
-                    if (operator == Operator.OR) {
-                        return true;
-                    }
-                } else {
-                    if (operator == Operator.AND) {
-                        return false;
+        @SuppressWarnings("unchecked")
+        Result analyse(Collection<? extends Reference<?>> references, boolean force, Function<Context, Result> testCollected) {
+            try {
+                Path tmpDirectory = Files.createTempDirectory(GCUtils.class.getSimpleName().toLowerCase());
+                try {
+                    Path heapDumpFile = tmpDirectory.resolve("heapdump.hprof");
+                    System.gc();    // Perform GC to minimize heap size and speed up heap queries.
+                    Map<Reference<?>, Integer> todoIndexes = prepareTodoAndTakeHeapDump(references, heapDumpFile);
+                    Heap heap = HeapFactory.createHeap(heapDumpFile.toFile());
+                    JavaClass trackableReferenceClass = heap.getJavaClassByName(HeapDumpAnalyser.class.getName());
+                    ObjectArrayInstance todoArray = (ObjectArrayInstance) trackableReferenceClass.getValueOfStaticField("todo");
+                    return testCollected.apply(new Context(todoArray.getValues(), todoIndexes));
+                } finally {
+                    delete(tmpDirectory);
+                }
+            } catch (IOException ioe) {
+                throw new RuntimeException(ioe);
+            }
+        }
+
+        @Override
+        Result isCollected(Reference<?> reference, Context context) {
+            int index = context.todoIndexes.get(reference);
+            Instance referenceInstance = context.todoInstances.get(index);
+            Instance referent = (Instance) referenceInstance.getValueOfField("referent");
+            return new Result(referent == null || referent.getNearestGCRootPointer() == null);
+        }
+
+        private static Map<Reference<?>, Integer> prepareTodoAndTakeHeapDump(Collection<? extends Reference<?>> references, Path outputFile) throws IOException {
+            synchronized (HeapDumpAnalyser.class) {
+                assert todo == null : "Todo must be null before assign.";
+                todo = references.toArray(new Reference<?>[0]);
+                Map<Reference<?>, Integer> todoIndexes = new IdentityHashMap<>();
+                for (int i = 0; i < todo.length; i++) {
+                    todoIndexes.put(todo[i], i);
+                }
+                try {
+                    takeHeapDump(outputFile);
+                } finally {
+                    todo = null;
+                }
+                return todoIndexes;
+            }
+        }
+
+        private static void takeHeapDump(Path outputFile) throws IOException, UnsupportedOperationException {
+            if (ImageInfo.inImageRuntimeCode()) {
+                VMRuntime.dumpHeap(outputFile.toString(), false);
+            } else {
+                getHotSpotDiagnosticMBean().dumpHeap(outputFile.toString(), false);
+            }
+        }
+
+        private static HotSpotDiagnosticMXBean getHotSpotDiagnosticMBean() throws IOException {
+            HotSpotDiagnosticMXBean res = hotSpotDiagnosticMBean;
+            if (res == null) {
+                synchronized (GCUtils.class) {
+                    res = hotSpotDiagnosticMBean;
+                    if (res == null) {
+                        MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+                        res = ManagementFactory.newPlatformMXBeanProxy(platformMBeanServer, "com.sun.management:type=HotSpotDiagnostic", HotSpotDiagnosticMXBean.class);
+                        hotSpotDiagnosticMBean = res;
                     }
                 }
             }
-            return operator == Operator.AND;
+            return res;
         }
 
-        static IsFreed anyOf(Collection<? extends Reference<?>> refs) {
-            return new IsFreed(refs, Operator.OR);
+        private static void delete(Path file) throws IOException {
+            if (Files.isDirectory(file, LinkOption.NOFOLLOW_LINKS)) {
+                try (DirectoryStream<Path> content = Files.newDirectoryStream(file)) {
+                    for (Path child : content) {
+                        delete(child);
+                    }
+                }
+            }
+            Files.delete(file);
+        }
+    }
+
+    private static final class GCAnalyser extends ReachabilityAnalyser<Void> {
+
+        @Override
+        Result analyse(Collection<? extends Reference<?>> references, boolean performAllocations, Function<Void, Result> testCollected) {
+            int blockSize = 100_000;
+            final List<byte[]> blocks = new ArrayList<>();
+            for (int i = 0; i < 50; i++) {
+                Result result = testCollected.apply(null);
+                if (result.isCollected()) {
+                    return result;
+                }
+                try {
+                    System.gc();
+                } catch (OutOfMemoryError oom) {
+                }
+                try {
+                    System.runFinalization();
+                } catch (OutOfMemoryError oom) {
+                }
+                if (performAllocations) {
+                    try {
+                        blocks.add(new byte[blockSize]);
+                        blockSize = (int) (blockSize * 1.3);
+                    } catch (OutOfMemoryError oom) {
+                        blockSize >>>= 1;
+                    }
+                }
+                if (i % 10 == 0) {
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException ie) {
+                        break;
+                    }
+                }
+            }
+            return new Result(false);
         }
 
-        static IsFreed allOf(Collection<? extends Reference<?>> refs) {
-            return new IsFreed(refs, Operator.AND);
+        @Override
+        Result isCollected(Reference<?> reference, Void context) {
+            return new Result(reference.get() == null);
         }
     }
 }
