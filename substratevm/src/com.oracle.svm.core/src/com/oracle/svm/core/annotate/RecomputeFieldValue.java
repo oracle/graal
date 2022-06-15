@@ -131,6 +131,15 @@ public @interface RecomputeFieldValue {
         Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver);
     }
 
+    enum ValueAvailability {
+        /** Value is independent of analysis/compilation results. */
+        BeforeAnalysis,
+        /** Value depends on data computed by the analysis. */
+        AfterAnalysis,
+        /** Value depends on data computed during compilation. */
+        AfterCompilation
+    }
+
     /**
      * Custom recomputation of field values. A class implementing this interface must have a
      * no-argument constructor, which is used to instantiate it before invoking {@link #transform}.
