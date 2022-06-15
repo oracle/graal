@@ -25,10 +25,7 @@
 package com.oracle.svm.core.monitor;
 
 import java.lang.ref.ReferenceQueue;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -61,6 +58,7 @@ import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
+import src.com.oracle.svm.core.src.com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 
 /**
  * Implementation of synchronized-related operations.
@@ -137,7 +135,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * java.io.FileInputStream.close() which synchronizes on a 'Object closeLock = new
              * Object()' object. We cannot modify the type of the monitor since it is in JDK code.
              * Adding a monitor slot to java.lang.Object doesn't impact any subtypes.
-             * 
+             *
              * This should also take care of the synchronization in
              * ReferenceInternals.processPendingReferences().
              */
@@ -193,7 +191,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      * modification.
      */
     private final Map<Object, ReentrantLock> additionalMonitors = new WeakIdentityHashMap<>();
+    private final Map<Object, Long> monitorOwners = new WeakIdentityHashMap<>();
     private final ReentrantLock additionalMonitorsLock = new ReentrantLock();
+    private final ReentrantLock monitorOwnersLock = new ReentrantLock();
 
     @Override
     public int maybeAdjustNewParkStatus(int status) {
@@ -255,8 +255,28 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj) {
+
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
+
         lockObject.lock();
+
+        // Prevent deadlock by locking monitorOwners lock due to synchronized block on ReferenceQueue monitor in WeakIdentityHashMap.
+        if ( obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class || obj.getClass() == ReferenceQueue.class) return;
+
+        // prevent recursive manipulation of the monitorOwners lock
+        if (monitorOwnersLock.isHeldByCurrentThread()) return;
+        monitorOwnersLock.lock();
+        try {
+            Long prevOwner = null;
+            long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(org.graalvm.nativeimage.CurrentIsolate.getCurrentThread());
+            prevOwner = monitorOwners.get(obj);
+            monitorOwners.put(obj, currentOwnerId);
+            if (prevOwner == null) prevOwner = 0L;  //same as in hotspot native code
+            JavaMonitorEnterEvent.emit(obj,prevOwner,0);//not able to get address because its implemented in native code in Hotspot
+            return;
+        } finally {
+            monitorOwnersLock.unlock();
+        }
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -301,13 +321,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         /*
          * We ensure that the lock for the object exists, so that the actual re-locking during
          * deoptimization can be uninterruptible.
-         * 
+         *
          * Unfortunately, we cannot do any assertion checking in this method: deoptimization can run
          * in any thread, i.e., not necessarily in the thread that the lock will be for. And while
          * the frame that is deoptimized must have had the object locked, the thread could have
          * given up the lock as part of a wait() - so at this time any thread is allowed to hold the
          * lock.
-         * 
+         *
          * Because any thread can hold the lock at this time, there is no way we can patch any
          * internal state of the lock immediately here. The actual state patching therefore happens
          * later in doRelockObject.
@@ -452,7 +472,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     protected ReentrantLock getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting) {
         assert obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
-                        "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
+                    "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
 
         /*
          * Lock the monitor map and maybe add a monitor for this object. This serialization might be
