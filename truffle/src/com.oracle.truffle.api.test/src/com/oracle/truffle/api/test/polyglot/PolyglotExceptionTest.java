@@ -437,7 +437,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testGuestStackOverflowResourceLimit() {
-        Assume.assumeFalse("GR-39072", OSUtils.getCurrent() == OSUtils.OS.Darwin && System.getProperty("os.arch").equals("aarch64"));
         try (Context c = Context.create()) {
             assertFails(() -> evalTestLanguage(c, GuestStackOverflowLanguage.class, "test"), PolyglotException.class, (e) -> {
                 assertTrue(e.isResourceExhausted());

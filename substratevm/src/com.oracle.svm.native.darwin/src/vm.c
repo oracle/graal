@@ -1,10 +1,10 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
+ * published by the Free Software Foundation. Oracle designates this
  * particular file as subject to the "Classpath" exception as provided
  * by Oracle in the LICENSE file that accompanied this code.
  *
@@ -22,26 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix.headers.darwin;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordBase;
+#include<mach/mach.h>
+#include<mach/mach_vm.h>
 
-import com.oracle.svm.core.posix.headers.PosixDirectives;
+static int is_protected(int prot) {
+    return !(prot & (VM_PROT_READ | VM_PROT_WRITE));
+}
 
-// Checkstyle: stop
+int vm_compute_stack_guard(void *stack_end) {
+    int guard_size = 0;
 
-@CContext(PosixDirectives.class)
-public class DarwinVirtualMemory {
+    mach_vm_address_t address = (mach_vm_address_t) stack_end;
+    mach_vm_size_t size = 0;
+    vm_region_basic_info_data_64_t info;
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int mach_task_self();
+    mach_port_t task = mach_task_self();
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int vm_copy(int targetTask, WordBase sourceAddress, UnsignedWord count, WordBase destAddress);
+    do {
+        mach_port_t dummyobj;
+        mach_msg_type_number_t count = VM_REGION_SUBMAP_INFO_COUNT_64;
+        kern_return_t kr = mach_vm_region(task, &address, &size, VM_REGION_BASIC_INFO_64, (vm_region_info_t)&info, &count, &dummyobj);
+        if (kr != KERN_SUCCESS) {
+            return -1;
+        }
 
-    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
-    public static native int vm_compute_stack_guard(WordBase stack_end);
+        if (is_protected(info.protection)) {
+            guard_size += size;
+        }
+        address += size;
+    } while(is_protected(info.protection));
+
+    return guard_size;
 }

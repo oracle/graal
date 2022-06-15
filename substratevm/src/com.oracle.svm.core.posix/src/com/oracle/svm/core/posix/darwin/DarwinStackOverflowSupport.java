@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
@@ -55,6 +56,13 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
         Pthread.pthread_t self = Pthread.pthread_self();
         UnsignedWord stackaddr = DarwinPthread.pthread_get_stackaddr_np(self);
         UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
+
+        int guardsize = DarwinVirtualMemory.vm_compute_stack_guard(stackaddr.subtract(stacksize));
+        assert guardsize >= 0 && guardsize < 100 * 1024;
+        assert stacksize.aboveThan(guardsize);
+
+        stacksize = stacksize.subtract(guardsize);
+
         if (requestedStackSize.notEqual(WordFactory.zero())) {
             /*
              * if stackSize > requestedStackSize, then artificially limit stack end to match
