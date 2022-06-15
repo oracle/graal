@@ -25,7 +25,15 @@ public class JavaMonitorEnterEvent {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
-            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaMonitorEnter);
+            if (emit0(data, obj, previousOwner, addr, SubstrateJVM.get().isLarge(JfrEvent.JavaMonitorEnter)) == com.oracle.svm.core.jfr.JfrEventWriteStatus.RetryLarge) {
+                SubstrateJVM.get().setLarge(JfrEvent.JavaMonitorEnter, true);
+                emit0(data, obj, previousOwner, addr, true);
+            }
+        }
+    }
+        @Uninterruptible(reason = "Accesses a JFR buffer.")
+        private static com.oracle.svm.core.jfr.JfrEventWriteStatus emit0(JfrNativeEventWriterData data, Object obj, long previousOwner, long addr, boolean isLarge){
+            JfrNativeEventWriter.beginEvent(data, JfrEvent.JavaMonitorEnter, isLarge);
 
             JfrNativeEventWriter.putClass(data, obj.getClass());
 
@@ -35,7 +43,6 @@ public class JavaMonitorEnterEvent {
 
             JfrNativeEventWriter.putLong(data, addr);//this should show up as 0 but it seems random
 
-            JfrNativeEventWriter.endSmallEvent(data);
+            return  JfrNativeEventWriter.endEvent(data, isLarge);
         }
-    }
 }
