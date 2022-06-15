@@ -24,27 +24,24 @@
  */
 package org.graalvm.bisect.test;
 
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.Experiment;
-import org.graalvm.bisect.core.ExperimentId;
-import org.graalvm.bisect.core.optimization.OptimizationImpl;
-import org.graalvm.bisect.core.optimization.OptimizationPhase;
-import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
-import org.graalvm.bisect.parser.experiment.ExperimentFiles;
-import org.graalvm.bisect.parser.experiment.ExperimentParser;
-import org.graalvm.bisect.parser.experiment.ExperimentParserException;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.core.ExperimentId;
+import org.graalvm.bisect.core.optimization.OptimizationImpl;
+import org.graalvm.bisect.core.optimization.OptimizationPhaseImpl;
+import org.graalvm.bisect.parser.experiment.ExperimentFiles;
+import org.graalvm.bisect.parser.experiment.ExperimentParser;
+import org.graalvm.bisect.parser.experiment.ExperimentParserException;
+import org.junit.Test;
 
 public class ExperimentParserTest {
     private static class ExperimentFilesMock implements ExperimentFiles {
@@ -72,7 +69,7 @@ public class ExperimentParserTest {
                     "            \"period\": 264224374\n" +
                     "        },\n" +
                     "        {\n" +
-                    "            \"compileId\": \"3677\",\n" +
+                            "            \"compileId\": \"3677%\",\n" +
                     "            \"name\": \"3677: org.example.singleByteZero(org.example.Blackhole, org.example.CopyBenchmarkSimple$Context)\",\n" +
                     "            \"level\": 4,\n" +
                     "            \"period\": 158328120602\n" +

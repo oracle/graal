@@ -32,184 +32,261 @@ import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents a sequence of operations that modify a rooted, ordered and labeled tree.
+ * 
+ * The allowed operations in an edit script are usually defined as subtree insertion, subtree
+ * deletion and node relabelling. However, we want the edit script to be easily convertible to a
+ * delta tree. Delta tree is a tree that contains the union of all nodes of the compared tree and
+ * additional information for each node whether it is inserted/deleted/relabeled/unchanged.
+ * Consequently, we have placed additional constraints on the edit script:
+ * <ul>
+ * <li>it must remember an identity operation, i.e., a node is not changed</li>
+ * <li>the order of operations in the edit script is the dfs preorder of the delta tree</li>
+ * </ul>
  */
 public class EditScript implements TreeMatching {
     /**
-     * An operation that modifies a rooted, ordered and labeled tree.
+     * An operation that modifies a rooted, ordered and labeled tree. It is a node of the delta
+     * tree. Each operation works on at most one node from the first (left) tree and at most one
+     * node from the second (right) tree. The nodes have always the same depth (the depth of root is
+     * 0). Remembering the depth allows us to easily {@link DeltaNode#write write} the delta tree in
+     * dfs preorder.
      */
-    public interface Operation {
+    public static abstract class DeltaNode {
+        protected final OptimizationTreeNode left;
+        protected final OptimizationTreeNode right;
+        protected final int depth;
 
+        protected DeltaNode(OptimizationTreeNode left, OptimizationTreeNode right, int depth) {
+            this.left = left;
+            this.right = right;
+            this.depth = depth;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!getClass().equals(obj.getClass())) {
+                return false;
+            }
+
+            DeltaNode deltaNode = (DeltaNode) obj;
+
+            if (!Objects.equals(left, deltaNode.left)) {
+                return false;
+            }
+            return Objects.equals(right, deltaNode.right);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = left != null ? left.hashCode() : 0;
+            result = 31 * result + (right != null ? right.hashCode() : 0);
+            return result;
+        }
+
+        /**
+         * Writes the string representation either of this delta subtree or this delta node to the
+         * destination writer. When an entire subtree is deleted/inserted, we create only one delta
+         * node for the whole subtree - in that case, this method writes the entire subtree.
+         * Otherwise, this object represents exactly one delta node and only prints itself.
+         * 
+         * @param writer the destination writer
+         */
+        public abstract void write(Writer writer);
+    }
+
+    /**
+     * An identity operation, which represents a pair of matched nodes.
+     */
+    public static class Identity extends DeltaNode {
+        /**
+         * Constructor of an identity operation.
+         * 
+         * @param left the matched node from the first (left) tree
+         * @param right the matched node from the second (right) tree
+         * @param depth the depth of the nodes
+         */
+        public Identity(OptimizationTreeNode left, OptimizationTreeNode right, int depth) {
+            super(left, right, depth);
+        }
+
+        @Override
+        public void write(Writer writer) {
+            writer.increaseIndent(depth);
+            writer.setPrefixAfterIndent("  ");
+            left.writeHead(writer);
+            writer.clearPrefixAfterIndent();
+            writer.decreaseIndent(depth);
+        }
     }
 
     /**
      * Insertion of a subtree.
      */
-    public static class Insert implements Operation {
-        private final OptimizationTreeNode node;
-
+    public static class Insert extends DeltaNode {
         /**
          * Constructor of a subtree insert operation.
+         * 
          * @param node the root of the subtree that is inserted
+         * @param depth the depth of the root of the inserted subtree
          */
-        public Insert(OptimizationTreeNode node) {
-            this.node = node;
+        public Insert(OptimizationTreeNode node, int depth) {
+            super(null, node, depth);
         }
 
         @Override
-        public String toString() {
-            return "INSERT " + node.getName();
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (this == object) {
-                return true;
-            }
-            if (object == null || getClass() != object.getClass()) {
-                return false;
-            }
-
-            Insert insert = (Insert) object;
-            return Objects.equals(node, insert.node);
-        }
-
-        @Override
-        public int hashCode() {
-            return node.hashCode();
+        public void write(Writer writer) {
+            writer.increaseIndent(depth);
+            writer.setPrefixAfterIndent("+ ");
+            right.writeRecursive(writer);
+            writer.clearPrefixAfterIndent();
+            writer.decreaseIndent(depth);
         }
     }
 
     /**
      * Deletion of a subtree.
      */
-    public static class Delete implements Operation {
-        private final OptimizationTreeNode node;
+    public static class Delete extends DeltaNode {
 
         /**
          * Constructor of a subtree delete operation.
-         * @param node the root of the subtree that is deletion
+         * 
+         * @param node the root of the subtree that is deleted
+         * @param depth the depth of the root of the deleted subtree
          */
-        public Delete(OptimizationTreeNode node) {
-            this.node = node;
+        public Delete(OptimizationTreeNode node, int depth) {
+            super(node, null, depth);
         }
 
         @Override
-        public String toString() {
-            return "DELETE " + node.getName();
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (this == object) {
-                return true;
-            }
-            if (object == null || getClass() != object.getClass()) {
-                return false;
-            }
-
-            Delete delete = (Delete) object;
-            return Objects.equals(node, delete.node);
-        }
-
-        @Override
-        public int hashCode() {
-            return node.hashCode();
+        public void write(Writer writer) {
+            writer.increaseIndent(depth);
+            writer.setPrefixAfterIndent("- ");
+            left.writeRecursive(writer);
+            writer.clearPrefixAfterIndent();
+            writer.decreaseIndent(depth);
         }
     }
 
     /**
      * An operation that changes the label - the {@link OptimizationTreeNode#getName() name} of a node.
      */
-    public static class Relabel implements Operation {
-        private final OptimizationTreeNode node1;
-        private final OptimizationTreeNode node2;
-
+    public static class Relabel extends DeltaNode {
         /**
          * Constructor of a relabelling operation.
-         * @param node1 the node which holds the original name
-         * @param node2 the node which hold the new name
+         * 
+         * @param left the node which holds the original name from the first (left) tree
+         * @param right the node which hold the new name from the second (right) tree
+         * @param depth the depth of the nodes
          */
-        public Relabel(OptimizationTreeNode node1, OptimizationTreeNode node2) {
-            this.node1 = node1;
-            this.node2 = node2;
+        public Relabel(OptimizationTreeNode left, OptimizationTreeNode right, int depth) {
+            super(left, right, depth);
         }
 
         @Override
-        public String toString() {
-            return "RELABEL " + node1.getName() + " -> " + node2.getName();
+        public void write(Writer writer) {
+            writer.increaseIndent(depth);
+            writer.writeln("* " + left.getName() + " -> " + right.getName());
+            writer.decreaseIndent(depth);
         }
 
         @Override
-        public boolean equals(Object object) {
-            if (this == object) {
+        public boolean equals(Object obj) {
+            if (this == obj) {
                 return true;
             }
-            if (object == null || getClass() != object.getClass()) {
+            if (obj == null || getClass() != obj.getClass()) {
                 return false;
             }
 
-            Relabel relabel = (Relabel) object;
-            return Objects.equals(node1, relabel.node1) && Objects.equals(node2, relabel.node2);
+            Relabel relabel = (Relabel) obj;
+            return Objects.equals(left, relabel.left) && Objects.equals(right, relabel.right);
         }
 
         @Override
         public int hashCode() {
-            int result = node1.hashCode();
-            result = 31 * result + node2.hashCode();
+            int result = left.hashCode();
+            result = 31 * result + right.hashCode();
             return result;
         }
     }
 
-    private final ConcatList<Operation> operations = new ConcatList<>();
+    private ConcatList<DeltaNode> operations = new ConcatList<>();
 
     /**
-     * Adds a subtree insert operation to this edit script.
+     * Prepends a subtree insert operation to this edit script.
+     * 
      * @param node the root of the inserted subtree
+     * @param depth the depth of the node
      */
-    public void insert(OptimizationTreeNode node) {
-        operations.add(new Insert(node));
+    public void insert(OptimizationTreeNode node, int depth) {
+        operations.prepend(new Insert(node, depth));
     }
 
     /**
-     * Adds a subtree delete operations to this edit script.
+     * Prepends a subtree delete operation to this edit script.
+     * 
      * @param node the root of the deleted subtree
+     * @param depth the depth of the node
      */
-    public void delete(OptimizationTreeNode node) {
-        operations.add(new Delete(node));
+    public void delete(OptimizationTreeNode node, int depth) {
+        operations.prepend(new Delete(node, depth));
     }
 
     /**
-     * Adds a relabelling operations to this edit script.
-     * @param node1 the node with the original name
-     * @param node2 the node with the new name
+     * Prepends a relabelling operation to this edit script.
+     * 
+     * @param node1 the node with the original name from the first (left) tree
+     * @param node2 the node with the new name from the second (right) tree
+     * @param depth the depth of the nodes
      */
-    public void relabel(OptimizationTreeNode node1, OptimizationTreeNode node2) {
-        operations.add(new Relabel(node1, node2));
+    public void relabel(OptimizationTreeNode node1, OptimizationTreeNode node2, int depth) {
+        operations.prepend(new Relabel(node1, node2, depth));
     }
 
     /**
-     * Concatenates the operations of the other edit script to the operations of this edit script. The other edit script
-     * will be empty after the concatenation.
+     * Prepends an identity operation to this edit script.
+     * 
+     * @param node1 the matched node from the first (left) tree
+     * @param node2 the matched node from the second (right) tree
+     * @param depth the depth of the nodes
+     */
+    public void identity(OptimizationTreeNode node1, OptimizationTreeNode node2, int depth) {
+        operations.prepend(new Identity(node1, node2, depth));
+    }
+
+    /**
+     * Prepends the operations of the other edit script to the operations of this edit script. The
+     * other edit script will be empty after the concatenation.
+     * 
      * @param otherScript the other edit script which will be emptied
      */
     public void concat(EditScript otherScript) {
-        operations.concat(otherScript.operations);
+        operations = otherScript.operations.concat(operations);
+        otherScript.operations = null;
     }
 
+    /**
+     * Writes the delta subtree represented by this edit script in dfs preorder to the destination
+     * writer.
+     * 
+     * @param writer the destination writer
+     */
     @Override
-    public void writeSummary(Writer writer) {
-        writer.increaseIndent();
-        for (Operation operation : operations) {
-            writer.writeln(operation.toString());
+    public void write(Writer writer) {
+        for (DeltaNode operation : operations) {
+            operation.write(writer);
         }
-        writer.decreaseIndent();
     }
 
     /**
      * Gets the list of operations.
      * @return the list of operations
      */
-    public ConcatList<Operation> getOperations() {
+    public ConcatList<DeltaNode> getDeltaNodes() {
         return operations;
     }
 }

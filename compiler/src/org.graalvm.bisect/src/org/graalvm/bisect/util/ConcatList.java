@@ -25,10 +25,8 @@
 package org.graalvm.bisect.util;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A linked list with O(1) concatenation.
@@ -72,11 +70,11 @@ public class ConcatList<T> implements Iterable<T> {
     private Node<T> tail = null;
 
     /**
-     * Adds an item at the end of the list.
+     * Adds an item to the end of the list.
      *
      * @param item the item to be added
      */
-    public void add(T item) {
+    public void append(T item) {
         Node<T> next = new Node<>(item);
         if (head == null) {
             assert tail == null;
@@ -89,15 +87,34 @@ public class ConcatList<T> implements Iterable<T> {
     }
 
     /**
-     * Concatenates the other list's elements with this list's elements. The other list will be empty after
-     * the concatenation.
+     * Adds an item to the front of the list.
+     * 
+     * @param item the item to be added
+     */
+    public void prepend(T item) {
+        Node<T> front = new Node<>(item);
+        if (head == null) {
+            assert tail == null;
+            tail = head = front;
+        } else {
+            assert tail != null && tail.next == null;
+            ;
+            front.next = head;
+            head = front;
+        }
+    }
+
+    /**
+     * Concatenates the other list's elements with this list's elements. The other list will be
+     * empty after the concatenation.
      *
      * @param otherList the other list that will be emptied
+     * @return the concatenated list
      */
-    public void concat(ConcatList<T> otherList) {
+    public ConcatList<T> concat(ConcatList<T> otherList) {
         if (otherList.head == null) {
             assert otherList.tail == null;
-            return;
+            return this;
         }
         assert otherList.tail != null;
         if (head == null) {
@@ -111,6 +128,7 @@ public class ConcatList<T> implements Iterable<T> {
         }
         otherList.head = null;
         otherList.tail = null;
+        return this;
     }
 
     /**
@@ -123,18 +141,6 @@ public class ConcatList<T> implements Iterable<T> {
             list.add(item);
         }
         return list;
-    }
-
-    /**
-     * Returns the items in a set.
-     * @return a set of items
-     */
-    public Set<T> toSet() {
-        Set<T> set = new HashSet<>();
-        for (T item : this) {
-            set.add(item);
-        }
-        return set;
     }
 
     public boolean isEmpty() {

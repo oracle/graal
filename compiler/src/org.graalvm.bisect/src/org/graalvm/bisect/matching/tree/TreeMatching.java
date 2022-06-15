@@ -31,8 +31,9 @@ import org.graalvm.bisect.util.Writer;
  */
 public interface TreeMatching {
     /**
-     * Writes a summary of this tree matching.
+     * Writes a detailed summary of this tree matching.
+     * 
      * @param writer the destination writer
      */
-    void writeSummary(Writer writer);
+    void write(Writer writer);
 }

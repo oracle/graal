@@ -29,11 +29,20 @@ package org.graalvm.bisect.util;
  */
 public class StdoutWriter implements Writer {
     private int indentLevel = 0;
+    private boolean indentWritten = false;
+    private String prefix;
+
+    @Override
+    public void write(String output) {
+        printIndentIfNeeded();
+        System.out.print(output);
+    }
 
     @Override
     public void writeln(String output) {
-        printIndent();
+        printIndentIfNeeded();
         System.out.println(output);
+        indentWritten = false;
     }
 
     @Override
@@ -47,14 +56,43 @@ public class StdoutWriter implements Writer {
     }
 
     @Override
+    public void increaseIndent(int delta) {
+        assert delta >= 0;
+        indentLevel += delta;
+    }
+
+    @Override
     public void decreaseIndent() {
         assert indentLevel > 0;
         --indentLevel;
     }
 
-    private void printIndent() {
+    @Override
+    public void decreaseIndent(int delta) {
+        assert delta >= 0 && indentLevel - delta >= 0;
+        indentLevel -= delta;
+    }
+
+    @Override
+    public void setPrefixAfterIndent(String prefix) {
+        this.prefix = prefix;
+    }
+
+    @Override
+    public void clearPrefixAfterIndent() {
+        this.prefix = null;
+    }
+
+    private void printIndentIfNeeded() {
+        if (indentWritten) {
+            return;
+        }
         for (int i = 0; i < indentLevel; ++i) {
             System.out.print("    ");
         }
+        if (prefix != null) {
+            System.out.print(prefix);
+        }
+        indentWritten = true;
     }
 }

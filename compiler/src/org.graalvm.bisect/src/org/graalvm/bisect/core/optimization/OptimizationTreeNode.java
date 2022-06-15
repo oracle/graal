@@ -26,6 +26,8 @@ package org.graalvm.bisect.core.optimization;
 
 import java.util.List;
 
+import org.graalvm.bisect.util.Writer;
+
 /**
  * Represents a node in the optimization tree.
  */
@@ -43,4 +45,19 @@ public interface OptimizationTreeNode {
      * @return the name of this node
      */
     String getName();
+
+    /**
+     * Writes the optimization subtree starting from this phase in dfs preorder to the destination
+     * writer.
+     *
+     * @param writer the destination writer
+     */
+    void writeRecursive(Writer writer);
+
+    /**
+     * Writes the representation of this node without its subtree to the destination writer.
+     * 
+     * @param writer the destination writer
+     */
+    void writeHead(Writer writer);
 }

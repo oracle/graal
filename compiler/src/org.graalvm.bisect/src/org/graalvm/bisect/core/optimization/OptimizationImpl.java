@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.graalvm.bisect.util.Writer;
+
 public class OptimizationImpl implements Optimization {
     private final int bci;
     private final String optimizationName;
@@ -68,9 +70,38 @@ public class OptimizationImpl implements Optimization {
     }
 
     @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getOptimizationName()).append(" ").append(getName()).append(" at bci ").append(getBCI());
+        if (properties.isEmpty()) {
+            return sb.toString();
+        }
+        sb.append(" {");
+        boolean first = true;
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(", ");
+            }
+            sb.append(entry.getKey()).append(": ").append(entry.getValue());
+        }
+        sb.append('}');
+        return sb.toString();
+    }
+
+    @Override
+    public void writeHead(Writer writer) {
+        writer.writeln(toString());
+    }
+
+    @Override
     public int hashCode() {
-        return optimizationName.hashCode() + eventName.hashCode() + Integer.hashCode(bci)
-                + ((properties == null) ? -1 : properties.hashCode());
+        int result = bci;
+        result = 31 * result + optimizationName.hashCode();
+        result = 31 * result + eventName.hashCode();
+        result = 31 * result + (properties != null ? properties.hashCode() : 0);
+        return result;
     }
 
     @Override

@@ -36,9 +36,9 @@ public class ConcatListTest {
     @Test
     public void concat() {
         ConcatList<Integer> foo = new ConcatList<>();
-        foo.add(1);
+        foo.append(1);
         ConcatList<Integer> bar = new ConcatList<>();
-        bar.add(2);
+        bar.append(2);
         foo.concat(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());
@@ -48,8 +48,8 @@ public class ConcatListTest {
     public void concatEmpty() {
         ConcatList<Integer> foo = new ConcatList<>();
         ConcatList<Integer> bar = new ConcatList<>();
-        bar.add(1);
-        bar.add(2);
+        bar.append(1);
+        bar.append(2);
         foo.concat(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());
@@ -59,10 +59,19 @@ public class ConcatListTest {
     public void concatWithEmpty() {
         ConcatList<Integer> foo = new ConcatList<>();
         ConcatList<Integer> bar = new ConcatList<>();
-        foo.add(1);
-        foo.add(2);
+        foo.append(1);
+        foo.append(2);
         foo.concat(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());
+    }
+
+    @Test
+    public void prepend() {
+        ConcatList<Integer> foo = new ConcatList<>();
+        foo.prepend(3);
+        foo.prepend(2);
+        foo.prepend(1);
+        assertEquals(List.of(1, 2, 3), foo.toList());
     }
 }

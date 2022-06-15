@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 
+import org.graalvm.bisect.util.Writer;
+
 public class OptimizationPhaseImpl implements OptimizationPhase {
     private final String name;
     private List<OptimizationTreeNode> children = null;
@@ -88,6 +90,24 @@ public class OptimizationPhaseImpl implements OptimizationPhase {
             }
         }
         return optimizations;
+    }
+
+    @Override
+    public void writeRecursive(Writer writer) {
+        writeHead(writer);
+        if (children == null) {
+            return;
+        }
+        writer.increaseIndent();
+        for (OptimizationTreeNode child : children) {
+            child.writeRecursive(writer);
+        }
+        writer.decreaseIndent();
+    }
+
+    @Override
+    public void writeHead(Writer writer) {
+        writer.writeln(name);
     }
 
     @Override

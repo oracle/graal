@@ -24,7 +24,7 @@
  */
 package org.graalvm.bisect.test;
 
-import java.util.Set;
+import java.util.List;
 
 import org.graalvm.bisect.core.ExecutedMethodImpl;
 import org.graalvm.bisect.core.optimization.Optimization;
@@ -50,10 +50,38 @@ public class SelkowTreeMatcherTest {
 
         SelkowTreeMatcher matcher = new SelkowTreeMatcher();
         EditScript editScript = matcher.match(method1, method2);
-        Set<EditScript.Operation> expected = Set.of(new EditScript.Insert(bar), new EditScript.Delete(foo));
-        Assert.assertEquals(expected, editScript.getOperations().toSet());
+        List<EditScript.DeltaNode> expected = List.of(
+                        new EditScript.Identity(root1, root2, 0),
+                        new EditScript.Delete(foo, 1),
+                        new EditScript.Insert(bar, 1));
+        Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
     }
 
+    /**
+     * Tests that the Selkow tree matcher identifies the correct edit operations in dfs preorder.
+     * 
+     * // @formatter:off
+     * <pre>
+     *                method1
+     *                   |
+     *                RootPhase
+     *          _________|__________
+     *        /          |          \
+     * ToBeDeleted  ToBeRelabeled  ToBeUnchanged
+     *               |       |
+     *              foo     bar
+     *
+     *                method2
+     *                   |
+     *                RootPhase
+     *                   |___________________________
+     *                   |          |                \
+     *               Relabeled  ToBeUnchanged   ToBeInserted
+     *                |     |
+     *               foo   bar
+     * </pre>
+     * // @formatter:on
+     */
     @Test
     public void testOperations() {
         OptimizationPhaseImpl toBeDeleted = new OptimizationPhaseImpl("ToBeDeleted");
@@ -81,11 +109,15 @@ public class SelkowTreeMatcherTest {
 
         SelkowTreeMatcher matcher = new SelkowTreeMatcher();
         EditScript editScript = matcher.match(method1, method2);
-        Set<EditScript.Operation> expected = Set.of(
-                new EditScript.Delete(toBeDeleted),
-                new EditScript.Relabel(toBeRelabeled, relabeled),
-                new EditScript.Insert(toBeInserted)
+        List<EditScript.DeltaNode> expected = List.of(
+                        new EditScript.Identity(root1, root2, 0),
+                        new EditScript.Delete(toBeDeleted, 1),
+                        new EditScript.Relabel(toBeRelabeled, relabeled, 1),
+                        new EditScript.Identity(foo, foo, 2),
+                        new EditScript.Identity(bar, bar, 2),
+                        new EditScript.Identity(toBeUnchaged, toBeUnchaged, 1),
+                        new EditScript.Insert(toBeInserted, 1)
         );
-        Assert.assertEquals(expected, editScript.getOperations().toSet());
+        Assert.assertEquals(expected, editScript.getDeltaNodes().toList());
     }
 }

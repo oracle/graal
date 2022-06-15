@@ -25,11 +25,21 @@
 package org.graalvm.bisect.util;
 
 /**
- * An output writer that manages indentation.
+ * An output writer that manages indentation and optional string prefixes that are prepended to each
+ * written line.
  */
 public interface Writer {
     /**
-     * Writes a string to the output with the current indentation level.
+     * Write a string to the output with the current indentation level without a linefeed at the
+     * end.
+     * 
+     * @param output the string to be written
+     */
+    void write(String output);
+
+    /**
+     * Writes a string to the output with the current indentation level with a linefeed at the end.
+     * 
      * @param output the string to be written
      */
     void writeln(String output);
@@ -45,7 +55,33 @@ public interface Writer {
     void increaseIndent();
 
     /**
+     * Increases the indentation level by a non-negative delta.
+     * 
+     * @param delta the values that is added to the current indentation level
+     */
+    void increaseIndent(int delta);
+
+    /**
      * Decreases the current indentation level by one.
      */
     void decreaseIndent();
+
+    /**
+     * Decreases the indentation level by a non-negative delta.
+     * 
+     * @param delta the value that is subtracted from the current indentation level
+     */
+    void decreaseIndent(int delta);
+
+    /**
+     * Sets a string prefix that is prepended to each written line after the indentation.
+     * 
+     * @param prefix the string prefix that will be prepended to each written line
+     */
+    void setPrefixAfterIndent(String prefix);
+
+    /**
+     * Clears the set prefix that is prepended to each written line after the indentation.
+     */
+    void clearPrefixAfterIndent();
 }

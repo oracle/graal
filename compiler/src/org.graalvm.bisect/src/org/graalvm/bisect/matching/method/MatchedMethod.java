@@ -24,15 +24,14 @@
  */
 package org.graalvm.bisect.matching.method;
 
-import org.graalvm.bisect.util.Writer;
-import org.graalvm.bisect.core.ExecutedMethod;
-import org.graalvm.bisect.core.Experiment;
-import org.graalvm.bisect.core.optimization.Optimization;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.graalvm.bisect.core.ExecutedMethod;
+import org.graalvm.bisect.core.Experiment;
+import org.graalvm.bisect.util.Writer;
 
 /**
  * Represents one pair of methods and a matching between their respective compilations.
@@ -137,10 +136,8 @@ public class MatchedMethod {
             extraExecutedMethod.writeHeader(writer);
             writer.writeln("Optimizations in experiment "
                     + extraExecutedMethod.getExecutedMethod().getExperiment().getExperimentId());
-            Optimization.writeOptimizations(
-                    writer,
-                    extraExecutedMethod.getExecutedMethod().getOptimizationsRecursive()
-            );
+            extraExecutedMethod.getExecutedMethod().getOptimizationsRecursive()
+                            .forEach(optimization -> optimization.writeRecursive(writer));
         }
     }
 }

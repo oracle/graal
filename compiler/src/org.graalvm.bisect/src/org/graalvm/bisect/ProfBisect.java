@@ -130,7 +130,7 @@ public class ProfBisect {
                         matchedExecutedMethod.getMethod2()
                 );
                 writer.increaseIndent();
-                treeMatching.writeSummary(writer);
+                treeMatching.write(writer);
                 writer.decreaseIndent();
             }
             matchedMethod.summarizeExtraExecutedMethods(writer);

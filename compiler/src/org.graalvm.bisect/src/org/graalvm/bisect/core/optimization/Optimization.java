@@ -24,7 +24,6 @@
  */
 package org.graalvm.bisect.core.optimization;
 
-import java.util.List;
 import java.util.Map;
 
 import org.graalvm.bisect.util.Writer;
@@ -58,23 +57,8 @@ public interface Optimization extends OptimizationTreeNode {
      */
     int NO_BCI = -1;
 
-    /**
-     * Writes a list of optimizations (including name, bci and properties) using the provided writer.
-     * @param writer the destination writer
-     * @param optimizations the list of optimizations to be written
-     */
-    static void writeOptimizations(Writer writer, List<Optimization> optimizations) {
-        for (Optimization optimization : optimizations) {
-            writer.writeln(optimization.getOptimizationName() + " "
-                            + optimization.getName() + " at bci " + optimization.getBCI());
-            if (optimization.getProperties() == null) {
-                return;
-            }
-            writer.increaseIndent();
-            for (Map.Entry<String, Object> entry : optimization.getProperties().entrySet()) {
-                writer.writeln(entry.getKey() + ": " + entry.getValue());
-            }
-            writer.decreaseIndent();
-        }
+    @Override
+    default void writeRecursive(Writer writer) {
+        writeHead(writer);
     }
 }

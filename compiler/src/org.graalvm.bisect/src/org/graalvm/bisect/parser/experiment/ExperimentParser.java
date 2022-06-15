@@ -177,6 +177,9 @@ public class ExperimentParser {
             Map<String, Object> code = expectMap(codeObject, "root.code[]");
             ProftoolMethod method = new ProftoolMethod();
             method.compilationId = expectStringNullable(code.get("compileId"), "root.code[].compileId");
+            if (method.compilationId != null && method.compilationId.endsWith("%")) {
+                method.compilationId = method.compilationId.substring(0, method.compilationId.length() - 1);
+            }
             method.period = expectLong(code.get("period"), "root.code[].period");
             method.level = expectIntegerNullable(code.get("level"), "root.code[].level");
             proftoolLog.code.add(method);
