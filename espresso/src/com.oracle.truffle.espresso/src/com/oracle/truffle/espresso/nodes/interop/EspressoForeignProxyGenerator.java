@@ -179,9 +179,14 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          * This is done before the methods from the proxy interfaces so that the methods from
          * java.lang.Object take precedence over duplicate methods in the proxy interfaces.
          */
+        // since interop protocol doesn't (yet) have methods for equals
+        // and hashCode, we simply use standard invokeMember delegation
         addProxyMethod(context.getMeta().java_lang_Object_hashCode);
         addProxyMethod(context.getMeta().java_lang_Object_equals);
-        addProxyMethod(context.getMeta().java_lang_Object_toString);
+
+        // toString is implemented by interop protocol by means of
+        // toDisplayString and asString, so we use those
+        generateToStringMethod();
 
         /*
          * Accumulate all of the methods from the proxy interfaces.
@@ -212,6 +217,52 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         }
 
         return toByteArray();
+    }
+
+    private void generateToStringMethod() {
+        MethodVisitor mv = visitMethod(ACC_PUBLIC | ACC_FINAL,
+                "toString", "()Ljava/lang/String;", null,
+                null);
+
+        mv.visitCode();
+        Label L_startBlock = new Label();
+        Label L_endBlock = new Label();
+        Label L_RuntimeHandler = new Label();
+        Label L_ThrowableHandler = new Label();
+
+        mv.visitLabel(L_startBlock);
+
+        mv.visitVarInsn(ALOAD, 0);
+
+        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
+                "toDisplayString",
+                "(Ljava/lang/Object;)Ljava/lang/Object;",
+                false);
+
+        mv.visitMethodInsn(INVOKESTATIC, "com/oracle/truffle/espresso/polyglot/Interop",
+                "asString",
+                "(Ljava/lang/Object;)Ljava/lang/String;",
+                false);
+
+        mv.visitInsn(ARETURN);
+
+        mv.visitLabel(L_endBlock);
+
+        // Generate exception handler
+        mv.visitLabel(L_RuntimeHandler);
+        mv.visitInsn(ATHROW);   // just rethrow the exception
+
+        mv.visitLabel(L_ThrowableHandler);
+        mv.visitVarInsn(ASTORE, 1);
+        mv.visitTypeInsn(NEW, JLR_UNDECLARED_THROWABLE_EX);
+        mv.visitInsn(DUP);
+        mv.visitVarInsn(ALOAD, 1);
+        mv.visitMethodInsn(INVOKESPECIAL, JLR_UNDECLARED_THROWABLE_EX,
+                "<init>", "(Ljava/lang/Throwable;)V", false);
+        mv.visitInsn(ATHROW);
+        // Maxs computed by ClassWriter.COMPUTE_FRAMES, these arguments ignored
+        mv.visitMaxs(-1, -1);
+        mv.visitEnd();
     }
 
     /**
@@ -408,6 +459,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.exceptionTypes = exceptionTypes;
+            this.isVarArgs = isVarArgs;
         }
 
         private void generateMethod(ClassWriter cw) {
