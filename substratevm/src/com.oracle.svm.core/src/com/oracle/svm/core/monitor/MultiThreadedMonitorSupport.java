@@ -255,28 +255,27 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj) {
-
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
-
         lockObject.lock();
 
         // Prevent deadlock by locking monitorOwners lock due to synchronized block on ReferenceQueue monitor in WeakIdentityHashMap.
-        if ( obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class || obj.getClass() == ReferenceQueue.class) return;
+        if ( obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class ) return;
 
         // prevent recursive manipulation of the monitorOwners lock
         if (monitorOwnersLock.isHeldByCurrentThread()) return;
+        Long prevOwner;
+        long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(org.graalvm.nativeimage.CurrentIsolate.getCurrentThread());
+
         monitorOwnersLock.lock();
         try {
-            Long prevOwner = null;
-            long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(org.graalvm.nativeimage.CurrentIsolate.getCurrentThread());
             prevOwner = monitorOwners.get(obj);
             monitorOwners.put(obj, currentOwnerId);
-            if (prevOwner == null) prevOwner = 0L;  //same as in hotspot native code
-            JavaMonitorEnterEvent.emit(obj,prevOwner,0);//not able to get address because its implemented in native code in Hotspot
-            return;
         } finally {
             monitorOwnersLock.unlock();
         }
+        if ( prevOwner==null ) prevOwner = 0L;
+        JavaMonitorEnterEvent.emit(obj,prevOwner,0);//not able to get address because its implemented in native code in Hotspot
+
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
