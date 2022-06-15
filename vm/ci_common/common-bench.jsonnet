@@ -49,8 +49,10 @@ local repo_config = import '../../repo-configuration.libsonnet';
       ['mx', '-p', '../../polybenchmarks/', 'build_benchmarks']
     ],
     run+: if (is_gate) then  [
-      self.bench_cmd + ['polybenchmarks-awfy:*', '--', '--polybenchmark-vm-config=' + vm_config, '--gate'],
-      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=' + vm_config, '--gate'],
+      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm-config=native', '--gate'],
+      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm-config=jvm',    '--gate'],
+      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=native', '--gate'],
+      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=jvm',    '--gate'],
     ] else [
       self.bench_cmd + ['polybenchmarks-' + suite, '--', '--polybenchmark-vm-config=' + vm_config],
       $.vm_bench_common.upload
@@ -258,8 +260,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
       name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java17-linux-amd64',
     },
 
-    vm_common.gate_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='jvm', is_gate=true)    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-jvm-linux-amd64'},
-    vm_common.gate_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(vm_config='native', is_gate=true) + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-native-linux-amd64'},
+    vm_common.gate_vm_linux_amd64 + self.vm_bench_polybenchmarks_linux_common(is_gate=true)    + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybenchmarks-linux-amd64'},
     vm_common.gate_vm_linux_amd64 + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux-amd64'},
   ],
 
