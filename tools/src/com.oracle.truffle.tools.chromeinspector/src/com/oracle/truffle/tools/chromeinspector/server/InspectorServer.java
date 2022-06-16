@@ -610,7 +610,7 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             while ((line = Draft.readStringLine(buffer)) != null && !line.trim().isEmpty()) {
                 int p = line.indexOf(':');
                 if (p >= 0) {
-                    request.addHeader(line.substring(0, p).trim().toLowerCase(Locale.US), line.substring(p + 1).trim());
+                    request.addHeader(line.substring(0, p).trim().toLowerCase(Locale.ENGLISH), line.substring(p + 1).trim());
                 }
             }
             return request;
