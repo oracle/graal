@@ -22,6 +22,37 @@
  */
 package com.oracle.truffle.espresso.nodes.interop;
 
+import static com.oracle.truffle.api.impl.asm.Opcodes.AASTORE;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_SUPER;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_VARARGS;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ALOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ANEWARRAY;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ARETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ASTORE;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ATHROW;
+import static com.oracle.truffle.api.impl.asm.Opcodes.BIPUSH;
+import static com.oracle.truffle.api.impl.asm.Opcodes.CHECKCAST;
+import static com.oracle.truffle.api.impl.asm.Opcodes.DLOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.DRETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.DUP;
+import static com.oracle.truffle.api.impl.asm.Opcodes.FLOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.FRETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ICONST_0;
+import static com.oracle.truffle.api.impl.asm.Opcodes.ILOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESPECIAL;
+import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKESTATIC;
+import static com.oracle.truffle.api.impl.asm.Opcodes.INVOKEVIRTUAL;
+import static com.oracle.truffle.api.impl.asm.Opcodes.IRETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.LLOAD;
+import static com.oracle.truffle.api.impl.asm.Opcodes.LRETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.NEW;
+import static com.oracle.truffle.api.impl.asm.Opcodes.POP;
+import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
+import static com.oracle.truffle.api.impl.asm.Opcodes.SIPUSH;
+import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
+
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -46,8 +77,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-
-import static com.oracle.truffle.api.impl.asm.Opcodes.*;
 
 /**
  * EspressoForeignProxyGenerator contains the code to generate a dynamic Espresso proxy class for
@@ -225,12 +254,12 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                         null);
 
         mv.visitCode();
-        Label L_startBlock = new Label();
-        Label L_endBlock = new Label();
-        Label L_RuntimeHandler = new Label();
-        Label L_ThrowableHandler = new Label();
+        Label startBlock = new Label();
+        Label endBlock = new Label();
+        Label runtimeHandler = new Label();
+        Label throwableHandler = new Label();
 
-        mv.visitLabel(L_startBlock);
+        mv.visitLabel(startBlock);
 
         mv.visitVarInsn(ALOAD, 0);
 
@@ -246,13 +275,13 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
         mv.visitInsn(ARETURN);
 
-        mv.visitLabel(L_endBlock);
+        mv.visitLabel(endBlock);
 
         // Generate exception handler
-        mv.visitLabel(L_RuntimeHandler);
+        mv.visitLabel(runtimeHandler);
         mv.visitInsn(ATHROW);   // just rethrow the exception
 
-        mv.visitLabel(L_ThrowableHandler);
+        mv.visitLabel(throwableHandler);
         mv.visitVarInsn(ASTORE, 1);
         mv.visitTypeInsn(NEW, JLR_UNDECLARED_THROWABLE_EX);
         mv.visitInsn(DUP);
@@ -272,12 +301,14 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * @return the array of class and interface names; or null if classes is null or empty
      */
     private static String[] typeNames(Klass[] classes) {
-        if (classes == null || classes.length == 0)
+        if (classes == null || classes.length == 0) {
             return null;
+        }
         int size = classes.length;
         String[] ifaces = new String[size];
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < size; i++) {
             ifaces[i] = dotToSlash(classes[i].getNameAsString());
+        }
         return ifaces;
     }
 
@@ -482,22 +513,22 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             }
 
             mv.visitCode();
-            Label L_startBlock = new Label();
-            Label L_endBlock = new Label();
-            Label L_RuntimeHandler = new Label();
-            Label L_ThrowableHandler = new Label();
+            Label startBlock = new Label();
+            Label endBlock = new Label();
+            Label runtimeHandler = new Label();
+            Label throwableHandler = new Label();
 
             List<Klass> catchList = computeUniqueCatchList(exceptionTypes);
             if (catchList.size() > 0) {
                 for (Klass ex : catchList) {
-                    mv.visitTryCatchBlock(L_startBlock, L_endBlock, L_RuntimeHandler,
+                    mv.visitTryCatchBlock(startBlock, endBlock, runtimeHandler,
                                     dotToSlash(ex.getNameAsString()));
                 }
 
-                mv.visitTryCatchBlock(L_startBlock, L_endBlock, L_ThrowableHandler,
+                mv.visitTryCatchBlock(startBlock, endBlock, throwableHandler,
                                 JL_THROWABLE);
             }
-            mv.visitLabel(L_startBlock);
+            mv.visitLabel(startBlock);
 
             mv.visitVarInsn(ALOAD, 0);
             mv.visitLdcInsn(methodName);
@@ -530,13 +561,13 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                 codeUnwrapReturnValue(mv, returnType);
             }
 
-            mv.visitLabel(L_endBlock);
+            mv.visitLabel(endBlock);
 
             // Generate exception handler
-            mv.visitLabel(L_RuntimeHandler);
+            mv.visitLabel(runtimeHandler);
             mv.visitInsn(ATHROW);   // just rethrow the exception
 
-            mv.visitLabel(L_ThrowableHandler);
+            mv.visitLabel(throwableHandler);
             mv.visitVarInsn(ASTORE, 1);
             mv.visitTypeInsn(NEW, JLR_UNDECLARED_THROWABLE_EX);
             mv.visitInsn(DUP);
