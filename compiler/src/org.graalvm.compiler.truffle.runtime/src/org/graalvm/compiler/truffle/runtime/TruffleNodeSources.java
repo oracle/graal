@@ -56,7 +56,12 @@ final class TruffleNodeSources {
         }
         String qualifiedRootName;
         if (rootNode != null) {
-            qualifiedRootName = rootNode.getQualifiedName();
+            try {
+                qualifiedRootName = rootNode.getQualifiedName();
+            } catch (Throwable t) {
+                // ignore problems in
+                qualifiedRootName = "Error in receiving root name: " + t.getMessage();
+            }
         } else {
             qualifiedRootName = "";
         }
