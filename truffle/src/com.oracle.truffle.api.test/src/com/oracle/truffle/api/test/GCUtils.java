@@ -60,11 +60,14 @@ import com.sun.management.HotSpotDiagnosticMXBean;
 
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.visualvm.lib.jfluid.heap.ArrayItemValue;
 import org.graalvm.visualvm.lib.jfluid.heap.Heap;
 import org.graalvm.visualvm.lib.jfluid.heap.HeapFactory;
 import org.graalvm.visualvm.lib.jfluid.heap.Instance;
 import org.graalvm.visualvm.lib.jfluid.heap.JavaClass;
 import org.graalvm.visualvm.lib.jfluid.heap.ObjectArrayInstance;
+import org.graalvm.visualvm.lib.jfluid.heap.ObjectFieldValue;
+import org.graalvm.visualvm.lib.jfluid.heap.Value;
 import org.junit.Assert;
 
 import javax.management.MBeanServer;
@@ -97,8 +100,9 @@ public final class GCUtils {
             collectibleObjects.add(new WeakReference<>(objectFactory.apply(i)));
             System.gc();
         }
-        if (!analyser.anyCollected(collectibleObjects, true).isCollected()) {
-            Assert.fail("Objects are not collected.");
+        Result result = analyser.anyCollected(collectibleObjects, true, true);
+        if (!result.isCollected()) {
+            Assert.fail(formatShortestGCRootPath("Objects are not collected.", result));
         }
     }
 
@@ -109,8 +113,9 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertGc(final String message, final Reference<?> ref) {
-        if (!analyser.allCollected(Collections.singleton(ref), true).isCollected()) {
-            Assert.fail(message);
+        Result result = analyser.allCollected(Collections.singleton(ref), true, true);
+        if (!result.isCollected()) {
+            Assert.fail(formatShortestGCRootPath(message, result));
         }
     }
 
@@ -121,7 +126,7 @@ public final class GCUtils {
      * @param ref the reference
      */
     public static void assertNotGc(final String message, final Reference<?> ref) {
-        if (analyser.allCollected(Collections.singleton(ref), false).isCollected()) {
+        if (analyser.allCollected(Collections.singleton(ref), false, false).isCollected()) {
             Assert.fail(message);
         }
     }
@@ -135,22 +140,94 @@ public final class GCUtils {
         }
     }
 
+    private static String formatShortestGCRootPath(String message, Result result) {
+        Iterable<? extends InstanceReference> path = result.getShortestGCRootPath();
+        if (path == null) {
+            return message;
+        }
+        StringBuilder sb = new StringBuilder("Shortest GC root path:\n");
+        for (InstanceReference ref : path) {
+            sb.append("        ");
+            sb.append(ref.className);
+            switch (ref.kind) {
+                case OBJECT_FIELD:
+                    sb.append(".");
+                    sb.append(ref.memberName);
+                    break;
+                case ARRAY_ELEMENT:
+                    sb.append("[");
+                    sb.append(ref.memberName);
+                    sb.append("]");
+                    break;
+                default:
+                    throw new IllegalArgumentException(ref.kind.toString());
+            }
+            sb.append("\n");
+        }
+        sb.delete(sb.length() - 1, sb.length());
+        sb.append(" (");
+        sb.append(result.getGCRootKind());
+        sb.append(")\n");
+        return String.format("%s%n%s", message, sb);
+    }
+
+    private enum ReferenceKind {
+        OBJECT_FIELD,
+        ARRAY_ELEMENT
+    }
+
+    private static final class InstanceReference {
+        final ReferenceKind kind;
+        final String className;
+        final String memberName;
+
+        InstanceReference(ReferenceKind kind, String className, String memberName) {
+            this.kind = kind;
+            this.className = className;
+            this.memberName = memberName;
+        }
+    }
+
     private static final class Result {
 
         private final boolean collected;
+        private final String gcRootKind;
+        private final Iterable<? extends InstanceReference> shortestGCRootPath;
 
         Result(boolean collected) {
             this.collected = collected;
+            this.gcRootKind = null;
+            this.shortestGCRootPath = null;
+        }
+
+        private Result(String gcRootKind, Iterable<? extends InstanceReference> shortestGCRootPath) {
+            this.collected = false;
+            this.gcRootKind = gcRootKind;
+            this.shortestGCRootPath = shortestGCRootPath;
         }
 
         boolean isCollected() {
             return collected;
         }
+
+        String getGCRootKind() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return gcRootKind;
+        }
+
+        Iterable<? extends InstanceReference> getShortestGCRootPath() {
+            if (collected) {
+                throw new IllegalStateException("Object was collected");
+            }
+            return shortestGCRootPath;
+        }
     }
 
     private abstract static class ReachabilityAnalyser<T> {
 
-        final Result allCollected(Collection<? extends Reference<?>> references, boolean force) {
+        final Result allCollected(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath) {
             if (references.isEmpty()) {
                 throw new IllegalArgumentException("References must be non empty.");
             }
@@ -163,10 +240,10 @@ public final class GCUtils {
                 }
                 return new Result(true);
             };
-            return analyse(references, force, test);
+            return analyse(references, force, collectGCRootPath, test);
         }
 
-        final Result anyCollected(Collection<? extends Reference<?>> references, boolean force) {
+        final Result anyCollected(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath) {
             if (references.isEmpty()) {
                 throw new IllegalArgumentException("References must be non empty.");
             }
@@ -181,10 +258,10 @@ public final class GCUtils {
                 }
                 return firstResult;
             };
-            return analyse(references, force, test);
+            return analyse(references, force, collectGCRootPath, test);
         }
 
-        abstract Result analyse(Collection<? extends Reference<?>> references, boolean force, Function<T, Result> testCollected);
+        abstract Result analyse(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath, Function<T, Result> testCollected);
 
         abstract Result isCollected(Reference<?> reference, T context);
     }
@@ -195,18 +272,21 @@ public final class GCUtils {
         private static volatile Reference<?>[] todo;
 
         private static class Context {
-
+            final boolean collectGCRootPath;
+            final Heap heap;
             final List<Instance> todoInstances;
             final Map<Reference<?>, Integer> todoIndexes;
 
-            Context(List<Instance> todoInstances, Map<Reference<?>, Integer> todoIndexes) {
+            Context(boolean collectGCRootPath, Heap heap, List<Instance> todoInstances, Map<Reference<?>, Integer> todoIndexes) {
+                this.collectGCRootPath = collectGCRootPath;
+                this.heap = heap;
                 this.todoInstances = todoInstances;
                 this.todoIndexes = todoIndexes;
             }
         }
 
         @Override
-        Result analyse(Collection<? extends Reference<?>> references, boolean force, Function<Context, Result> testCollected) {
+        Result analyse(Collection<? extends Reference<?>> references, boolean force, boolean collectGCRootPath, Function<Context, Result> testCollected) {
             try {
                 Path tmpDirectory = Files.createTempDirectory(GCUtils.class.getSimpleName().toLowerCase());
                 try {
@@ -216,7 +296,7 @@ public final class GCUtils {
                     Heap heap = HeapFactory.createHeap(heapDumpFile.toFile());
                     JavaClass trackableReferenceClass = heap.getJavaClassByName(HeapDumpAnalyser.class.getName());
                     ObjectArrayInstance todoArray = (ObjectArrayInstance) trackableReferenceClass.getValueOfStaticField("todo");
-                    return testCollected.apply(new Context(todoArray.getValues(), todoIndexes));
+                    return testCollected.apply(new Context(collectGCRootPath, heap, todoArray.getValues(), todoIndexes));
                 } finally {
                     delete(tmpDirectory);
                 }
@@ -230,7 +310,41 @@ public final class GCUtils {
             int index = context.todoIndexes.get(reference);
             Instance referenceInstance = context.todoInstances.get(index);
             Instance referent = (Instance) referenceInstance.getValueOfField("referent");
-            return new Result(referent == null || referent.getNearestGCRootPointer() == null);
+            if (referent == null || referent.getNearestGCRootPointer() == null) {
+                return new Result(true);
+            } else if (context.collectGCRootPath) {
+                return collectGCRootPath(new ArrayList<>(), context.heap, referent, null);
+            } else {
+                return new Result(false);
+            }
+        }
+
+        private Result collectGCRootPath(List<InstanceReference> into, Heap heap, Instance instance, Instance prev) {
+            String className = instance.getJavaClass().getName();
+            if (Class.class.getName().equals(className)) {
+                className = heap.getJavaClassByID(instance.getInstanceId()).getName();
+            }
+            ReferenceKind referenceKind = null;
+            String memberName = null;
+            if (prev == null) {
+                referenceKind = ReferenceKind.OBJECT_FIELD;
+                memberName = "this";
+            } else {
+                Value value = prev.getReferences().get(0);
+                if (value instanceof ObjectFieldValue) {
+                    referenceKind = ReferenceKind.OBJECT_FIELD;
+                    memberName = ((ObjectFieldValue) value).getField().getName();
+                } else if (value instanceof ArrayItemValue) {
+                    referenceKind = ReferenceKind.ARRAY_ELEMENT;
+                    memberName = String.valueOf(((ArrayItemValue) value).getIndex());
+                }
+            }
+            into.add(new InstanceReference(referenceKind, className, memberName));
+            if (instance.isGCRoot()) {
+                String gcRootKind = heap.getGCRoots(instance).iterator().next().getKind();
+                return new Result(gcRootKind, into);
+            }
+            return collectGCRootPath(into, heap, instance.getNearestGCRootPointer(), instance);
         }
 
         private static Map<Reference<?>, Integer> prepareTodoAndTakeHeapDump(Collection<? extends Reference<?>> references, Path outputFile) throws IOException {
@@ -288,7 +402,7 @@ public final class GCUtils {
     private static final class GCAnalyser extends ReachabilityAnalyser<Void> {
 
         @Override
-        Result analyse(Collection<? extends Reference<?>> references, boolean performAllocations, Function<Void, Result> testCollected) {
+        Result analyse(Collection<? extends Reference<?>> references, boolean performAllocations, boolean collectGCRootPath, Function<Void, Result> testCollected) {
             int blockSize = 100_000;
             final List<byte[]> blocks = new ArrayList<>();
             for (int i = 0; i < 50; i++) {
