@@ -25,6 +25,7 @@
 
 package org.graalvm.component.installer.gds.rest;
 
+import org.graalvm.component.installer.MemoryFeedback;
 import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
@@ -33,7 +34,7 @@ import org.graalvm.component.installer.URLConnectionFactory;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.gds.rest.GDSRESTConnector.GDSRequester;
 import org.graalvm.component.installer.gds.rest.GDSRESTConnectorTest.GDSTestConnector.TestGDSRequester.TestURLConnectionFactory.TestURLConnection;
-import org.graalvm.component.installer.gds.rest.MemoryFeedback.Case;
+import org.graalvm.component.installer.MemoryFeedback.Case;
 import org.graalvm.component.installer.remote.FileDownloader;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -141,7 +142,7 @@ public class GDSRESTConnectorTest extends TestBase {
         }
 
         assertTrue(conn == null);
-        assertTrue(mf.toString(), mf.mem.isEmpty());
+        assertTrue(mf.toString(), mf.isEmpty());
     }
 
     @Test
@@ -157,7 +158,7 @@ public class GDSRESTConnectorTest extends TestBase {
         mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
         mf.checkMem(2, Case.FRM, "OLDS_ReleaseFile");
         mf.checkMem(3, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
-        assertTrue(mf.toString(), mf.mem.size() == 4);
+        assertTrue(mf.toString(), mf.size() == 4);
     }
 
     @Test
@@ -175,7 +176,7 @@ public class GDSRESTConnectorTest extends TestBase {
         mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
         mf.checkMem(2, Case.FRM, "OLDS_ReleaseFile");
         mf.checkMem(3, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
-        assertTrue(mf.toString(), mf.mem.size() == 4);
+        assertTrue(mf.toString(), mf.size() == 4);
     }
 
     @Test
@@ -190,7 +191,7 @@ public class GDSRESTConnectorTest extends TestBase {
 
         mf.checkMem(0, Case.FRM, "OLDS_ReleaseFile");
         mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
-        assertTrue(mf.toString(), mf.mem.size() == 2);
+        assertTrue(mf.toString(), mf.size() == 2);
     }
 
     @Test
@@ -208,7 +209,7 @@ public class GDSRESTConnectorTest extends TestBase {
         mf.checkMem(1, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
         mf.checkMem(2, Case.FRM, "OLDS_ReleaseFile");
         mf.checkMem(3, Case.MSG, "MSG_UsingFile", "OLDS_ReleaseFile", "");
-        assertTrue(mf.toString(), mf.mem.size() == 4);
+        assertTrue(mf.toString(), mf.size() == 4);
     }
 
     @Test
@@ -224,7 +225,7 @@ public class GDSRESTConnectorTest extends TestBase {
         assertTrue(metas.contains(GDSRESTConnector.QUERRY_ARCH + SystemUtils.ARCH.get().getName()));
         assertTrue(metas.contains(GDSRESTConnector.QUERRY_JAVA + TEST_JDK));
 
-        assertTrue(mf.toString(), mf.mem.isEmpty());
+        assertTrue(mf.toString(), mf.isEmpty());
     }
 
     @Test
@@ -241,7 +242,7 @@ public class GDSRESTConnectorTest extends TestBase {
         assertTrue(metas.contains(GDSRESTConnector.QUERRY_JAVA + TEST_JDK));
         assertTrue(metas.contains(GDSRESTConnector.QUERRY_RELEASE + VERSION_STRING));
 
-        assertTrue(mf.toString(), mf.mem.isEmpty());
+        assertTrue(mf.toString(), mf.isEmpty());
     }
 
     @Test
@@ -250,7 +251,7 @@ public class GDSRESTConnectorTest extends TestBase {
         URL artURL = testConnector.makeArtifactDownloadURL(mockId);
         assertEquals(testURL + GDSRESTConnector.ENDPOINT_ARTIFACTS + mockId + GDSRESTConnector.ENDPOINT_DOWNLOAD, artURL.toString());
 
-        assertTrue(mf.toString(), mf.mem.isEmpty());
+        assertTrue(mf.toString(), mf.isEmpty());
     }
 
     @Test
@@ -261,7 +262,7 @@ public class GDSRESTConnectorTest extends TestBase {
         assertEquals(GDSRESTConnector.HEADER_VAL_GZIP, header.get(GDSRESTConnector.HEADER_ENCODING));
         assertEquals(TEST_GDS_AGENT, header.get(GDSRESTConnector.HEADER_USER_AGENT));
 
-        assertTrue(mf.toString(), mf.mem.isEmpty());
+        assertTrue(mf.toString(), mf.isEmpty());
     }
 
     @Test
@@ -309,7 +310,7 @@ public class GDSRESTConnectorTest extends TestBase {
         assertEquals(GDSRequester.HEADER_VAL_JSON, headers.get(GDSRequester.HEADER_CONTENT).get(0));
         assertEquals(TEST_GDS_AGENT, headers.get(GDSRESTConnector.HEADER_USER_AGENT).get(0));
 
-        assertEquals(mf.toString(), 0, mf.mem.size());
+        assertEquals(mf.toString(), 0, mf.size());
     }
 
     private List<String> checkBaseParams(String endpoint) {
