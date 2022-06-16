@@ -40,7 +40,7 @@ local repo_config = import '../../repo-configuration.libsonnet';
     },
   },
 
-  vm_bench_polybenchmarks_linux_common(env='polybench-${VM_ENV}', vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_17 + self.polybench_hpc_linux_common + {
+  vm_bench_polybenchmarks_linux_common(env='polybench-${VM_ENV}', vm_config='jvm', is_gate=false, suite='default:*'): vm_common.svm_common_linux_amd64 + vm_common.truffleruby_linux_amd64 + vm.custom_vm_linux + self.vm_bench_common + vm.vm_java_17 + self.polybench_hpc_linux_common + {
     base_cmd:: ['mx', '--env', env, '--dy', 'polybenchmarks'],
     bench_cmd:: self.base_cmd + ['benchmark', '--results-file', self.result_file],
     setup+: [
