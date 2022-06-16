@@ -57,17 +57,17 @@ import java.util.Map;
 import java.util.function.Function;
 
 import com.sun.management.HotSpotDiagnosticMXBean;
+
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.visualvm.lib.jfluid.heap.Heap;
+import org.graalvm.visualvm.lib.jfluid.heap.HeapFactory;
+import org.graalvm.visualvm.lib.jfluid.heap.Instance;
+import org.graalvm.visualvm.lib.jfluid.heap.JavaClass;
+import org.graalvm.visualvm.lib.jfluid.heap.ObjectArrayInstance;
 import org.junit.Assert;
 
 import javax.management.MBeanServer;
-
-import org.netbeans.lib.profiler.heap.Heap;
-import org.netbeans.lib.profiler.heap.HeapFactory;
-import org.netbeans.lib.profiler.heap.Instance;
-import org.netbeans.lib.profiler.heap.JavaClass;
-import org.netbeans.lib.profiler.heap.ObjectArrayInstance;
 
 /**
  * Test collectible objects.
@@ -206,7 +206,6 @@ public final class GCUtils {
         }
 
         @Override
-        @SuppressWarnings("unchecked")
         Result analyse(Collection<? extends Reference<?>> references, boolean force, Function<Context, Result> testCollected) {
             try {
                 Path tmpDirectory = Files.createTempDirectory(GCUtils.class.getSimpleName().toLowerCase());

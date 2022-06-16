@@ -148,14 +148,14 @@ suite = {
       "sourceSha1" : "d085e808a3ef7549cdb72a20056e5f87469f8d56",
     },
 
-    "NETBEANS-LIB-PROFILER" : {
-      "moduleName" : "org.netbeans.modules.org-netbeans-lib-profiler",
-      "sha1" : "2bcd32411df5d9c5348c98cf7024ac8b76137868",
-      "sourceSha1" : "9943534904689dcf93d3bcaca8293583e9d56266",
+    "VISUALVM-LIB-JFLUID-HEAP" : {
+      "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
+      "sha1" : "5aa80db98a1d040dc1917a063bf059326e2afad7",
+      "sourceSha1" : "40a51050dfe481a7542f9eb7b1d8fb484a1eb2c1",
       "maven" : {
-        "groupId" : "org.netbeans.modules",
-        "artifactId" : "org-netbeans-lib-profiler",
-        "version" : "RELEASE120-1",
+        "groupId" : "org.graalvm.visualvm.modules",
+        "artifactId" : "org-graalvm-visualvm-lib-jfluid-heap",
+        "version" : "2.1.3",
       },
     },
 
@@ -237,7 +237,7 @@ suite = {
         "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
-        "truffle:NETBEANS-LIB-PROFILER",
+        "truffle:VISUALVM-LIB-JFLUID-HEAP",
         "mx:JUNIT",
       ],
       "requires" : [
@@ -1324,7 +1324,7 @@ suite = {
          "com.oracle.truffle.nfi.test",
          "com.oracle.truffle.api.staticobject.test",
        ],
-       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
+       "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21", "truffle:VISUALVM-LIB-JFLUID-HEAP"],
        "distDependencies" : [
          "TRUFFLE_API",
          "TRUFFLE_SL",
