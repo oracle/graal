@@ -30,6 +30,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -74,11 +76,19 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     @Specialization(replaces = "doCached")
     ObjectKlass doUncached(Object metaObject, Klass targetType,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws ClassCastException {
-        ObjectKlass proxyKlass = EspressoForeignProxyGenerator.getProxyKlass(getContext(), metaObject, interop);
+        ClassRegistry registry = getContext().getRegistries().getClassRegistry(getContext().getBindings().getBindingsLoader());
+        EspressoForeignProxyGenerator.GeneratedProxyBytes generatedProxyBytes = EspressoForeignProxyGenerator.getProxyKlassBytes(getContext().getPolyglotInterfaceMappings(), getContext().getMeta(),
+                        metaObject, interop);
+
+        Symbol<Symbol.Type> proxyName = getContext().getTypes().fromClassGetName(generatedProxyBytes.name);
+        Klass proxyKlass = registry.findLoadedKlass(proxyName);
+        if (proxyKlass == null) {
+            proxyKlass = registry.defineKlass(proxyName, generatedProxyBytes.bytes);
+        }
 
         if (!targetType.isAssignableFrom(proxyKlass)) {
             throw new ClassCastException("proxy object is not instance of expected type: " + targetType.getName());
         }
-        return proxyKlass;
+        return (ObjectKlass) proxyKlass;
     }
 }

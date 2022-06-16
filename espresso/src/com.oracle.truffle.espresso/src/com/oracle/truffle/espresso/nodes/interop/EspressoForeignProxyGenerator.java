@@ -71,12 +71,12 @@ import com.oracle.truffle.api.impl.asm.MethodVisitor;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.PolyglotInterfaceMappings;
 
 /**
  * EspressoForeignProxyGenerator contains the code to generate a dynamic Espresso proxy class for
@@ -94,7 +94,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     /* name of the superclass of proxy classes */
     private static final String superclassName = "java/lang/Object";
 
-    private final EspressoContext context;
+    private Meta meta;
 
     /* name of proxy class */
     private String className;
@@ -116,7 +116,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
     private static final String proxyNamePrefix = "com.oracle.truffle.espresso.polyglot.Foreign$Proxy$";
 
-    private static final HashMap<String, ObjectKlass> proxyCache = new HashMap<>();
+    private static final HashMap<String, GeneratedProxyBytes> proxyCache = new HashMap<>();
 
     /**
      * Construct a ProxyGenerator to generate a proxy class with the specified name and for the
@@ -125,16 +125,26 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * A ProxyGenerator object contains the state for the ongoing generation of a particular proxy
      * class.
      */
-    private EspressoForeignProxyGenerator(EspressoContext context, ObjectKlass[] interfaces) {
+    private EspressoForeignProxyGenerator(Meta meta, ObjectKlass[] interfaces) {
         super(ClassWriter.COMPUTE_FRAMES);
-        this.context = context;
+        this.meta = meta;
         this.className = nextClassName();
         this.interfaces = interfaces;
         this.accessFlags = ACC_PUBLIC | ACC_FINAL | ACC_SUPER;
     }
 
+    public static class GeneratedProxyBytes {
+        public final byte[] bytes;
+        public final String name;
+
+        GeneratedProxyBytes(byte[] bytes, String name) {
+            this.bytes = bytes;
+            this.name = name;
+        }
+    }
+
     @TruffleBoundary
-    public static synchronized ObjectKlass getProxyKlass(EspressoContext context, Object metaObject, InteropLibrary interop) {
+    public static synchronized GeneratedProxyBytes getProxyKlassBytes(PolyglotInterfaceMappings polyglotInterfaceMappings, Meta meta, Object metaObject, InteropLibrary interop) {
         assert interop.isMetaObject(metaObject);
         String metaName;
         try {
@@ -156,7 +166,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         ArrayList<ObjectKlass> guestInterfaces = new ArrayList<>(parentNames.length);
 
         for (String parentName : parentNames) {
-            ObjectKlass guestInterface = context.getPolyglotInterfaceMappings().mapName(parentName);
+            ObjectKlass guestInterface = polyglotInterfaceMappings.mapName(parentName);
             if (guestInterface != null) {
                 guestInterfaces.add(guestInterface);
             }
@@ -166,10 +176,10 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             return null;
         }
 
-        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(context, guestInterfaces.toArray(new ObjectKlass[guestInterfaces.size()]));
-        ObjectKlass proxyKlass = context.getRegistries().getClassRegistry(context.getBindings().getBindingsLoader()).defineKlass(generator.getClassType(), generator.generateClassFile());
-        proxyCache.put(metaName, proxyKlass);
-        return proxyKlass;
+        EspressoForeignProxyGenerator generator = new EspressoForeignProxyGenerator(meta, guestInterfaces.toArray(new ObjectKlass[guestInterfaces.size()]));
+        GeneratedProxyBytes generatedProxyBytes = new GeneratedProxyBytes(generator.generateClassFile(), generator.className);
+        proxyCache.put(metaName, generatedProxyBytes);
+        return generatedProxyBytes;
     }
 
     private static String[] getParentNames(Object metaObject, InteropLibrary interop) throws ClassCastException {
@@ -210,8 +220,8 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          */
         // since interop protocol doesn't (yet) have methods for equals
         // and hashCode, we simply use standard invokeMember delegation
-        addProxyMethod(context.getMeta().java_lang_Object_hashCode);
-        addProxyMethod(context.getMeta().java_lang_Object_equals);
+        addProxyMethod(meta.java_lang_Object_hashCode);
+        addProxyMethod(meta.java_lang_Object_equals);
 
         // toString is implemented by interop protocol by means of
         // toDisplayString and asString, so we use those
@@ -467,10 +477,6 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         }
     }
 
-    public Symbol<Symbol.Type> getClassType() {
-        return context.getTypes().fromClassGetName(className);
-    }
-
     /**
      * A ProxyMethod object represents a proxy method in the proxy class being generated: a method
      * whose implementation will encode and dispatch invocations to the proxy instance's invocation
@@ -554,7 +560,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                                             "[Ljava/lang/Object;)Ljava/lang/Object;",
                             false);
 
-            if (returnType == context.getMeta()._void) {
+            if (returnType == meta._void) {
                 mv.visitInsn(POP);
                 mv.visitInsn(RETURN);
             } else {
@@ -587,19 +593,19 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          */
         private void codeWrapArgument(MethodVisitor mv, Klass type, int slot) {
             if (type.isPrimitive()) {
-                PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(context, type);
+                PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(meta, type);
 
-                if (type == context.getMeta()._int ||
-                                type == context.getMeta()._boolean ||
-                                type == context.getMeta()._byte ||
-                                type == context.getMeta()._char ||
-                                type == context.getMeta()._short) {
+                if (type == meta._int ||
+                                type == meta._boolean ||
+                                type == meta._byte ||
+                                type == meta._char ||
+                                type == meta._short) {
                     mv.visitVarInsn(ILOAD, slot);
-                } else if (type == context.getMeta()._long) {
+                } else if (type == meta._long) {
                     mv.visitVarInsn(LLOAD, slot);
-                } else if (type == context.getMeta()._float) {
+                } else if (type == meta._float) {
                     mv.visitVarInsn(FLOAD, slot);
-                } else if (type == context.getMeta()._double) {
+                } else if (type == meta._double) {
                     mv.visitVarInsn(DLOAD, slot);
                 } else {
                     throw new AssertionError();
@@ -617,24 +623,24 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          */
         private void codeUnwrapReturnValue(MethodVisitor mv, Klass type) {
             if (type.isPrimitive()) {
-                PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(context, type);
+                PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(meta, type);
 
                 mv.visitTypeInsn(CHECKCAST, prim.wrapperClassName);
                 mv.visitMethodInsn(INVOKEVIRTUAL,
                                 prim.wrapperClassName,
                                 prim.unwrapMethodName, prim.unwrapMethodDesc, false);
 
-                if (type == context.getMeta()._int ||
-                                type == context.getMeta()._boolean ||
-                                type == context.getMeta()._byte ||
-                                type == context.getMeta()._char ||
-                                type == context.getMeta()._short) {
+                if (type == meta._int ||
+                                type == meta._boolean ||
+                                type == meta._byte ||
+                                type == meta._char ||
+                                type == meta._short) {
                     mv.visitInsn(IRETURN);
-                } else if (type == context.getMeta()._long) {
+                } else if (type == meta._long) {
                     mv.visitInsn(LRETURN);
-                } else if (type == context.getMeta()._float) {
+                } else if (type == meta._float) {
                     mv.visitInsn(FRETURN);
-                } else if (type == context.getMeta()._double) {
+                } else if (type == meta._double) {
                     mv.visitInsn(DRETURN);
                 } else {
                     throw new AssertionError();
@@ -689,7 +695,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
     private String getMethodDescriptor(Klass[] parameterTypes,
                     Klass returnType) {
         return getParameterDescriptors(parameterTypes) +
-                        ((returnType == context.getMeta()._void) ? "V" : getFieldType(returnType));
+                        ((returnType == meta._void) ? "V" : getFieldType(returnType));
     }
 
     /**
@@ -713,7 +719,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      */
     private String getFieldType(Klass type) {
         if (type.isPrimitive()) {
-            return PrimitiveTypeInfo.get(context, type).baseTypeString;
+            return PrimitiveTypeInfo.get(meta, type).baseTypeString;
         } else if (type.isArray()) {
             /*
              * According to JLS 20.3.2, the getName() method on Class does return the VM type
@@ -763,7 +769,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      * a "word" in section 3.4, but that definition was removed for the second edition.
      */
     private int getWordsPerType(Klass type) {
-        if (type == context.getMeta()._long || type == context.getMeta()._double) {
+        if (type == meta._long || type == meta._double) {
             return 2;
         } else {
             return 1;
@@ -813,18 +819,18 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         List<Klass> uniqueList = new ArrayList<>();
         // unique exceptions to catch
 
-        uniqueList.add(context.getMeta().java_lang_Error);            // always catch/rethrow these
-        uniqueList.add(context.getMeta().java_lang_RuntimeException);
+        uniqueList.add(meta.java_lang_Error);            // always catch/rethrow these
+        uniqueList.add(meta.java_lang_RuntimeException);
 
         nextException: for (Klass ex : exceptions) {
-            if (ex.isAssignableFrom(context.getMeta().java_lang_Throwable)) {
+            if (ex.isAssignableFrom(meta.java_lang_Throwable)) {
                 /*
                  * If Throwable is declared to be thrown by the proxy method, then no catch blocks
                  * are necessary, because the invoke can, at most, throw Throwable anyway.
                  */
                 uniqueList.clear();
                 break;
-            } else if (!context.getMeta().java_lang_Throwable.isAssignableFrom(ex)) {
+            } else if (!meta.java_lang_Throwable.isAssignableFrom(ex)) {
                 /*
                  * Ignore types that cannot be thrown by the invoke method.
                  */
@@ -878,18 +884,19 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         /* descriptor of same method */
         public String unwrapMethodDesc;
 
-        private static Map<EspressoContext, Map<Klass, PrimitiveTypeInfo>> map = new HashMap<>();
+        private static Map<Meta, Map<Klass, PrimitiveTypeInfo>> map = new HashMap<>();
 
-        private static Map<Klass, PrimitiveTypeInfo> buildTable(EspressoContext context) {
+        private static Map<Klass, PrimitiveTypeInfo> buildTable(Meta meta) {
             Map<Klass, PrimitiveTypeInfo> table = new HashMap<>(8);
-            table.put(context.getMeta()._byte, new PrimitiveTypeInfo(byte.class, context.getMeta().java_lang_Byte));
-            table.put(context.getMeta()._char, new PrimitiveTypeInfo(char.class, context.getMeta().java_lang_Character));
-            table.put(context.getMeta()._double, new PrimitiveTypeInfo(double.class, context.getMeta().java_lang_Double));
-            table.put(context.getMeta()._float, new PrimitiveTypeInfo(float.class, context.getMeta().java_lang_Float));
-            table.put(context.getMeta()._int, new PrimitiveTypeInfo(int.class, context.getMeta().java_lang_Integer));
-            table.put(context.getMeta()._long, new PrimitiveTypeInfo(long.class, context.getMeta().java_lang_Long));
-            table.put(context.getMeta()._short, new PrimitiveTypeInfo(short.class, context.getMeta().java_lang_Short));
-            table.put(context.getMeta()._boolean, new PrimitiveTypeInfo(boolean.class, context.getMeta().java_lang_Boolean));
+            table.put(meta._byte, new PrimitiveTypeInfo(byte.class, meta.java_lang_Byte));
+            table.put(meta._char, new PrimitiveTypeInfo(char.class, meta.java_lang_Character));
+            table.put(meta._double, new PrimitiveTypeInfo(double.class, meta.java_lang_Double));
+            table.put(meta._float, new PrimitiveTypeInfo(float.class, meta.java_lang_Float));
+            table.put(meta._int, new PrimitiveTypeInfo(int.class, meta.java_lang_Integer));
+            table.put(meta._long, new PrimitiveTypeInfo(long.class, meta.java_lang_Long));
+            table.put(meta._short, new PrimitiveTypeInfo(short.class, meta.java_lang_Short));
+            table.put(meta._boolean, new PrimitiveTypeInfo(boolean.class, meta.java_lang_Boolean));
+            map.put(meta, table);
             return table;
         }
 
@@ -904,11 +911,11 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         }
 
         @TruffleBoundary
-        private static PrimitiveTypeInfo get(EspressoContext context, Klass cl) {
-            if (map.containsKey(context)) {
-                return map.get(context).get(cl);
+        private static PrimitiveTypeInfo get(Meta meta, Klass cl) {
+            if (map.containsKey(meta)) {
+                return map.get(meta).get(cl);
             }
-            return buildTable(context).get(cl);
+            return buildTable(meta).get(cl);
         }
     }
 }
