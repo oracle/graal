@@ -27,6 +27,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.CacheExpression;
 import com.oracle.truffle.dsl.processor.model.ExecutableTypeData;
@@ -540,6 +541,10 @@ public final class OperationsBytecodeNodeGeneratorPlugs implements NodeGenerator
 
     @Override
     public CodeTree createCallChildExecuteMethod(NodeExecutionData execution, ExecutableTypeData method, FrameState frameState) {
+        if (execution.getName().startsWith("$localRefArray")) {
+            return createArrayReference(frameState, new LocalRefHandle(execution.getName()), true, new ArrayCodeTypeMirror(types.LocalSetter), false);
+        }
+
         if (execution.getName().startsWith("$localRef")) {
             return createArrayReference(frameState, new LocalRefHandle(execution.getName()), true, types.LocalSetter, false);
         }

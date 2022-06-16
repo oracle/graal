@@ -21,8 +21,15 @@ import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.MemberAssignC
 import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.NameAccessContext;
 import com.oracle.truffle.sl.runtime.SLStrings;
 
+/**
+ * Base AST visitor class, that handles common SL behaviour such as error reporting, scoping and
+ * literal parsing.
+ */
 public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<Void> {
 
+    /**
+     * Base implementation of parsing, which handles lexer and parser setup, and error reporting.
+     */
     protected static void parseSLImpl(Source source, SLBaseVisitor visitor) {
         SimpleLanguageOperationsLexer lexer = new SimpleLanguageOperationsLexer(CharStreams.fromString(source.getCharacters().toString()));
         SimpleLanguageOperationsParser parser = new SimpleLanguageOperationsParser(new CommonTokenStream(lexer));

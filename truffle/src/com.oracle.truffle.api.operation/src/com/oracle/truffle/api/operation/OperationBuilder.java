@@ -230,6 +230,16 @@ public abstract class OperationBuilder {
         return local.id;
     }
 
+    protected int[] getLocalIndices(Object[] value) {
+        int[] result = new int[value.length];
+        for (int i = 0; i < value.length; i++) {
+            BuilderOperationLocal local = (BuilderOperationLocal) value[i];
+            assert verifyNesting(local.owner, operationData) : "local access not nested properly";
+            result[i] = local.id;
+        }
+        return result;
+    }
+
     private static boolean verifyNesting(BuilderOperationData parent, BuilderOperationData child) {
         BuilderOperationData cur = child;
         while (cur.depth > parent.depth) {

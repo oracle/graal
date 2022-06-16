@@ -139,11 +139,18 @@ public class CustomInstruction extends Instruction {
         for (int localIndex : localRefIndices) {
             b.startStatement().startCall(vars.consts, "setValue");
             b.string("constantOffset + " + localIndex);
-            b.startStaticCall(OperationGeneratorUtils.getTypes().LocalSetter, "create");
-            b.startCall("getLocalIndex");
-            b.startGroup().variable(vars.operationData).string(".localReferences[" + (iLocal++) + "]").end();
-            b.end();
-            b.end();
+
+            if (data.getMainProperties().numLocalReferences == -1) {
+                b.startStaticCall(OperationGeneratorUtils.getTypes().LocalSetter, "createArray");
+                b.startCall("getLocalIndices");
+                b.startGroup().variable(vars.operationData).string(".localReferences").end();
+                b.end(2);
+            } else {
+                b.startStaticCall(OperationGeneratorUtils.getTypes().LocalSetter, "create");
+                b.startCall("getLocalIndex");
+                b.startGroup().variable(vars.operationData).string(".localReferences[" + (iLocal++) + "]").end();
+                b.end(2);
+            }
             b.end(2);
         }
 

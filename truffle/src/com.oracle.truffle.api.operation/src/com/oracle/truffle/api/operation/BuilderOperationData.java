@@ -8,7 +8,7 @@ public class BuilderOperationData {
     public final boolean needsLeave;
     public final Object[] aux;
     public final Object[] arguments;
-    public final OperationLocal[] localReferences;
+    public OperationLocal[] localReferences;
     public int numChildren = 0;
     public int numLocalReferences = 0;
 
@@ -20,6 +20,8 @@ public class BuilderOperationData {
         this.aux = new Object[numAux];
         this.needsLeave = needsLeave || (parent != null ? parent.needsLeave : false);
         this.arguments = arguments;
-        this.localReferences = new OperationLocal[numLocalReferences];
+        if (numLocalReferences > 0) {
+            this.localReferences = new OperationLocal[numLocalReferences];
+        }
     }
 }

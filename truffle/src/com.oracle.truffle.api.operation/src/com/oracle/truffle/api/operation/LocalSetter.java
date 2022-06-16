@@ -15,6 +15,14 @@ public final class LocalSetter {
         return LOCAL_SETTERS.computeIfAbsent(index, LocalSetter::new);
     }
 
+    public static LocalSetter[] createArray(int[] index) {
+        LocalSetter[] result = new LocalSetter[index.length];
+        for (int i = 0; i < index.length; i++) {
+            result[i] = create(index[i]);
+        }
+        return result;
+    }
+
     private LocalSetter(int index) {
         this.index = index;
     }

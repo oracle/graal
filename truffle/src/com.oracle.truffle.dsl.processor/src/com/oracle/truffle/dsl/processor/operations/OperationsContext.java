@@ -94,6 +94,7 @@ public class OperationsContext {
         createReturn();
 
         add(new Operation.LocalSetter(this, operationId++));
+        add(new Operation.LocalSetterArray(this, operationId++));
 
         add(new Operation.InstrumentTag(this, operationId++,
                         add(new InstrumentationEnterInstruction(instructionId++)),

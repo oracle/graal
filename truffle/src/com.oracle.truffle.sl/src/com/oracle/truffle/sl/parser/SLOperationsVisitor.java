@@ -48,6 +48,9 @@ import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.While_stateme
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 import com.oracle.truffle.sl.runtime.SLNull;
 
+/**
+ * SL AST visitor that uses the Operation DSL for generating code.
+ */
 public class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
@@ -523,17 +526,6 @@ public class SLOperationsVisitor extends SLBaseVisitor {
             b.endTag();
         }
     }
-
-    /**
-     * <pre>
-     * x = a;
-     *
-     * {
-     *  x = a;
-     *  x
-     * }
-     * </pre>
-     */
 
     private final Stack<Integer> writeLocalsStack = new Stack<>();
 

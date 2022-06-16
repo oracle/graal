@@ -875,6 +875,42 @@ public abstract class Operation {
         }
     }
 
+    public static class LocalSetterArray extends Operation {
+
+        protected LocalSetterArray(OperationsContext context, int id) {
+            super(context, "LocalSetterArray", id, 0);
+        }
+
+        @Override
+        public List<TypeMirror> getBuilderArgumentTypes() {
+            return List.of(new CodeTypeMirror.ArrayCodeTypeMirror(getTypes().OperationLocal));
+        }
+
+        @Override
+        public CodeTree createPushCountCode(BuilderVariables vars) {
+            return CodeTreeBuilder.singleString("0");
+        }
+
+        @Override
+        public CodeTree createBeginCode(BuilderVariables vars) {
+            CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
+
+            b.startStatement().variable(vars.operationData).string(".localReferences = arg0").end();
+
+            return b.build();
+        }
+
+        @Override
+        public boolean needsOperationData() {
+            return false;
+        }
+
+        @Override
+        public boolean isRealOperation() {
+            return false;
+        }
+    }
+
     private static final CodeTree createSetAux(BuilderVariables vars, int index, CodeTree value) {
         return CodeTreeBuilder.createBuilder().startStatement()//
                         .variable(vars.operationData).string(".aux[" + index + "] = ") //

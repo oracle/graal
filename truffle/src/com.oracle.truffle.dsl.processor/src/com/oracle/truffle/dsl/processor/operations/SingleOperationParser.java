@@ -25,6 +25,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
@@ -245,6 +246,10 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterNodeChild())));
                 anns.add(new CodeAnnotationValue(ann));
                 localI++;
+            } else if (param == ParameterKind.LOCAL_SETTER_ARRAY) {
+                ann.setElementValue("value", new CodeAnnotationValue("$localRefArray"));
+                ann.setElementValue("type", new CodeAnnotationValue(new DeclaredCodeTypeMirror(createLocalSetterArrayNodeChild())));
+                anns.add(new CodeAnnotationValue(ann));
             }
         }
         repAnnotation.setElementValue("value", new CodeAnnotationValue(anns));
@@ -296,7 +301,7 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
                 if (isVariadic) {
                     data.addError(method, "Multiple @Variadic arguments not allowed");
                 }
-                if (numLocalSetters > 0) {
+                if (numLocalSetters != 0) {
                     data.addError(param, "Value arguments after LocalSetter not allowed");
                 }
                 isVariadic = true;
@@ -304,6 +309,12 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
             } else if (ElementUtils.typeEquals(param.asType(), types.LocalSetter)) {
                 parameters.add(ParameterKind.LOCAL_SETTER);
                 numLocalSetters++;
+            } else if (ElementUtils.typeEquals(param.asType(), new ArrayCodeTypeMirror(types.LocalSetter))) {
+                parameters.add(ParameterKind.LOCAL_SETTER_ARRAY);
+                if (numLocalSetters != 0) {
+                    data.addError(param, "Mixing regular and array local setters not allowed");
+                }
+                numLocalSetters = -1;
             } else if (!isIgnoredParameter(param)) {
                 if (isVariadic) {
                     data.addError(method, "Value arguments after @Variadic not allowed");
@@ -363,6 +374,15 @@ public class SingleOperationParser extends AbstractParser<SingleOperationData> {
         result.setSuperClass(types.Node);
 
         result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, types.LocalSetter));
+
+        return result;
+    }
+
+    private CodeTypeElement createLocalSetterArrayNodeChild() {
+        CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, new GeneratedPackageElement("p"), "C");
+        result.setSuperClass(types.Node);
+
+        result.add(createChildExecuteMethod(GENERIC_EXECUTE_NAME, new ArrayCodeTypeMirror(types.LocalSetter)));
 
         return result;
     }

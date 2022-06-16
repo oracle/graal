@@ -30,7 +30,8 @@ public class SingleOperationData extends Template {
         STACK_VALUE,
         VARIADIC,
         VIRTUAL_FRAME,
-        LOCAL_SETTER;
+        LOCAL_SETTER,
+        LOCAL_SETTER_ARRAY;
 
         public TypeMirror getParameterType(ProcessorContext context) {
             switch (this) {
@@ -42,6 +43,8 @@ public class SingleOperationData extends Template {
                     return context.getTypes().VirtualFrame;
                 case LOCAL_SETTER:
                     return context.getTypes().LocalSetter;
+                case LOCAL_SETTER_ARRAY:
+                    return new ArrayCodeTypeMirror(context.getTypes().LocalSetter);
                 default:
                     throw new IllegalArgumentException("" + this);
             }
@@ -54,6 +57,7 @@ public class SingleOperationData extends Template {
                     return true;
                 case VIRTUAL_FRAME:
                 case LOCAL_SETTER:
+                case LOCAL_SETTER_ARRAY:
                     return false;
                 default:
                     throw new IllegalArgumentException(this.toString());
