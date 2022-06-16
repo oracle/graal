@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 21.3.3
+* GR-37442: Added new options `--heap.cacheSize=<int>` and `--heap.cacheReplacement=flush|lru` to enable memory cache in [Heap Dumping via Insight](../docs/tools/insight/Insight-Manual.md#heap-dumping-cache). 
+* GR-37442: Added new method `flush()` to [heap dumping object](../docs/tools/insight/Insight-Manual.md#heap-dumping) to flush cached events to the heap dump file.
+
 ## Version 21.3.2
 * Dumping JavaScript `Array` as `Object[]` into the `.hprof` file
 * [HeapDump.newArray](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/heap/HeapDump.html) to start building an array
