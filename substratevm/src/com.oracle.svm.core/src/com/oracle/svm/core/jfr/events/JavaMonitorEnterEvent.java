@@ -35,13 +35,13 @@ public class JavaMonitorEnterEvent {
         private static com.oracle.svm.core.jfr.JfrEventWriteStatus emit0(JfrNativeEventWriterData data, Object obj, long previousOwner, long addr, boolean isLarge){
             JfrNativeEventWriter.beginEvent(data, JfrEvent.JavaMonitorEnter, isLarge);
 
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+            JfrNativeEventWriter.putLong(data, 0);
+            JfrNativeEventWriter.putEventThread(data);
+            JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ThreadStart.getId(), 0));
             JfrNativeEventWriter.putClass(data, obj.getClass());
-
-            //for some reason we need both of these ()which do the same thing
-            JfrNativeEventWriter.putEventThread(data);// same as put thread, but uses the current thread
-            JfrNativeEventWriter.putLong(data, previousOwner);//basically just does putlong(threadID, based on thread pointer)
-
-            JfrNativeEventWriter.putLong(data, addr);//this should show up as 0 but it seems random
+            JfrNativeEventWriter.putLong(data, previousOwner);
+            JfrNativeEventWriter.putLong(data, addr);
 
             return  JfrNativeEventWriter.endEvent(data, isLarge);
         }
