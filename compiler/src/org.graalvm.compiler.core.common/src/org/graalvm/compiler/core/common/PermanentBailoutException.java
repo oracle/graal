@@ -24,9 +24,7 @@
  */
 package org.graalvm.compiler.core.common;
 
-import org.graalvm.compiler.debug.PerformanceIssueBailout;
-
-public class PermanentBailoutException extends GraalBailoutException implements PerformanceIssueBailout {
+public class PermanentBailoutException extends GraalBailoutException {
 
     private static final long serialVersionUID = -2683649650135362549L;
 
