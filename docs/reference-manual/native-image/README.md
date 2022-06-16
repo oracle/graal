@@ -26,7 +26,6 @@ To inform `native-image` of a guest language used by an application, specify `--
 * [Prerequisites](#prerequisites)
 * [Build a Native Image](#build-a-native-image)
 * [Build a Shared Library](#build-a-shared-library)
-* [How to Determine What Version of GraalVM a Native Image is Generated with](#how-to-determine-what-version-of-graalvm-a-native-image-is-generated-with)
 * [Ahead-of-time Compilation Limitations](#ahead-of-time-compilation-limitations)
 
 ### License
@@ -184,7 +183,7 @@ int add(graal_isolatethread_t* thread, int a, int b);
 
 Shared library images and executable images alike can have an arbitrary number of entry points, for example, to implement callbacks or APIs.
 
-## How to Determine What Version of GraalVM an Image Is Generated with
+### How to Determine What Version of GraalVM an Image Is Generated with
 
 Assuming you have a Java class file, _EmptyHello.class_ , containing an empty main method and have generated an empty shared object emptyhello with the Native Image builder:
 ```shell
