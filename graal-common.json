@@ -1,11 +1,11 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of the graal and graal-enterprise repositories.",
   "ci": {
-    "overlay": "f6c161a2af172c150f952ec6934b02259924ae70"
+    "overlay": "e6f236224aade8e1e67a114ef197f2550bfe294a"
   },
 
   "COMMENT.mx": [
-    "This must always point to HEAD in the master branch but can be used to point to", 
+    "This must always point to HEAD in the master branch but can be used to point to",
     "another branch/commit in a PR when mx changes are required for the PR."
   ],
   "mx_version" : "HEAD"
