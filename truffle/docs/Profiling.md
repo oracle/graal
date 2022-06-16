@@ -142,7 +142,7 @@ Graal supports instrumentation on the Graal IR level that allows to instrument w
 When Graal is configured with Truffle extensions, it provides an additional option `-Dgraal.TruffleHostCounters=true` to enable read, write and invoke profiling.
 This option is currently only available on HotSpot in jargraal or libgraal configuration.
 
-On _HotSpot libgraal_, the following command line is recommended to print host counters:
+On _HotSpot_, the following command line is recommended to print host counters:
 
 ```
 ./latest_graalvm_home/bin/js \
@@ -159,25 +159,7 @@ Note the following:
 * `--vm.XX:+DebugNonSafepoints` enables additional node source positions, for a more precise output.
 * `--vm.Dgraal.TruffleHostCounters=true` enables the host counters
 * `--engine.Compilation=false` disables runtime compilation to benchmark interpreter-only performance.
-
-
-On _HotSpot jargraal_, it is recommended also to enable bootstrapping of the Graal compiler using the following command line:
-
-
-```
-./latest_graalvm_home/bin/js \
-        --jvm --vm.XX:+UnlockExperimentalVMOptions --vm.XX:+UnlockDiagnosticVMOptions --experimental-options \
-        --vm.XX:JVMCICounterSize=200000 --vm.XX:+DebugNonSafepoints \
-        --vm.Dgraal.TruffleHostCounters=true \
-        --vm.XX:-UseJVMCINativeLibrary --vm.XX:+UseJVMCICompiler --vm.XX:+BootstrapJVMCI \
-        --engine.Compilation=false \
-        ./deltablue.js
-        
-```
-
-Additional hints:
-
-* `--vm.Dgraal.TimedDynamicCounters=10000` allows to print the statistics every 10 seconds. It resets the data each time it is printed. This can be useful to hide some unwanted warmup behavior for the run.
+* `--vm.Dgraal.TimedDynamicCounters=10000` allows to print the statistics every 10 seconds. It resets the data each time it is printed. This can be useful to hide some unwanted warmup behavior of the run.
 * `--vm.Dgraal.BenchmarkCounterPrintingCutoff=false` prints all the entries in the list and not just the most important ones. Be prepared that this prints a lot of text.
 * `--vm.Dgraal.BenchmarkCountersFile=statistics.csv` prints the statistics as machine-readable CSV to a given file.
 
