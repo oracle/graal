@@ -52,14 +52,10 @@ public class PolyglotInterfaceMappings {
         StaticObject bindingsLoader = context.getBindings().getBindingsLoader();
 
         for (String mapping : mappings) {
-            try {
-                Klass parent = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
-                if (parent.isInterface()) {
-                    temp.put(mapping, (ObjectKlass) parent);
-                } else {
-                    throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
-                }
-            } catch (EspressoException ex) {
+            Klass parent = context.getRegistries().loadKlass(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
+            if (parent.isInterface()) {
+                temp.put(mapping, (ObjectKlass) parent);
+            } else {
                 throw new IllegalStateException("invalid interface type mapping specified: " + mapping);
             }
         }
