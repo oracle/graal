@@ -255,6 +255,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj) {
+        long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.lock();
 
@@ -274,7 +275,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             monitorOwnersLock.unlock();
         }
         if ( prevOwner==null ) prevOwner = 0L;
-        JavaMonitorEnterEvent.emit(obj,prevOwner,0);//not able to get address because its implemented in native code in Hotspot
+        JavaMonitorEnterEvent.emit(obj,prevOwner,0, startTicks);//not able to get address because its implemented in native code in Hotspot
 
     }
 
