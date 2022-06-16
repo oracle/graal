@@ -336,14 +336,11 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Cached BranchProfile errorProfile,
                     @Cached InitCheck initCheck,
                     @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
-        // Skip expensive checks for java.lang.Object.
-        if (!klass.isJavaLangObject()) {
-            try {
-                checkHasAllFieldsOrThrow(value, klass, interop, meta);
-            } catch (ClassCastException e) {
-                errorProfile.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
-            }
+        try {
+            checkHasAllFieldsOrThrow(value, klass, interop, meta);
+        } catch (ClassCastException e) {
+            errorProfile.enter();
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: due to: %s", klass.getNameAsString(), e.getMessage()));
         }
         initCheck.execute(klass);
         return StaticObject.createForeign(getLanguage(), klass, value, interop);
@@ -364,10 +361,7 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Cached BranchProfile errorProfile,
                     @Bind("getMeta()") Meta meta) throws UnsupportedTypeException {
         try {
-            // Skip expensive checks for java.lang.Object.
-            if (!klass.isJavaLangObject()) {
-                checkHasAllFieldsOrThrow(value, klass, interop, meta);
-            }
+            checkHasAllFieldsOrThrow(value, klass, interop, meta);
             ObjectKlass proxyKlass = lookupProxyKlassNode.execute(getMetaObjectOrThrow(value, interop), klass);
             if (proxyKlass != null) {
                 return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
