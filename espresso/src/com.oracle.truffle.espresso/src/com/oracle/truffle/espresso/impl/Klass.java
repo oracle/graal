@@ -982,11 +982,16 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             StaticObject cause = e.getGuestException();
             Meta meta = getMeta();
             if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
-                throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
+                throw throwExceptionInInitializerError(meta, cause);
             } else {
                 throw e;
             }
         }
+    }
+
+    @TruffleBoundary
+    private static EspressoException throwExceptionInInitializerError(Meta meta, StaticObject cause) {
+        throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
     }
 
     public final Klass getSupertype() {
