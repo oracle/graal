@@ -342,7 +342,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
                         exceptionTypes, isVarArgs(m.getModifiers())));
     }
 
-    private boolean isVarArgs(int modifiers) {
+    private static boolean isVarArgs(int modifiers) {
         return (modifiers & VARARGS) != 0;
     }
 
@@ -464,13 +464,13 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
         private void generateMethod(ClassWriter cw) {
             String desc = getMethodDescriptor(parameterTypes, returnType);
-            int accessFlags = ACC_PUBLIC | ACC_FINAL;
+            int methodAccess = ACC_PUBLIC | ACC_FINAL;
 
             if (isVarArgs) {
-                accessFlags |= ACC_VARARGS;
+                methodAccess |= ACC_VARARGS;
             }
 
-            MethodVisitor mv = cw.visitMethod(accessFlags,
+            MethodVisitor mv = cw.visitMethod(methodAccess,
                             methodName, desc, null,
                             typeNames(exceptionTypes));
 

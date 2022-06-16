@@ -402,9 +402,7 @@ public abstract class ToEspressoNode extends EspressoNode {
     }
 
     private static Object getMetaObjectOrThrow(Object value, InteropLibrary interop) throws ClassCastException {
-        if (interop.isMetaObject(value)) {
-            return value;
-        } else if (interop.hasMetaObject(value)) {
+        if (interop.hasMetaObject(value)) {
             try {
                 return interop.getMetaObject(value);
             } catch (UnsupportedMessageException e) {
