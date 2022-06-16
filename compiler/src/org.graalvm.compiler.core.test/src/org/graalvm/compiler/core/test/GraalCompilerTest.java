@@ -1339,6 +1339,10 @@ public abstract class GraalCompilerTest extends GraalTest {
         return asResolvedJavaMethod(getMethod(clazz, methodName, parameterTypes));
     }
 
+    protected ResolvedJavaMethod getResolvedJavaMethod(Class<?> clazz, Class<?> returnType, String methodName, Class<?>... parameterTypes) {
+        return asResolvedJavaMethod(getMethod(clazz, returnType, methodName, parameterTypes));
+    }
+
     /**
      * Gets the reflection {@link Method} from which a given {@link ResolvedJavaMethod} was created
      * or null if {@code javaMethod} does not correspond to a reflection method.
