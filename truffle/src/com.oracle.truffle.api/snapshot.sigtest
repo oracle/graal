@@ -218,8 +218,6 @@ meth public boolean isEntered()
 meth public boolean isExiting()
 meth public com.oracle.truffle.api.TruffleContext getParent()
 meth public int hashCode()
-meth public java.lang.Object enter()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="20.3")
 meth public java.lang.Object enter(com.oracle.truffle.api.nodes.Node)
 meth public java.lang.Object evalInternal(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.source.Source)
 meth public java.lang.Object evalPublic(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.source.Source)
@@ -229,8 +227,6 @@ meth public void closeCancelled(com.oracle.truffle.api.nodes.Node,java.lang.Stri
 meth public void closeExited(com.oracle.truffle.api.nodes.Node,int)
 meth public void closeResourceExhausted(com.oracle.truffle.api.nodes.Node,java.lang.String)
 meth public void leave(com.oracle.truffle.api.nodes.Node,java.lang.Object)
-meth public void leave(java.lang.Object)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="20.3")
 meth public void resume(java.util.concurrent.Future<java.lang.Void>)
 supr java.lang.Object
 hfds CONTEXT_ASSERT_STACK,EMPTY,creator,polyglotContext
@@ -914,15 +910,6 @@ meth public final boolean inBounds(byte[],int,int)
 meth public final boolean inBounds(byte[],long,long)
 meth public static com.oracle.truffle.api.memory.ByteArraySupport bigEndian()
 meth public static com.oracle.truffle.api.memory.ByteArraySupport littleEndian()
-supr java.lang.Object
-
-CLSS public final com.oracle.truffle.api.memory.MemoryFence
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.1.0")
-meth public static void acquire()
-meth public static void full()
-meth public static void loadLoad()
-meth public static void release()
-meth public static void storeStore()
 supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.nodes.BlockNode<%0 extends com.oracle.truffle.api.nodes.Node>
