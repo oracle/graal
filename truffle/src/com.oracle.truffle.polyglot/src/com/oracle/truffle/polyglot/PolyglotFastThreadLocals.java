@@ -50,7 +50,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
@@ -117,31 +116,12 @@ final class PolyglotFastThreadLocals {
     }
 
     @SuppressWarnings({"unchecked"})
-    public static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Node legacyNode, Class<? extends TruffleLanguage<?>> language) {
-        LanguageReference<C> ref = createLanguageReference(language);
-        if (legacyNode != null) {
-            return new LegacyLanguageReference<>(legacyNode, ref);
-        }
-        return ref;
-    }
-
-    @SuppressWarnings({"unchecked"})
-    private static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Class<? extends TruffleLanguage<?>> language) {
+    public static <C extends TruffleLanguage<?>> LanguageReference<C> createLanguageReference(Class<? extends TruffleLanguage<?>> language) {
         return (LanguageReference<C>) lookupReferences(language).languageReference;
     }
 
     @SuppressWarnings("unchecked")
-    @TruffleBoundary
-    public static <C> ContextReference<C> createContextReference(Node legacyNode, Class<? extends TruffleLanguage<C>> language) {
-        ContextReference<C> ref = createContextReference(language);
-        if (legacyNode != null) {
-            return new LegacyContextReference<>(legacyNode, ref);
-        }
-        return ref;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <C> ContextReference<C> createContextReference(Class<? extends TruffleLanguage<C>> language) {
+    public static <C> ContextReference<C> createContextReference(Class<? extends TruffleLanguage<C>> language) {
         return (ContextReference<C>) lookupReferences(language).contextReference;
     }
 
@@ -460,33 +440,6 @@ final class PolyglotFastThreadLocals {
         }
     }
 
-    /*
-     * Intended to support deprecated API in fast way, where a Node is not yet passed explicitly.
-     * Remove with deprecated APIs.
-     */
-    static final class LegacyContextReference<C> extends ContextReference<C> {
-
-        private final ContextReference<C> delegate;
-        private final Node fixedNode;
-
-        LegacyContextReference(Node node, ContextReference<C> delegate) {
-            this.fixedNode = node;
-            this.delegate = delegate;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public C get() {
-            return delegate.get(fixedNode);
-        }
-
-        @Override
-        public C get(Node node) {
-            return delegate.get(node);
-        }
-
-    }
-
     static final class ContextReferenceImpl extends ContextReference<Object> {
 
         private final Class<?> languageClass;
@@ -496,12 +449,6 @@ final class PolyglotFastThreadLocals {
             this.languageClass = languageClass;
             this.index = computeLanguageIndex(languageClass, LANGUAGE_CONTEXT_OFFSET);
 
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public Object get() {
-            return get(null);
         }
 
         @Override
@@ -516,32 +463,6 @@ final class PolyglotFastThreadLocals {
         }
     }
 
-    /*
-     * Remove with deprecated APIs.
-     */
-    static final class LegacyLanguageReference<C extends TruffleLanguage<?>> extends LanguageReference<C> {
-
-        private final LanguageReference<C> delegate;
-        private final Node fixedNode;
-
-        LegacyLanguageReference(Node node, LanguageReference<C> delegate) {
-            this.fixedNode = node;
-            this.delegate = delegate;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public C get() {
-            return delegate.get(fixedNode);
-        }
-
-        @Override
-        public C get(Node node) {
-            return delegate.get(node);
-        }
-
-    }
-
     static final class LanguageReferenceImpl extends LanguageReference<TruffleLanguage<Object>> {
 
         private final Class<TruffleLanguage<Object>> languageClass;
@@ -551,12 +472,6 @@ final class PolyglotFastThreadLocals {
         LanguageReferenceImpl(Class<?> languageClass) {
             this.languageClass = (Class<TruffleLanguage<Object>>) languageClass;
             this.index = computeLanguageIndex(languageClass, LANGUAGE_SPI_OFFSET);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public TruffleLanguage<Object> get() {
-            return get(null);
         }
 
         @Override

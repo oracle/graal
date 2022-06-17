@@ -558,7 +558,7 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
                     // we need to make sure we never observe the OSR root node here.
                     // we expect either the loop node or the root node of the loop node as location.
                     Assert.assertTrue(access.getLocation().toString(), access.getLocation() == rootNode || access.getLocation() == rootNode.loopNode);
-                    Assert.assertSame(Truffle.getRuntime().getCurrentFrame().getCallTarget(), rootNode.getCallTarget());
+                    Assert.assertSame(Truffle.getRuntime().iterateFrames((frame) -> frame, 0).getCallTarget(), rootNode.getCallTarget());
                     safepointCounter.incrementAndGet();
                 }
             }

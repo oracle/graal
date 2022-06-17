@@ -3473,13 +3473,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 19.0
-         * @deprecated in 21.3, use {@link #get(Node)} instead.
-         */
-        @Deprecated(since = "21.3")
-        public abstract L get();
-
-        /**
          * Returns the current language instance associated with the current thread. An enclosing
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
@@ -3516,7 +3509,7 @@ public abstract class TruffleLanguage<C> {
          */
         public static <T extends TruffleLanguage<?>> LanguageReference<T> create(Class<T> languageClass) {
             Objects.requireNonNull(languageClass);
-            return LanguageAccessor.ENGINE.createLanguageReference(null, languageClass);
+            return LanguageAccessor.ENGINE.createLanguageReference(languageClass);
         }
 
     }
@@ -3598,14 +3591,6 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
-         * @since 0.25
-         * @deprecated in 21.3, use {@link #get(Node)} instead.
-         */
-        @SuppressWarnings("unchecked")
-        @Deprecated(since = "21.3")
-        public abstract C get();
-
-        /**
          * Returns the current language context associated with the current thread. An enclosing
          * node should be provided as parameter if available, otherwise <code>null</code> may be
          * provided. This method is designed to be called safely from compiled code paths. In order
@@ -3641,7 +3626,7 @@ public abstract class TruffleLanguage<C> {
          */
         public static <T extends TruffleLanguage<C>, C> ContextReference<C> create(Class<T> languageClass) {
             Objects.requireNonNull(languageClass);
-            return LanguageAccessor.ENGINE.createContextReference(null, languageClass);
+            return LanguageAccessor.ENGINE.createContextReference(languageClass);
         }
     }
 

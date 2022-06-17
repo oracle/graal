@@ -409,8 +409,6 @@ supr java.lang.Enum<com.oracle.truffle.api.TruffleLanguage$ContextPolicy>
 CLSS public abstract static com.oracle.truffle.api.TruffleLanguage$ContextReference<%0 extends java.lang.Object>
  outer com.oracle.truffle.api.TruffleLanguage
 cons protected init()
-meth public abstract {com.oracle.truffle.api.TruffleLanguage$ContextReference%0} get()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.3")
 meth public abstract {com.oracle.truffle.api.TruffleLanguage$ContextReference%0} get(com.oracle.truffle.api.nodes.Node)
 meth public static <%0 extends com.oracle.truffle.api.TruffleLanguage<{%%1}>, %1 extends java.lang.Object> com.oracle.truffle.api.TruffleLanguage$ContextReference<{%%1}> create(java.lang.Class<{%%0}>)
 supr java.lang.Object
@@ -515,8 +513,6 @@ hfds disposed,frame,node,source
 CLSS public abstract static com.oracle.truffle.api.TruffleLanguage$LanguageReference<%0 extends com.oracle.truffle.api.TruffleLanguage>
  outer com.oracle.truffle.api.TruffleLanguage
 cons protected init()
-meth public abstract {com.oracle.truffle.api.TruffleLanguage$LanguageReference%0} get()
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.3")
 meth public abstract {com.oracle.truffle.api.TruffleLanguage$LanguageReference%0} get(com.oracle.truffle.api.nodes.Node)
 meth public static <%0 extends com.oracle.truffle.api.TruffleLanguage<?>> com.oracle.truffle.api.TruffleLanguage$LanguageReference<{%%0}> create(java.lang.Class<{%%0}>)
 supr java.lang.Object
@@ -1063,12 +1059,8 @@ innr public abstract interface static !annotation Child
 innr public abstract interface static !annotation Children
 intf com.oracle.truffle.api.nodes.NodeInterface
 intf java.lang.Cloneable
-meth protected final <%0 extends com.oracle.truffle.api.TruffleLanguage> com.oracle.truffle.api.TruffleLanguage$LanguageReference<{%%0}> lookupLanguageReference(java.lang.Class<{%%0}>)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.3")
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
 meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
-meth protected final <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> com.oracle.truffle.api.TruffleLanguage$ContextReference<{%%0}> lookupContextReference(java.lang.Class<{%%1}>)
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.3")
 meth protected final java.util.concurrent.locks.Lock getLock()
 meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
 meth protected final void reportPolymorphicSpecialize()
