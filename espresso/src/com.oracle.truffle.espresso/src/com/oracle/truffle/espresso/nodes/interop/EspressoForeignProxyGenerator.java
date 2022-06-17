@@ -53,7 +53,6 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.RETURN;
 import static com.oracle.truffle.api.impl.asm.Opcodes.SIPUSH;
 import static com.oracle.truffle.api.impl.asm.Opcodes.V1_8;
 
-import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -75,6 +74,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.PolyglotInterfaceMappings;
 
@@ -593,25 +593,31 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          */
         private void codeWrapArgument(MethodVisitor mv, Klass type, int slot) {
             if (type.isPrimitive()) {
-                PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(meta, type);
+                JavaKind kind = JavaKind.fromTypeString(type.getTypeAsString());
 
-                if (type == meta._int ||
-                                type == meta._boolean ||
-                                type == meta._byte ||
-                                type == meta._char ||
-                                type == meta._short) {
-                    mv.visitVarInsn(ILOAD, slot);
-                } else if (type == meta._long) {
-                    mv.visitVarInsn(LLOAD, slot);
-                } else if (type == meta._float) {
-                    mv.visitVarInsn(FLOAD, slot);
-                } else if (type == meta._double) {
-                    mv.visitVarInsn(DLOAD, slot);
-                } else {
-                    throw new AssertionError();
+                switch (kind) {
+                    case Int:
+                    case Boolean:
+                    case Char:
+                    case Byte:
+                    case Short:
+                        mv.visitVarInsn(ILOAD, slot);
+                        break;
+                    case Long:
+                        mv.visitVarInsn(LLOAD, slot);
+                        break;
+                    case Float:
+                        mv.visitVarInsn(FLOAD, slot);
+                        break;
+                    case Double:
+                        mv.visitVarInsn(DLOAD, slot);
+                        break;
+                    default:
+                        throw EspressoError.shouldNotReachHere();
                 }
-                mv.visitMethodInsn(INVOKESTATIC, prim.wrapperClassName, "valueOf",
-                                prim.wrapperValueOfDesc, false);
+
+                mv.visitMethodInsn(INVOKESTATIC, dotToSlash(kind.toBoxedJavaClass().getName()), "valueOf",
+                                kind.getWrapperValueOfDesc(), false);
             } else {
                 mv.visitVarInsn(ALOAD, slot);
             }
@@ -623,27 +629,32 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
          */
         private void codeUnwrapReturnValue(MethodVisitor mv, Klass type) {
             if (type.isPrimitive()) {
-                PrimitiveTypeInfo prim = PrimitiveTypeInfo.get(meta, type);
-
-                mv.visitTypeInsn(CHECKCAST, prim.wrapperClassName);
+                JavaKind kind = JavaKind.fromTypeString(type.getTypeAsString());
+                String wrapperClassName = dotToSlash(kind.toBoxedJavaClass().getName());
+                mv.visitTypeInsn(CHECKCAST, wrapperClassName);
                 mv.visitMethodInsn(INVOKEVIRTUAL,
-                                prim.wrapperClassName,
-                                prim.unwrapMethodName, prim.unwrapMethodDesc, false);
+                                wrapperClassName,
+                                kind.getUnwrapMethodName(), kind.getUnwrapMethodDesc(), false);
 
-                if (type == meta._int ||
-                                type == meta._boolean ||
-                                type == meta._byte ||
-                                type == meta._char ||
-                                type == meta._short) {
-                    mv.visitInsn(IRETURN);
-                } else if (type == meta._long) {
-                    mv.visitInsn(LRETURN);
-                } else if (type == meta._float) {
-                    mv.visitInsn(FRETURN);
-                } else if (type == meta._double) {
-                    mv.visitInsn(DRETURN);
-                } else {
-                    throw new AssertionError();
+                switch (kind) {
+                    case Int:
+                    case Boolean:
+                    case Byte:
+                    case Short:
+                    case Char:
+                        mv.visitInsn(IRETURN);
+                        break;
+                    case Long:
+                        mv.visitInsn(LRETURN);
+                        break;
+                    case Float:
+                        mv.visitInsn(FRETURN);
+                        break;
+                    case Double:
+                        mv.visitInsn(DRETURN);
+                        break;
+                    default:
+                        throw new AssertionError();
                 }
             } else {
                 mv.visitTypeInsn(CHECKCAST, dotToSlash(type.getNameAsString()));
@@ -719,7 +730,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
      */
     private String getFieldType(Klass type) {
         if (type.isPrimitive()) {
-            return PrimitiveTypeInfo.get(meta, type).baseTypeString;
+            return String.valueOf(JavaKind.fromTypeString(type.getTypeAsString()).getTypeChar());
         } else if (type.isArray()) {
             /*
              * According to JLS 20.3.2, the getName() method on Class does return the VM type
@@ -860,62 +871,5 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
             uniqueList.add(ex);
         }
         return uniqueList;
-    }
-
-    /**
-     * A PrimitiveTypeInfo object contains assorted information about a primitive type in its public
-     * fields. The struct for a particular primitive type can be obtained using the static "get"
-     * method.
-     */
-    private static final class PrimitiveTypeInfo {
-
-        /* "base type" used in various descriptors (see JVMS section 4.3.2) */
-        public String baseTypeString;
-
-        /* name of corresponding wrapper class */
-        public String wrapperClassName;
-
-        /* method descriptor for wrapper class "valueOf" factory method */
-        public String wrapperValueOfDesc;
-
-        /* name of wrapper class method for retrieving primitive value */
-        public String unwrapMethodName;
-
-        /* descriptor of same method */
-        public String unwrapMethodDesc;
-
-        private static Map<Meta, Map<Klass, PrimitiveTypeInfo>> map = new HashMap<>();
-
-        private static Map<Klass, PrimitiveTypeInfo> buildTable(Meta meta) {
-            Map<Klass, PrimitiveTypeInfo> table = new HashMap<>(8);
-            table.put(meta._byte, new PrimitiveTypeInfo(byte.class, meta.java_lang_Byte));
-            table.put(meta._char, new PrimitiveTypeInfo(char.class, meta.java_lang_Character));
-            table.put(meta._double, new PrimitiveTypeInfo(double.class, meta.java_lang_Double));
-            table.put(meta._float, new PrimitiveTypeInfo(float.class, meta.java_lang_Float));
-            table.put(meta._int, new PrimitiveTypeInfo(int.class, meta.java_lang_Integer));
-            table.put(meta._long, new PrimitiveTypeInfo(long.class, meta.java_lang_Long));
-            table.put(meta._short, new PrimitiveTypeInfo(short.class, meta.java_lang_Short));
-            table.put(meta._boolean, new PrimitiveTypeInfo(boolean.class, meta.java_lang_Boolean));
-            map.put(meta, table);
-            return table;
-        }
-
-        private PrimitiveTypeInfo(Class<?> primitiveClass, Klass wrapperClass) {
-            assert primitiveClass.isPrimitive();
-
-            baseTypeString = Array.newInstance(primitiveClass, 0).getClass().getName().substring(1);
-            wrapperClassName = dotToSlash(wrapperClass.getNameAsString());
-            wrapperValueOfDesc = "(" + baseTypeString + ")L" + wrapperClassName + ";";
-            unwrapMethodName = primitiveClass.getName() + "Value";
-            unwrapMethodDesc = "()" + baseTypeString;
-        }
-
-        @TruffleBoundary
-        private static PrimitiveTypeInfo get(Meta meta, Klass cl) {
-            if (map.containsKey(meta)) {
-                return map.get(meta).get(cl);
-            }
-            return buildTable(meta).get(cl);
-        }
     }
 }
