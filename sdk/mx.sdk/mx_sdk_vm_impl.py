@@ -672,13 +672,11 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     else:
                         mx.warn("Can not add license: " + _license)
                 else:
-                    _with_support_dist_name = False
                     for sd in _component.support_distributions:
                         if _license.startswith(sd + '/'):
-                            _with_support_dist_name = True
                             _add_link('<jdk_base>/', _component_base + _license[len(sd) + 1:], _component)
                             break
-                    if not _with_support_dist_name:
+                    else:
                         _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
