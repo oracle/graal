@@ -38,7 +38,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.graal.RuntimeCPUFeatureRegion;
 
 @Platforms(AMD64.class)
-class ArrayCompareToForeignCalls {
+class SVMArrayCompareToForeignCalls {
 
     // GENERATED CODE BEGIN
 

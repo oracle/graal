@@ -24,146 +24,137 @@
  */
 package com.oracle.svm.graal.stubs;
 
+import static org.graalvm.compiler.core.common.StrideUtil.NONE;
 import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
-import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
-import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.graal.RuntimeCPUFeatureRegion;
 
-import jdk.vm.ci.meta.JavaKind;
-
 @Platforms(AMD64.class)
-class ArrayEqualsForeignCalls {
+class SVMAMD64ArrayEqualsWithMaskForeignCalls {
 
     // GENERATED CODE BEGIN
 
     // GENERATED FROM:
-    // compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsStub.java
+    // compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsWithMaskStub.java
     // BY: "mx svm-sync-graal-stubs"
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean booleanArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Boolean);
+    private static boolean arrayRegionEqualsBS1S1S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S1, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean byteArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Byte);
+    private static boolean arrayRegionEqualsBS1S2S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S2, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean charArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Char);
+    private static boolean arrayRegionEqualsBS1S2S2(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean shortArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Short);
+    private static boolean arrayRegionEqualsBS2S1S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S1, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean intArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Int);
+    private static boolean arrayRegionEqualsBS2S2S1(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S2, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean longArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Long);
+    private static boolean arrayRegionEqualsBS2S2S2(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean floatArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Float);
+    private static boolean arrayRegionEqualsC(char[] arrayA, long offsetA, char[] arrayB, long offsetB, char[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S2, S2, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean doubleArraysEquals(Pointer array1, Pointer array2, int length) {
-        return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Double);
+    private static boolean arrayRegionEqualsS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S1, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsDynamicStrides(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
+    private static boolean arrayRegionEqualsS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S1);
+    private static boolean arrayRegionEqualsS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S4, S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S2);
+    private static boolean arrayRegionEqualsS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S1, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S4);
+    private static boolean arrayRegionEqualsS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S1);
+    private static boolean arrayRegionEqualsS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S4, S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S2);
+    private static boolean arrayRegionEqualsS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S1, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S4);
+    private static boolean arrayRegionEqualsS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S1);
+    private static boolean arrayRegionEqualsS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S4, S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S2);
+    private static boolean arrayRegionEqualsDynamicStrides(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length, int dynamicStrides) {
+        return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, dynamicStrides);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S4);
-    }
-
-    @Uninterruptible(reason = "Must not do a safepoint check.")
-    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean booleanArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsBS1S1S1RTC(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Boolean, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -171,10 +162,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean byteArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsBS1S2S1RTC(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Byte, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -182,10 +173,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean charArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsBS1S2S2RTC(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Char, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S1, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -193,10 +184,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean shortArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsBS2S1S1RTC(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Short, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -204,10 +195,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean intArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsBS2S2S1RTC(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Int, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -215,10 +206,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean longArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsBS2S2S2RTC(byte[] arrayA, long offsetA, byte[] arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Long, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S1, S2, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -226,10 +217,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean floatArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsCRTC(char[] arrayA, long offsetA, char[] arrayB, long offsetB, char[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Float, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, S2, S2, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -237,10 +228,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean doubleArraysEqualsRTC(Pointer array1, Pointer array2, int length) {
+    private static boolean arrayRegionEqualsS1S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayEqualsNode.equals(array1, array2, length, JavaKind.Double, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -248,10 +239,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsDynamicStridesRTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
+    private static boolean arrayRegionEqualsS1S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -259,10 +250,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS1S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS1S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S1, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -270,10 +261,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS1S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS2S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -281,10 +272,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS1S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS2S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S1, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -292,10 +283,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS2S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS2S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S2, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -303,10 +294,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS2S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS4S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -314,10 +305,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS2S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS4S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S2, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -325,10 +316,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS4S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsS4S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, NONE, S4, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -336,21 +327,10 @@ class ArrayEqualsForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS4S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static boolean arrayRegionEqualsDynamicStridesRTC(Object arrayA, long offsetA, Object arrayB, long offsetB, byte[] mask, int length, int dynamicStrides) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S2, Stubs.getRuntimeCheckedCPUFeatures());
-        } finally {
-            region.leave();
-        }
-    }
-
-    @Uninterruptible(reason = "Must not do a safepoint check.")
-    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static boolean arrayRegionEqualsS4S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
-        try {
-            return ArrayRegionEqualsNode.regionEquals(arrayA, offsetA, arrayB, offsetB, length, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            return AMD64ArrayRegionEqualsWithMaskNode.regionEquals(arrayA, offsetA, arrayB, offsetB, mask, length, dynamicStrides, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }

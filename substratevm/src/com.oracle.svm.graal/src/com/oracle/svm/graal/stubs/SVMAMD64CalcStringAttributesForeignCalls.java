@@ -35,7 +35,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.graal.RuntimeCPUFeatureRegion;
 
 @Platforms(AMD64.class)
-class AMD64CalcStringAttributesForeignCalls {
+class SVMAMD64CalcStringAttributesForeignCalls {
 
     // GENERATED CODE BEGIN
 

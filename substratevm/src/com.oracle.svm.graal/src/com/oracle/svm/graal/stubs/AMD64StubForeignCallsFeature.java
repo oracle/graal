@@ -27,6 +27,13 @@ package com.oracle.svm.graal.stubs;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
 
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -38,20 +45,13 @@ public class AMD64StubForeignCallsFeature extends StubForeignCallsFeatureBase {
 
     public AMD64StubForeignCallsFeature() {
         super(new StubDescriptor[]{
-                        new StubDescriptor(org.graalvm.compiler.replacements.amd64.AMD64ArrayEqualsWithMaskForeignCalls.STUBS,
-                                        AMD64ArrayEqualsWithMaskForeignCalls.class, true, SSE2),
-                        new StubDescriptor(org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesForeignCalls.STUBS,
-                                        AMD64CalcStringAttributesForeignCalls.class, true, SSE4_1),
-                        new StubDescriptor(org.graalvm.compiler.replacements.nodes.ArrayCompareToForeignCalls.STUBS,
-                                        ArrayCompareToForeignCalls.class, true, SSE2),
-                        new StubDescriptor(org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsForeignCalls.STUBS,
-                                        ArrayCopyWithConversionsForeignCalls.class, false, SSE2),
-                        new StubDescriptor(org.graalvm.compiler.replacements.nodes.ArrayEqualsForeignCalls.STUBS,
-                                        ArrayEqualsForeignCalls.class, true, SSE2),
-                        new StubDescriptor(org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls.STUBS_AMD64,
-                                        ArrayIndexOfForeignCalls.class, true, SSE2),
-                        new StubDescriptor(org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls.STUBS,
-                                        ArrayRegionCompareToForeignCalls.class, true, SSE2),
+                        new StubDescriptor(AMD64ArrayEqualsWithMaskForeignCalls.STUBS, SVMAMD64ArrayEqualsWithMaskForeignCalls.class, true, SSE2),
+                        new StubDescriptor(AMD64CalcStringAttributesForeignCalls.STUBS, SVMAMD64CalcStringAttributesForeignCalls.class, true, SSE4_1),
+                        new StubDescriptor(ArrayCompareToForeignCalls.STUBS, SVMArrayCompareToForeignCalls.class, true, SSE2),
+                        new StubDescriptor(ArrayCopyWithConversionsForeignCalls.STUBS, SVMArrayCopyWithConversionsForeignCalls.class, false, SSE2),
+                        new StubDescriptor(ArrayEqualsForeignCalls.STUBS, SVMArrayEqualsForeignCalls.class, true, SSE2),
+                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AMD64, SVMArrayIndexOfForeignCalls.class, true, SSE2),
+                        new StubDescriptor(ArrayRegionCompareToForeignCalls.STUBS, SVMArrayRegionCompareToForeignCalls.class, true, SSE2),
         });
     }
 }

@@ -40,7 +40,7 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.graal.RuntimeCPUFeatureRegion;
 
 @Platforms({AMD64.class, AARCH64.class})
-class ArrayIndexOfForeignCalls {
+class SVMArrayIndexOfForeignCalls {
 
     // GENERATED CODE BEGIN
 

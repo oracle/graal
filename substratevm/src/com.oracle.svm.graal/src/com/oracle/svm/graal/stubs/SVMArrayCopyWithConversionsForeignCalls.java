@@ -28,7 +28,7 @@ import static org.graalvm.compiler.core.common.StrideUtil.S1;
 import static org.graalvm.compiler.core.common.StrideUtil.S2;
 import static org.graalvm.compiler.core.common.StrideUtil.S4;
 
-import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -38,80 +38,80 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.graal.RuntimeCPUFeatureRegion;
 
 @Platforms(AMD64.class)
-class ArrayRegionCompareToForeignCalls {
+class SVMArrayCopyWithConversionsForeignCalls {
 
     // GENERATED CODE BEGIN
 
     // GENERATED FROM:
-    // compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayRegionCompareToStub.java
+    // compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCopyWithConversionsStub.java
     // BY: "mx svm-sync-graal-stubs"
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS1S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S1);
+    private static void stubS1S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS1S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S2);
+    private static void stubS1S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS1S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S4);
+    private static void stubS1S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS2S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S1);
+    private static void stubS2S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS2S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S2);
+    private static void stubS2S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS2S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S4);
+    private static void stubS2S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS4S1(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S1);
+    private static void stubS4S1(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S1);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS4S2(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S2);
+    private static void stubS4S2(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS4S4(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S4);
+    private static void stubS4S4(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S4);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubDynamicStrides(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
-        return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides);
+    private static void stubDynamicStrides(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int dynamicStrides) {
+        ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS1S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS1S1RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -119,10 +119,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS1S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS1S2RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -130,10 +130,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS1S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS1S4RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S1, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S1, S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -141,10 +141,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS2S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS2S1RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -152,10 +152,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS2S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS2S2RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -163,10 +163,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS2S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS2S4RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S2, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S2, S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -174,10 +174,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS4S1RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS4S1RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S1, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S1, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -185,10 +185,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS4S2RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS4S2RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S2, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S2, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -196,10 +196,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubS4S4RTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length) {
+    private static void stubS4S4RTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, S4, S4, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }
@@ -207,10 +207,10 @@ class ArrayRegionCompareToForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int stubDynamicStridesRTC(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, int dynamicStrides) {
+    private static void stubDynamicStridesRTC(Object arraySrc, long offsetSrc, Object arrayDst, long offsetDst, int length, int dynamicStrides) {
         RuntimeCPUFeatureRegion region = RuntimeCPUFeatureRegion.enterSet(Stubs.getRuntimeCheckedCPUFeatures());
         try {
-            return ArrayRegionCompareToNode.compare(arrayA, offsetA, arrayB, offsetB, length, dynamicStrides, Stubs.getRuntimeCheckedCPUFeatures());
+            ArrayCopyWithConversionsNode.arrayCopy(arraySrc, offsetSrc, arrayDst, offsetDst, length, dynamicStrides, Stubs.getRuntimeCheckedCPUFeatures());
         } finally {
             region.leave();
         }

@@ -36,30 +36,30 @@ RUNTIME_CHECKED_FEATURES = 'Stubs.getRuntimeCheckedCPUFeatures()'
 SNIPPET_FILES = [
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64CalcStringAttributesStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64CalcStringAttributesForeignCalls.java'
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMAMD64CalcStringAttributesForeignCalls.java'
     ),
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsWithMaskStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/AMD64ArrayEqualsWithMaskForeignCalls.java'
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMAMD64ArrayEqualsWithMaskForeignCalls.java'
     ),
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCompareToStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCompareToForeignCalls.java'
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayCompareToForeignCalls.java'
     ),
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCopyWithConversionsStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayCopyWithConversionsForeignCalls.java'
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayCopyWithConversionsForeignCalls.java'
     ),
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayEqualsForeignCalls.java'
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayEqualsForeignCalls.java'
     ),
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayRegionCompareToStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayRegionCompareToForeignCalls.java'),
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayRegionCompareToForeignCalls.java'),
     (
         'compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/ArrayIndexOfStub.java',
-        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/ArrayIndexOfForeignCalls.java'
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayIndexOfForeignCalls.java'
     ),
 ]
 

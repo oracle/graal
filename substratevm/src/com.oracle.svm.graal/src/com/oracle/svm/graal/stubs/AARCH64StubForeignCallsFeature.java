@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.stubs;
 
+import org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls;
 import org.graalvm.nativeimage.Platform.AARCH64;
 import org.graalvm.nativeimage.Platforms;
 
@@ -35,8 +36,7 @@ public class AARCH64StubForeignCallsFeature extends StubForeignCallsFeatureBase 
 
     public AARCH64StubForeignCallsFeature() {
         super(new StubDescriptor[]{
-                        new StubDescriptor(org.graalvm.compiler.replacements.nodes.ArrayIndexOfForeignCalls.STUBS_AARCH64,
-                                        ArrayIndexOfForeignCalls.class, true, null)
+                        new StubDescriptor(ArrayIndexOfForeignCalls.STUBS_AARCH64, SVMArrayIndexOfForeignCalls.class, true, null)
         });
     }
 }
