@@ -693,13 +693,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public abstract SpeculationLog createSpeculationLog();
 
-    @Override
-    @Deprecated(since = "22.0")
-    @SuppressWarnings("deprecation")
-    public final RootCallTarget createCallTarget(RootNode rootNode) {
-        return rootNode.getCallTarget();
-    }
-
     protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
 
     public void addListener(GraalTruffleRuntimeListener listener) {

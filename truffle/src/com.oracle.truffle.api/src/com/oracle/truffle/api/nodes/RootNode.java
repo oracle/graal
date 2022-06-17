@@ -432,19 +432,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * @throws UnsupportedOperationException if a call target already exists.
-     * @since 19.0
-     * @deprecated in 22.0, call targets are lazily initialized in {@link #getCallTarget()} now.
-     */
-    @Deprecated(since = "22.0")
-    protected final void setCallTarget(RootCallTarget callTarget) {
-        if (this.callTarget != null) {
-            throw new UnsupportedOperationException();
-        }
-        this.callTarget = callTarget;
-    }
-
-    /**
      * Does this contain AST content that it is possible to instrument. Can be called on any thread
      * and without a language context.
      *

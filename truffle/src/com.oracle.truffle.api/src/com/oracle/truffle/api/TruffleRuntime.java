@@ -51,7 +51,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Interface representing a Truffle runtime object. The runtime is responsible for creating call
@@ -68,20 +67,6 @@ public interface TruffleRuntime {
      * @since 0.8 or earlier
      */
     String getName();
-
-    /**
-     * Creates a new call target for a given root node if none exists. Otherwise, the existing call
-     * target is returned.
-     *
-     * @param rootNode the root node whose
-     *            {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame)} method
-     *            represents the entry point
-     * @return the new call target object
-     * @since 0.8 or earlier
-     * @deprecated Use {@link RootNode#getCallTarget()}.
-     */
-    @Deprecated(since = "22.0")
-    RootCallTarget createCallTarget(RootNode rootNode);
 
     /**
      * Creates a new runtime specific version of {@link DirectCallNode}.
