@@ -445,19 +445,6 @@ public abstract class RootNode extends ExecutableNode {
     }
 
     /**
-     * Get compiler options specific to this <code>RootNode</code>.
-     *
-     * @since 0.8 or earlier
-     * @deprecated in 22.1 compiler options had no effect for several releases now. Deprecated for
-     *             removal.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.1")
-    public com.oracle.truffle.api.CompilerOptions getCompilerOptions() {
-        return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
-    }
-
-    /**
      * Does this contain AST content that it is possible to instrument. Can be called on any thread
      * and without a language context.
      *

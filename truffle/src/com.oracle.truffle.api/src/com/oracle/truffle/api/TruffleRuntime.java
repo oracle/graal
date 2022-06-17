@@ -155,21 +155,6 @@ public interface TruffleRuntime {
     MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor);
 
     /**
-     * Creates an object which allows you to test for support of and set options specific for this
-     * runtime.
-     *
-     * @return the newly created compiler options object
-     * @since 0.8 or earlier
-     * @deprecated in 22.1 compiler options had no effect for several releases now. Deprecated for
-     *             removal.
-     */
-    @SuppressWarnings("deprecation")
-    @Deprecated(since = "22.1")
-    default com.oracle.truffle.api.CompilerOptions createCompilerOptions() {
-        return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
-    }
-
-    /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
      * {@link CallTarget}s. Iteration starts at the current frame.
      *
