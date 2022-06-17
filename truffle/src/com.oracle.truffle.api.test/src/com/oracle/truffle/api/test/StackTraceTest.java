@@ -439,8 +439,8 @@ public class StackTraceTest {
                 }
             });
 
-            currentFrame = Truffle.getRuntime().getCurrentFrame();
-            callerFrame = Truffle.getRuntime().getCallerFrame();
+            currentFrame = Truffle.getRuntime().iterateFrames((f) -> f, 0);
+            callerFrame = Truffle.getRuntime().iterateFrames((f) -> f, 1);
         }
 
     }

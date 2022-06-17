@@ -208,32 +208,6 @@ public interface TruffleRuntime {
     }
 
     /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor, int)} instead. This was
-     *             deprecated because a {@link FrameInstance} must never be used after
-     *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
-     *             sure this restriction is honored when migrating this API as this may lead to
-     *             difficult to debug problems and sometimes even VM crashes.
-     */
-    @Deprecated(since = "22.1")
-    default FrameInstance getCallerFrame() {
-        return iterateFrames((f) -> f, 1);
-    }
-
-    /**
-     * @since 0.8 or earlier
-     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor)} instead. This was deprecated
-     *             because a {@link FrameInstance} must never be used after
-     *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
-     *             sure this restriction is honored when migrating this API as this may lead to
-     *             difficult to debug problems and sometimes even VM crashes.
-     */
-    @Deprecated(since = "22.1")
-    default FrameInstance getCurrentFrame() {
-        return iterateFrames((f) -> f, 0);
-    }
-
-    /**
      * Requests a capability from the runtime.
      *
      * @param capability the type of the interface representing the capability
