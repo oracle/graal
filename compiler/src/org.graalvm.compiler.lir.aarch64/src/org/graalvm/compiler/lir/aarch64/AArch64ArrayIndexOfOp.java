@@ -32,7 +32,8 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
+import java.util.Arrays;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
@@ -48,12 +49,11 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
-
-import java.util.Arrays;
 
 @Opcode("AArch64_ARRAY_INDEX_OF")
 public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
@@ -287,7 +287,13 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          * 2.1 Set searchEnd pointing to byte after the last valid element in the array and
          * 'refAddress' pointing to the beginning of the last chunk.
          */
-        masm.add(64, searchEnd, baseAddress, arrayLength, AArch64Assembler.ExtendType.SXTW, shiftSize);
+        if (findTwoConsecutive) {
+            // search ends one element early
+            masm.sub(32, searchEnd, arrayLength, 1);
+            masm.add(64, searchEnd, baseAddress, searchEnd, AArch64Assembler.ExtendType.SXTW, shiftSize);
+        } else {
+            masm.add(64, searchEnd, baseAddress, arrayLength, AArch64Assembler.ExtendType.SXTW, shiftSize);
+        }
         masm.sub(64, refAddress, searchEnd, 32);
         /* Set 'chunkToReadAddress' pointing to the chunk from where the search begins. */
         masm.add(64, chunkToReadAddress, baseAddress, fromIndex, AArch64Assembler.ExtendType.SXTW, shiftSize);
