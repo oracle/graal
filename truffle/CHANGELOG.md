@@ -7,6 +7,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-39219 Removed the deprecated `FrameSlot` API. The API was deprecated in 22.0.
 * GR-39219 Removed deprecated `CompilerOptions` API. The API was deprecated in 22.1.
 * GR-39219 Removed deprecated `TruffleRuntime.createCallTarget` and `RootNode.setCallTarget` API. The API was deprecated in 22.0.
+* GR-39219 Removed deprecated `TruffleContext.enter` and `TruffleContext.leave` API. The API was deprecated in 20.3.
 
 ## Version 22.2.0
 

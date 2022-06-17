@@ -152,15 +152,6 @@ public final class TruffleContext implements AutoCloseable {
     }
 
     /**
-     * @since 0.27
-     * @deprecated use {@link #enter(Node)} instead and pass in the node context is possible.
-     */
-    @Deprecated(since = "20.3")
-    public Object enter() {
-        return enter(null);
-    }
-
-    /**
      * Enters this context and returns an object representing the previous context. Calls to enter
      * must be followed by a call to {@link #leave(Node, Object)} in a finally block and the
      * previous context must be passed as an argument. It is allowed to enter a context multiple
@@ -386,16 +377,6 @@ public final class TruffleContext implements AutoCloseable {
         } catch (Throwable t) {
             throw Env.engineToLanguageException(t);
         }
-    }
-
-    /**
-     * @since 0.27
-     * @deprecated use {@link #leave(Node, Object)} instead and pass in the node context if
-     *             possible.
-     */
-    @Deprecated(since = "20.3")
-    public void leave(Object prev) {
-        leave(null, prev);
     }
 
     /**
