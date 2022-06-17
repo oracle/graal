@@ -90,6 +90,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -103,7 +104,6 @@ import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implements HotSpotTruffleCompiler {
 
@@ -127,8 +127,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         HotSpotBackend backend = hotspotGraalRuntime.getHostBackend();
         GraphBuilderPhase phase = (GraphBuilderPhase) backend.getSuites().getDefaultGraphBuilderSuite().findPhase(GraphBuilderPhase.class).previous();
         Plugins plugins = phase.getGraphBuilderConfig().getPlugins();
+        HotSpotKnownTruffleTypes knownTruffleTypes = new HotSpotKnownTruffleTypes(backend.getProviders().getMetaAccess());
         final PartialEvaluatorConfiguration lastTierPe = createPartialEvaluatorConfiguration(hotspotGraalRuntime.getCompilerConfigurationName());
-        final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, options);
+        final TruffleTierConfiguration lastTierSetup = new TruffleTierConfiguration(lastTierPe, backend, options, knownTruffleTypes);
 
         CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
         CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
@@ -139,8 +140,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         Providers firstTierProviders = firstTierBackend.getProviders();
         PartialEvaluatorConfiguration firstTierPe = new EconomyPartialEvaluatorConfiguration();
         firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
-        TruffleTierConfiguration firstTierSetup = new TruffleTierConfiguration(firstTierPe, firstTierBackend, firstTierProviders, firstTierSuites, firstTierLirSuites);
-        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup);
+        TruffleTierConfiguration firstTierSetup = new TruffleTierConfiguration(firstTierPe, firstTierBackend, firstTierProviders, firstTierSuites, firstTierLirSuites, knownTruffleTypes);
+        final TruffleCompilerConfiguration compilerConfig = new TruffleCompilerConfiguration(runtime, plugins, snippetReflection, firstTierSetup, lastTierSetup, knownTruffleTypes);
 
         return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, compilerConfig);
     }
@@ -200,7 +201,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
 
     @Override
     protected HotSpotPartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration configuration) {
-        return new HotSpotPartialEvaluator(configuration, builderConfig);
+        return new HotSpotPartialEvaluator(configuration, builderConfig, configuration.getKnownTruffleTypes());
     }
 
     @Override
