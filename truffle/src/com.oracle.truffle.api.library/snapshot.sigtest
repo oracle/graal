@@ -159,8 +159,6 @@ hcls CachedAOTExports,Lazy,ProxyExports,ResolvedDispatch
 
 CLSS public abstract com.oracle.truffle.api.library.Message
 cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,int,java.lang.Class<?>,java.lang.Class<?>[])
-cons protected !varargs init(java.lang.Class<? extends com.oracle.truffle.api.library.Library>,java.lang.String,java.lang.Class<?>,java.lang.Class<?>[])
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="22.0")
 meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth public final boolean equals(java.lang.Object)
 meth public final com.oracle.truffle.api.library.LibraryFactory<?> getFactory()

@@ -13,7 +13,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
     * Removed deprecated `TruffleRuntime.getCallerFrame` and `TruffleRuntime.getCurrentFrame` API. The API was deprecated in 22.1.
     * Removed deprecated `@CachedContext` and `@CachedLibrary` API. The API was deprecated in 21.3.
     * Removed deprecated `get()` method from `LanguageContext` and `ContextReference` API. The API was deprecated in 21.3.
-
+    * Removed deprecated equality `ValueProfile` . The API was deprecated in 21.2.
+    * Removed deprecated `UnionAssumption`, `AlwaysValidAssumption` and `NeverValidAssumption`. The API was deprecated in 22.1.
+    
 ## Version 22.2.0
 
 * GR-33829 Added support on libgraal for caching encoded graphs across Truffle compilations to speedup partial evaluation. The cache is enabled by default and can be enabled/disabled with the `--engine.EncodedGraphCache` option.
