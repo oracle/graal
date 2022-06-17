@@ -105,7 +105,7 @@ public class ExtraDataAccessor {
         }
     }
 
-    public static int forthValueUnsigned(int[] extraData, int offset, boolean compact) {
+    public static int fourthValueUnsigned(int[] extraData, int offset, boolean compact) {
         if (compact) {
             return (extraData[offset + 1] & 0x00ff_0000) >>> 16;
         } else {

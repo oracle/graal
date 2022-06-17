@@ -257,7 +257,7 @@ import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_LENGTH;
 import static org.graalvm.wasm.util.ExtraDataAccessor.EXTENDED_IF_PROFILE_OFFSET;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.firstValueUnsigned;
-import static org.graalvm.wasm.util.ExtraDataAccessor.forthValueUnsigned;
+import static org.graalvm.wasm.util.ExtraDataAccessor.fourthValueUnsigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.secondValueSigned;
 import static org.graalvm.wasm.util.ExtraDataAccessor.thirdValueUnsigned;
 
@@ -507,7 +507,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case BR: {
                     final boolean compact = extraData[extraOffset] >= 0;
                     CompilerAsserts.partialEvaluationConstant(compact);
-                    final int targetStackPointer = numLocals + forthValueUnsigned(extraData, extraOffset, compact);
+                    final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, extraOffset, compact);
                     final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
 
                     unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
@@ -524,7 +524,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     CompilerAsserts.partialEvaluationConstant(compact);
                     final int profileOffset = extraOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                     if (profileCondition(extraData, profileOffset, popBoolean(frame, stackPointer))) {
-                        final int targetStackPointer = numLocals + forthValueUnsigned(extraData, extraOffset, compact);
+                        final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, extraOffset, compact);
                         final int targetReturnLength = thirdValueUnsigned(extraData, extraOffset, compact);
 
                         unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
@@ -561,7 +561,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
                         updateBranchTableProfile(extraData, profileOffset, indexProfileOffset);
 
-                        final int targetStackPointer = numLocals + forthValueUnsigned(extraData, indexOffset, compact);
+                        final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, indexOffset, compact);
                         final int targetReturnLength = thirdValueUnsigned(extraData, indexOffset, compact);
 
                         unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
@@ -580,7 +580,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                                             (compact ? COMPACT_BR_TABLE_HEADER_LENGTH + i * COMPACT_BR_IF_LENGTH : EXTENDED_BR_TABLE_HEADER_LENGTH + i * EXTENDED_BR_IF_LENGTH);
                             final int indexProfileOffset = indexOffset + (compact ? COMPACT_BR_IF_PROFILE_OFFSET : EXTENDED_BR_IF_PROFILE_OFFSET);
                             if (profileBranchTable(extraData, profileOffset, indexProfileOffset, i == index)) {
-                                final int targetStackPointer = numLocals + forthValueUnsigned(extraData, indexOffset, compact);
+                                final int targetStackPointer = numLocals + fourthValueUnsigned(extraData, indexOffset, compact);
                                 final int targetReturnLength = thirdValueUnsigned(extraData, indexOffset, compact);
 
                                 unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);

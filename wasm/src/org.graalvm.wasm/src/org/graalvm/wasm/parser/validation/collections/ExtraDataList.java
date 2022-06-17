@@ -156,6 +156,8 @@ public class ExtraDataList implements ExtraDataFormatHelper {
                 int[] offsets = entryExtraDataOffsets.toArray();
                 // Every size extensions can cause other size extensions (extra data displacement
                 // changes). Therefore, we can only stop if no more extensions happened.
+                // This algorithm is quadratic in the worst case, but should need fewer iterations
+                // on average.
                 while (extend) {
                     extend = false;
                     // Sync the offsets array with the new sizes of the entries for displacement
