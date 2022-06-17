@@ -31,15 +31,15 @@ good you are?
 .*at <js> log.log.js:1-6:.*
 .*at <js> areYouBad.log.js:26:.*
 .*at <js> :program.<eval_script>:1:0-10.
->[1] js --jvm --insight=agent-error2.js log.js
-insight: Unknown attribute misnamedAttribute
+#>[1] js --polyglot --jvm --insight=agent-error2.rb log.js
+#insight: Unknown attribute misnamedAttribute
 >[1] js --jvm --insight=agent-error3.js log.js
 insight: Unknown event type 'enterOrLeave'.*
 >[7] js --jvm --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "1.1"}
+Error while initializing {id: "insight", version: "1.2"}
 .*at <js> :.*agent-error.js.*
 >[7] js --insight=agent-error.js log.js
-Error while initializing {id: "insight", version: "1.1"}
+Error while initializing {id: "insight", version: "1.2"}
 .*at <js> :.*agent-error.js.*
 >[7] js --jvm --insight=agent-error4.js -f log.js
 Error loading of source log.js.*

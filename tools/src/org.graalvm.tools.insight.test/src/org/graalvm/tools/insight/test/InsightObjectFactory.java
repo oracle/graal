@@ -66,6 +66,23 @@ public final class InsightObjectFactory extends ProxyLanguage {
         return config;
     }
 
+    static InsightAPI.OnConfig createConfig(
+                    boolean expressions, boolean statements, boolean roots,
+                    String rootNameFilter, String atSourcePath, String atURI, Object atLine, Object atColumn) {
+        InsightAPI.OnConfig config = new InsightAPI.OnConfig();
+        config.expressions = expressions;
+        config.statements = statements;
+        config.roots = roots;
+        config.rootNameFilter = rootNameFilter;
+        InsightAPI.OnConfigAt at = new InsightAPI.OnConfigAt();
+        at.sourcePath = atSourcePath;
+        at.sourceURI = atURI;
+        at.line = atLine;
+        at.column = atColumn;
+        config.at = at;
+        return config;
+    }
+
     static Context newContext() {
         return newContext(Context.newBuilder());
     }
