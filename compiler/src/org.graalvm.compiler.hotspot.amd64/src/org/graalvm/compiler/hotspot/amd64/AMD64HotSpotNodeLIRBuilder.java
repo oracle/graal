@@ -67,6 +67,8 @@ import org.graalvm.compiler.replacements.nodes.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToForeignCalls;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchForeignCalls;
+import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -224,6 +226,8 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             return AMD64CalcStringAttributesForeignCalls.getStub((AMD64CalcStringAttributesNode) valueNode);
         } else if (valueNode instanceof ArrayCopyWithConversionsNode) {
             return ArrayCopyWithConversionsForeignCalls.getStub((ArrayCopyWithConversionsNode) valueNode);
+        } else if (valueNode instanceof VectorizedMismatchNode) {
+            return VectorizedMismatchForeignCalls.STUB;
         }
         return null;
     }

@@ -223,6 +223,11 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
     }
 
     @SuppressWarnings("unused")
+    default Variable emitVectorizedMismatch(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayA, Value arrayB, Value length, Value stride) {
+        throw GraalError.unimplemented("vectorizedMismatch substitution is not implemented on this architecture");
+    }
+
+    @SuppressWarnings("unused")
     default Variable emitArrayEquals(JavaKind commonElementKind, EnumSet<?> runtimeCheckedCPUFeatures,
                     Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         throw GraalError.unimplemented("Array.equals substitution is not implemented on this architecture");

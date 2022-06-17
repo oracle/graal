@@ -37,29 +37,27 @@ SNIPPET_FILES = [
     (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64CalcStringAttributesStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMAMD64CalcStringAttributesForeignCalls.java'
-    ),
-    (
+    ), (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsWithMaskStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMAMD64ArrayEqualsWithMaskForeignCalls.java'
-    ),
-    (
+    ), (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCompareToStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayCompareToForeignCalls.java'
-    ),
-    (
+    ), (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayCopyWithConversionsStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayCopyWithConversionsForeignCalls.java'
-    ),
-    (
+    ), (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayEqualsStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayEqualsForeignCalls.java'
-    ),
-    (
+    ), (
         'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64ArrayRegionCompareToStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayRegionCompareToForeignCalls.java'),
     (
         'compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/ArrayIndexOfStub.java',
         'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMArrayIndexOfForeignCalls.java'
+    ), (
+        'compiler/src/org.graalvm.compiler.hotspot.amd64/src/org/graalvm/compiler/hotspot/amd64/AMD64VectorizedMismatchStub.java',
+        'substratevm/src/com.oracle.svm.graal/src/com/oracle/svm/graal/stubs/SVMAMD64VectorizedMismatchForeignCalls.java'
     ),
 ]
 
