@@ -1245,28 +1245,6 @@ def polybenchmark_rules(benchmark, metric_name, mode):
             "metric.iteration": 0,
             "engine.config": mode,
         }),
-        mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
-            "benchmark": benchmark,
-            "metric.name": "context-eval-time",
-            "metric.value": ("<delta>", float),
-            "metric.unit": ("<unit>", str),
-            "metric.type": "numeric",
-            "metric.score-function": "id",
-            "metric.better": "lower",
-            "metric.iteration": 0,
-            "engine.config": mode
-        }),
-        mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
-            "benchmark": benchmark,
-            "metric.name": "context-init-time",
-            "metric.value": ("<delta>", float),
-            "metric.unit": ("<unit>", str),
-            "metric.type": "numeric",
-            "metric.score-function": "id",
-            "metric.better": "lower",
-            "metric.iteration": 0,
-            "engine.config": mode,
-        }),
     ]
     if metric_name == "time":
         # Special case for metric "time": Instead of reporting the aggregate numbers,
@@ -1295,7 +1273,29 @@ def polybenchmark_rules(benchmark, metric_name, mode):
                 "metric.score-function": "id",
                 "metric.iteration": ("<iteration>", int),
                 "engine.config": mode,
-            }, startPattern=r"::: Running :::")
+            }, startPattern=r"::: Running :::"),
+            mx_benchmark.StdOutRule(r"### load time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmark,
+                "metric.name": "context-eval-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "engine.config": mode
+            }),
+            mx_benchmark.StdOutRule(r"### init time \((?P<unit>.*)\): (?P<delta>[0-9]+)", {
+                "benchmark": benchmark,
+                "metric.name": "context-init-time",
+                "metric.value": ("<delta>", float),
+                "metric.unit": ("<unit>", str),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "engine.config": mode,
+            }),
         ]
     elif metric_name in ("allocated-memory", "metaspace-memory", "application-memory"):
         rules += [
