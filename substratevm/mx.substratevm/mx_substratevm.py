@@ -39,7 +39,6 @@ import pipes
 from argparse import ArgumentParser
 import fnmatch
 import collections
-from pathlib import Path
 
 import mx
 import mx_compiler
