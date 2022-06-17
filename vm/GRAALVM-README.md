@@ -18,10 +18,10 @@ such as debugging and profiling, that you can use for all your code.
 ## Using GraalVM Components
 
 Some components are not part of the GraalVM core distribution and must be
-downloaded and installed separately. These are [GraalVM Native Image](https://www.graalvm.org/docs/reference-manual/native-image/), [LLVM toolchain](https://www.graalvm.org/docs/reference-manual/languages/llvm/#llvm-toolchain), Python, R and Ruby language engines. Installable component packages
+downloaded and installed separately. These are GraalVM Native Image, LLVM toolchain, Python, R and Ruby language engines. Installable component packages
 are provided separately for individual operating systems and architectures.
 
-GraalVM provides a simple installation utility, [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/install-components/), which allows to **download** package files, **install** them to their appropriate locations, and **manage**.
+GraalVM provides a simple installation utility, GraalVM Updater, which allows to **download** package files, **install** them to their appropriate locations, and **manage**.
 Use
 >`bin/gu --help`
 
