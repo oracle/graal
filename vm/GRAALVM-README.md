@@ -17,9 +17,9 @@ such as debugging and profiling, that you can use for all your code.
 
 ## Using GraalVM Components
 
-Some components are not part of the GraalVM core distribution and must be
-downloaded and installed separately. These are GraalVM Native Image, LLVM toolchain, Python, R and Ruby language engines. Installable component packages
-are provided separately for individual operating systems and architectures.
+Some components are not part of the GraalVM core distribution and must be downloaded and installed separately.
+These are GraalVM Native Image, LLVM toolchain, Python, R and Ruby language engines.
+Installable component packages are provided separately for individual operating systems and architectures.
 
 GraalVM provides a simple installation utility, GraalVM Updater, which allows to **download** package files, **install** them to their appropriate locations, and **manage**.
 Use
