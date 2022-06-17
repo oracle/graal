@@ -37,8 +37,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.CurrentIsolate;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
@@ -265,7 +267,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         // prevent recursive manipulation of the monitorOwners lock
         if (monitorOwnersLock.isHeldByCurrentThread()) return;
         Long prevOwner;
-        long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(org.graalvm.nativeimage.CurrentIsolate.getCurrentThread());
+        long currentOwnerId = com.oracle.svm.core.jfr.SubstrateJVM.get().getThreadId(CurrentIsolate.getCurrentThread());
 
         monitorOwnersLock.lock();
         try {
@@ -275,8 +277,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             monitorOwnersLock.unlock();
         }
         if ( prevOwner==null ) prevOwner = 0L;
-        JavaMonitorEnterEvent.emit(obj,prevOwner,0, startTicks);//not able to get address because its implemented in native code in Hotspot
-
+        JavaMonitorEnterEvent.emit(obj,prevOwner, startTicks);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
