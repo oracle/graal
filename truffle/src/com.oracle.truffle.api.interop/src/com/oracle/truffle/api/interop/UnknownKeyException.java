@@ -128,7 +128,6 @@ public final class UnknownKeyException extends InteropException {
      * @param cause the guest language exception that caused the error
      * @since 21.1.0
      */
-    @SuppressWarnings("deprecation")
     public static UnknownKeyException create(Object unknownKey, Throwable cause) {
         return new UnknownKeyException(unknownKey, cause);
     }

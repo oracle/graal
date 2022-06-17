@@ -89,11 +89,6 @@ public class IndexedFrameTest {
         assertEquals(k == FrameSlotKind.Static, frame.isStatic(slot));
     }
 
-    @SuppressWarnings("deprecation")
-    private static int getLegacySize(FrameDescriptor descriptor) {
-        return descriptor.getSize();
-    }
-
     @Test
     public void testSlotIds() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
@@ -116,7 +111,6 @@ public class IndexedFrameTest {
         // initial sizes in the frame descriptor
         assertEquals(9, descriptor.getNumberOfSlots());
         assertEquals(0, descriptor.getNumberOfAuxiliarySlots());
-        assertEquals(0, getLegacySize(descriptor));
     }
 
     @Test
@@ -228,7 +222,6 @@ public class IndexedFrameTest {
         FrameDescriptor descriptor = builder.build();
         assertEquals(9, descriptor.getNumberOfSlots());
         assertEquals(0, descriptor.getNumberOfAuxiliarySlots());
-        assertEquals(0, getLegacySize(descriptor));
 
         VirtualFrame frame = Truffle.getRuntime().createVirtualFrame(new Object[]{}, descriptor);
         for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {

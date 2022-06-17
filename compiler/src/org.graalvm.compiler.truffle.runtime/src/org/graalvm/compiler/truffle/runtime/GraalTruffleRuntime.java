@@ -388,7 +388,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         ExactMath.class,
                         ArrayUtils.class,
                         FrameDescriptor.class,
-                        com.oracle.truffle.api.frame.FrameSlot.class,
                         FrameSlotKind.class,
                         MethodHandle.class,
                         ArrayList.class,

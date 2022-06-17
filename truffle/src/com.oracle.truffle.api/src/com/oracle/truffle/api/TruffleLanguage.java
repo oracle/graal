@@ -2751,14 +2751,14 @@ public abstract class TruffleLanguage<C> {
 
         private abstract static class TruffleFileFactory<P> implements BiFunction<P, FileSystemContext, TruffleFile> {
 
-            static final TruffleFileFactory<String> PATH = new TruffleFileFactory<String>() {
+            static final TruffleFileFactory<String> PATH = new TruffleFileFactory<>() {
                 @Override
                 Path parsePath(String path, FileSystemContext fileSystemContext) {
                     return fileSystemContext.fileSystem.parsePath(path);
                 }
             };
 
-            static final TruffleFileFactory<URI> URI = new TruffleFileFactory<URI>() {
+            static final TruffleFileFactory<URI> URI = new TruffleFileFactory<>() {
                 @Override
                 public Path parsePath(URI uri, FileSystemContext fileSystemContext) {
                     return fileSystemContext.fileSystem.parsePath(uri);

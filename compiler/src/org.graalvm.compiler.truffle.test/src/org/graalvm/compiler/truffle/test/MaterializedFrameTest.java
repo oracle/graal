@@ -50,19 +50,19 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 public class MaterializedFrameTest extends PartialEvaluationTest {
-    @SuppressWarnings("deprecation")
     private static RootNode createRootNode() {
-        FrameDescriptor fd = new FrameDescriptor();
-        com.oracle.truffle.api.frame.FrameSlot slot = fd.addFrameSlot("test");
+        var builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Illegal, "test", null);
+        FrameDescriptor fd = builder.build();
         return new RootNode(null, fd) {
             private final ValueProfile frameClassProfile = ValueProfile.createClassProfile();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 MaterializedFrame mframe = frameClassProfile.profile(GraalDirectives.opaque(frame.materialize()));
-                if (mframe.getFrameDescriptor().getFrameSlotKind(slot) != FrameSlotKind.Int) {
+                if (mframe.getFrameDescriptor().getSlotKind(slot) != FrameSlotKind.Int) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    mframe.getFrameDescriptor().setFrameSlotKind(slot, FrameSlotKind.Int);
+                    mframe.getFrameDescriptor().setSlotKind(slot, FrameSlotKind.Int);
                 }
                 mframe.setInt(slot, 42);
                 if (mframe.isInt(slot)) {
@@ -89,7 +89,8 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
             assertThat("Unexpected IsNull: " + isNull + "(" + isNull.getValue() + ")", isNull.getValue(), not(instanceOf(LoadFieldNode.class)));
         }
         for (LoadFieldNode loadField : graph.getNodes().filter(LoadFieldNode.class)) {
-            assertThat("Unexpected LoadField: " + loadField, loadField.field().getName(), either(equalTo("tags")).or(equalTo("primitiveLocals")));
+            assertThat("Unexpected LoadField: " + loadField, loadField.field().getName(),
+                            either(equalTo("descriptor")).or(equalTo("indexedLocals")).or(equalTo("indexedTags")).or(equalTo("indexedSlotTags")).or(equalTo("indexedPrimitiveLocals")));
         }
     }
 }

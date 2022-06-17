@@ -88,7 +88,7 @@ public final class TruffleContext implements AutoCloseable {
     static {
         boolean assertions = false;
         assert (assertions = true) == true;
-        CONTEXT_ASSERT_STACK = assertions ? new ThreadLocal<List<Object>>() {
+        CONTEXT_ASSERT_STACK = assertions ? new ThreadLocal<>() {
             @Override
             protected List<Object> initialValue() {
                 return new ArrayList<>();
@@ -689,7 +689,7 @@ public final class TruffleContext implements AutoCloseable {
          * about to reach the outer context, or when some operation on the new context is attempted
          * while the context is already cancelled. However, the runnable will only be executed if
          * the outer context is not cancelled.
-         * 
+         *
          * The purpose of the runnable is to allow throwing a custom guest exception before the
          * cancel exception reaches the outer context, so that the outer context can properly handle
          * the exception. In case the runnable does not throw any exception, an internal error is
@@ -734,7 +734,7 @@ public final class TruffleContext implements AutoCloseable {
          * close exception reaches the outer context, so that the outer context can properly handle
          * the exception. In case the runnable does not throw any exception, an internal error is
          * thrown (should not be caught).
-         * 
+         *
          * @since 22.1
          */
         public Builder onClosed(Runnable r) {

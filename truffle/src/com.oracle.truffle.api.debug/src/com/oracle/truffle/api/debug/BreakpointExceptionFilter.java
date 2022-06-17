@@ -126,7 +126,6 @@ final class BreakpointExceptionFilter {
         return catchLocationPtr[0];
     }
 
-    @SuppressWarnings("deprecation")
     private static Node getCatchNodeImpl(Node node, Throwable exception) {
         if (node instanceof InstrumentableNode) {
             InstrumentableNode inode = (InstrumentableNode) node;

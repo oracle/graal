@@ -43,6 +43,8 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
@@ -100,50 +102,23 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
         }
     }
 
-    @SuppressWarnings("deprecation")
     static final class WhileLoopNode extends BaseNode {
 
         @Child private LoopNode loop;
 
-        @CompilerDirectives.CompilationFinal com.oracle.truffle.api.frame.FrameSlot loopIndexSlot;
-        @CompilerDirectives.CompilationFinal com.oracle.truffle.api.frame.FrameSlot loopResultSlot;
+        @CompilerDirectives.CompilationFinal int loopIndexSlot;
+        @CompilerDirectives.CompilationFinal int loopResultSlot;
 
-        WhileLoopNode(Object loopCount, BaseNode child) {
+        WhileLoopNode(Object loopCount, BaseNode child, FrameDescriptor.Builder frameBuilder) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, child));
-        }
-
-        com.oracle.truffle.api.frame.FrameSlot getLoopIndex() {
-            if (loopIndexSlot == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopIndexSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopIndex" + getLoopDepth());
-            }
-            return loopIndexSlot;
-        }
-
-        com.oracle.truffle.api.frame.FrameSlot getResult() {
-            if (loopResultSlot == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                loopResultSlot = getRootNode().getFrameDescriptor().findOrAddFrameSlot("loopResult" + getLoopDepth());
-            }
-            return loopResultSlot;
-        }
-
-        private int getLoopDepth() {
-            Node node = getParent();
-            int count = 0;
-            while (node != null) {
-                if (node instanceof WhileLoopNode) {
-                    count++;
-                }
-                node = node.getParent();
-            }
-            return count;
+            this.loopIndexSlot = frameBuilder.addSlot(FrameSlotKind.Illegal, "loopIndex", frameBuilder);
+            this.loopResultSlot = frameBuilder.addSlot(FrameSlotKind.Illegal, "loopResult", frameBuilder);
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(getResult(), false);
-            frame.setInt(getLoopIndex(), 0);
+            frame.setObject(loopResultSlot, false);
+            frame.setInt(loopIndexSlot, 0);
             loop.execute(frame);
             try {
                 return frame.getObject(loopResultSlot);
@@ -242,7 +217,8 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
          */
         CountDownLatch latch = new CountDownLatch(1);
         NodeToInvalidate nodeToInvalidate = new NodeToInvalidate(ThreadLocal.withInitial(() -> true), latch);
-        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate);
+        FrameDescriptor.Builder frameBuilder = FrameDescriptor.newBuilder();
+        WhileLoopNode testedCode = new WhileLoopNode(1000000000, nodeToInvalidate, frameBuilder);
         LoopNode loopNode = testedCode.loop;
 
         setupEnv(Context.create(), new ProxyLanguage() {
@@ -258,7 +234,7 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
             protected synchronized CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = new RootNode(languageInstance) {
+                    target = new RootNode(languageInstance, frameBuilder.build()) {
 
                         @Node.Child private volatile BaseNode child = testedCode;
 
