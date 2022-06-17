@@ -47,6 +47,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -136,6 +137,10 @@ public abstract class ToEspressoNode extends EspressoNode {
 
     static boolean isTypeMappingEnabled(Klass klass) {
         return klass == klass.getMeta().java_lang_Object && klass.getContext().explicitTypeMappingsEnabled();
+    }
+
+    static boolean isHostObject(EspressoContext context, Object value) {
+        return context.getEnv().isHostObject(value);
     }
 
     // endregion Specialization predicates
@@ -353,7 +358,8 @@ public abstract class ToEspressoNode extends EspressoNode {
                     "!isString(meta, klass)",
                     "!isForeignException(klass)",
                     "!klass.isAbstract()",
-                    "!isBoxedPrimitive(value)"
+                    "!isBoxedPrimitive(value)",
+                    "isHostObject(getContext(), value)"
     })
     Object doForeignClassProxy(Object value, ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
@@ -374,7 +380,7 @@ public abstract class ToEspressoNode extends EspressoNode {
         }
     }
 
-    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isInterface()"})
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isInterface()", "isHostObject(getContext(), value)"})
     Object doForeignInterface(Object value, ObjectKlass klass,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached InitCheck initCheck,
@@ -382,9 +388,9 @@ public abstract class ToEspressoNode extends EspressoNode {
                     @Cached BranchProfile errorProfile) throws UnsupportedTypeException {
         try {
             if (getContext().explicitTypeMappingsEnabled()) {
-                initCheck.execute(klass);
                 ObjectKlass proxyKlass = lookupProxyKlassNode.execute(getMetaObjectOrThrow(value, interop), klass);
                 if (proxyKlass != null) {
+                    initCheck.execute(klass);
                     return StaticObject.createForeign(getLanguage(), proxyKlass, value, interop);
                 }
             }
