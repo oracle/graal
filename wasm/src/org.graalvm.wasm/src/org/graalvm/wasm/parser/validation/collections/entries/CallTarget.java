@@ -39,53 +39,31 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.validation;
+package org.graalvm.wasm.parser.validation.collections.entries;
 
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+import org.graalvm.wasm.parser.validation.collections.ExtraDataFormatHelper;
+import org.graalvm.wasm.util.ExtraDataUtil;
 
 /**
- * Representation of a wasm if and else block during module validation.
+ * Represents an entry that is a function call.
  */
-class IfFrame extends ControlFrame {
-    private BranchTarget falseJump;
-    private boolean elseBranch;
+public abstract class CallTarget extends ExtraDataEntry {
+    private final int nodeIndex;
 
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, BranchTarget falseJump) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.falseJump = falseJump;
-        this.elseBranch = false;
-    }
-
-    @Override
-    byte[] labelTypes() {
-        return resultTypes();
-    }
-
-    @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
-        BranchTarget endJump = extraData.addElse(offset);
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        falseJump = endJump;
-        elseBranch = true;
-        state.checkStackAfterFrameExit(this, resultTypes());
-        // Since else is a separate block the unreachable state has to be reset.
-        resetUnreachable();
-    }
-
-    @Override
-    void exit(ExtraDataList extraData, int offset) {
-        if (!elseBranch && labelTypeLength() > 0) {
-            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
-        }
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
-            branchTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
+    protected CallTarget(int nodeIndex, ExtraDataFormatHelper formatHelper) {
+        super(formatHelper);
+        this.nodeIndex = nodeIndex;
+        if (ExtraDataUtil.exceedsUnsignedShortValueWithIndicator(nodeIndex)) {
+            if (ExtraDataUtil.exceedsUnsignedIntValueWithIndicator(nodeIndex)) {
+                throw WasmException.create(Failure.NON_REPRESENTABLE_EXTRA_DATA_VALUE);
+            }
+            extendFormat();
         }
     }
 
+    public int getNodeIndex() {
+        return nodeIndex;
+    }
 }

@@ -39,53 +39,14 @@
  * SOFTWARE.
  */
 
-package org.graalvm.wasm.parser.validation;
-
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.parser.validation.collections.ExtraDataList;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTarget;
-import org.graalvm.wasm.parser.validation.collections.entries.BranchTargetWithStackChange;
+package org.graalvm.wasm.parser.validation.collections;
 
 /**
- * Representation of a wasm if and else block during module validation.
+ * Helper class to indicate if a format extension is necessary.
  */
-class IfFrame extends ControlFrame {
-    private BranchTarget falseJump;
-    private boolean elseBranch;
-
-    IfFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable, BranchTarget falseJump) {
-        super(paramTypes, resultTypes, initialStackSize, unreachable);
-        this.falseJump = falseJump;
-        this.elseBranch = false;
-    }
-
-    @Override
-    byte[] labelTypes() {
-        return resultTypes();
-    }
-
-    @Override
-    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
-        BranchTarget endJump = extraData.addElse(offset);
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        falseJump = endJump;
-        elseBranch = true;
-        state.checkStackAfterFrameExit(this, resultTypes());
-        // Since else is a separate block the unreachable state has to be reset.
-        resetUnreachable();
-    }
-
-    @Override
-    void exit(ExtraDataList extraData, int offset) {
-        if (!elseBranch && labelTypeLength() > 0) {
-            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
-        }
-        falseJump.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-        for (BranchTargetWithStackChange branchTarget : branchTargets()) {
-            branchTarget.setTargetInfo(offset, extraData.nextEntryLocation(), extraData.nextEntryIndex());
-            branchTarget.setStackInfo(labelTypeLength(), initialStackSize());
-        }
-    }
-
+public interface ExtraDataFormatHelper {
+    /**
+     * Updates the current state of the extra data format.
+     */
+    void extendExtraDataFormat();
 }
