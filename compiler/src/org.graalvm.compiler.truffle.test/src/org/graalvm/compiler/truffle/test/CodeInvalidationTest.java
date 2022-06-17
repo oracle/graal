@@ -38,6 +38,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -52,6 +53,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -111,8 +113,8 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
 
         WhileLoopNode(Object loopCount, BaseNode child, FrameDescriptor.Builder frameBuilder) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, child));
-            this.loopIndexSlot = frameBuilder.addSlot(FrameSlotKind.Illegal, "loopIndex", frameBuilder);
-            this.loopResultSlot = frameBuilder.addSlot(FrameSlotKind.Illegal, "loopResult", frameBuilder);
+            this.loopIndexSlot = frameBuilder.addSlot(FrameSlotKind.Int, "loopIndex", frameBuilder);
+            this.loopResultSlot = frameBuilder.addSlot(FrameSlotKind.Int, "loopResult", frameBuilder);
         }
 
         @Override
@@ -207,6 +209,9 @@ public class CodeInvalidationTest extends AbstractPolyglotTest {
 
     @Test
     public void testInvalidation() throws IOException, InterruptedException {
+        // with compile immediately this test does not trigger OSR
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+
         /*
          * The test runs the same compiled code in two threads. Invalidation in one thread using
          * CompilerDirectives#transferToInterpreterAndInvalidate causes deopt in that thread and
