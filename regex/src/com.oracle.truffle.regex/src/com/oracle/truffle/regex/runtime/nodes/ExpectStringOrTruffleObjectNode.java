@@ -41,36 +41,32 @@
 package com.oracle.truffle.regex.runtime.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.api.strings.TruffleString;
 
 @GenerateUncached
 public abstract class ExpectStringOrTruffleObjectNode extends Node {
 
-    public abstract Object execute(Object arg, Encodings.Encoding encoding) throws UnsupportedTypeException;
+    public abstract Object execute(Object arg) throws UnsupportedTypeException;
 
     @Specialization
-    static String doString(String input, @SuppressWarnings("unused") Encodings.Encoding encoding) {
+    static String doString(String input) {
         return input;
     }
 
     @Specialization
-    static TruffleString doTString(TruffleString input, Encodings.Encoding encoding,
-                    @Cached TruffleString.MaterializeNode materializeNode) {
-        materializeNode.execute(input, encoding.getTStringEncoding());
+    static TruffleString doTString(TruffleString input) {
         return input;
     }
 
     @Specialization(guards = "inputs.isString(input)", limit = "2")
-    static String doBoxedString(Object input, @SuppressWarnings("unused") Encodings.Encoding encoding,
+    static String doBoxedString(Object input,
                     @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
         try {
             return inputs.asString(input);
@@ -80,8 +76,9 @@ public abstract class ExpectStringOrTruffleObjectNode extends Node {
         }
     }
 
+    @Deprecated
     @Specialization(guards = "inputs.hasArrayElements(input)", limit = "2")
-    static Object doBoxedCharArray(Object input, @SuppressWarnings("unused") Encodings.Encoding encoding,
+    static Object doBoxedCharArray(Object input,
                     @CachedLibrary("input") InteropLibrary inputs) throws UnsupportedTypeException {
         try {
             final long inputLength = inputs.getArraySize(input);

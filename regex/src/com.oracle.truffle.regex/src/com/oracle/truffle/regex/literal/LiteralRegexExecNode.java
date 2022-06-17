@@ -103,7 +103,9 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
     }
 
     @Specialization
-    RegexResult doTString(TruffleString input, int fromIndex) {
+    RegexResult doTString(TruffleString input, int fromIndex,
+                    @Cached TruffleString.MaterializeNode materializeNode) {
+        materializeNode.execute(input, getEncoding().getTStringEncoding());
         return implNode.execute(input, fromIndex, getEncoding(), true);
     }
 
