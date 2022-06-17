@@ -667,10 +667,19 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     elif len(_component.support_distributions) == 1:
                         _support = _component.support_distributions[0]
                         _add(layout, '<jdk_base>/', 'extracted-dependency:{}/{}'.format(_support, _license), _component)
+                    elif any(_license.startswith(sd + '/') for sd in _component.support_distributions):
+                        _add(layout, '<jdk_base>/', 'extracted-dependency:{}'.format(_license), _component)
                     else:
                         mx.warn("Can not add license: " + _license)
                 else:
-                    _add_link('<jdk_base>/', _component_base + _license, _component)
+                    _with_support_dist_name = False
+                    for sd in _component.support_distributions:
+                        if _license.startswith(sd + '/'):
+                            _with_support_dist_name = True
+                            _add_link('<jdk_base>/', _component_base + _license[len(sd) + 1:], _component)
+                            break
+                    if not _with_support_dist_name:
+                        _add_link('<jdk_base>/', _component_base + _license, _component)
 
             _jre_bin_names = []
             graalvm_dists = set()
