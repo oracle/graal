@@ -473,7 +473,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime Core',
     short_name='llrc',
     dir_name='llvm',
-    license_files=[],
+    license_files=['LICENSE_SULONG.txt'],
     third_party_license_files=[],
     dependencies=['Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
