@@ -38,7 +38,15 @@ import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
-import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.*;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_PROT_READ;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_PROT_WRITE;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_REGION_BASIC_INFO_64;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.VM_REGION_SUBMAP_INFO_COUNT_64;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_task_self;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_address_tPointer;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_region;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.mach_vm_size_tPointer;
+import static com.oracle.svm.core.posix.headers.darwin.DarwinVirtualMemory.vm_region_basic_info_data_64_t;
 
 class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -55,16 +63,16 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static boolean is_protected(int prot) {
+    private static boolean isProtected(int prot) {
         return (prot & (VM_PROT_READ() | VM_PROT_WRITE())) == 0;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    private static int vm_compute_stack_guard(UnsignedWord stack_end) {
-        int guard_size = 0;
+    private static int vmComputeStackGuard(UnsignedWord stackend) {
+        int guardsize = 0;
 
         mach_vm_address_tPointer address = StackValue.get(mach_vm_address_tPointer.class);
-        address.write(stack_end);
+        address.write(stackend);
         mach_vm_size_tPointer size = StackValue.get(mach_vm_size_tPointer.class);
         size.write(WordFactory.zero());
 
@@ -80,15 +88,15 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
                 return -1;
             }
 
-            if (is_protected(info.protection())) {
-                guard_size += size.read().rawValue();
+            if (isProtected(info.protection())) {
+                guardsize += size.read().rawValue();
             }
 
-            UnsignedWord current_address = address.read();
-            address.write(current_address.add(size.read()));
-        } while (is_protected(info.protection()));
+            UnsignedWord currentAddress = address.read();
+            address.write(currentAddress.add(size.read()));
+        } while (isProtected(info.protection()));
 
-        return guard_size;
+        return guardsize;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -98,7 +106,7 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
         UnsignedWord stackaddr = DarwinPthread.pthread_get_stackaddr_np(self);
         UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
 
-        int guardsize = vm_compute_stack_guard(stackaddr.subtract(stacksize));
+        int guardsize = vmComputeStackGuard(stackaddr.subtract(stacksize));
         assert guardsize >= 0 && guardsize < 100 * 1024;
         assert stacksize.aboveThan(guardsize);
 
