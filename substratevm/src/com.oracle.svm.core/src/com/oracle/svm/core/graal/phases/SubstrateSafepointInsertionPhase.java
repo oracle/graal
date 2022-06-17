@@ -31,7 +31,7 @@ import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.SubstrateBackend;

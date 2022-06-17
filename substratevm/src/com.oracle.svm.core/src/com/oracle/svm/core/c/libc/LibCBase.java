@@ -33,7 +33,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 public interface LibCBase {
 

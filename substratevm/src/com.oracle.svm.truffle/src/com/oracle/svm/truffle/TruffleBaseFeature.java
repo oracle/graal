@@ -65,7 +65,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;

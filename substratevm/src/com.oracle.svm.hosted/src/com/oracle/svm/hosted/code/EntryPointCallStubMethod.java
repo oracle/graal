@@ -55,20 +55,7 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
                     ReflectionUtil.lookupMethod(EntryPointCallStubMethod.class, "uninterruptibleAnnotationHolder").getAnnotation(Uninterruptible.class));
 
     @Override
-    public final <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        if (annotationClass == Uninterruptible.class) {
-            return annotationClass.cast(UNINTERRUPTIBLE_ANNOTATION);
-        }
-        return null;
-    }
-
-    @Override
-    public final Annotation[] getAnnotations() {
-        return new Annotation[]{UNINTERRUPTIBLE_ANNOTATION};
-    }
-
-    @Override
-    public final Annotation[] getDeclaredAnnotations() {
+    public Annotation[] getInjectedAnnotations() {
         return new Annotation[]{UNINTERRUPTIBLE_ANNOTATION};
     }
 }

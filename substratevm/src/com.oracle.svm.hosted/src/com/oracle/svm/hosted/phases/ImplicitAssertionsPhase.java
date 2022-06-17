@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;

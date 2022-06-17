@@ -31,7 +31,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.util.VMError;
 

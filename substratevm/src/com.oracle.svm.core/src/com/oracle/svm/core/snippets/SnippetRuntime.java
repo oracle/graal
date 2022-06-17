@@ -31,7 +31,7 @@ import java.lang.reflect.Method;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.util.DirectAnnotationAccess;
+import com.oracle.svm.util.DirectAnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.annotate.Uninterruptible;

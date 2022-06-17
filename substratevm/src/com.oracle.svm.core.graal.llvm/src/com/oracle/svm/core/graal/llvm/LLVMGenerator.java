@@ -82,7 +82,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.util.GuardedAnnotationAccess;
+import com.oracle.svm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ReservedRegisters;

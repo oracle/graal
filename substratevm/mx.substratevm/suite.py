@@ -439,7 +439,8 @@ suite = {
                     "sun.text.spi",
                     "jdk.internal.reflect",
                     "sun.util.cldr",
-                    "sun.util.locale"
+                    "sun.util.locale",
+                    "sun.invoke.util",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.meta",

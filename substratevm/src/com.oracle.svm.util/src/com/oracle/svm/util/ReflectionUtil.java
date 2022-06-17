@@ -54,6 +54,17 @@ public final class ReflectionUtil {
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ReflectionUtil.class, declaringClass);
     }
 
+    public static Class<?> lookupClass(boolean optional, String className) {
+        try {
+            return Class.forName(className);
+        } catch (ClassNotFoundException ex) {
+            if (optional) {
+                return null;
+            }
+            throw new ReflectionUtilError(ex);
+        }
+    }
+
     public static Method lookupMethod(Class<?> declaringClass, String methodName, Class<?>... parameterTypes) {
         return lookupMethod(false, declaringClass, methodName, parameterTypes);
     }
@@ -102,6 +113,8 @@ public final class ReflectionUtil {
         return lookupField(false, declaringClass, fieldName);
     }
 
+    private static final Method fieldGetDeclaredFields0 = ReflectionUtil.lookupMethod(Class.class, "getDeclaredFields0", boolean.class);
+
     public static Field lookupField(boolean optional, Class<?> declaringClass, String fieldName) {
         try {
             Field result = declaringClass.getDeclaredField(fieldName);
@@ -109,6 +122,19 @@ public final class ReflectionUtil {
             result.setAccessible(true);
             return result;
         } catch (ReflectiveOperationException ex) {
+            /* Try to get hidden field */
+            try {
+                Field[] allFields = (Field[]) fieldGetDeclaredFields0.invoke(declaringClass, false);
+                for (Field field : allFields) {
+                    if (field.getName().equals(fieldName)) {
+                        openModule(declaringClass);
+                        field.setAccessible(true);
+                        return field;
+                    }
+                }
+            } catch (ReflectiveOperationException e) {
+                // ignore
+            }
             if (optional) {
                 return null;
             }
