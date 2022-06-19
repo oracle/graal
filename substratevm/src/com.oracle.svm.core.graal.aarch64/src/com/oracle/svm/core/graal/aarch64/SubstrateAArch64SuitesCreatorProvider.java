@@ -27,15 +27,12 @@ package com.oracle.svm.core.graal.aarch64;
 
 import org.graalvm.compiler.core.aarch64.AArch64SuitesCreator;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
-import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 
-import java.util.Arrays;
-
 public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SuitesCreator(getHostedCompilerConfiguration(), Arrays.asList(SchedulePhase.class)),
-                        new AArch64SuitesCreator(new EconomyCompilerConfiguration(), Arrays.asList(SchedulePhase.class)));
+        super(new AArch64SuitesCreator(getHostedCompilerConfiguration()),
+                        new AArch64SuitesCreator(new EconomyCompilerConfiguration()));
     }
 }
