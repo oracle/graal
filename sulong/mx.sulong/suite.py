@@ -1973,6 +1973,8 @@ suite = {
           "file:mx.sulong/native-image.properties",
           "file:README.md",
         ],
+        "LICENSE_SULONG.txt" : "file:LICENSE",
+        "THIRD_PARTY_LICENSE_SULONG.txt" : "file:THIRD_PARTY_LICENSE.txt",
       },
       "license" : "BSD-new",
     },

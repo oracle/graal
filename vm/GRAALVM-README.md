@@ -17,22 +17,20 @@ such as debugging and profiling, that you can use for all your code.
 
 ## Using GraalVM Components
 
-Some components are not part of the GraalVM core distribution and must be
-downloaded and installed separately. These are [GraalVM Native Image](https://www.graalvm.org/docs/reference-manual/native-image/), [LLVM toolchain](https://www.graalvm.org/docs/reference-manual/languages/llvm/#llvm-toolchain), Python, R and Ruby language engines. Installable component packages
-are provided separately for individual operating systems and architectures.
+GraalVM provides a simple installation utility, GraalVM Updater, which allows users to **download** and **install** additional GraalVM components that are not part of the core distribution:
+- Native Image
+- LLVM Runtime
+- LLVM Toolchain
+- JavaScript
+- Node.js
+- Python
+- R
+- Ruby
+- Java on Truffle
+- VisualVM
 
-GraalVM provides a simple installation utility, [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/install-components/), which allows to **download** package files, **install** them to their appropriate locations, and **manage**.
-Use
+For more information, visit https://www.graalvm.org/docs/getting-started/ and run:
 >`bin/gu --help`
-
-for brief help.
-
-Alternatively, you can download a component package from the [component catalog](https://www.graalvm.org/component-catalog/graal-updater-component-catalog.properties).
-With the already downloaded component JAR file, the component can be installed as
-
->`gu -L install component.jar`
-
-where `-L` option, equivalent to `--local-file`, tells to install from a downloaded component archive.
 
 ## Using GraalVM
 You can use GraalVM like a Java Development Kit (JDK) in your IDE.
