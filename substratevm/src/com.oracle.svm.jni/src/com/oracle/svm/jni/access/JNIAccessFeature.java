@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
@@ -46,6 +47,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -60,14 +62,15 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter;
-import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
+import com.oracle.svm.jni.hosted.JNICallSignature;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
+import com.oracle.svm.jni.hosted.JNIJavaCallMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 import com.oracle.svm.util.ReflectionUtil;
@@ -87,9 +90,24 @@ public class JNIAccessFeature implements Feature {
         return ImageSingletons.lookup(JNIAccessFeature.class);
     }
 
+    static final class JNIJavaCallWrapperGroup {
+        static final JNIJavaCallWrapperGroup NONE = new JNIJavaCallWrapperGroup(null, null, null);
+
+        final JNIJavaCallWrapperMethod varargs;
+        final JNIJavaCallWrapperMethod array;
+        final JNIJavaCallWrapperMethod valist;
+
+        JNIJavaCallWrapperGroup(JNIJavaCallWrapperMethod varargs, JNIJavaCallWrapperMethod array, JNIJavaCallWrapperMethod valist) {
+            this.varargs = varargs;
+            this.array = array;
+            this.valist = valist;
+        }
+    }
+
     private boolean sealed = false;
-    private NativeLibraries nativeLibraries;
     private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
+    private final Map<JNICallSignature, JNIJavaCallWrapperGroup> callWrappers = new ConcurrentHashMap<>();
+    private final Map<JNICallSignature, JNIJavaCallWrapperGroup> nonvirtualCallWrappers = new ConcurrentHashMap<>();
 
     private int loadedConfigurations;
 
@@ -161,9 +179,11 @@ public class JNIAccessFeature implements Feature {
         if (!ImageSingletons.contains(JNIJavaCallWrapperMethod.Factory.class)) {
             ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());
         }
+        if (!ImageSingletons.contains(JNIJavaCallMethod.Factory.class)) {
+            ImageSingletons.add(JNIJavaCallMethod.Factory.class, new JNIJavaCallMethod.Factory());
+        }
 
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
-        this.nativeLibraries = access.getNativeLibraries();
 
         for (CallVariant variant : CallVariant.values()) {
             registerJavaCallTrampoline(access, variant, false);
@@ -282,33 +302,40 @@ public class JNIAccessFeature implements Feature {
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
         jniClass.addMethodIfAbsent(descriptor, d -> {
-            JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
-            MetaAccessProvider wrappedMetaAccess = access.getMetaAccess().getWrapped();
+            AnalysisUniverse universe = access.getUniverse();
+            ResolvedJavaMethod targetMethod = universe.getOriginalMetaAccess().lookupJavaMethod(method);
 
-            JNIJavaCallWrapperMethod varargsCallWrapper = factory.create(method, CallVariant.VARARGS, false, wrappedMetaAccess, nativeLibraries);
-            JNIJavaCallWrapperMethod arrayCallWrapper = factory.create(method, CallVariant.ARRAY, false, wrappedMetaAccess, nativeLibraries);
-            JNIJavaCallWrapperMethod valistCallWrapper = factory.create(method, CallVariant.VA_LIST, false, wrappedMetaAccess, nativeLibraries);
-            Stream<JNIJavaCallWrapperMethod> wrappers = Stream.of(varargsCallWrapper, arrayCallWrapper, valistCallWrapper);
+            WordTypes wordTypes = access.getBigBang().getProviders().getWordTypes();
+            JNIJavaCallMethod javaCallMethod = ImageSingletons.lookup(JNIJavaCallMethod.Factory.class).create(targetMethod, universe, wordTypes);
+            access.registerAsRoot(universe.lookup(javaCallMethod), true);
 
-            JNIJavaCallWrapperMethod varargsNonvirtualCallWrapper = null;
-            JNIJavaCallWrapperMethod arrayNonvirtualCallWrapper = null;
-            JNIJavaCallWrapperMethod valistNonvirtualCallWrapper = null;
+            JNICallSignature javaCallSignature = javaCallMethod.getSignature();
+            JNIJavaCallWrapperGroup wrappers = createJavaCallWrappers(access, javaCallSignature, false);
+            JNIJavaCallWrapperGroup nonvirtualWrappers = JNIJavaCallWrapperGroup.NONE;
             if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
-                varargsNonvirtualCallWrapper = factory.create(method, CallVariant.VARARGS, true, wrappedMetaAccess, nativeLibraries);
-                arrayNonvirtualCallWrapper = factory.create(method, CallVariant.ARRAY, true, wrappedMetaAccess, nativeLibraries);
-                valistNonvirtualCallWrapper = factory.create(method, CallVariant.VA_LIST, true, wrappedMetaAccess, nativeLibraries);
-                wrappers = Stream.concat(wrappers, Stream.of(varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper));
+                nonvirtualWrappers = createJavaCallWrappers(access, javaCallSignature, true);
             }
+            return new JNIAccessibleMethod(d, method.getModifiers(), jniClass, javaCallMethod, wrappers.varargs, wrappers.array, wrappers.valist,
+                            nonvirtualWrappers.varargs, nonvirtualWrappers.array, nonvirtualWrappers.valist);
+        });
+    }
 
-            JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(d, method.getModifiers(), jniClass, varargsCallWrapper, arrayCallWrapper, valistCallWrapper,
-                            varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper);
+    private JNIJavaCallWrapperGroup createJavaCallWrappers(DuringAnalysisAccessImpl access, JNICallSignature javaCallSignature, boolean nonVirtual) {
+        var map = nonVirtual ? nonvirtualCallWrappers : callWrappers;
+        return map.computeIfAbsent(javaCallSignature, signature -> {
+            MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
+            JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
+            JNIJavaCallWrapperMethod varargs = factory.create(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess);
+            JNIJavaCallWrapperMethod array = factory.create(signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess);
+            JNIJavaCallWrapperMethod valist = factory.create(signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess);
+            Stream<JNIJavaCallWrapperMethod> wrappers = Stream.of(varargs, array, valist);
             CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
                 access.getBigBang().addRootMethod(analysisWrapper, true);
                 analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
-            return jniMethod;
+            return new JNIJavaCallWrapperGroup(varargs, array, valist);
         });
     }
 

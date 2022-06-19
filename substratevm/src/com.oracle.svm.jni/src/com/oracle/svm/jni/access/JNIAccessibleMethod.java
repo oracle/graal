@@ -29,12 +29,14 @@ import java.lang.reflect.Modifier;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.jni.hosted.JNIJavaCallMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 
@@ -48,7 +50,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public final class JNIAccessibleMethod extends JNIAccessibleMember {
 
-    public static ResolvedJavaField getCallWrapperField(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
+    static ResolvedJavaField getCallWrapperField(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
         StringBuilder name = new StringBuilder(32);
         if (variant == CallVariant.VARARGS) {
             name.append("varargs");
@@ -72,12 +74,14 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
 
     @Platforms(HOSTED_ONLY.class) private final JNIAccessibleMethodDescriptor descriptor;
     private final int modifiers;
+    private CodePointer javaCall;
     @SuppressWarnings("unused") private CFunctionPointer varargsCallWrapper;
     @SuppressWarnings("unused") private CFunctionPointer arrayCallWrapper;
     @SuppressWarnings("unused") private CFunctionPointer valistCallWrapper;
     @SuppressWarnings("unused") private CFunctionPointer varargsNonvirtualCallWrapper;
     @SuppressWarnings("unused") private CFunctionPointer arrayNonvirtualCallWrapper;
     @SuppressWarnings("unused") private CFunctionPointer valistNonvirtualCallWrapper;
+    @Platforms(HOSTED_ONLY.class) private final JNIJavaCallMethod javaCallMethod;
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallWrapperMethod varargsCallWrapperMethod;
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallWrapperMethod arrayCallWrapperMethod;
     @Platforms(HOSTED_ONLY.class) private final JNIJavaCallWrapperMethod valistCallWrapperMethod;
@@ -88,6 +92,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     JNIAccessibleMethod(JNIAccessibleMethodDescriptor descriptor,
                     int modifiers,
                     JNIAccessibleClass declaringClass,
+                    JNIJavaCallMethod javaCallMethod,
                     JNIJavaCallWrapperMethod varargsCallWrapper,
                     JNIJavaCallWrapperMethod arrayCallWrapper,
                     JNIJavaCallWrapperMethod valistCallWrapper,
@@ -96,12 +101,13 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
                     JNIJavaCallWrapperMethod valistNonvirtualCallWrapperMethod) {
         super(declaringClass);
 
-        assert varargsCallWrapper != null && arrayCallWrapper != null && valistCallWrapper != null;
+        assert javaCallMethod != null && varargsCallWrapper != null && arrayCallWrapper != null && valistCallWrapper != null;
         assert (Modifier.isStatic(modifiers) || Modifier.isAbstract(modifiers)) //
                         ? (varargsNonvirtualCallWrapperMethod == null && arrayNonvirtualCallWrapperMethod == null && valistNonvirtualCallWrapperMethod == null)
                         : (varargsNonvirtualCallWrapperMethod != null & arrayNonvirtualCallWrapperMethod != null && valistNonvirtualCallWrapperMethod != null);
         this.descriptor = descriptor;
         this.modifiers = modifiers;
+        this.javaCallMethod = javaCallMethod;
         this.varargsCallWrapperMethod = varargsCallWrapper;
         this.arrayCallWrapperMethod = arrayCallWrapper;
         this.valistCallWrapperMethod = valistCallWrapper;
@@ -110,11 +116,15 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
         this.valistNonvirtualCallWrapperMethod = valistNonvirtualCallWrapperMethod;
     }
 
-    public boolean isPublic() {
+    public CodePointer getJavaCallAddress() {
+        return javaCall;
+    }
+
+    boolean isPublic() {
         return Modifier.isPublic(modifiers);
     }
 
-    public boolean isStatic() {
+    boolean isStatic() {
         return Modifier.isStatic(modifiers);
     }
 
@@ -122,6 +132,7 @@ public final class JNIAccessibleMethod extends JNIAccessibleMember {
     void finishBeforeCompilation(CompilationAccessImpl access) {
         HostedUniverse hUniverse = access.getUniverse();
         AnalysisUniverse aUniverse = access.getUniverse().getBigBang().getUniverse();
+        javaCall = new MethodPointer(hUniverse.lookup(aUniverse.lookup(javaCallMethod)));
         varargsCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(varargsCallWrapperMethod)));
         arrayCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(arrayCallWrapperMethod)));
         valistCallWrapper = new MethodPointer(hUniverse.lookup(aUniverse.lookup(valistCallWrapperMethod)));

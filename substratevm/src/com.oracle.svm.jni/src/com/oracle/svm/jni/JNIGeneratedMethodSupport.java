@@ -26,6 +26,7 @@ package com.oracle.svm.jni;
 
 import java.lang.reflect.Array;
 
+import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
@@ -35,8 +36,10 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.jni.access.JNIAccessibleField;
 import com.oracle.svm.jni.access.JNINativeLinkage;
+import com.oracle.svm.jni.access.JNIReflectionDictionary;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
+import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.internal.misc.Unsafe;
@@ -74,6 +77,10 @@ public final class JNIGeneratedMethodSupport {
 
     static WordBase getFieldOffsetFromId(JNIFieldId fieldId) {
         return JNIAccessibleField.getOffsetFromId(fieldId);
+    }
+
+    static CodePointer getJavaCallAddressFromMethodId(JNIMethodId methodId) {
+        return JNIReflectionDictionary.getMethodByID(methodId).getJavaCallAddress();
     }
 
     static Object getStaticPrimitiveFieldsArray() {

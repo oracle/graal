@@ -139,7 +139,7 @@ class JNINativeCallMethod extends CustomSubstitutionMethod {
             // Just before return to always run the epilogue and never suppress a pending exception
             returnValue = kit.checkObjectType(returnValue, (ResolvedJavaType) returnType, false);
         } else if (returnKind != JavaKind.Void && JNINativeCallWrapperMethod.returnKindWidensToLong(returnKind)) {
-            returnValue = kit.maskIntegerBits(returnValue, returnKind);
+            returnValue = kit.maskNumericIntBytes(returnValue, returnKind);
         }
         kit.createReturn(returnValue, returnKind);
         return kit.finalizeGraph();

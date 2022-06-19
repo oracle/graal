@@ -83,23 +83,26 @@ public class JNIGraphKit extends HostedGraphKit {
         return value;
     }
 
-    /** Masks a sub-long value to ensure that unused high bits are indeed cleared. */
-    public ValueNode maskIntegerBits(ValueNode value, JavaKind kind) {
+    /** Masks bits to ensure that unused bytes in the stack representation are cleared. */
+    public ValueNode maskNumericIntBytes(ValueNode value, JavaKind kind) {
         assert kind.isNumericInteger();
-        if (kind == JavaKind.Long) {
-            return value;
-        }
         int bits = kind.getByteCount() * Byte.SIZE;
         ValueNode narrowed = append(NarrowNode.create(value, bits, NodeView.DEFAULT));
+        ValueNode widened = widenNumericInt(narrowed, kind);
         if (kind == JavaKind.Boolean) {
-            LogicNode isZero = IntegerEqualsNode.create(narrowed, ConstantNode.forIntegerBits(bits, 0), NodeView.DEFAULT);
-            return append(ConditionalNode.create(isZero, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
+            LogicNode isZero = IntegerEqualsNode.create(widened, ConstantNode.forIntegerKind(kind.getStackKind(), 0), NodeView.DEFAULT);
+            widened = append(ConditionalNode.create(isZero, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
         }
+        return widened;
+    }
+
+    public ValueNode widenNumericInt(ValueNode value, JavaKind kind) {
+        assert kind.isNumericInteger();
         int stackBits = kind.getStackKind().getBitCount();
         if (kind.isUnsigned()) {
-            return append(ZeroExtendNode.create(narrowed, stackBits, NodeView.DEFAULT));
+            return append(ZeroExtendNode.create(value, stackBits, NodeView.DEFAULT));
         } else {
-            return append(SignExtendNode.create(narrowed, stackBits, NodeView.DEFAULT));
+            return append(SignExtendNode.create(value, stackBits, NodeView.DEFAULT));
         }
     }
 
@@ -144,6 +147,10 @@ public class JNIGraphKit extends HostedGraphKit {
 
     public InvokeWithExceptionNode getFieldOffsetFromId(ValueNode fieldId) {
         return createStaticInvoke("getFieldOffsetFromId", fieldId);
+    }
+
+    public InvokeWithExceptionNode getJavaCallAddressFromMethodId(ValueNode methodId) {
+        return createStaticInvoke("getJavaCallAddressFromMethodId", methodId);
     }
 
     public InvokeWithExceptionNode getStaticPrimitiveFieldsArray() {
