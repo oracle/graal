@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1087,26 +1087,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         public boolean check(AMD64 arch, int l, Register r, Register v, Register m, Register imm8) {
             if (isAVX512Register(r) || isAVX512Register(v) || isAVX512Register(m) || l == L512) {
-                assert l512features != null && l512features.check(arch, l);
+                GraalError.guarantee(l512features != null && l512features.check(arch, l), "emitting illegal 512 bit instruction, required features: %s", l512features);
             } else if (l == L128) {
-                assert l128feature != null && arch.getFeatures().contains(l128feature) : "emitting illegal 128 bit instruction";
+                GraalError.guarantee(l128feature != null && arch.getFeatures().contains(l128feature), "emitting illegal 128 bit instruction, required feature: %s", l128feature);
             } else if (l == L256) {
-                assert l256feature != null && arch.getFeatures().contains(l256feature) : "emitting illegal 256 bit instruction";
+                GraalError.guarantee(l256feature != null && arch.getFeatures().contains(l256feature), "emitting illegal 256 bit instruction, required feature: %s", l256feature);
             }
             if (r != null) {
-                assert r.getRegisterCategory().equals(rCategory);
+                GraalError.guarantee(r.getRegisterCategory().equals(rCategory), "expected r in category %s, got %s", rCategory, r);
             }
             if (v != null) {
-                assert v.getRegisterCategory().equals(vCategory);
+                GraalError.guarantee(v.getRegisterCategory().equals(vCategory), "expected v in category %s, got %s", vCategory, v);
             }
             if (m != null) {
-                assert m.getRegisterCategory().equals(mCategory);
+                GraalError.guarantee(m.getRegisterCategory().equals(mCategory), "expected m in category %s, got %s", mCategory, m);
             }
             if (imm8 != null) {
-                assert imm8.getRegisterCategory().equals(imm8Category);
+                GraalError.guarantee(imm8.getRegisterCategory().equals(imm8Category), "expected imm8 in category %s, got %s", imm8Category, imm8);
             }
             if (extendedFeature != null) {
-                assert arch.getFeatures().contains(extendedFeature);
+                GraalError.guarantee(arch.getFeatures().contains(extendedFeature), "emitting illegal instruction, required extended feature: %s", extendedFeature);
             }
             return true;
         }
@@ -1190,7 +1190,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, src), "emitting invalid instruction");
             assert op != 0x1A || op != 0x5A;
             asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
@@ -1198,7 +1198,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, src), "emitting invalid instruction");
             assert op != 0x1A || op != 0x5A;
             asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
@@ -1279,14 +1279,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, src), "emitting invalid instruction");
             asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(dst, Register.None, src, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0, getDisp8Scale(useEvex, size));
@@ -1331,14 +1331,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(useEvex, size));
         }
 
         public void emitReverse(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, null, dst);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, null, dst), "emitting invalid instruction");
             asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(opReverse);
             asm.emitModRM(src, dst);
@@ -1371,7 +1371,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, src), "emitting invalid instruction");
             asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(dst, src);
@@ -1379,10 +1379,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(dst, Register.None, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 1, getDisp8Scale(useEvex, size));
+            asm.emitByte(imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, null, src);
+            asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src);
+            asm.emitByte(imm8);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, int imm8, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            asm.evexPrefix(dst, mask, Register.None, src, size, pp, mmmmm, wEvex, z, b);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src, 1, getDisp8Scale(true, size));
             asm.emitByte(imm8);
         }
     }
@@ -1401,14 +1417,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, null, dst);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, null, dst), "emitting invalid instruction");
             asm.vexPrefix(src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitModRM(src, dst);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
@@ -1451,7 +1467,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, null, dst);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, null, dst), "emitting invalid instruction");
             asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(src, dst);
@@ -1459,7 +1475,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, null, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(src, Register.None, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(src, dst, 1, getDisp8Scale(useEvex, size));
@@ -1482,7 +1498,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, Register src1, Register src2) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, mask, src1, src2);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, mask, src1, src2), "emitting invalid instruction");
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
@@ -1490,7 +1506,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, Register src1, AMD64Address src2) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, mask, src1, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, mask, src1, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
@@ -1587,6 +1603,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public static final VexRVMOp VPBLENDMQ       = new VexRVMOp("VPBLENDMQ",   P_66, M_0F38, W1,  0x64, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
         public static final VexRVMOp VBLENDMPS       = new VexRVMOp("VBLENDMPS",   P_66, M_0F38, W0,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W0);
         public static final VexRVMOp VBLENDMPD       = new VexRVMOp("VBLENDMPD",   P_66, M_0F38, W1,  0x65, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W1);
+        public static final VexRVMOp VPERMT2B        = new VexRVMOp("VPERMT2B",    P_66, M_0F38, W0,  0x7D, VEXOpAssertion.AVX512F_VL,                   EVEXTuple.FVM,       W0);
         // @formatter:on
 
         protected VexRVMOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
@@ -1598,29 +1615,43 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, src2), "emitting invalid instruction");
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, src2), "emitting invalid instruction");
             asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, Z0, B0);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, Z0, B0);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
+            asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
+            asm.emitByte(op);
+            asm.emitModRM(dst, src2);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
+            boolean useEvex = asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0, getDisp8Scale(useEvex, size));
         }
@@ -1644,15 +1675,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
-            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src1, src2, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
             asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
@@ -1661,15 +1693,16 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
-            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 0);
         }
 
+        @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src1, null, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
             asm.vexPrefix(dst, src1, src2, mask, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
@@ -1691,7 +1724,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2) {
-            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src2, src1, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src2, src1, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
             asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
@@ -1699,7 +1732,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src1, Register src2) {
-            assert assertion.check((AMD64) asm.target.arch, LZ, dst, src2, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, LZ, dst, src2, null, null), "emitting invalid instruction");
             assert size == AVXSize.DWORD || size == AVXSize.QWORD;
             asm.vexPrefix(dst, src2, src1, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
@@ -1749,7 +1782,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, mask, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, mask, null, null), "emitting invalid instruction");
             assert size == AVXSize.XMM || size == AVXSize.YMM;
             asm.vexPrefix(dst, mask, address, size, pp, mmmmm, w, wEvex, true, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
@@ -1777,7 +1810,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null, null), "emitting invalid instruction");
             assert size == AVXSize.XMM || size == AVXSize.YMM || size == AVXSize.ZMM;
             asm.vexPrefix(dst, Register.None, address, mask, size, pp, mmmmm, w, wEvex, true, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
@@ -1800,7 +1833,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null), "emitting invalid instruction");
             asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(ext, src);
@@ -1808,7 +1841,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null), "emitting invalid instruction");
             asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, mask, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitModRM(ext, src);
@@ -1816,7 +1849,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null), "emitting invalid instruction");
             asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(ext, src, 0);
@@ -1824,7 +1857,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address src, Register mask, int z, int b) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, null, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, null, null), "emitting invalid instruction");
             asm.vexPrefix(AMD64.cpuRegisters[ext], dst, src, mask, size, pp, mmmmm, size == AVXSize.DWORD ? W0 : W1, wEvex, false, assertion.l128feature, assertion.l256feature, z, b);
             asm.emitByte(op);
             asm.emitOperandHelper(ext, src, 0);
@@ -1864,7 +1897,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
         @Override
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, null, dst, src);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, null, dst, src), "emitting invalid instruction");
             asm.vexPrefix(null, dst, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(immOp);
             asm.emitModRM(r, src);
@@ -1892,14 +1925,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register mask, AMD64Address src) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, mask, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, mask, null), "emitting invalid instruction");
             asm.vexPrefix(dst, mask, src, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src, 0);
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, AMD64Address dst, Register mask, Register src) {
-            assert assertion.check((AMD64) asm.target.arch, size, src, mask, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, src, mask, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(src, mask, dst, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(opReverse);
             asm.emitOperandHelper(src, dst, 0, getDisp8Scale(useEvex, size));
@@ -1951,7 +1984,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, src2), "emitting invalid instruction");
             assert (imm8 & 0xFF) == imm8;
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
@@ -1960,7 +1993,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, int imm8) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, null), "emitting invalid instruction");
             assert (imm8 & 0xFF) == imm8;
             boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
@@ -2073,7 +2106,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, Register src2, Predicate p) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, src2);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, src2), "emitting invalid instruction");
             asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitModRM(dst, src2);
@@ -2081,7 +2114,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
 
         public void emit(AMD64Assembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2, Predicate p) {
-            assert assertion.check((AMD64) asm.target.arch, size, dst, src1, null);
+            GraalError.guarantee(assertion.check((AMD64) asm.target.arch, size, dst, src1, null), "emitting invalid instruction");
             boolean useEvex = asm.vexPrefix(dst, src1, src2, size, pp, mmmmm, w, wEvex, false, assertion.l128feature, assertion.l256feature);
             asm.emitByte(op);
             asm.emitOperandHelper(dst, src2, 1, getDisp8Scale(useEvex, size));
