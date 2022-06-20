@@ -60,9 +60,9 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 
 import jdk.internal.misc.Unsafe;
-import src.com.oracle.svm.core.src.com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 
 /**
  * Implementation of synchronized-related operations.

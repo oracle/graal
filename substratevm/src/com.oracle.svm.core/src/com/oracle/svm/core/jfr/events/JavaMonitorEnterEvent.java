@@ -24,7 +24,7 @@
  * questions.
  */
 
-package src.com.oracle.svm.core.src.com.oracle.svm.core.jfr.events;
+package com.oracle.svm.core.jfr.events;
 
 import org.graalvm.nativeimage.StackValue;
 
