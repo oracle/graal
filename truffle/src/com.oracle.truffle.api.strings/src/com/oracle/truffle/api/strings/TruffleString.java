@@ -66,9 +66,10 @@ import static com.oracle.truffle.api.strings.TStringGuards.isValidFixedWidth;
 import static com.oracle.truffle.api.strings.TStringGuards.isValidMultiByte;
 import static com.oracle.truffle.api.strings.TStringGuards.littleEndian;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -125,22 +126,22 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
  * @since 22.1
  */
 public final class TruffleString extends AbstractTruffleString {
-
-    /*
-     * TODO: replace with VarHandle equivalent (GR-35129).
-     */
-    private static final AtomicReferenceFieldUpdater<TruffleString, TruffleString> NEXT_UPDATER = initializeNextUpdater();
+    private static final VarHandle NEXT_UPDATER = initializeNextUpdater();
 
     @TruffleBoundary
-    private static AtomicReferenceFieldUpdater<TruffleString, TruffleString> initializeNextUpdater() {
-        return AtomicReferenceFieldUpdater.newUpdater(TruffleString.class, TruffleString.class, "next");
+    private static VarHandle initializeNextUpdater() {
+        try {
+            return MethodHandles.lookup().findVarHandle(TruffleString.class, "next", TruffleString.class);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static final byte FLAG_CACHE_HEAD = (byte) 0x80;
 
     private final int codePointLength;
     private final byte codeRange;
-    private volatile TruffleString next;
+    private TruffleString next;
 
     private TruffleString(Object data, int offset, int length, int stride, int encoding, int codePointLength, int codeRange) {
         this(data, offset, length, stride, encoding, codePointLength, codeRange, true);
