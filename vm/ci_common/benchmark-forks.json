@@ -4,6 +4,8 @@
     "warmup/typescript-polybench.js": 20,
     "warmup/asciidoctor-convert.rb": 20,
     "warmup/asciidoctor-load-file.rb": 20,
+    "warmup/pyflate-fast.py": 3,
+    "warmup/raytracer.py": 3,
     "interpreter/jsinit.js": 5,
     "interpreter/rbinit.rb": 5,
     "interpreter/pyinit.py": 5
