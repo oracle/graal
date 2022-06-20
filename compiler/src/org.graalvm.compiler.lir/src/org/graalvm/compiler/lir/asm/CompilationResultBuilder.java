@@ -37,6 +37,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Formatter;
 import java.util.List;
 import java.util.Objects;
 
@@ -581,11 +582,9 @@ public class CompilationResultBuilder {
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
         AbstractBlockBase<?> previousBlock = null;
-        ByteArrayOutputStream baos = null;
-        LogStream loggerBBInfo = null;
+        Formatter formatterBBInfo = null;
         if (DebugOptions.PrintBBInfoPath.getValue(options) != null && debug.getDescription() != null) {
-            baos = new ByteArrayOutputStream(lir.codeEmittingOrder().length * 25);
-            loggerBBInfo = new LogStream(baos);
+            formatterBBInfo = new Formatter();
         }
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
@@ -599,25 +598,19 @@ public class CompilationResultBuilder {
                 int pcBBStart = asm.position();
                 emitBlock(b);
                 int pcBBEnd = asm.position();
-                if (loggerBBInfo != null) {
-                    // b.getId(),pcBBStart,pcBBEnd,b.getRelativeFrequency()
-                    loggerBBInfo.print(b.getId());
-                    loggerBBInfo.print(',');
-                    loggerBBInfo.print(pcBBStart);
-                    loggerBBInfo.print(',');
-                    loggerBBInfo.print(pcBBEnd);
-                    loggerBBInfo.print(',');
-                    loggerBBInfo.println(b.getRelativeFrequency());
+                if (formatterBBInfo != null) {
+                    // Dump basic block information using the following csv format
+                    // BBid, pcBBStart, pcBBEnd, BBfreq
+                    formatterBBInfo.format("%d, %d, %d, %f\n", b.getId(), pcBBStart, pcBBEnd, b.getRelativeFrequency());
                 }
                 previousBlock = b;
             }
             currentBlockIndex++;
         }
-        if (loggerBBInfo != null) {
-            assert baos != null : "logger is not null but array buffer is";
+        if (formatterBBInfo != null) {
             try {
                 final String path = PathUtilities.getPath(DebugOptions.PrintBBInfoPath.getValue(options), debug.getDescription().identifier + ".blocks");
-                Files.write(Paths.get(path), baos.toByteArray());
+                Files.writeString(Paths.get(path), formatterBBInfo.toString());
             } catch (IOException e) {
                 throw debug.handle(e);
             }
