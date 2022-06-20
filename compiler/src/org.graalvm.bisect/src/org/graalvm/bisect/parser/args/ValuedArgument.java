@@ -65,4 +65,28 @@ abstract class ValuedArgument<T> extends Argument {
         set = true;
         value = defaultValue;
     }
+
+    @Override
+    public int parse(String[] args, int offset) throws InvalidArgumentException {
+        if (isOptionArgument()) {
+            assert args[offset].equals(getName());
+            ++offset;
+            if (offset >= args.length) {
+                throw new InvalidArgumentException(getName(), "No value was provided.");
+            }
+            parseValue(args[offset]);
+        } else {
+            parseValue(args[offset]);
+        }
+        set = true;
+        return offset + 1;
+    }
+
+    /**
+     * Parse the argument value from a string.
+     * 
+     * @param value the value that is parsed
+     * @throws InvalidArgumentException the value could not be parsed
+     */
+    protected abstract void parseValue(String value) throws InvalidArgumentException;
 }

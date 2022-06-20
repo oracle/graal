@@ -53,26 +53,27 @@ import org.graalvm.bisect.util.Writer;
 public class ProfBisect {
     public static void main(String[] args) {
         ArgumentParser argumentParser = new ArgumentParser(
-                "mx profbisect", "Compares performed optimizations in hot methods of two experiments.");
+                        "mx profbisect",
+                        "Compares performed optimizations in hot methods of two experiments.");
         IntegerArgument hotMinArgument = argumentParser.addIntegerArgument(
-                "--hotMinLimit", 1,
-                "The minimum number of methods to mark as hot");
+                        "--hot-min-limit", 1,
+                        "the minimum number of methods to mark as hot");
         IntegerArgument hotMaxArgument = argumentParser.addIntegerArgument(
-                "--hotMaxLimit", 10,
-                "The maximum number of methods to mark as hot");
+                        "--hot-max-limit", 10,
+                        "the maximum number of methods to mark as hot");
         DoubleArgument percentileArgument = argumentParser.addDoubleArgument(
-                "--hotPercentile", 0.9,
-                "The percentile of the execution period that is spent executing hot methods");
+                        "--hot-percentile", 0.9,
+                        "the percentile of the execution period that is spent executing hot methods");
         StringArgument proftoolArgument1 = argumentParser.addStringArgument(
-                "proftoolOutput1", "Proftool output of the first experiment in JSON.");
+                        "proftoolOutput1", "proftool output of the first experiment in JSON.");
         StringArgument optimizationLogArgument1 = argumentParser.addStringArgument(
-                "optimizationLog1",
-                "Directory with optimization logs for each method compiled in the first experiment.");
+                        "optimizationLog1",
+                        "directory with optimization logs for each method compiled in the first experiment.");
         StringArgument proftoolArgument2 = argumentParser.addStringArgument(
-                "proftoolOutput2", "Proftool output of the second experiment in JSON.");
+                        "proftoolOutput2", "proftool output of the second experiment in JSON.");
         StringArgument optimizationLogArgument2 = argumentParser.addStringArgument(
-                "optimizationLog2",
-                "Directory with optimization logs for each method compiled in the second experiment.");
+                        "optimizationLog2",
+                        "directory with optimization logs for each method compiled in the second experiment.");
         try {
             argumentParser.parse(args);
         } catch (InvalidArgumentException | MissingArgumentException | UnknownArgumentException e) {

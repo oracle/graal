@@ -107,20 +107,7 @@ public abstract class Argument {
      * @return next value of the offset where the next argument is expected to begin
      * @throws InvalidArgumentException there was no value provided for this argument
      */
-    public int parse(String[] args, int offset) throws InvalidArgumentException {
-        if (isOptionArgument()) {
-            assert args[offset].equals(name);
-            ++offset;
-            if (offset >= args.length) {
-                throw new InvalidArgumentException(getName(), "No value was provided.");
-            }
-            parseValue(args[offset]);
-        } else {
-            parseValue(args[offset]);
-        }
-        set = true;
-        return offset + 1;
-    }
+    abstract int parse(String[] args, int offset) throws InvalidArgumentException;
 
     /**
      * Finds out whether this argument is an option argument by looking at its prefix.
@@ -129,11 +116,4 @@ public abstract class Argument {
     public boolean isOptionArgument() {
         return name.startsWith(OPTION_PREFIX);
     }
-
-    /**
-     * Parse the argument value from a string.
-     * @param value the value that is parsed
-     * @throws InvalidArgumentException the value could not be parsed
-     */
-    protected abstract void parseValue(String value) throws InvalidArgumentException;
 }

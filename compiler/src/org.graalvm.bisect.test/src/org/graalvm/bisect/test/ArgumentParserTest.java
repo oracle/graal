@@ -24,16 +24,19 @@
  */
 package org.graalvm.bisect.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import org.graalvm.bisect.parser.args.ArgumentParser;
 import org.graalvm.bisect.parser.args.DoubleArgument;
+import org.graalvm.bisect.parser.args.FlagArgument;
 import org.graalvm.bisect.parser.args.IntegerArgument;
 import org.graalvm.bisect.parser.args.InvalidArgumentException;
 import org.graalvm.bisect.parser.args.MissingArgumentException;
 import org.graalvm.bisect.parser.args.StringArgument;
 import org.graalvm.bisect.parser.args.UnknownArgumentException;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class ArgumentParserTest {
     private final static double DELTA = 0.000001;
@@ -43,12 +46,14 @@ public class ArgumentParserTest {
         ArgumentParser argumentParser;
         DoubleArgument doubleArgument;
         IntegerArgument integerArgument;
+        FlagArgument flagArgument;
         StringArgument stringArgument;
 
         ProgramArguments() {
             argumentParser = new ArgumentParser("program", "Program description.");
             doubleArgument = argumentParser.addDoubleArgument("--double", DEFAULT_DOUBLE, "A double argument.");
             integerArgument = argumentParser.addIntegerArgument("--int", DEFAULT_INT, "An integer argument.");
+            flagArgument = argumentParser.addFlagArgument("--flag", "A flag argument.");
             stringArgument = argumentParser.addStringArgument("string", "A string argument.");
         }
     }
@@ -61,16 +66,18 @@ public class ArgumentParserTest {
         assertEquals(args[0], programArguments.stringArgument.getValue());
         assertEquals(ProgramArguments.DEFAULT_DOUBLE, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(ProgramArguments.DEFAULT_INT, programArguments.integerArgument.getValue().intValue());
+        assertFalse(programArguments.flagArgument.getValue());
     }
 
     @Test
     public void testProvidedValues() throws UnknownArgumentException, InvalidArgumentException, MissingArgumentException {
         ProgramArguments programArguments = new ProgramArguments();
-        String[] args = new String[]{"--int", "123", "foo", "--double", "1.23"};
+        String[] args = new String[]{"--int", "123", "foo", "--double", "1.23", "--flag"};
         programArguments.argumentParser.parse(args);
         assertEquals(args[2], programArguments.stringArgument.getValue());
         assertEquals(1.23, programArguments.doubleArgument.getValue(), DELTA);
         assertEquals(123, programArguments.integerArgument.getValue().intValue());;
+        assertTrue(programArguments.flagArgument.getValue());
     }
 
     @Test(expected = MissingArgumentException.class)

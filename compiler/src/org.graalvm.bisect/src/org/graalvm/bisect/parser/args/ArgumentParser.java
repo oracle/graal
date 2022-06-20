@@ -25,7 +25,7 @@
 package org.graalvm.bisect.parser.args;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +45,7 @@ public class ArgumentParser {
      * The map of argument names to option arguments. Option argument names start with the "--" prefix. They may be
      * required or optional.
      */
-    private final Map<String, Argument> optionArguments = new HashMap<>();
+    private final Map<String, Argument> optionArguments = new LinkedHashMap<>();
     /**
      * The list of positional arguments. The argument names do not start with a prefix and are always required.
      */
@@ -172,6 +172,20 @@ public class ArgumentParser {
      */
     public StringArgument addStringArgument(String name, String help) {
         StringArgument argument = new StringArgument(name, help);
+        addArgument(argument);
+        return argument;
+    }
+
+    /**
+     * Adds a flag holding a boolean that is true iff the option is present in the program
+     * arguments.
+     * 
+     * @param name the name of the argument
+     * @param help the help message in the program usage string
+     * @return the created argument instance
+     */
+    public FlagArgument addFlagArgument(String name, String help) {
+        FlagArgument argument = new FlagArgument(name, help);
         addArgument(argument);
         return argument;
     }
