@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -107,8 +108,8 @@ class DarwinStackOverflowSupport implements StackOverflowCheck.OSSupport {
         UnsignedWord stacksize = DarwinPthread.pthread_get_stacksize_np(self);
 
         int guardsize = vmComputeStackGuard(stackaddr.subtract(stacksize));
-        assert guardsize >= 0 && guardsize < 100 * 1024;
-        assert stacksize.aboveThan(guardsize);
+        VMError.guarantee(guardsize >= 0 && guardsize < 100 * 1024);
+        VMError.guarantee(stacksize.aboveThan(guardsize));
 
         stacksize = stacksize.subtract(guardsize);
 
