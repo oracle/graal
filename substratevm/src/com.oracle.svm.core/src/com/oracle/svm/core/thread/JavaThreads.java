@@ -276,7 +276,7 @@ public final class JavaThreads {
         }
         LoomSupport.CompatibilityUtil.initThreadFields(tjlt, group, target, stackSize, priority, daemon, ThreadStatus.NEW);
 
-        if (!LoomSupport.isEnabled() && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
+        if (!(LoomSupport.isEnabled() || JavaVersionUtil.JAVA_SPEC >= 19) && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
             JavaThreads.toTarget(group).addUnstarted();
         }
 
