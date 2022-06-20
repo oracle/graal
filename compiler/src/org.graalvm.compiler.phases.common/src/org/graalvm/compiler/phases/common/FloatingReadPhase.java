@@ -256,6 +256,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         graphState.setAfterStage(StageFlag.FLOATING_READS);
     }
 
+    @SuppressWarnings("try")
     public static MemoryMapImpl mergeMemoryMaps(AbstractMergeNode merge, List<? extends MemoryMap> states) {
         MemoryMapImpl newState = new MemoryMapImpl();
 
@@ -323,6 +324,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
         }
 
         @Override
+        @SuppressWarnings("try")
         protected MemoryMapImpl processNode(FixedNode node, MemoryMapImpl state) {
 
             if (node instanceof LoopExitNode) {
@@ -480,6 +482,7 @@ public class FloatingReadPhase extends PostRunCanonicalizationPhase<CoreProvider
             return loopInfo.exitStates;
         }
 
+        @SuppressWarnings("try")
         private static void createMemoryPhi(LoopBeginNode loop, MemoryMapImpl initialState, EconomicMap<LocationIdentity, MemoryPhiNode> phis, LocationIdentity location) {
             try (DebugCloseable position = loop.withNodeSourcePosition()) {
                 MemoryPhiNode phi = loop.graph().addWithoutUnique(new MemoryPhiNode(loop, location));
