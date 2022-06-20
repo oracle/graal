@@ -1233,19 +1233,7 @@ class PolyBenchVm(GraalVm):
         return self.run_launcher('polybench', args, cwd)
 
 def polybenchmark_rules(benchmark, metric_name, mode):
-    rules = [
-        mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
-            "benchmark": benchmark, #("<name>", str),
-            "metric.better": "lower",
-            "metric.name": metric_name,
-            "metric.unit": ("<unit>", str),
-            "metric.value": ("<value>", float),
-            "metric.type": "numeric",
-            "metric.score-function": "id",
-            "metric.iteration": 0,
-            "engine.config": mode,
-        }),
-    ]
+    rules = []
     if metric_name == "time":
         # Special case for metric "time": Instead of reporting the aggregate numbers,
         # report individual iterations. Two metrics will be reported:
@@ -1310,6 +1298,20 @@ def polybenchmark_rules(benchmark, metric_name, mode):
                 "metric.iteration": ("<iteration>", int),
                 "engine.config": mode,
             }, startPattern=r"::: Running :::")
+        ]
+    elif metric_name in ("compilation-time", "pe-time"):
+        rules += [
+            mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
+                "benchmark": benchmark, #("<name>", str),
+                "metric.better": "lower",
+                "metric.name": metric_name,
+                "metric.unit": ("<unit>", str),
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": 0,
+                "engine.config": mode,
+            }),
         ]
     return rules
 
