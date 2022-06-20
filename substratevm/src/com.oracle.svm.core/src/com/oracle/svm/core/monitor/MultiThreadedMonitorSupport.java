@@ -54,6 +54,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
+import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.ThreadStatus;
@@ -119,7 +120,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * class Lock for all its locking needs.
              */
             HashSet<Class<?>> monitorTypes = new HashSet<>();
-            monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
+            if (JavaVersionUtil.JAVA_SPEC <= 17) {
+                monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
+            }
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
             monitorTypes.add(java.lang.ref.ReferenceQueue.class);
 
@@ -580,7 +583,7 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
     @Alias Target_java_util_concurrent_locks_AbstractQueuedSynchronizer this$0;
 }
 
-@TargetClass(value = ReferenceQueue.class, innerClass = "Lock")
+@TargetClass(value = ReferenceQueue.class, innerClass = "Lock", onlyWith = JDK17OrEarlier.class)
 final class Target_java_lang_ref_ReferenceQueue_Lock {
 }
 // Checkstyle: resume
