@@ -351,6 +351,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return false;
         }
 
+        @SuppressWarnings("try")
         private void optimizeCompare(CompareNode compare, InductionVariable iv, ValueNode bound, boolean mirrored, GuardNode guard) {
             CountedLoopInfo countedLoop = iv.getLoop().counted();
             GuardingNode overflowGuard = countedLoop.getOverFlowGuard();
