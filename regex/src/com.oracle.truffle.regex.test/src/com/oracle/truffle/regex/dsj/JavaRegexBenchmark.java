@@ -19,11 +19,11 @@ public class JavaRegexBenchmark extends BenchmarkBase {
     @State(Scope.Benchmark)
     public static class BenchState {
 //        String regex = "[Hh]ello [Ww]orld!";
-        String regex = "(?<x>abc|def)=\\k<x>";
-//        String regex = "(?<x>abc){3}";
+//        String regex = "(?<x>abc|def)=\\k<x>";
+        String regex = "(?<x>abc){3}";
 //        String input = "hello World!";
-        String input = "def=def";
-//        String input = "abcabcabc";
+//        String input = "def=def";
+        String input = "abcabcabc";
 
         // Benchmarks ausweiten, Daten sammeln, backtracken (* gefolgt mit anderen Ausdruck ".*xy.*ab" mit "ababxyxyxyxyababxyxyxy" (automatenbasiert vs backtracker))
         // gegenüberstellen mit HelloWorld (backtracked nicht)
