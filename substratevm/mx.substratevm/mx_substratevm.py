@@ -1774,7 +1774,7 @@ if is_musl_supported():
 
 @mx.command(suite.name, 'svm-sync-graal-stubs-check')
 def check_graal_stubs_synced(_args):
-    _check_graal_stubs_synced(suite)
+    return _check_graal_stubs_synced(suite)
 
 
 @mx.command(suite.name, 'svm-sync-graal-stubs')
