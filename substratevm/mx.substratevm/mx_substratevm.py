@@ -1665,6 +1665,8 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
         graal_compiler_flags_map[11].extend(exports_flags)
         # Currently JDK 17 and JDK 11 have the same flags
         graal_compiler_flags_map[17] = graal_compiler_flags_map[11]
+        # Currently JDK 19 and JDK 17 have the same flags
+        graal_compiler_flags_map[19] = graal_compiler_flags_map[17]
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #
         # Instead provide the correct requiresConcealed entries in the moduleInfo
