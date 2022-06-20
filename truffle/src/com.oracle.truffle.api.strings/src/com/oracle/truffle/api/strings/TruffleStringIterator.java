@@ -102,6 +102,7 @@ public final class TruffleStringIterator {
     final Object arrayA;
     final byte codeRangeA;
     final byte encoding;
+    final byte naturalStride;
     private int rawIndex;
 
     TruffleStringIterator(AbstractTruffleString a, Object arrayA, int codeRangeA, int encoding, int rawIndex) {
@@ -110,6 +111,7 @@ public final class TruffleStringIterator {
         this.arrayA = arrayA;
         this.codeRangeA = (byte) codeRangeA;
         this.encoding = (byte) encoding;
+        this.naturalStride = (byte) TruffleString.Encoding.getNaturalStride(encoding);
         this.rawIndex = rawIndex;
     }
 
@@ -129,6 +131,17 @@ public final class TruffleStringIterator {
      */
     public boolean hasPrevious() {
         return rawIndex > 0;
+    }
+
+    /**
+     * Returns the next codepoint's byte index, where "byte index" refers the codepoint's first byte
+     * in forward mode, while in backward mode it refers to the first byte <i>after</i> the
+     * codepoint.
+     * 
+     * @since 22.3
+     */
+    public int getByteIndex() {
+        return rawIndex << naturalStride;
     }
 
     /**

@@ -1097,6 +1097,11 @@ public final class TruffleString extends AbstractTruffleString {
             return MAX_COMPATIBLE_CODE_RANGE[encoding];
         }
 
+        static int getNaturalStride(int encoding) {
+            assert isUTF16Or32(encoding) || get(encoding).naturalStride == 0;
+            return isUTF32(encoding) ? UTF_32.naturalStride : isUTF16(encoding) ? UTF_16.naturalStride : 0;
+        }
+
         boolean is7BitCompatible() {
             return is7BitCompatible(id);
         }
