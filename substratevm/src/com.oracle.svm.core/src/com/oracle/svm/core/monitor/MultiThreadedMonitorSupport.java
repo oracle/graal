@@ -259,9 +259,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorEnter(Object obj) {
         long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
+
+        if (lockObject.tryLock()) return;
+
         lockObject.lock();
 
-        // Prevent deadlock by locking monitorOwners lock due to synchronized block on ReferenceQueue monitor in WeakIdentityHashMap.
+        // Prevent deadlock from locking monitorOwnersLock in conjunction with the synchronized block on ReferenceQueue monitor in WeakIdentityHashMap
         if ( obj.getClass() == Target_java_lang_ref_ReferenceQueue_Lock.class ) return;
 
         // prevent recursive manipulation of the monitorOwners lock
